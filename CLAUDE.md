@@ -1,3 +1,64 @@
+# AI Impact Analytics Platform
+
+## Project Overview
+
+A SaaS platform helping CTOs understand if AI coding tools are actually improving their team's performance. Connects to GitHub, Jira, and Slack to correlate AI usage with delivery metrics.
+
+## Documentation
+
+All product requirements are in `/prd/`:
+- [PRD-MVP.md](prd/PRD-MVP.md) - Main product spec
+- [IMPLEMENTATION-PLAN.md](prd/IMPLEMENTATION-PLAN.md) - Build phases & order
+- [ARCHITECTURE.md](prd/ARCHITECTURE.md) - Technical architecture
+- [DATA-MODEL.md](prd/DATA-MODEL.md) - Database schema
+- [SLACK-BOT.md](prd/SLACK-BOT.md) - Bot specification
+- [DASHBOARDS.md](prd/DASHBOARDS.md) - Dashboard views
+- [ONBOARDING.md](prd/ONBOARDING.md) - User flow
+
+**Read these before implementing features.**
+
+## Key Decisions (Do Not Change Without Discussion)
+
+| Decision | Choice | Why |
+|----------|--------|-----|
+| Client data storage | BYOS (client's Supabase) | Security/privacy differentiator |
+| Dashboards | Metabase (embedded) | Avoid custom UI for MVP |
+| Sync frequency | Daily | Simpler than real-time |
+| AI data source | Self-reported surveys (MVP) | Cursor API is Enterprise-only |
+| User discovery | GitHub org import | Auto-populate team |
+
+## Implementation Order
+
+Follow phases in [IMPLEMENTATION-PLAN.md](prd/IMPLEMENTATION-PLAN.md):
+1. Foundation (auth, secrets)
+2. BYOS (client DB connection)
+3. GitHub integration
+4. Jira integration
+5. Basic dashboard
+6. Slack bot + surveys
+7. AI correlation views
+8. Leaderboard
+9. Copilot metrics
+10. Billing
+
+**MVP checkpoint = Phase 6 complete.**
+
+## Integrations
+
+| Service | Auth | Scope |
+|---------|------|-------|
+| GitHub | OAuth | `read:org`, `repo`, `read:user` |
+| Jira | OAuth (Atlassian) | `read:jira-work`, `read:jira-user` |
+| Slack | OAuth | `chat:write`, `users:read`, `users:read.email` |
+| Copilot | Via GitHub OAuth | `manage_billing:copilot` |
+
+## Data Flow
+
+GitHub/Jira APIs → Our Backend → Client's Supabase → Metabase → User ↓ Slack Bot (surveys)
+
+We store: OAuth tokens (encrypted), accounts, billing
+Client stores: All metrics, surveys, user data
+
 # Codebase Guidelines
 
 ## Architecture
@@ -208,3 +269,4 @@ make uv run 'pegasus startapp <app_name> <Model1> <Model2Name>'  # Start a new D
 ### Build System
 
 - Code is bundled using vite and served with `django-vite`.
+
