@@ -176,6 +176,88 @@ Note: Vite runs automatically with hot-reload when using `make dev`.
 make uv run 'pegasus startapp <app_name> <Model1> <Model2Name>'  # Start a new Django app (models are optional)
 ```
 
+## Test-Driven Development (TDD)
+
+**IMPORTANT: This project follows strict TDD practices. All new features MUST be implemented using the Red-Green-Refactor cycle.**
+
+### Before Starting Any Implementation
+
+1. **Run existing tests first**: `make test` to ensure the codebase is in a passing state
+2. **Identify what tests exist**: Check `apps/<app>/tests/` for related test files
+3. **Never break existing tests**: If your changes cause test failures, fix them before proceeding
+
+### TDD Workflow (Red-Green-Refactor)
+
+When implementing new features, follow this strict cycle:
+
+#### 🔴 RED Phase - Write Failing Test First
+- Write a test that describes the expected behavior
+- Run the test and confirm it **fails** (this proves the test is valid)
+- Do NOT write any implementation code yet
+
+#### 🟢 GREEN Phase - Make It Pass
+- Write the **minimum** code needed to make the test pass
+- No extra features, no "nice to haves"
+- Run the test and confirm it **passes**
+
+#### 🔵 REFACTOR Phase - Improve
+- Clean up the implementation while keeping tests green
+- Extract reusable code, improve naming, remove duplication
+- Run tests after each change to ensure they still pass
+
+### Test File Conventions
+
+```bash
+# Test location pattern
+apps/<app_name>/tests/test_<feature>.py
+
+# Running specific tests
+make test ARGS='apps.myapp.tests.test_feature'
+make test ARGS='apps.myapp.tests.test_feature::TestClassName'
+make test ARGS='apps.myapp.tests.test_feature::TestClassName::test_method'
+```
+
+### Test Structure (Django TestCase)
+
+```python
+from django.test import TestCase
+from django.urls import reverse
+
+from apps.users.models import CustomUser
+from apps.teams.models import Team
+
+
+class TestFeatureName(TestCase):
+    """Tests for <feature description>."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.user = CustomUser.objects.create_user(
+            email="test@example.com",
+            password="testpass123"
+        )
+        self.team = Team.objects.create(name="Test Team", slug="test-team")
+
+    def test_describes_expected_behavior(self):
+        """Test that <specific behavior> works correctly."""
+        # Arrange - set up test data
+        # Act - perform the action
+        # Assert - verify the outcome
+        pass
+```
+
+### TDD Skill Activation
+
+This project has Claude Code skills configured to enforce TDD. When you request a new feature implementation, the TDD skill will automatically:
+
+1. Delegate to `tdd-test-writer` agent for RED phase
+2. Delegate to `tdd-implementer` agent for GREEN phase
+3. Delegate to `tdd-refactorer` agent for REFACTOR phase
+
+**Trigger phrases**: "implement", "add feature", "build", "create functionality"
+
+**Does NOT trigger for**: bug fixes, documentation, configuration changes
+
 ## General Coding Preferences
 
 - Always prefer simple solutions.

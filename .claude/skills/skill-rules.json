@@ -1,0 +1,166 @@
+{
+    "version": "1.0",
+    "description": "Skill activation triggers for tformance Django project. Controls when skills automatically suggest or block actions.",
+    "skills": {
+        "tdd-integration": {
+            "type": "domain",
+            "enforcement": "suggest",
+            "priority": "high",
+            "description": "TDD Red-Green-Refactor workflow for Django",
+            "promptTriggers": {
+                "keywords": [
+                    "implement",
+                    "add feature",
+                    "build",
+                    "create functionality",
+                    "new feature",
+                    "implement feature"
+                ],
+                "intentPatterns": [
+                    "(implement|add|create|build).*?(feature|functionality|endpoint|view|model|api)",
+                    "(how to|help me).*?(implement|add|create|build)"
+                ]
+            },
+            "fileTriggers": {
+                "pathPatterns": [
+                    "apps/**/views.py",
+                    "apps/**/models.py",
+                    "apps/**/serializers.py",
+                    "apps/**/urls.py"
+                ],
+                "pathExclusions": [
+                    "apps/**/tests/**",
+                    "apps/**/migrations/**"
+                ]
+            }
+        },
+        "django-dev-guidelines": {
+            "type": "domain",
+            "enforcement": "suggest",
+            "priority": "high",
+            "description": "Django development patterns (views, models, DRF, Celery, Teams)",
+            "promptTriggers": {
+                "keywords": [
+                    "django",
+                    "view",
+                    "model",
+                    "serializer",
+                    "viewset",
+                    "DRF",
+                    "rest framework",
+                    "celery",
+                    "task",
+                    "migration",
+                    "queryset",
+                    "manager",
+                    "team",
+                    "BaseModel",
+                    "BaseTeamModel"
+                ],
+                "intentPatterns": [
+                    "(create|add|implement|build).*?(view|model|serializer|endpoint|api|task)",
+                    "(fix|handle|debug).*?(django|view|model|queryset)",
+                    "(how to|best practice).*?(django|view|model|serializer)"
+                ]
+            },
+            "fileTriggers": {
+                "pathPatterns": [
+                    "apps/**/*.py",
+                    "tformance/**/*.py"
+                ],
+                "pathExclusions": [
+                    "apps/**/tests/**",
+                    "apps/**/migrations/**",
+                    "**/__pycache__/**"
+                ],
+                "contentPatterns": [
+                    "from django",
+                    "from rest_framework",
+                    "class.*View",
+                    "class.*Model",
+                    "class.*Serializer"
+                ]
+            }
+        },
+        "htmx-alpine-flowbite-guidelines": {
+            "type": "domain",
+            "enforcement": "suggest",
+            "priority": "high",
+            "description": "HTMX + Alpine.js + Flowbite + DaisyUI patterns",
+            "promptTriggers": {
+                "keywords": [
+                    "htmx",
+                    "alpine",
+                    "flowbite",
+                    "daisyui",
+                    "template",
+                    "component",
+                    "frontend",
+                    "UI",
+                    "tailwind",
+                    "hx-get",
+                    "hx-post",
+                    "x-data",
+                    "x-on"
+                ],
+                "intentPatterns": [
+                    "(create|add|build|update).*?(component|template|UI|page|modal|form)",
+                    "(how to|best practice).*?(htmx|alpine|flowbite|template)",
+                    "(style|design|layout).*?(component|UI|page)"
+                ]
+            },
+            "fileTriggers": {
+                "pathPatterns": [
+                    "templates/**/*.html",
+                    "assets/**/*.js",
+                    "assets/**/*.ts"
+                ],
+                "contentPatterns": [
+                    "hx-get",
+                    "hx-post",
+                    "hx-trigger",
+                    "x-data",
+                    "x-on:",
+                    "alpine",
+                    "flowbite"
+                ]
+            }
+        },
+        "skill-developer": {
+            "type": "domain",
+            "enforcement": "suggest",
+            "priority": "medium",
+            "description": "Meta-skill for creating and managing Claude Code skills",
+            "promptTriggers": {
+                "keywords": [
+                    "skill system",
+                    "create skill",
+                    "add skill",
+                    "skill triggers",
+                    "skill rules",
+                    "hook system",
+                    "skill development",
+                    "skill-rules.json"
+                ],
+                "intentPatterns": [
+                    "(how do|how does|explain).*?skill",
+                    "(create|add|modify|build).*?skill",
+                    "skill.*?(work|trigger|activate|system)"
+                ]
+            }
+        }
+    },
+    "notes": {
+        "enforcement_types": {
+            "suggest": "Skill suggestion appears but doesn't block execution",
+            "block": "Requires skill to be used before proceeding (guardrail)",
+            "warn": "Shows warning but allows proceeding"
+        },
+        "priority_levels": {
+            "critical": "Highest - Always trigger when matched",
+            "high": "Important - Trigger for most matches",
+            "medium": "Moderate - Trigger for clear matches",
+            "low": "Optional - Trigger only for explicit matches"
+        }
+    }
+}
