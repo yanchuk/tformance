@@ -35,5 +35,9 @@
         ]
       }
     ]
+  },
+  "enabledPlugins": {
+    "commit-commands@claude-code-plugins": true,
+    "security-guidance@claude-code-plugins": true
   }
 }

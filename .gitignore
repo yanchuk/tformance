@@ -29,3 +29,4 @@ static/css/
 static/js/
 static/.vite/
 .claude/cache/
+claude-code-infrastructure-showcase/
