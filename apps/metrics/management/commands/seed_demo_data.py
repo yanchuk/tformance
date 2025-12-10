@@ -241,7 +241,7 @@ class Command(BaseCommand):
 
                 # Add 1-2 reviewer responses per survey
                 num_reviews = (hash(str(survey.id)) % 2) + 1
-                for i in range(num_reviews):
+                for _ in range(num_reviews):
                     try:
                         review = PRSurveyReviewFactory(team=team, survey=survey)
                         survey_reviews.append(review)
