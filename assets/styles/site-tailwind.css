@@ -6,6 +6,7 @@
 */
 @import './app/tailwind/app-components.css';
 @import './app/tailwind/subscription-components.css';
+@import './app/tailwind/landing-page.css';
 @import './pegasus/tailwind.css';
 
 @config "../../tailwind.config.js";

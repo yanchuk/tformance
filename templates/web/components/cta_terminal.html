@@ -1,0 +1,61 @@
+{% load static %}
+<section class="bg-deep py-20 md:py-28 relative overflow-hidden">
+  <!-- Subtle grid background -->
+  <div class="absolute inset-0 bg-[linear-gradient(rgba(6,182,212,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(6,182,212,0.02)_1px,transparent_1px)] bg-[size:40px_40px]"></div>
+
+  <div class="relative z-10 max-w-4xl mx-auto px-4 text-center">
+    <!-- Terminal-style prompt -->
+    <div class="inline-block mb-8 animate-fade-up">
+      <div class="bg-surface rounded-lg border border-elevated px-6 py-4 font-mono text-lg md:text-xl">
+        <span class="text-cyan">$</span>
+        <span class="text-slate-300 ml-2">ready to see if ai is actually helping?</span>
+        <span class="inline-block w-2 h-5 bg-cyan ml-1 animate-blink"></span>
+      </div>
+    </div>
+
+    <!-- Main CTA -->
+    <div class="animate-fade-up-delay-1">
+      <h2 class="text-3xl md:text-4xl font-bold text-slate-100 mb-4">
+        Get answers, not guesses.
+      </h2>
+      <p class="text-slate-400 max-w-xl mx-auto mb-8">
+        Join engineering teams who are finally getting visibility into whether their AI tools are paying off.
+      </p>
+
+      <div class="flex flex-col sm:flex-row justify-center gap-4">
+        <a href="{% url 'account_signup' %}"
+           class="btn btn-lg bg-cyan hover:bg-cyan-dark text-deep font-semibold px-10 border-0">
+          Join Waitlist
+        </a>
+      </div>
+
+      <p class="mt-6 text-sm text-slate-500">
+        Setup takes less than 10 minutes. No credit card required.
+      </p>
+    </div>
+
+    <!-- Final trust indicators -->
+    <div class="mt-16 pt-8 border-t border-elevated">
+      <div class="flex flex-wrap justify-center gap-8 text-sm text-slate-500">
+        <div class="flex items-center gap-2">
+          <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          <span>Setup in minutes</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+          </svg>
+          <span>Data encrypted at rest</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+          </svg>
+          <span>Free during beta</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

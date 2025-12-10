@@ -3,7 +3,7 @@
 {% load static %}
 <form method="post" class="mt-2" action="{% provider_login_url provider %}">
   {% csrf_token %}
-  <button class="btn btn-primary btn-outline btn-block flex justify-center my-2" type="submit">
+  <button class="btn btn-outline border-slate-500 text-slate-200 hover:bg-slate-700 hover:border-slate-400 btn-block flex justify-center my-2" type="submit">
     <img class="socialicon mr-2" src="{% static provider.logo_path %}" alt="{{ provider.name }} {% translate 'Logo' %}">
     {% translate "Continue with" %} {{ provider.name }}
   </button>

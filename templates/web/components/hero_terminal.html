@@ -1,0 +1,116 @@
+{% load i18n %}
+{% load static %}
+<section class="bg-deep min-h-[90vh] flex items-center relative overflow-hidden">
+  <!-- Subtle grid background -->
+  <div class="absolute inset-0 bg-[linear-gradient(rgba(6,182,212,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(6,182,212,0.03)_1px,transparent_1px)] bg-[size:60px_60px]"></div>
+
+  <div class="relative z-10 w-full max-w-6xl mx-auto px-4 py-16 md:py-24">
+    <!-- Terminal Window -->
+    <div class="terminal-window max-w-4xl mx-auto"
+         x-data="{
+           lines: [],
+           currentLine: 0,
+           allLines: [
+             { type: 'command', text: 'tformance analyze --team=engineering' },
+             { type: 'blank', text: '' },
+             { type: 'output', text: 'Analyzing 1,247 PRs from last quarter...' },
+             { type: 'output', text: 'AI-assisted PRs: 43% | Avg cycle time: -2.3 days' },
+             { type: 'output', text: 'Review burden: +18% | Quality score: unchanged' },
+             { type: 'blank', text: '' },
+             { type: 'result', text: 'Verdict: AI is shipping code faster, but reviews are bottlenecked.' }
+           ],
+           showCursor: true,
+           init() {
+             this.typeLines();
+           },
+           async typeLines() {
+             for (let i = 0; i < this.allLines.length; i++) {
+               await this.delay(i === 0 ? 500 : 300);
+               this.lines.push(this.allLines[i]);
+               this.currentLine = i;
+             }
+           },
+           delay(ms) {
+             return new Promise(resolve => setTimeout(resolve, ms));
+           }
+         }">
+      <!-- Terminal Header -->
+      <div class="terminal-header">
+        <div class="terminal-dot terminal-dot-red"></div>
+        <div class="terminal-dot terminal-dot-yellow"></div>
+        <div class="terminal-dot terminal-dot-green"></div>
+        <span class="ml-4 text-slate-500 text-sm font-mono">tformance</span>
+      </div>
+
+      <!-- Terminal Body -->
+      <div class="terminal-body min-h-[280px] md:min-h-[320px]">
+        <template x-for="(line, index) in lines" :key="index">
+          <div class="mb-1">
+            <template x-if="line.type === 'command'">
+              <div>
+                <span class="terminal-prompt">$</span>
+                <span class="text-slate-100 ml-2" x-text="line.text"></span>
+              </div>
+            </template>
+            <template x-if="line.type === 'output'">
+              <div class="text-slate-400 pl-4" x-text="line.text"></div>
+            </template>
+            <template x-if="line.type === 'result'">
+              <div class="text-cyan font-medium" x-text="line.text"></div>
+            </template>
+            <template x-if="line.type === 'blank'">
+              <div class="h-4"></div>
+            </template>
+          </div>
+        </template>
+        <span x-show="showCursor && lines.length < allLines.length" class="terminal-cursor"></span>
+      </div>
+    </div>
+
+    <!-- Main Headline -->
+    <div class="text-center mt-12 md:mt-16">
+      <h1 class="text-3xl md:text-5xl lg:text-6xl font-bold text-slate-100 leading-tight">
+        Is AI making your team
+        <span class="gradient-text">faster</span>—or just
+        <span class="text-rose-400">busier</span>?
+      </h1>
+      <p class="mt-6 text-lg md:text-xl text-slate-400 max-w-2xl mx-auto">
+        Connect GitHub, Jira, and Slack to see if AI coding tools are actually improving delivery—or just creating more code to review.
+      </p>
+
+      <!-- CTAs -->
+      <div class="flex flex-col sm:flex-row justify-center gap-4 mt-10">
+        <a href="{% url 'account_signup' %}"
+           class="btn btn-lg bg-cyan hover:bg-cyan-dark text-deep font-semibold px-8 border-0">
+          Join Waitlist
+        </a>
+        <a href="#features"
+           class="btn btn-lg btn-outline border-slate-600 text-slate-300 hover:bg-surface hover:border-slate-500 px-8">
+          See How It Works
+        </a>
+      </div>
+
+      <!-- Trust indicators -->
+      <div class="mt-12 flex flex-wrap justify-center items-center gap-6 text-sm text-slate-500">
+        <div class="flex items-center gap-2">
+          <svg class="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+          </svg>
+          <span>Free during beta</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <svg class="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+          </svg>
+          <span>No credit card required</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <svg class="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+          </svg>
+          <span>Setup in under 10 minutes</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

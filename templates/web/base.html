@@ -2,7 +2,7 @@
 {% load django_vite %}
 {% load meta_tags %}
 <!DOCTYPE html>
-<html lang="en" {% if dark_mode %}class="dark" data-theme="{{ dark_theme }}"{% endif %}>
+<html lang="en" class="dark" data-theme="dark">
 <head>
     <meta charset="utf-8">
     <!--IE compatibility-->
@@ -36,6 +36,10 @@
 {% endif %}
 {% endblock meta %}
 {% include 'web/components/favicon.html' %}
+    <!-- Custom Fonts: JetBrains Mono (code/data) + DM Sans (body) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{% vite_asset_url 'assets/styles/site-base.css' %}">
     <link rel="stylesheet" href="{% vite_asset_url 'assets/styles/site-tailwind.css' %}">
 
@@ -66,43 +70,6 @@
 {% endblock footer %}
 {% endblock body_wrapper %}
   {% include 'web/components/messages-js.html' %}
-  <script>
-    function syncDarkMode() {
-      // change the dark and light theme values in settings.py to match the DaisyUI theme names
-      // to use for dark and light mode, and they will get updated here.
-      const darkTheme = '{{ dark_theme }}' || 'dark';
-      const lightTheme = '{{ light_theme }}' || 'light';
-      const systemTheme = 'system';
-
-      const theme = localStorage.getItem('theme') || systemTheme;
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-
-      if (theme === darkTheme || (theme === systemTheme && prefersDark)) {
-        document.documentElement.classList.add('dark');
-        document.documentElement.setAttribute('data-theme', darkTheme);
-        // set a cookie and use it during server rendering to avoid a flicker across page loads
-        document.cookie = `theme=${darkTheme};path=/;max-age=31536000`;
-      } else {
-        document.documentElement.classList.remove('dark');
-        document.documentElement.setAttribute('data-theme', lightTheme);
-        document.cookie = `theme=${lightTheme};path=/;max-age=31536000`;
-      }
-    }
-    syncDarkMode();
-    document.addEventListener('DOMContentLoaded', () => {
-
-      // Watch for changes in the prefers-color-scheme
-      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-      mediaQuery.addListener(syncDarkMode);
-
-      // Watch for theme changes - controlled by the selector in the nav
-      window.addEventListener('storage', (event) => {
-        if (event.key === 'theme') {
-          syncDarkMode();
-        }
-      });
-    });
-  </script>
 {% block page_js %}
 {% endblock page_js %}
 </body>

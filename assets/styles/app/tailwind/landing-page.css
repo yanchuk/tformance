@@ -1,0 +1,111 @@
+/* Landing Page Custom Styles
+ * Terminal-meets-dashboard aesthetic for developer audience
+ */
+
+/* Terminal window styling */
+.terminal-window {
+  @apply bg-deep rounded-xl border border-elevated overflow-hidden shadow-2xl;
+}
+
+.terminal-header {
+  @apply bg-surface px-4 py-3 flex items-center gap-2 border-b border-elevated;
+}
+
+.terminal-dot {
+  @apply w-3 h-3 rounded-full;
+}
+
+.terminal-dot-red { @apply bg-red-500; }
+.terminal-dot-yellow { @apply bg-yellow-500; }
+.terminal-dot-green { @apply bg-green-500; }
+
+.terminal-body {
+  @apply p-6 font-mono text-sm md:text-base;
+}
+
+.terminal-prompt {
+  @apply text-cyan inline-block;
+}
+
+.terminal-cursor {
+  @apply inline-block w-2 h-5 bg-cyan ml-1 animate-blink;
+}
+
+/* Gradient text effect */
+.gradient-text {
+  @apply bg-gradient-to-r from-cyan to-cyan-light bg-clip-text text-transparent;
+}
+
+/* Stat card styling */
+.stat-card {
+  @apply bg-surface rounded-xl p-6 border border-elevated;
+  @apply hover:border-cyan/50 transition-colors duration-300;
+}
+
+.stat-value {
+  @apply text-5xl md:text-6xl font-bold font-mono;
+}
+
+.stat-positive {
+  @apply text-emerald-400;
+}
+
+.stat-negative {
+  @apply text-rose-400;
+}
+
+.stat-label {
+  @apply text-slate-400 mt-2 text-sm md:text-base;
+}
+
+/* Feature card styling */
+.feature-card {
+  @apply bg-surface rounded-xl p-6 border border-elevated;
+  @apply hover:border-cyan/30 hover:bg-surface/80 transition-all duration-300;
+}
+
+/* Integration logo styling */
+.integration-logo {
+  @apply w-16 h-16 md:w-20 md:h-20 p-4 bg-surface rounded-xl border border-elevated;
+  @apply hover:border-cyan/50 hover:scale-105 transition-all duration-300;
+}
+
+/* Section styling */
+.landing-section {
+  @apply py-16 md:py-24;
+}
+
+.landing-section-dark {
+  @apply bg-deep;
+}
+
+.landing-section-alt {
+  @apply bg-surface;
+}
+
+/* Scroll reveal animation helper */
+.reveal-on-scroll {
+  @apply opacity-0 translate-y-5;
+  @apply transition-all duration-700 ease-out;
+}
+
+.reveal-on-scroll.revealed {
+  @apply opacity-100 translate-y-0;
+}
+
+/* Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .terminal-cursor {
+    animation: none;
+    opacity: 1;
+  }
+
+  .reveal-on-scroll {
+    opacity: 1;
+    transform: none;
+  }
+
+  [class*="animate-"] {
+    animation: none !important;
+  }
+}
