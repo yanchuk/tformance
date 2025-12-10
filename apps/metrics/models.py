@@ -243,6 +243,14 @@ class PRReview(BaseTeamModel):
         ("commented", "Commented"),
     ]
 
+    # GitHub identifier
+    github_review_id = models.BigIntegerField(
+        null=True,
+        blank=True,
+        verbose_name="GitHub Review ID",
+        help_text="The review ID from GitHub",
+    )
+
     # Relationships
     pull_request = models.ForeignKey(
         PullRequest,
@@ -278,6 +286,13 @@ class PRReview(BaseTeamModel):
         ordering = ["-submitted_at"]
         verbose_name = "PR Review"
         verbose_name_plural = "PR Reviews"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["team", "github_review_id"],
+                condition=models.Q(github_review_id__isnull=False),
+                name="unique_team_review",
+            )
+        ]
         indexes = [
             models.Index(fields=["pull_request", "submitted_at"], name="review_pr_submitted_idx"),
             models.Index(fields=["reviewer", "state"], name="review_reviewer_state_idx"),

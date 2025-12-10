@@ -9,6 +9,11 @@
   <td>
     {% if repo.is_tracked %}
       <span class="badge badge-success badge-sm">{% translate "Tracked" %}</span>
+      {% if repo.webhook_id %}
+        <span class="badge badge-success badge-sm">{% translate "Webhook active" %}</span>
+      {% else %}
+        <span class="badge badge-warning badge-sm">{% translate "Webhook pending" %}</span>
+      {% endif %}
     {% else %}
       <span class="badge badge-ghost badge-sm">{% translate "Not tracked" %}</span>
     {% endif %}

@@ -1479,3 +1479,233 @@ class GitHubRepoToggleViewTest(TestCase):
         # Should fail (exact error handling depends on implementation)
         # For now, test that it doesn't create the TrackedRepository
         self.assertFalse(TrackedRepository.objects.filter(team=self.team, github_repo_id=repo_id).exists())
+
+
+class GitHubReposWebhookStatusViewTest(TestCase):
+    """Tests for webhook status display in github_repos view."""
+
+    def setUp(self):
+        """Set up test fixtures using factories."""
+        self.team = TeamFactory()
+        self.admin = UserFactory()
+        self.team.members.add(self.admin, through_defaults={"role": ROLE_ADMIN})
+        self.integration = GitHubIntegrationFactory(team=self.team, organization_slug="acme-corp")
+        self.client = Client()
+
+    @patch("apps.integrations.services.github_oauth.get_organization_repositories")
+    def test_repo_card_shows_webhook_active_when_webhook_id_exists(self, mock_get_repos):
+        """Test that repo card shows 'Webhook active' badge when TrackedRepository has webhook_id."""
+        from apps.integrations.factories import TrackedRepositoryFactory
+
+        # Create a tracked repository WITH a webhook_id
+        TrackedRepositoryFactory(
+            team=self.team,
+            integration=self.integration,
+            github_repo_id=1001,
+            full_name="acme-corp/repo-1",
+            webhook_id=99887766,  # Has webhook registered
+        )
+
+        # Mock GitHub API response
+        mock_get_repos.return_value = [
+            {"id": 1001, "name": "repo-1", "full_name": "acme-corp/repo-1", "description": "Test repo"},
+        ]
+
+        self.client.force_login(self.admin)
+
+        response = self.client.get(reverse("integrations:github_repos", args=[self.team.slug]))
+
+        # Should successfully render
+        self.assertEqual(response.status_code, 200)
+
+        # Should show "Webhook active" badge
+        self.assertContains(response, "Webhook active")
+
+    @patch("apps.integrations.services.github_oauth.get_organization_repositories")
+    def test_repo_card_shows_webhook_pending_when_no_webhook_id(self, mock_get_repos):
+        """Test that repo card shows 'Webhook pending' badge when TrackedRepository has no webhook_id."""
+        from apps.integrations.factories import TrackedRepositoryFactory
+
+        # Create a tracked repository WITHOUT a webhook_id
+        TrackedRepositoryFactory(
+            team=self.team,
+            integration=self.integration,
+            github_repo_id=1002,
+            full_name="acme-corp/repo-2",
+            webhook_id=None,  # No webhook registered
+        )
+
+        # Mock GitHub API response
+        mock_get_repos.return_value = [
+            {"id": 1002, "name": "repo-2", "full_name": "acme-corp/repo-2", "description": "Test repo"},
+        ]
+
+        self.client.force_login(self.admin)
+
+        response = self.client.get(reverse("integrations:github_repos", args=[self.team.slug]))
+
+        # Should successfully render
+        self.assertEqual(response.status_code, 200)
+
+        # Should show "Webhook pending" badge
+        self.assertContains(response, "Webhook pending")
+
+
+class GitHubRepoToggleWebhookIntegrationTest(TestCase):
+    """Tests for webhook integration in github_repo_toggle view."""
+
+    def setUp(self):
+        """Set up test fixtures using factories."""
+        self.team = TeamFactory()
+        self.admin = UserFactory()
+        self.team.members.add(self.admin, through_defaults={"role": ROLE_ADMIN})
+        self.integration = GitHubIntegrationFactory(team=self.team, organization_slug="acme-corp")
+        self.client = Client()
+
+    @patch("apps.integrations.services.github_webhooks.create_repository_webhook")
+    def test_toggle_creates_webhook_when_tracking_repo(self, mock_create_webhook):
+        """Test that toggling a repo to tracked creates a webhook."""
+        from apps.integrations.models import TrackedRepository
+
+        # Mock webhook creation to return a webhook ID
+        mock_create_webhook.return_value = 99887766
+
+        self.client.force_login(self.admin)
+
+        repo_id = 12345
+        full_name = "acme-corp/test-repo"
+
+        # Track the repo
+        self.client.post(
+            reverse("integrations:github_repo_toggle", args=[self.team.slug, repo_id]), {"full_name": full_name}
+        )
+
+        # Verify create_repository_webhook was called
+        mock_create_webhook.assert_called_once()
+        call_args = mock_create_webhook.call_args[1]  # Get keyword arguments
+        self.assertEqual(call_args["repo_full_name"], full_name)
+        self.assertIn("webhook_url", call_args)
+        self.assertIn("/webhooks/github/", call_args["webhook_url"])
+
+        # Verify TrackedRepository was created
+        self.assertTrue(TrackedRepository.objects.filter(team=self.team, github_repo_id=repo_id).exists())
+
+    @patch("apps.integrations.services.github_webhooks.create_repository_webhook")
+    def test_toggle_stores_webhook_id_in_tracked_repository(self, mock_create_webhook):
+        """Test that webhook_id is stored in TrackedRepository after successful webhook creation."""
+        from apps.integrations.models import TrackedRepository
+
+        # Mock webhook creation to return a specific webhook ID
+        webhook_id = 99887766
+        mock_create_webhook.return_value = webhook_id
+
+        self.client.force_login(self.admin)
+
+        repo_id = 12345
+        full_name = "acme-corp/test-repo"
+
+        # Track the repo
+        self.client.post(
+            reverse("integrations:github_repo_toggle", args=[self.team.slug, repo_id]), {"full_name": full_name}
+        )
+
+        # Verify webhook_id was stored in TrackedRepository
+        tracked_repo = TrackedRepository.objects.get(team=self.team, github_repo_id=repo_id)
+        self.assertEqual(tracked_repo.webhook_id, webhook_id)
+
+    @patch("apps.integrations.services.github_webhooks.delete_repository_webhook")
+    def test_toggle_deletes_webhook_when_untracking_repo(self, mock_delete_webhook):
+        """Test that toggling a repo to untracked deletes its webhook."""
+        from apps.integrations.factories import TrackedRepositoryFactory
+
+        # Mock webhook deletion
+        mock_delete_webhook.return_value = True
+
+        self.client.force_login(self.admin)
+
+        # Create a tracked repository with a webhook_id
+        repo_id = 12345
+        full_name = "acme-corp/test-repo"
+        webhook_id = 99887766
+        TrackedRepositoryFactory(
+            team=self.team,
+            integration=self.integration,
+            github_repo_id=repo_id,
+            full_name=full_name,
+            webhook_id=webhook_id,
+        )
+
+        # Untrack the repo
+        self.client.post(
+            reverse("integrations:github_repo_toggle", args=[self.team.slug, repo_id]), {"full_name": full_name}
+        )
+
+        # Verify delete_repository_webhook was called with correct arguments
+        mock_delete_webhook.assert_called_once()
+        call_args = mock_delete_webhook.call_args[1]  # Get keyword arguments
+        self.assertEqual(call_args["repo_full_name"], full_name)
+        self.assertEqual(call_args["webhook_id"], webhook_id)
+
+    @patch("apps.integrations.services.github_webhooks.create_repository_webhook")
+    def test_toggle_succeeds_even_if_webhook_creation_fails(self, mock_create_webhook):
+        """Test that repo tracking succeeds even if webhook creation fails (graceful degradation)."""
+        from apps.integrations.models import TrackedRepository
+        from apps.integrations.services.github_oauth import GitHubOAuthError
+
+        # Mock webhook creation to fail
+        mock_create_webhook.side_effect = GitHubOAuthError("Insufficient permissions to create webhook")
+
+        self.client.force_login(self.admin)
+
+        repo_id = 12345
+        full_name = "acme-corp/test-repo"
+
+        # Track the repo - should succeed despite webhook failure
+        response = self.client.post(
+            reverse("integrations:github_repo_toggle", args=[self.team.slug, repo_id]), {"full_name": full_name}
+        )
+
+        # Should redirect successfully
+        self.assertEqual(response.status_code, 302)
+
+        # TrackedRepository should still be created
+        self.assertTrue(TrackedRepository.objects.filter(team=self.team, github_repo_id=repo_id).exists())
+
+        # webhook_id should be None since creation failed
+        tracked_repo = TrackedRepository.objects.get(team=self.team, github_repo_id=repo_id)
+        self.assertIsNone(tracked_repo.webhook_id)
+
+    @patch("apps.integrations.services.github_webhooks.delete_repository_webhook")
+    def test_toggle_succeeds_even_if_webhook_deletion_fails(self, mock_delete_webhook):
+        """Test that repo untracking succeeds even if webhook deletion fails (graceful degradation)."""
+        from apps.integrations.factories import TrackedRepositoryFactory
+        from apps.integrations.models import TrackedRepository
+        from apps.integrations.services.github_oauth import GitHubOAuthError
+
+        # Mock webhook deletion to fail
+        mock_delete_webhook.side_effect = GitHubOAuthError("Insufficient permissions to delete webhook")
+
+        self.client.force_login(self.admin)
+
+        # Create a tracked repository with a webhook_id
+        repo_id = 12345
+        full_name = "acme-corp/test-repo"
+        webhook_id = 99887766
+        tracked_repo = TrackedRepositoryFactory(
+            team=self.team,
+            integration=self.integration,
+            github_repo_id=repo_id,
+            full_name=full_name,
+            webhook_id=webhook_id,
+        )
+
+        # Untrack the repo - should succeed despite webhook deletion failure
+        response = self.client.post(
+            reverse("integrations:github_repo_toggle", args=[self.team.slug, repo_id]), {"full_name": full_name}
+        )
+
+        # Should redirect successfully
+        self.assertEqual(response.status_code, 302)
+
+        # TrackedRepository should still be deleted
+        self.assertFalse(TrackedRepository.objects.filter(pk=tracked_repo.pk).exists())

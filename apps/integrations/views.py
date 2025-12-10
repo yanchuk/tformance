@@ -10,13 +10,61 @@ from django.template.response import TemplateResponse
 from django.urls import reverse
 
 from apps.integrations.models import GitHubIntegration, IntegrationCredential
-from apps.integrations.services import github_oauth, member_sync
+from apps.integrations.services import github_oauth, github_webhooks, member_sync
 from apps.integrations.services.encryption import decrypt, encrypt
 from apps.integrations.services.github_oauth import GitHubOAuthError
 from apps.metrics.models import TeamMember
 from apps.teams.decorators import login_and_team_required, team_admin_required
 
 logger = logging.getLogger(__name__)
+
+
+def _create_repository_webhook(access_token, repo_full_name, webhook_url, secret):
+    """Create a GitHub webhook for a repository.
+
+    Attempts to create a webhook and returns the webhook ID. If creation fails,
+    logs the error and returns None (graceful degradation).
+
+    Args:
+        access_token: The GitHub OAuth access token.
+        repo_full_name: The full name of the repository (e.g., "org/repo").
+        webhook_url: The URL for the webhook endpoint.
+        secret: The webhook secret for signature verification.
+
+    Returns:
+        int or None: The webhook ID if successful, None if creation failed.
+    """
+    try:
+        return github_webhooks.create_repository_webhook(
+            access_token=access_token,
+            repo_full_name=repo_full_name,
+            webhook_url=webhook_url,
+            secret=secret,
+        )
+    except GitHubOAuthError as e:
+        logger.error(f"Failed to create webhook for {repo_full_name}: {e}")
+        return None
+
+
+def _delete_repository_webhook(access_token, repo_full_name, webhook_id):
+    """Delete a GitHub webhook from a repository.
+
+    Attempts to delete a webhook. If deletion fails, logs the error but doesn't
+    raise an exception (graceful degradation).
+
+    Args:
+        access_token: The GitHub OAuth access token.
+        repo_full_name: The full name of the repository (e.g., "org/repo").
+        webhook_id: The ID of the webhook to delete.
+    """
+    try:
+        github_webhooks.delete_repository_webhook(
+            access_token=access_token,
+            repo_full_name=repo_full_name,
+            webhook_id=webhook_id,
+        )
+    except GitHubOAuthError as e:
+        logger.error(f"Failed to delete webhook for {repo_full_name}: {e}")
 
 
 def _create_github_credential(team, access_token, user):
@@ -490,12 +538,14 @@ def github_repos(request, team_slug):
         messages.error(request, f"Failed to fetch repositories: {str(e)}")
         return redirect("integrations:integrations_home", team_slug=team.slug)
 
-    # Get tracked repo IDs
-    tracked_repo_ids = set(TrackedRepository.objects.filter(team=team).values_list("github_repo_id", flat=True))
+    # Get tracked repos with webhook_id
+    tracked_repos = TrackedRepository.objects.filter(team=team)
+    tracked_repo_map = {tr.github_repo_id: tr.webhook_id for tr in tracked_repos}
 
-    # Mark repos as tracked
+    # Mark repos as tracked and include webhook_id
     for repo in repos:
-        repo["is_tracked"] = repo["id"] in tracked_repo_ids
+        repo["is_tracked"] = repo["id"] in tracked_repo_map
+        repo["webhook_id"] = tracked_repo_map.get(repo["id"])
 
     context = {
         "repos": repos,
@@ -537,21 +587,33 @@ def github_repo_toggle(request, team_slug, repo_id):
     # Get full_name from POST data
     full_name = request.POST.get("full_name", "")
 
+    # Decrypt access token for webhook operations
+    access_token = decrypt(integration.credential.access_token)
+
     # Check if repo is already tracked
+    webhook_id = None
     try:
         tracked_repo = TrackedRepository.objects.get(team=team, github_repo_id=repo_id)
-        # Already tracked - delete it
+        # Already tracked - delete webhook and repository
+        if tracked_repo.webhook_id is not None:
+            _delete_repository_webhook(access_token, tracked_repo.full_name, tracked_repo.webhook_id)
         tracked_repo.delete()
         is_tracked = False
     except TrackedRepository.DoesNotExist:
         # Not tracked - create it (only if full_name provided)
         if full_name:
+            # Build webhook URL and create webhook
+            webhook_url = request.build_absolute_uri("/webhooks/github/")
+            webhook_id = _create_repository_webhook(access_token, full_name, webhook_url, integration.webhook_secret)
+
+            # Create tracked repository with webhook_id (or None if webhook creation failed)
             TrackedRepository.objects.create(
                 team=team,
                 integration=integration,
                 github_repo_id=repo_id,
                 full_name=full_name,
                 is_active=True,
+                webhook_id=webhook_id,
             )
             is_tracked = True
         else:
@@ -568,6 +630,7 @@ def github_repo_toggle(request, team_slug, repo_id):
             "full_name": full_name,
             "description": "",  # Not available after toggle
             "is_tracked": is_tracked,
+            "webhook_id": webhook_id,
         }
     }
 
