@@ -96,6 +96,8 @@ def integrations_home(request, team_slug):
     Returns:
         HttpResponse with the integrations page content.
     """
+    from apps.integrations.models import TrackedRepository
+
     team = request.team
 
     # Check if GitHub integration exists
@@ -104,15 +106,19 @@ def integrations_home(request, team_slug):
         github_connected = True
         # Count members with GitHub IDs
         member_count = TeamMember.objects.filter(team=team).exclude(github_id="").count()
+        # Count tracked repositories
+        tracked_repo_count = TrackedRepository.objects.filter(team=team).count()
     except GitHubIntegration.DoesNotExist:
         github_integration = None
         github_connected = False
         member_count = 0
+        tracked_repo_count = 0
 
     context = {
         "github_connected": github_connected,
         "github_integration": github_integration,
         "member_count": member_count,
+        "tracked_repo_count": tracked_repo_count,
         "active_tab": "integrations",
     }
 
@@ -447,3 +453,128 @@ def github_member_toggle(request, team_slug, member_id):
 
     # Non-HTMX: redirect to members page
     return redirect("integrations:github_members", team_slug=team.slug)
+
+
+@login_and_team_required
+def github_repos(request, team_slug):
+    """Display list of GitHub repositories for the organization.
+
+    Shows all repositories from the connected GitHub organization and marks
+    which ones are currently being tracked.
+
+    Args:
+        request: The HTTP request object.
+        team_slug: The slug of the team to display repos for.
+
+    Returns:
+        HttpResponse with the GitHub repos list or redirect if not connected.
+    """
+    from apps.integrations.models import TrackedRepository
+
+    team = request.team
+
+    # Check if GitHub integration exists
+    try:
+        integration = GitHubIntegration.objects.get(team=team)
+    except GitHubIntegration.DoesNotExist:
+        messages.error(request, "Please connect GitHub first.")
+        return redirect("integrations:integrations_home", team_slug=team.slug)
+
+    # Decrypt access token
+    access_token = decrypt(integration.credential.access_token)
+
+    # Fetch repos from GitHub API
+    try:
+        repos = github_oauth.get_organization_repositories(access_token, integration.organization_slug)
+    except GitHubOAuthError as e:
+        messages.error(request, f"Failed to fetch repositories: {str(e)}")
+        return redirect("integrations:integrations_home", team_slug=team.slug)
+
+    # Get tracked repo IDs
+    tracked_repo_ids = set(TrackedRepository.objects.filter(team=team).values_list("github_repo_id", flat=True))
+
+    # Mark repos as tracked
+    for repo in repos:
+        repo["is_tracked"] = repo["id"] in tracked_repo_ids
+
+    context = {
+        "repos": repos,
+        "integration": integration,
+    }
+
+    return render(request, "integrations/github_repos.html", context)
+
+
+@team_admin_required
+def github_repo_toggle(request, team_slug, repo_id):
+    """Toggle repository tracking on/off.
+
+    Allows admins to track or untrack repositories.
+
+    Requires team admin role and POST method.
+
+    Args:
+        request: The HTTP request object.
+        team_slug: The slug of the team.
+        repo_id: The GitHub repository ID to toggle.
+
+    Returns:
+        HttpResponse with partial template for HTMX or redirect for non-HTMX.
+    """
+    from django.shortcuts import get_object_or_404
+
+    from apps.integrations.models import TrackedRepository
+
+    # Require POST method
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+
+    team = request.team
+
+    # Get GitHub integration or return 404
+    integration = get_object_or_404(GitHubIntegration, team=team)
+
+    # Get full_name from POST data
+    full_name = request.POST.get("full_name", "")
+
+    # Check if repo is already tracked
+    try:
+        tracked_repo = TrackedRepository.objects.get(team=team, github_repo_id=repo_id)
+        # Already tracked - delete it
+        tracked_repo.delete()
+        is_tracked = False
+    except TrackedRepository.DoesNotExist:
+        # Not tracked - create it (only if full_name provided)
+        if full_name:
+            TrackedRepository.objects.create(
+                team=team,
+                integration=integration,
+                github_repo_id=repo_id,
+                full_name=full_name,
+                is_active=True,
+            )
+            is_tracked = True
+        else:
+            is_tracked = False
+
+    # Build repo data for template
+    # Parse name from full_name (e.g., "acme-corp/repo-1" -> "repo-1")
+    name = full_name.split("/")[-1] if full_name else ""
+
+    context = {
+        "repo": {
+            "id": repo_id,
+            "name": name,
+            "full_name": full_name,
+            "description": "",  # Not available after toggle
+            "is_tracked": is_tracked,
+        }
+    }
+
+    # Check if HTMX request
+    if request.htmx:
+        # Return partial template for HTMX
+        return render(request, "integrations/components/repo_card.html", context)
+
+    # Non-HTMX: redirect to repos page
+    return redirect("integrations:github_repos", team_slug=team.slug)

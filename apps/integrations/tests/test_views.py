@@ -83,6 +83,54 @@ class IntegrationsHomeViewTest(TestCase):
         # Should show connected status
         self.assertContains(response, "Connected")
 
+    def test_integrations_home_shows_repositories_link_when_github_connected(self):
+        """Test that integrations_home shows Repositories link when GitHub is connected."""
+        # Create a GitHub integration for the team
+        GitHubIntegrationFactory(team=self.team)
+        self.client.force_login(self.admin)
+
+        response = self.client.get(reverse("integrations:integrations_home", args=[self.team.slug]))
+
+        self.assertEqual(response.status_code, 200)
+        # Should show Repositories link
+        self.assertContains(response, "Repositories")
+
+    def test_integrations_home_shows_tracked_repo_count_badge(self):
+        """Test that integrations_home shows tracked repository count badge."""
+        from apps.integrations.factories import TrackedRepositoryFactory
+
+        # Create a GitHub integration for the team
+        integration = GitHubIntegrationFactory(team=self.team)
+
+        # Create some tracked repositories
+        TrackedRepositoryFactory(team=self.team, integration=integration)
+        TrackedRepositoryFactory(team=self.team, integration=integration)
+        TrackedRepositoryFactory(team=self.team, integration=integration)
+
+        self.client.force_login(self.admin)
+
+        response = self.client.get(reverse("integrations:integrations_home", args=[self.team.slug]))
+
+        self.assertEqual(response.status_code, 200)
+        # Should show count of 3 repositories
+        # The badge should be near the Repositories link
+        content = response.content.decode()
+        self.assertIn("Repositories", content)
+        self.assertIn("3", content)
+
+    def test_integrations_home_repositories_link_points_to_github_repos_url(self):
+        """Test that Repositories link points to correct github_repos URL."""
+        # Create a GitHub integration for the team
+        GitHubIntegrationFactory(team=self.team)
+        self.client.force_login(self.admin)
+
+        response = self.client.get(reverse("integrations:integrations_home", args=[self.team.slug]))
+
+        self.assertEqual(response.status_code, 200)
+        # Should contain link to github_repos
+        expected_url = reverse("integrations:github_repos", args=[self.team.slug])
+        self.assertContains(response, expected_url)
+
 
 class GitHubConnectViewTest(TestCase):
     """Tests for github_connect view."""
@@ -1105,3 +1153,329 @@ class GitHubSelectOrgViewTest(TestCase):
 
         messages = list(get_messages(response.wsgi_request))
         self.assertTrue(any("success" in str(m).lower() or "connected" in str(m).lower() for m in messages))
+
+
+class GitHubReposViewTest(TestCase):
+    """Tests for github_repos view (list organization repositories)."""
+
+    def setUp(self):
+        """Set up test fixtures using factories."""
+
+        self.team = TeamFactory()
+        self.admin = UserFactory()
+        self.member = UserFactory()
+        self.team.members.add(self.admin, through_defaults={"role": ROLE_ADMIN})
+        self.team.members.add(self.member, through_defaults={"role": ROLE_MEMBER})
+        self.client = Client()
+
+    def test_github_repos_requires_login(self):
+        """Test that github_repos redirects to login if user is not authenticated."""
+        response = self.client.get(reverse("integrations:github_repos", args=[self.team.slug]))
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/accounts/login/", response.url)
+
+    def test_github_repos_requires_team_membership(self):
+        """Test that github_repos returns 404 if user is not a team member."""
+        non_member = UserFactory()
+        self.client.force_login(non_member)
+
+        response = self.client.get(reverse("integrations:github_repos", args=[self.team.slug]))
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_github_repos_requires_github_integration_exists(self):
+        """Test that github_repos redirects if GitHub integration doesn't exist."""
+        self.client.force_login(self.admin)
+
+        response = self.client.get(reverse("integrations:github_repos", args=[self.team.slug]))
+
+        # Should redirect to integrations home
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse("integrations:integrations_home", args=[self.team.slug]))
+
+    def test_github_repos_requires_github_integration_shows_message(self):
+        """Test that github_repos shows message if GitHub integration doesn't exist."""
+        self.client.force_login(self.admin)
+
+        response = self.client.get(reverse("integrations:github_repos", args=[self.team.slug]), follow=True)
+
+        messages = list(get_messages(response.wsgi_request))
+        self.assertTrue(any("github" in str(m).lower() and "connect" in str(m).lower() for m in messages))
+
+    @patch("apps.integrations.services.github_oauth.get_organization_repositories")
+    def test_github_repos_fetches_and_displays_repos_from_api(self, mock_get_repos):
+        """Test that github_repos fetches repositories from GitHub API and displays them."""
+        # Create GitHub integration
+        GitHubIntegrationFactory(team=self.team, organization_slug="acme-corp")
+
+        # Mock GitHub API response
+        mock_get_repos.return_value = [
+            {"id": 1001, "name": "repo-1", "full_name": "acme-corp/repo-1", "description": "First repo"},
+            {"id": 1002, "name": "repo-2", "full_name": "acme-corp/repo-2", "description": "Second repo"},
+            {"id": 1003, "name": "repo-3", "full_name": "acme-corp/repo-3", "description": "Third repo"},
+        ]
+
+        self.client.force_login(self.member)
+
+        response = self.client.get(reverse("integrations:github_repos", args=[self.team.slug]))
+
+        # Should successfully render
+        self.assertEqual(response.status_code, 200)
+
+        # Should call the API with correct arguments
+        mock_get_repos.assert_called_once()
+
+        # Should display repository names
+        self.assertContains(response, "repo-1")
+        self.assertContains(response, "repo-2")
+        self.assertContains(response, "repo-3")
+
+    @patch("apps.integrations.services.github_oauth.get_organization_repositories")
+    def test_github_repos_marks_tracked_repos_correctly(self, mock_get_repos):
+        """Test that github_repos correctly identifies which repos are tracked."""
+        from apps.integrations.factories import TrackedRepositoryFactory
+
+        # Create GitHub integration
+        integration = GitHubIntegrationFactory(team=self.team, organization_slug="acme-corp")
+
+        # Create tracked repository
+        TrackedRepositoryFactory(
+            team=self.team, integration=integration, github_repo_id=1001, full_name="acme-corp/repo-1"
+        )
+
+        # Mock GitHub API response
+        mock_get_repos.return_value = [
+            {"id": 1001, "name": "repo-1", "full_name": "acme-corp/repo-1", "description": "Tracked repo"},
+            {"id": 1002, "name": "repo-2", "full_name": "acme-corp/repo-2", "description": "Not tracked"},
+        ]
+
+        self.client.force_login(self.member)
+
+        response = self.client.get(reverse("integrations:github_repos", args=[self.team.slug]))
+
+        # Should successfully render
+        self.assertEqual(response.status_code, 200)
+
+        # Response should indicate repo-1 is tracked
+        # (We'll check for "tracked" or a checkmark or similar indicator)
+        # The exact check depends on template implementation
+        content = response.content.decode()
+        # Both repos should be present
+        self.assertIn("repo-1", content)
+        self.assertIn("repo-2", content)
+
+    @patch("apps.integrations.services.github_oauth.get_organization_repositories")
+    def test_github_repos_handles_api_errors_gracefully(self, mock_get_repos):
+        """Test that github_repos handles GitHub API errors gracefully."""
+        from apps.integrations.services.github_oauth import GitHubOAuthError
+
+        # Create GitHub integration
+        GitHubIntegrationFactory(team=self.team, organization_slug="acme-corp")
+
+        # Mock API error
+        mock_get_repos.side_effect = GitHubOAuthError("API rate limit exceeded")
+
+        self.client.force_login(self.member)
+
+        response = self.client.get(reverse("integrations:github_repos", args=[self.team.slug]), follow=True)
+
+        # Should handle error and redirect
+        self.assertEqual(response.status_code, 200)
+
+        # Should show error message
+        messages = list(get_messages(response.wsgi_request))
+        self.assertTrue(any("error" in str(m).lower() or "failed" in str(m).lower() for m in messages))
+
+    @patch("apps.integrations.services.github_oauth.get_organization_repositories")
+    def test_github_repos_works_for_regular_members(self, mock_get_repos):
+        """Test that github_repos works for regular team members (not just admins)."""
+        # Create GitHub integration
+        GitHubIntegrationFactory(team=self.team, organization_slug="acme-corp")
+
+        # Mock GitHub API response
+        mock_get_repos.return_value = [
+            {"id": 1001, "name": "repo-1", "full_name": "acme-corp/repo-1", "description": "Test repo"},
+        ]
+
+        self.client.force_login(self.member)
+
+        response = self.client.get(reverse("integrations:github_repos", args=[self.team.slug]))
+
+        # Should allow access for regular members
+        self.assertEqual(response.status_code, 200)
+
+    @patch("apps.integrations.services.github_oauth.get_organization_repositories")
+    def test_github_repos_renders_correct_template(self, mock_get_repos):
+        """Test that github_repos renders github_repos.html template."""
+        # Create GitHub integration
+        GitHubIntegrationFactory(team=self.team, organization_slug="acme-corp")
+
+        # Mock GitHub API response
+        mock_get_repos.return_value = []
+
+        self.client.force_login(self.admin)
+
+        response = self.client.get(reverse("integrations:github_repos", args=[self.team.slug]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "integrations/github_repos.html")
+
+
+class GitHubRepoToggleViewTest(TestCase):
+    """Tests for github_repo_toggle view (toggle repository tracking on/off)."""
+
+    def setUp(self):
+        """Set up test fixtures using factories."""
+
+        self.team = TeamFactory()
+        self.admin = UserFactory()
+        self.member = UserFactory()
+        self.team.members.add(self.admin, through_defaults={"role": ROLE_ADMIN})
+        self.team.members.add(self.member, through_defaults={"role": ROLE_MEMBER})
+        self.integration = GitHubIntegrationFactory(team=self.team)
+        self.client = Client()
+
+    def test_github_repo_toggle_requires_post_method(self):
+        """Test that github_repo_toggle only accepts POST requests."""
+        self.client.force_login(self.admin)
+
+        # Try GET request
+        response = self.client.get(reverse("integrations:github_repo_toggle", args=[self.team.slug, 12345]))
+
+        # Should return 405 Method Not Allowed
+        self.assertEqual(response.status_code, 405)
+
+    def test_github_repo_toggle_requires_login(self):
+        """Test that github_repo_toggle redirects to login if user is not authenticated."""
+        response = self.client.post(reverse("integrations:github_repo_toggle", args=[self.team.slug, 12345]))
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/accounts/login/", response.url)
+
+    def test_github_repo_toggle_requires_team_membership(self):
+        """Test that github_repo_toggle returns 404 if user is not a team member."""
+        non_member = UserFactory()
+        self.client.force_login(non_member)
+
+        response = self.client.post(reverse("integrations:github_repo_toggle", args=[self.team.slug, 12345]))
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_github_repo_toggle_requires_admin_role(self):
+        """Test that github_repo_toggle returns 404 for non-admin team members."""
+        self.client.force_login(self.member)
+
+        response = self.client.post(
+            reverse("integrations:github_repo_toggle", args=[self.team.slug, 12345]),
+            {"full_name": "acme-corp/test-repo"},
+        )
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_github_repo_toggle_requires_github_integration_exists(self):
+        """Test that github_repo_toggle fails when GitHub integration doesn't exist."""
+        # Create a team without GitHub integration
+        other_team = TeamFactory()
+        other_admin = UserFactory()
+        other_team.members.add(other_admin, through_defaults={"role": ROLE_ADMIN})
+        self.client.force_login(other_admin)
+
+        response = self.client.post(
+            reverse("integrations:github_repo_toggle", args=[other_team.slug, 12345]),
+            {"full_name": "acme-corp/test-repo"},
+        )
+
+        # Should return error (exact status depends on implementation)
+        self.assertNotEqual(response.status_code, 200)
+
+    def test_github_repo_toggle_creates_tracked_repository_for_untracked_repo(self):
+        """Test that github_repo_toggle creates TrackedRepository for untracked repo."""
+        from apps.integrations.models import TrackedRepository
+
+        self.client.force_login(self.admin)
+
+        # Repo is not tracked yet
+        repo_id = 12345
+        full_name = "acme-corp/test-repo"
+        self.assertFalse(TrackedRepository.objects.filter(team=self.team, github_repo_id=repo_id).exists())
+
+        # Toggle to track the repo (non-HTMX request)
+        response = self.client.post(
+            reverse("integrations:github_repo_toggle", args=[self.team.slug, repo_id]), {"full_name": full_name}
+        )
+
+        # Should redirect for non-HTMX request
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse("integrations:github_repos", args=[self.team.slug]))
+
+        # TrackedRepository should now exist
+        self.assertTrue(TrackedRepository.objects.filter(team=self.team, github_repo_id=repo_id).exists())
+        tracked_repo = TrackedRepository.objects.get(team=self.team, github_repo_id=repo_id)
+        self.assertEqual(tracked_repo.full_name, full_name)
+        self.assertEqual(tracked_repo.integration, self.integration)
+        self.assertTrue(tracked_repo.is_active)
+
+    def test_github_repo_toggle_deletes_tracked_repository_for_tracked_repo(self):
+        """Test that github_repo_toggle deletes TrackedRepository for already tracked repo."""
+        from apps.integrations.factories import TrackedRepositoryFactory
+        from apps.integrations.models import TrackedRepository
+
+        self.client.force_login(self.admin)
+
+        # Create a tracked repository
+        repo_id = 12345
+        tracked_repo = TrackedRepositoryFactory(
+            team=self.team, integration=self.integration, github_repo_id=repo_id, full_name="acme-corp/test-repo"
+        )
+
+        # Verify it exists
+        self.assertTrue(TrackedRepository.objects.filter(pk=tracked_repo.pk).exists())
+
+        # Toggle to untrack the repo (non-HTMX request)
+        response = self.client.post(
+            reverse("integrations:github_repo_toggle", args=[self.team.slug, repo_id]),
+            {"full_name": "acme-corp/test-repo"},
+        )
+
+        # Should redirect for non-HTMX request
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse("integrations:github_repos", args=[self.team.slug]))
+
+        # TrackedRepository should be deleted
+        self.assertFalse(TrackedRepository.objects.filter(pk=tracked_repo.pk).exists())
+
+    def test_github_repo_toggle_returns_partial_template_for_htmx(self):
+        """Test that github_repo_toggle returns partial HTML template for HTMX requests."""
+        self.client.force_login(self.admin)
+
+        # Make HTMX request to track a repo (indicated by HX-Request header)
+        response = self.client.post(
+            reverse("integrations:github_repo_toggle", args=[self.team.slug, 12345]),
+            {"full_name": "acme-corp/test-repo"},
+            HTTP_HX_REQUEST="true",
+        )
+
+        # Should return 200 with partial HTML
+        self.assertEqual(response.status_code, 200)
+
+        # Should render a partial template (repo card component)
+        # The exact content depends on the template, but should contain repo info
+        self.assertContains(response, "acme-corp/test-repo")
+
+    def test_github_repo_toggle_requires_full_name_in_request_body(self):
+        """Test that github_repo_toggle requires full_name parameter for creating new TrackedRepository."""
+        from apps.integrations.models import TrackedRepository
+
+        self.client.force_login(self.admin)
+
+        # Try to track repo without providing full_name
+        repo_id = 12345
+        self.client.post(
+            reverse("integrations:github_repo_toggle", args=[self.team.slug, repo_id]),
+            {},  # No full_name provided
+        )
+
+        # Should fail (exact error handling depends on implementation)
+        # For now, test that it doesn't create the TrackedRepository
+        self.assertFalse(TrackedRepository.objects.filter(team=self.team, github_repo_id=repo_id).exists())

@@ -1,0 +1,35 @@
+{% load i18n %}
+<tr id="repo-row-{{ repo.id }}">
+  <td>
+    <span class="font-medium">{{ repo.name }}</span>
+  </td>
+  <td>
+    <span class="text-sm text-base-content/70">{{ repo.description|default:"" }}</span>
+  </td>
+  <td>
+    {% if repo.is_tracked %}
+      <span class="badge badge-success badge-sm">{% translate "Tracked" %}</span>
+    {% else %}
+      <span class="badge badge-ghost badge-sm">{% translate "Not tracked" %}</span>
+    {% endif %}
+  </td>
+  {% if request.team_membership.role == 'admin' %}
+    <td class="text-right">
+      <form method="post"
+            action="{% url 'integrations:github_repo_toggle' team_slug=request.team.slug repo_id=repo.id %}"
+            hx-post="{% url 'integrations:github_repo_toggle' team_slug=request.team.slug repo_id=repo.id %}"
+            hx-target="#repo-row-{{ repo.id }}"
+            hx-swap="outerHTML">
+        {% csrf_token %}
+        <input type="hidden" name="full_name" value="{{ repo.full_name }}">
+        <button type="submit" class="btn btn-ghost btn-xs">
+          {% if repo.is_tracked %}
+            {% translate "Untrack" %}
+          {% else %}
+            {% translate "Track" %}
+          {% endif %}
+        </button>
+      </form>
+    </td>
+  {% endif %}
+</tr>

@@ -11,6 +11,7 @@ from apps.integrations.services.github_oauth import (
     get_authenticated_user,
     get_authorization_url,
     get_organization_members,
+    get_organization_repositories,
     get_user_details,
     get_user_organizations,
     verify_oauth_state,
@@ -968,3 +969,460 @@ class TestGetUserDetails(TestCase):
         headers = call_kwargs["headers"]
         self.assertEqual(headers["Authorization"], "token test_token_xyz")
         self.assertEqual(headers["Accept"], "application/vnd.github.v3+json")
+
+
+@override_settings(
+    GITHUB_CLIENT_ID="test_client_id_123",
+    GITHUB_SECRET_ID="test_client_secret_456",
+)
+class TestGetOrganizationRepositories(TestCase):
+    """Tests for fetching GitHub organization repositories."""
+
+    @patch("apps.integrations.services.github_oauth.requests.get")
+    def test_get_organization_repositories_returns_list(self, mock_get):
+        """Test that get_organization_repositories returns a list of repositories."""
+        # Mock successful response from GitHub
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.headers = {}
+        mock_response.json.return_value = [
+            {
+                "id": 123456,
+                "full_name": "acme-corp/backend-api",
+                "name": "backend-api",
+                "description": "Main backend API service",
+                "language": "Python",
+                "private": False,
+                "updated_at": "2025-01-15T10:30:00Z",
+                "archived": False,
+                "default_branch": "main",
+            },
+            {
+                "id": 123457,
+                "full_name": "acme-corp/frontend-app",
+                "name": "frontend-app",
+                "description": "React frontend application",
+                "language": "TypeScript",
+                "private": True,
+                "updated_at": "2025-01-14T09:20:00Z",
+                "archived": False,
+                "default_branch": "main",
+            },
+        ]
+        mock_get.return_value = mock_response
+
+        access_token = "gho_test_token"
+        org_slug = "acme-corp"
+
+        result = get_organization_repositories(access_token, org_slug)
+
+        self.assertIsInstance(result, list)
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result[0]["name"], "backend-api")
+        self.assertEqual(result[0]["full_name"], "acme-corp/backend-api")
+        self.assertEqual(result[0]["language"], "Python")
+        self.assertEqual(result[1]["name"], "frontend-app")
+        self.assertEqual(result[1]["private"], True)
+
+        # Verify the request
+        mock_get.assert_called_once()
+        call_args = mock_get.call_args
+        self.assertEqual(call_args[0][0], "https://api.github.com/orgs/acme-corp/repos")
+        self.assertEqual(call_args[1]["headers"]["Authorization"], "token gho_test_token")
+
+    @patch("apps.integrations.services.github_oauth.requests.get")
+    def test_get_organization_repositories_each_repo_has_required_fields(self, mock_get):
+        """Test that each repository has required metadata fields."""
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.headers = {}
+        mock_response.json.return_value = [
+            {
+                "id": 789012,
+                "full_name": "test-org/test-repo",
+                "name": "test-repo",
+                "description": "Test repository",
+                "language": "JavaScript",
+                "private": False,
+                "updated_at": "2025-01-10T12:00:00Z",
+                "archived": False,
+                "default_branch": "main",
+            }
+        ]
+        mock_get.return_value = mock_response
+
+        access_token = "gho_test_token"
+        org_slug = "test-org"
+
+        result = get_organization_repositories(access_token, org_slug)
+
+        self.assertEqual(len(result), 1)
+        repo = result[0]
+        # Verify all required fields are present
+        self.assertIn("id", repo)
+        self.assertIn("full_name", repo)
+        self.assertIn("name", repo)
+        self.assertIn("description", repo)
+        self.assertIn("language", repo)
+        self.assertIn("private", repo)
+        self.assertIn("updated_at", repo)
+        self.assertIn("archived", repo)
+
+    @patch("apps.integrations.services.github_oauth.requests.get")
+    def test_get_organization_repositories_returns_empty_list_when_no_repos(self, mock_get):
+        """Test that get_organization_repositories returns empty list for org with no repos."""
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.headers = {}
+        mock_response.json.return_value = []
+        mock_get.return_value = mock_response
+
+        access_token = "gho_test_token"
+        org_slug = "empty-org"
+
+        result = get_organization_repositories(access_token, org_slug)
+
+        self.assertIsInstance(result, list)
+        self.assertEqual(len(result), 0)
+
+    @patch("apps.integrations.services.github_oauth.requests.get")
+    def test_get_organization_repositories_raises_error_on_401_unauthorized(self, mock_get):
+        """Test that get_organization_repositories raises GitHubOAuthError on 401 unauthorized."""
+        # Mock 401 response (invalid or expired token)
+        mock_response = MagicMock()
+        mock_response.status_code = 401
+        mock_response.json.return_value = {
+            "message": "Bad credentials",
+        }
+        mock_get.return_value = mock_response
+
+        access_token = "invalid_token"
+        org_slug = "acme-corp"
+
+        with self.assertRaises(GitHubOAuthError) as context:
+            get_organization_repositories(access_token, org_slug)
+
+        self.assertIn("401", str(context.exception))
+
+    @patch("apps.integrations.services.github_oauth.requests.get")
+    def test_get_organization_repositories_raises_error_on_404_not_found(self, mock_get):
+        """Test that get_organization_repositories raises GitHubOAuthError on 404 org not found."""
+        # Mock 404 response
+        mock_response = MagicMock()
+        mock_response.status_code = 404
+        mock_response.json.return_value = {
+            "message": "Not Found",
+        }
+        mock_get.return_value = mock_response
+
+        access_token = "gho_test_token"
+        org_slug = "nonexistent-org"
+
+        with self.assertRaises(GitHubOAuthError) as context:
+            get_organization_repositories(access_token, org_slug)
+
+        self.assertIn("404", str(context.exception))
+
+    @patch("apps.integrations.services.github_oauth.requests.get")
+    def test_get_organization_repositories_raises_error_on_403_rate_limit(self, mock_get):
+        """Test that get_organization_repositories raises GitHubOAuthError when rate limited."""
+        # Mock 403 response (rate limit exceeded)
+        mock_response = MagicMock()
+        mock_response.status_code = 403
+        mock_response.json.return_value = {
+            "message": "API rate limit exceeded",
+        }
+        mock_get.return_value = mock_response
+
+        access_token = "gho_test_token"
+        org_slug = "acme-corp"
+
+        with self.assertRaises(GitHubOAuthError) as context:
+            get_organization_repositories(access_token, org_slug)
+
+        self.assertIn("403", str(context.exception))
+
+    @patch("apps.integrations.services.github_oauth.requests.get")
+    def test_get_organization_repositories_sends_correct_headers(self, mock_get):
+        """Test that get_organization_repositories sends correct headers."""
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.headers = {}
+        mock_response.json.return_value = []
+        mock_get.return_value = mock_response
+
+        access_token = "test_token_xyz"
+        org_slug = "my-org"
+
+        get_organization_repositories(access_token, org_slug)
+
+        # Verify headers
+        call_kwargs = mock_get.call_args[1]
+        headers = call_kwargs["headers"]
+        self.assertEqual(headers["Authorization"], "token test_token_xyz")
+        self.assertEqual(headers["Accept"], "application/vnd.github.v3+json")
+
+    @patch("apps.integrations.services.github_oauth.requests.get")
+    def test_get_organization_repositories_uses_correct_endpoint(self, mock_get):
+        """Test that get_organization_repositories uses correct API endpoint."""
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.headers = {}
+        mock_response.json.return_value = []
+        mock_get.return_value = mock_response
+
+        access_token = "gho_test_token"
+        org_slug = "my-test-org"
+
+        get_organization_repositories(access_token, org_slug)
+
+        # Verify the correct endpoint is called
+        mock_get.assert_called_once()
+        call_args = mock_get.call_args
+        self.assertEqual(call_args[0][0], "https://api.github.com/orgs/my-test-org/repos")
+
+    @patch("apps.integrations.services.github_oauth.requests.get")
+    def test_get_organization_repositories_handles_pagination_with_next_link(self, mock_get):
+        """Test that get_organization_repositories fetches all pages when Link header has next relation."""
+        # Mock first page response with Link header pointing to page 2
+        mock_response_page1 = MagicMock()
+        mock_response_page1.status_code = 200
+        mock_response_page1.headers = {
+            "Link": '<https://api.github.com/orgs/acme-corp/repos?page=2>; rel="next", '
+            '<https://api.github.com/orgs/acme-corp/repos?page=2>; rel="last"'
+        }
+        mock_response_page1.json.return_value = [
+            {
+                "id": 1001,
+                "full_name": "acme-corp/repo-1",
+                "name": "repo-1",
+                "description": "First repo",
+                "language": "Python",
+                "private": False,
+                "updated_at": "2025-01-15T10:00:00Z",
+                "archived": False,
+            },
+            {
+                "id": 1002,
+                "full_name": "acme-corp/repo-2",
+                "name": "repo-2",
+                "description": "Second repo",
+                "language": "JavaScript",
+                "private": False,
+                "updated_at": "2025-01-14T10:00:00Z",
+                "archived": False,
+            },
+        ]
+
+        # Mock second page response with no next link (last page)
+        mock_response_page2 = MagicMock()
+        mock_response_page2.status_code = 200
+        mock_response_page2.headers = {
+            "Link": '<https://api.github.com/orgs/acme-corp/repos?page=1>; rel="first", '
+            '<https://api.github.com/orgs/acme-corp/repos?page=1>; rel="prev"'
+        }
+        mock_response_page2.json.return_value = [
+            {
+                "id": 1003,
+                "full_name": "acme-corp/repo-3",
+                "name": "repo-3",
+                "description": "Third repo",
+                "language": "Go",
+                "private": True,
+                "updated_at": "2025-01-13T10:00:00Z",
+                "archived": False,
+            },
+        ]
+
+        # Set up mock to return different responses for each call
+        mock_get.side_effect = [mock_response_page1, mock_response_page2]
+
+        access_token = "gho_test_token"
+        org_slug = "acme-corp"
+
+        result = get_organization_repositories(access_token, org_slug)
+
+        # Verify all pages were fetched and combined
+        self.assertIsInstance(result, list)
+        self.assertEqual(len(result), 3, "Should return all repos from all pages combined")
+        self.assertEqual(result[0]["name"], "repo-1")
+        self.assertEqual(result[1]["name"], "repo-2")
+        self.assertEqual(result[2]["name"], "repo-3")
+
+        # Verify requests.get was called 2 times (for 2 pages)
+        self.assertEqual(mock_get.call_count, 2, "Should make 2 API requests for 2 pages")
+
+        # Verify first call was to the base endpoint
+        first_call_args = mock_get.call_args_list[0]
+        self.assertEqual(first_call_args[0][0], "https://api.github.com/orgs/acme-corp/repos")
+
+        # Verify second call used the URL from Link header
+        second_call_args = mock_get.call_args_list[1]
+        self.assertEqual(second_call_args[0][0], "https://api.github.com/orgs/acme-corp/repos?page=2")
+
+    @patch("apps.integrations.services.github_oauth.requests.get")
+    def test_get_organization_repositories_stops_pagination_when_no_next_link(self, mock_get):
+        """Test that get_organization_repositories stops fetching when there's no next link (last page)."""
+        # Mock single page response with no next link
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.headers = {"Link": '<https://api.github.com/orgs/small-org/repos?page=1>; rel="first"'}
+        mock_response.json.return_value = [
+            {
+                "id": 2001,
+                "full_name": "small-org/only-repo",
+                "name": "only-repo",
+                "description": "Only one repo",
+                "language": "Ruby",
+                "private": False,
+                "updated_at": "2025-01-12T10:00:00Z",
+                "archived": False,
+            },
+        ]
+        mock_get.return_value = mock_response
+
+        access_token = "gho_test_token"
+        org_slug = "small-org"
+
+        result = get_organization_repositories(access_token, org_slug)
+
+        # Verify only one request was made
+        self.assertEqual(mock_get.call_count, 1, "Should only make 1 API request when no next link")
+
+        # Verify results are correct
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["name"], "only-repo")
+
+    @patch("apps.integrations.services.github_oauth.requests.get")
+    def test_get_organization_repositories_handles_response_without_link_header(self, mock_get):
+        """Test that get_organization_repositories handles responses without Link header (single page)."""
+        # Mock response with no Link header at all
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.headers = {}  # No Link header
+        mock_response.json.return_value = [
+            {
+                "id": 3001,
+                "full_name": "tiny-org/single-repo",
+                "name": "single-repo",
+                "description": "Only repo",
+                "language": "Rust",
+                "private": True,
+                "updated_at": "2025-01-11T10:00:00Z",
+                "archived": False,
+            },
+        ]
+        mock_get.return_value = mock_response
+
+        access_token = "gho_test_token"
+        org_slug = "tiny-org"
+
+        result = get_organization_repositories(access_token, org_slug)
+
+        # Verify only one request was made
+        self.assertEqual(mock_get.call_count, 1, "Should only make 1 API request when no Link header")
+
+        # Verify results are correct
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["name"], "single-repo")
+
+    @patch("apps.integrations.services.github_oauth.requests.get")
+    def test_get_organization_repositories_can_filter_archived_repos(self, mock_get):
+        """Test that get_organization_repositories can filter out archived repositories."""
+        # Mock response with both active and archived repos
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.headers = {}
+        mock_response.json.return_value = [
+            {
+                "id": 4001,
+                "full_name": "org/active-repo",
+                "name": "active-repo",
+                "description": "Active repository",
+                "language": "Python",
+                "private": False,
+                "updated_at": "2025-01-15T10:00:00Z",
+                "archived": False,
+            },
+            {
+                "id": 4002,
+                "full_name": "org/archived-repo",
+                "name": "archived-repo",
+                "description": "Archived repository",
+                "language": "Python",
+                "private": False,
+                "updated_at": "2023-06-10T10:00:00Z",
+                "archived": True,
+            },
+            {
+                "id": 4003,
+                "full_name": "org/another-active-repo",
+                "name": "another-active-repo",
+                "description": "Another active repository",
+                "language": "JavaScript",
+                "private": True,
+                "updated_at": "2025-01-14T10:00:00Z",
+                "archived": False,
+            },
+        ]
+        mock_get.return_value = mock_response
+
+        access_token = "gho_test_token"
+        org_slug = "org"
+
+        # Call with exclude_archived=True
+        result = get_organization_repositories(access_token, org_slug, exclude_archived=True)
+
+        # Verify only non-archived repos are returned
+        self.assertEqual(len(result), 2, "Should only return non-archived repos")
+        self.assertEqual(result[0]["name"], "active-repo")
+        self.assertFalse(result[0]["archived"])
+        self.assertEqual(result[1]["name"], "another-active-repo")
+        self.assertFalse(result[1]["archived"])
+
+        # Verify archived repo is not in results
+        archived_names = [repo["name"] for repo in result]
+        self.assertNotIn("archived-repo", archived_names)
+
+    @patch("apps.integrations.services.github_oauth.requests.get")
+    def test_get_organization_repositories_includes_archived_by_default(self, mock_get):
+        """Test that get_organization_repositories includes archived repos by default."""
+        # Mock response with both active and archived repos
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.headers = {}
+        mock_response.json.return_value = [
+            {
+                "id": 5001,
+                "full_name": "org/active-repo",
+                "name": "active-repo",
+                "description": "Active repository",
+                "language": "Python",
+                "private": False,
+                "updated_at": "2025-01-15T10:00:00Z",
+                "archived": False,
+            },
+            {
+                "id": 5002,
+                "full_name": "org/archived-repo",
+                "name": "archived-repo",
+                "description": "Archived repository",
+                "language": "Python",
+                "private": False,
+                "updated_at": "2023-06-10T10:00:00Z",
+                "archived": True,
+            },
+        ]
+        mock_get.return_value = mock_response
+
+        access_token = "gho_test_token"
+        org_slug = "org"
+
+        # Call without exclude_archived parameter (should default to False)
+        result = get_organization_repositories(access_token, org_slug)
+
+        # Verify all repos are returned including archived
+        self.assertEqual(len(result), 2, "Should return all repos including archived by default")
+        self.assertEqual(result[0]["name"], "active-repo")
+        self.assertEqual(result[1]["name"], "archived-repo")
+        self.assertTrue(result[1]["archived"])

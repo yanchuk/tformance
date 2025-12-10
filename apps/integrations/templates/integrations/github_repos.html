@@ -1,0 +1,61 @@
+{% extends "web/app/app_base.html" %}
+{% load static %}
+{% load i18n %}
+
+{% block app %}
+<section class="app-card">
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <a href="{% url 'integrations:integrations_home' team_slug=request.team.slug %}"
+         class="inline-flex items-center gap-2 text-sm text-base-content/60 hover:text-base-content mb-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+        </svg>
+        {% translate "Back to Integrations" %}
+      </a>
+      <h1 class="pg-title">{% translate "GitHub Repositories" %}</h1>
+      <p class="text-base-content/70">{% translate "Repositories from your GitHub organization." %}</p>
+    </div>
+  </div>
+
+  {% if repos %}
+    <div class="overflow-x-auto">
+      <table class="table table-zebra w-full">
+        <thead>
+          <tr>
+            <th>{% translate "Name" %}</th>
+            <th>{% translate "Description" %}</th>
+            <th>{% translate "Status" %}</th>
+            {% if request.team_membership.role == 'admin' %}
+              <th class="text-right">{% translate "Actions" %}</th>
+            {% endif %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for repo in repos %}
+            {% include "integrations/components/repo_card.html" %}
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="mt-4 text-sm text-base-content/60">
+      {% blocktranslate count counter=repos|length %}
+        Showing {{ counter }} repository
+      {% plural %}
+        Showing {{ counter }} repositories
+      {% endblocktranslate %}
+    </div>
+  {% else %}
+    <div class="text-center py-12">
+      <svg class="w-16 h-16 mx-auto text-base-content/30 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+      </svg>
+      <p class="text-base-content/60 mb-2">{% translate "No repositories found" %}</p>
+      <p class="text-sm text-base-content/50">
+        {% translate "No repositories were found in your GitHub organization." %}
+      </p>
+    </div>
+  {% endif %}
+</section>
+{% endblock %}

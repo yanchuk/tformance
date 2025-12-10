@@ -299,3 +299,29 @@ def get_user_details(access_token: str, username: str) -> dict[str, Any]:
         GitHubOAuthError: If API request fails
     """
     return _make_github_api_request(f"/users/{username}", access_token)
+
+
+def get_organization_repositories(
+    access_token: str, org_slug: str, exclude_archived: bool = False
+) -> list[dict[str, Any]]:
+    """Get repositories of a GitHub organization.
+
+    Handles pagination by following the 'next' link in the Link header.
+
+    Args:
+        access_token: The GitHub access token
+        org_slug: The organization slug/login
+        exclude_archived: If True, filter out archived repositories
+
+    Returns:
+        List of repository dictionaries from all pages
+
+    Raises:
+        GitHubOAuthError: If API request fails
+    """
+    repos = _make_paginated_github_api_request(f"/orgs/{org_slug}/repos", access_token)
+
+    if exclude_archived:
+        repos = [repo for repo in repos if not repo.get("archived", False)]
+
+    return repos
