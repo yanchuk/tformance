@@ -1,0 +1,48 @@
+{% load i18n %}
+<tr id="member-row-{{ member.id }}">
+  <td>
+    <div class="flex items-center gap-3">
+      <div class="avatar placeholder">
+        <div class="w-10 h-10 rounded-full bg-neutral text-neutral-content">
+          <span class="text-sm">{{ member.display_name|slice:":2"|upper }}</span>
+        </div>
+      </div>
+      <div class="font-medium">{{ member.display_name }}</div>
+    </div>
+  </td>
+  <td>
+    <span class="text-sm font-mono text-base-content/70">{{ member.github_username }}</span>
+  </td>
+  <td>
+    {% if member.email %}
+      <span class="text-sm text-base-content/70">{{ member.email }}</span>
+    {% else %}
+      <span class="text-sm text-base-content/40 italic">{% translate "Not available" %}</span>
+    {% endif %}
+  </td>
+  <td>
+    {% if member.is_active %}
+      <span class="badge badge-success badge-sm">{% translate "Active" %}</span>
+    {% else %}
+      <span class="badge badge-ghost badge-sm">{% translate "Inactive" %}</span>
+    {% endif %}
+  </td>
+  {% if request.team_membership.role == 'admin' %}
+    <td class="text-right">
+      <form method="post"
+            action="{% url 'integrations:github_member_toggle' team_slug=request.team.slug member_id=member.id %}"
+            hx-post="{% url 'integrations:github_member_toggle' team_slug=request.team.slug member_id=member.id %}"
+            hx-target="#member-row-{{ member.id }}"
+            hx-swap="outerHTML">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-ghost btn-xs">
+          {% if member.is_active %}
+            {% translate "Deactivate" %}
+          {% else %}
+            {% translate "Activate" %}
+          {% endif %}
+        </button>
+      </form>
+    </td>
+  {% endif %}
+</tr>

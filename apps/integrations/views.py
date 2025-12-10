@@ -1,5 +1,6 @@
 """Views for managing external integrations (GitHub, Jira, Slack)."""
 
+import logging
 import secrets
 
 from django.contrib import messages
@@ -9,10 +10,13 @@ from django.template.response import TemplateResponse
 from django.urls import reverse
 
 from apps.integrations.models import GitHubIntegration, IntegrationCredential
-from apps.integrations.services import github_oauth
+from apps.integrations.services import github_oauth, member_sync
 from apps.integrations.services.encryption import decrypt, encrypt
 from apps.integrations.services.github_oauth import GitHubOAuthError
+from apps.metrics.models import TeamMember
 from apps.teams.decorators import login_and_team_required, team_admin_required
+
+logger = logging.getLogger(__name__)
 
 
 def _create_github_credential(team, access_token, user):
@@ -55,6 +59,29 @@ def _create_github_integration(team, credential, org):
     )
 
 
+def _sync_github_members_after_connection(team, access_token, org_slug):
+    """Sync GitHub organization members after connecting an integration.
+
+    This is called after successfully creating a GitHubIntegration to import
+    team members from the GitHub organization.
+
+    Args:
+        team: The team to sync members for.
+        access_token: The GitHub OAuth access token.
+        org_slug: The GitHub organization slug.
+
+    Returns:
+        int: The number of members created, or 0 if sync fails.
+    """
+    try:
+        result = member_sync.sync_github_members(team, access_token, org_slug)
+        return result["created"]
+    except Exception as e:
+        # Log error but don't fail the OAuth flow
+        logger.error(f"Failed to sync GitHub members for team {team.slug}: {e}")
+        return 0
+
+
 @login_and_team_required
 def integrations_home(request, team_slug):
     """Display the integrations management page for a team.
@@ -75,13 +102,17 @@ def integrations_home(request, team_slug):
     try:
         github_integration = GitHubIntegration.objects.get(team=team)
         github_connected = True
+        # Count members with GitHub IDs
+        member_count = TeamMember.objects.filter(team=team).exclude(github_id="").count()
     except GitHubIntegration.DoesNotExist:
         github_integration = None
         github_connected = False
+        member_count = 0
 
     context = {
         "github_connected": github_connected,
         "github_integration": github_integration,
+        "member_count": member_count,
         "active_tab": "integrations",
     }
 
@@ -193,9 +224,13 @@ def github_callback(request, team_slug):
     # If single org, create integration immediately
     if len(orgs) == 1:
         org = orgs[0]
+        org_slug = org["login"]
         _create_github_integration(team, credential, org)
 
-        messages.success(request, f"Successfully connected to GitHub organization: {org['login']}")
+        # Sync members from GitHub
+        member_count = _sync_github_members_after_connection(team, access_token, org_slug)
+
+        messages.success(request, f"Connected to {org_slug}. Imported {member_count} members.")
         return redirect("integrations:integrations_home", team_slug=team.slug)
 
     # Multiple orgs - redirect to selection
@@ -265,7 +300,11 @@ def github_select_org(request, team_slug):
         org_data = {"login": organization_slug, "id": int(organization_id)}
         _create_github_integration(team, credential, org_data)
 
-        messages.success(request, f"Successfully connected to GitHub organization: {organization_slug}")
+        # Sync members from GitHub
+        access_token = decrypt(credential.access_token)
+        member_count = _sync_github_members_after_connection(team, access_token, organization_slug)
+
+        messages.success(request, f"Connected to {organization_slug}. Imported {member_count} members.")
         return redirect("integrations:integrations_home", team_slug=team.slug)
 
     # GET request - show organization selection form
@@ -281,3 +320,130 @@ def github_select_org(request, team_slug):
     }
 
     return render(request, "integrations/select_org.html", context)
+
+
+@login_and_team_required
+def github_members(request, team_slug):
+    """Display list of GitHub members discovered for the team.
+
+    Shows all team members that have been imported from GitHub (those with github_id populated).
+
+    Args:
+        request: The HTTP request object.
+        team_slug: The slug of the team to display members for.
+
+    Returns:
+        HttpResponse with the GitHub members list or redirect if not connected.
+    """
+    from apps.metrics.models import TeamMember
+
+    team = request.team
+
+    # Check if GitHub integration exists
+    try:
+        GitHubIntegration.objects.get(team=team)
+    except GitHubIntegration.DoesNotExist:
+        messages.error(request, "Please connect GitHub first.")
+        return redirect("integrations:integrations_home", team_slug=team.slug)
+
+    # Query members with github_id populated
+    members = TeamMember.objects.filter(team=team).exclude(github_id="")
+
+    context = {
+        "members": members,
+    }
+
+    return render(request, "integrations/github_members.html", context)
+
+
+@team_admin_required
+def github_members_sync(request, team_slug):
+    """Trigger manual re-sync of GitHub members.
+
+    Re-imports team members from the connected GitHub organization.
+
+    Requires team admin role and POST method.
+
+    Args:
+        request: The HTTP request object.
+        team_slug: The slug of the team to sync members for.
+
+    Returns:
+        HttpResponse redirecting to github_members with success message.
+    """
+    # Require POST method
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+
+    team = request.team
+
+    # Get GitHub integration
+    try:
+        integration = GitHubIntegration.objects.get(team=team)
+    except GitHubIntegration.DoesNotExist:
+        messages.error(request, "GitHub integration not found. Please connect GitHub first.")
+        return redirect("integrations:integrations_home", team_slug=team.slug)
+
+    # Decrypt access token
+    access_token = decrypt(integration.credential.access_token)
+
+    # Call sync service
+    try:
+        result = member_sync.sync_github_members(team, access_token, integration.organization_slug)
+    except Exception as e:
+        logger.error(f"Failed to sync GitHub members for team {team.slug}: {e}")
+        messages.error(request, "Failed to sync GitHub members. Please try again.")
+        return redirect("integrations:github_members", team_slug=team.slug)
+
+    # Show success message with results
+    msg = (
+        f"Synced GitHub members: {result['created']} created, "
+        f"{result['updated']} updated, {result['unchanged']} unchanged."
+    )
+    messages.success(request, msg)
+
+    return redirect("integrations:github_members", team_slug=team.slug)
+
+
+@team_admin_required
+def github_member_toggle(request, team_slug, member_id):
+    """Toggle a team member's active/inactive status.
+
+    Allows admins to activate or deactivate team members.
+
+    Requires team admin role and POST method.
+
+    Args:
+        request: The HTTP request object.
+        team_slug: The slug of the team.
+        member_id: The ID of the team member to toggle.
+
+    Returns:
+        HttpResponse with partial template for HTMX or redirect for non-HTMX.
+    """
+    from apps.metrics.models import TeamMember
+
+    # Require POST method
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+
+    team = request.team
+
+    # Get member and toggle status
+    try:
+        member = TeamMember.objects.get(id=member_id, team=team)
+    except TeamMember.DoesNotExist:
+        messages.error(request, "Team member not found.")
+        return redirect("integrations:github_members", team_slug=team.slug)
+
+    member.is_active = not member.is_active
+    member.save()
+
+    # Check if HTMX request
+    if request.htmx:
+        # Return partial template for HTMX
+        context = {"member": member}
+        return render(request, "integrations/components/member_row.html", context)
+
+    # Non-HTMX: redirect to members page
+    return redirect("integrations:github_members", team_slug=team.slug)

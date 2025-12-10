@@ -197,3 +197,105 @@ def get_user_organizations(access_token: str) -> list[dict[str, Any]]:
         GitHubOAuthError: If API request fails
     """
     return _make_github_api_request("/user/orgs", access_token)
+
+
+def _make_paginated_github_api_request(endpoint: str, access_token: str) -> list[dict[str, Any]]:
+    """Make an authenticated paginated request to GitHub API.
+
+    Automatically fetches all pages by following the 'next' link in the Link header.
+
+    Args:
+        endpoint: The API endpoint path (e.g., '/orgs/{org}/members')
+        access_token: The GitHub access token
+
+    Returns:
+        List of all items from all pages combined
+
+    Raises:
+        GitHubOAuthError: If API request fails
+    """
+    all_items = []
+    url = f"{GITHUB_API_BASE_URL}{endpoint}"
+    headers = {
+        "Authorization": f"token {access_token}",
+        "Accept": GITHUB_API_VERSION,
+    }
+
+    try:
+        while url:
+            response = requests.get(url, headers=headers)
+
+            if response.status_code != 200:
+                raise GitHubOAuthError(f"GitHub API error: {response.status_code}")
+
+            # Add items from this page
+            all_items.extend(response.json())
+
+            # Check for next page in Link header
+            link_header = response.headers.get("Link", "")
+            url = _parse_next_link(link_header)
+
+        return all_items
+    except Exception as e:
+        if isinstance(e, GitHubOAuthError):
+            raise
+        raise GitHubOAuthError(f"Failed to make paginated GitHub API request to {endpoint}: {str(e)}") from e
+
+
+def get_organization_members(access_token: str, org_slug: str) -> list[dict[str, Any]]:
+    """Get members of a GitHub organization.
+
+    Handles pagination by following the 'next' link in the Link header.
+
+    Args:
+        access_token: The GitHub access token
+        org_slug: The organization slug/login
+
+    Returns:
+        List of member dictionaries from all pages
+
+    Raises:
+        GitHubOAuthError: If API request fails
+    """
+    return _make_paginated_github_api_request(f"/orgs/{org_slug}/members", access_token)
+
+
+def _parse_next_link(link_header: str) -> str | None:
+    """Parse the Link header to extract the 'next' URL.
+
+    Args:
+        link_header: The Link header string from GitHub API response
+
+    Returns:
+        The next URL if it exists, None otherwise
+    """
+    if not link_header:
+        return None
+
+    # Link header format: '<url>; rel="next", <url>; rel="last"'
+    links = link_header.split(",")
+    for link in links:
+        parts = link.strip().split(";")
+        if len(parts) >= 2:
+            url = parts[0].strip()[1:-1]  # Remove < and >
+            rel = parts[1].strip()
+            if 'rel="next"' in rel:
+                return url
+
+    return None
+
+
+def get_user_details(access_token: str, username: str) -> dict[str, Any]:
+    """Get detailed information about a specific GitHub user.
+
+    Args:
+        access_token: The GitHub access token
+        username: The GitHub username to fetch details for
+
+    Returns:
+        Dictionary containing user data (id, login, name, email, avatar_url, etc.)
+
+    Raises:
+        GitHubOAuthError: If API request fails
+    """
+    return _make_github_api_request(f"/users/{username}", access_token)
