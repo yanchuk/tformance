@@ -9,6 +9,12 @@
   </li>
   {% if request.user|is_admin_of:request.team %}
   <li>
+    <a href="{% url 'integrations:integrations_home' request.team.slug %}" {% if active_tab == 'integrations' %}class="menu-active"{% endif %}>
+      <i class="fa fa-plug h-4 w-4"></i>
+      {% translate "Integrations" %}
+    </a>
+  </li>
+  <li>
     <a href="{% url 'subscriptions_team:subscription_demo' request.team.slug %}" {% if active_tab == 'subscription_demo' %}class="menu-active"{% endif %}>
       <i class="fa fa-desktop h-4 w-4"></i>
       {% translate "Subscription Demo" %}

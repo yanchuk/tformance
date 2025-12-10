@@ -1,0 +1,68 @@
+{% extends "web/app/app_base.html" %}
+{% load static %}
+{% load i18n %}
+
+{% block app %}
+<section class="app-card max-w-2xl">
+  <div class="mb-6">
+    <a href="{% url 'integrations:integrations_home' team_slug=request.team.slug %}"
+       class="inline-flex items-center gap-2 text-sm text-base-content/60 hover:text-base-content mb-4">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+      </svg>
+      {% translate "Back to Integrations" %}
+    </a>
+    <h1 class="pg-title">{% translate "Select GitHub Organization" %}</h1>
+    <p class="text-base-content/70">{% translate "Choose which GitHub organization to connect to this team." %}</p>
+  </div>
+
+  {% if organizations %}
+    <div class="space-y-3">
+      {% for org in organizations %}
+        <form method="post" class="block">
+          {% csrf_token %}
+          <input type="hidden" name="organization_slug" value="{{ org.login }}">
+          <input type="hidden" name="organization_id" value="{{ org.id }}">
+          <button type="submit"
+                  class="w-full flex items-center gap-4 p-4 bg-base-100 border border-base-200 rounded-lg hover:border-primary hover:bg-base-50 transition-colors text-left group">
+            <div class="w-12 h-12 flex-shrink-0 rounded-lg overflow-hidden bg-base-200">
+              {% if org.avatar_url %}
+                <img src="{{ org.avatar_url }}" alt="{{ org.login }}" class="w-full h-full object-cover">
+              {% else %}
+                <div class="w-full h-full flex items-center justify-center">
+                  <svg class="w-6 h-6 text-base-content/40" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                  </svg>
+                </div>
+              {% endif %}
+            </div>
+            <div class="flex-grow min-w-0">
+              <div class="font-medium text-base-content group-hover:text-primary">
+                {{ org.login }}
+              </div>
+              {% if org.description %}
+                <div class="text-sm text-base-content/60 truncate">
+                  {{ org.description }}
+                </div>
+              {% endif %}
+            </div>
+            <svg class="w-5 h-5 text-base-content/40 group-hover:text-primary flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            </svg>
+          </button>
+        </form>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="text-center py-8">
+      <svg class="w-12 h-12 mx-auto text-base-content/30 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+      </svg>
+      <p class="text-base-content/60 mb-4">{% translate "No organizations found." %}</p>
+      <p class="text-sm text-base-content/50">
+        {% translate "Make sure you have access to at least one GitHub organization, or the organization owner has granted access to this app." %}
+      </p>
+    </div>
+  {% endif %}
+</section>
+{% endblock %}

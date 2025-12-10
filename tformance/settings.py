@@ -110,6 +110,7 @@ PROJECT_APPS = [
     "apps.teams.apps.TeamConfig",
     "apps.teams_example.apps.TeamsExampleConfig",
     "apps.metrics.apps.MetricsConfig",
+    "apps.integrations.apps.IntegrationsConfig",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + PEGASUS_APPS + PROJECT_APPS + WAGTAIL_APPS
@@ -317,6 +318,10 @@ SOCIALACCOUNT_PROVIDERS = {
 # For turnstile captchas
 TURNSTILE_KEY = env("TURNSTILE_KEY", default=None)
 TURNSTILE_SECRET = env("TURNSTILE_SECRET", default=None)
+
+# GitHub OAuth
+GITHUB_CLIENT_ID = env("GITHUB_CLIENT_ID", default="")
+GITHUB_SECRET_ID = env("GITHUB_SECRET_ID", default="")
 
 
 # Internationalization
@@ -615,3 +620,11 @@ LOGGING = {
         },
     },
 }
+
+# Integration Encryption
+# Used to encrypt OAuth tokens and other sensitive integration credentials
+# In tests, a default key is used. In production, this MUST be set via environment variable.
+INTEGRATION_ENCRYPTION_KEY = env(
+    "INTEGRATION_ENCRYPTION_KEY",
+    default="r8pmePXvrfFN4L_IjvTbZP3hWPTIN0y4KDw2wbuIRYg=" if "test" in sys.argv else None,
+)
