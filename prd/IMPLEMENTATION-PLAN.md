@@ -14,6 +14,31 @@ This document outlines the logical order of building the MVP, focusing on depend
 2. **Minimize custom UI** - Leverage existing tools for dashboards
 3. **Integration-first** - Each integration should be independently testable
 4. **Data flows before features** - Ensure data pipeline works before building features on top
+5. **Start simple, scale later** - Single database now, BYOS option later
+
+---
+
+## Architecture Decision: Single Database (MVP)
+
+### Why Single-DB for MVP
+
+| Factor | Single DB | BYOS (Client DB) |
+|--------|-----------|------------------|
+| **Time to market** | Faster | Slower (complex) |
+| **Onboarding friction** | Low | High (client setup) |
+| **Maintenance** | Simple | Complex (N databases) |
+| **Data security pitch** | "We secure it" | "Your data, your DB" |
+| **Migration path** | Can add BYOS later | N/A |
+
+**Decision:** Start with single database. Add BYOS as premium feature in Phase 11 if customer demand exists.
+
+### Data Isolation Strategy
+
+Even with single database, we maintain strict team isolation:
+- All metric tables have `team_id` foreign key
+- Django querysets use `for_team` manager (auto-filters)
+- Row-level access enforced at application layer
+- Can migrate to BYOS later with data export
 
 ---
 
@@ -41,28 +66,38 @@ This document outlines the logical order of building the MVP, focusing on depend
 
 ---
 
-## Phase 1: Client Database Connection (BYOS)
+## Phase 1: Core Data Models
 
-**Goal:** Client can connect their own database
+**Goal:** Database schema for all metrics data
 
-### 1.1 Database Connection Flow
-- Accept connection credentials from client
-- Test connection validity
-- Store connection info securely
+### 1.1 User & Team Models
+- Extend existing Team model with integration fields
+- Create TeamMember model (GitHub/Jira/Slack IDs)
+- User matching logic (email-based)
 
-### 1.2 Schema Provisioning
-- Migration scripts for all required tables
-- Run migrations on client database
-- Verify schema is correct
+### 1.2 GitHub Metrics Models
+- PullRequest model
+- PRReview model
+- Commit model
+- Calculated fields (cycle_time, review_time)
 
-### 1.3 Connection Health
-- Periodic connection health check
-- Alert if connection lost
-- Reconnection handling
+### 1.3 Jira Metrics Models
+- JiraIssue model
+- Sprint tracking fields
+- Story points, resolution time
 
-**Milestone:** Client connects Supabase, tables are created, connection verified
+### 1.4 AI Usage Models
+- AIUsageDaily model (Copilot metrics)
+- PRSurvey model (author response)
+- PRSurveyReview model (reviewer response)
 
-**Why first:** Everything else writes to client database - need this working before any integration
+### 1.5 Aggregated Metrics
+- WeeklyMetrics model
+- Pre-computed rollups for dashboard performance
+
+**Milestone:** All models created, migrations applied, admin accessible
+
+**Why first:** All integrations need these models to write to
 
 ---
 
@@ -78,7 +113,7 @@ This document outlines the logical order of building the MVP, focusing on depend
 
 ### 2.2 Organization Discovery
 - Fetch org members on connect
-- Create user records in client DB
+- Create TeamMember records
 - Fetch team structure (if GitHub Teams used)
 
 ### 2.3 Repository Selection
@@ -98,9 +133,9 @@ This document outlines the logical order of building the MVP, focusing on depend
 - Detect reverts/hotfixes
 
 ### 2.6 Incremental Sync
-- Daily sync job
+- Daily sync job (Celery)
 - Fetch only updated PRs since last sync
-- Update metrics in client DB
+- Update metrics in database
 
 **Milestone:** GitHub connected, team imported, PRs visible in database, webhooks working
 
@@ -135,7 +170,7 @@ This document outlines the logical order of building the MVP, focusing on depend
 ### 3.5 Incremental Sync
 - Daily sync job
 - JQL query for recently updated issues
-- Update metrics in client DB
+- Update metrics in database
 
 **Milestone:** Jira connected, issues synced, matched to GitHub users
 
@@ -148,8 +183,8 @@ This document outlines the logical order of building the MVP, focusing on depend
 **Goal:** First visible value - CTO can see metrics
 
 ### 4.1 Dashboard Tool Setup
-- Install/configure BI tool
-- Connect to client database template
+- Install/configure BI tool (Metabase)
+- Connect to database
 - Set up embedding mechanism
 
 ### 4.2 Core Metrics Dashboard
@@ -193,13 +228,13 @@ This document outlines the logical order of building the MVP, focusing on depend
 - Look up author's Slack ID
 - Send DM with "AI assisted?" question
 - Handle button response
-- Store response in client DB
+- Store response in database
 
 ### 5.4 PR Survey - Reviewer
 - Identify reviewers from PR data
 - Send DM with quality rating + AI guess
 - Handle button responses
-- Store responses in client DB
+- Store responses in database
 
 ### 5.5 Reveal Mechanism
 - Detect when both author and reviewer responded
@@ -307,7 +342,7 @@ This document outlines the logical order of building the MVP, focusing on depend
 **Goal:** Ready for paying customers
 
 ### 10.1 Seat Counting
-- Count active users from client DB
+- Count active users from database
 - Exclude inactive (no activity 30 days)
 - Exclude admin accounts
 
@@ -330,13 +365,145 @@ This document outlines the logical order of building the MVP, focusing on depend
 
 ---
 
+## Phase 11: AI Agent Feedback System
+
+**Goal:** Help teams improve their AI coding assistants by collecting actionable feedback
+
+### Why This Feature
+
+**Value Proposition:** "We help improve your AI agent's performance"
+
+Teams using AI coding tools (Cursor, GitHub Copilot, Claude Code, etc.) often struggle to improve their agent configurations. This feature:
+
+1. **Captures real friction** - When devs hit issues with AI-generated code, capture what went wrong
+2. **Aggregates patterns** - Identify common failure modes across the team
+3. **Generates improvements** - Suggest updates to agent.md, .cursorrules, or similar config files
+4. **Closes the loop** - Track if suggested improvements actually help
+
+### Sales Pitch
+
+> "Your AI coding assistant is only as good as its rules. We analyze your team's AI interactions to surface what's working, what's not, and suggest specific improvements to your agent configuration. Stop guessing - let data drive your AI setup."
+
+### 11.1 Feedback Collection
+
+**In-App Feedback Button**
+- "Report AI Issue" button in dashboard
+- Quick categorization (wrong code, missed context, style issue, etc.)
+- Link to specific PR/commit
+- Free-text description
+
+**Slack Integration**
+- Reaction-based feedback on PR survey messages
+- "AI got this wrong" quick action
+- Thread-based discussion capture
+
+**PR Comment Analysis** (Future)
+- Detect patterns like "AI generated but had to fix..."
+- Auto-categorize common issues
+
+### 11.2 Feedback Aggregation
+
+**Pattern Detection**
+- Group similar issues by category
+- Identify file types/languages with most issues
+- Surface repeated problems (e.g., "always forgets to add tests")
+
+**Team Analytics**
+- Feedback volume trends
+- Most common issue categories
+- Resolution rate (issues that stopped recurring)
+
+### 11.3 Agent Rule Suggestions
+
+**Rule Generation**
+- Analyze feedback patterns
+- Generate suggested additions to agent config files
+- Support multiple formats:
+  - `agent.md` (Claude Code)
+  - `.cursorrules` (Cursor)
+  - `.github/copilot-instructions.md` (Copilot)
+
+**Example Output:**
+```markdown
+## Suggested Addition to agent.md
+
+Based on 12 feedback reports about missing test coverage:
+
+### Testing Requirements
+- Always create unit tests for new functions
+- Use pytest fixtures from `tests/conftest.py`
+- Follow existing test patterns in `tests/` directory
+```
+
+### 11.4 Improvement Tracking
+
+**Before/After Metrics**
+- Track issue frequency before rule added
+- Track issue frequency after rule added
+- Calculate improvement percentage
+
+**Rule Effectiveness Dashboard**
+- Which rules had most impact
+- Which rules need refinement
+- Suggested rule removals (if not helping)
+
+### 11.5 Export & Integration
+
+**Config File Export**
+- One-click export to supported formats
+- Diff view showing changes
+- Version history
+
+**Integration Options**
+- GitHub PR to update rules (future)
+- Slack notification when new suggestion ready
+- Webhook for custom integrations
+
+**Milestone:** Teams can capture AI feedback, see aggregated patterns, and get actionable config improvements
+
+**Why this phase:** Unique differentiator - no one else is closing the AI improvement loop. Strong upsell opportunity.
+
+---
+
+## Phase 12: BYOS (Premium Feature)
+
+**Goal:** Enterprise option for client-hosted data
+
+> Implement only if customer demand validates this need
+
+### 12.1 Database Connection Flow
+- Accept connection credentials from client
+- Test connection validity
+- Store connection info securely (encrypted)
+
+### 12.2 Schema Provisioning
+- Migration scripts for all required tables
+- Run migrations on client database
+- Verify schema is correct
+
+### 12.3 Connection Health
+- Periodic connection health check
+- Alert if connection lost
+- Reconnection handling
+
+### 12.4 Data Migration
+- Export existing data from shared DB
+- Import into client's DB
+- Verify integrity
+
+**Milestone:** Enterprise clients can use their own Supabase
+
+**Why last:** Complexity vs. demand tradeoff - validate need first
+
+---
+
 ## Dependency Graph
 
 ```
 Phase 0: Foundation
     │
     ▼
-Phase 1: Client DB (BYOS)
+Phase 1: Core Data Models
     │
     ▼
 Phase 2: GitHub ─────────────────┐
@@ -363,6 +530,12 @@ Phase 4: Basic Dashboard    Phase 5: Slack & Surveys
                  │
                  ▼
           Phase 10: Billing & Launch
+                 │
+                 ▼
+          Phase 11: AI Feedback System
+                 │
+                 ▼
+          Phase 12: BYOS (if demand)
 ```
 
 ---
@@ -370,16 +543,17 @@ Phase 4: Basic Dashboard    Phase 5: Slack & Surveys
 ## Minimum Viable Product Checkpoint
 
 **After Phase 6, you have an MVP:**
-- ✅ Client can connect their database
+- ✅ Data models for all metrics
 - ✅ GitHub and Jira data syncing
 - ✅ Dashboard showing metrics
 - ✅ PR surveys working
 - ✅ AI correlation visible
 
-Phases 7-10 are polish and monetization.
+Phases 7-12 are polish, differentiation, and monetization.
 
 **First "wow" moment:** Phase 6 completion
 **First paying customer possible:** Phase 10 completion
+**Key differentiator:** Phase 11 (AI Feedback System)
 
 ---
 
@@ -389,10 +563,10 @@ If timeline is tight, consider:
 
 | Original | Alternative | Trade-off |
 |----------|-------------|-----------|
-| BYOS (client Supabase) | We host everything | Simpler but less differentiation |
 | Metabase embedding | Simple tables/charts | Less powerful but faster to build |
 | Slack bot | Email surveys | Lower engagement but simpler |
 | Daily sync | Manual sync button | Less automated but works |
+| AI Feedback System | Manual feedback form | Less sophisticated but validates demand |
 
 ---
 
@@ -402,11 +576,12 @@ These can happen in parallel with different people/streams:
 
 | Stream A | Stream B |
 |----------|----------|
-| Phase 1 (BYOS) | Phase 0.2 (Auth) |
+| Phase 1 (Models) | Phase 0.2 (Auth polish) |
 | Phase 2 (GitHub) | Dashboard design |
 | Phase 3 (Jira) | Phase 5 (Slack) prep |
 | Phase 4 (Dashboard) | Phase 5 (Slack) |
 | Phase 8 (Copilot) | Phase 9 (Onboarding) |
+| Phase 10 (Billing) | Phase 11 (AI Feedback) |
 
 ---
 
@@ -415,7 +590,7 @@ These can happen in parallel with different people/streams:
 | Phase | Complexity | Why |
 |-------|------------|-----|
 | 0. Foundation | Medium | Standard but foundational |
-| 1. BYOS | Medium | Novel pattern, security critical |
+| 1. Core Models | Low | Standard Django models |
 | 2. GitHub | High | Most complex integration, webhooks |
 | 3. Jira | Medium | Similar pattern to GitHub |
 | 4. Dashboard | Medium | Depends on tool choice |
@@ -425,6 +600,9 @@ These can happen in parallel with different people/streams:
 | 8. Copilot | Low | Single API integration |
 | 9. Onboarding | Medium | Many edge cases |
 | 10. Billing | Medium | Third-party integration |
+| 11. AI Feedback | Medium | Novel feature, ML-adjacent |
+| 12. BYOS | High | Multi-tenant DB complexity |
 
-**Heaviest lifts:** GitHub integration, Slack bot
+**Heaviest lifts:** GitHub integration, Slack bot, BYOS
 **Quickest wins:** Copilot metrics, Leaderboard
+**Key differentiator:** AI Feedback System (Phase 11)
