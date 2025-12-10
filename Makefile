@@ -18,6 +18,9 @@ start-bg:  ## Run containers in the background
 dev: ## Start Django and npm dev servers
 	@./scripts/dev.sh
 
+healthcheck: ## Check if all dev services are running
+	@./scripts/healthcheck.sh
+
 django: ## Run Django dev server
 	@uv run manage.py runserver
 
