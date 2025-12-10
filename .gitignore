@@ -30,3 +30,5 @@ static/js/
 static/.vite/
 .claude/cache/
 claude-code-infrastructure-showcase/
+# Playwright MCP screenshots
+.playwright-mcp/
