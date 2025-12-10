@@ -16,37 +16,63 @@ Write a failing test that verifies the requested feature behavior.
 4. Run `make test ARGS='apps.<app>.tests.test_<feature>'` to verify it fails
 5. Return the test file path and failure output
 
-## Test Structure
+## Test Structure (Use Factories)
+
+**IMPORTANT: Always use Factory Boy factories for creating test data.**
 
 ```python
 from django.test import TestCase
 from django.urls import reverse
 
-from apps.users.models import CustomUser
-from apps.teams.models import Team
+from apps.metrics.factories import TeamFactory, TeamMemberFactory, PullRequestFactory
 
 
 class TestFeatureName(TestCase):
     """Tests for <feature description>."""
 
     def setUp(self):
-        """Set up test fixtures."""
-        self.user = CustomUser.objects.create_user(
-            email="test@example.com",
-            password="testpass123"
-        )
-        self.team = Team.objects.create(name="Test Team", slug="test-team")
-        # Add user to team if needed
-        # self.team.members.add(self.user, through_defaults={"role": "admin"})
+        """Set up test fixtures using factories."""
+        self.team = TeamFactory()
+        self.member = TeamMemberFactory(team=self.team)
+        # Factories handle all required fields automatically
 
     def test_describes_expected_behavior(self):
         """Test that <specific behavior> works correctly."""
-        # Arrange - set up additional test data
+        # Arrange - use factories for test data
+        pr = PullRequestFactory(team=self.team, author=self.member)
 
         # Act - perform the action
 
         # Assert - verify the outcome
-        self.assertEqual(expected, actual)
+        self.assertEqual(pr.author, self.member)
+```
+
+## Available Factories
+
+Located in `apps/metrics/factories.py`:
+- `TeamFactory` - Creates Team with unique name/slug
+- `TeamMemberFactory` - Creates TeamMember with realistic GitHub/Jira/Slack IDs
+- `PullRequestFactory` - Creates PR with cycle times, state, etc.
+- `PRReviewFactory` - Creates PR review
+- `CommitFactory` - Creates commit with SHA
+- `JiraIssueFactory` - Creates Jira issue with story points
+- `AIUsageDailyFactory` - Creates AI usage record
+- `PRSurveyFactory`, `PRSurveyReviewFactory` - Survey models
+- `WeeklyMetricsFactory` - Aggregated metrics
+
+### Factory Usage Patterns
+```python
+# Create single instance
+member = TeamMemberFactory()
+
+# Create with specific attributes
+lead = TeamMemberFactory(role="lead", display_name="Tech Lead")
+
+# Create multiple
+members = TeamMemberFactory.create_batch(5, team=self.team)
+
+# Build without saving (for unit tests)
+member = TeamMemberFactory.build()
 ```
 
 ## Test Types
@@ -66,13 +92,14 @@ def test_view_requires_login(self):
 ### Model Tests
 ```python
 def test_model_creation(self):
-    obj = MyModel.objects.create(name="Test", team=self.team)
-    self.assertEqual(obj.name, "Test")
-    self.assertIsNotNone(obj.created_at)
+    # Use factories instead of direct creation
+    member = TeamMemberFactory(team=self.team, display_name="Test User")
+    self.assertEqual(member.display_name, "Test User")
+    self.assertIsNotNone(member.created_at)
 
 def test_model_validation(self):
     with self.assertRaises(ValidationError):
-        MyModel.objects.create(name="")
+        TeamMemberFactory(display_name="")  # Validation still applies
 ```
 
 ### API Tests (DRF)

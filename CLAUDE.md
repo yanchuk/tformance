@@ -176,6 +176,16 @@ Note: Vite runs automatically with hot-reload when using `make dev`.
 make uv run 'pegasus startapp <app_name> <Model1> <Model2Name>'  # Start a new Django app (models are optional)
 ```
 
+### Demo Data Seeding
+
+```bash
+python manage.py seed_demo_data              # Seed default demo data
+python manage.py seed_demo_data --clear      # Clear and reseed
+python manage.py seed_demo_data --prs 100    # Custom amounts
+```
+
+See `dev/DEV-ENVIRONMENT.md` for full options.
+
 ## Test-Driven Development (TDD)
 
 **IMPORTANT: This project follows strict TDD practices. All new features MUST be implemented using the Red-Green-Refactor cycle.**
@@ -217,34 +227,50 @@ make test ARGS='apps.myapp.tests.test_feature::TestClassName'
 make test ARGS='apps.myapp.tests.test_feature::TestClassName::test_method'
 ```
 
-### Test Structure (Django TestCase)
+### Test Structure (Django TestCase with Factories)
+
+Use Factory Boy factories for creating test data. Factories are in `apps/<app>/factories.py`.
 
 ```python
 from django.test import TestCase
-from django.urls import reverse
 
-from apps.users.models import CustomUser
-from apps.teams.models import Team
+from apps.metrics.factories import TeamMemberFactory, PullRequestFactory
+from apps.teams.factories import TeamFactory
 
 
 class TestFeatureName(TestCase):
     """Tests for <feature description>."""
 
     def setUp(self):
-        """Set up test fixtures."""
-        self.user = CustomUser.objects.create_user(
-            email="test@example.com",
-            password="testpass123"
-        )
-        self.team = Team.objects.create(name="Test Team", slug="test-team")
+        """Set up test fixtures using factories."""
+        self.team = TeamFactory()
+        self.member = TeamMemberFactory(team=self.team)
 
     def test_describes_expected_behavior(self):
         """Test that <specific behavior> works correctly."""
-        # Arrange - set up test data
+        # Arrange - use factories for test data
+        pr = PullRequestFactory(team=self.team, author=self.member)
+
         # Act - perform the action
         # Assert - verify the outcome
-        pass
+        self.assertEqual(pr.author, self.member)
 ```
+
+### Factory Guidelines
+
+- **Always use factories** for creating test data instead of manual model creation
+- Factories are located in `apps/<app>/factories.py`
+- Use `Factory.build()` for unit tests (doesn't save to DB)
+- Use `Factory.create()` or `Factory()` for integration tests (saves to DB)
+- Use `Factory.create_batch(n)` to create multiple instances
+- Override specific attributes: `TeamMemberFactory(role="lead", display_name="John")`
+
+Available factories in `apps/metrics/factories.py`:
+- `TeamFactory`, `TeamMemberFactory`
+- `PullRequestFactory`, `PRReviewFactory`, `CommitFactory`
+- `JiraIssueFactory`, `AIUsageDailyFactory`
+- `PRSurveyFactory`, `PRSurveyReviewFactory`
+- `WeeklyMetricsFactory`
 
 ### TDD Skill Activation
 
