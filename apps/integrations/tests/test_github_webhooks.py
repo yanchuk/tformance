@@ -17,24 +17,20 @@ from apps.integrations.services.github_webhooks import (
 class TestCreateRepositoryWebhook(TestCase):
     """Tests for creating GitHub repository webhooks."""
 
-    @patch("apps.integrations.services.github_webhooks.requests.post")
-    def test_create_repository_webhook_returns_webhook_id_on_success(self, mock_post):
+    @patch("apps.integrations.services.github_webhooks.Github")
+    def test_create_repository_webhook_returns_webhook_id_on_success(self, mock_github_class):
         """Test that create_repository_webhook returns webhook_id on successful creation."""
-        # Mock successful response from GitHub
-        mock_response = MagicMock()
-        mock_response.status_code = 201
-        mock_response.json.return_value = {
-            "id": 12345678,
-            "name": "web",
-            "active": True,
-            "events": ["pull_request", "pull_request_review"],
-            "config": {
-                "url": "https://example.com/webhooks/github",
-                "content_type": "json",
-                "insecure_ssl": "0",
-            },
-        }
-        mock_post.return_value = mock_response
+        # Mock the Github instance and repository
+        mock_github = MagicMock()
+        mock_github_class.return_value = mock_github
+
+        mock_repo = MagicMock()
+        mock_github.get_repo.return_value = mock_repo
+
+        # Mock the hook that gets created
+        mock_hook = MagicMock()
+        mock_hook.id = 12345678
+        mock_repo.create_hook.return_value = mock_hook
 
         access_token = "gho_test_token"
         repo_full_name = "acme-corp/backend-api"
@@ -45,24 +41,26 @@ class TestCreateRepositoryWebhook(TestCase):
 
         self.assertEqual(result, 12345678)
 
-        # Verify the request was made correctly
-        mock_post.assert_called_once()
-        call_args = mock_post.call_args
-        self.assertEqual(call_args[0][0], "https://api.github.com/repos/acme-corp/backend-api/hooks")
+        # Verify Github was initialized with the access token
+        mock_github_class.assert_called_once_with(access_token)
 
-    @patch("apps.integrations.services.github_webhooks.requests.post")
-    def test_create_repository_webhook_sends_correct_payload(self, mock_post):
-        """Test that create_repository_webhook sends correct payload with events and config."""
-        # Mock successful response from GitHub
-        mock_response = MagicMock()
-        mock_response.status_code = 201
-        mock_response.json.return_value = {
-            "id": 87654321,
-            "name": "web",
-            "active": True,
-            "events": ["pull_request", "pull_request_review"],
-        }
-        mock_post.return_value = mock_response
+        # Verify get_repo was called with the correct repo name
+        mock_github.get_repo.assert_called_once_with(repo_full_name)
+
+    @patch("apps.integrations.services.github_webhooks.Github")
+    def test_create_repository_webhook_sends_correct_config(self, mock_github_class):
+        """Test that create_repository_webhook sends correct config (url, secret, events)."""
+        # Mock the Github instance and repository
+        mock_github = MagicMock()
+        mock_github_class.return_value = mock_github
+
+        mock_repo = MagicMock()
+        mock_github.get_repo.return_value = mock_repo
+
+        # Mock the hook that gets created
+        mock_hook = MagicMock()
+        mock_hook.id = 87654321
+        mock_repo.create_hook.return_value = mock_hook
 
         access_token = "gho_test_token"
         repo_full_name = "test-org/test-repo"
@@ -71,61 +69,36 @@ class TestCreateRepositoryWebhook(TestCase):
 
         create_repository_webhook(access_token, repo_full_name, webhook_url, secret)
 
-        # Verify the payload
-        call_kwargs = mock_post.call_args[1]
-        payload = call_kwargs["json"]
+        # Verify create_hook was called with correct parameters
+        mock_repo.create_hook.assert_called_once_with(
+            name="web",
+            config={
+                "url": webhook_url,
+                "content_type": "json",
+                "secret": secret,
+                "insecure_ssl": "0",
+            },
+            events=["pull_request", "pull_request_review"],
+            active=True,
+        )
 
-        # Check events
-        self.assertIn("events", payload)
-        self.assertIn("pull_request", payload["events"])
-        self.assertIn("pull_request_review", payload["events"])
-        self.assertEqual(len(payload["events"]), 2)
-
-        # Check config
-        self.assertIn("config", payload)
-        self.assertEqual(payload["config"]["url"], webhook_url)
-        self.assertEqual(payload["config"]["content_type"], "json")
-        self.assertEqual(payload["config"]["secret"], secret)
-        self.assertEqual(payload["config"]["insecure_ssl"], "0")
-
-        # Check name
-        self.assertEqual(payload["name"], "web")
-
-        # Check active
-        self.assertTrue(payload["active"])
-
-    @patch("apps.integrations.services.github_webhooks.requests.post")
-    def test_create_repository_webhook_sends_correct_headers(self, mock_post):
-        """Test that create_repository_webhook sends correct Authorization and Accept headers."""
-        # Mock successful response
-        mock_response = MagicMock()
-        mock_response.status_code = 201
-        mock_response.json.return_value = {"id": 123}
-        mock_post.return_value = mock_response
-
-        access_token = "gho_test_token_xyz"
-        repo_full_name = "org/repo"
-        webhook_url = "https://example.com/webhook"
-        secret = "secret"
-
-        create_repository_webhook(access_token, repo_full_name, webhook_url, secret)
-
-        # Verify headers
-        call_kwargs = mock_post.call_args[1]
-        headers = call_kwargs["headers"]
-        self.assertEqual(headers["Authorization"], "token gho_test_token_xyz")
-        self.assertEqual(headers["Accept"], "application/vnd.github.v3+json")
-
-    @patch("apps.integrations.services.github_webhooks.requests.post")
-    def test_create_repository_webhook_raises_error_on_403_forbidden(self, mock_post):
+    @patch("apps.integrations.services.github_webhooks.Github")
+    def test_create_repository_webhook_raises_error_on_403_forbidden(self, mock_github_class):
         """Test that create_repository_webhook raises GitHubOAuthError on 403 (no permission)."""
+        from github import GithubException
+
+        # Mock the Github instance and repository
+        mock_github = MagicMock()
+        mock_github_class.return_value = mock_github
+
+        mock_repo = MagicMock()
+        mock_github.get_repo.return_value = mock_repo
+
         # Mock 403 response (insufficient permissions)
-        mock_response = MagicMock()
-        mock_response.status_code = 403
-        mock_response.json.return_value = {
-            "message": "You must have admin access to create a webhook.",
-        }
-        mock_post.return_value = mock_response
+        mock_repo.create_hook.side_effect = GithubException(
+            status=403,
+            data={"message": "You must have admin access to create a webhook."},
+        )
 
         access_token = "gho_test_token"
         repo_full_name = "org/private-repo"
@@ -138,16 +111,23 @@ class TestCreateRepositoryWebhook(TestCase):
         self.assertIn("Insufficient permissions", str(context.exception))
         self.assertIn("org/private-repo", str(context.exception))
 
-    @patch("apps.integrations.services.github_webhooks.requests.post")
-    def test_create_repository_webhook_raises_error_on_404_not_found(self, mock_post):
+    @patch("apps.integrations.services.github_webhooks.Github")
+    def test_create_repository_webhook_raises_error_on_404_not_found(self, mock_github_class):
         """Test that create_repository_webhook raises GitHubOAuthError on 404 (repo not found)."""
+        from github import GithubException
+
+        # Mock the Github instance and repository
+        mock_github = MagicMock()
+        mock_github_class.return_value = mock_github
+
+        mock_repo = MagicMock()
+        mock_github.get_repo.return_value = mock_repo
+
         # Mock 404 response (repository not found)
-        mock_response = MagicMock()
-        mock_response.status_code = 404
-        mock_response.json.return_value = {
-            "message": "Not Found",
-        }
-        mock_post.return_value = mock_response
+        mock_repo.create_hook.side_effect = GithubException(
+            status=404,
+            data={"message": "Not Found"},
+        )
 
         access_token = "gho_test_token"
         repo_full_name = "org/nonexistent-repo"
@@ -164,13 +144,22 @@ class TestCreateRepositoryWebhook(TestCase):
 class TestDeleteRepositoryWebhook(TestCase):
     """Tests for deleting GitHub repository webhooks."""
 
-    @patch("apps.integrations.services.github_webhooks.requests.delete")
-    def test_delete_repository_webhook_returns_true_on_204_success(self, mock_delete):
-        """Test that delete_repository_webhook returns True on successful deletion (204)."""
-        # Mock successful response from GitHub
-        mock_response = MagicMock()
-        mock_response.status_code = 204
-        mock_delete.return_value = mock_response
+    @patch("apps.integrations.services.github_webhooks.Github")
+    def test_delete_repository_webhook_returns_true_on_success(self, mock_github_class):
+        """Test that delete_repository_webhook returns True on successful deletion."""
+        # Mock the Github instance and repository
+        mock_github = MagicMock()
+        mock_github_class.return_value = mock_github
+
+        mock_repo = MagicMock()
+        mock_github.get_repo.return_value = mock_repo
+
+        # Mock the hook
+        mock_hook = MagicMock()
+        mock_repo.get_hook.return_value = mock_hook
+
+        # Mock successful deletion (delete() returns None on success)
+        mock_hook.delete.return_value = None
 
         access_token = "gho_test_token"
         repo_full_name = "acme-corp/backend-api"
@@ -180,41 +169,36 @@ class TestDeleteRepositoryWebhook(TestCase):
 
         self.assertTrue(result)
 
-        # Verify the request was made correctly
-        mock_delete.assert_called_once()
-        call_args = mock_delete.call_args
-        self.assertEqual(call_args[0][0], "https://api.github.com/repos/acme-corp/backend-api/hooks/12345678")
+        # Verify Github was initialized with the access token
+        mock_github_class.assert_called_once_with(access_token)
 
-    @patch("apps.integrations.services.github_webhooks.requests.delete")
-    def test_delete_repository_webhook_sends_correct_headers(self, mock_delete):
-        """Test that delete_repository_webhook sends correct Authorization and Accept headers."""
-        # Mock successful response
-        mock_response = MagicMock()
-        mock_response.status_code = 204
-        mock_delete.return_value = mock_response
+        # Verify get_repo was called with the correct repo name
+        mock_github.get_repo.assert_called_once_with(repo_full_name)
 
-        access_token = "gho_test_token_xyz"
-        repo_full_name = "org/repo"
-        webhook_id = 999
+        # Verify get_hook was called with the webhook_id
+        mock_repo.get_hook.assert_called_once_with(webhook_id)
 
-        delete_repository_webhook(access_token, repo_full_name, webhook_id)
+        # Verify delete was called
+        mock_hook.delete.assert_called_once()
 
-        # Verify headers
-        call_kwargs = mock_delete.call_args[1]
-        headers = call_kwargs["headers"]
-        self.assertEqual(headers["Authorization"], "token gho_test_token_xyz")
-        self.assertEqual(headers["Accept"], "application/vnd.github.v3+json")
-
-    @patch("apps.integrations.services.github_webhooks.requests.delete")
-    def test_delete_repository_webhook_returns_true_on_404_already_deleted(self, mock_delete):
+    @patch("apps.integrations.services.github_webhooks.Github")
+    def test_delete_repository_webhook_returns_true_on_404_already_deleted(self, mock_github_class):
         """Test that delete_repository_webhook returns True on 404 (webhook already deleted)."""
+        from github import UnknownObjectException
+
+        # Mock the Github instance and repository
+        mock_github = MagicMock()
+        mock_github_class.return_value = mock_github
+
+        mock_repo = MagicMock()
+        mock_github.get_repo.return_value = mock_repo
+
         # Mock 404 response (webhook doesn't exist - already deleted)
-        mock_response = MagicMock()
-        mock_response.status_code = 404
-        mock_response.json.return_value = {
-            "message": "Not Found",
-        }
-        mock_delete.return_value = mock_response
+        # PyGithub raises UnknownObjectException for 404
+        mock_repo.get_hook.side_effect = UnknownObjectException(
+            status=404,
+            data={"message": "Not Found"},
+        )
 
         access_token = "gho_test_token"
         repo_full_name = "org/repo"
@@ -225,16 +209,26 @@ class TestDeleteRepositoryWebhook(TestCase):
         # Should return True because webhook is already gone (idempotent)
         self.assertTrue(result)
 
-    @patch("apps.integrations.services.github_webhooks.requests.delete")
-    def test_delete_repository_webhook_raises_error_on_403_forbidden(self, mock_delete):
+    @patch("apps.integrations.services.github_webhooks.Github")
+    def test_delete_repository_webhook_raises_error_on_403_forbidden(self, mock_github_class):
         """Test that delete_repository_webhook raises GitHubOAuthError on 403 (no permission)."""
+        from github import GithubException
+
+        # Mock the Github instance and repository
+        mock_github = MagicMock()
+        mock_github_class.return_value = mock_github
+
+        mock_repo = MagicMock()
+        mock_github.get_repo.return_value = mock_repo
+
+        mock_hook = MagicMock()
+        mock_repo.get_hook.return_value = mock_hook
+
         # Mock 403 response (insufficient permissions)
-        mock_response = MagicMock()
-        mock_response.status_code = 403
-        mock_response.json.return_value = {
-            "message": "You must have admin access to delete a webhook.",
-        }
-        mock_delete.return_value = mock_response
+        mock_hook.delete.side_effect = GithubException(
+            status=403,
+            data={"message": "You must have admin access to delete a webhook."},
+        )
 
         access_token = "gho_test_token"
         repo_full_name = "org/private-repo"
@@ -246,16 +240,26 @@ class TestDeleteRepositoryWebhook(TestCase):
         self.assertIn("Insufficient permissions", str(context.exception))
         self.assertIn("org/private-repo", str(context.exception))
 
-    @patch("apps.integrations.services.github_webhooks.requests.delete")
-    def test_delete_repository_webhook_raises_error_on_other_failures(self, mock_delete):
+    @patch("apps.integrations.services.github_webhooks.Github")
+    def test_delete_repository_webhook_raises_error_on_other_failures(self, mock_github_class):
         """Test that delete_repository_webhook raises GitHubOAuthError on other error codes."""
+        from github import GithubException
+
+        # Mock the Github instance and repository
+        mock_github = MagicMock()
+        mock_github_class.return_value = mock_github
+
+        mock_repo = MagicMock()
+        mock_github.get_repo.return_value = mock_repo
+
+        mock_hook = MagicMock()
+        mock_repo.get_hook.return_value = mock_hook
+
         # Mock 500 response (server error)
-        mock_response = MagicMock()
-        mock_response.status_code = 500
-        mock_response.json.return_value = {
-            "message": "Internal Server Error",
-        }
-        mock_delete.return_value = mock_response
+        mock_hook.delete.side_effect = GithubException(
+            status=500,
+            data={"message": "Internal Server Error"},
+        )
 
         access_token = "gho_test_token"
         repo_full_name = "org/repo"

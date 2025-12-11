@@ -1,51 +1,10 @@
 """GitHub sync service for fetching data from GitHub repositories."""
 
-import requests
+from github import Github, GithubException
 
-from apps.integrations.services.github_oauth import (
-    GITHUB_API_BASE_URL,
-    GITHUB_API_VERSION,
-    GitHubOAuthError,
-    _parse_next_link,
-)
+from apps.integrations.services.github_oauth import GitHubOAuthError
 
 __all__ = ["GitHubOAuthError", "get_repository_pull_requests", "get_pull_request_reviews", "sync_repository_history"]
-
-
-def _make_paginated_github_request(url: str, access_token: str) -> list[dict]:
-    """Make a paginated GET request to GitHub API.
-
-    Automatically handles pagination by following Link headers.
-
-    Args:
-        url: Initial GitHub API URL to request
-        access_token: GitHub OAuth access token
-
-    Returns:
-        List of all items from all pages combined
-
-    Raises:
-        GitHubOAuthError: If any API request fails
-    """
-    all_items = []
-    headers = {
-        "Authorization": f"token {access_token}",
-        "Accept": GITHUB_API_VERSION,
-    }
-
-    while url:
-        response = requests.get(url, headers=headers)
-
-        if response.status_code != 200:
-            raise GitHubOAuthError(f"GitHub API error: {response.status_code}")
-
-        all_items.extend(response.json())
-
-        # Check for next page in Link header
-        link_header = response.headers.get("Link", "")
-        url = _parse_next_link(link_header)
-
-    return all_items
 
 
 def get_repository_pull_requests(
@@ -60,16 +19,59 @@ def get_repository_pull_requests(
         access_token: GitHub OAuth access token
         repo_full_name: Repository in "owner/repo" format
         state: PR state filter ("all", "open", "closed")
-        per_page: Results per page (max 100)
+        per_page: Results per page (max 100, ignored - PyGithub handles pagination)
 
     Returns:
-        List of PR dictionaries from GitHub API
+        List of PR dictionaries with all required attributes
 
     Raises:
         GitHubOAuthError: If API request fails
     """
-    url = f"{GITHUB_API_BASE_URL}/repos/{repo_full_name}/pulls?state={state}&per_page={per_page}"
-    return _make_paginated_github_request(url, access_token)
+    try:
+        # Create GitHub client
+        github = Github(access_token)
+
+        # Get repository
+        repo = github.get_repo(repo_full_name)
+
+        # Get pull requests - PyGithub returns PaginatedList that handles pagination automatically
+        prs = repo.get_pulls(state=state)
+
+        # Convert each PR to dict with all required attributes
+        pr_list = []
+        for pr in prs:
+            pr_dict = {
+                "id": pr.id,
+                "number": pr.number,
+                "title": pr.title,
+                "state": pr.state,
+                "merged": pr.merged,
+                "merged_at": pr.merged_at.isoformat().replace("+00:00", "Z") if pr.merged_at else None,
+                "created_at": pr.created_at.isoformat().replace("+00:00", "Z"),
+                "updated_at": pr.updated_at.isoformat().replace("+00:00", "Z"),
+                "additions": pr.additions,
+                "deletions": pr.deletions,
+                "commits": pr.commits,
+                "changed_files": pr.changed_files,
+                "user": {
+                    "id": pr.user.id,
+                    "login": pr.user.login,
+                },
+                "base": {
+                    "ref": pr.base.ref,
+                },
+                "head": {
+                    "ref": pr.head.ref,
+                    "sha": pr.head.sha,
+                },
+                "html_url": pr.html_url,
+            }
+            pr_list.append(pr_dict)
+
+        return pr_list
+
+    except GithubException as e:
+        raise GitHubOAuthError(f"GitHub API error: {e.status}") from e
 
 
 def get_pull_request_reviews(
@@ -85,13 +87,41 @@ def get_pull_request_reviews(
         pr_number: Pull request number
 
     Returns:
-        List of review dictionaries from GitHub API
+        List of review dictionaries with all required attributes
 
     Raises:
         GitHubOAuthError: If API request fails
     """
-    url = f"{GITHUB_API_BASE_URL}/repos/{repo_full_name}/pulls/{pr_number}/reviews?per_page=100"
-    return _make_paginated_github_request(url, access_token)
+    try:
+        # Create GitHub client
+        github = Github(access_token)
+
+        # Get repository and pull request
+        repo = github.get_repo(repo_full_name)
+        pr = repo.get_pull(pr_number)
+
+        # Get reviews - PyGithub returns PaginatedList that handles pagination automatically
+        reviews = pr.get_reviews()
+
+        # Convert each review to dict with all required attributes
+        review_list = []
+        for review in reviews:
+            review_dict = {
+                "id": review.id,
+                "user": {
+                    "id": review.user.id,
+                    "login": review.user.login,
+                },
+                "body": review.body,
+                "state": review.state,
+                "submitted_at": review.submitted_at.isoformat().replace("+00:00", "Z"),
+            }
+            review_list.append(review_dict)
+
+        return review_list
+
+    except GithubException as e:
+        raise GitHubOAuthError(f"GitHub API error: {e.status}") from e
 
 
 def _sync_pr_reviews(

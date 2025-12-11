@@ -59,6 +59,7 @@ dependencies = [
     "drf-spectacular",
     "factory-boy>=3.3.3",
     "psycopg2-binary",
+    "pygithub>=2.8.1",
     "python-dateutil",
     "redis",
     "sentry-sdk[django]>=2.33.2",

@@ -3,28 +3,9 @@
 import hashlib
 import hmac
 
-import requests
+from github import Github, GithubException, UnknownObjectException
 
-from apps.integrations.services.github_oauth import (
-    GITHUB_API_BASE_URL,
-    GITHUB_API_VERSION,
-    GitHubOAuthError,
-)
-
-
-def _get_github_api_headers(access_token: str) -> dict[str, str]:
-    """Build standard GitHub API headers with authentication.
-
-    Args:
-        access_token: The GitHub access token
-
-    Returns:
-        Dictionary of headers for GitHub API requests
-    """
-    return {
-        "Authorization": f"token {access_token}",
-        "Accept": GITHUB_API_VERSION,
-    }
+from apps.integrations.services.github_oauth import GitHubOAuthError
 
 
 def create_repository_webhook(access_token: str, repo_full_name: str, webhook_url: str, secret: str) -> int:
@@ -42,31 +23,37 @@ def create_repository_webhook(access_token: str, repo_full_name: str, webhook_ur
     Raises:
         GitHubOAuthError: If webhook creation fails
     """
-    url = f"{GITHUB_API_BASE_URL}/repos/{repo_full_name}/hooks"
-    headers = _get_github_api_headers(access_token)
-    payload = {
-        "name": "web",
-        "active": True,
-        "events": ["pull_request", "pull_request_review"],
-        "config": {
-            "url": webhook_url,
-            "content_type": "json",
-            "secret": secret,
-            "insecure_ssl": "0",
-        },
-    }
+    try:
+        # Create Github client with access token
+        github = Github(access_token)
 
-    response = requests.post(url, json=payload, headers=headers)
+        # Get the repository
+        repo = github.get_repo(repo_full_name)
 
-    if response.status_code == 201:
-        return response.json()["id"]
+        # Create the webhook
+        hook = repo.create_hook(
+            name="web",
+            config={
+                "url": webhook_url,
+                "content_type": "json",
+                "secret": secret,
+                "insecure_ssl": "0",
+            },
+            events=["pull_request", "pull_request_review"],
+            active=True,
+        )
 
-    if response.status_code == 403:
-        raise GitHubOAuthError(f"Insufficient permissions to create webhook for {repo_full_name}")
-    if response.status_code == 404:
-        raise GitHubOAuthError(f"Repository not found: {repo_full_name}")
+        return hook.id
 
-    raise GitHubOAuthError(f"Failed to create webhook for {repo_full_name}: HTTP {response.status_code}")
+    except UnknownObjectException as e:
+        raise GitHubOAuthError(f"Repository not found: {e.status} - {e.data}") from e
+    except GithubException as e:
+        if e.status == 403:
+            raise GitHubOAuthError(f"Insufficient permissions to create webhook for {repo_full_name}") from e
+        if e.status == 404:
+            raise GitHubOAuthError(f"Repository not found: {repo_full_name}") from e
+
+        raise GitHubOAuthError(f"Failed to create webhook for {repo_full_name}: {e.status} - {e.data}") from e
 
 
 def delete_repository_webhook(access_token: str, repo_full_name: str, webhook_id: int) -> bool:
@@ -83,18 +70,29 @@ def delete_repository_webhook(access_token: str, repo_full_name: str, webhook_id
     Raises:
         GitHubOAuthError: If webhook deletion fails (except 404)
     """
-    url = f"{GITHUB_API_BASE_URL}/repos/{repo_full_name}/hooks/{webhook_id}"
-    headers = _get_github_api_headers(access_token)
+    try:
+        # Create Github client with access token
+        github = Github(access_token)
 
-    response = requests.delete(url, headers=headers)
+        # Get the repository
+        repo = github.get_repo(repo_full_name)
 
-    if response.status_code in [204, 404]:
+        # Get the hook
+        hook = repo.get_hook(webhook_id)
+
+        # Delete the hook - returns None on success
+        hook.delete()
+
         return True
 
-    if response.status_code == 403:
-        raise GitHubOAuthError(f"Insufficient permissions to delete webhook from {repo_full_name}")
+    except UnknownObjectException:
+        # Webhook doesn't exist (404) - already deleted, return True (idempotent)
+        return True
+    except GithubException as e:
+        if e.status == 403:
+            raise GitHubOAuthError(f"Insufficient permissions to delete webhook from {repo_full_name}") from e
 
-    raise GitHubOAuthError(f"Failed to delete webhook from {repo_full_name}: HTTP {response.status_code}")
+        raise GitHubOAuthError(f"Failed to delete webhook from {repo_full_name}: {e.status} - {e.data}") from e
 
 
 def validate_webhook_signature(payload: bytes, signature_header: str, secret: str) -> bool:

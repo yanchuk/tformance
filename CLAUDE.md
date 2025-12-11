@@ -297,6 +297,59 @@ This project has Claude Code skills configured to enforce TDD. When you request 
 - Always think about what other areas of code might be affected by any changes made.
 - Never overwrite my .env file without first asking and confirming.
 
+## External API Integration Guidelines
+
+**IMPORTANT: Always prefer official SDKs/libraries over direct API calls.**
+
+### Library Selection Hierarchy
+
+When integrating with external services, follow this preference order:
+
+1. **Official SDK/library** - Published and maintained by the service provider
+2. **Well-maintained 3rd party library** - Popular, actively maintained, with good documentation
+3. **Direct API calls** - Only as a last resort when no suitable library exists
+
+### Required Libraries for This Project
+
+| Service | Library | PyPI Package | Notes |
+|---------|---------|--------------|-------|
+| GitHub | PyGithub | `PyGithub` | Official community library, most popular |
+| Jira | jira-python | `jira` | Most popular, well-maintained |
+| Slack | slack-sdk | `slack-sdk` | Official Slack SDK |
+| Atlassian (generic) | atlassian-python-api | `atlassian-python-api` | Alternative for Jira/Confluence |
+
+### Documentation Lookup with Context7
+
+**ALWAYS use the Context7 MCP server to get up-to-date documentation** before implementing integrations:
+
+1. First, resolve the library ID:
+   ```
+   mcp__context7__resolve-library-id(libraryName="PyGithub")
+   ```
+
+2. Then fetch relevant documentation:
+   ```
+   mcp__context7__get-library-docs(context7CompatibleLibraryID="/...", topic="pull requests")
+   ```
+
+This ensures you're using current API methods and best practices, not outdated patterns from training data.
+
+### Why Libraries Over Direct API
+
+- **Pagination handling** - Libraries handle cursor-based and offset pagination automatically
+- **Rate limiting** - Built-in retry logic and rate limit respect
+- **Authentication** - Proper token refresh, OAuth flows handled
+- **Error handling** - Typed exceptions, clear error messages
+- **Type safety** - Many libraries have type hints or stubs available
+- **Testing** - Easier to mock library objects than raw HTTP responses
+
+### Integration Code Organization
+
+- Integration-specific code lives in `apps/integrations/`
+- Service clients should be instantiated with tokens from the team's connected accounts
+- Use dependency injection patterns to make integrations testable
+- Wrap library calls in service classes that handle our domain logic
+
 ## Python Code Guidelines
 
 ### Code Style

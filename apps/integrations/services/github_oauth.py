@@ -8,6 +8,7 @@ from urllib.parse import urlencode
 import requests
 from django.conf import settings
 from django.core.signing import BadSignature, Signer
+from github import Github, GithubException, UnknownObjectException
 
 # GitHub API constants
 GITHUB_OAUTH_AUTHORIZE_URL = "https://github.com/login/oauth/authorize"
@@ -100,38 +101,6 @@ def get_authorization_url(team_id: int, redirect_uri: str) -> str:
     return url
 
 
-def _make_github_api_request(endpoint: str, access_token: str) -> dict[str, Any] | list[dict[str, Any]]:
-    """Make an authenticated request to GitHub API.
-
-    Args:
-        endpoint: The API endpoint path (e.g., '/user', '/user/orgs')
-        access_token: The GitHub access token
-
-    Returns:
-        JSON response data (dict or list)
-
-    Raises:
-        GitHubOAuthError: If API request fails
-    """
-    url = f"{GITHUB_API_BASE_URL}{endpoint}"
-    headers = {
-        "Authorization": f"token {access_token}",
-        "Accept": GITHUB_API_VERSION,
-    }
-
-    try:
-        response = requests.get(url, headers=headers)
-
-        if response.status_code != 200:
-            raise GitHubOAuthError(f"GitHub API error: {response.status_code}")
-
-        return response.json()
-    except Exception as e:
-        if isinstance(e, GitHubOAuthError):
-            raise
-        raise GitHubOAuthError(f"Failed to make GitHub API request to {endpoint}: {str(e)}") from e
-
-
 def exchange_code_for_token(code: str, redirect_uri: str) -> dict[str, Any]:
     """Exchange OAuth code for access token.
 
@@ -176,12 +145,28 @@ def get_authenticated_user(access_token: str) -> dict[str, Any]:
         access_token: The GitHub access token
 
     Returns:
-        Dictionary containing user data
+        Dictionary containing user data (login, id, email, name, avatar_url)
 
     Raises:
         GitHubOAuthError: If API request fails
     """
-    return _make_github_api_request("/user", access_token)
+    try:
+        # Create Github client with access token
+        github = Github(access_token)
+
+        # Get authenticated user
+        user = github.get_user()
+
+        # Convert PyGithub User object to dict
+        return {
+            "login": user.login,
+            "id": user.id,
+            "email": user.email,
+            "name": user.name,
+            "avatar_url": user.avatar_url,
+        }
+    except GithubException as e:
+        raise GitHubOAuthError(f"Failed to get authenticated user: {e.status} - {e.data}") from e
 
 
 def get_user_organizations(access_token: str) -> list[dict[str, Any]]:
@@ -196,68 +181,67 @@ def get_user_organizations(access_token: str) -> list[dict[str, Any]]:
     Raises:
         GitHubOAuthError: If API request fails
     """
-    return _make_github_api_request("/user/orgs", access_token)
-
-
-def _make_paginated_github_api_request(endpoint: str, access_token: str) -> list[dict[str, Any]]:
-    """Make an authenticated paginated request to GitHub API.
-
-    Automatically fetches all pages by following the 'next' link in the Link header.
-
-    Args:
-        endpoint: The API endpoint path (e.g., '/orgs/{org}/members')
-        access_token: The GitHub access token
-
-    Returns:
-        List of all items from all pages combined
-
-    Raises:
-        GitHubOAuthError: If API request fails
-    """
-    all_items = []
-    url = f"{GITHUB_API_BASE_URL}{endpoint}"
-    headers = {
-        "Authorization": f"token {access_token}",
-        "Accept": GITHUB_API_VERSION,
-    }
-
     try:
-        while url:
-            response = requests.get(url, headers=headers)
+        # Create Github client with access token
+        github = Github(access_token)
 
-            if response.status_code != 200:
-                raise GitHubOAuthError(f"GitHub API error: {response.status_code}")
+        # Get authenticated user and their organizations
+        user = github.get_user()
+        orgs = user.get_orgs()
 
-            # Add items from this page
-            all_items.extend(response.json())
-
-            # Check for next page in Link header
-            link_header = response.headers.get("Link", "")
-            url = _parse_next_link(link_header)
-
-        return all_items
-    except Exception as e:
-        if isinstance(e, GitHubOAuthError):
-            raise
-        raise GitHubOAuthError(f"Failed to make paginated GitHub API request to {endpoint}: {str(e)}") from e
+        # Convert each PyGithub Organization object to dict
+        return [
+            {
+                "login": org.login,
+                "id": org.id,
+                "description": org.description,
+                "avatar_url": org.avatar_url,
+            }
+            for org in orgs
+        ]
+    except GithubException as e:
+        raise GitHubOAuthError(f"Failed to get user organizations: {e.status} - {e.data}") from e
 
 
 def get_organization_members(access_token: str, org_slug: str) -> list[dict[str, Any]]:
     """Get members of a GitHub organization.
 
-    Handles pagination by following the 'next' link in the Link header.
+    Handles pagination automatically via PyGithub's PaginatedList.
 
     Args:
         access_token: The GitHub access token
         org_slug: The organization slug/login
 
     Returns:
-        List of member dictionaries from all pages
+        List of member dictionaries with keys: id, login, avatar_url, type
 
     Raises:
-        GitHubOAuthError: If API request fails
+        GitHubOAuthError: If API request fails or organization not found
     """
-    return _make_paginated_github_api_request(f"/orgs/{org_slug}/members", access_token)
+    try:
+        # Create Github client with access token
+        github = Github(access_token)
+
+        # Get organization by slug
+        org = github.get_organization(org_slug)
+
+        # Get members - returns PaginatedList
+        members = org.get_members()
+
+        # Convert each PyGithub NamedUser object to dict
+        return [
+            {
+                "id": member.id,
+                "login": member.login,
+                "avatar_url": member.avatar_url,
+                "type": member.type,
+            }
+            for member in members
+        ]
+    except UnknownObjectException as e:
+        raise GitHubOAuthError(f"Organization not found: {e.status} - {e.data}") from e
+    except GithubException as e:
+        raise GitHubOAuthError(f"Failed to get organization members: {e.status} - {e.data}") from e
 
 
 def _parse_next_link(link_header: str) -> str | None:
@@ -298,7 +282,28 @@ def get_user_details(access_token: str, username: str) -> dict[str, Any]:
     Raises:
         GitHubOAuthError: If API request fails
     """
-    return _make_github_api_request(f"/users/{username}", access_token)
+    try:
+        # Create Github client with access token
+        github = Github(access_token)
+
+        # Get specific user by username
+        user = github.get_user(username)
+
+        # Convert PyGithub User object to dict
+        return {
+            "login": user.login,
+            "id": user.id,
+            "name": user.name,
+            "email": user.email,
+            "avatar_url": user.avatar_url,
+            "bio": user.bio,
+            "company": user.company,
+            "location": user.location,
+        }
+    except UnknownObjectException as e:
+        raise GitHubOAuthError(f"User not found: {e.status} - {e.data}") from e
+    except GithubException as e:
+        raise GitHubOAuthError(f"Failed to get user details: {e.status} - {e.data}") from e
 
 
 def get_organization_repositories(
@@ -306,7 +311,7 @@ def get_organization_repositories(
 ) -> list[dict[str, Any]]:
     """Get repositories of a GitHub organization.
 
-    Handles pagination by following the 'next' link in the Link header.
+    Handles pagination automatically via PyGithub's PaginatedList.
 
     Args:
         access_token: The GitHub access token
@@ -314,14 +319,44 @@ def get_organization_repositories(
         exclude_archived: If True, filter out archived repositories
 
     Returns:
-        List of repository dictionaries from all pages
+        List of repository dictionaries with keys: id, full_name, name, description,
+        language, private, updated_at, archived, default_branch
 
     Raises:
-        GitHubOAuthError: If API request fails
+        GitHubOAuthError: If API request fails or organization not found
     """
-    repos = _make_paginated_github_api_request(f"/orgs/{org_slug}/repos", access_token)
+    try:
+        # Create Github client with access token
+        github = Github(access_token)
 
-    if exclude_archived:
-        repos = [repo for repo in repos if not repo.get("archived", False)]
+        # Get organization by slug
+        org = github.get_organization(org_slug)
 
-    return repos
+        # Get repos - returns PaginatedList
+        repos = org.get_repos()
+
+        # Convert each PyGithub Repository object to dict
+        repo_list = [
+            {
+                "id": repo.id,
+                "full_name": repo.full_name,
+                "name": repo.name,
+                "description": repo.description,
+                "language": repo.language,
+                "private": repo.private,
+                "updated_at": repo.updated_at,
+                "archived": repo.archived,
+                "default_branch": repo.default_branch,
+            }
+            for repo in repos
+        ]
+
+        # Apply archived filter if requested
+        if exclude_archived:
+            repo_list = [repo for repo in repo_list if not repo["archived"]]
+
+        return repo_list
+    except UnknownObjectException as e:
+        raise GitHubOAuthError(f"Organization not found: {e.status} - {e.data}") from e
+    except GithubException as e:
+        raise GitHubOAuthError(f"Failed to get organization repositories: {e.status} - {e.data}") from e

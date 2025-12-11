@@ -1,5 +1,6 @@
 """Tests for GitHub sync service."""
 
+from datetime import datetime
 from unittest.mock import MagicMock, patch
 
 from django.test import TestCase
@@ -14,38 +15,95 @@ from apps.integrations.services.github_sync import (
 class TestGetRepositoryPullRequests(TestCase):
     """Tests for fetching pull requests from GitHub repository."""
 
-    @patch("apps.integrations.services.github_sync.requests.get")
-    def test_get_repository_pull_requests_returns_prs(self, mock_get):
+    def _create_mock_pr(
+        self,
+        pr_id: int,
+        number: int,
+        title: str,
+        state: str,
+        user_id: int,
+        user_login: str,
+        merged: bool = False,
+        merged_at: str | None = None,
+        created_at: str = "2025-01-01T10:00:00Z",
+        updated_at: str = "2025-01-01T10:00:00Z",
+        additions: int = 10,
+        deletions: int = 5,
+        commits: int = 1,
+        changed_files: int = 1,
+        base_ref: str = "main",
+        head_ref: str = "feature-branch",
+        head_sha: str = "abc123",
+        html_url: str = "https://github.com/org/repo/pull/1",
+    ) -> MagicMock:
+        """Create a mock PyGithub PullRequest object with all required attributes."""
+        mock_pr = MagicMock()
+        mock_pr.id = pr_id
+        mock_pr.number = number
+        mock_pr.title = title
+        mock_pr.state = state
+        mock_pr.merged = merged
+        mock_pr.merged_at = datetime.fromisoformat(merged_at.replace("Z", "+00:00")) if merged_at else None
+        mock_pr.created_at = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+        mock_pr.updated_at = datetime.fromisoformat(updated_at.replace("Z", "+00:00"))
+        mock_pr.additions = additions
+        mock_pr.deletions = deletions
+        mock_pr.commits = commits
+        mock_pr.changed_files = changed_files
+        mock_pr.html_url = html_url
+
+        # Mock user
+        mock_user = MagicMock()
+        mock_user.id = user_id
+        mock_user.login = user_login
+        mock_pr.user = mock_user
+
+        # Mock base ref
+        mock_base = MagicMock()
+        mock_base.ref = base_ref
+        mock_pr.base = mock_base
+
+        # Mock head ref
+        mock_head = MagicMock()
+        mock_head.ref = head_ref
+        mock_head.sha = head_sha
+        mock_pr.head = mock_head
+
+        return mock_pr
+
+    @patch("apps.integrations.services.github_sync.Github")
+    def test_get_repository_pull_requests_returns_prs(self, mock_github_class):
         """Test that get_repository_pull_requests returns list of PRs from GitHub API."""
-        # Mock successful response from GitHub
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.headers = {}  # No pagination - single page
-        mock_response.json.return_value = [
-            {
-                "id": 1,
-                "number": 101,
-                "title": "Add new feature",
-                "state": "open",
-                "user": {"login": "developer1", "id": 1001},
-                "created_at": "2025-01-01T10:00:00Z",
-                "updated_at": "2025-01-02T15:30:00Z",
-                "merged_at": None,
-                "draft": False,
-            },
-            {
-                "id": 2,
-                "number": 102,
-                "title": "Fix bug in login",
-                "state": "closed",
-                "user": {"login": "developer2", "id": 1002},
-                "created_at": "2025-01-03T09:00:00Z",
-                "updated_at": "2025-01-04T11:15:00Z",
-                "merged_at": "2025-01-04T11:15:00Z",
-                "draft": False,
-            },
-        ]
-        mock_get.return_value = mock_response
+        # Create mock PRs
+        mock_pr1 = self._create_mock_pr(
+            pr_id=1,
+            number=101,
+            title="Add new feature",
+            state="open",
+            user_id=1001,
+            user_login="developer1",
+            created_at="2025-01-01T10:00:00Z",
+            updated_at="2025-01-02T15:30:00Z",
+        )
+        mock_pr2 = self._create_mock_pr(
+            pr_id=2,
+            number=102,
+            title="Fix bug in login",
+            state="closed",
+            user_id=1002,
+            user_login="developer2",
+            merged=True,
+            merged_at="2025-01-04T11:15:00Z",
+            created_at="2025-01-03T09:00:00Z",
+            updated_at="2025-01-04T11:15:00Z",
+        )
+
+        # Mock PyGithub chain: Github().get_repo().get_pulls()
+        mock_github = MagicMock()
+        mock_repo = MagicMock()
+        mock_repo.get_pulls.return_value = [mock_pr1, mock_pr2]
+        mock_github.get_repo.return_value = mock_repo
+        mock_github_class.return_value = mock_github
 
         access_token = "gho_test_token"
         repo_full_name = "acme-corp/backend-api"
@@ -57,184 +115,121 @@ class TestGetRepositoryPullRequests(TestCase):
         self.assertEqual(len(result), 2)
         self.assertEqual(result[0]["number"], 101)
         self.assertEqual(result[0]["title"], "Add new feature")
+        self.assertEqual(result[0]["state"], "open")
+        self.assertEqual(result[0]["merged"], False)
         self.assertEqual(result[1]["number"], 102)
         self.assertEqual(result[1]["title"], "Fix bug in login")
+        self.assertEqual(result[1]["state"], "closed")
+        self.assertEqual(result[1]["merged"], True)
 
-        # Verify the request was made correctly
-        mock_get.assert_called_once()
-        call_args = mock_get.call_args
-        self.assertEqual(
-            call_args[0][0], "https://api.github.com/repos/acme-corp/backend-api/pulls?state=all&per_page=100"
-        )
+        # Verify PyGithub was called correctly
+        mock_github_class.assert_called_once_with(access_token)
+        mock_github.get_repo.assert_called_once_with(repo_full_name)
+        mock_repo.get_pulls.assert_called_once_with(state="all")
 
-        # Verify headers
-        call_kwargs = mock_get.call_args[1]
-        headers = call_kwargs["headers"]
-        self.assertEqual(headers["Authorization"], "token gho_test_token")
-        self.assertEqual(headers["Accept"], "application/vnd.github.v3+json")
-
-    @patch("apps.integrations.services.github_sync.requests.get")
-    def test_get_repository_pull_requests_handles_pagination(self, mock_get):
-        """Test that get_repository_pull_requests fetches all pages when Link header has next relation."""
-        # Mock first page response with Link header pointing to page 2
-        mock_response_page1 = MagicMock()
-        mock_response_page1.status_code = 200
-        mock_response_page1.headers = {
-            "Link": (
-                '<https://api.github.com/repos/acme-corp/backend-api/pulls?page=2>; rel="next", '
-                '<https://api.github.com/repos/acme-corp/backend-api/pulls?page=2>; rel="last"'
-            )
-        }
-        mock_response_page1.json.return_value = [
-            {
-                "id": 1,
-                "number": 101,
-                "title": "PR from page 1",
-                "state": "open",
-                "user": {"login": "user1", "id": 1001},
-            },
-        ]
-
-        # Mock second page response with no next link (last page)
-        mock_response_page2 = MagicMock()
-        mock_response_page2.status_code = 200
-        mock_response_page2.headers = {
-            "Link": (
-                '<https://api.github.com/repos/acme-corp/backend-api/pulls?page=1>; rel="first", '
-                '<https://api.github.com/repos/acme-corp/backend-api/pulls?page=1>; rel="prev"'
-            )
-        }
-        mock_response_page2.json.return_value = [
-            {
-                "id": 2,
-                "number": 102,
-                "title": "PR from page 2",
-                "state": "closed",
-                "user": {"login": "user2", "id": 1002},
-            },
-        ]
-
-        # Set up mock to return different responses for each call
-        mock_get.side_effect = [mock_response_page1, mock_response_page2]
+    @patch("apps.integrations.services.github_sync.Github")
+    def test_get_repository_pull_requests_handles_empty_list(self, mock_github_class):
+        """Test that get_repository_pull_requests returns empty list when no PRs exist."""
+        # Mock PyGithub to return empty list
+        mock_github = MagicMock()
+        mock_repo = MagicMock()
+        mock_repo.get_pulls.return_value = []
+        mock_github.get_repo.return_value = mock_repo
+        mock_github_class.return_value = mock_github
 
         access_token = "gho_test_token"
         repo_full_name = "acme-corp/backend-api"
 
         result = get_repository_pull_requests(access_token, repo_full_name)
 
-        # Verify all pages were fetched and combined
+        # Verify result is an empty list
         self.assertIsInstance(result, list)
-        self.assertEqual(len(result), 2, "Should return all PRs from all pages combined")
-        self.assertEqual(result[0]["number"], 101)
-        self.assertEqual(result[1]["number"], 102)
+        self.assertEqual(len(result), 0)
 
-        # Verify requests.get was called 2 times (for 2 pages)
-        self.assertEqual(mock_get.call_count, 2, "Should make 2 API requests for 2 pages")
+        # Verify PyGithub was called correctly
+        mock_github_class.assert_called_once_with(access_token)
+        mock_github.get_repo.assert_called_once_with(repo_full_name)
+        mock_repo.get_pulls.assert_called_once()
 
-        # Verify first call was to the base endpoint
-        first_call_args = mock_get.call_args_list[0]
-        self.assertEqual(
-            first_call_args[0][0],
-            "https://api.github.com/repos/acme-corp/backend-api/pulls?state=all&per_page=100",
-        )
-
-        # Verify second call used the URL from Link header
-        second_call_args = mock_get.call_args_list[1]
-        self.assertEqual(
-            second_call_args[0][0],
-            "https://api.github.com/repos/acme-corp/backend-api/pulls?page=2",
-        )
-
-    @patch("apps.integrations.services.github_sync.requests.get")
-    def test_get_repository_pull_requests_filters_by_state(self, mock_get):
-        """Test that get_repository_pull_requests passes state parameter to API correctly."""
-        # Mock response
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.headers = {}
-        mock_response.json.return_value = [
-            {
-                "id": 1,
-                "number": 101,
-                "title": "Open PR",
-                "state": "open",
-            },
+    @patch("apps.integrations.services.github_sync.Github")
+    def test_get_repository_pull_requests_handles_pagination(self, mock_github_class):
+        """Test that PyGithub handles pagination automatically (no manual pagination needed)."""
+        # Create multiple mock PRs (PyGithub handles pagination internally)
+        mock_prs = [
+            self._create_mock_pr(
+                pr_id=i,
+                number=100 + i,
+                title=f"PR {i}",
+                state="open",
+                user_id=1000 + i,
+                user_login=f"user{i}",
+            )
+            for i in range(1, 151)  # 150 PRs - would span multiple pages
         ]
-        mock_get.return_value = mock_response
+
+        # Mock PyGithub chain
+        mock_github = MagicMock()
+        mock_repo = MagicMock()
+        mock_repo.get_pulls.return_value = mock_prs  # PyGithub returns all PRs automatically
+        mock_github.get_repo.return_value = mock_repo
+        mock_github_class.return_value = mock_github
+
+        access_token = "gho_test_token"
+        repo_full_name = "acme-corp/backend-api"
+
+        result = get_repository_pull_requests(access_token, repo_full_name)
+
+        # Verify all PRs were returned (PyGithub handled pagination internally)
+        self.assertIsInstance(result, list)
+        self.assertEqual(len(result), 150, "Should return all PRs - PyGithub handles pagination")
+        self.assertEqual(result[0]["number"], 101)
+        self.assertEqual(result[-1]["number"], 250)
+
+        # Verify only one call was made to get_pulls (PyGithub handles pagination internally)
+        mock_repo.get_pulls.assert_called_once()
+
+    @patch("apps.integrations.services.github_sync.Github")
+    def test_get_repository_pull_requests_filters_by_state(self, mock_github_class):
+        """Test that get_repository_pull_requests passes state parameter to PyGithub correctly."""
+        # Mock PyGithub chain
+        mock_github = MagicMock()
+        mock_repo = MagicMock()
+        mock_repo.get_pulls.return_value = []
+        mock_github.get_repo.return_value = mock_repo
+        mock_github_class.return_value = mock_github
 
         access_token = "gho_test_token"
         repo_full_name = "test-org/test-repo"
 
         # Test with state="open"
         get_repository_pull_requests(access_token, repo_full_name, state="open")
-        call_args = mock_get.call_args
-        self.assertIn("state=open", call_args[0][0])
+        mock_repo.get_pulls.assert_called_with(state="open")
 
         # Reset mock
-        mock_get.reset_mock()
-        mock_get.return_value = mock_response
+        mock_repo.get_pulls.reset_mock()
 
         # Test with state="closed"
         get_repository_pull_requests(access_token, repo_full_name, state="closed")
-        call_args = mock_get.call_args
-        self.assertIn("state=closed", call_args[0][0])
+        mock_repo.get_pulls.assert_called_with(state="closed")
 
         # Reset mock
-        mock_get.reset_mock()
-        mock_get.return_value = mock_response
+        mock_repo.get_pulls.reset_mock()
 
         # Test with state="all" (default)
         get_repository_pull_requests(access_token, repo_full_name, state="all")
-        call_args = mock_get.call_args
-        self.assertIn("state=all", call_args[0][0])
+        mock_repo.get_pulls.assert_called_with(state="all")
 
-    @patch("apps.integrations.services.github_sync.requests.get")
-    def test_get_repository_pull_requests_uses_custom_per_page(self, mock_get):
-        """Test that get_repository_pull_requests respects custom per_page parameter."""
-        # Mock response
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.headers = {}
-        mock_response.json.return_value = []
-        mock_get.return_value = mock_response
+    @patch("apps.integrations.services.github_sync.Github")
+    def test_get_repository_pull_requests_raises_on_api_error(self, mock_github_class):
+        """Test that get_repository_pull_requests raises GitHubOAuthError on API errors."""
+        from github import GithubException
 
-        access_token = "gho_test_token"
-        repo_full_name = "test-org/test-repo"
-
-        # Test with custom per_page value
-        get_repository_pull_requests(access_token, repo_full_name, per_page=50)
-        call_args = mock_get.call_args
-        self.assertIn("per_page=50", call_args[0][0])
-
-    @patch("apps.integrations.services.github_sync.requests.get")
-    def test_get_repository_pull_requests_raises_on_403_forbidden(self, mock_get):
-        """Test that get_repository_pull_requests raises GitHubOAuthError on 403 (no permission)."""
-        # Mock 403 response (insufficient permissions)
-        mock_response = MagicMock()
-        mock_response.status_code = 403
-        mock_response.json.return_value = {
-            "message": "You must have read access to this repository.",
-        }
-        mock_get.return_value = mock_response
-
-        access_token = "gho_test_token"
-        repo_full_name = "private-org/secret-repo"
-
-        with self.assertRaises(GitHubOAuthError) as context:
-            get_repository_pull_requests(access_token, repo_full_name)
-
-        self.assertIn("403", str(context.exception))
-
-    @patch("apps.integrations.services.github_sync.requests.get")
-    def test_get_repository_pull_requests_raises_on_404_not_found(self, mock_get):
-        """Test that get_repository_pull_requests raises GitHubOAuthError on 404 (repo not found)."""
-        # Mock 404 response (repository not found)
-        mock_response = MagicMock()
-        mock_response.status_code = 404
-        mock_response.json.return_value = {
-            "message": "Not Found",
-        }
-        mock_get.return_value = mock_response
+        # Mock PyGithub to raise exception (404, 403, etc)
+        mock_github = MagicMock()
+        mock_repo = MagicMock()
+        mock_repo.get_pulls.side_effect = GithubException(404, {"message": "Not Found"})
+        mock_github.get_repo.return_value = mock_repo
+        mock_github_class.return_value = mock_github
 
         access_token = "gho_test_token"
         repo_full_name = "org/nonexistent-repo"
@@ -244,53 +239,123 @@ class TestGetRepositoryPullRequests(TestCase):
 
         self.assertIn("404", str(context.exception))
 
-    @patch("apps.integrations.services.github_sync.requests.get")
-    def test_get_repository_pull_requests_raises_on_other_error_codes(self, mock_get):
-        """Test that get_repository_pull_requests raises GitHubOAuthError on other HTTP errors."""
-        # Mock 500 response (server error)
-        mock_response = MagicMock()
-        mock_response.status_code = 500
-        mock_response.json.return_value = {
-            "message": "Internal Server Error",
-        }
-        mock_get.return_value = mock_response
+    @patch("apps.integrations.services.github_sync.Github")
+    def test_get_repository_pull_requests_returns_all_pr_attributes(self, mock_github_class):
+        """Test that get_repository_pull_requests returns all required PR attributes."""
+        # Create mock PR with all attributes
+        mock_pr = self._create_mock_pr(
+            pr_id=123456789,
+            number=42,
+            title="Complete PR with all attributes",
+            state="closed",
+            user_id=12345,
+            user_login="developer",
+            merged=True,
+            merged_at="2025-01-05T16:00:00Z",
+            created_at="2025-01-01T10:00:00Z",
+            updated_at="2025-01-05T16:00:00Z",
+            additions=250,
+            deletions=100,
+            commits=5,
+            changed_files=8,
+            base_ref="main",
+            head_ref="feature/new-feature",
+            head_sha="abc123def456",
+            html_url="https://github.com/org/repo/pull/42",
+        )
+
+        # Mock PyGithub chain
+        mock_github = MagicMock()
+        mock_repo = MagicMock()
+        mock_repo.get_pulls.return_value = [mock_pr]
+        mock_github.get_repo.return_value = mock_repo
+        mock_github_class.return_value = mock_github
 
         access_token = "gho_test_token"
         repo_full_name = "org/repo"
 
-        with self.assertRaises(GitHubOAuthError) as context:
-            get_repository_pull_requests(access_token, repo_full_name)
+        result = get_repository_pull_requests(access_token, repo_full_name)
 
-        self.assertIn("500", str(context.exception))
+        # Verify all attributes are present in result
+        self.assertEqual(len(result), 1)
+        pr_dict = result[0]
+
+        self.assertEqual(pr_dict["id"], 123456789)
+        self.assertEqual(pr_dict["number"], 42)
+        self.assertEqual(pr_dict["title"], "Complete PR with all attributes")
+        self.assertEqual(pr_dict["state"], "closed")
+        self.assertEqual(pr_dict["merged"], True)
+        self.assertIsNotNone(pr_dict["merged_at"])
+        self.assertIsNotNone(pr_dict["created_at"])
+        self.assertIsNotNone(pr_dict["updated_at"])
+        self.assertEqual(pr_dict["additions"], 250)
+        self.assertEqual(pr_dict["deletions"], 100)
+        self.assertEqual(pr_dict["commits"], 5)
+        self.assertEqual(pr_dict["changed_files"], 8)
+        self.assertEqual(pr_dict["user"]["id"], 12345)
+        self.assertEqual(pr_dict["user"]["login"], "developer")
+        self.assertEqual(pr_dict["base"]["ref"], "main")
+        self.assertEqual(pr_dict["head"]["ref"], "feature/new-feature")
+        self.assertEqual(pr_dict["head"]["sha"], "abc123def456")
+        self.assertEqual(pr_dict["html_url"], "https://github.com/org/repo/pull/42")
 
 
 class TestGetPullRequestReviews(TestCase):
     """Tests for fetching reviews for a specific pull request."""
 
-    @patch("apps.integrations.services.github_sync.requests.get")
-    def test_get_pull_request_reviews_returns_reviews(self, mock_get):
+    def _create_mock_review(
+        self,
+        review_id: int,
+        user_id: int,
+        user_login: str,
+        state: str,
+        body: str,
+        submitted_at: str,
+    ) -> MagicMock:
+        """Create a mock PyGithub Review object with all required attributes."""
+        mock_review = MagicMock()
+        mock_review.id = review_id
+        mock_review.state = state
+        mock_review.body = body
+        mock_review.submitted_at = datetime.fromisoformat(submitted_at.replace("Z", "+00:00"))
+
+        # Mock user
+        mock_user = MagicMock()
+        mock_user.id = user_id
+        mock_user.login = user_login
+        mock_review.user = mock_user
+
+        return mock_review
+
+    @patch("apps.integrations.services.github_sync.Github")
+    def test_get_pull_request_reviews_returns_reviews(self, mock_github_class):
         """Test that get_pull_request_reviews returns list of reviews from GitHub API."""
-        # Mock successful response from GitHub
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.headers = {}  # No pagination - single page
-        mock_response.json.return_value = [
-            {
-                "id": 12345,
-                "user": {"login": "reviewer1", "id": 2001},
-                "body": "Looks good to me!",
-                "state": "APPROVED",
-                "submitted_at": "2025-01-05T14:30:00Z",
-            },
-            {
-                "id": 12346,
-                "user": {"login": "reviewer2", "id": 2002},
-                "body": "Please fix the typo in line 45",
-                "state": "CHANGES_REQUESTED",
-                "submitted_at": "2025-01-05T15:00:00Z",
-            },
-        ]
-        mock_get.return_value = mock_response
+        # Create mock reviews
+        mock_review1 = self._create_mock_review(
+            review_id=12345,
+            user_id=2001,
+            user_login="reviewer1",
+            state="APPROVED",
+            body="Looks good to me!",
+            submitted_at="2025-01-05T14:30:00Z",
+        )
+        mock_review2 = self._create_mock_review(
+            review_id=12346,
+            user_id=2002,
+            user_login="reviewer2",
+            state="CHANGES_REQUESTED",
+            body="Please fix the typo in line 45",
+            submitted_at="2025-01-05T15:00:00Z",
+        )
+
+        # Mock PyGithub chain: Github().get_repo().get_pull().get_reviews()
+        mock_github = MagicMock()
+        mock_repo = MagicMock()
+        mock_pr = MagicMock()
+        mock_pr.get_reviews.return_value = [mock_review1, mock_review2]
+        mock_repo.get_pull.return_value = mock_pr
+        mock_github.get_repo.return_value = mock_repo
+        mock_github_class.return_value = mock_github
 
         access_token = "gho_test_token"
         repo_full_name = "acme-corp/backend-api"
@@ -303,31 +368,27 @@ class TestGetPullRequestReviews(TestCase):
         self.assertEqual(len(result), 2)
         self.assertEqual(result[0]["id"], 12345)
         self.assertEqual(result[0]["state"], "APPROVED")
+        self.assertEqual(result[0]["body"], "Looks good to me!")
         self.assertEqual(result[1]["id"], 12346)
         self.assertEqual(result[1]["state"], "CHANGES_REQUESTED")
 
-        # Verify the request was made correctly
-        mock_get.assert_called_once()
-        call_args = mock_get.call_args
-        self.assertEqual(
-            call_args[0][0], "https://api.github.com/repos/acme-corp/backend-api/pulls/101/reviews?per_page=100"
-        )
+        # Verify PyGithub was called correctly
+        mock_github_class.assert_called_once_with(access_token)
+        mock_github.get_repo.assert_called_once_with(repo_full_name)
+        mock_repo.get_pull.assert_called_once_with(pr_number)
+        mock_pr.get_reviews.assert_called_once()
 
-        # Verify headers
-        call_kwargs = mock_get.call_args[1]
-        headers = call_kwargs["headers"]
-        self.assertEqual(headers["Authorization"], "token gho_test_token")
-        self.assertEqual(headers["Accept"], "application/vnd.github.v3+json")
-
-    @patch("apps.integrations.services.github_sync.requests.get")
-    def test_get_pull_request_reviews_handles_empty_reviews(self, mock_get):
+    @patch("apps.integrations.services.github_sync.Github")
+    def test_get_pull_request_reviews_handles_empty_reviews(self, mock_github_class):
         """Test that get_pull_request_reviews returns empty list when no reviews exist."""
-        # Mock response with empty reviews array
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.headers = {}
-        mock_response.json.return_value = []
-        mock_get.return_value = mock_response
+        # Mock PyGithub chain to return empty list
+        mock_github = MagicMock()
+        mock_repo = MagicMock()
+        mock_pr = MagicMock()
+        mock_pr.get_reviews.return_value = []
+        mock_repo.get_pull.return_value = mock_pr
+        mock_github.get_repo.return_value = mock_repo
+        mock_github_class.return_value = mock_github
 
         access_token = "gho_test_token"
         repo_full_name = "acme-corp/backend-api"
@@ -339,50 +400,35 @@ class TestGetPullRequestReviews(TestCase):
         self.assertIsInstance(result, list)
         self.assertEqual(len(result), 0)
 
-        # Verify the request was made
-        mock_get.assert_called_once()
+        # Verify PyGithub was called correctly
+        mock_github_class.assert_called_once_with(access_token)
+        mock_github.get_repo.assert_called_once_with(repo_full_name)
+        mock_repo.get_pull.assert_called_once_with(pr_number)
 
-    @patch("apps.integrations.services.github_sync.requests.get")
-    def test_get_pull_request_reviews_handles_pagination(self, mock_get):
-        """Test that get_pull_request_reviews fetches all pages when Link header has next relation."""
-        # Mock first page response with Link header pointing to page 2
-        mock_response_page1 = MagicMock()
-        mock_response_page1.status_code = 200
-        mock_response_page1.headers = {
-            "Link": (
-                '<https://api.github.com/repos/acme-corp/backend-api/pulls/101/reviews?page=2>; rel="next", '
-                '<https://api.github.com/repos/acme-corp/backend-api/pulls/101/reviews?page=2>; rel="last"'
+    @patch("apps.integrations.services.github_sync.Github")
+    def test_get_pull_request_reviews_handles_pagination(self, mock_github_class):
+        """Test that PyGithub handles pagination automatically (no manual pagination needed)."""
+        # Create multiple mock reviews (PyGithub handles pagination internally)
+        mock_reviews = [
+            self._create_mock_review(
+                review_id=i,
+                user_id=2000 + i,
+                user_login=f"reviewer{i}",
+                state="APPROVED",
+                body=f"Review {i}",
+                submitted_at=f"2025-01-{1 + (i // 24):02d}T{i % 24:02d}:00:00Z",
             )
-        }
-        mock_response_page1.json.return_value = [
-            {
-                "id": 1,
-                "user": {"login": "reviewer1", "id": 2001},
-                "state": "APPROVED",
-                "submitted_at": "2025-01-01T10:00:00Z",
-            },
+            for i in range(1, 151)  # 150 reviews - would span multiple pages
         ]
 
-        # Mock second page response with no next link (last page)
-        mock_response_page2 = MagicMock()
-        mock_response_page2.status_code = 200
-        mock_response_page2.headers = {
-            "Link": (
-                '<https://api.github.com/repos/acme-corp/backend-api/pulls/101/reviews?page=1>; rel="first", '
-                '<https://api.github.com/repos/acme-corp/backend-api/pulls/101/reviews?page=1>; rel="prev"'
-            )
-        }
-        mock_response_page2.json.return_value = [
-            {
-                "id": 2,
-                "user": {"login": "reviewer2", "id": 2002},
-                "state": "CHANGES_REQUESTED",
-                "submitted_at": "2025-01-02T11:00:00Z",
-            },
-        ]
-
-        # Set up mock to return different responses for each call
-        mock_get.side_effect = [mock_response_page1, mock_response_page2]
+        # Mock PyGithub chain
+        mock_github = MagicMock()
+        mock_repo = MagicMock()
+        mock_pr = MagicMock()
+        mock_pr.get_reviews.return_value = mock_reviews  # PyGithub returns all reviews automatically
+        mock_repo.get_pull.return_value = mock_pr
+        mock_github.get_repo.return_value = mock_repo
+        mock_github_class.return_value = mock_github
 
         access_token = "gho_test_token"
         repo_full_name = "acme-corp/backend-api"
@@ -390,39 +436,28 @@ class TestGetPullRequestReviews(TestCase):
 
         result = get_pull_request_reviews(access_token, repo_full_name, pr_number)
 
-        # Verify all pages were fetched and combined
+        # Verify all reviews were returned (PyGithub handled pagination internally)
         self.assertIsInstance(result, list)
-        self.assertEqual(len(result), 2, "Should return all reviews from all pages combined")
+        self.assertEqual(len(result), 150, "Should return all reviews - PyGithub handles pagination")
         self.assertEqual(result[0]["id"], 1)
-        self.assertEqual(result[1]["id"], 2)
+        self.assertEqual(result[-1]["id"], 150)
 
-        # Verify requests.get was called 2 times (for 2 pages)
-        self.assertEqual(mock_get.call_count, 2, "Should make 2 API requests for 2 pages")
+        # Verify only one call was made to get_reviews (PyGithub handles pagination internally)
+        mock_pr.get_reviews.assert_called_once()
 
-        # Verify first call was to the base endpoint
-        first_call_args = mock_get.call_args_list[0]
-        self.assertEqual(
-            first_call_args[0][0],
-            "https://api.github.com/repos/acme-corp/backend-api/pulls/101/reviews?per_page=100",
-        )
-
-        # Verify second call used the URL from Link header
-        second_call_args = mock_get.call_args_list[1]
-        self.assertEqual(
-            second_call_args[0][0],
-            "https://api.github.com/repos/acme-corp/backend-api/pulls/101/reviews?page=2",
-        )
-
-    @patch("apps.integrations.services.github_sync.requests.get")
-    def test_get_pull_request_reviews_raises_on_api_error(self, mock_get):
+    @patch("apps.integrations.services.github_sync.Github")
+    def test_get_pull_request_reviews_raises_on_api_error(self, mock_github_class):
         """Test that get_pull_request_reviews raises GitHubOAuthError on API errors."""
-        # Mock 404 response (PR not found)
-        mock_response = MagicMock()
-        mock_response.status_code = 404
-        mock_response.json.return_value = {
-            "message": "Not Found",
-        }
-        mock_get.return_value = mock_response
+        from github import GithubException
+
+        # Mock PyGithub to raise exception (404, 403, etc)
+        mock_github = MagicMock()
+        mock_repo = MagicMock()
+        mock_pr = MagicMock()
+        mock_pr.get_reviews.side_effect = GithubException(404, {"message": "Not Found"})
+        mock_repo.get_pull.return_value = mock_pr
+        mock_github.get_repo.return_value = mock_repo
+        mock_github_class.return_value = mock_github
 
         access_token = "gho_test_token"
         repo_full_name = "acme-corp/backend-api"

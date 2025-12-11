@@ -266,20 +266,22 @@ class TestTokenExchange(TestCase):
 class TestGetAuthenticatedUser(TestCase):
     """Tests for fetching authenticated GitHub user data."""
 
-    @patch("apps.integrations.services.github_oauth.requests.get")
-    def test_get_authenticated_user_returns_user_data(self, mock_get):
+    @patch("apps.integrations.services.github_oauth.Github")
+    def test_get_authenticated_user_returns_user_data(self, mock_github_class):
         """Test that get_authenticated_user returns user data from GitHub API."""
-        # Mock successful response from GitHub
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "login": "testuser",
-            "id": 12345,
-            "email": "testuser@example.com",
-            "name": "Test User",
-            "avatar_url": "https://avatars.githubusercontent.com/u/12345",
-        }
-        mock_get.return_value = mock_response
+        # Mock Github instance and user object
+        mock_github = MagicMock()
+        mock_github_class.return_value = mock_github
+
+        # Create mock user with attributes (not dict)
+        mock_user = MagicMock()
+        mock_user.login = "testuser"
+        mock_user.id = 12345
+        mock_user.email = "testuser@example.com"
+        mock_user.name = "Test User"
+        mock_user.avatar_url = "https://avatars.githubusercontent.com/u/12345"
+
+        mock_github.get_user.return_value = mock_user
 
         access_token = "gho_test_token"
 
@@ -289,23 +291,25 @@ class TestGetAuthenticatedUser(TestCase):
         self.assertEqual(result["login"], "testuser")
         self.assertEqual(result["id"], 12345)
         self.assertEqual(result["email"], "testuser@example.com")
+        self.assertEqual(result["name"], "Test User")
+        self.assertEqual(result["avatar_url"], "https://avatars.githubusercontent.com/u/12345")
 
-        # Verify the request was made with correct Authorization header
-        mock_get.assert_called_once()
-        call_args = mock_get.call_args
-        self.assertEqual(call_args[0][0], "https://api.github.com/user")
-        self.assertEqual(call_args[1]["headers"]["Authorization"], "token gho_test_token")
+        # Verify Github was initialized with the access token
+        mock_github_class.assert_called_once_with(access_token)
+        # Verify get_user() was called with no arguments (gets authenticated user)
+        mock_github.get_user.assert_called_once_with()
 
-    @patch("apps.integrations.services.github_oauth.requests.get")
-    def test_get_authenticated_user_handles_api_error(self, mock_get):
+    @patch("apps.integrations.services.github_oauth.Github")
+    def test_get_authenticated_user_handles_api_error(self, mock_github_class):
         """Test that get_authenticated_user raises GitHubOAuthError on API error."""
-        # Mock error response
-        mock_response = MagicMock()
-        mock_response.status_code = 401
-        mock_response.json.return_value = {
-            "message": "Bad credentials",
-        }
-        mock_get.return_value = mock_response
+        # Mock Github instance that raises exception
+        mock_github = MagicMock()
+        mock_github_class.return_value = mock_github
+
+        # Simulate PyGithub exception (e.g., BadCredentialsException)
+        from github import GithubException
+
+        mock_github.get_user.side_effect = GithubException(401, {"message": "Bad credentials"})
 
         access_token = "invalid_token"
 
@@ -314,23 +318,28 @@ class TestGetAuthenticatedUser(TestCase):
 
         self.assertIn("401", str(context.exception))
 
-    @patch("apps.integrations.services.github_oauth.requests.get")
-    def test_get_authenticated_user_sends_correct_headers(self, mock_get):
-        """Test that get_authenticated_user sends correct headers."""
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {"login": "user", "id": 123}
-        mock_get.return_value = mock_response
+    @patch("apps.integrations.services.github_oauth.Github")
+    def test_get_authenticated_user_sends_correct_token(self, mock_github_class):
+        """Test that get_authenticated_user initializes Github with correct token."""
+        # Mock Github instance and user
+        mock_github = MagicMock()
+        mock_github_class.return_value = mock_github
+
+        mock_user = MagicMock()
+        mock_user.login = "user"
+        mock_user.id = 123
+        mock_user.email = "user@example.com"
+        mock_user.name = "User"
+        mock_user.avatar_url = "https://avatars.githubusercontent.com/u/123"
+
+        mock_github.get_user.return_value = mock_user
 
         access_token = "test_token"
 
         get_authenticated_user(access_token)
 
-        # Verify headers
-        call_kwargs = mock_get.call_args[1]
-        headers = call_kwargs["headers"]
-        self.assertEqual(headers["Authorization"], "token test_token")
-        self.assertEqual(headers["Accept"], "application/vnd.github.v3+json")
+        # Verify Github was initialized with the correct token
+        mock_github_class.assert_called_once_with("test_token")
 
 
 @override_settings(
@@ -340,27 +349,32 @@ class TestGetAuthenticatedUser(TestCase):
 class TestGetUserOrganizations(TestCase):
     """Tests for fetching user's GitHub organizations."""
 
-    @patch("apps.integrations.services.github_oauth.requests.get")
-    def test_get_user_organizations_returns_list(self, mock_get):
+    @patch("apps.integrations.services.github_oauth.Github")
+    def test_get_user_organizations_returns_list(self, mock_github_class):
         """Test that get_user_organizations returns a list of organizations."""
-        # Mock successful response from GitHub
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = [
-            {
-                "login": "acme-corp",
-                "id": 1001,
-                "description": "Acme Corporation",
-                "avatar_url": "https://avatars.githubusercontent.com/u/1001",
-            },
-            {
-                "login": "test-org",
-                "id": 1002,
-                "description": "Test Organization",
-                "avatar_url": "https://avatars.githubusercontent.com/u/1002",
-            },
-        ]
-        mock_get.return_value = mock_response
+        # Mock Github instance
+        mock_github = MagicMock()
+        mock_github_class.return_value = mock_github
+
+        # Create mock user
+        mock_user = MagicMock()
+
+        # Create mock organization objects with attributes
+        mock_org1 = MagicMock()
+        mock_org1.login = "acme-corp"
+        mock_org1.id = 1001
+        mock_org1.description = "Acme Corporation"
+        mock_org1.avatar_url = "https://avatars.githubusercontent.com/u/1001"
+
+        mock_org2 = MagicMock()
+        mock_org2.login = "test-org"
+        mock_org2.id = 1002
+        mock_org2.description = "Test Organization"
+        mock_org2.avatar_url = "https://avatars.githubusercontent.com/u/1002"
+
+        # Mock get_user().get_orgs() to return list of mock orgs
+        mock_user.get_orgs.return_value = [mock_org1, mock_org2]
+        mock_github.get_user.return_value = mock_user
 
         access_token = "gho_test_token"
 
@@ -369,21 +383,30 @@ class TestGetUserOrganizations(TestCase):
         self.assertIsInstance(result, list)
         self.assertEqual(len(result), 2)
         self.assertEqual(result[0]["login"], "acme-corp")
+        self.assertEqual(result[0]["id"], 1001)
+        self.assertEqual(result[0]["description"], "Acme Corporation")
+        self.assertEqual(result[0]["avatar_url"], "https://avatars.githubusercontent.com/u/1001")
         self.assertEqual(result[1]["login"], "test-org")
+        self.assertEqual(result[1]["id"], 1002)
 
-        # Verify the request
-        mock_get.assert_called_once()
-        call_args = mock_get.call_args
-        self.assertEqual(call_args[0][0], "https://api.github.com/user/orgs")
-        self.assertEqual(call_args[1]["headers"]["Authorization"], "token gho_test_token")
+        # Verify Github was initialized with the access token
+        mock_github_class.assert_called_once_with(access_token)
+        # Verify get_user() was called with no arguments (gets authenticated user)
+        mock_github.get_user.assert_called_once_with()
+        # Verify get_orgs() was called
+        mock_user.get_orgs.assert_called_once()
 
-    @patch("apps.integrations.services.github_oauth.requests.get")
-    def test_get_user_organizations_returns_empty_list_when_no_orgs(self, mock_get):
+    @patch("apps.integrations.services.github_oauth.Github")
+    def test_get_user_organizations_returns_empty_list_when_no_orgs(self, mock_github_class):
         """Test that get_user_organizations returns empty list when user has no orgs."""
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = []
-        mock_get.return_value = mock_response
+        # Mock Github instance
+        mock_github = MagicMock()
+        mock_github_class.return_value = mock_github
+
+        # Create mock user
+        mock_user = MagicMock()
+        mock_user.get_orgs.return_value = []  # Empty list of orgs
+        mock_github.get_user.return_value = mock_user
 
         access_token = "gho_test_token"
 
@@ -392,15 +415,17 @@ class TestGetUserOrganizations(TestCase):
         self.assertIsInstance(result, list)
         self.assertEqual(len(result), 0)
 
-    @patch("apps.integrations.services.github_oauth.requests.get")
-    def test_get_user_organizations_handles_api_error(self, mock_get):
+    @patch("apps.integrations.services.github_oauth.Github")
+    def test_get_user_organizations_handles_api_error(self, mock_github_class):
         """Test that get_user_organizations raises GitHubOAuthError on API error."""
-        mock_response = MagicMock()
-        mock_response.status_code = 403
-        mock_response.json.return_value = {
-            "message": "Forbidden",
-        }
-        mock_get.return_value = mock_response
+        # Mock Github instance that raises exception
+        mock_github = MagicMock()
+        mock_github_class.return_value = mock_github
+
+        # Simulate PyGithub exception
+        from github import GithubException
+
+        mock_github.get_user.side_effect = GithubException(403, {"message": "Forbidden"})
 
         access_token = "invalid_token"
 
@@ -409,23 +434,24 @@ class TestGetUserOrganizations(TestCase):
 
         self.assertIn("403", str(context.exception))
 
-    @patch("apps.integrations.services.github_oauth.requests.get")
-    def test_get_user_organizations_sends_correct_headers(self, mock_get):
-        """Test that get_user_organizations sends correct headers."""
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = []
-        mock_get.return_value = mock_response
+    @patch("apps.integrations.services.github_oauth.Github")
+    def test_get_user_organizations_passes_correct_token(self, mock_github_class):
+        """Test that get_user_organizations initializes Github with correct token."""
+        # Mock Github instance
+        mock_github = MagicMock()
+        mock_github_class.return_value = mock_github
 
-        access_token = "test_token"
+        # Create mock user with empty orgs
+        mock_user = MagicMock()
+        mock_user.get_orgs.return_value = []
+        mock_github.get_user.return_value = mock_user
+
+        access_token = "test_token_xyz_123"
 
         get_user_organizations(access_token)
 
-        # Verify headers
-        call_kwargs = mock_get.call_args[1]
-        headers = call_kwargs["headers"]
-        self.assertEqual(headers["Authorization"], "token test_token")
-        self.assertEqual(headers["Accept"], "application/vnd.github.v3+json")
+        # Verify Github was initialized with the correct token
+        mock_github_class.assert_called_once_with("test_token_xyz_123")
 
 
 @override_settings(
@@ -435,33 +461,38 @@ class TestGetUserOrganizations(TestCase):
 class TestGetOrganizationMembers(TestCase):
     """Tests for fetching GitHub organization members."""
 
-    @patch("apps.integrations.services.github_oauth.requests.get")
-    def test_get_organization_members_returns_list(self, mock_get):
+    @patch("apps.integrations.services.github_oauth.Github")
+    def test_get_organization_members_returns_list(self, mock_github_class):
         """Test that get_organization_members returns a list of members."""
-        # Mock successful response from GitHub
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = [
-            {
-                "login": "user1",
-                "id": 1001,
-                "avatar_url": "https://avatars.githubusercontent.com/u/1001",
-                "type": "User",
-            },
-            {
-                "login": "user2",
-                "id": 1002,
-                "avatar_url": "https://avatars.githubusercontent.com/u/1002",
-                "type": "User",
-            },
-            {
-                "login": "bot1",
-                "id": 1003,
-                "avatar_url": "https://avatars.githubusercontent.com/u/1003",
-                "type": "Bot",
-            },
-        ]
-        mock_get.return_value = mock_response
+        # Mock Github instance
+        mock_github = MagicMock()
+        mock_github_class.return_value = mock_github
+
+        # Mock organization
+        mock_org = MagicMock()
+        mock_github.get_organization.return_value = mock_org
+
+        # Create mock member objects with attributes
+        mock_member1 = MagicMock()
+        mock_member1.login = "user1"
+        mock_member1.id = 1001
+        mock_member1.avatar_url = "https://avatars.githubusercontent.com/u/1001"
+        mock_member1.type = "User"
+
+        mock_member2 = MagicMock()
+        mock_member2.login = "user2"
+        mock_member2.id = 1002
+        mock_member2.avatar_url = "https://avatars.githubusercontent.com/u/1002"
+        mock_member2.type = "User"
+
+        mock_member3 = MagicMock()
+        mock_member3.login = "bot1"
+        mock_member3.id = 1003
+        mock_member3.avatar_url = "https://avatars.githubusercontent.com/u/1003"
+        mock_member3.type = "Bot"
+
+        # Mock get_members() to return list of mock members
+        mock_org.get_members.return_value = [mock_member1, mock_member2, mock_member3]
 
         access_token = "gho_test_token"
         org_slug = "acme-corp"
@@ -474,27 +505,32 @@ class TestGetOrganizationMembers(TestCase):
         self.assertEqual(result[1]["id"], 1002)
         self.assertEqual(result[2]["type"], "Bot")
 
-        # Verify the request
-        mock_get.assert_called_once()
-        call_args = mock_get.call_args
-        self.assertEqual(call_args[0][0], "https://api.github.com/orgs/acme-corp/members")
-        self.assertEqual(call_args[1]["headers"]["Authorization"], "token gho_test_token")
+        # Verify Github was initialized with the access token
+        mock_github_class.assert_called_once_with(access_token)
+        # Verify get_organization was called with org_slug
+        mock_github.get_organization.assert_called_once_with(org_slug)
+        # Verify get_members was called
+        mock_org.get_members.assert_called_once()
 
-    @patch("apps.integrations.services.github_oauth.requests.get")
-    def test_get_organization_members_each_member_has_required_fields(self, mock_get):
+    @patch("apps.integrations.services.github_oauth.Github")
+    def test_get_organization_members_each_member_has_required_fields(self, mock_github_class):
         """Test that each member has required fields: id, login, avatar_url, type."""
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = [
-            {
-                "login": "testuser",
-                "id": 12345,
-                "avatar_url": "https://avatars.githubusercontent.com/u/12345",
-                "type": "User",
-                "site_admin": False,
-            }
-        ]
-        mock_get.return_value = mock_response
+        # Mock Github instance
+        mock_github = MagicMock()
+        mock_github_class.return_value = mock_github
+
+        # Mock organization
+        mock_org = MagicMock()
+        mock_github.get_organization.return_value = mock_org
+
+        # Create mock member with all fields
+        mock_member = MagicMock()
+        mock_member.login = "testuser"
+        mock_member.id = 12345
+        mock_member.avatar_url = "https://avatars.githubusercontent.com/u/12345"
+        mock_member.type = "User"
+
+        mock_org.get_members.return_value = [mock_member]
 
         access_token = "gho_test_token"
         org_slug = "test-org"
@@ -508,13 +544,17 @@ class TestGetOrganizationMembers(TestCase):
         self.assertIn("avatar_url", member)
         self.assertIn("type", member)
 
-    @patch("apps.integrations.services.github_oauth.requests.get")
-    def test_get_organization_members_returns_empty_list_when_no_members(self, mock_get):
+    @patch("apps.integrations.services.github_oauth.Github")
+    def test_get_organization_members_returns_empty_list_when_no_members(self, mock_github_class):
         """Test that get_organization_members returns empty list for org with no members."""
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = []
-        mock_get.return_value = mock_response
+        # Mock Github instance
+        mock_github = MagicMock()
+        mock_github_class.return_value = mock_github
+
+        # Mock organization with no members
+        mock_org = MagicMock()
+        mock_github.get_organization.return_value = mock_org
+        mock_org.get_members.return_value = []
 
         access_token = "gho_test_token"
         org_slug = "empty-org"
@@ -524,16 +564,17 @@ class TestGetOrganizationMembers(TestCase):
         self.assertIsInstance(result, list)
         self.assertEqual(len(result), 0)
 
-    @patch("apps.integrations.services.github_oauth.requests.get")
-    def test_get_organization_members_raises_error_on_api_failure(self, mock_get):
-        """Test that get_organization_members raises GitHubOAuthError on API error."""
-        # Mock error response (e.g., 404 org not found, 403 no permission)
-        mock_response = MagicMock()
-        mock_response.status_code = 404
-        mock_response.json.return_value = {
-            "message": "Not Found",
-        }
-        mock_get.return_value = mock_response
+    @patch("apps.integrations.services.github_oauth.Github")
+    def test_get_organization_members_raises_error_on_404_not_found(self, mock_github_class):
+        """Test that get_organization_members raises GitHubOAuthError when org not found (404)."""
+        # Mock Github instance that raises exception
+        from github import UnknownObjectException
+
+        mock_github = MagicMock()
+        mock_github_class.return_value = mock_github
+
+        # Simulate 404 - organization not found
+        mock_github.get_organization.side_effect = UnknownObjectException(status=404, data={"message": "Not Found"})
 
         access_token = "gho_test_token"
         org_slug = "nonexistent-org"
@@ -543,15 +584,17 @@ class TestGetOrganizationMembers(TestCase):
 
         self.assertIn("404", str(context.exception))
 
-    @patch("apps.integrations.services.github_oauth.requests.get")
-    def test_get_organization_members_raises_error_on_403_forbidden(self, mock_get):
+    @patch("apps.integrations.services.github_oauth.Github")
+    def test_get_organization_members_raises_error_on_403_forbidden(self, mock_github_class):
         """Test that get_organization_members raises GitHubOAuthError when access is forbidden."""
-        mock_response = MagicMock()
-        mock_response.status_code = 403
-        mock_response.json.return_value = {
-            "message": "Forbidden",
-        }
-        mock_get.return_value = mock_response
+        # Mock Github instance that raises exception
+        from github import GithubException
+
+        mock_github = MagicMock()
+        mock_github_class.return_value = mock_github
+
+        # Simulate 403 - forbidden access
+        mock_github.get_organization.side_effect = GithubException(status=403, data={"message": "Forbidden"})
 
         access_token = "gho_test_token"
         org_slug = "private-org"
@@ -561,254 +604,69 @@ class TestGetOrganizationMembers(TestCase):
 
         self.assertIn("403", str(context.exception))
 
-    @patch("apps.integrations.services.github_oauth.requests.get")
-    def test_get_organization_members_sends_correct_headers(self, mock_get):
-        """Test that get_organization_members sends correct headers."""
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = []
-        mock_get.return_value = mock_response
+    @patch("apps.integrations.services.github_oauth.Github")
+    def test_get_organization_members_passes_correct_token(self, mock_github_class):
+        """Test that get_organization_members initializes Github with correct token."""
+        # Mock Github instance
+        mock_github = MagicMock()
+        mock_github_class.return_value = mock_github
+
+        # Mock organization with no members
+        mock_org = MagicMock()
+        mock_github.get_organization.return_value = mock_org
+        mock_org.get_members.return_value = []
 
         access_token = "test_token_xyz"
         org_slug = "my-org"
 
         get_organization_members(access_token, org_slug)
 
-        # Verify headers
-        call_kwargs = mock_get.call_args[1]
-        headers = call_kwargs["headers"]
-        self.assertEqual(headers["Authorization"], "token test_token_xyz")
-        self.assertEqual(headers["Accept"], "application/vnd.github.v3+json")
+        # Verify Github was initialized with the correct token
+        mock_github_class.assert_called_once_with("test_token_xyz")
 
-    @patch("apps.integrations.services.github_oauth.requests.get")
-    def test_get_organization_members_uses_correct_endpoint(self, mock_get):
-        """Test that get_organization_members uses correct API endpoint."""
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = []
-        mock_get.return_value = mock_response
+    @patch("apps.integrations.services.github_oauth.Github")
+    def test_get_organization_members_handles_pagination_automatically(self, mock_github_class):
+        """Test that get_organization_members iterates over PaginatedList correctly."""
+        # Mock Github instance
+        mock_github = MagicMock()
+        mock_github_class.return_value = mock_github
 
-        access_token = "gho_test_token"
-        org_slug = "my-test-org"
+        # Mock organization
+        mock_org = MagicMock()
+        mock_github.get_organization.return_value = mock_org
 
-        get_organization_members(access_token, org_slug)
+        # Create mock members across multiple pages
+        mock_members = []
+        for i in range(1, 136):  # 135 members (5 pages: 4x30 + 1x15)
+            mock_member = MagicMock()
+            mock_member.login = f"user{i}"
+            mock_member.id = 1000 + i
+            mock_member.avatar_url = f"https://avatars.githubusercontent.com/u/{1000 + i}"
+            mock_member.type = "User"
+            mock_members.append(mock_member)
 
-        # Verify the correct endpoint is called
-        mock_get.assert_called_once()
-        call_args = mock_get.call_args
-        self.assertEqual(call_args[0][0], "https://api.github.com/orgs/my-test-org/members")
-
-    @patch("apps.integrations.services.github_oauth.requests.get")
-    def test_get_organization_members_handles_pagination_with_next_link(self, mock_get):
-        """Test that get_organization_members fetches all pages when Link header has next relation."""
-        # Mock first page response with Link header pointing to page 2
-        mock_response_page1 = MagicMock()
-        mock_response_page1.status_code = 200
-        mock_response_page1.headers = {
-            "Link": '<https://api.github.com/orgs/acme-corp/members?page=2>; rel="next", '
-            '<https://api.github.com/orgs/acme-corp/members?page=3>; rel="last"'
-        }
-        mock_response_page1.json.return_value = [
-            {
-                "login": "user1",
-                "id": 1001,
-                "avatar_url": "https://avatars.githubusercontent.com/u/1001",
-                "type": "User",
-            },
-            {
-                "login": "user2",
-                "id": 1002,
-                "avatar_url": "https://avatars.githubusercontent.com/u/1002",
-                "type": "User",
-            },
-        ]
-
-        # Mock second page response with Link header pointing to page 3
-        mock_response_page2 = MagicMock()
-        mock_response_page2.status_code = 200
-        mock_response_page2.headers = {
-            "Link": '<https://api.github.com/orgs/acme-corp/members?page=3>; rel="next", '
-            '<https://api.github.com/orgs/acme-corp/members?page=3>; rel="last"'
-        }
-        mock_response_page2.json.return_value = [
-            {
-                "login": "user3",
-                "id": 1003,
-                "avatar_url": "https://avatars.githubusercontent.com/u/1003",
-                "type": "User",
-            },
-        ]
-
-        # Mock third page response with no next link (last page)
-        mock_response_page3 = MagicMock()
-        mock_response_page3.status_code = 200
-        mock_response_page3.headers = {
-            "Link": '<https://api.github.com/orgs/acme-corp/members?page=1>; rel="first", '
-            '<https://api.github.com/orgs/acme-corp/members?page=2>; rel="prev"'
-        }
-        mock_response_page3.json.return_value = [
-            {
-                "login": "user4",
-                "id": 1004,
-                "avatar_url": "https://avatars.githubusercontent.com/u/1004",
-                "type": "User",
-            },
-        ]
-
-        # Set up mock to return different responses for each call
-        mock_get.side_effect = [mock_response_page1, mock_response_page2, mock_response_page3]
-
-        access_token = "gho_test_token"
-        org_slug = "acme-corp"
-
-        result = get_organization_members(access_token, org_slug)
-
-        # Verify all pages were fetched and combined
-        self.assertIsInstance(result, list)
-        self.assertEqual(len(result), 4, "Should return all members from all pages combined")
-        self.assertEqual(result[0]["login"], "user1")
-        self.assertEqual(result[1]["login"], "user2")
-        self.assertEqual(result[2]["login"], "user3")
-        self.assertEqual(result[3]["login"], "user4")
-
-        # Verify requests.get was called 3 times (for 3 pages)
-        self.assertEqual(mock_get.call_count, 3, "Should make 3 API requests for 3 pages")
-
-        # Verify first call was to the base endpoint
-        first_call_args = mock_get.call_args_list[0]
-        self.assertEqual(first_call_args[0][0], "https://api.github.com/orgs/acme-corp/members")
-
-        # Verify subsequent calls used the URLs from Link headers
-        second_call_args = mock_get.call_args_list[1]
-        self.assertEqual(second_call_args[0][0], "https://api.github.com/orgs/acme-corp/members?page=2")
-
-        third_call_args = mock_get.call_args_list[2]
-        self.assertEqual(third_call_args[0][0], "https://api.github.com/orgs/acme-corp/members?page=3")
-
-    @patch("apps.integrations.services.github_oauth.requests.get")
-    def test_get_organization_members_stops_pagination_when_no_next_link(self, mock_get):
-        """Test that get_organization_members stops fetching when there's no next link (last page)."""
-        # Mock single page response with no next link
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.headers = {"Link": '<https://api.github.com/orgs/small-org/members?page=1>; rel="first"'}
-        mock_response.json.return_value = [
-            {
-                "login": "user1",
-                "id": 1001,
-                "avatar_url": "https://avatars.githubusercontent.com/u/1001",
-                "type": "User",
-            },
-            {
-                "login": "user2",
-                "id": 1002,
-                "avatar_url": "https://avatars.githubusercontent.com/u/1002",
-                "type": "User",
-            },
-        ]
-        mock_get.return_value = mock_response
-
-        access_token = "gho_test_token"
-        org_slug = "small-org"
-
-        result = get_organization_members(access_token, org_slug)
-
-        # Verify only one request was made
-        self.assertEqual(mock_get.call_count, 1, "Should only make 1 API request when no next link")
-
-        # Verify results are correct
-        self.assertEqual(len(result), 2)
-        self.assertEqual(result[0]["login"], "user1")
-        self.assertEqual(result[1]["login"], "user2")
-
-    @patch("apps.integrations.services.github_oauth.requests.get")
-    def test_get_organization_members_handles_response_without_link_header(self, mock_get):
-        """Test that get_organization_members handles responses without Link header (single page)."""
-        # Mock response with no Link header at all
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.headers = {}  # No Link header
-        mock_response.json.return_value = [
-            {
-                "login": "user1",
-                "id": 1001,
-                "avatar_url": "https://avatars.githubusercontent.com/u/1001",
-                "type": "User",
-            },
-        ]
-        mock_get.return_value = mock_response
-
-        access_token = "gho_test_token"
-        org_slug = "tiny-org"
-
-        result = get_organization_members(access_token, org_slug)
-
-        # Verify only one request was made
-        self.assertEqual(mock_get.call_count, 1, "Should only make 1 API request when no Link header")
-
-        # Verify results are correct
-        self.assertEqual(len(result), 1)
-        self.assertEqual(result[0]["login"], "user1")
-
-    @patch("apps.integrations.services.github_oauth.requests.get")
-    def test_get_organization_members_fetches_all_pages_for_large_org(self, mock_get):
-        """Test that get_organization_members fetches all pages for large organizations (30+ members)."""
-        # Simulate a large org with 5 pages (30 members each except last page)
-        responses = []
-        all_members = []
-
-        for page in range(1, 6):
-            mock_response = MagicMock()
-            mock_response.status_code = 200
-
-            # Create members for this page
-            page_members = []
-            members_on_page = 30 if page < 5 else 15  # Last page has 15 members
-            for i in range(members_on_page):
-                member_num = (page - 1) * 30 + i + 1
-                member = {
-                    "login": f"user{member_num}",
-                    "id": 1000 + member_num,
-                    "avatar_url": f"https://avatars.githubusercontent.com/u/{1000 + member_num}",
-                    "type": "User",
-                }
-                page_members.append(member)
-                all_members.append(member)
-
-            mock_response.json.return_value = page_members
-
-            # Add Link header (no next for last page)
-            if page < 5:
-                mock_response.headers = {
-                    "Link": f'<https://api.github.com/orgs/big-org/members?page={page + 1}>; rel="next", '
-                    '<https://api.github.com/orgs/big-org/members?page=5>; rel="last"'
-                }
-            else:
-                mock_response.headers = {
-                    "Link": '<https://api.github.com/orgs/big-org/members?page=1>; rel="first", '
-                    '<https://api.github.com/orgs/big-org/members?page=4>; rel="prev"'
-                }
-
-            responses.append(mock_response)
-
-        mock_get.side_effect = responses
+        # PyGithub's PaginatedList is iterable, so we just return the list
+        # The library handles pagination internally
+        mock_org.get_members.return_value = mock_members
 
         access_token = "gho_test_token"
         org_slug = "big-org"
 
         result = get_organization_members(access_token, org_slug)
 
-        # Verify all 135 members were fetched (4 pages of 30 + 1 page of 15)
-        self.assertEqual(len(result), 135, "Should return all 135 members from 5 pages")
-
-        # Verify 5 API requests were made
-        self.assertEqual(mock_get.call_count, 5, "Should make 5 API requests for 5 pages")
-
-        # Verify first and last members are correct
+        # Verify all members were returned
+        self.assertEqual(len(result), 135, "Should return all 135 members")
         self.assertEqual(result[0]["login"], "user1")
         self.assertEqual(result[0]["id"], 1001)
         self.assertEqual(result[134]["login"], "user135")
         self.assertEqual(result[134]["id"], 1135)
+
+        # Verify Github was called once with correct token
+        mock_github_class.assert_called_once_with(access_token)
+        # Verify get_organization was called once
+        mock_github.get_organization.assert_called_once_with(org_slug)
+        # Verify get_members was called once (pagination handled by PyGithub)
+        mock_org.get_members.assert_called_once()
 
 
 @override_settings(
@@ -818,23 +676,24 @@ class TestGetOrganizationMembers(TestCase):
 class TestGetUserDetails(TestCase):
     """Tests for fetching detailed information about a specific GitHub user."""
 
-    @patch("apps.integrations.services.github_oauth.requests.get")
-    def test_get_user_details_returns_user_data(self, mock_get):
+    @patch("apps.integrations.services.github_oauth.Github")
+    def test_get_user_details_returns_user_data(self, mock_github_class):
         """Test that get_user_details returns detailed user data from GitHub API."""
-        # Mock successful response from GitHub
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "login": "johndoe",
-            "id": 98765,
-            "name": "John Doe",
-            "email": "john.doe@example.com",
-            "avatar_url": "https://avatars.githubusercontent.com/u/98765",
-            "bio": "Software Engineer",
-            "company": "Acme Corp",
-            "location": "San Francisco",
-        }
-        mock_get.return_value = mock_response
+        # Mock GitHub client and user object
+        mock_github = MagicMock()
+        mock_github_class.return_value = mock_github
+
+        mock_user = MagicMock()
+        mock_user.login = "johndoe"
+        mock_user.id = 98765
+        mock_user.name = "John Doe"
+        mock_user.email = "john.doe@example.com"
+        mock_user.avatar_url = "https://avatars.githubusercontent.com/u/98765"
+        mock_user.bio = "Software Engineer"
+        mock_user.company = "Acme Corp"
+        mock_user.location = "San Francisco"
+
+        mock_github.get_user.return_value = mock_user
 
         access_token = "gho_test_token"
         username = "johndoe"
@@ -848,27 +707,29 @@ class TestGetUserDetails(TestCase):
         self.assertEqual(result["email"], "john.doe@example.com")
         self.assertEqual(result["avatar_url"], "https://avatars.githubusercontent.com/u/98765")
 
-        # Verify the request was made with correct endpoint
-        mock_get.assert_called_once()
-        call_args = mock_get.call_args
-        self.assertEqual(call_args[0][0], "https://api.github.com/users/johndoe")
-        self.assertEqual(call_args[1]["headers"]["Authorization"], "token gho_test_token")
+        # Verify Github was initialized with correct token
+        mock_github_class.assert_called_once_with("gho_test_token")
+        # Verify get_user was called with correct username
+        mock_github.get_user.assert_called_once_with("johndoe")
 
-    @patch("apps.integrations.services.github_oauth.requests.get")
-    def test_get_user_details_handles_null_name_and_email(self, mock_get):
+    @patch("apps.integrations.services.github_oauth.Github")
+    def test_get_user_details_handles_null_name_and_email(self, mock_github_class):
         """Test that get_user_details handles users with null name and email (private)."""
-        # Mock response with null name and email
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "login": "privateuser",
-            "id": 54321,
-            "name": None,
-            "email": None,
-            "avatar_url": "https://avatars.githubusercontent.com/u/54321",
-            "bio": None,
-        }
-        mock_get.return_value = mock_response
+        # Mock GitHub client and user object with null fields
+        mock_github = MagicMock()
+        mock_github_class.return_value = mock_github
+
+        mock_user = MagicMock()
+        mock_user.login = "privateuser"
+        mock_user.id = 54321
+        mock_user.name = None
+        mock_user.email = None
+        mock_user.avatar_url = "https://avatars.githubusercontent.com/u/54321"
+        mock_user.bio = None
+        mock_user.company = None
+        mock_user.location = None
+
+        mock_github.get_user.return_value = mock_user
 
         access_token = "gho_test_token"
         username = "privateuser"
@@ -882,17 +743,15 @@ class TestGetUserDetails(TestCase):
         self.assertIsNone(result["email"])
         self.assertEqual(result["avatar_url"], "https://avatars.githubusercontent.com/u/54321")
 
-    @patch("apps.integrations.services.github_oauth.requests.get")
-    def test_get_user_details_raises_error_on_user_not_found(self, mock_get):
+    @patch("apps.integrations.services.github_oauth.Github")
+    def test_get_user_details_raises_error_on_user_not_found(self, mock_github_class):
         """Test that get_user_details raises GitHubOAuthError when user is not found (404)."""
-        # Mock 404 response
-        mock_response = MagicMock()
-        mock_response.status_code = 404
-        mock_response.json.return_value = {
-            "message": "Not Found",
-            "documentation_url": "https://docs.github.com/rest/reference/users#get-a-user",
-        }
-        mock_get.return_value = mock_response
+        # Mock GitHub client that raises UnknownObjectException
+        from github import UnknownObjectException
+
+        mock_github = MagicMock()
+        mock_github_class.return_value = mock_github
+        mock_github.get_user.side_effect = UnknownObjectException(status=404, data={"message": "Not Found"})
 
         access_token = "gho_test_token"
         username = "nonexistentuser"
@@ -902,16 +761,15 @@ class TestGetUserDetails(TestCase):
 
         self.assertIn("404", str(context.exception))
 
-    @patch("apps.integrations.services.github_oauth.requests.get")
-    def test_get_user_details_raises_error_on_api_failure(self, mock_get):
+    @patch("apps.integrations.services.github_oauth.Github")
+    def test_get_user_details_raises_error_on_api_failure(self, mock_github_class):
         """Test that get_user_details raises GitHubOAuthError on API failures."""
-        # Mock 403 response
-        mock_response = MagicMock()
-        mock_response.status_code = 403
-        mock_response.json.return_value = {
-            "message": "API rate limit exceeded",
-        }
-        mock_get.return_value = mock_response
+        # Mock GitHub client that raises GithubException
+        from github import GithubException
+
+        mock_github = MagicMock()
+        mock_github_class.return_value = mock_github
+        mock_github.get_user.side_effect = GithubException(status=403, data={"message": "API rate limit exceeded"})
 
         access_token = "gho_test_token"
         username = "someuser"
@@ -921,54 +779,59 @@ class TestGetUserDetails(TestCase):
 
         self.assertIn("403", str(context.exception))
 
-    @patch("apps.integrations.services.github_oauth.requests.get")
-    def test_get_user_details_uses_correct_endpoint(self, mock_get):
-        """Test that get_user_details uses correct API endpoint: /users/{username}."""
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "login": "testuser",
-            "id": 123,
-            "name": "Test User",
-            "email": "test@example.com",
-            "avatar_url": "https://avatars.githubusercontent.com/u/123",
-        }
-        mock_get.return_value = mock_response
+    @patch("apps.integrations.services.github_oauth.Github")
+    def test_get_user_details_calls_get_user_with_username(self, mock_github_class):
+        """Test that get_user_details calls github.get_user() with the correct username."""
+        # Mock GitHub client and user object
+        mock_github = MagicMock()
+        mock_github_class.return_value = mock_github
+
+        mock_user = MagicMock()
+        mock_user.login = "testuser"
+        mock_user.id = 123
+        mock_user.name = "Test User"
+        mock_user.email = "test@example.com"
+        mock_user.avatar_url = "https://avatars.githubusercontent.com/u/123"
+        mock_user.bio = None
+        mock_user.company = None
+        mock_user.location = None
+
+        mock_github.get_user.return_value = mock_user
 
         access_token = "gho_test_token"
         username = "testuser"
 
         get_user_details(access_token, username)
 
-        # Verify the correct endpoint is called
-        mock_get.assert_called_once()
-        call_args = mock_get.call_args
-        self.assertEqual(call_args[0][0], "https://api.github.com/users/testuser")
+        # Verify get_user is called with correct username
+        mock_github.get_user.assert_called_once_with("testuser")
 
-    @patch("apps.integrations.services.github_oauth.requests.get")
-    def test_get_user_details_sends_correct_headers(self, mock_get):
-        """Test that get_user_details sends correct Authorization and Accept headers."""
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "login": "user",
-            "id": 999,
-            "name": "User",
-            "email": "user@example.com",
-            "avatar_url": "https://avatars.githubusercontent.com/u/999",
-        }
-        mock_get.return_value = mock_response
+    @patch("apps.integrations.services.github_oauth.Github")
+    def test_get_user_details_passes_correct_token(self, mock_github_class):
+        """Test that get_user_details initializes Github client with correct access token."""
+        # Mock GitHub client and user object
+        mock_github = MagicMock()
+        mock_github_class.return_value = mock_github
+
+        mock_user = MagicMock()
+        mock_user.login = "user"
+        mock_user.id = 999
+        mock_user.name = "User"
+        mock_user.email = "user@example.com"
+        mock_user.avatar_url = "https://avatars.githubusercontent.com/u/999"
+        mock_user.bio = None
+        mock_user.company = None
+        mock_user.location = None
+
+        mock_github.get_user.return_value = mock_user
 
         access_token = "test_token_xyz"
         username = "user"
 
         get_user_details(access_token, username)
 
-        # Verify headers
-        call_kwargs = mock_get.call_args[1]
-        headers = call_kwargs["headers"]
-        self.assertEqual(headers["Authorization"], "token test_token_xyz")
-        self.assertEqual(headers["Accept"], "application/vnd.github.v3+json")
+        # Verify Github is initialized with correct token
+        mock_github_class.assert_called_once_with("test_token_xyz")
 
 
 @override_settings(
@@ -978,38 +841,42 @@ class TestGetUserDetails(TestCase):
 class TestGetOrganizationRepositories(TestCase):
     """Tests for fetching GitHub organization repositories."""
 
-    @patch("apps.integrations.services.github_oauth.requests.get")
-    def test_get_organization_repositories_returns_list(self, mock_get):
+    @patch("apps.integrations.services.github_oauth.Github")
+    def test_get_organization_repositories_returns_list(self, mock_github_class):
         """Test that get_organization_repositories returns a list of repositories."""
-        # Mock successful response from GitHub
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.headers = {}
-        mock_response.json.return_value = [
-            {
-                "id": 123456,
-                "full_name": "acme-corp/backend-api",
-                "name": "backend-api",
-                "description": "Main backend API service",
-                "language": "Python",
-                "private": False,
-                "updated_at": "2025-01-15T10:30:00Z",
-                "archived": False,
-                "default_branch": "main",
-            },
-            {
-                "id": 123457,
-                "full_name": "acme-corp/frontend-app",
-                "name": "frontend-app",
-                "description": "React frontend application",
-                "language": "TypeScript",
-                "private": True,
-                "updated_at": "2025-01-14T09:20:00Z",
-                "archived": False,
-                "default_branch": "main",
-            },
-        ]
-        mock_get.return_value = mock_response
+        # Mock Github instance
+        mock_github = MagicMock()
+        mock_github_class.return_value = mock_github
+
+        # Mock organization
+        mock_org = MagicMock()
+        mock_github.get_organization.return_value = mock_org
+
+        # Create mock repository objects with attributes
+        mock_repo1 = MagicMock()
+        mock_repo1.id = 123456
+        mock_repo1.full_name = "acme-corp/backend-api"
+        mock_repo1.name = "backend-api"
+        mock_repo1.description = "Main backend API service"
+        mock_repo1.language = "Python"
+        mock_repo1.private = False
+        mock_repo1.updated_at = "2025-01-15T10:30:00Z"
+        mock_repo1.archived = False
+        mock_repo1.default_branch = "main"
+
+        mock_repo2 = MagicMock()
+        mock_repo2.id = 123457
+        mock_repo2.full_name = "acme-corp/frontend-app"
+        mock_repo2.name = "frontend-app"
+        mock_repo2.description = "React frontend application"
+        mock_repo2.language = "TypeScript"
+        mock_repo2.private = True
+        mock_repo2.updated_at = "2025-01-14T09:20:00Z"
+        mock_repo2.archived = False
+        mock_repo2.default_branch = "main"
+
+        # Mock get_repos() to return list of mock repos
+        mock_org.get_repos.return_value = [mock_repo1, mock_repo2]
 
         access_token = "gho_test_token"
         org_slug = "acme-corp"
@@ -1024,32 +891,37 @@ class TestGetOrganizationRepositories(TestCase):
         self.assertEqual(result[1]["name"], "frontend-app")
         self.assertEqual(result[1]["private"], True)
 
-        # Verify the request
-        mock_get.assert_called_once()
-        call_args = mock_get.call_args
-        self.assertEqual(call_args[0][0], "https://api.github.com/orgs/acme-corp/repos")
-        self.assertEqual(call_args[1]["headers"]["Authorization"], "token gho_test_token")
+        # Verify Github was initialized with the access token
+        mock_github_class.assert_called_once_with(access_token)
+        # Verify get_organization was called with org_slug
+        mock_github.get_organization.assert_called_once_with(org_slug)
+        # Verify get_repos was called
+        mock_org.get_repos.assert_called_once()
 
-    @patch("apps.integrations.services.github_oauth.requests.get")
-    def test_get_organization_repositories_each_repo_has_required_fields(self, mock_get):
+    @patch("apps.integrations.services.github_oauth.Github")
+    def test_get_organization_repositories_each_repo_has_required_fields(self, mock_github_class):
         """Test that each repository has required metadata fields."""
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.headers = {}
-        mock_response.json.return_value = [
-            {
-                "id": 789012,
-                "full_name": "test-org/test-repo",
-                "name": "test-repo",
-                "description": "Test repository",
-                "language": "JavaScript",
-                "private": False,
-                "updated_at": "2025-01-10T12:00:00Z",
-                "archived": False,
-                "default_branch": "main",
-            }
-        ]
-        mock_get.return_value = mock_response
+        # Mock Github instance
+        mock_github = MagicMock()
+        mock_github_class.return_value = mock_github
+
+        # Mock organization
+        mock_org = MagicMock()
+        mock_github.get_organization.return_value = mock_org
+
+        # Create mock repository with all required fields
+        mock_repo = MagicMock()
+        mock_repo.id = 789012
+        mock_repo.full_name = "test-org/test-repo"
+        mock_repo.name = "test-repo"
+        mock_repo.description = "Test repository"
+        mock_repo.language = "JavaScript"
+        mock_repo.private = False
+        mock_repo.updated_at = "2025-01-10T12:00:00Z"
+        mock_repo.archived = False
+        mock_repo.default_branch = "main"
+
+        mock_org.get_repos.return_value = [mock_repo]
 
         access_token = "gho_test_token"
         org_slug = "test-org"
@@ -1067,15 +939,19 @@ class TestGetOrganizationRepositories(TestCase):
         self.assertIn("private", repo)
         self.assertIn("updated_at", repo)
         self.assertIn("archived", repo)
+        self.assertIn("default_branch", repo)
 
-    @patch("apps.integrations.services.github_oauth.requests.get")
-    def test_get_organization_repositories_returns_empty_list_when_no_repos(self, mock_get):
+    @patch("apps.integrations.services.github_oauth.Github")
+    def test_get_organization_repositories_returns_empty_list_when_no_repos(self, mock_github_class):
         """Test that get_organization_repositories returns empty list for org with no repos."""
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.headers = {}
-        mock_response.json.return_value = []
-        mock_get.return_value = mock_response
+        # Mock Github instance
+        mock_github = MagicMock()
+        mock_github_class.return_value = mock_github
+
+        # Mock organization with no repos
+        mock_org = MagicMock()
+        mock_github.get_organization.return_value = mock_org
+        mock_org.get_repos.return_value = []
 
         access_token = "gho_test_token"
         org_slug = "empty-org"
@@ -1085,16 +961,17 @@ class TestGetOrganizationRepositories(TestCase):
         self.assertIsInstance(result, list)
         self.assertEqual(len(result), 0)
 
-    @patch("apps.integrations.services.github_oauth.requests.get")
-    def test_get_organization_repositories_raises_error_on_401_unauthorized(self, mock_get):
+    @patch("apps.integrations.services.github_oauth.Github")
+    def test_get_organization_repositories_raises_error_on_401_unauthorized(self, mock_github_class):
         """Test that get_organization_repositories raises GitHubOAuthError on 401 unauthorized."""
-        # Mock 401 response (invalid or expired token)
-        mock_response = MagicMock()
-        mock_response.status_code = 401
-        mock_response.json.return_value = {
-            "message": "Bad credentials",
-        }
-        mock_get.return_value = mock_response
+        # Mock Github instance that raises exception
+        from github import GithubException
+
+        mock_github = MagicMock()
+        mock_github_class.return_value = mock_github
+
+        # Simulate 401 - bad credentials
+        mock_github.get_organization.side_effect = GithubException(status=401, data={"message": "Bad credentials"})
 
         access_token = "invalid_token"
         org_slug = "acme-corp"
@@ -1104,16 +981,17 @@ class TestGetOrganizationRepositories(TestCase):
 
         self.assertIn("401", str(context.exception))
 
-    @patch("apps.integrations.services.github_oauth.requests.get")
-    def test_get_organization_repositories_raises_error_on_404_not_found(self, mock_get):
+    @patch("apps.integrations.services.github_oauth.Github")
+    def test_get_organization_repositories_raises_error_on_404_not_found(self, mock_github_class):
         """Test that get_organization_repositories raises GitHubOAuthError on 404 org not found."""
-        # Mock 404 response
-        mock_response = MagicMock()
-        mock_response.status_code = 404
-        mock_response.json.return_value = {
-            "message": "Not Found",
-        }
-        mock_get.return_value = mock_response
+        # Mock Github instance that raises exception
+        from github import UnknownObjectException
+
+        mock_github = MagicMock()
+        mock_github_class.return_value = mock_github
+
+        # Simulate 404 - organization not found
+        mock_github.get_organization.side_effect = UnknownObjectException(status=404, data={"message": "Not Found"})
 
         access_token = "gho_test_token"
         org_slug = "nonexistent-org"
@@ -1123,16 +1001,19 @@ class TestGetOrganizationRepositories(TestCase):
 
         self.assertIn("404", str(context.exception))
 
-    @patch("apps.integrations.services.github_oauth.requests.get")
-    def test_get_organization_repositories_raises_error_on_403_rate_limit(self, mock_get):
+    @patch("apps.integrations.services.github_oauth.Github")
+    def test_get_organization_repositories_raises_error_on_403_rate_limit(self, mock_github_class):
         """Test that get_organization_repositories raises GitHubOAuthError when rate limited."""
-        # Mock 403 response (rate limit exceeded)
-        mock_response = MagicMock()
-        mock_response.status_code = 403
-        mock_response.json.return_value = {
-            "message": "API rate limit exceeded",
-        }
-        mock_get.return_value = mock_response
+        # Mock Github instance that raises exception
+        from github import GithubException
+
+        mock_github = MagicMock()
+        mock_github_class.return_value = mock_github
+
+        # Simulate 403 - rate limit exceeded
+        mock_github.get_organization.side_effect = GithubException(
+            status=403, data={"message": "API rate limit exceeded"}
+        )
 
         access_token = "gho_test_token"
         org_slug = "acme-corp"
@@ -1142,230 +1023,72 @@ class TestGetOrganizationRepositories(TestCase):
 
         self.assertIn("403", str(context.exception))
 
-    @patch("apps.integrations.services.github_oauth.requests.get")
-    def test_get_organization_repositories_sends_correct_headers(self, mock_get):
-        """Test that get_organization_repositories sends correct headers."""
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.headers = {}
-        mock_response.json.return_value = []
-        mock_get.return_value = mock_response
+    @patch("apps.integrations.services.github_oauth.Github")
+    def test_get_organization_repositories_passes_correct_token(self, mock_github_class):
+        """Test that get_organization_repositories initializes Github with correct token."""
+        # Mock Github instance
+        mock_github = MagicMock()
+        mock_github_class.return_value = mock_github
+
+        # Mock organization with no repos
+        mock_org = MagicMock()
+        mock_github.get_organization.return_value = mock_org
+        mock_org.get_repos.return_value = []
 
         access_token = "test_token_xyz"
         org_slug = "my-org"
 
         get_organization_repositories(access_token, org_slug)
 
-        # Verify headers
-        call_kwargs = mock_get.call_args[1]
-        headers = call_kwargs["headers"]
-        self.assertEqual(headers["Authorization"], "token test_token_xyz")
-        self.assertEqual(headers["Accept"], "application/vnd.github.v3+json")
+        # Verify Github was initialized with the correct token
+        mock_github_class.assert_called_once_with("test_token_xyz")
 
-    @patch("apps.integrations.services.github_oauth.requests.get")
-    def test_get_organization_repositories_uses_correct_endpoint(self, mock_get):
-        """Test that get_organization_repositories uses correct API endpoint."""
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.headers = {}
-        mock_response.json.return_value = []
-        mock_get.return_value = mock_response
-
-        access_token = "gho_test_token"
-        org_slug = "my-test-org"
-
-        get_organization_repositories(access_token, org_slug)
-
-        # Verify the correct endpoint is called
-        mock_get.assert_called_once()
-        call_args = mock_get.call_args
-        self.assertEqual(call_args[0][0], "https://api.github.com/orgs/my-test-org/repos")
-
-    @patch("apps.integrations.services.github_oauth.requests.get")
-    def test_get_organization_repositories_handles_pagination_with_next_link(self, mock_get):
-        """Test that get_organization_repositories fetches all pages when Link header has next relation."""
-        # Mock first page response with Link header pointing to page 2
-        mock_response_page1 = MagicMock()
-        mock_response_page1.status_code = 200
-        mock_response_page1.headers = {
-            "Link": '<https://api.github.com/orgs/acme-corp/repos?page=2>; rel="next", '
-            '<https://api.github.com/orgs/acme-corp/repos?page=2>; rel="last"'
-        }
-        mock_response_page1.json.return_value = [
-            {
-                "id": 1001,
-                "full_name": "acme-corp/repo-1",
-                "name": "repo-1",
-                "description": "First repo",
-                "language": "Python",
-                "private": False,
-                "updated_at": "2025-01-15T10:00:00Z",
-                "archived": False,
-            },
-            {
-                "id": 1002,
-                "full_name": "acme-corp/repo-2",
-                "name": "repo-2",
-                "description": "Second repo",
-                "language": "JavaScript",
-                "private": False,
-                "updated_at": "2025-01-14T10:00:00Z",
-                "archived": False,
-            },
-        ]
-
-        # Mock second page response with no next link (last page)
-        mock_response_page2 = MagicMock()
-        mock_response_page2.status_code = 200
-        mock_response_page2.headers = {
-            "Link": '<https://api.github.com/orgs/acme-corp/repos?page=1>; rel="first", '
-            '<https://api.github.com/orgs/acme-corp/repos?page=1>; rel="prev"'
-        }
-        mock_response_page2.json.return_value = [
-            {
-                "id": 1003,
-                "full_name": "acme-corp/repo-3",
-                "name": "repo-3",
-                "description": "Third repo",
-                "language": "Go",
-                "private": True,
-                "updated_at": "2025-01-13T10:00:00Z",
-                "archived": False,
-            },
-        ]
-
-        # Set up mock to return different responses for each call
-        mock_get.side_effect = [mock_response_page1, mock_response_page2]
-
-        access_token = "gho_test_token"
-        org_slug = "acme-corp"
-
-        result = get_organization_repositories(access_token, org_slug)
-
-        # Verify all pages were fetched and combined
-        self.assertIsInstance(result, list)
-        self.assertEqual(len(result), 3, "Should return all repos from all pages combined")
-        self.assertEqual(result[0]["name"], "repo-1")
-        self.assertEqual(result[1]["name"], "repo-2")
-        self.assertEqual(result[2]["name"], "repo-3")
-
-        # Verify requests.get was called 2 times (for 2 pages)
-        self.assertEqual(mock_get.call_count, 2, "Should make 2 API requests for 2 pages")
-
-        # Verify first call was to the base endpoint
-        first_call_args = mock_get.call_args_list[0]
-        self.assertEqual(first_call_args[0][0], "https://api.github.com/orgs/acme-corp/repos")
-
-        # Verify second call used the URL from Link header
-        second_call_args = mock_get.call_args_list[1]
-        self.assertEqual(second_call_args[0][0], "https://api.github.com/orgs/acme-corp/repos?page=2")
-
-    @patch("apps.integrations.services.github_oauth.requests.get")
-    def test_get_organization_repositories_stops_pagination_when_no_next_link(self, mock_get):
-        """Test that get_organization_repositories stops fetching when there's no next link (last page)."""
-        # Mock single page response with no next link
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.headers = {"Link": '<https://api.github.com/orgs/small-org/repos?page=1>; rel="first"'}
-        mock_response.json.return_value = [
-            {
-                "id": 2001,
-                "full_name": "small-org/only-repo",
-                "name": "only-repo",
-                "description": "Only one repo",
-                "language": "Ruby",
-                "private": False,
-                "updated_at": "2025-01-12T10:00:00Z",
-                "archived": False,
-            },
-        ]
-        mock_get.return_value = mock_response
-
-        access_token = "gho_test_token"
-        org_slug = "small-org"
-
-        result = get_organization_repositories(access_token, org_slug)
-
-        # Verify only one request was made
-        self.assertEqual(mock_get.call_count, 1, "Should only make 1 API request when no next link")
-
-        # Verify results are correct
-        self.assertEqual(len(result), 1)
-        self.assertEqual(result[0]["name"], "only-repo")
-
-    @patch("apps.integrations.services.github_oauth.requests.get")
-    def test_get_organization_repositories_handles_response_without_link_header(self, mock_get):
-        """Test that get_organization_repositories handles responses without Link header (single page)."""
-        # Mock response with no Link header at all
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.headers = {}  # No Link header
-        mock_response.json.return_value = [
-            {
-                "id": 3001,
-                "full_name": "tiny-org/single-repo",
-                "name": "single-repo",
-                "description": "Only repo",
-                "language": "Rust",
-                "private": True,
-                "updated_at": "2025-01-11T10:00:00Z",
-                "archived": False,
-            },
-        ]
-        mock_get.return_value = mock_response
-
-        access_token = "gho_test_token"
-        org_slug = "tiny-org"
-
-        result = get_organization_repositories(access_token, org_slug)
-
-        # Verify only one request was made
-        self.assertEqual(mock_get.call_count, 1, "Should only make 1 API request when no Link header")
-
-        # Verify results are correct
-        self.assertEqual(len(result), 1)
-        self.assertEqual(result[0]["name"], "single-repo")
-
-    @patch("apps.integrations.services.github_oauth.requests.get")
-    def test_get_organization_repositories_can_filter_archived_repos(self, mock_get):
+    @patch("apps.integrations.services.github_oauth.Github")
+    def test_get_organization_repositories_can_filter_archived_repos(self, mock_github_class):
         """Test that get_organization_repositories can filter out archived repositories."""
-        # Mock response with both active and archived repos
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.headers = {}
-        mock_response.json.return_value = [
-            {
-                "id": 4001,
-                "full_name": "org/active-repo",
-                "name": "active-repo",
-                "description": "Active repository",
-                "language": "Python",
-                "private": False,
-                "updated_at": "2025-01-15T10:00:00Z",
-                "archived": False,
-            },
-            {
-                "id": 4002,
-                "full_name": "org/archived-repo",
-                "name": "archived-repo",
-                "description": "Archived repository",
-                "language": "Python",
-                "private": False,
-                "updated_at": "2023-06-10T10:00:00Z",
-                "archived": True,
-            },
-            {
-                "id": 4003,
-                "full_name": "org/another-active-repo",
-                "name": "another-active-repo",
-                "description": "Another active repository",
-                "language": "JavaScript",
-                "private": True,
-                "updated_at": "2025-01-14T10:00:00Z",
-                "archived": False,
-            },
-        ]
-        mock_get.return_value = mock_response
+        # Mock Github instance
+        mock_github = MagicMock()
+        mock_github_class.return_value = mock_github
+
+        # Mock organization
+        mock_org = MagicMock()
+        mock_github.get_organization.return_value = mock_org
+
+        # Create mock repos with both active and archived
+        mock_repo1 = MagicMock()
+        mock_repo1.id = 4001
+        mock_repo1.full_name = "org/active-repo"
+        mock_repo1.name = "active-repo"
+        mock_repo1.description = "Active repository"
+        mock_repo1.language = "Python"
+        mock_repo1.private = False
+        mock_repo1.updated_at = "2025-01-15T10:00:00Z"
+        mock_repo1.archived = False
+        mock_repo1.default_branch = "main"
+
+        mock_repo2 = MagicMock()
+        mock_repo2.id = 4002
+        mock_repo2.full_name = "org/archived-repo"
+        mock_repo2.name = "archived-repo"
+        mock_repo2.description = "Archived repository"
+        mock_repo2.language = "Python"
+        mock_repo2.private = False
+        mock_repo2.updated_at = "2023-06-10T10:00:00Z"
+        mock_repo2.archived = True
+        mock_repo2.default_branch = "main"
+
+        mock_repo3 = MagicMock()
+        mock_repo3.id = 4003
+        mock_repo3.full_name = "org/another-active-repo"
+        mock_repo3.name = "another-active-repo"
+        mock_repo3.description = "Another active repository"
+        mock_repo3.language = "JavaScript"
+        mock_repo3.private = True
+        mock_repo3.updated_at = "2025-01-14T10:00:00Z"
+        mock_repo3.archived = False
+        mock_repo3.default_branch = "main"
+
+        mock_org.get_repos.return_value = [mock_repo1, mock_repo2, mock_repo3]
 
         access_token = "gho_test_token"
         org_slug = "org"
@@ -1384,36 +1107,41 @@ class TestGetOrganizationRepositories(TestCase):
         archived_names = [repo["name"] for repo in result]
         self.assertNotIn("archived-repo", archived_names)
 
-    @patch("apps.integrations.services.github_oauth.requests.get")
-    def test_get_organization_repositories_includes_archived_by_default(self, mock_get):
+    @patch("apps.integrations.services.github_oauth.Github")
+    def test_get_organization_repositories_includes_archived_by_default(self, mock_github_class):
         """Test that get_organization_repositories includes archived repos by default."""
-        # Mock response with both active and archived repos
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.headers = {}
-        mock_response.json.return_value = [
-            {
-                "id": 5001,
-                "full_name": "org/active-repo",
-                "name": "active-repo",
-                "description": "Active repository",
-                "language": "Python",
-                "private": False,
-                "updated_at": "2025-01-15T10:00:00Z",
-                "archived": False,
-            },
-            {
-                "id": 5002,
-                "full_name": "org/archived-repo",
-                "name": "archived-repo",
-                "description": "Archived repository",
-                "language": "Python",
-                "private": False,
-                "updated_at": "2023-06-10T10:00:00Z",
-                "archived": True,
-            },
-        ]
-        mock_get.return_value = mock_response
+        # Mock Github instance
+        mock_github = MagicMock()
+        mock_github_class.return_value = mock_github
+
+        # Mock organization
+        mock_org = MagicMock()
+        mock_github.get_organization.return_value = mock_org
+
+        # Create mock repos with both active and archived
+        mock_repo1 = MagicMock()
+        mock_repo1.id = 5001
+        mock_repo1.full_name = "org/active-repo"
+        mock_repo1.name = "active-repo"
+        mock_repo1.description = "Active repository"
+        mock_repo1.language = "Python"
+        mock_repo1.private = False
+        mock_repo1.updated_at = "2025-01-15T10:00:00Z"
+        mock_repo1.archived = False
+        mock_repo1.default_branch = "main"
+
+        mock_repo2 = MagicMock()
+        mock_repo2.id = 5002
+        mock_repo2.full_name = "org/archived-repo"
+        mock_repo2.name = "archived-repo"
+        mock_repo2.description = "Archived repository"
+        mock_repo2.language = "Python"
+        mock_repo2.private = False
+        mock_repo2.updated_at = "2023-06-10T10:00:00Z"
+        mock_repo2.archived = True
+        mock_repo2.default_branch = "main"
+
+        mock_org.get_repos.return_value = [mock_repo1, mock_repo2]
 
         access_token = "gho_test_token"
         org_slug = "org"
