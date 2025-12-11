@@ -1,0 +1,128 @@
+# Render Blueprint - Infrastructure as Code
+# https://docs.render.com/blueprint-spec
+#
+# Deploy: Connect repo in Render Dashboard → New Blueprint → Select this repo
+#
+# FREE TIER - For testing only
+# Limitations:
+#   - Web sleeps after 15 min inactivity (slow cold starts)
+#   - Database expires after 30 days!
+#   - No Celery worker (no background sync)
+#
+# To upgrade to paid ($24/mo), change:
+#   - Web plan: starter
+#   - Database plan: basic-256mb
+#   - Uncomment the worker section
+
+services:
+  # ===================
+  # Web Service (Django)
+  # ===================
+  - type: web
+    name: tformance-web
+    runtime: docker
+    dockerfilePath: ./Dockerfile.web
+    region: oregon  # Change to your preferred region
+    plan: free      # FREE - sleeps after 15 min inactivity
+    healthCheckPath: /health/
+    envVars:
+      # Database connection (auto-populated from database)
+      - key: DATABASE_URL
+        fromDatabase:
+          name: tformance-db
+          property: connectionString
+      # Redis connection (auto-populated from redis)
+      - key: REDIS_URL
+        fromService:
+          name: tformance-redis
+          type: redis
+          property: connectionString
+      # Django settings
+      - key: DJANGO_SETTINGS_MODULE
+        value: tformance.settings_production
+      - key: DEBUG
+        value: "False"
+      # Security - auto-generated
+      - key: SECRET_KEY
+        generateValue: true
+      # Allowed hosts - SET THIS in Render Dashboard after first deploy
+      - key: ALLOWED_HOSTS
+        sync: false
+      # Sentry (optional) - SET THIS in Render Dashboard
+      - key: SENTRY_DSN
+        sync: false
+      # Stripe (optional) - SET THIS in Render Dashboard
+      - key: STRIPE_LIVE_PUBLIC_KEY
+        sync: false
+      - key: STRIPE_LIVE_SECRET_KEY
+        sync: false
+      - key: STRIPE_TEST_PUBLIC_KEY
+        sync: false
+      - key: STRIPE_TEST_SECRET_KEY
+        sync: false
+      - key: DJSTRIPE_WEBHOOK_SECRET
+        sync: false
+      # GitHub OAuth - SET THIS in Render Dashboard
+      - key: GITHUB_CLIENT_ID
+        sync: false
+      - key: GITHUB_CLIENT_SECRET
+        sync: false
+    buildCommand: ./build.sh
+    # Note: Migrations run in build.sh
+
+  # ===================
+  # Celery Worker (COMMENTED OUT FOR FREE TIER)
+  # ===================
+  # Uncomment this section when upgrading to paid plan ($9/mo)
+  # - type: worker
+  #   name: tformance-worker
+  #   runtime: docker
+  #   dockerfilePath: ./Dockerfile.web
+  #   dockerCommand: celery -A tformance worker -l INFO --beat
+  #   region: oregon
+  #   plan: starter  # $9/mo - Required for background jobs
+  #   envVars:
+  #     - key: DATABASE_URL
+  #       fromDatabase:
+  #         name: tformance-db
+  #         property: connectionString
+  #     - key: REDIS_URL
+  #       fromService:
+  #         name: tformance-redis
+  #         type: redis
+  #         property: connectionString
+  #     - key: DJANGO_SETTINGS_MODULE
+  #       value: tformance.settings_production
+  #     - key: DEBUG
+  #       value: "False"
+  #     - key: SECRET_KEY
+  #       fromService:
+  #         name: tformance-web
+  #         type: web
+  #         envVarKey: SECRET_KEY
+  #     - key: GITHUB_CLIENT_ID
+  #       sync: false
+  #     - key: GITHUB_CLIENT_SECRET
+  #       sync: false
+  #   buildCommand: ./build_celery.sh
+
+  # ===================
+  # Redis (for Celery broker + cache)
+  # ===================
+  - type: redis
+    name: tformance-redis
+    region: oregon
+    plan: free      # Free tier: 25MB, 50 connections
+    ipAllowList: [] # Only allow internal connections
+
+# ===================
+# PostgreSQL Database
+# ===================
+databases:
+  - name: tformance-db
+    region: oregon
+    plan: free         # FREE - expires after 30 days!
+    # plan: basic-256mb  # $6/mo - Upgrade for persistent database
+    databaseName: tformance
+    user: tformance
+    ipAllowList: []    # Only allow internal connections
