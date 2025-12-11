@@ -402,6 +402,77 @@ class TestPullRequestModel(TestCase):
         self.assertIsNone(get_current_team())
         self.assertEqual(PullRequest.for_team.count(), 0)
 
+    def test_pull_request_creation_with_jira_key(self):
+        """Test that PullRequest can be created with a jira_key."""
+        pr = PullRequest.objects.create(
+            team=self.team1,
+            github_pr_id=1001,
+            github_repo="org/repo",
+            state="open",
+            jira_key="PROJ-123",
+        )
+        self.assertEqual(pr.jira_key, "PROJ-123")
+        self.assertIsNotNone(pr.pk)
+
+    def test_pull_request_jira_key_defaults_to_empty_string(self):
+        """Test that PullRequest.jira_key defaults to empty string when not provided."""
+        pr = PullRequest.objects.create(
+            team=self.team1,
+            github_pr_id=1002,
+            github_repo="org/repo",
+            state="open",
+        )
+        self.assertEqual(pr.jira_key, "")
+
+    def test_pull_request_jira_key_can_be_filtered(self):
+        """Test that PullRequest objects can be filtered by jira_key."""
+        # Create PRs with different jira_keys
+        pr1 = PullRequest.objects.create(
+            team=self.team1,
+            github_pr_id=1003,
+            github_repo="org/repo",
+            state="open",
+            jira_key="PROJ-100",
+        )
+        PullRequest.objects.create(
+            team=self.team1,
+            github_pr_id=1004,
+            github_repo="org/repo",
+            state="open",
+            jira_key="PROJ-101",
+        )
+        pr3 = PullRequest.objects.create(
+            team=self.team1,
+            github_pr_id=1005,
+            github_repo="org/repo",
+            state="open",
+            jira_key="",
+        )
+
+        # Filter by specific jira_key
+        proj_100_prs = PullRequest.objects.filter(jira_key="PROJ-100")
+        self.assertEqual(proj_100_prs.count(), 1)
+        self.assertEqual(proj_100_prs.first().pk, pr1.pk)
+
+        # Filter by empty jira_key
+        no_jira_prs = PullRequest.objects.filter(jira_key="")
+        self.assertEqual(no_jira_prs.count(), 1)
+        self.assertEqual(no_jira_prs.first().pk, pr3.pk)
+
+    def test_pull_request_jira_key_max_length(self):
+        """Test that PullRequest.jira_key respects max_length of 50."""
+        # Create a jira_key exactly 50 characters long
+        long_jira_key = "PROJ-" + "1" * 45  # Total 50 chars
+        pr = PullRequest.objects.create(
+            team=self.team1,
+            github_pr_id=1006,
+            github_repo="org/repo",
+            state="open",
+            jira_key=long_jira_key,
+        )
+        self.assertEqual(len(pr.jira_key), 50)
+        self.assertEqual(pr.jira_key, long_jira_key)
+
 
 class TestPRReviewModel(TestCase):
     """Tests for PRReview model."""
@@ -1791,3 +1862,23 @@ class TestWeeklyMetricsModel(TestCase):
     def test_weekly_metrics_verbose_name_plural(self):
         """Test that WeeklyMetrics has correct verbose_name_plural."""
         self.assertEqual(WeeklyMetrics._meta.verbose_name_plural, "Weekly Metrics")
+
+
+class TestPullRequestFactory(TestCase):
+    """Tests for PullRequestFactory."""
+
+    def test_pull_request_factory_supports_jira_key_parameter(self):
+        """Test that PullRequestFactory can create PullRequest with jira_key parameter."""
+        from apps.metrics.factories import PullRequestFactory
+
+        pr = PullRequestFactory(jira_key="PROJ-999")
+        self.assertEqual(pr.jira_key, "PROJ-999")
+        self.assertIsNotNone(pr.pk)
+
+    def test_pull_request_factory_jira_key_defaults_to_empty(self):
+        """Test that PullRequestFactory creates PullRequest with empty jira_key by default."""
+        from apps.metrics.factories import PullRequestFactory
+
+        pr = PullRequestFactory()
+        self.assertEqual(pr.jira_key, "")
+        self.assertIsNotNone(pr.pk)

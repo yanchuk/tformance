@@ -201,6 +201,16 @@ class PullRequest(BaseTeamModel):
         help_text="Whether this is a hotfix PR",
     )
 
+    # Jira integration
+    jira_key = models.CharField(
+        max_length=50,
+        blank=True,
+        db_index=True,
+        default="",
+        verbose_name="Jira Key",
+        help_text="Extracted Jira issue key from PR title or branch (e.g., PROJ-123)",
+    )
+
     # Sync tracking
     synced_at = models.DateTimeField(
         auto_now=True,

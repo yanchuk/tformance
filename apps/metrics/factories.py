@@ -103,6 +103,7 @@ class PullRequestFactory(DjangoModelFactory):
     deletions = factory.LazyFunction(lambda: random.randint(5, 200))
     is_revert = factory.LazyFunction(lambda: random.random() < 0.05)  # 5% reverts
     is_hotfix = factory.LazyFunction(lambda: random.random() < 0.1)  # 10% hotfixes
+    jira_key = ""
 
 
 class PRReviewFactory(DjangoModelFactory):

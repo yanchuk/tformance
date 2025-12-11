@@ -7,6 +7,7 @@ Functions to process GitHub webhook payloads and create/update database records.
 from datetime import datetime
 from decimal import Decimal
 
+from apps.integrations.services.jira_utils import extract_jira_key
 from apps.metrics.models import PRReview, PullRequest, TeamMember
 
 
@@ -138,6 +139,14 @@ def _map_github_pr_to_fields(team, pr_data: dict) -> dict:
     is_revert = "revert" in title.lower()
     is_hotfix = "hotfix" in title.lower()
 
+    # Extract jira_key from pr_data if present, otherwise extract from title/branch
+    jira_key = pr_data.get("jira_key")
+    if not jira_key:
+        # Extract from title, fall back to branch name
+        head_data = pr_data.get("head", {})
+        branch_name = head_data.get("ref", "")
+        jira_key = extract_jira_key(title) or extract_jira_key(branch_name) or ""
+
     return {
         "title": title,
         "author": author,
@@ -149,6 +158,7 @@ def _map_github_pr_to_fields(team, pr_data: dict) -> dict:
         "deletions": deletions,
         "is_revert": is_revert,
         "is_hotfix": is_hotfix,
+        "jira_key": jira_key,
     }
 
 

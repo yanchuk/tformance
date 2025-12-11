@@ -5,6 +5,7 @@ from datetime import datetime
 from github import Github, GithubException
 
 from apps.integrations.services.github_oauth import GitHubOAuthError
+from apps.integrations.services.jira_utils import extract_jira_key
 
 __all__ = [
     "GitHubOAuthError",
@@ -25,6 +26,9 @@ def _convert_pr_to_dict(pr) -> dict:
     Returns:
         Dictionary with PR data in standardized format
     """
+    # Extract jira_key from title, fall back to branch name
+    jira_key = extract_jira_key(pr.title) or extract_jira_key(pr.head.ref) or ""
+
     return {
         "id": pr.id,
         "number": pr.number,
@@ -50,6 +54,7 @@ def _convert_pr_to_dict(pr) -> dict:
             "sha": pr.head.sha,
         },
         "html_url": pr.html_url,
+        "jira_key": jira_key,
     }
 
 
