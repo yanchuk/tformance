@@ -4,13 +4,13 @@ import logging
 import secrets
 
 from django.contrib import messages
-from django.http import HttpResponseNotAllowed
+from django.http import HttpResponseNotAllowed, HttpResponseNotFound, JsonResponse
 from django.shortcuts import redirect, render
 from django.template.response import TemplateResponse
 from django.urls import reverse
 
 from apps.integrations.models import GitHubIntegration, IntegrationCredential
-from apps.integrations.services import github_oauth, github_webhooks, member_sync
+from apps.integrations.services import github_oauth, github_sync, github_webhooks, member_sync
 from apps.integrations.services.encryption import decrypt, encrypt
 from apps.integrations.services.github_oauth import GitHubOAuthError
 from apps.metrics.models import TeamMember
@@ -540,12 +540,15 @@ def github_repos(request, team_slug):
 
     # Get tracked repos with webhook_id
     tracked_repos = TrackedRepository.objects.filter(team=team)
-    tracked_repo_map = {tr.github_repo_id: tr.webhook_id for tr in tracked_repos}
+    tracked_repo_map = {tr.github_repo_id: tr for tr in tracked_repos}
 
-    # Mark repos as tracked and include webhook_id
+    # Mark repos as tracked and include webhook_id, last_sync_at, and tracked_repo_id
     for repo in repos:
-        repo["is_tracked"] = repo["id"] in tracked_repo_map
-        repo["webhook_id"] = tracked_repo_map.get(repo["id"])
+        tracked = tracked_repo_map.get(repo["id"])
+        repo["is_tracked"] = tracked is not None
+        repo["webhook_id"] = tracked.webhook_id if tracked else None
+        repo["last_sync_at"] = tracked.last_sync_at if tracked else None
+        repo["tracked_repo_id"] = tracked.id if tracked else None
 
     context = {
         "repos": repos,
@@ -607,7 +610,7 @@ def github_repo_toggle(request, team_slug, repo_id):
             webhook_id = _create_repository_webhook(access_token, full_name, webhook_url, integration.webhook_secret)
 
             # Create tracked repository with webhook_id (or None if webhook creation failed)
-            TrackedRepository.objects.create(
+            tracked_repo = TrackedRepository.objects.create(
                 team=team,
                 integration=integration,
                 github_repo_id=repo_id,
@@ -616,12 +619,30 @@ def github_repo_toggle(request, team_slug, repo_id):
                 webhook_id=webhook_id,
             )
             is_tracked = True
+
+            # Trigger historical sync after tracking
+            try:
+                github_sync.sync_repository_history(tracked_repo)
+            except Exception as e:
+                logger.error(f"Failed to sync historical data for {full_name}: {e}")
+                # Don't fail the toggle - repo is tracked, sync can happen later
         else:
             is_tracked = False
 
     # Build repo data for template
     # Parse name from full_name (e.g., "acme-corp/repo-1" -> "repo-1")
     name = full_name.split("/")[-1] if full_name else ""
+
+    # Get tracked_repo_id and last_sync_at if repo is tracked
+    tracked_repo_id = None
+    last_sync_at = None
+    if is_tracked:
+        try:
+            tracked_repo = TrackedRepository.objects.get(team=team, github_repo_id=repo_id)
+            tracked_repo_id = tracked_repo.id
+            last_sync_at = tracked_repo.last_sync_at
+        except TrackedRepository.DoesNotExist:
+            pass
 
     context = {
         "repo": {
@@ -631,6 +652,8 @@ def github_repo_toggle(request, team_slug, repo_id):
             "description": "",  # Not available after toggle
             "is_tracked": is_tracked,
             "webhook_id": webhook_id,
+            "tracked_repo_id": tracked_repo_id,
+            "last_sync_at": last_sync_at,
         }
     }
 
@@ -641,3 +664,37 @@ def github_repo_toggle(request, team_slug, repo_id):
 
     # Non-HTMX: redirect to repos page
     return redirect("integrations:github_repos", team_slug=team.slug)
+
+
+@login_and_team_required
+def github_repo_sync(request, team_slug, repo_id):
+    """Manually trigger historical sync for a tracked repository.
+
+    Args:
+        request: The HTTP request object.
+        team_slug: The slug of the team.
+        repo_id: The ID of the tracked repository to sync.
+
+    Returns:
+        JsonResponse with sync results or error.
+    """
+    from apps.integrations.models import TrackedRepository
+
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+
+    team = request.team
+
+    # Find the TrackedRepository
+    try:
+        tracked_repo = TrackedRepository.objects.get(team=team, id=repo_id)
+    except TrackedRepository.DoesNotExist:
+        return HttpResponseNotFound("Repository not found")
+
+    # Trigger sync
+    try:
+        result = github_sync.sync_repository_history(tracked_repo)
+        return JsonResponse(result)
+    except Exception as e:
+        logger.error(f"Failed to sync repository {tracked_repo.full_name}: {e}")
+        return JsonResponse({"error": str(e)}, status=500)

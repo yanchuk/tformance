@@ -1321,6 +1321,130 @@ class GitHubReposViewTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "integrations/github_repos.html")
 
+    @patch("apps.integrations.services.github_oauth.get_organization_repositories")
+    def test_github_repos_shows_sync_status_for_synced_repos(self, mock_get_repos):
+        """Test that synced repos show 'Synced' badge with last_sync_at."""
+        from django.utils import timezone
+
+        from apps.integrations.factories import TrackedRepositoryFactory
+
+        # Create GitHub integration
+        integration = GitHubIntegrationFactory(team=self.team, organization_slug="acme-corp")
+
+        # Create a tracked repo with last_sync_at set
+        sync_time = timezone.now()
+        TrackedRepositoryFactory(
+            team=self.team,
+            integration=integration,
+            github_repo_id=12345,
+            full_name="acme-corp/test-repo",
+            last_sync_at=sync_time,
+        )
+
+        # Mock GitHub API response
+        mock_get_repos.return_value = [
+            {"id": 12345, "name": "test-repo", "full_name": "acme-corp/test-repo", "description": "Test repo"}
+        ]
+
+        self.client.force_login(self.admin)
+
+        response = self.client.get(reverse("integrations:github_repos", args=[self.team.slug]))
+
+        # Should successfully render
+        self.assertEqual(response.status_code, 200)
+
+        # Should contain "Synced" badge
+        self.assertContains(response, "Synced")
+
+    @patch("apps.integrations.services.github_oauth.get_organization_repositories")
+    def test_github_repos_shows_not_synced_for_unsynced_repos(self, mock_get_repos):
+        """Test that unsynced repos show 'Not synced' badge when last_sync_at is None."""
+        from apps.integrations.factories import TrackedRepositoryFactory
+
+        # Create GitHub integration
+        integration = GitHubIntegrationFactory(team=self.team, organization_slug="acme-corp")
+
+        # Create a tracked repo WITHOUT last_sync_at
+        TrackedRepositoryFactory(
+            team=self.team,
+            integration=integration,
+            github_repo_id=12345,
+            full_name="acme-corp/test-repo",
+            last_sync_at=None,
+        )
+
+        # Mock GitHub API response
+        mock_get_repos.return_value = [
+            {"id": 12345, "name": "test-repo", "full_name": "acme-corp/test-repo", "description": "Test repo"}
+        ]
+
+        self.client.force_login(self.admin)
+
+        response = self.client.get(reverse("integrations:github_repos", args=[self.team.slug]))
+
+        # Should successfully render
+        self.assertEqual(response.status_code, 200)
+
+        # Should contain "Not synced" badge
+        self.assertContains(response, "Not synced")
+
+    @patch("apps.integrations.services.github_oauth.get_organization_repositories")
+    def test_github_repos_shows_sync_button_for_tracked_repos(self, mock_get_repos):
+        """Test that tracked repos show a sync button."""
+        from apps.integrations.factories import TrackedRepositoryFactory
+
+        # Create GitHub integration
+        integration = GitHubIntegrationFactory(team=self.team, organization_slug="acme-corp")
+
+        # Create a tracked repo
+        tracked_repo = TrackedRepositoryFactory(
+            team=self.team,
+            integration=integration,
+            github_repo_id=12345,
+            full_name="acme-corp/test-repo",
+            last_sync_at=None,
+        )
+
+        # Mock GitHub API response
+        mock_get_repos.return_value = [
+            {"id": 12345, "name": "test-repo", "full_name": "acme-corp/test-repo", "description": "Test repo"}
+        ]
+
+        self.client.force_login(self.admin)
+
+        response = self.client.get(reverse("integrations:github_repos", args=[self.team.slug]))
+
+        # Should successfully render
+        self.assertEqual(response.status_code, 200)
+
+        # Should contain sync button with HTMX post to github_repo_sync
+        expected_url = reverse("integrations:github_repo_sync", args=[self.team.slug, tracked_repo.id])
+        self.assertContains(response, expected_url)
+        # Should have HTMX attributes
+        self.assertContains(response, 'hx-post="')
+
+    @patch("apps.integrations.services.github_oauth.get_organization_repositories")
+    def test_github_repos_does_not_show_sync_button_for_untracked_repos(self, mock_get_repos):
+        """Test that untracked repos do not show a sync button."""
+        # Create GitHub integration
+        GitHubIntegrationFactory(team=self.team, organization_slug="acme-corp")
+
+        # Mock GitHub API response - untracked repo
+        mock_get_repos.return_value = [
+            {"id": 12345, "name": "test-repo", "full_name": "acme-corp/test-repo", "description": "Test repo"}
+        ]
+
+        self.client.force_login(self.admin)
+
+        response = self.client.get(reverse("integrations:github_repos", args=[self.team.slug]))
+
+        # Should successfully render
+        self.assertEqual(response.status_code, 200)
+
+        # Should NOT contain sync button URL (repo is not tracked)
+        sync_url_pattern = "github_repo_sync"
+        self.assertNotContains(response, sync_url_pattern)
+
 
 class GitHubRepoToggleViewTest(TestCase):
     """Tests for github_repo_toggle view (toggle repository tracking on/off)."""
@@ -1562,6 +1686,69 @@ class GitHubRepoToggleWebhookIntegrationTest(TestCase):
         self.integration = GitHubIntegrationFactory(team=self.team, organization_slug="acme-corp")
         self.client = Client()
 
+    @patch("apps.integrations.services.github_sync.sync_repository_history")
+    @patch("apps.integrations.services.github_webhooks.create_repository_webhook")
+    def test_toggle_triggers_sync_on_track(self, mock_create_webhook, mock_sync):
+        """Test that toggling a repo to tracked automatically triggers historical sync."""
+        from apps.integrations.models import TrackedRepository
+
+        # Mock webhook creation to return a webhook ID
+        mock_create_webhook.return_value = 99887766
+
+        # Mock sync result
+        mock_sync.return_value = {"prs_synced": 10, "reviews_synced": 5, "errors": []}
+
+        self.client.force_login(self.admin)
+
+        repo_id = 12345
+        full_name = "acme-corp/test-repo"
+
+        # Track the repo
+        self.client.post(
+            reverse("integrations:github_repo_toggle", args=[self.team.slug, repo_id]), {"full_name": full_name}
+        )
+
+        # Verify sync_repository_history was called after webhook registration
+        mock_sync.assert_called_once()
+        # Get the tracked_repo argument
+        call_args = mock_sync.call_args[0]
+        tracked_repo_arg = call_args[0]
+        self.assertIsInstance(tracked_repo_arg, TrackedRepository)
+        self.assertEqual(tracked_repo_arg.github_repo_id, repo_id)
+        self.assertEqual(tracked_repo_arg.full_name, full_name)
+
+    @patch("apps.integrations.services.github_sync.sync_repository_history")
+    @patch("apps.integrations.services.github_webhooks.create_repository_webhook")
+    def test_toggle_sync_failure_does_not_block_tracking(self, mock_create_webhook, mock_sync):
+        """Test that repo tracking succeeds even if historical sync fails (graceful degradation)."""
+        from apps.integrations.models import TrackedRepository
+
+        # Mock webhook creation
+        mock_create_webhook.return_value = 99887766
+
+        # Mock sync failure
+        mock_sync.side_effect = Exception("GitHub API rate limit exceeded")
+
+        self.client.force_login(self.admin)
+
+        repo_id = 12345
+        full_name = "acme-corp/test-repo"
+
+        # Track the repo - should succeed despite sync failure
+        response = self.client.post(
+            reverse("integrations:github_repo_toggle", args=[self.team.slug, repo_id]), {"full_name": full_name}
+        )
+
+        # Should redirect successfully
+        self.assertEqual(response.status_code, 302)
+
+        # TrackedRepository should still be created
+        self.assertTrue(TrackedRepository.objects.filter(team=self.team, github_repo_id=repo_id).exists())
+
+        # webhook_id should still be set (webhook creation happened before sync)
+        tracked_repo = TrackedRepository.objects.get(team=self.team, github_repo_id=repo_id)
+        self.assertEqual(tracked_repo.webhook_id, 99887766)
+
     @patch("apps.integrations.services.github_webhooks.create_repository_webhook")
     def test_toggle_creates_webhook_when_tracking_repo(self, mock_create_webhook):
         """Test that toggling a repo to tracked creates a webhook."""
@@ -1709,3 +1896,154 @@ class GitHubRepoToggleWebhookIntegrationTest(TestCase):
 
         # TrackedRepository should still be deleted
         self.assertFalse(TrackedRepository.objects.filter(pk=tracked_repo.pk).exists())
+
+
+class GitHubRepoSyncViewTest(TestCase):
+    """Tests for github_repo_sync view (manual trigger for historical sync)."""
+
+    def setUp(self):
+        """Set up test fixtures using factories."""
+        from apps.integrations.factories import TrackedRepositoryFactory
+
+        self.team = TeamFactory()
+        self.admin = UserFactory()
+        self.member = UserFactory()
+        self.team.members.add(self.admin, through_defaults={"role": ROLE_ADMIN})
+        self.team.members.add(self.member, through_defaults={"role": ROLE_MEMBER})
+        self.integration = GitHubIntegrationFactory(team=self.team, organization_slug="acme-corp")
+        self.tracked_repo = TrackedRepositoryFactory(
+            team=self.team, integration=self.integration, github_repo_id=12345, full_name="acme-corp/test-repo"
+        )
+        self.client = Client()
+
+    def test_github_repo_sync_requires_authentication(self):
+        """Test that github_repo_sync redirects to login if user is not authenticated."""
+        response = self.client.post(
+            reverse("integrations:github_repo_sync", args=[self.team.slug, self.tracked_repo.id])
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/accounts/login/", response.url)
+
+    def test_github_repo_sync_requires_team_membership(self):
+        """Test that github_repo_sync returns 404 if user is not a team member."""
+        non_member = UserFactory()
+        self.client.force_login(non_member)
+
+        response = self.client.post(
+            reverse("integrations:github_repo_sync", args=[self.team.slug, self.tracked_repo.id])
+        )
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_github_repo_sync_requires_post_method(self):
+        """Test that github_repo_sync only accepts POST requests."""
+        self.client.force_login(self.admin)
+
+        # Try GET request
+        response = self.client.get(
+            reverse("integrations:github_repo_sync", args=[self.team.slug, self.tracked_repo.id])
+        )
+
+        # Should return 405 Method Not Allowed
+        self.assertEqual(response.status_code, 405)
+
+    def test_github_repo_sync_returns_404_for_unknown_repo(self):
+        """Test that github_repo_sync returns 404 if TrackedRepository doesn't exist."""
+        self.client.force_login(self.admin)
+
+        # Use a non-existent repo ID
+        response = self.client.post(reverse("integrations:github_repo_sync", args=[self.team.slug, 99999]))
+
+        # Should return 404
+        self.assertEqual(response.status_code, 404)
+
+    @patch("apps.integrations.services.github_sync.sync_repository_history")
+    def test_github_repo_sync_triggers_sync(self, mock_sync):
+        """Test that github_repo_sync calls sync_repository_history for the tracked repo."""
+        # Mock sync result
+        mock_sync.return_value = {"prs_synced": 15, "reviews_synced": 8, "errors": []}
+
+        self.client.force_login(self.admin)
+
+        # Trigger manual sync
+        self.client.post(reverse("integrations:github_repo_sync", args=[self.team.slug, self.tracked_repo.id]))
+
+        # Verify sync was called with the tracked repository
+        mock_sync.assert_called_once()
+        call_args = mock_sync.call_args[0]
+        tracked_repo_arg = call_args[0]
+        self.assertEqual(tracked_repo_arg.id, self.tracked_repo.id)
+        self.assertEqual(tracked_repo_arg.github_repo_id, self.tracked_repo.github_repo_id)
+
+    @patch("apps.integrations.services.github_sync.sync_repository_history")
+    def test_github_repo_sync_returns_success_response(self, mock_sync):
+        """Test that github_repo_sync returns 200 with success message in JSON."""
+        # Mock sync result
+        mock_sync.return_value = {"prs_synced": 15, "reviews_synced": 8, "errors": []}
+
+        self.client.force_login(self.admin)
+
+        # Trigger manual sync
+        response = self.client.post(
+            reverse("integrations:github_repo_sync", args=[self.team.slug, self.tracked_repo.id])
+        )
+
+        # Should return 200
+        self.assertEqual(response.status_code, 200)
+
+        # Should return JSON response
+        self.assertEqual(response["Content-Type"], "application/json")
+
+        # Should contain success data
+        import json
+
+        data = json.loads(response.content)
+        self.assertEqual(data["prs_synced"], 15)
+        self.assertEqual(data["reviews_synced"], 8)
+        self.assertEqual(data["errors"], [])
+
+    @patch("apps.integrations.services.github_sync.sync_repository_history")
+    def test_github_repo_sync_handles_sync_errors_gracefully(self, mock_sync):
+        """Test that github_repo_sync handles sync errors and returns them in response."""
+        # Mock sync result with errors
+        mock_sync.return_value = {
+            "prs_synced": 10,
+            "reviews_synced": 5,
+            "errors": ["Failed to sync PR #42: API timeout", "Failed to sync PR #43: Invalid data"],
+        }
+
+        self.client.force_login(self.admin)
+
+        # Trigger manual sync
+        response = self.client.post(
+            reverse("integrations:github_repo_sync", args=[self.team.slug, self.tracked_repo.id])
+        )
+
+        # Should still return 200 (partial success)
+        self.assertEqual(response.status_code, 200)
+
+        # Should include errors in response
+        import json
+
+        data = json.loads(response.content)
+        self.assertEqual(data["prs_synced"], 10)
+        self.assertEqual(data["reviews_synced"], 5)
+        self.assertEqual(len(data["errors"]), 2)
+        self.assertIn("Failed to sync PR #42", data["errors"][0])
+
+    @patch("apps.integrations.services.github_sync.sync_repository_history")
+    def test_github_repo_sync_handles_complete_failure(self, mock_sync):
+        """Test that github_repo_sync handles complete sync failure."""
+        # Mock complete sync failure
+        mock_sync.side_effect = Exception("GitHub API unavailable")
+
+        self.client.force_login(self.admin)
+
+        # Trigger manual sync
+        response = self.client.post(
+            reverse("integrations:github_repo_sync", args=[self.team.slug, self.tracked_repo.id])
+        )
+
+        # Should return error response
+        self.assertIn(response.status_code, [500, 400])  # Either is acceptable

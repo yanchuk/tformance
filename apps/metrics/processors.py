@@ -97,23 +97,20 @@ def _get_team_member_by_github_id(team, github_user_id: str) -> TeamMember | Non
         return None
 
 
-def handle_pull_request_event(team, payload: dict) -> PullRequest | None:
+def _map_github_pr_to_fields(team, pr_data: dict) -> dict:
     """
-    Process pull_request webhook event and create/update PullRequest record.
+    Map GitHub PR data to PullRequest model fields.
+
+    Extracts and transforms PR data from GitHub API format to our database schema.
 
     Args:
         team: Team instance this PR belongs to
-        payload: GitHub webhook payload dictionary
+        pr_data: GitHub PR data dictionary from API or webhook
 
     Returns:
-        PullRequest instance if successful, None if author not found
+        Dict of field names to values for PullRequest.objects.update_or_create() defaults
     """
-    pr_data = payload.get("pull_request", {})
-    repo_data = payload.get("repository", {})
-
     # Extract basic PR information
-    github_pr_id = pr_data.get("id")
-    github_repo = repo_data.get("full_name")
     title = pr_data.get("title", "")
 
     # Determine state based on GitHub state and merged flag
@@ -141,23 +138,47 @@ def handle_pull_request_event(team, payload: dict) -> PullRequest | None:
     is_revert = "revert" in title.lower()
     is_hotfix = "hotfix" in title.lower()
 
+    return {
+        "title": title,
+        "author": author,
+        "state": state,
+        "pr_created_at": pr_created_at,
+        "merged_at": merged_at,
+        "cycle_time_hours": cycle_time_hours,
+        "additions": additions,
+        "deletions": deletions,
+        "is_revert": is_revert,
+        "is_hotfix": is_hotfix,
+    }
+
+
+def handle_pull_request_event(team, payload: dict) -> PullRequest | None:
+    """
+    Process pull_request webhook event and create/update PullRequest record.
+
+    Args:
+        team: Team instance this PR belongs to
+        payload: GitHub webhook payload dictionary
+
+    Returns:
+        PullRequest instance if successful, None if author not found
+    """
+    pr_data = payload.get("pull_request", {})
+    repo_data = payload.get("repository", {})
+
+    # Extract identifying information
+    github_pr_id = pr_data.get("id")
+    github_repo = repo_data.get("full_name")
+
+    # Map GitHub data to model fields
+    pr_fields = _map_github_pr_to_fields(team, pr_data)
+
     # Create or update the PR record
     pr, created = PullRequest.objects.update_or_create(
         team=team,
         github_pr_id=github_pr_id,
         github_repo=github_repo,
-        defaults={
-            "title": title,
-            "author": author,
-            "state": state,
-            "pr_created_at": pr_created_at,
-            "merged_at": merged_at,
-            "cycle_time_hours": cycle_time_hours,
-            "additions": additions,
-            "deletions": deletions,
-            "is_revert": is_revert,
-            "is_hotfix": is_hotfix,
-        },
+        defaults=pr_fields,
     )
 
     return pr
