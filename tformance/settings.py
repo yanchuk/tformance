@@ -516,6 +516,11 @@ SCHEDULED_TASKS = {
         "schedule": schedules.crontab(minute=0, hour=4),  # 4 AM UTC
         "expire_seconds": 60 * 60 * 4,  # 4 hour expiry
     },
+    "sync-jira-projects-daily": {
+        "task": "apps.integrations.tasks.sync_all_jira_projects_task",
+        "schedule": schedules.crontab(minute=30, hour=4),  # 4:30 AM UTC (after GitHub)
+        "expire_seconds": 60 * 60 * 4,  # 4 hour expiry
+    },
 }
 
 # Channels / Daphne setup
