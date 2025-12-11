@@ -21,6 +21,8 @@ team_urlpatterns = (
         path("jira/callback/", views.jira_callback, name="jira_callback"),
         path("jira/disconnect/", views.jira_disconnect, name="jira_disconnect"),
         path("jira/select-site/", views.jira_select_site, name="jira_select_site"),
+        path("jira/projects/", views.jira_projects_list, name="jira_projects_list"),
+        path("jira/projects/toggle/", views.jira_project_toggle, name="jira_project_toggle"),
     ],
     "integrations",
 )

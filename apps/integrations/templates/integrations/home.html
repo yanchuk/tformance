@@ -109,8 +109,8 @@
       </div>
     </div>
 
-    <!-- Jira Integration Card (Coming Soon) -->
-    <div class="card bg-base-100 shadow-md border border-base-200 opacity-60">
+    <!-- Jira Integration Card -->
+    <div class="card bg-base-100 shadow-md border border-base-200">
       <div class="card-body">
         <div class="flex items-center gap-3 mb-4">
           <div class="w-12 h-12 flex items-center justify-center rounded-lg bg-base-200">
@@ -124,18 +124,77 @@
           </div>
         </div>
 
-        <div class="flex items-center gap-2 mb-4 p-3 bg-base-200 rounded-lg">
-          <svg class="w-5 h-5 text-base-content/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-          </svg>
-          <span class="text-base-content/60">{% translate "Coming soon" %}</span>
-        </div>
+        {% if jira_connected %}
+          <div class="flex items-center gap-2 mb-4 p-3 bg-success/10 rounded-lg">
+            <svg class="w-5 h-5 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <span class="text-success font-medium">{% translate "Connected" %}</span>
+          </div>
 
-        <div class="card-actions justify-end">
-          <button class="btn btn-disabled btn-sm" disabled>
-            {% translate "Connect Jira" %}
-          </button>
-        </div>
+          {% if jira_integration %}
+            <div class="space-y-2 mb-4">
+              <div class="flex items-center gap-2 text-sm">
+                <span class="text-base-content/60">{% translate "Site:" %}</span>
+                <span class="font-medium">{{ jira_integration.site_name }}</span>
+              </div>
+              {% if jira_integration.last_sync_at %}
+                <div class="flex items-center gap-2 text-sm">
+                  <span class="text-base-content/60">{% translate "Last sync:" %}</span>
+                  <span>{{ jira_integration.last_sync_at|timesince }} {% translate "ago" %}</span>
+                </div>
+              {% endif %}
+            </div>
+
+            <!-- Quick Links -->
+            <div class="flex flex-wrap gap-2 mb-4">
+              <a href="{% url 'integrations:jira_projects_list' team_slug=request.team.slug %}"
+                 class="btn btn-ghost btn-sm gap-1">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+                </svg>
+                {% translate "Projects" %}
+                {% if tracked_project_count %}<span class="badge badge-sm">{{ tracked_project_count }}</span>{% endif %}
+              </a>
+            </div>
+          {% endif %}
+
+          <div class="card-actions justify-end">
+            <form method="post"
+                  action="{% url 'integrations:jira_disconnect' team_slug=request.team.slug %}"
+                  x-data="{ confirming: false }">
+              {% csrf_token %}
+              <button type="button"
+                      x-show="!confirming"
+                      @click="confirming = true"
+                      class="btn btn-outline btn-error btn-sm">
+                {% translate "Disconnect" %}
+              </button>
+              <div x-show="confirming" x-transition class="flex gap-2">
+                <button type="submit" class="btn btn-error btn-sm">
+                  {% translate "Confirm" %}
+                </button>
+                <button type="button" @click="confirming = false" class="btn btn-ghost btn-sm">
+                  {% translate "Cancel" %}
+                </button>
+              </div>
+            </form>
+          </div>
+        {% else %}
+          <div class="flex items-center gap-2 mb-4 p-3 bg-base-200 rounded-lg">
+            <svg class="w-5 h-5 text-base-content/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+            </svg>
+            <span class="text-base-content/60">{% translate "Not connected" %}</span>
+          </div>
+
+          <div class="card-actions justify-end">
+            <a href="{% url 'integrations:jira_connect' team_slug=request.team.slug %}"
+               class="btn btn-primary btn-sm">
+              {% translate "Connect Jira" %}
+            </a>
+          </div>
+        {% endif %}
       </div>
     </div>
 

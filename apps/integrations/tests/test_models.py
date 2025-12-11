@@ -903,3 +903,256 @@ class TestJiraIntegrationModel(TestCase):
         )
         self.assertIn(integration1, stale)
         self.assertNotIn(integration2, stale)
+
+
+class TestTrackedJiraProjectModel(TestCase):
+    """Tests for TrackedJiraProject model."""
+
+    def setUp(self):
+        """Set up test fixtures using factories."""
+        self.team = TeamFactory()
+        self.credential = IntegrationCredentialFactory(
+            team=self.team,
+            provider=IntegrationCredential.PROVIDER_JIRA,
+        )
+        self.integration = JiraIntegrationFactory(
+            team=self.team,
+            credential=self.credential,
+        )
+
+    def tearDown(self):
+        """Clean up team context."""
+        unset_current_team()
+
+    def test_tracked_jira_project_creation_with_all_required_fields(self):
+        """Test that TrackedJiraProject can be created with all required fields."""
+        from apps.integrations.factories import TrackedJiraProjectFactory
+
+        project = TrackedJiraProjectFactory(
+            team=self.team,
+            integration=self.integration,
+            jira_project_id="10001",
+            jira_project_key="PROJ",
+            name="My Project",
+        )
+
+        self.assertEqual(project.team, self.team)
+        self.assertEqual(project.integration, self.integration)
+        self.assertEqual(project.jira_project_id, "10001")
+        self.assertEqual(project.jira_project_key, "PROJ")
+        self.assertEqual(project.name, "My Project")
+        self.assertTrue(project.is_active)
+        self.assertIsNone(project.last_sync_at)
+        self.assertEqual(project.sync_status, "pending")
+        self.assertIsNone(project.last_sync_error)
+        self.assertIsNotNone(project.pk)
+        self.assertIsNotNone(project.created_at)
+        self.assertIsNotNone(project.updated_at)
+
+    def test_tracked_jira_project_foreign_key_relationship_with_integration(self):
+        """Test that TrackedJiraProject has a ForeignKey relationship with JiraIntegration."""
+        from apps.integrations.factories import TrackedJiraProjectFactory
+
+        project = TrackedJiraProjectFactory(
+            team=self.team,
+            integration=self.integration,
+        )
+
+        # Access projects from integration using related_name
+        self.assertIn(project, self.integration.tracked_jira_projects.all())
+        self.assertEqual(project.integration, self.integration)
+
+    def test_tracked_jira_project_key_is_indexed_and_queryable(self):
+        """Test that jira_project_key is indexed and can be queried efficiently."""
+        from apps.integrations.factories import TrackedJiraProjectFactory
+        from apps.integrations.models import TrackedJiraProject
+
+        project = TrackedJiraProjectFactory(
+            team=self.team,
+            integration=self.integration,
+            jira_project_key="TEST",
+        )
+
+        # Query by jira_project_key
+        result = TrackedJiraProject.objects.filter(jira_project_key="TEST").first()
+        self.assertEqual(result, project)
+
+    def test_tracked_jira_project_sync_status_defaults_to_pending(self):
+        """Test that sync_status defaults to 'pending'."""
+        from apps.integrations.factories import TrackedJiraProjectFactory
+
+        project = TrackedJiraProjectFactory(
+            team=self.team,
+            integration=self.integration,
+        )
+
+        self.assertEqual(project.sync_status, "pending")
+
+    def test_tracked_jira_project_is_active_defaults_to_true(self):
+        """Test that is_active defaults to True."""
+        from apps.integrations.factories import TrackedJiraProjectFactory
+
+        project = TrackedJiraProjectFactory(
+            team=self.team,
+            integration=self.integration,
+        )
+
+        self.assertTrue(project.is_active)
+
+    def test_tracked_jira_project_last_sync_at_can_be_null(self):
+        """Test that last_sync_at can be null (not yet synced)."""
+        from apps.integrations.factories import TrackedJiraProjectFactory
+
+        project = TrackedJiraProjectFactory(
+            team=self.team,
+            integration=self.integration,
+            last_sync_at=None,
+        )
+
+        self.assertIsNone(project.last_sync_at)
+
+    def test_tracked_jira_project_cascade_deletion_with_integration(self):
+        """Test that deleting JiraIntegration cascades to TrackedJiraProject."""
+        from apps.integrations.factories import TrackedJiraProjectFactory
+        from apps.integrations.models import TrackedJiraProject
+
+        project = TrackedJiraProjectFactory(
+            team=self.team,
+            integration=self.integration,
+        )
+
+        project_id = project.id
+        integration_id = self.integration.id
+
+        # Delete the integration
+        self.integration.delete()
+
+        # TrackedJiraProject should be deleted too
+        with self.assertRaises(TrackedJiraProject.DoesNotExist):
+            TrackedJiraProject.objects.get(pk=project_id)
+
+        # Verify integration is also deleted
+        with self.assertRaises(JiraIntegration.DoesNotExist):
+            JiraIntegration.objects.get(pk=integration_id)
+
+    def test_tracked_jira_project_unique_constraint_team_jira_project_id(self):
+        """Test that only one project per team+jira_project_id is allowed."""
+        from apps.integrations.factories import TrackedJiraProjectFactory
+
+        # Create first project
+        TrackedJiraProjectFactory(
+            team=self.team,
+            integration=self.integration,
+            jira_project_id="10001",
+            jira_project_key="PROJ1",
+            name="Project 1",
+        )
+
+        # Try to create second project with same team and jira_project_id
+        with self.assertRaises(IntegrityError):
+            TrackedJiraProjectFactory(
+                team=self.team,
+                integration=self.integration,
+                jira_project_id="10001",
+                jira_project_key="PROJ2",  # Different key, same ID
+                name="Project 2",
+            )
+
+    def test_tracked_jira_project_factory_creates_valid_instances(self):
+        """Test that TrackedJiraProjectFactory creates valid instances."""
+        from apps.integrations.factories import TrackedJiraProjectFactory
+
+        project = TrackedJiraProjectFactory()
+
+        # Factory should populate all required fields
+        self.assertIsNotNone(project.integration)
+        self.assertIsNotNone(project.jira_project_id)
+        self.assertIsNotNone(project.jira_project_key)
+        self.assertIsNotNone(project.name)
+        self.assertTrue(project.is_active)
+        self.assertEqual(project.sync_status, "pending")
+        self.assertIsNone(project.last_sync_at)
+        self.assertIsNone(project.last_sync_error)
+
+    def test_tracked_jira_project_multiple_projects_per_integration(self):
+        """Test that multiple projects can be tracked per integration."""
+        from apps.integrations.factories import TrackedJiraProjectFactory
+
+        project1 = TrackedJiraProjectFactory(
+            team=self.team,
+            integration=self.integration,
+            jira_project_id="10001",
+            jira_project_key="PROJ1",
+        )
+        project2 = TrackedJiraProjectFactory(
+            team=self.team,
+            integration=self.integration,
+            jira_project_id="10002",
+            jira_project_key="PROJ2",
+        )
+
+        # Both projects should be linked to the same integration
+        self.assertEqual(project1.integration, self.integration)
+        self.assertEqual(project2.integration, self.integration)
+        self.assertEqual(self.integration.tracked_jira_projects.count(), 2)
+
+    def test_tracked_jira_project_string_representation(self):
+        """Test that string representation shows project key and name."""
+        from apps.integrations.factories import TrackedJiraProjectFactory
+
+        project = TrackedJiraProjectFactory(
+            team=self.team,
+            integration=self.integration,
+            jira_project_key="ACME",
+            name="Acme Project",
+        )
+
+        expected = "ACME: Acme Project"
+        self.assertEqual(str(project), expected)
+
+    def test_tracked_jira_project_team_scoped_manager(self):
+        """Test that for_team manager filters by current team context."""
+        from apps.integrations.factories import TrackedJiraProjectFactory
+        from apps.integrations.models import TrackedJiraProject
+
+        team2 = TeamFactory()
+        credential2 = IntegrationCredentialFactory(
+            team=team2,
+            provider=IntegrationCredential.PROVIDER_JIRA,
+        )
+        integration2 = JiraIntegrationFactory(
+            team=team2,
+            credential=credential2,
+        )
+
+        # Create projects for two different teams
+        project1 = TrackedJiraProjectFactory(
+            team=self.team,
+            integration=self.integration,
+            jira_project_key="TEAM1",
+        )
+        project2 = TrackedJiraProjectFactory(
+            team=team2,
+            integration=integration2,
+            jira_project_key="TEAM2",
+        )
+
+        # Set current team context
+        set_current_team(self.team)
+
+        # Query using for_team manager
+        projects = TrackedJiraProject.for_team.all()
+
+        # Should only return project1
+        self.assertEqual(projects.count(), 1)
+        self.assertIn(project1, projects)
+        self.assertNotIn(project2, projects)
+
+        # Switch to team2
+        set_current_team(team2)
+        projects = TrackedJiraProject.for_team.all()
+
+        # Should only return project2
+        self.assertEqual(projects.count(), 1)
+        self.assertIn(project2, projects)
+        self.assertNotIn(project1, projects)

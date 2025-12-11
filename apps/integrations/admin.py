@@ -1,6 +1,12 @@
 from django.contrib import admin
 
-from .models import GitHubIntegration, IntegrationCredential, JiraIntegration, TrackedRepository
+from .models import (
+    GitHubIntegration,
+    IntegrationCredential,
+    JiraIntegration,
+    TrackedJiraProject,
+    TrackedRepository,
+)
 
 
 class TrackedRepositoryInline(admin.TabularInline):
@@ -29,6 +35,16 @@ class JiraIntegrationInline(admin.StackedInline):
     extra = 0
     readonly_fields = ["cloud_id", "site_name", "site_url", "sync_status", "last_sync_at"]
     can_delete = False
+
+
+class TrackedJiraProjectInline(admin.TabularInline):
+    """Inline for TrackedJiraProjects on JiraIntegration."""
+
+    model = TrackedJiraProject
+    extra = 0
+    readonly_fields = ["jira_project_key", "jira_project_id", "name", "is_active", "last_sync_at"]
+    can_delete = False
+    max_num = 20
 
 
 @admin.register(IntegrationCredential)
@@ -149,14 +165,55 @@ class JiraIntegrationAdmin(admin.ModelAdmin):
         "sync_status",
         "last_sync_at",
         "cloud_id",
+        "projects_count",
+        "active_projects_count",
     ]
     list_filter = ["team", "sync_status"]
     search_fields = ["site_name", "team__name", "cloud_id"]
     ordering = ["team", "site_name"]
     readonly_fields = ["created_at", "updated_at", "credential"]
+    inlines = [TrackedJiraProjectInline]
 
     fieldsets = (
         (None, {"fields": ("team", "credential", "site_name", "cloud_id", "site_url")}),
         ("Sync Status", {"fields": ("sync_status", "last_sync_at")}),
         ("Timestamps", {"fields": ("created_at", "updated_at"), "classes": ("collapse",)}),
     )
+
+    @admin.display(description="Total Projects")
+    def projects_count(self, obj):
+        return obj.tracked_jira_projects.count()
+
+    @admin.display(description="Active Projects")
+    def active_projects_count(self, obj):
+        return obj.tracked_jira_projects.filter(is_active=True).count()
+
+
+@admin.register(TrackedJiraProject)
+class TrackedJiraProjectAdmin(admin.ModelAdmin):
+    """Admin for TrackedJiraProject - Jira projects being tracked."""
+
+    list_display = [
+        "jira_project_key",
+        "name",
+        "team",
+        "integration_site",
+        "is_active",
+        "sync_status",
+        "last_sync_at",
+    ]
+    list_filter = ["team", "is_active", "sync_status", "integration__site_name"]
+    search_fields = ["jira_project_key", "name", "team__name"]
+    ordering = ["team", "name"]
+    readonly_fields = ["created_at", "updated_at"]
+    raw_id_fields = ["integration"]
+
+    fieldsets = (
+        (None, {"fields": ("team", "integration", "jira_project_key", "jira_project_id", "name")}),
+        ("Status", {"fields": ("is_active", "sync_status", "last_sync_at", "last_sync_error")}),
+        ("Timestamps", {"fields": ("created_at", "updated_at"), "classes": ("collapse",)}),
+    )
+
+    @admin.display(description="Site")
+    def integration_site(self, obj):
+        return obj.integration.site_name if obj.integration else "-"

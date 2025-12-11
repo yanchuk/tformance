@@ -26,7 +26,7 @@ from factory.django import DjangoModelFactory
 from apps.metrics.factories import TeamFactory
 from apps.users.models import CustomUser
 
-from .models import GitHubIntegration, IntegrationCredential, JiraIntegration
+from .models import GitHubIntegration, IntegrationCredential, JiraIntegration, TrackedJiraProject
 from .services.encryption import encrypt
 
 
@@ -113,4 +113,22 @@ class JiraIntegrationFactory(DjangoModelFactory):
     site_name = factory.Sequence(lambda n: f"Company {n}")
     site_url = factory.LazyAttribute(lambda o: f"https://{o.site_name.lower().replace(' ', '-')}.atlassian.net")
     last_sync_at = None
+    sync_status = "pending"
+
+
+class TrackedJiraProjectFactory(DjangoModelFactory):
+    """Factory for TrackedJiraProject model."""
+
+    class Meta:
+        model = TrackedJiraProject
+
+    team = factory.SubFactory(TeamFactory)
+    integration = factory.SubFactory(
+        JiraIntegrationFactory,
+        team=factory.SelfAttribute("..team"),
+    )
+    jira_project_id = factory.Sequence(lambda n: f"1000{n}")
+    jira_project_key = factory.Sequence(lambda n: f"PROJ{n}")
+    name = factory.Sequence(lambda n: f"Project {n}")
+    is_active = True
     sync_status = "pending"

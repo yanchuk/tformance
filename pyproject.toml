@@ -59,6 +59,7 @@ dependencies = [
     "djangorestframework-api-key",
     "drf-spectacular",
     "factory-boy>=3.3.3",
+    "jira>=3.10.5",
     "psycopg2-binary",
     "pygithub>=2.8.1",
     "python-dateutil",

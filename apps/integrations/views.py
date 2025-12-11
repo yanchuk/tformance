@@ -10,10 +10,11 @@ from django.template.response import TemplateResponse
 from django.urls import reverse
 from django_ratelimit.decorators import ratelimit
 
-from apps.integrations.models import GitHubIntegration, IntegrationCredential, JiraIntegration
-from apps.integrations.services import github_oauth, github_sync, github_webhooks, jira_oauth, member_sync
+from apps.integrations.models import GitHubIntegration, IntegrationCredential, JiraIntegration, TrackedJiraProject
+from apps.integrations.services import github_oauth, github_sync, github_webhooks, jira_client, jira_oauth, member_sync
 from apps.integrations.services.encryption import decrypt, encrypt
 from apps.integrations.services.github_oauth import GitHubOAuthError
+from apps.integrations.services.jira_client import JiraClientError
 from apps.integrations.services.jira_oauth import JiraOAuthError
 from apps.metrics.models import TeamMember
 from apps.teams.decorators import login_and_team_required, team_admin_required
@@ -194,7 +195,7 @@ def integrations_home(request, team_slug):
     Returns:
         HttpResponse with the integrations page content.
     """
-    from apps.integrations.models import TrackedRepository
+    from apps.integrations.models import TrackedJiraProject, TrackedRepository
 
     team = request.team
 
@@ -212,11 +213,25 @@ def integrations_home(request, team_slug):
         member_count = 0
         tracked_repo_count = 0
 
+    # Check if Jira integration exists
+    try:
+        jira_integration = JiraIntegration.objects.get(team=team)
+        jira_connected = True
+        # Count tracked Jira projects
+        tracked_project_count = TrackedJiraProject.objects.filter(team=team).count()
+    except JiraIntegration.DoesNotExist:
+        jira_integration = None
+        jira_connected = False
+        tracked_project_count = 0
+
     context = {
         "github_connected": github_connected,
         "github_integration": github_integration,
         "member_count": member_count,
         "tracked_repo_count": tracked_repo_count,
+        "jira_connected": jira_connected,
+        "jira_integration": jira_integration,
+        "tracked_project_count": tracked_project_count,
         "active_tab": "integrations",
     }
 
@@ -928,3 +943,107 @@ def jira_select_site(request, team_slug):
     }
 
     return render(request, "integrations/jira_select_site.html", context)
+
+
+@team_admin_required
+def jira_projects_list(request, team_slug):
+    """Display list of Jira projects for the team.
+
+    Shows all projects from the connected Jira site and marks
+    which ones are currently being tracked.
+
+    Requires team admin role.
+
+    Args:
+        request: The HTTP request object.
+        team_slug: The slug of the team to display projects for.
+
+    Returns:
+        HttpResponse with the Jira projects list or redirect if not connected.
+    """
+    team = request.team
+
+    # Check if Jira integration exists
+    try:
+        jira_integration = JiraIntegration.objects.get(team=team)
+    except JiraIntegration.DoesNotExist:
+        messages.error(request, "Please connect Jira first.")
+        return redirect("integrations:integrations_home", team_slug=team.slug)
+
+    # Fetch projects from Jira API
+    try:
+        jira_projects = jira_client.get_accessible_projects(jira_integration.credential)
+    except JiraClientError as e:
+        messages.error(request, f"Failed to fetch projects: {str(e)}")
+        return redirect("integrations:integrations_home", team_slug=team.slug)
+
+    # Get tracked projects for this team
+    tracked_project_ids = set(TrackedJiraProject.objects.filter(team=team).values_list("jira_project_id", flat=True))
+
+    # Mark projects as tracked
+    for project in jira_projects:
+        project["is_tracked"] = project["id"] in tracked_project_ids
+
+    context = {
+        "projects": jira_projects,
+        "jira_integration": jira_integration,
+    }
+
+    return render(request, "integrations/jira_projects_list.html", context)
+
+
+@team_admin_required
+def jira_project_toggle(request, team_slug):
+    """Toggle project tracking on/off.
+
+    Allows admins to track or untrack Jira projects.
+
+    Requires team admin role and POST method.
+
+    Args:
+        request: The HTTP request object.
+        team_slug: The slug of the team.
+
+    Returns:
+        JsonResponse with success or error message.
+    """
+    from django.shortcuts import get_object_or_404
+
+    # Require POST method
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+
+    team = request.team
+
+    # Get required fields
+    action = request.POST.get("action")
+    project_id = request.POST.get("project_id")
+    project_key = request.POST.get("project_key")
+    name = request.POST.get("name")
+
+    # Validate required fields
+    if not all([action, project_id, project_key, name]):
+        return JsonResponse({"error": "Missing required fields"}, status=400)
+
+    # Get Jira integration or return 404
+    jira_integration = get_object_or_404(JiraIntegration, team=team)
+
+    if action == "add":
+        # Create or get tracked project
+        TrackedJiraProject.objects.get_or_create(
+            team=team,
+            jira_project_id=project_id,
+            defaults={
+                "integration": jira_integration,
+                "jira_project_key": project_key,
+                "name": name,
+            },
+        )
+        return JsonResponse({"success": True, "message": f"Now tracking {project_key}"})
+
+    elif action == "remove":
+        # Delete tracked project
+        TrackedJiraProject.objects.filter(team=team, jira_project_id=project_id).delete()
+        return JsonResponse({"success": True, "message": f"Stopped tracking {project_key}"})
+
+    return JsonResponse({"error": "Invalid action"}, status=400)

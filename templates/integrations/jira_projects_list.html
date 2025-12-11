@@ -1,0 +1,9 @@
+{% extends "web/app/app_base.html" %}
+{% block app %}
+<h1>Jira Projects</h1>
+<ul>
+{% for project in projects %}
+<li>{{ project.key }}: {{ project.name }} ({% if project.is_tracked %}tracked{% else %}not tracked{% endif %})</li>
+{% endfor %}
+</ul>
+{% endblock %}
