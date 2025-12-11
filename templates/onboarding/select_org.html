@@ -1,0 +1,53 @@
+{% extends "onboarding/base.html" %}
+{% load i18n %}
+
+{% block onboarding_content %}
+<div class="text-center mb-8">
+  <h1 class="text-3xl font-bold mb-2">{% translate "Select Your Organization" %}</h1>
+  <p class="text-base-content/70">
+    {% translate "Choose which GitHub organization you want to track metrics for." %}
+  </p>
+</div>
+
+<form method="post" class="space-y-4">
+  {% csrf_token %}
+
+  {% for org in organizations %}
+  <label class="card bg-base-200 cursor-pointer hover:bg-base-300 transition-colors">
+    <div class="card-body p-4">
+      <div class="flex items-center gap-4">
+        <input type="radio" name="organization" value="{{ org.login }}" class="radio radio-primary" {% if forloop.first %}checked{% endif %}>
+        {% if org.avatar_url %}
+        <img src="{{ org.avatar_url }}" alt="{{ org.login }}" class="w-12 h-12 rounded-lg">
+        {% else %}
+        <div class="w-12 h-12 bg-base-300 rounded-lg flex items-center justify-center">
+          <i class="fa-solid fa-building text-xl"></i>
+        </div>
+        {% endif %}
+        <div class="text-left flex-1">
+          <h3 class="font-semibold">{{ org.login }}</h3>
+          {% if org.description %}
+          <p class="text-sm text-base-content/60">{{ org.description }}</p>
+          {% endif %}
+        </div>
+        <i class="fa-solid fa-chevron-right text-base-content/30"></i>
+      </div>
+    </div>
+  </label>
+  {% endfor %}
+
+  <div class="pt-4">
+    <button type="submit" class="btn btn-primary btn-lg w-full">
+      {% translate "Continue" %}
+      <i class="fa-solid fa-arrow-right ml-2"></i>
+    </button>
+  </div>
+</form>
+
+<div class="text-center mt-6">
+  <a href="{% url 'onboarding:start' %}" class="text-sm text-base-content/60 hover:text-base-content">
+    <i class="fa-solid fa-arrow-left mr-1"></i>
+    {% translate "Back to GitHub connection" %}
+  </a>
+</div>
+{% endblock %}

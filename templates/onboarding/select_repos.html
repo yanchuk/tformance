@@ -1,0 +1,35 @@
+{% extends "onboarding/base.html" %}
+{% load i18n %}
+
+{% block onboarding_content %}
+<div class="text-center mb-8">
+  <h1 class="text-3xl font-bold mb-2">{% translate "Select Repositories" %}</h1>
+  <p class="text-base-content/70">
+    {% translate "Choose which repositories to track. You can change this later in settings." %}
+  </p>
+</div>
+
+<form method="post">
+  {% csrf_token %}
+
+  <div class="card bg-base-200 mb-6">
+    <div class="card-body">
+      <p class="text-center text-base-content/70">
+        <i class="fa-solid fa-info-circle mr-2"></i>
+        {% translate "Repository selection will be available in the next version. For now, continue to finish setup." %}
+      </p>
+    </div>
+  </div>
+
+  <div class="flex gap-4">
+    <a href="{% url 'onboarding:select_org' %}" class="btn btn-ghost flex-1">
+      <i class="fa-solid fa-arrow-left mr-2"></i>
+      {% translate "Back" %}
+    </a>
+    <button type="submit" class="btn btn-primary flex-1">
+      {% translate "Continue" %}
+      <i class="fa-solid fa-arrow-right ml-2"></i>
+    </button>
+  </div>
+</form>
+{% endblock %}

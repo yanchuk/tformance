@@ -6,18 +6,21 @@ from django.utils.translation import gettext_lazy as _
 
 from apps.users.forms import TurnstileSignupForm
 
-from .helpers import create_default_team_for_user, get_next_unique_team_slug, get_open_invitations_for_user
+from .helpers import get_next_unique_team_slug
 from .models import Invitation, Membership, Team
 
 
 class TeamSignupForm(TurnstileSignupForm):
+    """Signup form for new users.
+
+    Users sign up without creating a team - teams are created during onboarding
+    when the user connects their GitHub organization.
+
+    Invitations are still supported - users with invitation_id will join the
+    existing team after signup.
+    """
+
     invitation_id = forms.CharField(widget=forms.HiddenInput(), required=False)
-    team_name = forms.CharField(
-        label=_("Team Name (Optional)"),
-        max_length=100,
-        widget=forms.TextInput(attrs={"placeholder": _("Team Name (Optional)")}),
-        required=False,
-    )
     terms_agreement = forms.BooleanField(required=True)
 
     def __init__(self, *args, **kwargs):
@@ -33,22 +36,8 @@ class TeamSignupForm(TurnstileSignupForm):
     def clean(self):
         cleaned_data = super().clean()
         if not self.errors:
-            self._clean_team_name(cleaned_data)
             self._clean_invitation_email(cleaned_data)
         return cleaned_data
-
-    def _clean_team_name(self, cleaned_data):
-        team_name = cleaned_data.get("team_name")
-        invitation_id = cleaned_data.get("invitation_id")
-        # if invitation is not set then team name is required
-        if not invitation_id and not team_name:
-            email = cleaned_data.get("email")
-            if email is not None:
-                team_name = f"{email.split('@')[0]}"
-        elif invitation_id:
-            assert not team_name
-
-        cleaned_data["team_name"] = team_name
 
     def _clean_invitation_email(self, cleaned_data):
         invitation_id = cleaned_data.get("invitation_id")
@@ -80,18 +69,10 @@ class TeamSignupForm(TurnstileSignupForm):
                 )
 
     def save(self, request):
-        invitation_id = self.cleaned_data["invitation_id"]
-        team_name = self.cleaned_data["team_name"]
-        user = super().save(request)
-
-        # if the account already exists, the super().save call is empty, so don't do any post-processing
-        if not user:
-            return
-
-        if not invitation_id and not get_open_invitations_for_user(user):
-            create_default_team_for_user(user, team_name)
-
-        return user
+        # No team creation here - teams are created during onboarding
+        # when user connects GitHub organization.
+        # Invitation handling is done in signals.py
+        return super().save(request)
 
 
 class TeamChangeForm(forms.ModelForm):

@@ -4,7 +4,6 @@ from django.dispatch import receiver
 from django.utils import timezone
 from django.utils.translation import gettext
 
-from .helpers import create_default_team_for_user, get_open_invitations_for_user
 from .invitations import get_invitation_id_from_request, process_invitation
 from .models import Invitation, Membership, Team
 
@@ -13,6 +12,9 @@ from .models import Invitation, Membership, Team
 def add_user_to_team(request, user, **kwargs):
     """
     Adds the user to the team if there is invitation information in the URL.
+
+    Note: We no longer auto-create a default team for new users.
+    Teams are created during onboarding when the user connects their GitHub organization.
     """
     invitation_id = get_invitation_id_from_request(request)
     if invitation_id:
@@ -23,10 +25,8 @@ def add_user_to_team(request, user, **kwargs):
             # for now just swallow missing invitation errors
             # these should get picked up by the form validation
             pass
-    elif not user.teams.exists() and not get_open_invitations_for_user(user):
-        # If the sign up was from a social account, there may not be a default team, so create one unless
-        # the user has open invitations
-        create_default_team_for_user(user)
+    # No else clause - users without invitations will go through onboarding
+    # to create their team via GitHub org connection
 
 
 @receiver(post_save, sender=Membership)

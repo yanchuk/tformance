@@ -22,15 +22,13 @@ def home(request):
         if team:
             return HttpResponseRedirect(reverse("web_team:home", args=[team.slug]))
         else:
-            if (open_invitations := get_open_invitations_for_user(request.user)) and len(open_invitations) > 1:
+            # Check for open invitations first
+            if open_invitations := get_open_invitations_for_user(request.user):
                 invitation = open_invitations[0]
                 return HttpResponseRedirect(reverse("teams:accept_invitation", args=[invitation["id"]]))
 
-            messages.info(
-                request,
-                _("Teams are enabled but you have no teams. Create a team below to access the rest of the dashboard."),
-            )
-            return HttpResponseRedirect(reverse("teams:manage_teams"))
+            # No team and no invitations - redirect to onboarding
+            return HttpResponseRedirect(reverse("onboarding:start"))
     else:
         return render(request, "web/landing_page.html")
 

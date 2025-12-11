@@ -1,0 +1,42 @@
+{% extends "onboarding/base.html" %}
+{% load i18n %}
+
+{% block onboarding_content %}
+<div class="text-center mb-8">
+  <div class="w-20 h-20 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
+    <i class="fa-brands fa-jira text-4xl text-blue-500"></i>
+  </div>
+  <h1 class="text-3xl font-bold mb-2">{% translate "Connect Jira" %}</h1>
+  <p class="text-base-content/70 max-w-md mx-auto">
+    {% translate "Link your Jira workspace to track story points, sprint velocity, and issue cycle time." %}
+  </p>
+</div>
+
+<div class="card bg-base-200 max-w-md mx-auto mb-6">
+  <div class="card-body text-center">
+    <p class="text-base-content/70 mb-4">
+      {% translate "Jira integration is optional. You can set this up later from your team settings." %}
+    </p>
+
+    <a href="#" class="btn btn-outline btn-primary gap-2 mb-2" disabled>
+      <i class="fa-brands fa-jira"></i>
+      {% translate "Connect Jira" %}
+      <span class="badge badge-sm">{% translate "Coming Soon" %}</span>
+    </a>
+  </div>
+</div>
+
+<form method="post" class="max-w-md mx-auto">
+  {% csrf_token %}
+  <div class="flex gap-4">
+    <a href="{% url 'onboarding:select_repos' %}" class="btn btn-ghost flex-1">
+      <i class="fa-solid fa-arrow-left mr-2"></i>
+      {% translate "Back" %}
+    </a>
+    <button type="submit" class="btn btn-primary flex-1">
+      {% translate "Skip for now" %}
+      <i class="fa-solid fa-arrow-right ml-2"></i>
+    </button>
+  </div>
+</form>
+{% endblock %}
