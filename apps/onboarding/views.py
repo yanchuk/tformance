@@ -19,10 +19,11 @@ from django.core.signing import BadSignature, Signer
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
+from django_ratelimit.decorators import ratelimit
 
 from apps.integrations.models import GitHubIntegration, IntegrationCredential
 from apps.integrations.services import github_oauth, member_sync
-from apps.integrations.services.encryption import encrypt
+from apps.integrations.services.encryption import decrypt, encrypt
 from apps.integrations.services.github_oauth import GitHubOAuthError
 from apps.teams.helpers import get_next_unique_team_slug
 from apps.teams.models import Membership, Team
@@ -110,9 +111,18 @@ def github_connect(request):
     return redirect(auth_url)
 
 
+@ratelimit(key="ip", rate="10/m", method=["GET", "POST"])
 @login_required
 def github_callback(request):
-    """Handle GitHub OAuth callback during onboarding."""
+    """Handle GitHub OAuth callback during onboarding.
+
+    Rate limited to 10 requests per minute per IP to prevent abuse.
+    """
+    # Check if rate limited
+    if getattr(request, "limited", False):
+        messages.error(request, _("Too many requests. Please wait and try again."))
+        return redirect("onboarding:start")
+
     # If user already has a team, redirect to dashboard
     if request.user.teams.exists():
         team = request.user.teams.first()
@@ -159,8 +169,9 @@ def github_callback(request):
             )
             return redirect("onboarding:start")
 
-        # Store token and orgs in session for next step
-        request.session[ONBOARDING_TOKEN_KEY] = access_token
+        # Store token (encrypted) and orgs in session for next step
+        # Token is encrypted for defense-in-depth even in session storage
+        request.session[ONBOARDING_TOKEN_KEY] = encrypt(access_token)
         request.session[ONBOARDING_ORGS_KEY] = orgs
 
         # If only one org, auto-select it and create team
@@ -171,8 +182,8 @@ def github_callback(request):
         return redirect("onboarding:select_org")
 
     except GitHubOAuthError as e:
-        logger.error(f"GitHub OAuth error during onboarding: {e}")
-        messages.error(request, _("Failed to connect to GitHub: {}").format(str(e)))
+        logger.error(f"GitHub OAuth error during onboarding: {e}", exc_info=True)
+        messages.error(request, _("Failed to connect to GitHub. Please try again."))
         return redirect("onboarding:start")
 
 
@@ -221,9 +232,17 @@ def _create_team_from_org(request, org: dict):
     Returns:
         Redirect response to next step
     """
-    access_token = request.session.get(ONBOARDING_TOKEN_KEY)
-    if not access_token:
+    encrypted_token = request.session.get(ONBOARDING_TOKEN_KEY)
+    if not encrypted_token:
         messages.error(request, _("Session expired. Please connect GitHub again."))
+        return redirect("onboarding:start")
+
+    # Decrypt token from session
+    try:
+        access_token = decrypt(encrypted_token)
+    except Exception:
+        logger.error("Failed to decrypt session token during onboarding")
+        messages.error(request, _("Session error. Please connect GitHub again."))
         return redirect("onboarding:start")
 
     try:

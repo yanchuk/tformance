@@ -27,13 +27,15 @@ env.read_env(os.path.join(BASE_DIR, ".env"))
 # See https://docs.djangoproject.com/en/stable/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = env("SECRET_KEY", default="django-insecure-QlTEH9dbN4QwLcjOBInlUGAVq0qPEwNeXswz3l1c")
+# No default - SECRET_KEY must be set via environment variable
+SECRET_KEY = env("SECRET_KEY")
 
-# SECURITY WARNING: don"t run with debug turned on in production!
-DEBUG = env.bool("DEBUG", default=True)
+# SECURITY WARNING: don't run with debug turned on in production!
+# Default to False for security - explicitly set DEBUG=True in development
+DEBUG = env.bool("DEBUG", default=False)
 
-# Note: It is not recommended to set ALLOWED_HOSTS to "*" in production
-ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["*"])
+# SECURITY: Empty default - must explicitly set ALLOWED_HOSTS in all environments
+ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=[])
 
 
 # Application definition
@@ -227,6 +229,15 @@ else:
 AUTH_USER_MODEL = "users.CustomUser"
 LOGIN_URL = "account_login"
 LOGIN_REDIRECT_URL = "/"
+
+# Cookie Security - explicitly set secure cookie flags
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SECURE = not DEBUG
+SESSION_COOKIE_SAMESITE = "Lax"
+
+CSRF_COOKIE_HTTPONLY = True
+CSRF_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SAMESITE = "Lax"
 
 # Password validation
 # https://docs.djangoproject.com/en/stable/ref/settings/#auth-password-validators
@@ -628,8 +639,5 @@ LOGGING = {
 
 # Integration Encryption
 # Used to encrypt OAuth tokens and other sensitive integration credentials
-# In tests, a default key is used. In production, this MUST be set via environment variable.
-INTEGRATION_ENCRYPTION_KEY = env(
-    "INTEGRATION_ENCRYPTION_KEY",
-    default="r8pmePXvrfFN4L_IjvTbZP3hWPTIN0y4KDw2wbuIRYg=" if "test" in sys.argv else None,
-)
+# No default - must be set via environment variable (test key is set in conftest.py)
+INTEGRATION_ENCRYPTION_KEY = env("INTEGRATION_ENCRYPTION_KEY", default=None)
