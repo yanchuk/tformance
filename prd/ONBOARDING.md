@@ -4,9 +4,9 @@
 
 ## Overview
 
-Goal: Get a CTO from sign-up to seeing their first dashboard in <15 minutes.
+Goal: Get a CTO from sign-up to seeing their first dashboard in <10 minutes.
 
-**Key principle:** GitHub org connection auto-discovers team members, minimizing manual setup.
+**Key principle:** GitHub org connection auto-discovers team members and creates the team. No manual setup required.
 
 ---
 
@@ -24,65 +24,25 @@ Goal: Get a CTO from sign-up to seeing their first dashboard in <15 minutes.
 │                                         │
 │  [🔵 Continue with Google]              │
 │                                         │
-├─────────────────────────────────────────┤
-│  Company name: [________________]       │
-│                                         │
-│  Team size:                             │
-│  ○ 1-10 developers                      │
-│  ○ 11-25 developers                     │
-│  ○ 26-50 developers                     │
-│  ○ 50+ developers                       │
+│  ☑ I agree to the Terms and Conditions  │
 │                                         │
 │  [Create Account]                       │
 └─────────────────────────────────────────┘
 ```
 
----
-
-## Step 2: Connect Supabase (BYOS)
-
-```
-┌─────────────────────────────────────────┐
-│         Set Up Your Database            │
-├─────────────────────────────────────────┤
-│                                         │
-│  Your data stays in YOUR database.      │
-│  We never store your engineering data.  │
-│                                         │
-│  📘 Don't have Supabase? [Create free]  │
-│                                         │
-├─────────────────────────────────────────┤
-│                                         │
-│  Supabase URL:                          │
-│  [https://xxx.supabase.co_________]     │
-│                                         │
-│  Service Role Key:                      │
-│  [eyJhbGciOiJIUzI1NiIsInR5cCI6___]     │
-│                                         │
-│  [Test Connection]                      │
-│                                         │
-│  ✅ Connected! We'll create tables      │
-│     automatically.                      │
-│                                         │
-│  [Continue →]                           │
-└─────────────────────────────────────────┘
-```
-
-**Behind the scenes:**
-- Test connection to Supabase
-- Run migration script to create tables
-- Verify RLS policies are enabled
+**No team name required** - team is created from GitHub org in next step.
 
 ---
 
-## Step 3: Connect GitHub (Auto-Discovery)
+## Step 2: Connect GitHub (Team Discovery)
 
 ```
 ┌─────────────────────────────────────────┐
-│        Connect GitHub Organization      │
+│        Connect Your GitHub Org          │
 ├─────────────────────────────────────────┤
 │                                         │
-│  We'll import your team from GitHub.    │
+│  We'll import your team from GitHub     │
+│  and start tracking engineering metrics.│
 │                                         │
 │  [🐙 Connect with GitHub]               │
 │                                         │
@@ -115,25 +75,47 @@ After OAuth:
 │  │ ... and 39 more                 │    │
 │  └─────────────────────────────────┘    │
 │                                         │
-│  Select repositories to track:          │
+│  [Continue →]                           │
+└─────────────────────────────────────────┘
+```
+
+**Behind the scenes:**
+- Create Team from org name
+- Fetch org members via GitHub API
+- Create TeamMember records with GitHub IDs
+- Set up org-level webhook for new members
+
+---
+
+## Step 3: Select Repositories
+
+```
+┌─────────────────────────────────────────┐
+│       Select Repositories to Track      │
+├─────────────────────────────────────────┤
+│                                         │
+│  Which repositories should we analyze?  │
+│                                         │
 │  ☑️ acme-corp/main-app                  │
 │  ☑️ acme-corp/api-service               │
 │  ☑️ acme-corp/mobile-app                │
-│  ☐ acme-corp/docs (uncheck if needed)   │
+│  ☐ acme-corp/docs (documentation)       │
+│  ☐ acme-corp/infrastructure (ops)       │
+│                                         │
+│  💡 Tip: Select repos where your team   │
+│     actively creates PRs                │
 │                                         │
 │  [Continue →]                           │
 └─────────────────────────────────────────┘
 ```
 
 **Behind the scenes:**
-- Fetch org members via GitHub API
-- Fetch team structure (if GitHub Teams used)
-- Create user records in client's Supabase
 - Set up webhooks for selected repos
+- Queue historical data sync (last 90 days)
 
 ---
 
-## Step 4: Connect Jira
+## Step 4: Connect Jira (Optional)
 
 ```
 ┌─────────────────────────────────────────┐
@@ -169,10 +151,11 @@ After OAuth:
 **Behind the scenes:**
 - Match Jira users to GitHub users by email
 - Identify any unmatched users
+- Queue historical sync
 
 ---
 
-## Step 5: Connect Slack
+## Step 5: Connect Slack (Optional)
 
 ```
 ┌─────────────────────────────────────────┐
@@ -184,6 +167,7 @@ After OAuth:
 │                                         │
 │  [📱 Add to Slack]                      │
 │                                         │
+│  [Skip for now →]                       │
 └─────────────────────────────────────────┘
 ```
 
@@ -212,63 +196,23 @@ After OAuth:
 ```
 
 **Behind the scenes:**
-- Match Slack users to GitHub/Jira users by email
+- Match Slack users to GitHub users by email
 - Send test message to verify bot works
 
 ---
 
-## Step 6: Review User Mapping
-
-```
-┌─────────────────────────────────────────┐
-│          Review Team Members            │
-├─────────────────────────────────────────┤
-│                                         │
-│  ✅ Auto-matched: 38 users              │
-│                                         │
-│  ┌─────────────────────────────────┐    │
-│  │ GitHub      │ Jira     │ Slack  │    │
-│  ├─────────────┼──────────┼────────┤    │
-│  │ @john-doe   │ ✓ john@  │ ✓ @john│    │
-│  │ @jane-smith │ ✓ jane@  │ ✓ @jane│    │
-│  │ @bob-wilson │ ✓ bob@   │ ✓ @bob │    │
-│  └─────────────────────────────────┘    │
-│                                         │
-│  ⚠️ Needs attention: 4 users            │
-│                                         │
-│  ┌─────────────────────────────────┐    │
-│  │ GitHub      │ Jira     │ Slack  │    │
-│  ├─────────────┼──────────┼────────┤    │
-│  │ @johnny-dev │ [Select▼]│ [▼]    │    │
-│  │ @contractor1│ [Select▼]│ [▼]    │    │
-│  │ @intern2024 │ [Select▼]│ [▼]    │    │
-│  │ @bot-ci     │ [Exclude]│ -      │    │
-│  └─────────────────────────────────┘    │
-│                                         │
-│  [Finish Setup →]                       │
-└─────────────────────────────────────────┘
-```
-
-**Options for unmatched users:**
-- Select from dropdown of unmatched Jira/Slack users
-- Mark as "Exclude" (for bots, CI users)
-- Leave unmatched (can fix later in settings)
-
----
-
-## Step 7: First Sync
+## Step 6: Initial Sync
 
 ```
 ┌─────────────────────────────────────────┐
 │       🚀 Setting Up Your Dashboard      │
 ├─────────────────────────────────────────┤
 │                                         │
-│  ✅ Database tables created             │
-│  ✅ Users imported (42)                 │
+│  ✅ Team created (42 members)           │
+│  ✅ Repositories configured (3)         │
 │  ⏳ Syncing GitHub data...              │
 │     └─ 847 PRs found, importing...      │
 │  ⏳ Syncing Jira data...                │
-│  ⏳ Syncing Copilot metrics...          │
 │                                         │
 │  This may take a few minutes for        │
 │  larger teams. We'll email you when     │
@@ -307,13 +251,12 @@ After sync completes:
 | Step | Time |
 |------|------|
 | Sign up | 1 min |
-| Connect Supabase | 3 min (if already have account) |
 | Connect GitHub | 2 min |
-| Connect Jira | 2 min |
-| Connect Slack | 2 min |
-| Review mapping | 2-5 min |
-| First sync | 2-10 min (background) |
-| **Total** | **~15 minutes** |
+| Select repositories | 1 min |
+| Connect Jira (optional) | 2 min |
+| Connect Slack (optional) | 2 min |
+| Initial sync | 2-5 min (background) |
+| **Total** | **~10 minutes** |
 
 ---
 
@@ -321,38 +264,58 @@ After sync completes:
 
 | Error | Resolution |
 |-------|------------|
-| Supabase connection fails | Show specific error, link to troubleshooting |
 | GitHub OAuth denied | Explain required permissions, retry |
 | No org access | Guide to request org admin approval |
+| No organizations found | Suggest creating org or check account |
 | Jira connection fails | Allow skip, continue without Jira |
-| User mapping conflicts | Allow manual resolution or skip |
+| Slack connection fails | Allow skip, continue without Slack |
 
 ---
 
-## Post-Onboarding Checklist Email
+## Post-Onboarding
 
-Sent 24 hours after setup:
+### Welcome Email (Sent immediately)
 
 ```
-Subject: Your [Product] setup checklist
+Subject: Welcome to [Product] - Your dashboard is ready!
 
 Hi {name},
 
-Your dashboard is set up! Here's what to expect:
+Your team "{team_name}" is set up and syncing data.
 
-✅ Already done:
-- {pr_count} PRs imported
-- {user_count} team members synced
+📊 View your dashboard: {dashboard_url}
 
-📊 Coming soon:
-- PR surveys will start appearing when PRs are merged
-- First leaderboard posts Monday at 9 AM
+What's happening now:
+- Importing {pr_count} PRs from the last 90 days
+- Syncing {issue_count} Jira issues
+- Matching {member_count} team members
 
-💡 Tips:
-- Encourage your team to respond to surveys
-- Check the AI Correlation dashboard after 2+ weeks of data
+We'll send another email once the initial sync is complete.
 
 Questions? Reply to this email.
+
+– The [Product] Team
+```
+
+### Sync Complete Email (Sent when done)
+
+```
+Subject: Your [Product] dashboard is ready!
+
+Hi {name},
+
+Your dashboard is fully loaded with data!
+
+✅ {pr_count} PRs imported
+✅ {issue_count} Jira issues synced
+✅ {member_count} team members matched
+
+🚀 View Dashboard: {dashboard_url}
+
+What's next:
+- PR surveys start automatically when PRs are merged
+- First leaderboard posts {next_monday} at 9 AM
+- Check the AI Correlation view after collecting survey data
 
 – The [Product] Team
 ```

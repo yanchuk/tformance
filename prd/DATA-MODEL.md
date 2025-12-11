@@ -4,7 +4,7 @@
 
 ## Overview
 
-All tables are created in the **client's Supabase** database. We provide migration scripts to set up the schema.
+All tables are in our PostgreSQL database, with team isolation enforced via `team_id` foreign keys. Django models extend `BaseTeamModel` which automatically adds the team relationship.
 
 ---
 
@@ -197,43 +197,34 @@ CREATE TABLE weekly_metrics (
 
 ---
 
-## Row Level Security (RLS)
+## Access Control
 
-Supabase RLS policies enforce layered visibility.
+Layered visibility is enforced at the Django application layer:
 
-```sql
--- Enable RLS on all tables
-ALTER TABLE users ENABLE ROW LEVEL SECURITY;
-ALTER TABLE pull_requests ENABLE ROW LEVEL SECURITY;
--- ... etc for all tables
+### Team Isolation
+- All models extend `BaseTeamModel` which adds `team` FK
+- `for_team` manager automatically filters by current team context
+- Views use `@login_and_team_required` decorator
 
--- Users can see their own data
-CREATE POLICY "Users see own data" ON users
-    FOR SELECT USING (auth.uid() = id);
+### Role-Based Visibility
+```python
+# Developers see only their own data
+if user.role == 'developer':
+    queryset = queryset.filter(author=user.team_member)
 
--- Users can see their team members (for leads)
-CREATE POLICY "Leads see team" ON users
-    FOR SELECT USING (
-        team_id IN (
-            SELECT team_id FROM users WHERE id = auth.uid() AND role = 'lead'
-        )
-    );
+# Leads see their team's data
+elif user.role == 'lead':
+    queryset = queryset.filter(team=user.current_team)
 
--- Admins see all
-CREATE POLICY "Admins see all" ON users
-    FOR SELECT USING (
-        EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role = 'admin')
-    );
-
--- Pull requests: users see their own + team aggregates
-CREATE POLICY "PR visibility" ON pull_requests
-    FOR SELECT USING (
-        author_id = auth.uid() OR
-        EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role IN ('lead', 'admin'))
-    );
-
--- Similar policies for other tables...
+# Admins see all data in their team
+elif user.role == 'admin':
+    queryset = queryset.filter(team=user.current_team)
 ```
+
+### Implementation Notes
+- Team context set via URL (`/a/<team_slug>/...`)
+- Membership checked via `Membership` model
+- Role stored on `Membership` (user can have different roles per team)
 
 ---
 
@@ -251,11 +242,14 @@ CREATE INDEX idx_surveys_pr ON pr_surveys(pr_id);
 
 ---
 
-## Migration Script
+## Migrations
 
-Provided as `migrations/001_initial_schema.sql` for clients to run on their Supabase:
+Django migrations handle all schema changes:
 
 ```bash
-# Client runs this in their Supabase SQL editor or via CLI
-psql $DATABASE_URL -f migrations/001_initial_schema.sql
+# Create new migrations after model changes
+make migrations
+
+# Apply migrations
+make migrate
 ```

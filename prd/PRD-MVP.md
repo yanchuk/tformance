@@ -29,7 +29,7 @@ An analytics platform that helps CTOs of small-to-medium engineering teams under
 **Key innovations:**
 - **AI correlation analysis** - Connect AI tool usage with delivery outcomes
 - **Gamified PR surveys** - Fun "AI Detective" game to capture quality feedback
-- **BYOS (Bring Your Own Storage)** - Client data stays in their Supabase
+- **GitHub-first onboarding** - Connect GitHub and your team is auto-discovered
 
 ---
 
@@ -92,7 +92,6 @@ An analytics platform that helps CTOs of small-to-medium engineering teams under
 | **AI Detective Game** | Reveal if reviewer guessed correctly, weekly leaderboard |
 | **Layered Visibility** | Dev sees own, Lead sees team, CTO sees all |
 | **Auto User Discovery** | Import team from GitHub org automatically |
-| **BYOS** | All data in client's Supabase |
 
 ### Not MVP (v2+)
 
@@ -146,20 +145,21 @@ An analytics platform that helps CTOs of small-to-medium engineering teams under
 
 ## 7. Data & Security
 
-### BYOS (Bring Your Own Storage)
+### Data Storage
 
 | Data | Location |
 |------|----------|
 | OAuth tokens | Our service (encrypted) |
 | Account/billing | Our service |
-| All metrics | Client's Supabase |
-| Survey responses | Client's Supabase |
-| User PII | Client's Supabase |
+| All metrics | Our database (team-isolated) |
+| Survey responses | Our database (team-isolated) |
+| User data | Our database (team-isolated) |
 
-### Security Claims
-- "Your engineering data never touches our servers"
-- "We only store encrypted API tokens for sync"
-- "You own your database - export or delete anytime"
+### Security Approach
+- All data isolated by team (team_id foreign key on all tables)
+- OAuth tokens encrypted at rest (Fernet/AES-256)
+- Role-based access control enforced at application layer
+- Data export available on request
 
 ### Visibility Model
 | Role | Individual Data | Team Aggregates |
@@ -175,8 +175,8 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for full security details.
 ## 8. Technical Approach
 
 ### Architecture
-- **Backend:** Orchestration service (sync workers, Slack bot, auth)
-- **Database:** Client's Supabase (PostgreSQL)
+- **Backend:** Django (sync workers, Slack bot, auth)
+- **Database:** PostgreSQL (single database, team-isolated)
 - **Dashboards:** Metabase (embedded)
 - **Sync:** Daily batch + GitHub webhooks for real-time PR events
 
@@ -228,7 +228,6 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for full technical details.
 | Low survey response rate | Gamification, minimal friction |
 | "Surveillance" perception | Privacy-first messaging, layered visibility |
 | GitHub API rate limits | Daily sync, caching |
-| Supabase complexity | Clear setup guide, support |
 
 ---
 
@@ -248,7 +247,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for full technical details.
 |---------|---------|-----------|---------|---------|
 | AI usage correlation | ✅ Core | ❌ | ❌ | ❌ |
 | PR quality surveys | ✅ Gamified | ❌ | ❌ | ❌ |
-| BYOS (client data) | ✅ | ❌ | ❌ | ❌ |
+| GitHub-first onboarding | ✅ | ❌ | ❌ | ❌ |
 | GitHub/Jira metrics | ✅ | ✅ | ✅ | ✅ |
 | Price | $10-25/seat | $50+/seat | $30-50/seat | $20-40/seat |
 

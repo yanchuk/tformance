@@ -30,7 +30,7 @@ This document outlines the logical order of building the MVP, focusing on depend
 | **Data security pitch** | "We secure it" | "Your data, your DB" |
 | **Migration path** | Can add BYOS later | N/A |
 
-**Decision:** Start with single database. Add BYOS as premium feature in Phase 11 if customer demand exists.
+**Decision:** Start with single database. Add BYOS as premium feature in Phase 12 if customer demand exists.
 
 ### Data Isolation Strategy
 

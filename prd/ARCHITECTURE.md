@@ -6,16 +6,17 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                      CLIENT INFRASTRUCTURE                       │
+│                         OUR SERVICE                              │
+│                                                                  │
 │  ┌───────────────────────────────────────────────────────────┐  │
-│  │                    Supabase Project                        │  │
+│  │                    PostgreSQL Database                     │  │
 │  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐        │  │
 │  │  │   users     │  │   metrics   │  │   surveys   │        │  │
 │  │  │   table     │  │   tables    │  │   table     │        │  │
 │  │  └─────────────┘  └─────────────┘  └─────────────┘        │  │
 │  │                         │                                  │  │
-│  │                    Row Level Security                      │  │
-│  │                    (layered visibility)                    │  │
+│  │              All tables have team_id FK                    │  │
+│  │              (application-level isolation)                 │  │
 │  └───────────────────────────────────────────────────────────┘  │
 │                              ↑                                   │
 │                              │ Direct connection                 │
@@ -24,13 +25,7 @@
 │  │               Metabase (Self-hosted or Cloud)              │  │
 │  │               Embedded dashboards in our app               │  │
 │  └───────────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────┘
-                               ↑
-                               │ Writes metrics
-                               │ (no data stored on our side)
-                               ↓
-┌─────────────────────────────────────────────────────────────────┐
-│                       OUR SERVICE                                │
+│                                                                  │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐              │
 │  │   Auth &    │  │    Sync     │  │   Slack     │              │
 │  │  Accounts   │  │   Workers   │  │    Bot      │              │
@@ -41,7 +36,6 @@
 │  │   tokens    │  │             │  │             │              │
 │  └─────────────┘  └─────────────┘  └─────────────┘              │
 │                                                                  │
-│  Storage: Only accounts, billing, encrypted OAuth tokens         │
 └─────────────────────────────────────────────────────────────────┘
                                ↑
                                │ API calls
@@ -59,17 +53,16 @@
 
 ## Data Flow: Metrics Sync
 
-**Frequency: Daily** (scheduled job, e.g., 2 AM in client's timezone)
+**Frequency: Daily** (scheduled Celery job)
 
 ```
-1. Scheduled job runs daily
-2. For each connected client:
+1. Scheduled job runs daily for each team
+2. For each connected team:
    a. Fetch new/updated PRs from GitHub API
    b. Fetch new/updated issues from Jira API
    c. Fetch usage data from Copilot API (if available)
    d. Transform to standard schema
-   e. Write directly to client's Supabase
-3. No data persisted on our side
+   e. Write to database with team_id
 ```
 
 **Why daily (not hourly):**
@@ -85,11 +78,11 @@
 ```
 1. GitHub webhook: PR merged
 2. Our service receives webhook
-3. Look up author and reviewers in client's user table
+3. Look up author and reviewers in TeamMember table
 4. Send Slack DMs via Slack API
 5. User clicks button in Slack
 6. Our service receives interaction
-7. Write response to client's Supabase
+7. Write response to database
 8. If both parties responded, send reveal message
 ```
 
@@ -99,11 +92,18 @@
 
 | Data Type | Location | Why |
 |-----------|----------|-----|
-| OAuth tokens (GitHub, Jira) | Our service (AES-256 encrypted) | Needed for API sync |
-| Account/billing info | Our service | Standard SaaS |
-| All metrics & analytics | Client's Supabase | Their data, their control |
-| Survey responses | Client's Supabase | Sensitive feedback |
-| User mappings | Client's Supabase | PII stays with them |
+| OAuth tokens (GitHub, Jira) | Our database (Fernet encrypted) | Needed for API sync |
+| Account/billing info | Our database | Standard SaaS |
+| All metrics & analytics | Our database (team-isolated) | Centralized management |
+| Survey responses | Our database (team-isolated) | Part of metrics |
+| User/team member data | Our database (team-isolated) | Needed for matching |
+
+### Data Isolation
+
+All metric tables have a `team_id` foreign key. The Django application enforces team isolation:
+- `BaseTeamModel` base class adds `team` FK automatically
+- `for_team` model manager filters by current team context
+- Views use `@login_and_team_required` decorator
 
 ---
 
@@ -204,11 +204,11 @@ project IN ({configured_projects}) AND updated >= -{sync_window}
 
 ## Security & Privacy
 
-### Security Claims
-- "Your engineering data never touches our servers"
-- "We only store encrypted API tokens for sync"
-- "You own your database - export or delete anytime"
-- "Open schema - inspect exactly what we store"
+### Security Approach
+- OAuth tokens encrypted at rest using Fernet (AES-256)
+- All data isolated by team at application layer
+- Role-based access control (developer, lead, admin)
+- Data export available on request
 
 ### Privacy by Design
 | Principle | Implementation |
@@ -216,15 +216,16 @@ project IN ({configured_projects}) AND updated >= -{sync_window}
 | Data minimization | Only collect what's needed for metrics |
 | Purpose limitation | Data used only for agreed analytics |
 | User control | Devs see own data, can request deletion |
-| Transparency | Open schema, visible RLS policies |
+| Team isolation | All queries scoped by team_id |
 
 ### GDPR Considerations
-- Client is data controller (their Supabase)
-- We are data processor (sync service)
-- DPA (Data Processing Agreement) provided
-- Client can delete all data by dropping Supabase tables
+- We are data controller and processor
+- DPA (Data Processing Agreement) provided on request
+- Data deletion available via support request
+- Data export in standard formats (CSV, JSON)
 
 ### For Future (v2+)
 - SOC 2 Type II certification
 - Audit log of all data access
 - EU-specific data processing options
+- BYOS (Bring Your Own Storage) for enterprise
