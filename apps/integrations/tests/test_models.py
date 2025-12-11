@@ -608,3 +608,53 @@ class TestTrackedRepositoryModel(TestCase):
         )
 
         self.assertEqual(repo.last_sync_at, sync_time)
+
+    def test_tracked_repository_sync_status_default_value(self):
+        """Test that sync_status defaults to 'pending'."""
+        repo = TrackedRepositoryFactory(
+            team=self.team,
+            integration=self.integration,
+        )
+
+        self.assertEqual(repo.sync_status, "pending")
+
+    def test_tracked_repository_sync_status_choices(self):
+        """Test that sync_status accepts valid choices."""
+        statuses = ["pending", "syncing", "complete", "error"]
+
+        for status in statuses:
+            team = TeamFactory()  # New team for each to avoid unique constraint
+            integration = GitHubIntegrationFactory(
+                team=team,
+                credential=IntegrationCredentialFactory(
+                    team=team,
+                    provider=IntegrationCredential.PROVIDER_GITHUB,
+                ),
+            )
+            repo = TrackedRepositoryFactory(
+                team=team,
+                integration=integration,
+                sync_status=status,
+            )
+            self.assertEqual(repo.sync_status, status)
+
+    def test_tracked_repository_last_sync_error_can_be_null(self):
+        """Test that last_sync_error can be null (no error)."""
+        repo = TrackedRepositoryFactory(
+            team=self.team,
+            integration=self.integration,
+            last_sync_error=None,
+        )
+
+        self.assertIsNone(repo.last_sync_error)
+
+    def test_tracked_repository_last_sync_error_can_be_set(self):
+        """Test that last_sync_error can be set to an error message."""
+        error_message = "GitHub API rate limit exceeded"
+        repo = TrackedRepositoryFactory(
+            team=self.team,
+            integration=self.integration,
+            last_sync_error=error_message,
+        )
+
+        self.assertEqual(repo.last_sync_error, error_message)

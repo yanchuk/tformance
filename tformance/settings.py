@@ -14,6 +14,7 @@ from datetime import timedelta
 from pathlib import Path
 
 import environ
+from celery import schedules
 from django.utils.translation import gettext_lazy
 
 # Build paths inside the project like this: BASE_DIR / "subdir".
@@ -494,12 +495,11 @@ SCHEDULED_TASKS = {
         "schedule": timedelta(days=1),
         "expire_seconds": 60 * 60,
     },
-    # Example of a crontab schedule
-    # from celery import schedules
-    # "daily-4am-task": {
-    #     "task": "some.task.path",
-    #     "schedule": schedules.crontab(minute=0, hour=4),
-    # },
+    "sync-github-repositories-daily": {
+        "task": "apps.integrations.tasks.sync_all_repositories_task",
+        "schedule": schedules.crontab(minute=0, hour=4),  # 4 AM UTC
+        "expire_seconds": 60 * 60 * 4,  # 4 hour expiry
+    },
 }
 
 # Channels / Daphne setup

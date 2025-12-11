@@ -1,10 +1,56 @@
 """GitHub sync service for fetching data from GitHub repositories."""
 
+from datetime import datetime
+
 from github import Github, GithubException
 
 from apps.integrations.services.github_oauth import GitHubOAuthError
 
-__all__ = ["GitHubOAuthError", "get_repository_pull_requests", "get_pull_request_reviews", "sync_repository_history"]
+__all__ = [
+    "GitHubOAuthError",
+    "get_repository_pull_requests",
+    "get_pull_request_reviews",
+    "get_updated_pull_requests",
+    "sync_repository_history",
+    "sync_repository_incremental",
+]
+
+
+def _convert_pr_to_dict(pr) -> dict:
+    """Convert PyGithub PullRequest object to dictionary with all required attributes.
+
+    Args:
+        pr: PyGithub PullRequest object
+
+    Returns:
+        Dictionary with PR data in standardized format
+    """
+    return {
+        "id": pr.id,
+        "number": pr.number,
+        "title": pr.title,
+        "state": pr.state,
+        "merged": pr.merged,
+        "merged_at": pr.merged_at.isoformat().replace("+00:00", "Z") if pr.merged_at else None,
+        "created_at": pr.created_at.isoformat().replace("+00:00", "Z"),
+        "updated_at": pr.updated_at.isoformat().replace("+00:00", "Z"),
+        "additions": pr.additions,
+        "deletions": pr.deletions,
+        "commits": pr.commits,
+        "changed_files": pr.changed_files,
+        "user": {
+            "id": pr.user.id,
+            "login": pr.user.login,
+        },
+        "base": {
+            "ref": pr.base.ref,
+        },
+        "head": {
+            "ref": pr.head.ref,
+            "sha": pr.head.sha,
+        },
+        "html_url": pr.html_url,
+    }
 
 
 def get_repository_pull_requests(
@@ -38,35 +84,57 @@ def get_repository_pull_requests(
         prs = repo.get_pulls(state=state)
 
         # Convert each PR to dict with all required attributes
+        return [_convert_pr_to_dict(pr) for pr in prs]
+
+    except GithubException as e:
+        raise GitHubOAuthError(f"GitHub API error: {e.status}") from e
+
+
+def get_updated_pull_requests(
+    access_token: str,
+    repo_full_name: str,
+    since: datetime,
+) -> list[dict]:
+    """Fetch pull requests updated since a given datetime.
+
+    GitHub's Pull Requests API doesn't have a 'since' parameter, so we use
+    the Issues API which does have 'since' and filter to only return issues
+    that are pull requests.
+
+    Args:
+        access_token: GitHub OAuth access token
+        repo_full_name: Repository in "owner/repo" format
+        since: Only return PRs updated at or after this datetime
+
+    Returns:
+        List of PR dictionaries with all required attributes (same format as get_repository_pull_requests)
+
+    Raises:
+        GitHubOAuthError: If API request fails
+    """
+    try:
+        # Create GitHub client
+        github = Github(access_token)
+
+        # Get repository
+        repo = github.get_repo(repo_full_name)
+
+        # Get issues updated since datetime (includes PRs)
+        # PyGithub returns PaginatedList that handles pagination automatically
+        issues = repo.get_issues(since=since, state="all")
+
+        # Filter to only issues that are pull requests and fetch full PR details
         pr_list = []
-        for pr in prs:
-            pr_dict = {
-                "id": pr.id,
-                "number": pr.number,
-                "title": pr.title,
-                "state": pr.state,
-                "merged": pr.merged,
-                "merged_at": pr.merged_at.isoformat().replace("+00:00", "Z") if pr.merged_at else None,
-                "created_at": pr.created_at.isoformat().replace("+00:00", "Z"),
-                "updated_at": pr.updated_at.isoformat().replace("+00:00", "Z"),
-                "additions": pr.additions,
-                "deletions": pr.deletions,
-                "commits": pr.commits,
-                "changed_files": pr.changed_files,
-                "user": {
-                    "id": pr.user.id,
-                    "login": pr.user.login,
-                },
-                "base": {
-                    "ref": pr.base.ref,
-                },
-                "head": {
-                    "ref": pr.head.ref,
-                    "sha": pr.head.sha,
-                },
-                "html_url": pr.html_url,
-            }
-            pr_list.append(pr_dict)
+        for issue in issues:
+            # Check if issue is a pull request (has pull_request attribute)
+            if issue.pull_request is None:
+                continue
+
+            # Fetch full PR details (Issues API doesn't include merged status, etc.)
+            pr = repo.get_pull(issue.number)
+
+            # Convert PR to dict with all required attributes (same format as get_repository_pull_requests)
+            pr_list.append(_convert_pr_to_dict(pr))
 
         return pr_list
 
@@ -200,32 +268,24 @@ def _sync_pr_reviews(
     return reviews_synced
 
 
-def sync_repository_history(
+def _process_prs(
+    prs_data: list[dict],
     tracked_repo: "TrackedRepository",  # noqa: F821
-    days_back: int = 90,
+    access_token: str,
 ) -> dict:
-    """Sync historical PR data from a tracked repository.
+    """Process a list of PR data and sync to database.
 
     Args:
+        prs_data: List of PR dictionaries from GitHub API
         tracked_repo: TrackedRepository instance to sync
-        days_back: Number of days of history to sync (default 90, not yet implemented)
+        access_token: Decrypted GitHub access token
 
     Returns:
         Dict with keys: prs_synced, reviews_synced, errors
     """
-    from django.utils import timezone
-
-    from apps.integrations.services.encryption import decrypt
     from apps.metrics.models import PullRequest
     from apps.metrics.processors import _map_github_pr_to_fields
 
-    # Decrypt the access token
-    access_token = decrypt(tracked_repo.integration.credential.access_token)
-
-    # Fetch PRs from GitHub
-    prs_data = get_repository_pull_requests(access_token, tracked_repo.full_name)
-
-    # Process each PR with error handling
     prs_synced = 0
     reviews_synced = 0
     errors = []
@@ -265,12 +325,75 @@ def sync_repository_history(
             errors.append(error_msg)
             continue
 
-    # Update last_sync_at
-    tracked_repo.last_sync_at = timezone.now()
-    tracked_repo.save()
-
     return {
         "prs_synced": prs_synced,
         "reviews_synced": reviews_synced,
         "errors": errors,
     }
+
+
+def sync_repository_history(
+    tracked_repo: "TrackedRepository",  # noqa: F821
+    days_back: int = 90,
+) -> dict:
+    """Sync historical PR data from a tracked repository.
+
+    Args:
+        tracked_repo: TrackedRepository instance to sync
+        days_back: Number of days of history to sync (default 90, not yet implemented)
+
+    Returns:
+        Dict with keys: prs_synced, reviews_synced, errors
+    """
+    from django.utils import timezone
+
+    from apps.integrations.services.encryption import decrypt
+
+    # Decrypt the access token
+    access_token = decrypt(tracked_repo.integration.credential.access_token)
+
+    # Fetch PRs from GitHub
+    prs_data = get_repository_pull_requests(access_token, tracked_repo.full_name)
+
+    # Process PRs and sync reviews
+    result = _process_prs(prs_data, tracked_repo, access_token)
+
+    # Update last_sync_at
+    tracked_repo.last_sync_at = timezone.now()
+    tracked_repo.save()
+
+    return result
+
+
+def sync_repository_incremental(tracked_repo: "TrackedRepository") -> dict:  # noqa: F821
+    """
+    Perform incremental sync for a repository.
+
+    Args:
+        tracked_repo: TrackedRepository model instance
+
+    Returns:
+        dict with keys: prs_synced, reviews_synced, errors
+    """
+    # If last_sync_at is None, fall back to full sync
+    if tracked_repo.last_sync_at is None:
+        return sync_repository_history(tracked_repo)
+
+    from django.utils import timezone
+
+    from apps.integrations.services.encryption import decrypt
+
+    # Decrypt the access token
+    access_token = decrypt(tracked_repo.integration.credential.access_token)
+
+    # Fetch updated PRs from GitHub since last sync
+    prs_data = get_updated_pull_requests(access_token, tracked_repo.full_name, tracked_repo.last_sync_at)
+
+    # Process PRs and sync reviews
+    result = _process_prs(prs_data, tracked_repo, access_token)
+
+    # Update last_sync_at
+    tracked_repo.last_sync_at = timezone.now()
+    tracked_repo.save()
+
+    return result

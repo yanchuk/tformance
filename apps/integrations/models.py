@@ -1,5 +1,12 @@
 from django.db import models
 
+from apps.integrations.constants import (
+    SYNC_STATUS_CHOICES,
+    SYNC_STATUS_COMPLETE,
+    SYNC_STATUS_ERROR,
+    SYNC_STATUS_PENDING,
+    SYNC_STATUS_SYNCING,
+)
 from apps.teams.models import BaseTeamModel
 from apps.users.models import CustomUser
 
@@ -75,17 +82,12 @@ class GitHubIntegration(BaseTeamModel):
     Links to an IntegrationCredential for OAuth tokens.
     """
 
-    SYNC_STATUS_PENDING = "pending"
-    SYNC_STATUS_SYNCING = "syncing"
-    SYNC_STATUS_COMPLETE = "complete"
-    SYNC_STATUS_ERROR = "error"
-
-    SYNC_STATUS_CHOICES = [
-        (SYNC_STATUS_PENDING, "Pending"),
-        (SYNC_STATUS_SYNCING, "Syncing"),
-        (SYNC_STATUS_COMPLETE, "Complete"),
-        (SYNC_STATUS_ERROR, "Error"),
-    ]
+    # Import sync status constants from shared constants module
+    SYNC_STATUS_PENDING = SYNC_STATUS_PENDING
+    SYNC_STATUS_SYNCING = SYNC_STATUS_SYNCING
+    SYNC_STATUS_COMPLETE = SYNC_STATUS_COMPLETE
+    SYNC_STATUS_ERROR = SYNC_STATUS_ERROR
+    SYNC_STATUS_CHOICES = SYNC_STATUS_CHOICES
 
     credential = models.OneToOneField(
         IntegrationCredential,
@@ -143,6 +145,13 @@ class TrackedRepository(BaseTeamModel):
     Each repository belongs to a GitHubIntegration.
     """
 
+    # Import sync status constants from shared constants module
+    SYNC_STATUS_PENDING = SYNC_STATUS_PENDING
+    SYNC_STATUS_SYNCING = SYNC_STATUS_SYNCING
+    SYNC_STATUS_COMPLETE = SYNC_STATUS_COMPLETE
+    SYNC_STATUS_ERROR = SYNC_STATUS_ERROR
+    SYNC_STATUS_CHOICES = SYNC_STATUS_CHOICES
+
     integration = models.ForeignKey(
         GitHubIntegration,
         on_delete=models.CASCADE,
@@ -176,6 +185,20 @@ class TrackedRepository(BaseTeamModel):
         verbose_name="Last sync at",
         help_text="When data was last synced from this repository",
     )
+    sync_status = models.CharField(
+        max_length=20,
+        choices=SYNC_STATUS_CHOICES,
+        default=SYNC_STATUS_PENDING,
+        db_index=True,
+        verbose_name="Sync status",
+        help_text="Current status of data synchronization",
+    )
+    last_sync_error = models.TextField(
+        null=True,
+        blank=True,
+        verbose_name="Last sync error",
+        help_text="Error message from the last failed sync attempt",
+    )
 
     class Meta:
         ordering = ["full_name"]
@@ -189,6 +212,7 @@ class TrackedRepository(BaseTeamModel):
             models.Index(fields=["github_repo_id"], name="tracked_repo_gh_id_idx"),
             models.Index(fields=["is_active", "last_sync_at"], name="tracked_repo_active_sync_idx"),
             models.Index(fields=["integration", "is_active"], name="tracked_repo_int_active_idx"),
+            models.Index(fields=["sync_status", "last_sync_at"], name="tracked_repo_sync_status_idx"),
         ]
 
     def __str__(self):

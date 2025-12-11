@@ -93,3 +93,5 @@ class TrackedRepositoryFactory(DjangoModelFactory):
     is_active = True
     webhook_id = None
     last_sync_at = None
+    sync_status = "pending"
+    last_sync_error = None
