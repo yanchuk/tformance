@@ -239,6 +239,10 @@ CSRF_COOKIE_HTTPONLY = True
 CSRF_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SAMESITE = "Lax"
 
+# CSRF trusted origins for ngrok and other tunnels/proxies
+# Set via env: CSRF_TRUSTED_ORIGINS=https://abc123.ngrok-free.app,https://example.com
+CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=[])
+
 # Password validation
 # https://docs.djangoproject.com/en/stable/ref/settings/#auth-password-validators
 
