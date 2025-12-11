@@ -1,4 +1,4 @@
-"""Tests for IntegrationCredential and GitHubIntegration models."""
+"""Tests for IntegrationCredential, GitHubIntegration, and JiraIntegration models."""
 
 from django.db import IntegrityError
 from django.test import TestCase
@@ -7,10 +7,16 @@ from django.utils import timezone
 from apps.integrations.factories import (
     GitHubIntegrationFactory,
     IntegrationCredentialFactory,
+    JiraIntegrationFactory,
     TrackedRepositoryFactory,
     UserFactory,
 )
-from apps.integrations.models import GitHubIntegration, IntegrationCredential, TrackedRepository
+from apps.integrations.models import (
+    GitHubIntegration,
+    IntegrationCredential,
+    JiraIntegration,
+    TrackedRepository,
+)
 from apps.metrics.factories import TeamFactory
 from apps.teams.context import set_current_team, unset_current_team
 
@@ -658,3 +664,242 @@ class TestTrackedRepositoryModel(TestCase):
         )
 
         self.assertEqual(repo.last_sync_error, error_message)
+
+
+class TestJiraIntegrationModel(TestCase):
+    """Tests for JiraIntegration model."""
+
+    def setUp(self):
+        """Set up test fixtures using factories."""
+        self.team = TeamFactory()
+        self.credential = IntegrationCredentialFactory(
+            team=self.team,
+            provider=IntegrationCredential.PROVIDER_JIRA,
+        )
+
+    def tearDown(self):
+        """Clean up team context."""
+        unset_current_team()
+
+    def test_jira_integration_creation_with_all_required_fields(self):
+        """Test that JiraIntegration can be created with all required fields."""
+        integration = JiraIntegrationFactory(
+            team=self.team,
+            credential=self.credential,
+            cloud_id="aaaaa-bbbbb-ccccc-ddddd",
+            site_name="Acme Corp",
+            site_url="https://acme.atlassian.net",
+        )
+
+        self.assertEqual(integration.team, self.team)
+        self.assertEqual(integration.credential, self.credential)
+        self.assertEqual(integration.cloud_id, "aaaaa-bbbbb-ccccc-ddddd")
+        self.assertEqual(integration.site_name, "Acme Corp")
+        self.assertEqual(integration.site_url, "https://acme.atlassian.net")
+        self.assertIsNone(integration.last_sync_at)
+        self.assertEqual(integration.sync_status, "pending")
+        self.assertIsNotNone(integration.pk)
+        self.assertIsNotNone(integration.created_at)
+        self.assertIsNotNone(integration.updated_at)
+
+    def test_jira_integration_one_to_one_relationship_with_credential(self):
+        """Test that JiraIntegration has a one-to-one relationship with IntegrationCredential."""
+        integration = JiraIntegrationFactory(
+            team=self.team,
+            credential=self.credential,
+        )
+
+        # Access integration from credential using related_name
+        self.assertEqual(self.credential.jira_integration, integration)
+
+        # Cannot create another integration with the same credential
+        with self.assertRaises(IntegrityError):
+            JiraIntegrationFactory(
+                team=self.team,
+                credential=self.credential,
+            )
+
+    def test_jira_integration_cloud_id_is_indexed_and_queryable(self):
+        """Test that cloud_id is indexed and can be queried efficiently."""
+        cloud_id = "aaaaa-bbbbb-ccccc-ddddd"
+        integration = JiraIntegrationFactory(
+            team=self.team,
+            credential=self.credential,
+            cloud_id=cloud_id,
+        )
+
+        # Query by cloud_id
+        result = JiraIntegration.objects.filter(cloud_id=cloud_id).first()
+        self.assertEqual(result, integration)
+
+    def test_jira_integration_sync_status_defaults_to_pending(self):
+        """Test that sync_status defaults to 'pending'."""
+        integration = JiraIntegrationFactory(
+            team=self.team,
+            credential=self.credential,
+        )
+
+        self.assertEqual(integration.sync_status, "pending")
+
+    def test_jira_integration_last_sync_at_can_be_null(self):
+        """Test that last_sync_at can be null (not yet synced)."""
+        integration = JiraIntegrationFactory(
+            team=self.team,
+            credential=self.credential,
+            last_sync_at=None,
+        )
+
+        self.assertIsNone(integration.last_sync_at)
+
+    def test_jira_integration_last_sync_at_can_be_set(self):
+        """Test that last_sync_at can be set to a datetime."""
+        sync_time = timezone.now()
+        integration = JiraIntegrationFactory(
+            team=self.team,
+            credential=self.credential,
+            last_sync_at=sync_time,
+        )
+
+        self.assertEqual(integration.last_sync_at, sync_time)
+
+    def test_jira_integration_cascade_deletion_with_credential(self):
+        """Test that deleting credential cascades to JiraIntegration."""
+        integration = JiraIntegrationFactory(
+            team=self.team,
+            credential=self.credential,
+        )
+
+        integration_id = integration.id
+        credential_id = self.credential.id
+
+        # Delete the credential
+        self.credential.delete()
+
+        # JiraIntegration should be deleted too
+        with self.assertRaises(JiraIntegration.DoesNotExist):
+            JiraIntegration.objects.get(pk=integration_id)
+
+        # Verify credential is also deleted
+        with self.assertRaises(IntegrationCredential.DoesNotExist):
+            IntegrationCredential.objects.get(pk=credential_id)
+
+    def test_jira_integration_factory_creates_valid_instances(self):
+        """Test that JiraIntegrationFactory creates valid instances."""
+        # Let factory create its own team to avoid unique constraint conflict
+        integration = JiraIntegrationFactory()
+
+        # Factory should create valid credential automatically
+        self.assertIsNotNone(integration.credential)
+        self.assertEqual(integration.credential.provider, IntegrationCredential.PROVIDER_JIRA)
+        self.assertEqual(integration.credential.team, integration.team)
+
+        # Factory should populate all fields
+        self.assertIsNotNone(integration.cloud_id)
+        self.assertIsNotNone(integration.site_name)
+        self.assertIsNotNone(integration.site_url)
+        self.assertEqual(integration.sync_status, "pending")
+        self.assertIsNone(integration.last_sync_at)
+
+    def test_jira_integration_sync_status_choices(self):
+        """Test that sync_status accepts valid choices."""
+        statuses = ["pending", "syncing", "complete", "error"]
+
+        for status in statuses:
+            team = TeamFactory()  # New team for each to avoid unique constraint
+            integration = JiraIntegrationFactory(
+                team=team,
+                credential=IntegrationCredentialFactory(
+                    team=team,
+                    provider=IntegrationCredential.PROVIDER_JIRA,
+                ),
+                sync_status=status,
+            )
+            self.assertEqual(integration.sync_status, status)
+
+    def test_jira_integration_string_representation(self):
+        """Test that string representation shows Jira: {site_name}."""
+        integration = JiraIntegrationFactory(
+            team=self.team,
+            credential=self.credential,
+            site_name="Acme Corp",
+        )
+
+        expected = "Jira: Acme Corp"
+        self.assertEqual(str(integration), expected)
+
+    def test_jira_integration_team_scoped_manager(self):
+        """Test that for_team manager filters by current team context."""
+        team2 = TeamFactory()
+        credential2 = IntegrationCredentialFactory(
+            team=team2,
+            provider=IntegrationCredential.PROVIDER_JIRA,
+        )
+
+        # Create integrations for two different teams
+        integration1 = JiraIntegrationFactory(
+            team=self.team,
+            credential=self.credential,
+            site_name="Team 1 Jira",
+        )
+        integration2 = JiraIntegrationFactory(
+            team=team2,
+            credential=credential2,
+            site_name="Team 2 Jira",
+        )
+
+        # Set current team context
+        set_current_team(self.team)
+
+        # Query using for_team manager
+        integrations = JiraIntegration.for_team.all()
+
+        # Should only return integration1
+        self.assertEqual(integrations.count(), 1)
+        self.assertIn(integration1, integrations)
+        self.assertNotIn(integration2, integrations)
+
+        # Switch to team2
+        set_current_team(team2)
+        integrations = JiraIntegration.for_team.all()
+
+        # Should only return integration2
+        self.assertEqual(integrations.count(), 1)
+        self.assertIn(integration2, integrations)
+        self.assertNotIn(integration1, integrations)
+
+    def test_jira_integration_indexes_sync_status_and_last_sync_at(self):
+        """Test that sync_status + last_sync_at is indexed for efficient queries."""
+        # Create integrations with different sync statuses and times
+        now = timezone.now()
+        older_time = now - timezone.timedelta(hours=2)
+
+        integration1 = JiraIntegrationFactory(
+            team=self.team,
+            credential=self.credential,
+            sync_status="complete",
+            last_sync_at=older_time,
+        )
+
+        team2 = TeamFactory()
+        credential2 = IntegrationCredentialFactory(
+            team=team2,
+            provider=IntegrationCredential.PROVIDER_JIRA,
+        )
+        integration2 = JiraIntegrationFactory(
+            team=team2,
+            credential=credential2,
+            sync_status="pending",
+            last_sync_at=None,
+        )
+
+        # Query by sync_status
+        pending = JiraIntegration.objects.filter(sync_status="pending")
+        self.assertIn(integration2, pending)
+        self.assertNotIn(integration1, pending)
+
+        # Query by sync_status and last_sync_at (compound index)
+        stale = JiraIntegration.objects.filter(
+            sync_status="complete", last_sync_at__lt=now - timezone.timedelta(hours=1)
+        )
+        self.assertIn(integration1, stale)
+        self.assertNotIn(integration2, stale)

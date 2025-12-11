@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import GitHubIntegration, IntegrationCredential, TrackedRepository
+from .models import GitHubIntegration, IntegrationCredential, JiraIntegration, TrackedRepository
 
 
 class TrackedRepositoryInline(admin.TabularInline):
@@ -22,6 +22,15 @@ class GitHubIntegrationInline(admin.StackedInline):
     can_delete = False
 
 
+class JiraIntegrationInline(admin.StackedInline):
+    """Inline for JiraIntegration on IntegrationCredential."""
+
+    model = JiraIntegration
+    extra = 0
+    readonly_fields = ["cloud_id", "site_name", "site_url", "sync_status", "last_sync_at"]
+    can_delete = False
+
+
 @admin.register(IntegrationCredential)
 class IntegrationCredentialAdmin(admin.ModelAdmin):
     """Admin for IntegrationCredential - OAuth tokens for integrations."""
@@ -32,7 +41,7 @@ class IntegrationCredentialAdmin(admin.ModelAdmin):
     ordering = ["team", "provider"]
     readonly_fields = ["created_at", "updated_at", "token_masked"]
     raw_id_fields = ["connected_by"]
-    inlines = [GitHubIntegrationInline]
+    inlines = [GitHubIntegrationInline, JiraIntegrationInline]
 
     fieldsets = (
         (None, {"fields": ("team", "provider", "connected_by")}),
@@ -128,3 +137,26 @@ class TrackedRepositoryAdmin(admin.ModelAdmin):
     @admin.display(description="Webhook")
     def webhook_status(self, obj):
         return "Registered" if obj.webhook_id else "Not registered"
+
+
+@admin.register(JiraIntegration)
+class JiraIntegrationAdmin(admin.ModelAdmin):
+    """Admin for JiraIntegration - Jira site settings."""
+
+    list_display = [
+        "site_name",
+        "team",
+        "sync_status",
+        "last_sync_at",
+        "cloud_id",
+    ]
+    list_filter = ["team", "sync_status"]
+    search_fields = ["site_name", "team__name", "cloud_id"]
+    ordering = ["team", "site_name"]
+    readonly_fields = ["created_at", "updated_at", "credential"]
+
+    fieldsets = (
+        (None, {"fields": ("team", "credential", "site_name", "cloud_id", "site_url")}),
+        ("Sync Status", {"fields": ("sync_status", "last_sync_at")}),
+        ("Timestamps", {"fields": ("created_at", "updated_at"), "classes": ("collapse",)}),
+    )

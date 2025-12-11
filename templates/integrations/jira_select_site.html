@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Select Jira Site</title>
+</head>
+<body>
+  <h1>Select Jira Site</h1>
+  <form method="post">
+    {% csrf_token %}
+    {% for site in sites %}
+      <div>
+        <button type="submit" name="cloud_id" value="{{ site.id }}">
+          {{ site.name }}
+        </button>
+        <input type="hidden" name="site_name" value="{{ site.name }}">
+        <input type="hidden" name="site_url" value="{{ site.url }}">
+      </div>
+    {% endfor %}
+  </form>
+</body>
+</html>

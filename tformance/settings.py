@@ -325,6 +325,10 @@ TURNSTILE_SECRET = env("TURNSTILE_SECRET", default=None)
 GITHUB_CLIENT_ID = env("GITHUB_CLIENT_ID", default="")
 GITHUB_SECRET_ID = env("GITHUB_SECRET_ID", default="")
 
+# Jira OAuth (Atlassian)
+JIRA_CLIENT_ID = env("JIRA_CLIENT_ID", default="")
+JIRA_CLIENT_SECRET = env("JIRA_CLIENT_SECRET", default="")
+
 
 # Internationalization
 # https://docs.djangoproject.com/en/stable/topics/i18n/

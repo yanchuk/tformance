@@ -9,10 +9,11 @@ from django.shortcuts import redirect, render
 from django.template.response import TemplateResponse
 from django.urls import reverse
 
-from apps.integrations.models import GitHubIntegration, IntegrationCredential
-from apps.integrations.services import github_oauth, github_sync, github_webhooks, member_sync
+from apps.integrations.models import GitHubIntegration, IntegrationCredential, JiraIntegration
+from apps.integrations.services import github_oauth, github_sync, github_webhooks, jira_oauth, member_sync
 from apps.integrations.services.encryption import decrypt, encrypt
 from apps.integrations.services.github_oauth import GitHubOAuthError
+from apps.integrations.services.jira_oauth import JiraOAuthError
 from apps.metrics.models import TeamMember
 from apps.teams.decorators import login_and_team_required, team_admin_required
 
@@ -67,12 +68,13 @@ def _delete_repository_webhook(access_token, repo_full_name, webhook_id):
         logger.error(f"Failed to delete webhook for {repo_full_name}: {e}")
 
 
-def _create_github_credential(team, access_token, user):
-    """Create an encrypted GitHub credential for a team.
+def _create_integration_credential(team, access_token, provider, user):
+    """Create an encrypted integration credential for a team.
 
     Args:
         team: The team to create the credential for.
-        access_token: The GitHub OAuth access token (will be encrypted).
+        access_token: The OAuth access token (will be encrypted).
+        provider: The provider type (e.g., PROVIDER_GITHUB, PROVIDER_JIRA).
         user: The user who connected the integration.
 
     Returns:
@@ -81,10 +83,57 @@ def _create_github_credential(team, access_token, user):
     encrypted_token = encrypt(access_token)
     return IntegrationCredential.objects.create(
         team=team,
-        provider=IntegrationCredential.PROVIDER_GITHUB,
+        provider=provider,
         access_token=encrypted_token,
         connected_by=user,
     )
+
+
+def _validate_oauth_callback(request, team, verify_state_func, oauth_error_class, provider_name):
+    """Validate OAuth callback parameters and state.
+
+    Args:
+        request: The HTTP request object.
+        team: The team object.
+        verify_state_func: Function to verify the state parameter.
+        oauth_error_class: The OAuth error exception class to catch.
+        provider_name: The name of the provider (e.g., "GitHub", "Jira").
+
+    Returns:
+        tuple: (code, None) if validation succeeds, (None, redirect_response) if validation fails.
+    """
+    # Check for OAuth denial
+    if request.GET.get("error") == "access_denied":
+        messages.error(request, f"{provider_name} authorization was cancelled.")
+        return None, redirect("integrations:integrations_home", team_slug=team.slug)
+
+    # Get code and state from query params
+    code = request.GET.get("code")
+    state = request.GET.get("state")
+
+    # Validate parameters
+    if not code:
+        messages.error(request, f"Missing authorization code from {provider_name}.")
+        return None, redirect("integrations:integrations_home", team_slug=team.slug)
+
+    if not state:
+        messages.error(request, f"Missing state parameter from {provider_name}.")
+        return None, redirect("integrations:integrations_home", team_slug=team.slug)
+
+    # Verify state
+    try:
+        state_data = verify_state_func(state)
+        team_id = state_data.get("team_id")
+
+        # Verify team_id matches current team
+        if team_id != team.id:
+            messages.error(request, "Invalid state parameter.")
+            return None, redirect("integrations:integrations_home", team_slug=team.slug)
+    except oauth_error_class:
+        messages.error(request, "Invalid state parameter.")
+        return None, redirect("integrations:integrations_home", team_slug=team.slug)
+
+    return code, None
 
 
 def _create_github_integration(team, credential, org):
@@ -223,36 +272,12 @@ def github_callback(request, team_slug):
     """
     team = request.team
 
-    # Check for OAuth denial
-    if request.GET.get("error") == "access_denied":
-        messages.error(request, "GitHub authorization was cancelled.")
-        return redirect("integrations:integrations_home", team_slug=team.slug)
-
-    # Get code and state from query params
-    code = request.GET.get("code")
-    state = request.GET.get("state")
-
-    # Validate parameters
-    if not code:
-        messages.error(request, "Missing authorization code from GitHub.")
-        return redirect("integrations:integrations_home", team_slug=team.slug)
-
-    if not state:
-        messages.error(request, "Missing state parameter from GitHub.")
-        return redirect("integrations:integrations_home", team_slug=team.slug)
-
-    # Verify state
-    try:
-        state_data = github_oauth.verify_oauth_state(state)
-        team_id = state_data.get("team_id")
-
-        # Verify team_id matches current team
-        if team_id != team.id:
-            messages.error(request, "Invalid state parameter.")
-            return redirect("integrations:integrations_home", team_slug=team.slug)
-    except GitHubOAuthError:
-        messages.error(request, "Invalid state parameter.")
-        return redirect("integrations:integrations_home", team_slug=team.slug)
+    # Validate OAuth callback parameters
+    code, error_response = _validate_oauth_callback(
+        request, team, github_oauth.verify_oauth_state, GitHubOAuthError, "GitHub"
+    )
+    if error_response:
+        return error_response
 
     # Build callback URL
     callback_url = request.build_absolute_uri(reverse("integrations:github_callback", args=[team.slug]))
@@ -273,7 +298,7 @@ def github_callback(request, team_slug):
         return redirect("integrations:integrations_home", team_slug=team.slug)
 
     # Create credential for the team
-    credential = _create_github_credential(team, access_token, request.user)
+    credential = _create_integration_credential(team, access_token, IntegrationCredential.PROVIDER_GITHUB, request.user)
 
     # If single org, create integration immediately
     if len(orgs) == 1:
@@ -698,3 +723,186 @@ def github_repo_sync(request, team_slug, repo_id):
     except Exception as e:
         logger.error(f"Failed to sync repository {tracked_repo.full_name}: {e}")
         return JsonResponse({"error": str(e)}, status=500)
+
+
+@team_admin_required
+def jira_connect(request, team_slug):
+    """Initiate Jira OAuth flow for connecting a team's Jira account.
+
+    Redirects the user to Atlassian's OAuth authorization page. On success,
+    Atlassian redirects back to jira_callback.
+
+    Requires team admin role.
+
+    Args:
+        request: The HTTP request object.
+        team_slug: The slug of the team connecting to Jira.
+
+    Returns:
+        HttpResponse redirecting to Atlassian OAuth authorization.
+    """
+    team = request.team
+
+    # Check if already connected
+    if JiraIntegration.objects.filter(team=team).exists():
+        messages.info(request, "Jira is already connected to this team.")
+        return redirect("integrations:integrations_home", team_slug=team.slug)
+
+    # Build callback URL
+    callback_url = request.build_absolute_uri(reverse("integrations:jira_callback", args=[team.slug]))
+
+    # Get authorization URL
+    authorization_url = jira_oauth.get_authorization_url(team.id, callback_url)
+
+    # Redirect to Atlassian
+    return redirect(authorization_url)
+
+
+@login_and_team_required
+def jira_callback(request, team_slug):
+    """Handle Jira OAuth callback after user authorizes the app.
+
+    Receives the authorization code from Atlassian, exchanges it for an access token,
+    and stores the token for the team.
+
+    Args:
+        request: The HTTP request object containing OAuth callback parameters.
+        team_slug: The slug of the team that initiated the OAuth flow.
+
+    Returns:
+        HttpResponse redirecting to site selection or integrations home.
+    """
+    team = request.team
+
+    # Validate OAuth callback parameters
+    code, error_response = _validate_oauth_callback(
+        request, team, jira_oauth.verify_oauth_state, JiraOAuthError, "Jira"
+    )
+    if error_response:
+        return error_response
+
+    # Build callback URL
+    callback_url = request.build_absolute_uri(reverse("integrations:jira_callback", args=[team.slug]))
+
+    # Exchange code for token
+    try:
+        token_data = jira_oauth.exchange_code_for_token(code, callback_url)
+        access_token = token_data["access_token"]
+    except (JiraOAuthError, KeyError, Exception) as e:
+        messages.error(request, f"Failed to exchange authorization code: {str(e)}")
+        return redirect("integrations:integrations_home", team_slug=team.slug)
+
+    # Get accessible resources (Jira sites)
+    try:
+        sites = jira_oauth.get_accessible_resources(access_token)
+    except JiraOAuthError as e:
+        messages.error(request, f"Failed to get accessible sites: {str(e)}")
+        return redirect("integrations:integrations_home", team_slug=team.slug)
+
+    # Create encrypted credential for the team
+    credential = _create_integration_credential(team, access_token, IntegrationCredential.PROVIDER_JIRA, request.user)
+
+    # If single site, create integration immediately
+    if len(sites) == 1:
+        site = sites[0]
+        JiraIntegration.objects.create(
+            team=team,
+            credential=credential,
+            cloud_id=site["id"],
+            site_name=site["name"],
+            site_url=site["url"],
+        )
+
+        messages.success(request, f"Connected to Jira site: {site['name']}")
+        return redirect("integrations:integrations_home", team_slug=team.slug)
+
+    # Multiple sites - store in session and redirect to selection
+    request.session["jira_sites"] = sites
+    return redirect("integrations:jira_select_site", team_slug=team.slug)
+
+
+@team_admin_required
+def jira_disconnect(request, team_slug):
+    """Disconnect Jira integration for a team.
+
+    Removes the stored Jira OAuth token and any associated data for the team.
+
+    Requires team admin role and POST method.
+
+    Args:
+        request: The HTTP request object.
+        team_slug: The slug of the team disconnecting from Jira.
+
+    Returns:
+        HttpResponse redirecting to integrations home with success message.
+    """
+    # Require POST method
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+
+    team = request.team
+
+    # Delete JiraIntegration (this will cascade delete the credential)
+    JiraIntegration.objects.filter(team=team).delete()
+
+    # Also delete any orphaned credentials
+    IntegrationCredential.objects.filter(team=team, provider=IntegrationCredential.PROVIDER_JIRA).delete()
+
+    messages.success(request, "Jira integration disconnected successfully.")
+    return redirect("integrations:integrations_home", team_slug=team.slug)
+
+
+@login_and_team_required
+def jira_select_site(request, team_slug):
+    """Allow user to select which Jira site to sync data from.
+
+    Displays a list of Jira sites the authenticated user has access to,
+    allowing them to choose which one to link to the team.
+
+    Args:
+        request: The HTTP request object.
+        team_slug: The slug of the team selecting a Jira site.
+
+    Returns:
+        HttpResponse with site selection form or redirect after POST.
+    """
+    team = request.team
+
+    # Get credential for the team
+    try:
+        credential = IntegrationCredential.objects.get(team=team, provider=IntegrationCredential.PROVIDER_JIRA)
+    except IntegrationCredential.DoesNotExist:
+        messages.error(request, "No Jira credential found. Please try connecting again.")
+        return redirect("integrations:integrations_home", team_slug=team.slug)
+
+    if request.method == "POST":
+        # Get selected site from form
+        cloud_id = request.POST.get("cloud_id")
+        site_name = request.POST.get("site_name")
+        site_url = request.POST.get("site_url")
+
+        # Create JiraIntegration
+        JiraIntegration.objects.create(
+            team=team,
+            credential=credential,
+            cloud_id=cloud_id,
+            site_name=site_name,
+            site_url=site_url,
+        )
+
+        messages.success(request, f"Connected to Jira site: {site_name}")
+        return redirect("integrations:integrations_home", team_slug=team.slug)
+
+    # GET request - show site selection form
+    try:
+        access_token = decrypt(credential.access_token)
+        sites = jira_oauth.get_accessible_resources(access_token)
+    except (JiraOAuthError, Exception):
+        messages.error(request, "Failed to fetch sites from Jira.")
+        return redirect("integrations:integrations_home", team_slug=team.slug)
+
+    context = {
+        "sites": sites,
+    }
+
+    return render(request, "integrations/jira_select_site.html", context)
