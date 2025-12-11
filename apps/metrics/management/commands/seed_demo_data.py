@@ -25,7 +25,6 @@ from apps.metrics.factories import (
     PRSurveyFactory,
     PRSurveyReviewFactory,
     PullRequestFactory,
-    TeamFactory,
     TeamMemberFactory,
     WeeklyMetricsFactory,
 )
@@ -84,6 +83,14 @@ class Command(BaseCommand):
 
         for team in teams:
             self.stdout.write(f"\nSeeding data for team: {team.name}")
+
+            # Check if team already has PR data - if so, skip seeding to avoid conflicts
+            existing_prs = PullRequest.objects.filter(team=team).count()
+            if existing_prs > 0 and not options["clear"]:
+                msg = f"  Team already has {existing_prs} PRs. Use --clear to reseed."
+                self.stdout.write(self.style.WARNING(msg))
+                continue
+
             members = self.seed_team_members(team, options["members"])
             prs = self.seed_pull_requests(team, members, options["prs"])
             self.seed_reviews(team, prs, members)
@@ -128,13 +135,26 @@ class Command(BaseCommand):
 
         teams = []
         for i in range(options["teams"]):
-            team = TeamFactory(name=f"Demo Team {i + 1}", slug=f"demo-team-{i + 1}")
+            slug = f"demo-team-{i + 1}"
+            team, created = Team.objects.get_or_create(
+                slug=slug,
+                defaults={"name": f"Demo Team {i + 1}"},
+            )
             teams.append(team)
-            self.stdout.write(f"Created team: {team.name} (slug: {team.slug})")
+            if created:
+                self.stdout.write(f"Created team: {team.name} (slug: {team.slug})")
+            else:
+                self.stdout.write(f"Using existing team: {team.name} (slug: {team.slug})")
         return teams
 
     def seed_team_members(self, team, count):
-        """Create team members."""
+        """Create team members or return existing ones."""
+        # Check if team already has members
+        existing_members = list(TeamMember.objects.filter(team=team))
+        if existing_members:
+            self.stdout.write(f"  Using {len(existing_members)} existing team members")
+            return existing_members
+
         members = []
         # Create one lead
         lead = TeamMemberFactory(team=team, role="lead", display_name="Tech Lead")
