@@ -1,0 +1,46 @@
+{% extends "web/base.html" %}
+{% load i18n %}
+
+{% block top_nav %}
+{# Minimal nav for onboarding - no team switcher #}
+<nav class="navbar bg-base-200">
+  <div class="navbar-start">
+    <a href="{% url 'web:home' %}" class="btn btn-ghost text-xl">
+      {% translate "AI Impact Analytics" %}
+    </a>
+  </div>
+  <div class="navbar-end">
+    <span class="text-sm text-base-content/60 mr-4">{{ request.user.email }}</span>
+  </div>
+</nav>
+{% endblock %}
+
+{% block body %}
+<div class="min-h-screen bg-base-100">
+  {# Progress indicator #}
+  <div class="w-full bg-base-200 py-4">
+    <div class="max-w-2xl mx-auto px-4">
+      <ul class="steps steps-horizontal w-full text-sm">
+        <li class="step {% if step >= 1 %}step-primary{% endif %}">{% translate "GitHub" %}</li>
+        <li class="step {% if step >= 2 %}step-primary{% endif %}">{% translate "Repositories" %}</li>
+        <li class="step {% if step >= 3 %}step-primary{% endif %}">{% translate "Jira" %}</li>
+        <li class="step {% if step >= 4 %}step-primary{% endif %}">{% translate "Slack" %}</li>
+        <li class="step {% if step >= 5 %}step-primary{% endif %}">{% translate "Complete" %}</li>
+      </ul>
+    </div>
+  </div>
+
+  {# Main content #}
+  <div class="max-w-2xl mx-auto px-4 py-12">
+    {% if messages %}
+      {% for message in messages %}
+        <div class="alert {% if message.tags == 'error' %}alert-error{% elif message.tags == 'success' %}alert-success{% else %}alert-info{% endif %} mb-6">
+          <span>{{ message }}</span>
+        </div>
+      {% endfor %}
+    {% endif %}
+
+    {% block onboarding_content %}{% endblock %}
+  </div>
+</div>
+{% endblock %}
