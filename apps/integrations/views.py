@@ -8,6 +8,7 @@ from django.http import HttpResponseNotAllowed, HttpResponseNotFound, JsonRespon
 from django.shortcuts import redirect, render
 from django.template.response import TemplateResponse
 from django.urls import reverse
+from django_ratelimit.decorators import ratelimit
 
 from apps.integrations.models import GitHubIntegration, IntegrationCredential, JiraIntegration
 from apps.integrations.services import github_oauth, github_sync, github_webhooks, jira_oauth, member_sync
@@ -256,12 +257,15 @@ def github_connect(request, team_slug):
     return redirect(authorization_url)
 
 
+@ratelimit(key="ip", rate="10/m", method=["GET", "POST"])
 @login_and_team_required
 def github_callback(request, team_slug):
     """Handle GitHub OAuth callback after user authorizes the app.
 
     Receives the authorization code from GitHub, exchanges it for an access token,
     and stores the token for the team.
+
+    Rate limited to 10 requests per minute per IP to prevent abuse.
 
     Args:
         request: The HTTP request object containing OAuth callback parameters.
@@ -270,6 +274,11 @@ def github_callback(request, team_slug):
     Returns:
         HttpResponse redirecting to organization selection or integrations home.
     """
+    # Check if rate limited
+    if getattr(request, "limited", False):
+        messages.error(request, "Too many requests. Please wait and try again.")
+        return redirect("integrations:integrations_home", team_slug=team_slug)
+
     team = request.team
 
     # Validate OAuth callback parameters
@@ -287,14 +296,16 @@ def github_callback(request, team_slug):
         token_data = github_oauth.exchange_code_for_token(code, callback_url)
         access_token = token_data["access_token"]
     except (GitHubOAuthError, KeyError, Exception) as e:
-        messages.error(request, f"Failed to exchange authorization code: {str(e)}")
+        logger.error(f"GitHub token exchange failed: {e}", exc_info=True)
+        messages.error(request, "Failed to connect to GitHub. Please try again.")
         return redirect("integrations:integrations_home", team_slug=team.slug)
 
     # Get user's organizations
     try:
         orgs = github_oauth.get_user_organizations(access_token)
     except GitHubOAuthError as e:
-        messages.error(request, f"Failed to get organizations: {str(e)}")
+        logger.error(f"Failed to get GitHub organizations: {e}", exc_info=True)
+        messages.error(request, "Failed to get organizations from GitHub. Please try again.")
         return redirect("integrations:integrations_home", team_slug=team.slug)
 
     # Create credential for the team
@@ -560,7 +571,8 @@ def github_repos(request, team_slug):
     try:
         repos = github_oauth.get_organization_repositories(access_token, integration.organization_slug)
     except GitHubOAuthError as e:
-        messages.error(request, f"Failed to fetch repositories: {str(e)}")
+        logger.error(f"Failed to fetch GitHub repositories: {e}", exc_info=True)
+        messages.error(request, "Failed to fetch repositories from GitHub. Please try again.")
         return redirect("integrations:integrations_home", team_slug=team.slug)
 
     # Get tracked repos with webhook_id
@@ -721,8 +733,8 @@ def github_repo_sync(request, team_slug, repo_id):
         result = github_sync.sync_repository_history(tracked_repo)
         return JsonResponse(result)
     except Exception as e:
-        logger.error(f"Failed to sync repository {tracked_repo.full_name}: {e}")
-        return JsonResponse({"error": str(e)}, status=500)
+        logger.error(f"Failed to sync repository {tracked_repo.full_name}: {e}", exc_info=True)
+        return JsonResponse({"error": "Failed to sync repository. Please try again."}, status=500)
 
 
 @team_admin_required
@@ -758,12 +770,15 @@ def jira_connect(request, team_slug):
     return redirect(authorization_url)
 
 
+@ratelimit(key="ip", rate="10/m", method=["GET", "POST"])
 @login_and_team_required
 def jira_callback(request, team_slug):
     """Handle Jira OAuth callback after user authorizes the app.
 
     Receives the authorization code from Atlassian, exchanges it for an access token,
     and stores the token for the team.
+
+    Rate limited to 10 requests per minute per IP to prevent abuse.
 
     Args:
         request: The HTTP request object containing OAuth callback parameters.
@@ -772,6 +787,11 @@ def jira_callback(request, team_slug):
     Returns:
         HttpResponse redirecting to site selection or integrations home.
     """
+    # Check if rate limited
+    if getattr(request, "limited", False):
+        messages.error(request, "Too many requests. Please wait and try again.")
+        return redirect("integrations:integrations_home", team_slug=team_slug)
+
     team = request.team
 
     # Validate OAuth callback parameters
@@ -789,14 +809,16 @@ def jira_callback(request, team_slug):
         token_data = jira_oauth.exchange_code_for_token(code, callback_url)
         access_token = token_data["access_token"]
     except (JiraOAuthError, KeyError, Exception) as e:
-        messages.error(request, f"Failed to exchange authorization code: {str(e)}")
+        logger.error(f"Jira token exchange failed: {e}", exc_info=True)
+        messages.error(request, "Failed to connect to Jira. Please try again.")
         return redirect("integrations:integrations_home", team_slug=team.slug)
 
     # Get accessible resources (Jira sites)
     try:
         sites = jira_oauth.get_accessible_resources(access_token)
     except JiraOAuthError as e:
-        messages.error(request, f"Failed to get accessible sites: {str(e)}")
+        logger.error(f"Failed to get Jira sites: {e}", exc_info=True)
+        messages.error(request, "Failed to get accessible Jira sites. Please try again.")
         return redirect("integrations:integrations_home", team_slug=team.slug)
 
     # Create encrypted credential for the team

@@ -1,7 +1,7 @@
 from django import forms
 from django.core.exceptions import ValidationError
 from django.urls import reverse
-from django.utils.safestring import mark_safe
+from django.utils.html import format_html
 from django.utils.translation import gettext_lazy as _
 
 from apps.users.forms import TurnstileSignupForm
@@ -27,11 +27,14 @@ class TeamSignupForm(TurnstileSignupForm):
         super().__init__(*args, **kwargs)
         # blank out overly-verbose help text
         self.fields["password1"].help_text = ""
-        link = '<a class="link" href={} target="_blank">{}</a>'.format(
-            reverse("web:terms"),
-            _("Terms and Conditions"),
+        # Use format_html instead of mark_safe for safer HTML construction
+        terms_url = reverse("web:terms")
+        terms_text = _("Terms and Conditions")
+        self.fields["terms_agreement"].label = format_html(
+            'I agree to the <a class="link" href="{}" target="_blank">{}</a>',
+            terms_url,
+            terms_text,
         )
-        self.fields["terms_agreement"].label = mark_safe(_("I agree to the {terms_link}").format(terms_link=link))
 
     def clean(self):
         cleaned_data = super().clean()
