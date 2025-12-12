@@ -108,7 +108,57 @@ const cumulativeChartWithDates = (ctx, start, end, data, label, startValue) => {
   });
 
 }
+/**
+ * Bar chart for weekly/aggregated data (no daily interpolation)
+ * Use this for data that already has aggregated weekly points.
+ */
+const weeklyBarChart = (ctx, data, label) => {
+  // Convert data to Chart.js format: {labels: [], data: []}
+  const chartData = data.map(item => ({
+    x: item.date,
+    y: item.count
+  }));
+
+  return new Chart(ctx, {
+    type: 'bar',
+    data: {
+      datasets: [{
+        label: label,
+        data: chartData,
+        backgroundColor: 'rgba(6, 182, 212, 0.7)',
+        borderColor: 'rgba(6, 182, 212, 1)',
+        borderWidth: 1
+      }]
+    },
+    options: {
+      aspectRatio: 3,
+      responsive: true,
+      plugins: {
+        legend: {
+          display: false
+        }
+      },
+      scales: {
+        x: {
+          title: {
+            display: true,
+            text: 'Week'
+          }
+        },
+        y: {
+          beginAtZero: true,
+          title: {
+            display: true,
+            text: label,
+          }
+        }
+      }
+    }
+  });
+};
+
 export const DashboardCharts = {
   barChartWithDates: barChartWithDates,
   cumulativeChartWithDates: cumulativeChartWithDates,
+  weeklyBarChart: weeklyBarChart,
 };

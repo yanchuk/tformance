@@ -27,7 +27,7 @@ function destroyChartIfExists(canvas) {
 
 // Initialize charts after HTMX swaps content
 document.addEventListener('htmx:afterSwap', function(event) {
-  // AI Adoption Chart
+  // AI Adoption Chart - uses weekly aggregated data
   const aiAdoptionData = document.getElementById('ai-adoption-data');
   const aiAdoptionChart = document.getElementById('ai-adoption-chart');
   if (aiAdoptionData && aiAdoptionChart) {
@@ -35,13 +35,11 @@ document.addEventListener('htmx:afterSwap', function(event) {
     const data = JSON.parse(aiAdoptionData.textContent);
     if (data && data.length > 0) {
       const ctx = aiAdoptionChart.getContext('2d');
-      const start = new Date(data[0].date);
-      const end = new Date(data[data.length - 1].date);
-      AppDashboardCharts.barChartWithDates(ctx, start, end, data, "AI Adoption %");
+      AppDashboardCharts.weeklyBarChart(ctx, data, "AI Adoption %");
     }
   }
 
-  // Cycle Time Chart
+  // Cycle Time Chart - uses weekly aggregated data
   const cycleTimeData = document.getElementById('cycle-time-data');
   const cycleTimeChart = document.getElementById('cycle-time-chart');
   if (cycleTimeData && cycleTimeChart) {
@@ -49,9 +47,7 @@ document.addEventListener('htmx:afterSwap', function(event) {
     const data = JSON.parse(cycleTimeData.textContent);
     if (data && data.length > 0) {
       const ctx = cycleTimeChart.getContext('2d');
-      const start = new Date(data[data.length - 1].date);
-      const end = new Date(data[0].date);
-      AppDashboardCharts.barChartWithDates(ctx, start, end, data, "Avg Cycle Time (hours)");
+      AppDashboardCharts.weeklyBarChart(ctx, data, "Avg Cycle Time (hours)");
     }
   }
 });

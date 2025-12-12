@@ -22,7 +22,13 @@ def format_time_series(
     """
     result = []
     for item in data:
-        result.append({"date": item[date_key].isoformat(), "count": item[value_key]})
+        # Use strftime to get just the date part (YYYY-MM-DD) for Chart.js compatibility
+        date_value = item[date_key]
+        date_str = date_value.strftime("%Y-%m-%d") if hasattr(date_value, "strftime") else str(date_value)[:10]
+        # Convert value to float to ensure JSON serializes as number, not string (Decimal issue)
+        count_value = item[value_key]
+        count_float = float(count_value) if count_value is not None else 0.0
+        result.append({"date": date_str, "count": count_float})
     return result
 
 
