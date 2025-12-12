@@ -69,14 +69,21 @@
 
 ---
 
-## Phase 5: Dashboard Implementation - DEFERRED
+## Phase 5: Dashboard Implementation - COMPLETE
 
-**User requested to skip this phase for now.**
+**Implemented in separate Phase 5 Dashboard sprint (2025-12-12)**
 
-- [ ] Replace `templates/web/app_home.html` placeholder
-- [ ] Create dashboard grid layout
-- [ ] Add metric cards
-- [ ] Add charts
+- [x] Replace `templates/web/app_home.html` placeholder
+- [x] Create dashboard grid layout with HTMX lazy loading
+- [x] Add metric cards (key_metrics_cards.html)
+- [x] Add charts (ai_adoption, ai_quality, cycle_time)
+- [x] CTO Overview dashboard (admin-only)
+- [x] Team Dashboard (all members)
+- [x] AI Detective Leaderboard
+- [x] Team breakdown table
+
+**Commit:** `021278f` - 143 new tests, 24 files changed
+**See:** `dev/active/dashboard-implementation/` for full documentation
 
 ---
 
@@ -151,10 +158,11 @@
 
 ## Next Session Priority
 
-1. **Implement actual dashboard** (Phase 5 - deferred by user request)
+1. ~~**Implement actual dashboard**~~ DONE (Phase 5 complete)
 2. **Apply design system classes to remaining templates** (ongoing polish)
 3. **Create empty state component** for tables/lists
 4. **Final consistency check across all pages**
+5. **Connect dashboards to navigation** - Add sidebar links to CTO/Team dashboards
 
 ---
 
