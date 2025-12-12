@@ -1,59 +1,63 @@
 {% load i18n %}
-<tr id="repo-row-{{ repo.id }}">
-  <td>
-    <span class="font-medium">{{ repo.name }}</span>
+<tr id="repo-row-{{ repo.id }}" class="hover:bg-deep/50 transition-colors">
+  <td class="px-4 py-3 border-b border-elevated/50">
+    <span class="font-medium text-slate-200">{{ repo.name }}</span>
   </td>
-  <td>
-    <span class="text-sm text-base-content/70">{{ repo.description|default:"" }}</span>
+  <td class="px-4 py-3 border-b border-elevated/50">
+    <span class="text-sm text-slate-400">{{ repo.description|default:"" }}</span>
   </td>
-  <td>
-    {% if repo.is_tracked %}
-      <span class="badge badge-success badge-sm">{% translate "Tracked" %}</span>
-      {% if repo.webhook_id %}
-        <span class="badge badge-success badge-sm">{% translate "Webhook active" %}</span>
+  <td class="px-4 py-3 border-b border-elevated/50">
+    <div class="flex flex-wrap gap-1">
+      {% if repo.is_tracked %}
+        <span class="app-badge app-badge-success">{% translate "Tracked" %}</span>
+        {% if repo.webhook_id %}
+          <span class="app-badge app-badge-success">{% translate "Webhook active" %}</span>
+        {% else %}
+          <span class="app-badge app-badge-warning">{% translate "Webhook pending" %}</span>
+        {% endif %}
+        {% if repo.last_sync_at %}
+          <span class="app-badge app-badge-primary" title="Last synced: {{ repo.last_sync_at }}">{% translate "Synced" %}</span>
+        {% else %}
+          <span class="app-badge app-badge-default">{% translate "Not synced" %}</span>
+        {% endif %}
       {% else %}
-        <span class="badge badge-warning badge-sm">{% translate "Webhook pending" %}</span>
+        <span class="app-badge app-badge-default">{% translate "Not tracked" %}</span>
       {% endif %}
-      {% if repo.last_sync_at %}
-        <span class="badge badge-info badge-sm" title="Last synced: {{ repo.last_sync_at }}">{% translate "Synced" %}</span>
-      {% else %}
-        <span class="badge badge-ghost badge-sm">{% translate "Not synced" %}</span>
-      {% endif %}
-    {% else %}
-      <span class="badge badge-ghost badge-sm">{% translate "Not tracked" %}</span>
-    {% endif %}
+    </div>
   </td>
   {% if request.team_membership.role == 'admin' %}
-    <td class="text-right">
-      <form method="post"
-            action="{% url 'integrations:github_repo_toggle' team_slug=request.team.slug repo_id=repo.id %}"
-            hx-post="{% url 'integrations:github_repo_toggle' team_slug=request.team.slug repo_id=repo.id %}"
-            hx-target="#repo-row-{{ repo.id }}"
-            hx-swap="outerHTML">
-        {% csrf_token %}
-        <input type="hidden" name="full_name" value="{{ repo.full_name }}">
-        <button type="submit" class="btn btn-ghost btn-xs">
-          {% if repo.is_tracked %}
-            {% translate "Untrack" %}
-          {% else %}
-            {% translate "Track" %}
-          {% endif %}
-        </button>
-      </form>
-      {% if repo.is_tracked and repo.tracked_repo_id %}
-        <button
-          hx-post="{% url 'integrations:github_repo_sync' team_slug=request.team.slug repo_id=repo.tracked_repo_id %}"
-          hx-swap="none"
-          class="btn btn-xs btn-ghost"
-          title="Sync historical data"
-          aria-label="Sync historical data for {{ repo.name }}"
-        >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
-        </button>
-      {% endif %}
+    <td class="px-4 py-3 border-b border-elevated/50 text-right">
+      <div class="flex items-center justify-end gap-1">
+        <form method="post"
+              action="{% url 'integrations:github_repo_toggle' team_slug=request.team.slug repo_id=repo.id %}"
+              hx-post="{% url 'integrations:github_repo_toggle' team_slug=request.team.slug repo_id=repo.id %}"
+              hx-target="#repo-row-{{ repo.id }}"
+              hx-swap="outerHTML">
+          {% csrf_token %}
+          <input type="hidden" name="full_name" value="{{ repo.full_name }}">
+          <button type="submit" class="app-btn-ghost app-btn-sm">
+            {% if repo.is_tracked %}
+              {% translate "Untrack" %}
+            {% else %}
+              {% translate "Track" %}
+            {% endif %}
+          </button>
+        </form>
+        {% if repo.is_tracked and repo.tracked_repo_id %}
+          <button
+            hx-post="{% url 'integrations:github_repo_sync' team_slug=request.team.slug repo_id=repo.tracked_repo_id %}"
+            hx-swap="none"
+            class="app-btn-ghost app-btn-sm"
+            title="Sync historical data"
+            aria-label="Sync historical data for {{ repo.name }}"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+          </button>
+        {% endif %}
+      </div>
     </td>
   {% endif %}
 </tr>

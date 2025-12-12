@@ -4,44 +4,42 @@
 {% block onboarding_content %}
 <div class="text-center">
   <div class="mb-8">
-    <div class="w-20 h-20 bg-base-200 rounded-full flex items-center justify-center mx-auto mb-4">
-      <i class="fa-brands fa-github text-4xl"></i>
+    <div class="w-20 h-20 bg-surface rounded-full flex items-center justify-center mx-auto mb-4 border border-elevated">
+      <i class="fa-brands fa-github text-4xl text-slate-200"></i>
     </div>
-    <h1 class="text-3xl font-bold mb-2">{% translate "Connect Your GitHub Organization" %}</h1>
-    <p class="text-base-content/70 max-w-md mx-auto">
+    <h1 class="text-3xl font-bold text-slate-100 mb-2">{% translate "Connect Your GitHub Organization" %}</h1>
+    <p class="text-slate-400 max-w-md mx-auto">
       {% translate "We'll import your team from GitHub and start tracking engineering metrics. This only takes a minute." %}
     </p>
   </div>
 
-  <div class="card bg-base-200 max-w-md mx-auto">
-    <div class="card-body">
-      <h2 class="card-title justify-center mb-4">{% translate "What we'll access:" %}</h2>
-      <ul class="text-left space-y-3">
-        <li class="flex items-center gap-3">
-          <i class="fa-solid fa-users text-primary"></i>
-          <span>{% translate "Organization members" %}</span>
-        </li>
-        <li class="flex items-center gap-3">
-          <i class="fa-solid fa-code-branch text-primary"></i>
-          <span>{% translate "Repository pull requests" %}</span>
-        </li>
-        <li class="flex items-center gap-3">
-          <i class="fa-solid fa-code-commit text-primary"></i>
-          <span>{% translate "Commit history and reviews" %}</span>
-        </li>
-      </ul>
+  <div class="app-card max-w-md mx-auto">
+    <h2 class="app-card-title text-center mb-4">{% translate "What we'll access:" %}</h2>
+    <ul class="text-left space-y-3">
+      <li class="flex items-center gap-3">
+        <i class="fa-solid fa-users text-cyan"></i>
+        <span class="text-slate-300">{% translate "Organization members" %}</span>
+      </li>
+      <li class="flex items-center gap-3">
+        <i class="fa-solid fa-code-branch text-cyan"></i>
+        <span class="text-slate-300">{% translate "Repository pull requests" %}</span>
+      </li>
+      <li class="flex items-center gap-3">
+        <i class="fa-solid fa-code-commit text-cyan"></i>
+        <span class="text-slate-300">{% translate "Commit history and reviews" %}</span>
+      </li>
+    </ul>
 
-      <div class="card-actions justify-center mt-6">
-        <a href="{% url 'onboarding:github_connect' %}" class="btn btn-primary btn-lg gap-2">
-          <i class="fa-brands fa-github"></i>
-          {% translate "Connect GitHub" %}
-        </a>
-      </div>
-
-      <p class="text-xs text-base-content/50 mt-4">
-        {% translate "We request read-only access to your organization data. Your code stays on GitHub." %}
-      </p>
+    <div class="flex justify-center mt-6">
+      <a href="{% url 'onboarding:github_connect' %}" class="app-btn-primary app-btn-lg gap-2">
+        <i class="fa-brands fa-github"></i>
+        {% translate "Connect GitHub" %}
+      </a>
     </div>
+
+    <p class="text-xs text-slate-500 mt-4 text-center">
+      {% translate "We request read-only access to your organization data. Your code stays on GitHub." %}
+    </p>
   </div>
 </div>
 {% endblock %}

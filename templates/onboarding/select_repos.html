@@ -3,8 +3,8 @@
 
 {% block onboarding_content %}
 <div class="text-center mb-8">
-  <h1 class="text-3xl font-bold mb-2">{% translate "Select Repositories" %}</h1>
-  <p class="text-base-content/70">
+  <h1 class="text-3xl font-bold text-slate-100 mb-2">{% translate "Select Repositories" %}</h1>
+  <p class="text-slate-400">
     {% translate "Choose which repositories to track. You can change this later in settings." %}
   </p>
 </div>
@@ -12,21 +12,17 @@
 <form method="post">
   {% csrf_token %}
 
-  <div class="card bg-base-200 mb-6">
-    <div class="card-body">
-      <p class="text-center text-base-content/70">
-        <i class="fa-solid fa-info-circle mr-2"></i>
-        {% translate "Repository selection will be available in the next version. For now, continue to finish setup." %}
-      </p>
-    </div>
+  <div class="app-alert app-alert-info mb-6">
+    <i class="fa-solid fa-info-circle"></i>
+    <span>{% translate "Repository selection will be available in the next version. For now, continue to finish setup." %}</span>
   </div>
 
   <div class="flex gap-4">
-    <a href="{% url 'onboarding:select_org' %}" class="btn btn-ghost flex-1">
+    <a href="{% url 'onboarding:select_org' %}" class="app-btn-ghost flex-1">
       <i class="fa-solid fa-arrow-left mr-2"></i>
       {% translate "Back" %}
     </a>
-    <button type="submit" class="btn btn-primary flex-1">
+    <button type="submit" class="app-btn-primary flex-1">
       {% translate "Continue" %}
       <i class="fa-solid fa-arrow-right ml-2"></i>
     </button>

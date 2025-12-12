@@ -3,37 +3,37 @@
 
 {% block onboarding_content %}
 <div class="text-center mb-8">
-  <div class="w-20 h-20 bg-purple-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
-    <i class="fa-brands fa-slack text-4xl text-purple-500"></i>
+  <div class="w-20 h-20 bg-cyan/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-cyan/30">
+    <i class="fa-brands fa-slack text-4xl text-cyan"></i>
   </div>
-  <h1 class="text-3xl font-bold mb-2">{% translate "Connect Slack" %}</h1>
-  <p class="text-base-content/70 max-w-md mx-auto">
+  <h1 class="text-3xl font-bold text-slate-100 mb-2">{% translate "Connect Slack" %}</h1>
+  <p class="text-slate-400 max-w-md mx-auto">
     {% translate "Enable PR surveys and weekly leaderboards directly in your Slack workspace." %}
   </p>
 </div>
 
-<div class="card bg-base-200 max-w-md mx-auto mb-6">
-  <div class="card-body text-center">
-    <p class="text-base-content/70 mb-4">
+<div class="app-card max-w-md mx-auto mb-6">
+  <div class="text-center">
+    <p class="text-slate-400 mb-4">
       {% translate "Slack integration is optional. You can set this up later from your team settings." %}
     </p>
 
-    <a href="#" class="btn btn-outline btn-primary gap-2 mb-2" disabled>
+    <button class="app-btn-secondary gap-2 mb-2 opacity-60 cursor-not-allowed" disabled>
       <i class="fa-brands fa-slack"></i>
       {% translate "Add to Slack" %}
-      <span class="badge badge-sm">{% translate "Coming Soon" %}</span>
-    </a>
+      <span class="app-badge app-badge-primary">{% translate "Coming Soon" %}</span>
+    </button>
   </div>
 </div>
 
 <form method="post" class="max-w-md mx-auto">
   {% csrf_token %}
   <div class="flex gap-4">
-    <a href="{% url 'onboarding:connect_jira' %}" class="btn btn-ghost flex-1">
+    <a href="{% url 'onboarding:connect_jira' %}" class="app-btn-ghost flex-1">
       <i class="fa-solid fa-arrow-left mr-2"></i>
       {% translate "Back" %}
     </a>
-    <button type="submit" class="btn btn-primary flex-1">
+    <button type="submit" class="app-btn-primary flex-1">
       {% translate "Skip for now" %}
       <i class="fa-solid fa-arrow-right ml-2"></i>
     </button>

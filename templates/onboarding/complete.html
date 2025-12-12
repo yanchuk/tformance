@@ -3,45 +3,43 @@
 
 {% block onboarding_content %}
 <div class="text-center">
-  <div class="w-20 h-20 bg-success/10 rounded-full flex items-center justify-center mx-auto mb-4">
-    <i class="fa-solid fa-check text-4xl text-success"></i>
+  <div class="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-emerald-500/30">
+    <i class="fa-solid fa-check text-4xl text-emerald-400"></i>
   </div>
-  <h1 class="text-3xl font-bold mb-2">{% translate "You're All Set!" %}</h1>
-  <p class="text-base-content/70 max-w-md mx-auto mb-8">
+  <h1 class="text-3xl font-bold text-slate-100 mb-2">{% translate "You're All Set!" %}</h1>
+  <p class="text-slate-400 max-w-md mx-auto mb-8">
     {% translate "Your team is ready. Start exploring your engineering metrics dashboard." %}
   </p>
 
-  <div class="card bg-base-200 max-w-md mx-auto mb-8">
-    <div class="card-body">
-      <h2 class="card-title justify-center mb-4">{% translate "Setup Summary" %}</h2>
-      <ul class="space-y-3 text-left">
-        <li class="flex items-center gap-3">
-          <i class="fa-solid fa-check-circle text-success"></i>
-          <span>{% translate "Team created:" %} <strong>{{ team.name }}</strong></span>
-        </li>
-        <li class="flex items-center gap-3">
-          <i class="fa-solid fa-check-circle text-success"></i>
-          <span>{% translate "GitHub connected" %}</span>
-        </li>
-        <li class="flex items-center gap-3">
-          <i class="fa-solid fa-clock text-warning"></i>
-          <span>{% translate "Jira - not connected (optional)" %}</span>
-        </li>
-        <li class="flex items-center gap-3">
-          <i class="fa-solid fa-clock text-warning"></i>
-          <span>{% translate "Slack - not connected (optional)" %}</span>
-        </li>
-      </ul>
-    </div>
+  <div class="app-card max-w-md mx-auto mb-8">
+    <h2 class="app-card-title text-center mb-4">{% translate "Setup Summary" %}</h2>
+    <ul class="space-y-3 text-left">
+      <li class="flex items-center gap-3">
+        <i class="fa-solid fa-check-circle text-emerald-400"></i>
+        <span class="text-slate-300">{% translate "Team created:" %} <strong class="text-slate-100">{{ team.name }}</strong></span>
+      </li>
+      <li class="flex items-center gap-3">
+        <i class="fa-solid fa-check-circle text-emerald-400"></i>
+        <span class="text-slate-300">{% translate "GitHub connected" %}</span>
+      </li>
+      <li class="flex items-center gap-3">
+        <i class="fa-solid fa-clock text-amber-400"></i>
+        <span class="text-slate-300">{% translate "Jira - not connected (optional)" %}</span>
+      </li>
+      <li class="flex items-center gap-3">
+        <i class="fa-solid fa-clock text-amber-400"></i>
+        <span class="text-slate-300">{% translate "Slack - not connected (optional)" %}</span>
+      </li>
+    </ul>
   </div>
 
   <div class="space-y-4 max-w-md mx-auto">
-    <a href="{% url 'web_team:home' team_slug=team.slug %}" class="btn btn-primary btn-lg w-full gap-2">
+    <a href="{% url 'web_team:home' team_slug=team.slug %}" class="app-btn-primary app-btn-lg w-full gap-2">
       <i class="fa-solid fa-rocket"></i>
       {% translate "Go to Dashboard" %}
     </a>
 
-    <p class="text-sm text-base-content/50">
+    <p class="text-sm text-slate-500">
       {% translate "You can connect Jira and Slack later from Settings > Integrations." %}
     </p>
   </div>

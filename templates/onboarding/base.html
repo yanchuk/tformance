@@ -3,30 +3,60 @@
 
 {% block top_nav %}
 {# Minimal nav for onboarding - no team switcher #}
-<nav class="navbar bg-base-200">
-  <div class="navbar-start">
-    <a href="{% url 'web:home' %}" class="btn btn-ghost text-xl">
+<nav class="app-navbar">
+  <div class="flex-1">
+    <a href="{% url 'web:home' %}" class="app-btn-ghost text-xl font-semibold">
       {% translate "AI Impact Analytics" %}
     </a>
   </div>
-  <div class="navbar-end">
-    <span class="text-sm text-base-content/60 mr-4">{{ request.user.email }}</span>
+  <div>
+    <span class="text-sm text-slate-400">{{ request.user.email }}</span>
   </div>
 </nav>
 {% endblock %}
 
 {% block body %}
-<div class="min-h-screen bg-base-100">
+<div class="app-bg">
   {# Progress indicator #}
-  <div class="w-full bg-base-200 py-4">
+  <div class="w-full bg-surface border-b border-elevated py-4">
     <div class="max-w-2xl mx-auto px-4">
-      <ul class="steps steps-horizontal w-full text-sm">
-        <li class="step {% if step >= 1 %}step-primary{% endif %}">{% translate "GitHub" %}</li>
-        <li class="step {% if step >= 2 %}step-primary{% endif %}">{% translate "Repositories" %}</li>
-        <li class="step {% if step >= 3 %}step-primary{% endif %}">{% translate "Jira" %}</li>
-        <li class="step {% if step >= 4 %}step-primary{% endif %}">{% translate "Slack" %}</li>
-        <li class="step {% if step >= 5 %}step-primary{% endif %}">{% translate "Complete" %}</li>
-      </ul>
+      <div class="app-steps">
+        {# Step 1: GitHub #}
+        <div class="app-step">
+          <div class="app-step-indicator {% if step >= 1 %}app-step-indicator-active{% endif %}">1</div>
+          <span class="app-step-label {% if step >= 1 %}app-step-label-active{% endif %}">{% translate "GitHub" %}</span>
+        </div>
+        <div class="app-step-connector {% if step >= 2 %}app-step-connector-complete{% endif %}"></div>
+        {# Step 2: Repositories #}
+        <div class="app-step">
+          <div class="app-step-indicator {% if step >= 2 %}app-step-indicator-active{% endif %}">2</div>
+          <span class="app-step-label {% if step >= 2 %}app-step-label-active{% endif %}">{% translate "Repos" %}</span>
+        </div>
+        <div class="app-step-connector {% if step >= 3 %}app-step-connector-complete{% endif %}"></div>
+        {# Step 3: Jira #}
+        <div class="app-step">
+          <div class="app-step-indicator {% if step >= 3 %}app-step-indicator-active{% endif %}">3</div>
+          <span class="app-step-label {% if step >= 3 %}app-step-label-active{% endif %}">{% translate "Jira" %}</span>
+        </div>
+        <div class="app-step-connector {% if step >= 4 %}app-step-connector-complete{% endif %}"></div>
+        {# Step 4: Slack #}
+        <div class="app-step">
+          <div class="app-step-indicator {% if step >= 4 %}app-step-indicator-active{% endif %}">4</div>
+          <span class="app-step-label {% if step >= 4 %}app-step-label-active{% endif %}">{% translate "Slack" %}</span>
+        </div>
+        <div class="app-step-connector {% if step >= 5 %}app-step-connector-complete{% endif %}"></div>
+        {# Step 5: Complete #}
+        <div class="app-step">
+          <div class="app-step-indicator {% if step >= 5 %}app-step-indicator-complete{% endif %}">
+            {% if step >= 5 %}
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            </svg>
+            {% else %}5{% endif %}
+          </div>
+          <span class="app-step-label {% if step >= 5 %}app-step-label-active{% endif %}">{% translate "Done" %}</span>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -34,7 +64,7 @@
   <div class="max-w-2xl mx-auto px-4 py-12">
     {% if messages %}
       {% for message in messages %}
-        <div class="alert {% if message.tags == 'error' %}alert-error{% elif message.tags == 'success' %}alert-success{% else %}alert-info{% endif %} mb-6">
+        <div class="app-alert {% if message.tags == 'error' %}app-alert-error{% elif message.tags == 'success' %}app-alert-success{% else %}app-alert-info{% endif %} mb-6">
           <span>{{ message }}</span>
         </div>
       {% endfor %}

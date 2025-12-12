@@ -1,41 +1,39 @@
 {% load i18n %}
-<tr id="member-row-{{ member.id }}">
-  <td>
+<tr id="member-row-{{ member.id }}" class="hover:bg-deep/50 transition-colors">
+  <td class="px-4 py-3 border-b border-elevated/50">
     <div class="flex items-center gap-3">
-      <div class="avatar placeholder">
-        <div class="w-10 h-10 rounded-full bg-neutral text-neutral-content">
-          <span class="text-sm">{{ member.display_name|slice:":2"|upper }}</span>
-        </div>
+      <div class="w-10 h-10 rounded-full bg-elevated flex items-center justify-center">
+        <span class="text-sm font-medium text-slate-300">{{ member.display_name|slice:":2"|upper }}</span>
       </div>
-      <div class="font-medium">{{ member.display_name }}</div>
+      <div class="font-medium text-slate-200">{{ member.display_name }}</div>
     </div>
   </td>
-  <td>
-    <span class="text-sm font-mono text-base-content/70">{{ member.github_username }}</span>
+  <td class="px-4 py-3 border-b border-elevated/50">
+    <span class="text-sm font-mono text-slate-400">{{ member.github_username }}</span>
   </td>
-  <td>
+  <td class="px-4 py-3 border-b border-elevated/50">
     {% if member.email %}
-      <span class="text-sm text-base-content/70">{{ member.email }}</span>
+      <span class="text-sm text-slate-400">{{ member.email }}</span>
     {% else %}
-      <span class="text-sm text-base-content/40 italic">{% translate "Not available" %}</span>
+      <span class="text-sm text-slate-600 italic">{% translate "Not available" %}</span>
     {% endif %}
   </td>
-  <td>
+  <td class="px-4 py-3 border-b border-elevated/50">
     {% if member.is_active %}
-      <span class="badge badge-success badge-sm">{% translate "Active" %}</span>
+      <span class="app-badge app-badge-success">{% translate "Active" %}</span>
     {% else %}
-      <span class="badge badge-ghost badge-sm">{% translate "Inactive" %}</span>
+      <span class="app-badge app-badge-default">{% translate "Inactive" %}</span>
     {% endif %}
   </td>
   {% if request.team_membership.role == 'admin' %}
-    <td class="text-right">
+    <td class="px-4 py-3 border-b border-elevated/50 text-right">
       <form method="post"
             action="{% url 'integrations:github_member_toggle' team_slug=request.team.slug member_id=member.id %}"
             hx-post="{% url 'integrations:github_member_toggle' team_slug=request.team.slug member_id=member.id %}"
             hx-target="#member-row-{{ member.id }}"
             hx-swap="outerHTML">
         {% csrf_token %}
-        <button type="submit" class="btn btn-ghost btn-xs">
+        <button type="submit" class="app-btn-ghost app-btn-sm">
           {% if member.is_active %}
             {% translate "Deactivate" %}
           {% else %}

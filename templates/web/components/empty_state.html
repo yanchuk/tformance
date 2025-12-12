@@ -1,0 +1,66 @@
+{% comment %}
+Empty State Component
+Usage:
+  {% include "web/components/empty_state.html" with icon="chart-bar" title="No data available" description="Start adding data to see your metrics here." %}
+
+Optional parameters:
+- icon: Font Awesome icon name (e.g., "chart-bar", "inbox", "search") - defaults to "inbox"
+- title: Main heading text
+- description: Supporting description text
+- action_url: URL for the action button
+- action_text: Text for the action button
+- compact: Set to True for a smaller version (used in cards/tables)
+{% endcomment %}
+
+<div class="{% if compact %}py-8{% else %}app-empty-state{% endif %}">
+  {% if icon %}
+  <div class="{% if compact %}w-12 h-12{% else %}app-empty-state-icon{% endif %} mx-auto mb-4 text-slate-600">
+    <svg xmlns="http://www.w3.org/2000/svg" class="w-full h-full" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+      {% if icon == "chart-bar" %}
+      <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+      {% elif icon == "inbox" %}
+      <path stroke-linecap="round" stroke-linejoin="round" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+      {% elif icon == "search" %}
+      <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+      {% elif icon == "users" %}
+      <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+      {% elif icon == "folder" %}
+      <path stroke-linecap="round" stroke-linejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+      {% elif icon == "calendar" %}
+      <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+      {% elif icon == "code" %}
+      <path stroke-linecap="round" stroke-linejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+      {% elif icon == "link" %}
+      <path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+      {% elif icon == "bell" %}
+      <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+      {% elif icon == "trophy" %}
+      <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 013 3h-15a3 3 0 013-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 01-.982-3.172M9.497 14.25a7.454 7.454 0 00.981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 007.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M18.75 4.236a28.06 28.06 0 012.916.52 6.003 6.003 0 01-5.395 4.972m0 0a6.726 6.726 0 01-2.749 1.35m0 0a6.772 6.772 0 01-3.044 0" />
+      {% else %}
+      {# Default: document icon #}
+      <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+      {% endif %}
+    </svg>
+  </div>
+  {% endif %}
+
+  {% if title %}
+  <h3 class="{% if compact %}text-base{% else %}app-empty-state-title{% endif %} font-medium text-slate-300 mb-2">
+    {{ title }}
+  </h3>
+  {% endif %}
+
+  {% if description %}
+  <p class="{% if compact %}text-sm{% else %}app-empty-state-description{% endif %} text-slate-500 max-w-sm mx-auto">
+    {{ description }}
+  </p>
+  {% endif %}
+
+  {% if action_url and action_text %}
+  <div class="mt-6">
+    <a href="{{ action_url }}" class="app-btn-primary">
+      {{ action_text }}
+    </a>
+  </div>
+  {% endif %}
+</div>
