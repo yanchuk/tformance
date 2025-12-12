@@ -4,6 +4,7 @@ from .models import (
     GitHubIntegration,
     IntegrationCredential,
     JiraIntegration,
+    SlackIntegration,
     TrackedJiraProject,
     TrackedRepository,
 )
@@ -37,6 +38,15 @@ class JiraIntegrationInline(admin.StackedInline):
     can_delete = False
 
 
+class SlackIntegrationInline(admin.StackedInline):
+    """Inline for SlackIntegration on IntegrationCredential."""
+
+    model = SlackIntegration
+    extra = 0
+    readonly_fields = ["workspace_id", "workspace_name", "bot_user_id", "sync_status", "last_sync_at"]
+    can_delete = False
+
+
 class TrackedJiraProjectInline(admin.TabularInline):
     """Inline for TrackedJiraProjects on JiraIntegration."""
 
@@ -57,7 +67,7 @@ class IntegrationCredentialAdmin(admin.ModelAdmin):
     ordering = ["team", "provider"]
     readonly_fields = ["created_at", "updated_at", "token_masked"]
     raw_id_fields = ["connected_by"]
-    inlines = [GitHubIntegrationInline, JiraIntegrationInline]
+    inlines = [GitHubIntegrationInline, JiraIntegrationInline, SlackIntegrationInline]
 
     fieldsets = (
         (None, {"fields": ("team", "provider", "connected_by")}),
@@ -217,3 +227,40 @@ class TrackedJiraProjectAdmin(admin.ModelAdmin):
     @admin.display(description="Site")
     def integration_site(self, obj):
         return obj.integration.site_name if obj.integration else "-"
+
+
+@admin.register(SlackIntegration)
+class SlackIntegrationAdmin(admin.ModelAdmin):
+    """Admin for SlackIntegration - Slack workspace settings."""
+
+    list_display = [
+        "workspace_name",
+        "team",
+        "sync_status",
+        "last_sync_at",
+        "leaderboard_enabled",
+        "surveys_enabled",
+        "reveals_enabled",
+    ]
+    list_filter = ["team", "sync_status", "leaderboard_enabled", "surveys_enabled", "reveals_enabled"]
+    search_fields = ["workspace_name", "team__name", "workspace_id"]
+    ordering = ["team", "workspace_name"]
+    readonly_fields = ["created_at", "updated_at", "credential"]
+
+    fieldsets = (
+        (None, {"fields": ("team", "credential", "workspace_name", "workspace_id", "bot_user_id")}),
+        (
+            "Leaderboard Settings",
+            {
+                "fields": (
+                    "leaderboard_enabled",
+                    "leaderboard_channel_id",
+                    "leaderboard_day",
+                    "leaderboard_time",
+                )
+            },
+        ),
+        ("Features", {"fields": ("surveys_enabled", "reveals_enabled")}),
+        ("Sync Status", {"fields": ("sync_status", "last_sync_at")}),
+        ("Timestamps", {"fields": ("created_at", "updated_at"), "classes": ("collapse",)}),
+    )

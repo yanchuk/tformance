@@ -61,6 +61,7 @@ urlpatterns = [
     path("users/", include("apps.users.urls")),
     path("subscriptions/", include("apps.subscriptions.urls")),
     path("teams/", include("apps.teams.urls")),
+    path("integrations/", include("apps.integrations.urls")),  # Non-team integrations URLs (webhooks)
     path("onboarding/", include("apps.onboarding.urls")),
     path("", include("apps.web.urls")),
     path("pegasus/", include("pegasus.apps.examples.urls")),

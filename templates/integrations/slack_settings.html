@@ -1,0 +1,32 @@
+{% extends "web/app/app_base.html" %}
+{% block app %}
+<h1>Slack Settings</h1>
+<form method="post">
+  {% csrf_token %}
+  <div>
+    <label for="leaderboard_channel_id">Leaderboard Channel ID:</label>
+    <input type="text" name="leaderboard_channel_id" id="leaderboard_channel_id" value="{{ integration.leaderboard_channel_id }}">
+  </div>
+  <div>
+    <label for="leaderboard_day">Leaderboard Day (0=Monday, 6=Sunday):</label>
+    <input type="number" name="leaderboard_day" id="leaderboard_day" value="{{ integration.leaderboard_day }}" min="0" max="6">
+  </div>
+  <div>
+    <label for="leaderboard_time">Leaderboard Time:</label>
+    <input type="time" name="leaderboard_time" id="leaderboard_time" value="{{ integration.leaderboard_time|time:'H:i' }}">
+  </div>
+  <div>
+    <label for="leaderboard_enabled">Leaderboard Enabled:</label>
+    <input type="checkbox" name="leaderboard_enabled" id="leaderboard_enabled" value="True" {% if integration.leaderboard_enabled %}checked{% endif %}>
+  </div>
+  <div>
+    <label for="surveys_enabled">Surveys Enabled:</label>
+    <input type="checkbox" name="surveys_enabled" id="surveys_enabled" value="True" {% if integration.surveys_enabled %}checked{% endif %}>
+  </div>
+  <div>
+    <label for="reveals_enabled">Reveals Enabled:</label>
+    <input type="checkbox" name="reveals_enabled" id="reveals_enabled" value="True" {% if integration.reveals_enabled %}checked{% endif %}>
+  </div>
+  <button type="submit">Save Settings</button>
+</form>
+{% endblock %}

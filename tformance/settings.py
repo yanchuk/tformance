@@ -344,6 +344,11 @@ GITHUB_SECRET_ID = env("GITHUB_SECRET_ID", default="")
 JIRA_CLIENT_ID = env("JIRA_CLIENT_ID", default="")
 JIRA_CLIENT_SECRET = env("JIRA_CLIENT_SECRET", default="")
 
+# Slack OAuth
+SLACK_CLIENT_ID = env("SLACK_CLIENT_ID", default="")
+SLACK_CLIENT_SECRET = env("SLACK_CLIENT_SECRET", default="")
+SLACK_SIGNING_SECRET = env("SLACK_SIGNING_SECRET", default="")
+
 
 # Internationalization
 # https://docs.djangoproject.com/en/stable/topics/i18n/
@@ -524,6 +529,11 @@ SCHEDULED_TASKS = {
         "task": "apps.integrations.tasks.sync_all_jira_projects_task",
         "schedule": schedules.crontab(minute=30, hour=4),  # 4:30 AM UTC (after GitHub)
         "expire_seconds": 60 * 60 * 4,  # 4 hour expiry
+    },
+    "check-leaderboards-hourly": {
+        "task": "apps.integrations.tasks.post_weekly_leaderboards_task",
+        "schedule": schedules.crontab(minute=0),  # Every hour on the hour
+        "expire_seconds": 60 * 30,  # 30 minute expiry
     },
 }
 

@@ -250,6 +250,87 @@ class TestPullRequestEventHandler(TestCase):
         ).count()
         self.assertEqual(pr_count, 1)
 
+    def test_pr_merge_event_triggers_send_pr_surveys_task(self):
+        """Test that PR merge event triggers send_pr_surveys_task."""
+        from unittest.mock import patch
+
+        from apps.metrics.processors import handle_pull_request_event
+
+        # Create a merged PR payload
+        payload = self._make_payload(
+            action="closed",
+            state="closed",
+            merged=True,
+            merged_at="2025-01-02T15:00:00Z",
+        )
+
+        # Mock the task (patch where it's imported, inside the function)
+        with patch("apps.integrations.tasks.send_pr_surveys_task") as mock_task:
+            result = handle_pull_request_event(self.team, payload)
+
+            # Verify task was dispatched with correct PR ID
+            mock_task.delay.assert_called_once_with(result.id)
+
+    def test_pr_close_without_merge_does_not_trigger_task(self):
+        """Test that PR close without merge does NOT trigger send_pr_surveys_task."""
+        from unittest.mock import patch
+
+        from apps.metrics.processors import handle_pull_request_event
+
+        # Create a closed (not merged) PR payload
+        payload = self._make_payload(
+            action="closed",
+            state="closed",
+            merged=False,
+        )
+
+        # Mock the task
+        with patch("apps.integrations.tasks.send_pr_surveys_task") as mock_task:
+            handle_pull_request_event(self.team, payload)
+
+            # Verify task was NOT dispatched
+            mock_task.delay.assert_not_called()
+
+    def test_pr_open_action_does_not_trigger_task(self):
+        """Test that PR open action does NOT trigger send_pr_surveys_task."""
+        from unittest.mock import patch
+
+        from apps.metrics.processors import handle_pull_request_event
+
+        # Create an opened PR payload
+        payload = self._make_payload(action="opened")
+
+        # Mock the task
+        with patch("apps.integrations.tasks.send_pr_surveys_task") as mock_task:
+            handle_pull_request_event(self.team, payload)
+
+            # Verify task was NOT dispatched
+            mock_task.delay.assert_not_called()
+
+    def test_task_dispatch_error_does_not_break_webhook_response(self):
+        """Test that error in task dispatch doesn't break webhook response."""
+        from unittest.mock import patch
+
+        from apps.metrics.processors import handle_pull_request_event
+
+        # Create a merged PR payload
+        payload = self._make_payload(
+            action="closed",
+            state="closed",
+            merged=True,
+            merged_at="2025-01-02T15:00:00Z",
+        )
+
+        # Mock the task to raise an error
+        with patch("apps.integrations.tasks.send_pr_surveys_task") as mock_task:
+            mock_task.delay.side_effect = Exception("Celery connection error")
+
+            # Should still return the PR successfully (not raise exception)
+            result = handle_pull_request_event(self.team, payload)
+
+            self.assertIsNotNone(result)
+            self.assertEqual(result.state, "merged")
+
 
 class TestPullRequestReviewEventHandler(TestCase):
     """Tests for handle_pull_request_review_event webhook processor."""

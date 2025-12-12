@@ -26,7 +26,7 @@ from factory.django import DjangoModelFactory
 from apps.metrics.factories import TeamFactory
 from apps.users.models import CustomUser
 
-from .models import GitHubIntegration, IntegrationCredential, JiraIntegration, TrackedJiraProject
+from .models import GitHubIntegration, IntegrationCredential, JiraIntegration, SlackIntegration, TrackedJiraProject
 from .services.encryption import encrypt
 
 
@@ -132,3 +132,28 @@ class TrackedJiraProjectFactory(DjangoModelFactory):
     name = factory.Sequence(lambda n: f"Project {n}")
     is_active = True
     sync_status = "pending"
+
+
+class SlackIntegrationFactory(DjangoModelFactory):
+    """Factory for SlackIntegration model."""
+
+    class Meta:
+        model = SlackIntegration
+
+    team = factory.SubFactory(TeamFactory)
+    credential = factory.SubFactory(
+        IntegrationCredentialFactory,
+        team=factory.SelfAttribute("..team"),
+        provider=IntegrationCredential.PROVIDER_SLACK,
+    )
+    workspace_id = factory.Sequence(lambda n: f"T{10000000 + n}")
+    workspace_name = factory.Sequence(lambda n: f"Workspace {n}")
+    bot_user_id = factory.Sequence(lambda n: f"U{10000000 + n}")
+    leaderboard_channel_id = ""
+    leaderboard_day = 0
+    leaderboard_enabled = True
+    surveys_enabled = True
+    reveals_enabled = True
+    last_sync_at = None
+    sync_status = "pending"
+    last_sync_error = None

@@ -4,11 +4,14 @@ GitHub webhook event processors.
 Functions to process GitHub webhook payloads and create/update database records.
 """
 
+import logging
 from datetime import datetime
 from decimal import Decimal
 
 from apps.integrations.services.jira_utils import extract_jira_key
 from apps.metrics.models import PRReview, PullRequest, TeamMember
+
+logger = logging.getLogger(__name__)
 
 
 def _parse_github_timestamp(timestamp_str: str | None) -> datetime | None:
@@ -162,6 +165,26 @@ def _map_github_pr_to_fields(team, pr_data: dict) -> dict:
     }
 
 
+def _trigger_pr_surveys_if_merged(pr: PullRequest, action: str, is_merged: bool) -> None:
+    """
+    Trigger PR survey task if the PR was just merged.
+
+    Args:
+        pr: PullRequest instance
+        action: GitHub webhook action (e.g., "closed", "opened")
+        is_merged: Whether the PR was merged
+    """
+    if action == "closed" and is_merged:
+        try:
+            from apps.integrations.tasks import send_pr_surveys_task
+
+            send_pr_surveys_task.delay(pr.id)
+            logger.debug(f"Dispatched send_pr_surveys_task for PR {pr.id}")
+        except Exception as e:
+            # Log error but don't break webhook response
+            logger.error(f"Failed to dispatch send_pr_surveys_task for PR {pr.id}: {e}")
+
+
 def handle_pull_request_event(team, payload: dict) -> PullRequest | None:
     """
     Process pull_request webhook event and create/update PullRequest record.
@@ -175,6 +198,7 @@ def handle_pull_request_event(team, payload: dict) -> PullRequest | None:
     """
     pr_data = payload.get("pull_request", {})
     repo_data = payload.get("repository", {})
+    action = payload.get("action")
 
     # Extract identifying information
     github_pr_id = pr_data.get("id")
@@ -190,6 +214,9 @@ def handle_pull_request_event(team, payload: dict) -> PullRequest | None:
         github_repo=github_repo,
         defaults=pr_fields,
     )
+
+    # Trigger survey task if PR was merged
+    _trigger_pr_surveys_if_merged(pr, action, pr_data.get("merged", False))
 
     return pr
 

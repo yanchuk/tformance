@@ -15,6 +15,7 @@ from apps.integrations.models import (
     GitHubIntegration,
     IntegrationCredential,
     JiraIntegration,
+    SlackIntegration,
     TrackedRepository,
 )
 from apps.metrics.factories import TeamFactory
@@ -1156,3 +1157,193 @@ class TestTrackedJiraProjectModel(TestCase):
         self.assertEqual(projects.count(), 1)
         self.assertIn(project2, projects)
         self.assertNotIn(project1, projects)
+
+
+class TestSlackIntegrationModel(TestCase):
+    """Tests for SlackIntegration model."""
+
+    def setUp(self):
+        """Set up test fixtures using factories."""
+        self.team = TeamFactory()
+        self.credential = IntegrationCredentialFactory(
+            team=self.team,
+            provider=IntegrationCredential.PROVIDER_SLACK,
+        )
+
+    def tearDown(self):
+        """Clean up team context."""
+        unset_current_team()
+
+    def test_slack_integration_creation_with_all_fields(self):
+        """Test that SlackIntegration can be created with all fields."""
+        from datetime import time
+
+        integration = SlackIntegration.objects.create(
+            team=self.team,
+            credential=self.credential,
+            workspace_id="T12345678",
+            workspace_name="Acme Corp",
+            bot_user_id="U12345678",
+            leaderboard_channel_id="C12345678",
+            leaderboard_day=3,
+            leaderboard_time=time(14, 30),
+            leaderboard_enabled=False,
+            surveys_enabled=False,
+            reveals_enabled=False,
+        )
+
+        self.assertEqual(integration.team, self.team)
+        self.assertEqual(integration.credential, self.credential)
+        self.assertEqual(integration.workspace_id, "T12345678")
+        self.assertEqual(integration.workspace_name, "Acme Corp")
+        self.assertEqual(integration.bot_user_id, "U12345678")
+        self.assertEqual(integration.leaderboard_channel_id, "C12345678")
+        self.assertEqual(integration.leaderboard_day, 3)
+        self.assertEqual(integration.leaderboard_time, time(14, 30))
+        self.assertFalse(integration.leaderboard_enabled)
+        self.assertFalse(integration.surveys_enabled)
+        self.assertFalse(integration.reveals_enabled)
+        self.assertIsNone(integration.last_sync_at)
+        self.assertEqual(integration.sync_status, "pending")
+        self.assertIsNotNone(integration.pk)
+        self.assertIsNotNone(integration.created_at)
+        self.assertIsNotNone(integration.updated_at)
+
+    def test_slack_integration_default_values(self):
+        """Test that SlackIntegration has correct default values."""
+        from datetime import time
+
+        integration = SlackIntegration.objects.create(
+            team=self.team,
+            credential=self.credential,
+            workspace_id="T12345678",
+            workspace_name="Acme Corp",
+            bot_user_id="U12345678",
+        )
+
+        self.assertEqual(integration.leaderboard_day, 0)  # Monday
+        self.assertEqual(integration.leaderboard_time, time(9, 0))  # 09:00
+        self.assertTrue(integration.leaderboard_enabled)
+        self.assertTrue(integration.surveys_enabled)
+        self.assertTrue(integration.reveals_enabled)
+        self.assertEqual(integration.leaderboard_channel_id, "")
+        self.assertIsNone(integration.last_sync_at)
+        self.assertEqual(integration.sync_status, "pending")
+
+    def test_slack_integration_one_to_one_relationship_with_credential(self):
+        """Test that SlackIntegration has a one-to-one relationship with IntegrationCredential."""
+
+        integration = SlackIntegration.objects.create(
+            team=self.team,
+            credential=self.credential,
+            workspace_id="T12345678",
+            workspace_name="Acme Corp",
+            bot_user_id="U12345678",
+        )
+
+        # Access integration from credential using related_name
+        self.assertEqual(self.credential.slack_integration, integration)
+
+        # Cannot create another integration with the same credential
+        with self.assertRaises(IntegrityError):
+            SlackIntegration.objects.create(
+                team=self.team,
+                credential=self.credential,
+                workspace_id="T87654321",
+                workspace_name="Another Corp",
+                bot_user_id="U87654321",
+            )
+
+    def test_slack_integration_team_relationship_from_base_team_model(self):
+        """Test that SlackIntegration inherits team relationship from BaseTeamModel."""
+
+        integration = SlackIntegration.objects.create(
+            team=self.team,
+            credential=self.credential,
+            workspace_id="T12345678",
+            workspace_name="Acme Corp",
+            bot_user_id="U12345678",
+        )
+
+        self.assertEqual(integration.team, self.team)
+        self.assertIsNotNone(integration.created_at)
+        self.assertIsNotNone(integration.updated_at)
+
+    def test_slack_integration_unique_constraint_team_workspace_id(self):
+        """Test that only one integration per team+workspace_id is allowed."""
+
+        # Create first integration
+        SlackIntegration.objects.create(
+            team=self.team,
+            credential=self.credential,
+            workspace_id="T12345678",
+            workspace_name="Acme Corp",
+            bot_user_id="U12345678",
+        )
+
+        # Create another credential for the same team
+        credential2 = IntegrationCredentialFactory(
+            team=TeamFactory(),  # Different team to avoid team+provider unique constraint
+            provider=IntegrationCredential.PROVIDER_SLACK,
+        )
+
+        # Try to create second integration with same team and workspace_id
+        with self.assertRaises(IntegrityError):
+            SlackIntegration.objects.create(
+                team=self.team,
+                credential=credential2,
+                workspace_id="T12345678",  # Same workspace_id
+                workspace_name="Acme Corp 2",
+                bot_user_id="U87654321",
+            )
+
+    def test_slack_integration_string_representation(self):
+        """Test that string representation shows 'Slack: {workspace_name}'."""
+
+        integration = SlackIntegration.objects.create(
+            team=self.team,
+            credential=self.credential,
+            workspace_id="T12345678",
+            workspace_name="Acme Engineering",
+            bot_user_id="U12345678",
+        )
+
+        expected = "Slack: Acme Engineering"
+        self.assertEqual(str(integration), expected)
+
+    def test_slack_integration_workspace_id_is_indexed(self):
+        """Test that workspace_id is indexed and can be queried efficiently."""
+
+        workspace_id = "T12345678"
+        integration = SlackIntegration.objects.create(
+            team=self.team,
+            credential=self.credential,
+            workspace_id=workspace_id,
+            workspace_name="Acme Corp",
+            bot_user_id="U12345678",
+        )
+
+        # Query by workspace_id
+        result = SlackIntegration.objects.filter(workspace_id=workspace_id).first()
+        self.assertEqual(result, integration)
+
+    def test_slack_integration_sync_status_choices_match_constants(self):
+        """Test that sync_status accepts valid choices from SYNC_STATUS_CHOICES."""
+
+        statuses = ["pending", "syncing", "complete", "error"]
+
+        for status in statuses:
+            team = TeamFactory()  # New team for each to avoid unique constraint
+            credential = IntegrationCredentialFactory(
+                team=team,
+                provider=IntegrationCredential.PROVIDER_SLACK,
+            )
+            integration = SlackIntegration.objects.create(
+                team=team,
+                credential=credential,
+                workspace_id=f"T{status}1234",  # Unique workspace_id
+                workspace_name=f"Test {status}",
+                bot_user_id="U12345678",
+                sync_status=status,
+            )
+            self.assertEqual(integration.sync_status, status)

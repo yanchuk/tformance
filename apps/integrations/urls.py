@@ -1,8 +1,14 @@
 from django.urls import path
 
 from . import views
+from .webhooks import slack_interactions
 
 app_name = "integrations"
+
+# Non-team URLs (webhooks, etc.) - no app_name to avoid namespace collision
+urlpatterns = [
+    path("webhooks/slack/interactions/", slack_interactions.slack_interactions, name="slack_interactions_webhook"),
+]
 
 team_urlpatterns = (
     [
@@ -23,6 +29,10 @@ team_urlpatterns = (
         path("jira/select-site/", views.jira_select_site, name="jira_select_site"),
         path("jira/projects/", views.jira_projects_list, name="jira_projects_list"),
         path("jira/projects/toggle/", views.jira_project_toggle, name="jira_project_toggle"),
+        path("slack/connect/", views.slack_connect, name="slack_connect"),
+        path("slack/callback/", views.slack_callback, name="slack_callback"),
+        path("slack/disconnect/", views.slack_disconnect, name="slack_disconnect"),
+        path("slack/settings/", views.slack_settings, name="slack_settings"),
     ],
     "integrations",
 )
