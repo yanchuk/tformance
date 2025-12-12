@@ -1,0 +1,30 @@
+{% load i18n %}
+<div class="flex gap-2 items-center">
+  <span class="text-sm text-base-content/70">{% trans "Time range:" %}</span>
+  <div class="join">
+    <a href="?days=7"
+       class="join-item btn btn-sm {% if days == 7 %}btn-primary{% else %}btn-ghost{% endif %}"
+       hx-get="?days=7"
+       hx-target="#page-content"
+       hx-swap="outerHTML"
+       hx-push-url="true">
+      {% trans "7d" %}
+    </a>
+    <a href="?days=30"
+       class="join-item btn btn-sm {% if days == 30 %}btn-primary{% else %}btn-ghost{% endif %}"
+       hx-get="?days=30"
+       hx-target="#page-content"
+       hx-swap="outerHTML"
+       hx-push-url="true">
+      {% trans "30d" %}
+    </a>
+    <a href="?days=90"
+       class="join-item btn btn-sm {% if days == 90 %}btn-primary{% else %}btn-ghost{% endif %}"
+       hx-get="?days=90"
+       hx-target="#page-content"
+       hx-swap="outerHTML"
+       hx-push-url="true">
+      {% trans "90d" %}
+    </a>
+  </div>
+</div>

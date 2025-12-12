@@ -1,0 +1,96 @@
+{% extends "web/app/app_base.html" %}
+{% load static %}
+{% load i18n %}
+{% load partials %}
+{% load django_vite %}
+
+{% block app %}
+<div id="page-content" hx-target="#page-content">
+  {% partialdef page-content inline %}
+  <div class="app-card">
+    <!-- Header with title and filters -->
+    <div class="flex justify-between items-center mb-6">
+      <h1 class="pg-title">{% trans "CTO Overview" %}</h1>
+      {% include "metrics/partials/filters.html" %}
+    </div>
+
+    <!-- Key Metrics Cards -->
+    <div id="key-metrics-container"
+         hx-get="{% url 'metrics:cards_metrics' team_slug=request.team.slug %}?days={{ days }}"
+         hx-trigger="load"
+         hx-swap="innerHTML">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        {% for i in "1234" %}
+        <div class="skeleton h-24 w-full rounded-lg"></div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+      <!-- AI Adoption Trend -->
+      <div class="card bg-base-100 shadow-md">
+        <div class="card-body">
+          <h2 class="card-title text-base">{% trans "AI Adoption Trend" %}</h2>
+          <div id="ai-adoption-container"
+               hx-get="{% url 'metrics:chart_ai_adoption' team_slug=request.team.slug %}?days={{ days }}"
+               hx-trigger="load"
+               hx-swap="innerHTML">
+            <div class="flex justify-center items-center h-64">
+              <span class="loading loading-spinner loading-lg"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- AI vs Quality Comparison -->
+      <div class="card bg-base-100 shadow-md">
+        <div class="card-body">
+          <h2 class="card-title text-base">{% trans "Quality by AI Status" %}</h2>
+          <div id="ai-quality-container"
+               hx-get="{% url 'metrics:chart_ai_quality' team_slug=request.team.slug %}?days={{ days }}"
+               hx-trigger="load"
+               hx-swap="innerHTML">
+            <div class="flex justify-center items-center h-64">
+              <span class="loading loading-spinner loading-lg"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cycle Time Trend -->
+    <div class="card bg-base-100 shadow-md mb-6">
+      <div class="card-body">
+        <h2 class="card-title text-base">{% trans "Cycle Time Trend" %}</h2>
+        <div id="cycle-time-container"
+             hx-get="{% url 'metrics:chart_cycle_time' team_slug=request.team.slug %}?days={{ days }}"
+             hx-trigger="load"
+             hx-swap="innerHTML">
+          <div class="flex justify-center items-center h-64">
+            <span class="loading loading-spinner loading-lg"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Team Breakdown Table -->
+    <div class="card bg-base-100 shadow-md">
+      <div class="card-body">
+        <h2 class="card-title text-base">{% trans "Team Breakdown" %}</h2>
+        <div id="team-breakdown-container"
+             hx-get="{% url 'metrics:table_breakdown' team_slug=request.team.slug %}?days={{ days }}"
+             hx-trigger="load"
+             hx-swap="innerHTML">
+          <div class="skeleton h-48 w-full rounded-lg"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endpartialdef page-content %}
+</div>
+{% endblock %}
+
+{% block page_js %}
+{% vite_asset 'assets/javascript/app.js' %}
+{% endblock %}

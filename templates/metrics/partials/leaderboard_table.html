@@ -1,0 +1,59 @@
+{% load i18n %}
+<div class="overflow-x-auto">
+  {% if rows %}
+  <table class="table w-full">
+    <thead>
+      <tr>
+        <th class="w-12">#</th>
+        <th>{% trans "Detective" %}</th>
+        <th class="text-right">{% trans "Correct" %}</th>
+        <th class="text-right">{% trans "Total" %}</th>
+        <th class="text-right">{% trans "Accuracy" %}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      <tr>
+        <td>
+          {% if forloop.counter == 1 %}
+          <span class="text-2xl">&#129351;</span>
+          {% elif forloop.counter == 2 %}
+          <span class="text-2xl">&#129352;</span>
+          {% elif forloop.counter == 3 %}
+          <span class="text-2xl">&#129353;</span>
+          {% else %}
+          <span class="text-base-content/50">{{ forloop.counter }}</span>
+          {% endif %}
+        </td>
+        <td>
+          <div class="flex items-center gap-3">
+            <div class="avatar placeholder">
+              <div class="bg-neutral text-neutral-content rounded-full w-8">
+                <span class="text-xs">{{ row.member_name|slice:":2"|upper }}</span>
+              </div>
+            </div>
+            <div>{{ row.member_name }}</div>
+          </div>
+        </td>
+        <td class="text-right font-mono text-success">{{ row.correct }}</td>
+        <td class="text-right font-mono">{{ row.total }}</td>
+        <td class="text-right">
+          <div class="flex items-center justify-end gap-2">
+            <progress class="progress progress-primary w-16" value="{{ row.percentage }}" max="100"></progress>
+            <span class="badge badge-ghost">{{ row.percentage|floatformat:0 }}%</span>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="flex flex-col items-center justify-center py-12 text-base-content/50">
+    <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+    </svg>
+    <p>{% trans "No AI Detective results yet" %}</p>
+    <p class="text-sm mt-1">{% trans "Respond to Slack surveys to participate!" %}</p>
+  </div>
+  {% endif %}
+</div>

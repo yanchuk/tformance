@@ -1,0 +1,49 @@
+{% load i18n %}
+<div class="overflow-x-auto">
+  {% if rows %}
+  <table class="table table-zebra w-full">
+    <thead>
+      <tr>
+        <th>{% trans "Team Member" %}</th>
+        <th class="text-right">{% trans "PRs Merged" %}</th>
+        <th class="text-right">{% trans "Avg Cycle Time" %}</th>
+        <th class="text-right">{% trans "AI-Assisted" %}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      <tr>
+        <td>
+          <div class="flex items-center gap-3">
+            <div class="avatar placeholder">
+              <div class="bg-neutral text-neutral-content rounded-full w-8">
+                <span class="text-xs">{{ row.member_name|slice:":2"|upper }}</span>
+              </div>
+            </div>
+            <div>{{ row.member_name }}</div>
+          </div>
+        </td>
+        <td class="text-right font-mono">{{ row.prs_merged }}</td>
+        <td class="text-right font-mono">
+          {% if row.avg_cycle_time %}{{ row.avg_cycle_time|floatformat:1 }}h{% else %}-{% endif %}
+        </td>
+        <td class="text-right">
+          {% if row.ai_pct %}
+          <span class="badge badge-info badge-sm">{{ row.ai_pct|floatformat:0 }}%</span>
+          {% else %}
+          <span class="text-base-content/50">-</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="flex flex-col items-center justify-center py-12 text-base-content/50">
+    <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+    </svg>
+    <p>{% trans "No team activity for this period" %}</p>
+  </div>
+  {% endif %}
+</div>

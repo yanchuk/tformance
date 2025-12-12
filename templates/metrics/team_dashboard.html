@@ -1,0 +1,60 @@
+{% extends "web/app/app_base.html" %}
+{% load static %}
+{% load i18n %}
+{% load partials %}
+{% load django_vite %}
+
+{% block app %}
+<div id="page-content" hx-target="#page-content">
+  {% partialdef page-content inline %}
+  <div class="app-card">
+    <!-- Header with title and filters -->
+    <div class="flex justify-between items-center mb-6">
+      <h1 class="pg-title">{% trans "Team Dashboard" %}</h1>
+      {% include "metrics/partials/filters.html" %}
+    </div>
+
+    <!-- Charts Row -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+      <!-- Cycle Time Trend -->
+      <div class="card bg-base-100 shadow-md">
+        <div class="card-body">
+          <h2 class="card-title text-base">{% trans "Cycle Time Trend" %}</h2>
+          <div id="cycle-time-container"
+               hx-get="{% url 'metrics:chart_cycle_time' team_slug=request.team.slug %}?days={{ days }}"
+               hx-trigger="load"
+               hx-swap="innerHTML">
+            <div class="flex justify-center items-center h-64">
+              <span class="loading loading-spinner loading-lg"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- AI Detective Leaderboard -->
+      <div class="card bg-base-100 shadow-md">
+        <div class="card-body">
+          <h2 class="card-title text-base">{% trans "AI Detective Leaderboard" %}</h2>
+          <div id="leaderboard-container"
+               hx-get="{% url 'metrics:table_leaderboard' team_slug=request.team.slug %}?days={{ days }}"
+               hx-trigger="load"
+               hx-swap="innerHTML">
+            <div class="skeleton h-48 w-full rounded-lg"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Info Card -->
+    <div class="alert alert-info mb-6">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+      <span>{% trans "The AI Detective game tracks how well reviewers can guess if a PR was AI-assisted. Respond to Slack surveys to participate!" %}</span>
+    </div>
+  </div>
+  {% endpartialdef page-content %}
+</div>
+{% endblock %}
+
+{% block page_js %}
+{% vite_asset 'assets/javascript/app.js' %}
+{% endblock %}
