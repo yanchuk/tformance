@@ -3,17 +3,6 @@
   {% if chart_data %}
   <canvas id="cycle-time-chart" class="w-full h-64"></canvas>
   {{ chart_data|json_script:'cycle-time-data' }}
-  <script>
-    (function() {
-      const ctx = document.getElementById('cycle-time-chart').getContext('2d');
-      const data = JSON.parse(document.getElementById('cycle-time-data').textContent);
-      if (data && data.length > 0) {
-        const start = new Date(data[0].date);
-        const end = new Date(data[data.length - 1].date);
-        SiteJS.app.DashboardCharts.barChartWithDates(ctx, start, end, data, "Avg Cycle Time (hours)");
-      }
-    })();
-  </script>
   {% else %}
   <div class="flex flex-col items-center justify-center h-64 text-base-content/50">
     <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
