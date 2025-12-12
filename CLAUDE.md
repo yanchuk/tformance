@@ -109,6 +109,12 @@ make dev       # Run in foreground with logs
 
 Access the app at http://localhost:8000
 
+**Important for Claude Code sessions**: After completing each implementation phase, verify the dev server is running:
+```bash
+curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/  # Should return 200
+```
+If not running, restart with `make dev` or `DEBUG=True .venv/bin/python manage.py runserver &`
+
 ### Stopping Services
 
 Stop background services:
