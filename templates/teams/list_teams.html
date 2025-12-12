@@ -19,9 +19,9 @@
         {% for team in teams %}
           <tr>
             <td>{{ team.name }}</td>
-            <td><a class="link" href="{% url 'web_team:home' team.slug %}">{% translate "View Dashboard" %}</a></td>
+            <td><a class="link" href="{% url 'web_team:home' %}">{% translate "View Dashboard" %}</a></td>
             <td class="pg-inline-buttons pg-justify-content-end">
-              <a class="pg-button-secondary mx-1" href="{% url 'single_team:manage_team' team.slug %}">
+              <a class="pg-button-secondary mx-1" href="{% url 'single_team:manage_team' %}">
                 <span class="pg-icon">
                   <i class="fa fa-gear"></i>
                 </span>

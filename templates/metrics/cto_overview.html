@@ -16,7 +16,7 @@
 
     <!-- Key Metrics Cards -->
     <div id="key-metrics-container"
-         hx-get="{% url 'metrics:cards_metrics' team_slug=request.team.slug %}?days={{ days }}"
+         hx-get="{% url 'metrics:cards_metrics' %}?days={{ days }}"
          hx-trigger="load"
          hx-swap="innerHTML">
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -33,7 +33,7 @@
         <div class="card-body">
           <h2 class="card-title text-base">{% trans "AI Adoption Trend" %}</h2>
           <div id="ai-adoption-container"
-               hx-get="{% url 'metrics:chart_ai_adoption' team_slug=request.team.slug %}?days={{ days }}"
+               hx-get="{% url 'metrics:chart_ai_adoption' %}?days={{ days }}"
                hx-trigger="load"
                hx-swap="innerHTML">
             <div class="flex justify-center items-center h-64">
@@ -48,7 +48,7 @@
         <div class="card-body">
           <h2 class="card-title text-base">{% trans "Quality by AI Status" %}</h2>
           <div id="ai-quality-container"
-               hx-get="{% url 'metrics:chart_ai_quality' team_slug=request.team.slug %}?days={{ days }}"
+               hx-get="{% url 'metrics:chart_ai_quality' %}?days={{ days }}"
                hx-trigger="load"
                hx-swap="innerHTML">
             <div class="flex justify-center items-center h-64">
@@ -64,7 +64,7 @@
       <div class="card-body">
         <h2 class="card-title text-base">{% trans "Cycle Time Trend" %}</h2>
         <div id="cycle-time-container"
-             hx-get="{% url 'metrics:chart_cycle_time' team_slug=request.team.slug %}?days={{ days }}"
+             hx-get="{% url 'metrics:chart_cycle_time' %}?days={{ days }}"
              hx-trigger="load"
              hx-swap="innerHTML">
           <div class="flex justify-center items-center h-64">
@@ -79,7 +79,7 @@
       <div class="card-body">
         <h2 class="card-title text-base">{% trans "Team Breakdown" %}</h2>
         <div id="team-breakdown-container"
-             hx-get="{% url 'metrics:table_breakdown' team_slug=request.team.slug %}?days={{ days }}"
+             hx-get="{% url 'metrics:table_breakdown' %}?days={{ days }}"
              hx-trigger="load"
              hx-swap="innerHTML">
           <div class="skeleton h-48 w-full rounded-lg"></div>

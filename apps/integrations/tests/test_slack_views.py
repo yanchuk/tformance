@@ -30,7 +30,7 @@ class SlackConnectViewTest(TestCase):
 
     def test_slack_connect_requires_login(self):
         """Test that slack_connect redirects to login if user is not authenticated."""
-        response = self.client.get(reverse("integrations:slack_connect", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:slack_connect"))
 
         self.assertEqual(response.status_code, 302)
         self.assertIn("/accounts/login/", response.url)
@@ -40,7 +40,7 @@ class SlackConnectViewTest(TestCase):
         non_member = UserFactory()
         self.client.force_login(non_member)
 
-        response = self.client.get(reverse("integrations:slack_connect", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:slack_connect"))
 
         self.assertEqual(response.status_code, 404)
 
@@ -48,7 +48,7 @@ class SlackConnectViewTest(TestCase):
         """Test that slack_connect returns 404 for non-admin team members."""
         self.client.force_login(self.member)
 
-        response = self.client.get(reverse("integrations:slack_connect", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:slack_connect"))
 
         self.assertEqual(response.status_code, 404)
 
@@ -57,7 +57,7 @@ class SlackConnectViewTest(TestCase):
         """Test that slack_connect redirects to Slack OAuth authorization URL."""
         self.client.force_login(self.admin)
 
-        response = self.client.get(reverse("integrations:slack_connect", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:slack_connect"))
 
         self.assertEqual(response.status_code, 302)
         self.assertTrue(response.url.startswith("https://slack.com/oauth/v2/authorize"))
@@ -67,7 +67,7 @@ class SlackConnectViewTest(TestCase):
         """Test that slack_connect redirect URL includes client_id parameter."""
         self.client.force_login(self.admin)
 
-        response = self.client.get(reverse("integrations:slack_connect", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:slack_connect"))
 
         self.assertEqual(response.status_code, 302)
         self.assertIn("client_id=test_client_id", response.url)
@@ -77,7 +77,7 @@ class SlackConnectViewTest(TestCase):
         """Test that slack_connect redirect URL includes redirect_uri parameter."""
         self.client.force_login(self.admin)
 
-        response = self.client.get(reverse("integrations:slack_connect", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:slack_connect"))
 
         self.assertEqual(response.status_code, 302)
         self.assertIn("redirect_uri=", response.url)
@@ -88,10 +88,10 @@ class SlackConnectViewTest(TestCase):
         SlackIntegrationFactory(team=self.team)
         self.client.force_login(self.admin)
 
-        response = self.client.get(reverse("integrations:slack_connect", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:slack_connect"))
 
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, reverse("integrations:integrations_home", args=[self.team.slug]))
+        self.assertEqual(response.url, reverse("integrations:integrations_home"))
 
     def test_slack_connect_when_already_connected_shows_message(self):
         """Test that slack_connect shows message if Slack is already connected."""
@@ -99,7 +99,7 @@ class SlackConnectViewTest(TestCase):
         SlackIntegrationFactory(team=self.team)
         self.client.force_login(self.admin)
 
-        response = self.client.get(reverse("integrations:slack_connect", args=[self.team.slug]), follow=True)
+        response = self.client.get(reverse("integrations:slack_connect"), follow=True)
 
         messages = list(get_messages(response.wsgi_request))
         self.assertTrue(any("already connected" in str(m).lower() for m in messages))
@@ -119,7 +119,7 @@ class SlackCallbackViewTest(TestCase):
 
     def test_slack_callback_requires_login(self):
         """Test that slack_callback redirects to login if user is not authenticated."""
-        response = self.client.get(reverse("integrations:slack_callback", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:slack_callback"))
 
         self.assertEqual(response.status_code, 302)
         self.assertIn("/accounts/login/", response.url)
@@ -129,7 +129,7 @@ class SlackCallbackViewTest(TestCase):
         non_member = UserFactory()
         self.client.force_login(non_member)
 
-        response = self.client.get(reverse("integrations:slack_callback", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:slack_callback"))
 
         self.assertEqual(response.status_code, 404)
 
@@ -140,7 +140,7 @@ class SlackCallbackViewTest(TestCase):
         self.client.force_login(self.admin)
 
         self.client.get(
-            reverse("integrations:slack_callback", args=[self.team.slug]),
+            reverse("integrations:slack_callback"),
             {"code": "auth_code_123", "state": "valid_state"},
         )
 
@@ -168,7 +168,7 @@ class SlackCallbackViewTest(TestCase):
         self.client.force_login(self.admin)
 
         self.client.get(
-            reverse("integrations:slack_callback", args=[self.team.slug]),
+            reverse("integrations:slack_callback"),
             {"code": "auth_code_123", "state": "valid_state"},
         )
 
@@ -198,7 +198,7 @@ class SlackCallbackViewTest(TestCase):
         self.client.force_login(self.admin)
 
         self.client.get(
-            reverse("integrations:slack_callback", args=[self.team.slug]),
+            reverse("integrations:slack_callback"),
             {"code": "auth_code_123", "state": "valid_state"},
         )
 
@@ -230,13 +230,13 @@ class SlackCallbackViewTest(TestCase):
         self.client.force_login(self.admin)
 
         response = self.client.get(
-            reverse("integrations:slack_callback", args=[self.team.slug]),
+            reverse("integrations:slack_callback"),
             {"code": "auth_code_123", "state": "valid_state"},
         )
 
         # Should redirect to integrations home
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, reverse("integrations:integrations_home", args=[self.team.slug]))
+        self.assertEqual(response.url, reverse("integrations:integrations_home"))
 
     @override_settings(SLACK_CLIENT_ID="test_client_id", SLACK_CLIENT_SECRET="test_secret")
     @patch("apps.integrations.services.slack_oauth.exchange_code_for_token")
@@ -254,13 +254,13 @@ class SlackCallbackViewTest(TestCase):
         self.client.force_login(self.admin)
 
         response = self.client.get(
-            reverse("integrations:slack_callback", args=[self.team.slug]),
+            reverse("integrations:slack_callback"),
             {"code": "invalid_code", "state": "valid_state"},
         )
 
         # Should redirect to integrations home with error
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, reverse("integrations:integrations_home", args=[self.team.slug]))
+        self.assertEqual(response.url, reverse("integrations:integrations_home"))
 
         # Should NOT create any integration records
         self.assertFalse(IntegrationCredential.objects.filter(team=self.team).exists())
@@ -289,7 +289,7 @@ class SlackCallbackViewTest(TestCase):
         self.client.force_login(self.admin)
 
         self.client.get(
-            reverse("integrations:slack_callback", args=[self.team.slug]),
+            reverse("integrations:slack_callback"),
             {"code": "auth_code_123", "state": "valid_state"},
         )
 
@@ -315,7 +315,7 @@ class SlackDisconnectViewTest(TestCase):
 
     def test_slack_disconnect_requires_login(self):
         """Test that slack_disconnect redirects to login if user is not authenticated."""
-        response = self.client.post(reverse("integrations:slack_disconnect", args=[self.team.slug]))
+        response = self.client.post(reverse("integrations:slack_disconnect"))
 
         self.assertEqual(response.status_code, 302)
         self.assertIn("/accounts/login/", response.url)
@@ -325,7 +325,7 @@ class SlackDisconnectViewTest(TestCase):
         non_member = UserFactory()
         self.client.force_login(non_member)
 
-        response = self.client.post(reverse("integrations:slack_disconnect", args=[self.team.slug]))
+        response = self.client.post(reverse("integrations:slack_disconnect"))
 
         self.assertEqual(response.status_code, 404)
 
@@ -333,7 +333,7 @@ class SlackDisconnectViewTest(TestCase):
         """Test that slack_disconnect returns 404 for non-admin team members."""
         self.client.force_login(self.member)
 
-        response = self.client.post(reverse("integrations:slack_disconnect", args=[self.team.slug]))
+        response = self.client.post(reverse("integrations:slack_disconnect"))
 
         self.assertEqual(response.status_code, 404)
 
@@ -344,7 +344,7 @@ class SlackDisconnectViewTest(TestCase):
         self.client.force_login(self.admin)
 
         # Try GET request
-        response = self.client.get(reverse("integrations:slack_disconnect", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:slack_disconnect"))
 
         # Should not allow GET
         self.assertNotEqual(response.status_code, 200)
@@ -356,7 +356,7 @@ class SlackDisconnectViewTest(TestCase):
         credential = integration.credential
         self.client.force_login(self.admin)
 
-        self.client.post(reverse("integrations:slack_disconnect", args=[self.team.slug]))
+        self.client.post(reverse("integrations:slack_disconnect"))
 
         # SlackIntegration should be deleted
         self.assertFalse(SlackIntegration.objects.filter(pk=integration.pk).exists())
@@ -370,11 +370,11 @@ class SlackDisconnectViewTest(TestCase):
         SlackIntegrationFactory(team=self.team)
         self.client.force_login(self.admin)
 
-        response = self.client.post(reverse("integrations:slack_disconnect", args=[self.team.slug]))
+        response = self.client.post(reverse("integrations:slack_disconnect"))
 
         # Should redirect to integrations home
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, reverse("integrations:integrations_home", args=[self.team.slug]))
+        self.assertEqual(response.url, reverse("integrations:integrations_home"))
 
 
 class SlackSettingsViewTest(TestCase):
@@ -391,7 +391,7 @@ class SlackSettingsViewTest(TestCase):
 
     def test_slack_settings_requires_login(self):
         """Test that slack_settings redirects to login if user is not authenticated."""
-        response = self.client.get(reverse("integrations:slack_settings", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:slack_settings"))
 
         self.assertEqual(response.status_code, 302)
         self.assertIn("/accounts/login/", response.url)
@@ -401,7 +401,7 @@ class SlackSettingsViewTest(TestCase):
         non_member = UserFactory()
         self.client.force_login(non_member)
 
-        response = self.client.get(reverse("integrations:slack_settings", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:slack_settings"))
 
         self.assertEqual(response.status_code, 404)
 
@@ -409,7 +409,7 @@ class SlackSettingsViewTest(TestCase):
         """Test that slack_settings returns 404 for non-admin team members."""
         self.client.force_login(self.member)
 
-        response = self.client.get(reverse("integrations:slack_settings", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:slack_settings"))
 
         self.assertEqual(response.status_code, 404)
 
@@ -419,7 +419,7 @@ class SlackSettingsViewTest(TestCase):
         SlackIntegrationFactory(team=self.team)
         self.client.force_login(self.admin)
 
-        response = self.client.get(reverse("integrations:slack_settings", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:slack_settings"))
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "leaderboard")
@@ -431,7 +431,7 @@ class SlackSettingsViewTest(TestCase):
         self.client.force_login(self.admin)
 
         self.client.post(
-            reverse("integrations:slack_settings", args=[self.team.slug]),
+            reverse("integrations:slack_settings"),
             {
                 "leaderboard_channel_id": "C12345678",
                 "leaderboard_day": 4,  # Friday

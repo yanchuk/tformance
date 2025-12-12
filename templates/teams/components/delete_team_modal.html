@@ -11,7 +11,7 @@
     </p>
     <footer class="modal-card-foot">
       <div class="modal-action">
-        <form action="{% url 'single_team:delete_team' request.team.slug %} " method="post">
+        <form action="{% url 'single_team:delete_team' %} " method="post">
           {% csrf_token %}
           <button class="btn btn-error" type="submit">{% translate "I understand, permanently delete this team" %}</button>
         </form>

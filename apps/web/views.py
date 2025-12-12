@@ -19,7 +19,7 @@ def home(request):
     if request.user.is_authenticated:
         team = request.default_team
         if team:
-            return HttpResponseRedirect(reverse("web_team:home", args=[team.slug]))
+            return HttpResponseRedirect(reverse("web_team:home"))
         else:
             # Check for open invitations first
             if open_invitations := get_open_invitations_for_user(request.user):
@@ -33,8 +33,7 @@ def home(request):
 
 
 @login_and_team_required
-def team_home(request, team_slug):
-    assert request.team.slug == team_slug
+def team_home(request):
     return render(
         request,
         "web/app_home.html",

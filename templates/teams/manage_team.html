@@ -43,7 +43,7 @@
         <tr>
           <td>
             {% if request.team_membership.is_admin or request.team_membership == membership %}
-              <a class="link" href="{% url 'single_team:team_membership_details' request.team.slug membership.pk %}">{{ membership.user }}</a>
+              <a class="link" href="{% url 'single_team:team_membership_details' membership.pk %}">{{ membership.user }}</a>
             {% else %}
               {{ membership.user }}
             {% endif %}

@@ -29,7 +29,7 @@ def accept_invitation(request, invitation_id):
                 team=invitation.team.name
             ),
         )
-        return HttpResponseRedirect(reverse("web_team:home", args=[invitation.team.slug]))
+        return HttpResponseRedirect(reverse("web_team:home"))
 
     if request.method == "POST":
         # accept invitation workflow
@@ -44,7 +44,7 @@ def accept_invitation(request, invitation_id):
                 process_invitation(invitation, request.user)
                 clear_invite_from_session(request)
                 messages.success(request, _("You successfully joined {}").format(invitation.team.name))
-                return HttpResponseRedirect(reverse("web_team:home", args=[invitation.team.slug]))
+                return HttpResponseRedirect(reverse("web_team:home"))
 
     account_exists = CustomUser.objects.filter(email=invitation.email).exists()
     owned_email_address = None

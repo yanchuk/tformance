@@ -31,7 +31,7 @@ def manage_teams(request):
 
 
 @login_and_team_required
-def manage_team(request, team_slug):
+def manage_team(request):
     team = request.team
     team_form = None
     if request.method == "POST":
@@ -40,8 +40,6 @@ def manage_team(request, team_slug):
             if team_form.is_valid():
                 messages.success(request, _("Team details saved!"))
                 team_form.save()
-                if request.team.slug != team_slug:
-                    return HttpResponseRedirect(reverse("single_team:manage_team", args=[request.team.slug]))
         else:
             messages.error(request, "Sorry you don't have permission to do that.")
     if team_form is None:
@@ -87,7 +85,7 @@ def create_team(request):
 
 @team_admin_required
 @require_POST
-def delete_team(request, team_slug):
+def delete_team(request):
     request.team.delete()
     messages.success(request, _('The "{team}" team was successfully deleted').format(team=request.team.name))
     return HttpResponseRedirect(reverse("web:home"))
@@ -95,7 +93,7 @@ def delete_team(request, team_slug):
 
 @team_admin_required
 @require_POST
-def resend_invitation(request, team_slug, invitation_id):
+def resend_invitation(request, invitation_id):
     invitation = get_object_or_404(Invitation, team=request.team, id=invitation_id)
     send_invitation(invitation)
     return HttpResponse('<span class="pg-button-light is-disbled btn-disabled">Sent!</span>')
@@ -103,7 +101,7 @@ def resend_invitation(request, team_slug, invitation_id):
 
 @team_admin_required
 @require_POST
-def send_invitation_view(request, team_slug):
+def send_invitation_view(request):
     form = InvitationForm(request.team, request.POST)
     if form.is_valid():
         invitation = form.save(commit=False)
@@ -134,7 +132,7 @@ def send_invitation_view(request, team_slug):
 
 @team_admin_required
 @require_POST
-def cancel_invitation_view(request, team_slug, invitation_id):
+def cancel_invitation_view(request, invitation_id):
     invitation = get_object_or_404(Invitation, team=request.team, id=invitation_id)
     invitation.delete()
     return HttpResponse("")

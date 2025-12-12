@@ -27,47 +27,51 @@ class TeamsAuthTest(TestCase):
         self._assertRequestHasTeam(response, None)
 
     def test_authenticated_non_team_view(self):
+        """Non-team views now have team set from session/user default."""
         self._login(self.sox_admin)
         response = self.client.get(reverse("users:user_profile"))
         self.assertEqual(200, response.status_code, response)
-        self._assertRequestHasTeam(response, None)
+        # With simplified URLs, team is resolved from session/user even on non-team views
+        self._assertRequestHasTeam(response, self.sox, self.sox_admin, ROLE_ADMIN)
         self.assertEqual(response.wsgi_request.default_team, self.sox)
 
     def test_team_view(self):
         self._login(self.sox_admin)
-        response = self.client.get(reverse("single_team:manage_team", args=[self.sox.slug]))
+        response = self.client.get(reverse("single_team:manage_team"))
         self.assertEqual(200, response.status_code)
         self._assertRequestHasTeam(response, self.sox, self.sox_admin, ROLE_ADMIN)
 
-    def test_team_view_no_membership(self):
+    def test_team_view_user_gets_own_team(self):
+        """With simplified URLs, user always gets their own team (not another's)."""
         self._login(self.sox_admin)
-        response = self.client.get(reverse("single_team:manage_team", args=[self.yanks.slug]))
-        self.assertEqual(404, response.status_code)
-        self._assertRequestHasTeam(response, self.yanks, None, None)
+        response = self.client.get(reverse("single_team:manage_team"))
+        # User sees their own team (sox), not yanks
+        self.assertEqual(200, response.status_code)
+        self._assertRequestHasTeam(response, self.sox, self.sox_admin, ROLE_ADMIN)
 
     def test_team_admin_view(self):
         self._login(self.sox_admin)
         invite = self._create_invitation()
-        response = self.client.post(reverse("single_team:resend_invitation", args=[self.sox.slug, invite.id]))
+        response = self.client.post(reverse("single_team:resend_invitation", args=[invite.id]))
         self.assertEqual(200, response.status_code)
         self._assertRequestHasTeam(response, self.sox, self.sox_admin, ROLE_ADMIN)
 
     def test_team_admin_view_denied(self):
         self._login(self.yanks_member)
         invite = self._create_invitation()
-        response = self.client.post(reverse("single_team:resend_invitation", args=[self.yanks.slug, invite.id]))
+        response = self.client.post(reverse("single_team:resend_invitation", args=[invite.id]))
         self.assertEqual(404, response.status_code)
         self._assertRequestHasTeam(response, self.yanks, self.yanks_member, ROLE_MEMBER)
 
     def test_delete_team_not_allowed_by_member(self):
         self._login(self.yanks_member)
-        response = self.client.post(reverse("single_team:delete_team", args=[self.yanks.slug]))
+        response = self.client.post(reverse("single_team:delete_team"))
         self.assertEqual(404, response.status_code)
         self.assertTrue(Team.objects.filter(slug=self.yanks.slug).exists())
 
     def test_delete_team(self):
         self._login(self.sox_admin)
-        response = self.client.post(reverse("single_team:delete_team", args=[self.sox.slug]))
+        response = self.client.post(reverse("single_team:delete_team"))
         self.assertEqual(302, response.status_code)
         self.assertFalse(Team.objects.filter(slug=self.sox.slug).exists())
 

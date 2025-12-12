@@ -29,8 +29,8 @@
     <td class="px-4 py-3 border-b border-elevated/50 text-right">
       <div class="flex items-center justify-end gap-1">
         <form method="post"
-              action="{% url 'integrations:github_repo_toggle' team_slug=request.team.slug repo_id=repo.id %}"
-              hx-post="{% url 'integrations:github_repo_toggle' team_slug=request.team.slug repo_id=repo.id %}"
+              action="{% url 'integrations:github_repo_toggle' repo_id=repo.id %}"
+              hx-post="{% url 'integrations:github_repo_toggle' repo_id=repo.id %}"
               hx-target="#repo-row-{{ repo.id }}"
               hx-swap="outerHTML">
           {% csrf_token %}
@@ -45,7 +45,7 @@
         </form>
         {% if repo.is_tracked and repo.tracked_repo_id %}
           <button
-            hx-post="{% url 'integrations:github_repo_sync' team_slug=request.team.slug repo_id=repo.tracked_repo_id %}"
+            hx-post="{% url 'integrations:github_repo_sync' repo_id=repo.tracked_repo_id %}"
             hx-swap="none"
             class="app-btn-ghost app-btn-sm"
             title="Sync historical data"

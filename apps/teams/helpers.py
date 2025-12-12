@@ -26,11 +26,35 @@ def get_next_unique_team_slug(team_name: str) -> str:
 
 
 def get_team_for_request(request, view_kwargs):
+    """
+    Get the team for a request.
+
+    Team resolution order:
+    1. team_slug in view_kwargs (legacy URL support / redirects)
+    2. team ID in session (from previous requests)
+    3. User's default (first) team
+
+    Returns None if user is not authenticated or has no teams.
+    """
+    # Legacy: support team_slug in URL for backwards compatibility
     team_slug = view_kwargs.get("team_slug", None)
     if team_slug:
         return get_object_or_404(Team, slug=team_slug)
 
-    return None
+    # For non-authenticated users, no team
+    if not request.user.is_authenticated:
+        return None
+
+    # Check session for team ID
+    if "team" in request.session:
+        try:
+            return request.user.teams.get(id=request.session["team"])
+        except Team.DoesNotExist:
+            # Team from session doesn't exist or user isn't a member
+            del request.session["team"]
+
+    # Fall back to user's first team
+    return request.user.teams.first()
 
 
 def get_default_team_from_request(request: HttpRequest) -> Team:

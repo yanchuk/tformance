@@ -21,7 +21,7 @@
         <div class="card-body">
           <h2 class="card-title text-base">{% trans "Cycle Time Trend" %}</h2>
           <div id="cycle-time-container"
-               hx-get="{% url 'metrics:chart_cycle_time' team_slug=request.team.slug %}?days={{ days }}"
+               hx-get="{% url 'metrics:chart_cycle_time' %}?days={{ days }}"
                hx-trigger="load"
                hx-swap="innerHTML">
             <div class="flex justify-center items-center h-64">
@@ -36,7 +36,7 @@
         <div class="card-body">
           <h2 class="card-title text-base">{% trans "AI Detective Leaderboard" %}</h2>
           <div id="leaderboard-container"
-               hx-get="{% url 'metrics:table_leaderboard' team_slug=request.team.slug %}?days={{ days }}"
+               hx-get="{% url 'metrics:table_leaderboard' %}?days={{ days }}"
                hx-trigger="load"
                hx-swap="innerHTML">
             <div class="skeleton h-48 w-full rounded-lg"></div>

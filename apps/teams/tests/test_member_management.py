@@ -34,10 +34,10 @@ class TeamMemberManagementViewTest(MessagesTestMixin, TestCase):
         self.normal_membership2 = Membership.objects.get(user=self.member2, team=self.team)
 
     def _get_membership_url(self, membership):
-        return reverse("single_team:team_membership_details", args=[self.team.slug, membership.pk])
+        return reverse("single_team:team_membership_details", args=[membership.pk])
 
     def _get_remove_membership_url(self, membership):
-        return reverse("single_team:remove_team_membership", args=[self.team.slug, membership.pk])
+        return reverse("single_team:remove_team_membership", args=[membership.pk])
 
     def _change_role(self, client, membership, role):
         return client.post(self._get_membership_url(membership), {"role": role})

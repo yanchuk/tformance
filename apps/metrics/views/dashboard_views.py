@@ -29,30 +29,30 @@ def _get_date_range_context(request: HttpRequest) -> dict[str, int | date]:
 
 
 @login_and_team_required
-def home(request: HttpRequest, team_slug: str) -> HttpResponse:
+def home(request: HttpRequest) -> HttpResponse:
     template = "metrics/metrics_home.html#page-content" if request.htmx else "metrics/metrics_home.html"
 
     return TemplateResponse(request, template, {"active_tab": "metrics"})
 
 
 @login_and_team_required
-def dashboard_redirect(request: HttpRequest, team_slug: str) -> HttpResponse:
+def dashboard_redirect(request: HttpRequest) -> HttpResponse:
     """Redirect to appropriate dashboard based on user role."""
     membership = request.team_membership
     if membership.role == "admin":
-        return redirect("metrics:cto_overview", team_slug=team_slug)
-    return redirect("metrics:team_dashboard", team_slug=team_slug)
+        return redirect("metrics:cto_overview")
+    return redirect("metrics:team_dashboard")
 
 
 @team_admin_required
-def cto_overview(request: HttpRequest, team_slug: str) -> HttpResponse:
+def cto_overview(request: HttpRequest) -> HttpResponse:
     """CTO Overview Dashboard - Admin only."""
     context = _get_date_range_context(request)
     return TemplateResponse(request, "metrics/cto_overview.html", context)
 
 
 @login_and_team_required
-def team_dashboard(request: HttpRequest, team_slug: str) -> HttpResponse:
+def team_dashboard(request: HttpRequest) -> HttpResponse:
     """Team Dashboard - All team members."""
     context = _get_date_range_context(request)
     return TemplateResponse(request, "metrics/team_dashboard.html", context)

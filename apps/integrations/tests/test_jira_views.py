@@ -30,7 +30,7 @@ class JiraConnectViewTest(TestCase):
 
     def test_jira_connect_requires_login(self):
         """Test that jira_connect redirects to login if user is not authenticated."""
-        response = self.client.get(reverse("integrations:jira_connect", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:jira_connect"))
 
         self.assertEqual(response.status_code, 302)
         self.assertIn("/accounts/login/", response.url)
@@ -40,7 +40,7 @@ class JiraConnectViewTest(TestCase):
         non_member = UserFactory()
         self.client.force_login(non_member)
 
-        response = self.client.get(reverse("integrations:jira_connect", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:jira_connect"))
 
         self.assertEqual(response.status_code, 404)
 
@@ -48,7 +48,7 @@ class JiraConnectViewTest(TestCase):
         """Test that jira_connect returns 404 for non-admin team members."""
         self.client.force_login(self.member)
 
-        response = self.client.get(reverse("integrations:jira_connect", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:jira_connect"))
 
         self.assertEqual(response.status_code, 404)
 
@@ -57,7 +57,7 @@ class JiraConnectViewTest(TestCase):
         """Test that jira_connect redirects to Atlassian OAuth authorization URL."""
         self.client.force_login(self.admin)
 
-        response = self.client.get(reverse("integrations:jira_connect", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:jira_connect"))
 
         self.assertEqual(response.status_code, 302)
         self.assertTrue(response.url.startswith("https://auth.atlassian.com/authorize"))
@@ -67,7 +67,7 @@ class JiraConnectViewTest(TestCase):
         """Test that jira_connect redirect URL includes state parameter."""
         self.client.force_login(self.admin)
 
-        response = self.client.get(reverse("integrations:jira_connect", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:jira_connect"))
 
         self.assertEqual(response.status_code, 302)
         self.assertIn("state=", response.url)
@@ -77,7 +77,7 @@ class JiraConnectViewTest(TestCase):
         """Test that jira_connect redirect URL includes redirect_uri parameter."""
         self.client.force_login(self.admin)
 
-        response = self.client.get(reverse("integrations:jira_connect", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:jira_connect"))
 
         self.assertEqual(response.status_code, 302)
         self.assertIn("redirect_uri=", response.url)
@@ -88,10 +88,10 @@ class JiraConnectViewTest(TestCase):
         JiraIntegrationFactory(team=self.team)
         self.client.force_login(self.admin)
 
-        response = self.client.get(reverse("integrations:jira_connect", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:jira_connect"))
 
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, reverse("integrations:integrations_home", args=[self.team.slug]))
+        self.assertEqual(response.url, reverse("integrations:integrations_home"))
 
     def test_jira_connect_when_already_connected_shows_message(self):
         """Test that jira_connect shows message if Jira is already connected."""
@@ -99,7 +99,7 @@ class JiraConnectViewTest(TestCase):
         JiraIntegrationFactory(team=self.team)
         self.client.force_login(self.admin)
 
-        response = self.client.get(reverse("integrations:jira_connect", args=[self.team.slug]), follow=True)
+        response = self.client.get(reverse("integrations:jira_connect"), follow=True)
 
         messages = list(get_messages(response.wsgi_request))
         self.assertTrue(any("already connected" in str(m).lower() for m in messages))
@@ -119,7 +119,7 @@ class JiraCallbackViewTest(TestCase):
 
     def test_jira_callback_requires_login(self):
         """Test that jira_callback redirects to login if user is not authenticated."""
-        response = self.client.get(reverse("integrations:jira_callback", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:jira_callback"))
 
         self.assertEqual(response.status_code, 302)
         self.assertIn("/accounts/login/", response.url)
@@ -129,7 +129,7 @@ class JiraCallbackViewTest(TestCase):
         non_member = UserFactory()
         self.client.force_login(non_member)
 
-        response = self.client.get(reverse("integrations:jira_callback", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:jira_callback"))
 
         self.assertEqual(response.status_code, 404)
 
@@ -138,9 +138,7 @@ class JiraCallbackViewTest(TestCase):
         self.client.force_login(self.admin)
 
         # Atlassian sends error=access_denied when user denies
-        response = self.client.get(
-            reverse("integrations:jira_callback", args=[self.team.slug]), {"error": "access_denied"}
-        )
+        response = self.client.get(reverse("integrations:jira_callback"), {"error": "access_denied"})
 
         # Should redirect to integrations home with error message
         self.assertEqual(response.status_code, 302)
@@ -150,9 +148,7 @@ class JiraCallbackViewTest(TestCase):
         self.client.force_login(self.admin)
 
         # No code parameter provided
-        response = self.client.get(
-            reverse("integrations:jira_callback", args=[self.team.slug]), {"state": "valid_state"}
-        )
+        response = self.client.get(reverse("integrations:jira_callback"), {"state": "valid_state"})
 
         # Should redirect to integrations home with error message
         self.assertEqual(response.status_code, 302)
@@ -162,9 +158,7 @@ class JiraCallbackViewTest(TestCase):
         self.client.force_login(self.admin)
 
         # No state parameter provided
-        response = self.client.get(
-            reverse("integrations:jira_callback", args=[self.team.slug]), {"code": "auth_code_123"}
-        )
+        response = self.client.get(reverse("integrations:jira_callback"), {"code": "auth_code_123"})
 
         # Should redirect to integrations home with error message
         self.assertEqual(response.status_code, 302)
@@ -178,13 +172,13 @@ class JiraCallbackViewTest(TestCase):
         self.client.force_login(self.admin)
 
         response = self.client.get(
-            reverse("integrations:jira_callback", args=[self.team.slug]),
+            reverse("integrations:jira_callback"),
             {"code": "auth_code_123", "state": "invalid_state"},
         )
 
         # Should redirect to integrations home with error message
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, reverse("integrations:integrations_home", args=[self.team.slug]))
+        self.assertEqual(response.url, reverse("integrations:integrations_home"))
 
     @override_settings(JIRA_CLIENT_ID="test_client_id", JIRA_SECRET="test_secret")
     @patch("apps.integrations.services.jira_oauth.get_accessible_resources")
@@ -214,7 +208,7 @@ class JiraCallbackViewTest(TestCase):
         self.client.force_login(self.admin)
 
         response = self.client.get(
-            reverse("integrations:jira_callback", args=[self.team.slug]),
+            reverse("integrations:jira_callback"),
             {"code": "auth_code_123", "state": "valid_state"},
         )
 
@@ -256,7 +250,7 @@ class JiraCallbackViewTest(TestCase):
         self.client.force_login(self.admin)
 
         response = self.client.get(
-            reverse("integrations:jira_callback", args=[self.team.slug]),
+            reverse("integrations:jira_callback"),
             {"code": "auth_code_123", "state": "valid_state"},
         )
 
@@ -265,7 +259,7 @@ class JiraCallbackViewTest(TestCase):
 
         # Should redirect to site selection
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, reverse("integrations:jira_select_site", args=[self.team.slug]))
+        self.assertEqual(response.url, reverse("integrations:jira_select_site"))
 
     @override_settings(JIRA_CLIENT_ID="test_client_id", JIRA_SECRET="test_secret")
     @patch("apps.integrations.services.jira_oauth.get_accessible_resources")
@@ -292,7 +286,7 @@ class JiraCallbackViewTest(TestCase):
         self.client.force_login(self.admin)
 
         self.client.get(
-            reverse("integrations:jira_callback", args=[self.team.slug]),
+            reverse("integrations:jira_callback"),
             {"code": "auth_code_123", "state": "valid_state"},
         )
 
@@ -329,7 +323,7 @@ class JiraCallbackViewTest(TestCase):
         self.client.force_login(self.admin)
 
         self.client.get(
-            reverse("integrations:jira_callback", args=[self.team.slug]),
+            reverse("integrations:jira_callback"),
             {"code": "auth_code_123", "state": "valid_state"},
         )
 
@@ -355,13 +349,13 @@ class JiraCallbackViewTest(TestCase):
         self.client.force_login(self.admin)
 
         response = self.client.get(
-            reverse("integrations:jira_callback", args=[self.team.slug]),
+            reverse("integrations:jira_callback"),
             {"code": "auth_code_123", "state": "valid_state"},
         )
 
         # Should redirect to integrations home with error
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, reverse("integrations:integrations_home", args=[self.team.slug]))
+        self.assertEqual(response.url, reverse("integrations:integrations_home"))
 
         # Should NOT create any integration records
         self.assertFalse(IntegrationCredential.objects.filter(team=self.team).exists())
@@ -381,7 +375,7 @@ class JiraDisconnectViewTest(TestCase):
 
     def test_jira_disconnect_requires_login(self):
         """Test that jira_disconnect redirects to login if user is not authenticated."""
-        response = self.client.post(reverse("integrations:jira_disconnect", args=[self.team.slug]))
+        response = self.client.post(reverse("integrations:jira_disconnect"))
 
         self.assertEqual(response.status_code, 302)
         self.assertIn("/accounts/login/", response.url)
@@ -391,7 +385,7 @@ class JiraDisconnectViewTest(TestCase):
         non_member = UserFactory()
         self.client.force_login(non_member)
 
-        response = self.client.post(reverse("integrations:jira_disconnect", args=[self.team.slug]))
+        response = self.client.post(reverse("integrations:jira_disconnect"))
 
         self.assertEqual(response.status_code, 404)
 
@@ -399,7 +393,7 @@ class JiraDisconnectViewTest(TestCase):
         """Test that jira_disconnect returns 404 for non-admin team members."""
         self.client.force_login(self.member)
 
-        response = self.client.post(reverse("integrations:jira_disconnect", args=[self.team.slug]))
+        response = self.client.post(reverse("integrations:jira_disconnect"))
 
         self.assertEqual(response.status_code, 404)
 
@@ -410,7 +404,7 @@ class JiraDisconnectViewTest(TestCase):
         self.client.force_login(self.admin)
 
         # Try GET request
-        response = self.client.get(reverse("integrations:jira_disconnect", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:jira_disconnect"))
 
         # Should not allow GET
         self.assertNotEqual(response.status_code, 200)
@@ -421,7 +415,7 @@ class JiraDisconnectViewTest(TestCase):
         integration = JiraIntegrationFactory(team=self.team)
         self.client.force_login(self.admin)
 
-        self.client.post(reverse("integrations:jira_disconnect", args=[self.team.slug]))
+        self.client.post(reverse("integrations:jira_disconnect"))
 
         # JiraIntegration should be deleted
         self.assertFalse(JiraIntegration.objects.filter(pk=integration.pk).exists())
@@ -433,7 +427,7 @@ class JiraDisconnectViewTest(TestCase):
         credential = integration.credential
         self.client.force_login(self.admin)
 
-        self.client.post(reverse("integrations:jira_disconnect", args=[self.team.slug]))
+        self.client.post(reverse("integrations:jira_disconnect"))
 
         # IntegrationCredential should be deleted
         self.assertFalse(IntegrationCredential.objects.filter(pk=credential.pk).exists())
@@ -444,11 +438,11 @@ class JiraDisconnectViewTest(TestCase):
         JiraIntegrationFactory(team=self.team)
         self.client.force_login(self.admin)
 
-        response = self.client.post(reverse("integrations:jira_disconnect", args=[self.team.slug]))
+        response = self.client.post(reverse("integrations:jira_disconnect"))
 
         # Should redirect to integrations home
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, reverse("integrations:integrations_home", args=[self.team.slug]))
+        self.assertEqual(response.url, reverse("integrations:integrations_home"))
 
     def test_jira_disconnect_shows_success_message(self):
         """Test that jira_disconnect shows success message."""
@@ -456,7 +450,7 @@ class JiraDisconnectViewTest(TestCase):
         JiraIntegrationFactory(team=self.team)
         self.client.force_login(self.admin)
 
-        response = self.client.post(reverse("integrations:jira_disconnect", args=[self.team.slug]), follow=True)
+        response = self.client.post(reverse("integrations:jira_disconnect"), follow=True)
 
         messages = list(get_messages(response.wsgi_request))
         self.assertTrue(any("disconnect" in str(m).lower() for m in messages))
@@ -466,7 +460,7 @@ class JiraDisconnectViewTest(TestCase):
         # No integration created
         self.client.force_login(self.admin)
 
-        response = self.client.post(reverse("integrations:jira_disconnect", args=[self.team.slug]))
+        response = self.client.post(reverse("integrations:jira_disconnect"))
 
         # Should still redirect successfully
         self.assertEqual(response.status_code, 302)
@@ -486,7 +480,7 @@ class JiraSelectSiteViewTest(TestCase):
 
     def test_jira_select_site_get_requires_login(self):
         """Test that jira_select_site GET requires authentication."""
-        response = self.client.get(reverse("integrations:jira_select_site", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:jira_select_site"))
 
         self.assertEqual(response.status_code, 302)
         self.assertIn("/accounts/login/", response.url)
@@ -496,7 +490,7 @@ class JiraSelectSiteViewTest(TestCase):
         non_member = UserFactory()
         self.client.force_login(non_member)
 
-        response = self.client.get(reverse("integrations:jira_select_site", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:jira_select_site"))
 
         self.assertEqual(response.status_code, 404)
 
@@ -516,7 +510,7 @@ class JiraSelectSiteViewTest(TestCase):
 
         self.client.force_login(self.admin)
 
-        response = self.client.get(reverse("integrations:jira_select_site", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:jira_select_site"))
 
         # Should show site selection page
         self.assertEqual(response.status_code, 200)
@@ -526,7 +520,7 @@ class JiraSelectSiteViewTest(TestCase):
     def test_jira_select_site_post_requires_login(self):
         """Test that jira_select_site POST requires authentication."""
         response = self.client.post(
-            reverse("integrations:jira_select_site", args=[self.team.slug]),
+            reverse("integrations:jira_select_site"),
             {"cloud_id": "cloud-id-1", "site_name": "Site 1", "site_url": "https://site1.atlassian.net"},
         )
 
@@ -539,7 +533,7 @@ class JiraSelectSiteViewTest(TestCase):
         self.client.force_login(non_member)
 
         response = self.client.post(
-            reverse("integrations:jira_select_site", args=[self.team.slug]),
+            reverse("integrations:jira_select_site"),
             {"cloud_id": "cloud-id-1", "site_name": "Site 1", "site_url": "https://site1.atlassian.net"},
         )
 
@@ -553,7 +547,7 @@ class JiraSelectSiteViewTest(TestCase):
         self.client.force_login(self.admin)
 
         self.client.post(
-            reverse("integrations:jira_select_site", args=[self.team.slug]),
+            reverse("integrations:jira_select_site"),
             {
                 "cloud_id": "cloud-id-12345",
                 "site_name": "Acme Corp",
@@ -574,7 +568,7 @@ class JiraSelectSiteViewTest(TestCase):
         self.client.force_login(self.admin)
 
         response = self.client.post(
-            reverse("integrations:jira_select_site", args=[self.team.slug]),
+            reverse("integrations:jira_select_site"),
             {
                 "cloud_id": "cloud-id-12345",
                 "site_name": "Acme Corp",
@@ -584,7 +578,7 @@ class JiraSelectSiteViewTest(TestCase):
 
         # Should redirect to integrations home
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, reverse("integrations:integrations_home", args=[self.team.slug]))
+        self.assertEqual(response.url, reverse("integrations:integrations_home"))
 
     def test_jira_select_site_post_shows_success_message(self):
         """Test that jira_select_site POST shows success message."""
@@ -594,7 +588,7 @@ class JiraSelectSiteViewTest(TestCase):
         self.client.force_login(self.admin)
 
         response = self.client.post(
-            reverse("integrations:jira_select_site", args=[self.team.slug]),
+            reverse("integrations:jira_select_site"),
             {
                 "cloud_id": "cloud-id-12345",
                 "site_name": "Acme Corp",

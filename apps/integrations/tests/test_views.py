@@ -31,7 +31,7 @@ class IntegrationsHomeViewTest(TestCase):
 
     def test_integrations_home_requires_login(self):
         """Test that integrations_home redirects to login if user is not authenticated."""
-        response = self.client.get(reverse("integrations:integrations_home", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:integrations_home"))
 
         self.assertEqual(response.status_code, 302)
         self.assertIn("/accounts/login/", response.url)
@@ -41,7 +41,7 @@ class IntegrationsHomeViewTest(TestCase):
         non_member = UserFactory()
         self.client.force_login(non_member)
 
-        response = self.client.get(reverse("integrations:integrations_home", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:integrations_home"))
 
         self.assertEqual(response.status_code, 404)
 
@@ -49,7 +49,7 @@ class IntegrationsHomeViewTest(TestCase):
         """Test that integrations_home returns 200 for authenticated team members."""
         self.client.force_login(self.member)
 
-        response = self.client.get(reverse("integrations:integrations_home", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:integrations_home"))
 
         self.assertEqual(response.status_code, 200)
 
@@ -57,7 +57,7 @@ class IntegrationsHomeViewTest(TestCase):
         """Test that integrations_home returns 200 for authenticated team admins."""
         self.client.force_login(self.admin)
 
-        response = self.client.get(reverse("integrations:integrations_home", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:integrations_home"))
 
         self.assertEqual(response.status_code, 200)
 
@@ -65,7 +65,7 @@ class IntegrationsHomeViewTest(TestCase):
         """Test that integrations_home shows GitHub as not connected when no integration exists."""
         self.client.force_login(self.admin)
 
-        response = self.client.get(reverse("integrations:integrations_home", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:integrations_home"))
 
         self.assertEqual(response.status_code, 200)
         # Should show not connected status
@@ -77,7 +77,7 @@ class IntegrationsHomeViewTest(TestCase):
         GitHubIntegrationFactory(team=self.team)
         self.client.force_login(self.admin)
 
-        response = self.client.get(reverse("integrations:integrations_home", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:integrations_home"))
 
         self.assertEqual(response.status_code, 200)
         # Should show connected status
@@ -89,7 +89,7 @@ class IntegrationsHomeViewTest(TestCase):
         GitHubIntegrationFactory(team=self.team)
         self.client.force_login(self.admin)
 
-        response = self.client.get(reverse("integrations:integrations_home", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:integrations_home"))
 
         self.assertEqual(response.status_code, 200)
         # Should show Repositories link
@@ -109,7 +109,7 @@ class IntegrationsHomeViewTest(TestCase):
 
         self.client.force_login(self.admin)
 
-        response = self.client.get(reverse("integrations:integrations_home", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:integrations_home"))
 
         self.assertEqual(response.status_code, 200)
         # Should show count of 3 repositories
@@ -124,11 +124,11 @@ class IntegrationsHomeViewTest(TestCase):
         GitHubIntegrationFactory(team=self.team)
         self.client.force_login(self.admin)
 
-        response = self.client.get(reverse("integrations:integrations_home", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:integrations_home"))
 
         self.assertEqual(response.status_code, 200)
         # Should contain link to github_repos
-        expected_url = reverse("integrations:github_repos", args=[self.team.slug])
+        expected_url = reverse("integrations:github_repos")
         self.assertContains(response, expected_url)
 
 
@@ -146,7 +146,7 @@ class GitHubConnectViewTest(TestCase):
 
     def test_github_connect_requires_login(self):
         """Test that github_connect redirects to login if user is not authenticated."""
-        response = self.client.get(reverse("integrations:github_connect", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:github_connect"))
 
         self.assertEqual(response.status_code, 302)
         self.assertIn("/accounts/login/", response.url)
@@ -156,7 +156,7 @@ class GitHubConnectViewTest(TestCase):
         non_member = UserFactory()
         self.client.force_login(non_member)
 
-        response = self.client.get(reverse("integrations:github_connect", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:github_connect"))
 
         self.assertEqual(response.status_code, 404)
 
@@ -164,7 +164,7 @@ class GitHubConnectViewTest(TestCase):
         """Test that github_connect returns 404 for non-admin team members."""
         self.client.force_login(self.member)
 
-        response = self.client.get(reverse("integrations:github_connect", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:github_connect"))
 
         self.assertEqual(response.status_code, 404)
 
@@ -173,7 +173,7 @@ class GitHubConnectViewTest(TestCase):
         """Test that github_connect redirects to GitHub OAuth authorization URL."""
         self.client.force_login(self.admin)
 
-        response = self.client.get(reverse("integrations:github_connect", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:github_connect"))
 
         self.assertEqual(response.status_code, 302)
         self.assertTrue(response.url.startswith("https://github.com/login/oauth/authorize"))
@@ -183,7 +183,7 @@ class GitHubConnectViewTest(TestCase):
         """Test that github_connect redirect URL includes state parameter."""
         self.client.force_login(self.admin)
 
-        response = self.client.get(reverse("integrations:github_connect", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:github_connect"))
 
         self.assertEqual(response.status_code, 302)
         self.assertIn("state=", response.url)
@@ -193,7 +193,7 @@ class GitHubConnectViewTest(TestCase):
         """Test that github_connect redirect URL includes redirect_uri parameter."""
         self.client.force_login(self.admin)
 
-        response = self.client.get(reverse("integrations:github_connect", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:github_connect"))
 
         self.assertEqual(response.status_code, 302)
         self.assertIn("redirect_uri=", response.url)
@@ -204,10 +204,10 @@ class GitHubConnectViewTest(TestCase):
         GitHubIntegrationFactory(team=self.team)
         self.client.force_login(self.admin)
 
-        response = self.client.get(reverse("integrations:github_connect", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:github_connect"))
 
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, reverse("integrations:integrations_home", args=[self.team.slug]))
+        self.assertEqual(response.url, reverse("integrations:integrations_home"))
 
     def test_github_connect_when_already_connected_shows_message(self):
         """Test that github_connect shows message if GitHub is already connected."""
@@ -215,7 +215,7 @@ class GitHubConnectViewTest(TestCase):
         GitHubIntegrationFactory(team=self.team)
         self.client.force_login(self.admin)
 
-        response = self.client.get(reverse("integrations:github_connect", args=[self.team.slug]), follow=True)
+        response = self.client.get(reverse("integrations:github_connect"), follow=True)
 
         messages = list(get_messages(response.wsgi_request))
         self.assertTrue(any("already connected" in str(m).lower() for m in messages))
@@ -235,7 +235,7 @@ class GitHubCallbackViewTest(TestCase):
 
     def test_github_callback_requires_login(self):
         """Test that github_callback redirects to login if user is not authenticated."""
-        response = self.client.get(reverse("integrations:github_callback", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:github_callback"))
 
         self.assertEqual(response.status_code, 302)
         self.assertIn("/accounts/login/", response.url)
@@ -245,7 +245,7 @@ class GitHubCallbackViewTest(TestCase):
         non_member = UserFactory()
         self.client.force_login(non_member)
 
-        response = self.client.get(reverse("integrations:github_callback", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:github_callback"))
 
         self.assertEqual(response.status_code, 404)
 
@@ -254,9 +254,7 @@ class GitHubCallbackViewTest(TestCase):
         self.client.force_login(self.admin)
 
         # No code parameter provided
-        response = self.client.get(
-            reverse("integrations:github_callback", args=[self.team.slug]), {"state": "valid_state"}
-        )
+        response = self.client.get(reverse("integrations:github_callback"), {"state": "valid_state"})
 
         # Should redirect to integrations home with error message
         self.assertEqual(response.status_code, 302)
@@ -266,9 +264,7 @@ class GitHubCallbackViewTest(TestCase):
         self.client.force_login(self.admin)
 
         # No state parameter provided
-        response = self.client.get(
-            reverse("integrations:github_callback", args=[self.team.slug]), {"code": "auth_code_123"}
-        )
+        response = self.client.get(reverse("integrations:github_callback"), {"code": "auth_code_123"})
 
         # Should redirect to integrations home with error message
         self.assertEqual(response.status_code, 302)
@@ -280,22 +276,20 @@ class GitHubCallbackViewTest(TestCase):
         self.client.force_login(self.admin)
 
         response = self.client.get(
-            reverse("integrations:github_callback", args=[self.team.slug]),
+            reverse("integrations:github_callback"),
             {"code": "auth_code_123", "state": "invalid_state"},
         )
 
         # Should redirect to integrations home with error message
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, reverse("integrations:integrations_home", args=[self.team.slug]))
+        self.assertEqual(response.url, reverse("integrations:integrations_home"))
 
     def test_github_callback_handles_oauth_denied(self):
         """Test that github_callback handles when user denies OAuth."""
         self.client.force_login(self.admin)
 
         # GitHub sends error=access_denied when user denies
-        response = self.client.get(
-            reverse("integrations:github_callback", args=[self.team.slug]), {"error": "access_denied"}
-        )
+        response = self.client.get(reverse("integrations:github_callback"), {"error": "access_denied"})
 
         # Should redirect to integrations home with error message
         self.assertEqual(response.status_code, 302)
@@ -327,7 +321,7 @@ class GitHubCallbackViewTest(TestCase):
         self.client.force_login(self.admin)
 
         response = self.client.get(
-            reverse("integrations:github_callback", args=[self.team.slug]),
+            reverse("integrations:github_callback"),
             {"code": "auth_code_123", "state": "valid_state"},
         )
 
@@ -368,7 +362,7 @@ class GitHubCallbackViewTest(TestCase):
         self.client.force_login(self.admin)
 
         response = self.client.get(
-            reverse("integrations:github_callback", args=[self.team.slug]),
+            reverse("integrations:github_callback"),
             {"code": "auth_code_123", "state": "valid_state"},
         )
 
@@ -377,7 +371,7 @@ class GitHubCallbackViewTest(TestCase):
 
         # Should redirect to org selection
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, reverse("integrations:github_select_org", args=[self.team.slug]))
+        self.assertEqual(response.url, reverse("integrations:github_select_org"))
 
     @override_settings(GITHUB_CLIENT_ID="test_client_id", GITHUB_SECRET_ID="test_secret")
     @patch("apps.integrations.services.github_oauth.get_user_organizations")
@@ -401,7 +395,7 @@ class GitHubCallbackViewTest(TestCase):
         self.client.force_login(self.admin)
 
         self.client.get(
-            reverse("integrations:github_callback", args=[self.team.slug]),
+            reverse("integrations:github_callback"),
             {"code": "auth_code_123", "state": "valid_state"},
         )
 
@@ -435,7 +429,7 @@ class GitHubCallbackViewTest(TestCase):
         self.client.force_login(self.admin)
 
         self.client.get(
-            reverse("integrations:github_callback", args=[self.team.slug]),
+            reverse("integrations:github_callback"),
             {"code": "auth_code_123", "state": "valid_state"},
         )
 
@@ -459,13 +453,13 @@ class GitHubCallbackViewTest(TestCase):
         self.client.force_login(self.admin)
 
         response = self.client.get(
-            reverse("integrations:github_callback", args=[self.team.slug]),
+            reverse("integrations:github_callback"),
             {"code": "auth_code_123", "state": "valid_state"},
         )
 
         # Should redirect to integrations home with error
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, reverse("integrations:integrations_home", args=[self.team.slug]))
+        self.assertEqual(response.url, reverse("integrations:integrations_home"))
 
         # Should NOT create any integration records
         self.assertFalse(IntegrationCredential.objects.filter(team=self.team).exists())
@@ -510,7 +504,7 @@ class TestGitHubCallbackMemberSync(TestCase):
         self.client.force_login(self.admin)
 
         self.client.get(
-            reverse("integrations:github_callback", args=[self.team.slug]),
+            reverse("integrations:github_callback"),
             {"code": "auth_code_123", "state": "valid_state"},
         )
 
@@ -543,7 +537,7 @@ class TestGitHubCallbackMemberSync(TestCase):
         self.client.force_login(self.admin)
 
         response = self.client.get(
-            reverse("integrations:github_callback", args=[self.team.slug]),
+            reverse("integrations:github_callback"),
             {"code": "auth_code_123", "state": "valid_state"},
             follow=True,
         )
@@ -579,13 +573,13 @@ class TestGitHubCallbackMemberSync(TestCase):
         self.client.force_login(self.admin)
 
         response = self.client.get(
-            reverse("integrations:github_callback", args=[self.team.slug]),
+            reverse("integrations:github_callback"),
             {"code": "auth_code_123", "state": "valid_state"},
         )
 
         # OAuth should still complete successfully
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, reverse("integrations:integrations_home", args=[self.team.slug]))
+        self.assertEqual(response.url, reverse("integrations:integrations_home"))
 
         # GitHubIntegration should still be created
         self.assertTrue(GitHubIntegration.objects.filter(team=self.team, organization_slug=org_slug).exists())
@@ -617,13 +611,13 @@ class TestGitHubCallbackMemberSync(TestCase):
         self.client.force_login(self.admin)
 
         response = self.client.get(
-            reverse("integrations:github_callback", args=[self.team.slug]),
+            reverse("integrations:github_callback"),
             {"code": "auth_code_123", "state": "valid_state"},
         )
 
         # Should redirect to org selection
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, reverse("integrations:github_select_org", args=[self.team.slug]))
+        self.assertEqual(response.url, reverse("integrations:github_select_org"))
 
         # Sync should NOT be called yet (no org selected)
         mock_sync.assert_not_called()
@@ -643,7 +637,7 @@ class GitHubDisconnectViewTest(TestCase):
 
     def test_github_disconnect_requires_login(self):
         """Test that github_disconnect redirects to login if user is not authenticated."""
-        response = self.client.post(reverse("integrations:github_disconnect", args=[self.team.slug]))
+        response = self.client.post(reverse("integrations:github_disconnect"))
 
         self.assertEqual(response.status_code, 302)
         self.assertIn("/accounts/login/", response.url)
@@ -653,7 +647,7 @@ class GitHubDisconnectViewTest(TestCase):
         non_member = UserFactory()
         self.client.force_login(non_member)
 
-        response = self.client.post(reverse("integrations:github_disconnect", args=[self.team.slug]))
+        response = self.client.post(reverse("integrations:github_disconnect"))
 
         self.assertEqual(response.status_code, 404)
 
@@ -661,7 +655,7 @@ class GitHubDisconnectViewTest(TestCase):
         """Test that github_disconnect returns 404 for non-admin team members."""
         self.client.force_login(self.member)
 
-        response = self.client.post(reverse("integrations:github_disconnect", args=[self.team.slug]))
+        response = self.client.post(reverse("integrations:github_disconnect"))
 
         self.assertEqual(response.status_code, 404)
 
@@ -672,7 +666,7 @@ class GitHubDisconnectViewTest(TestCase):
         self.client.force_login(self.admin)
 
         # Try GET request
-        response = self.client.get(reverse("integrations:github_disconnect", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:github_disconnect"))
 
         # Should not allow GET
         self.assertNotEqual(response.status_code, 200)
@@ -683,7 +677,7 @@ class GitHubDisconnectViewTest(TestCase):
         integration = GitHubIntegrationFactory(team=self.team)
         self.client.force_login(self.admin)
 
-        self.client.post(reverse("integrations:github_disconnect", args=[self.team.slug]))
+        self.client.post(reverse("integrations:github_disconnect"))
 
         # GitHubIntegration should be deleted
         self.assertFalse(GitHubIntegration.objects.filter(pk=integration.pk).exists())
@@ -695,7 +689,7 @@ class GitHubDisconnectViewTest(TestCase):
         credential = integration.credential
         self.client.force_login(self.admin)
 
-        self.client.post(reverse("integrations:github_disconnect", args=[self.team.slug]))
+        self.client.post(reverse("integrations:github_disconnect"))
 
         # IntegrationCredential should be deleted
         self.assertFalse(IntegrationCredential.objects.filter(pk=credential.pk).exists())
@@ -706,11 +700,11 @@ class GitHubDisconnectViewTest(TestCase):
         GitHubIntegrationFactory(team=self.team)
         self.client.force_login(self.admin)
 
-        response = self.client.post(reverse("integrations:github_disconnect", args=[self.team.slug]))
+        response = self.client.post(reverse("integrations:github_disconnect"))
 
         # Should redirect to integrations home
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, reverse("integrations:integrations_home", args=[self.team.slug]))
+        self.assertEqual(response.url, reverse("integrations:integrations_home"))
 
     def test_github_disconnect_shows_success_message(self):
         """Test that github_disconnect shows success message."""
@@ -718,7 +712,7 @@ class GitHubDisconnectViewTest(TestCase):
         GitHubIntegrationFactory(team=self.team)
         self.client.force_login(self.admin)
 
-        response = self.client.post(reverse("integrations:github_disconnect", args=[self.team.slug]), follow=True)
+        response = self.client.post(reverse("integrations:github_disconnect"), follow=True)
 
         messages = list(get_messages(response.wsgi_request))
         self.assertTrue(any("disconnect" in str(m).lower() for m in messages))
@@ -728,7 +722,7 @@ class GitHubDisconnectViewTest(TestCase):
         # No integration created
         self.client.force_login(self.admin)
 
-        response = self.client.post(reverse("integrations:github_disconnect", args=[self.team.slug]))
+        response = self.client.post(reverse("integrations:github_disconnect"))
 
         # Should still redirect successfully
         self.assertEqual(response.status_code, 302)
@@ -749,7 +743,7 @@ class GitHubMembersViewTest(TestCase):
 
     def test_github_members_requires_login(self):
         """Test that github_members redirects to login if user is not authenticated."""
-        response = self.client.get(reverse("integrations:github_members", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:github_members"))
 
         self.assertEqual(response.status_code, 302)
         self.assertIn("/accounts/login/", response.url)
@@ -759,7 +753,7 @@ class GitHubMembersViewTest(TestCase):
         non_member = UserFactory()
         self.client.force_login(non_member)
 
-        response = self.client.get(reverse("integrations:github_members", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:github_members"))
 
         self.assertEqual(response.status_code, 404)
 
@@ -767,17 +761,17 @@ class GitHubMembersViewTest(TestCase):
         """Test that github_members redirects if GitHub integration doesn't exist."""
         self.client.force_login(self.admin)
 
-        response = self.client.get(reverse("integrations:github_members", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:github_members"))
 
         # Should redirect to integrations home
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, reverse("integrations:integrations_home", args=[self.team.slug]))
+        self.assertEqual(response.url, reverse("integrations:integrations_home"))
 
     def test_github_members_requires_github_integration_shows_message(self):
         """Test that github_members shows message if GitHub integration doesn't exist."""
         self.client.force_login(self.admin)
 
-        response = self.client.get(reverse("integrations:github_members", args=[self.team.slug]), follow=True)
+        response = self.client.get(reverse("integrations:github_members"), follow=True)
 
         messages = list(get_messages(response.wsgi_request))
         self.assertTrue(any("github" in str(m).lower() and "connect" in str(m).lower() for m in messages))
@@ -796,7 +790,7 @@ class GitHubMembersViewTest(TestCase):
 
         self.client.force_login(self.admin)
 
-        response = self.client.get(reverse("integrations:github_members", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:github_members"))
 
         self.assertEqual(response.status_code, 200)
         # Should contain GitHub members
@@ -812,7 +806,7 @@ class GitHubMembersViewTest(TestCase):
 
         self.client.force_login(self.admin)
 
-        response = self.client.get(reverse("integrations:github_members", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:github_members"))
 
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "integrations/github_members.html")
@@ -824,7 +818,7 @@ class GitHubMembersViewTest(TestCase):
 
         self.client.force_login(self.member)
 
-        response = self.client.get(reverse("integrations:github_members", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:github_members"))
 
         self.assertEqual(response.status_code, 200)
 
@@ -848,14 +842,14 @@ class GitHubMembersSyncViewTest(TestCase):
         self.client.force_login(self.admin)
 
         # Try GET request
-        response = self.client.get(reverse("integrations:github_members_sync", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:github_members_sync"))
 
         # Should not allow GET
         self.assertNotEqual(response.status_code, 200)
 
     def test_github_members_sync_requires_login(self):
         """Test that github_members_sync redirects to login if user is not authenticated."""
-        response = self.client.post(reverse("integrations:github_members_sync", args=[self.team.slug]))
+        response = self.client.post(reverse("integrations:github_members_sync"))
 
         self.assertEqual(response.status_code, 302)
         self.assertIn("/accounts/login/", response.url)
@@ -865,7 +859,7 @@ class GitHubMembersSyncViewTest(TestCase):
         non_member = UserFactory()
         self.client.force_login(non_member)
 
-        response = self.client.post(reverse("integrations:github_members_sync", args=[self.team.slug]))
+        response = self.client.post(reverse("integrations:github_members_sync"))
 
         self.assertEqual(response.status_code, 404)
 
@@ -873,7 +867,7 @@ class GitHubMembersSyncViewTest(TestCase):
         """Test that github_members_sync returns 404 for non-admin team members."""
         self.client.force_login(self.member)
 
-        response = self.client.post(reverse("integrations:github_members_sync", args=[self.team.slug]))
+        response = self.client.post(reverse("integrations:github_members_sync"))
 
         self.assertEqual(response.status_code, 404)
 
@@ -888,7 +882,7 @@ class GitHubMembersSyncViewTest(TestCase):
 
         self.client.force_login(self.admin)
 
-        response = self.client.post(reverse("integrations:github_members_sync", args=[self.team.slug]), follow=True)
+        response = self.client.post(reverse("integrations:github_members_sync"), follow=True)
 
         # Verify sync was called with correct arguments
         mock_sync.assert_called_once()
@@ -911,11 +905,11 @@ class GitHubMembersSyncViewTest(TestCase):
 
         self.client.force_login(self.admin)
 
-        response = self.client.post(reverse("integrations:github_members_sync", args=[self.team.slug]))
+        response = self.client.post(reverse("integrations:github_members_sync"))
 
         # Should redirect to github_members page
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, reverse("integrations:github_members", args=[self.team.slug]))
+        self.assertEqual(response.url, reverse("integrations:github_members"))
 
 
 class GitHubMemberToggleViewTest(TestCase):
@@ -938,18 +932,14 @@ class GitHubMemberToggleViewTest(TestCase):
         self.client.force_login(self.admin)
 
         # Try GET request
-        response = self.client.get(
-            reverse("integrations:github_member_toggle", args=[self.team.slug, self.team_member.id])
-        )
+        response = self.client.get(reverse("integrations:github_member_toggle", args=[self.team_member.id]))
 
         # Should not allow GET
         self.assertNotEqual(response.status_code, 200)
 
     def test_github_member_toggle_requires_login(self):
         """Test that github_member_toggle redirects to login if user is not authenticated."""
-        response = self.client.post(
-            reverse("integrations:github_member_toggle", args=[self.team.slug, self.team_member.id])
-        )
+        response = self.client.post(reverse("integrations:github_member_toggle", args=[self.team_member.id]))
 
         self.assertEqual(response.status_code, 302)
         self.assertIn("/accounts/login/", response.url)
@@ -959,9 +949,7 @@ class GitHubMemberToggleViewTest(TestCase):
         non_member = UserFactory()
         self.client.force_login(non_member)
 
-        response = self.client.post(
-            reverse("integrations:github_member_toggle", args=[self.team.slug, self.team_member.id])
-        )
+        response = self.client.post(reverse("integrations:github_member_toggle", args=[self.team_member.id]))
 
         self.assertEqual(response.status_code, 404)
 
@@ -969,9 +957,7 @@ class GitHubMemberToggleViewTest(TestCase):
         """Test that github_member_toggle returns 404 for non-admin team members."""
         self.client.force_login(self.member)
 
-        response = self.client.post(
-            reverse("integrations:github_member_toggle", args=[self.team.slug, self.team_member.id])
-        )
+        response = self.client.post(reverse("integrations:github_member_toggle", args=[self.team_member.id]))
 
         self.assertEqual(response.status_code, 404)
 
@@ -983,14 +969,14 @@ class GitHubMemberToggleViewTest(TestCase):
         self.assertTrue(self.team_member.is_active)
 
         # Toggle to inactive
-        self.client.post(reverse("integrations:github_member_toggle", args=[self.team.slug, self.team_member.id]))
+        self.client.post(reverse("integrations:github_member_toggle", args=[self.team_member.id]))
 
         # Refresh from DB
         self.team_member.refresh_from_db()
         self.assertFalse(self.team_member.is_active)
 
         # Toggle back to active
-        self.client.post(reverse("integrations:github_member_toggle", args=[self.team.slug, self.team_member.id]))
+        self.client.post(reverse("integrations:github_member_toggle", args=[self.team_member.id]))
 
         # Refresh from DB
         self.team_member.refresh_from_db()
@@ -1005,7 +991,7 @@ class GitHubMemberToggleViewTest(TestCase):
 
         # Make HTMX request (indicated by HX-Request header)
         response = self.client.post(
-            reverse("integrations:github_member_toggle", args=[self.team.slug, self.team_member.id]),
+            reverse("integrations:github_member_toggle", args=[self.team_member.id]),
             HTTP_HX_REQUEST="true",
         )
 
@@ -1021,13 +1007,11 @@ class GitHubMemberToggleViewTest(TestCase):
         self.client.force_login(self.admin)
 
         # Make regular POST request (no HTMX header)
-        response = self.client.post(
-            reverse("integrations:github_member_toggle", args=[self.team.slug, self.team_member.id])
-        )
+        response = self.client.post(reverse("integrations:github_member_toggle", args=[self.team_member.id]))
 
         # Should redirect to github_members page
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, reverse("integrations:github_members", args=[self.team.slug]))
+        self.assertEqual(response.url, reverse("integrations:github_members"))
 
 
 class GitHubSelectOrgViewTest(TestCase):
@@ -1044,7 +1028,7 @@ class GitHubSelectOrgViewTest(TestCase):
 
     def test_github_select_org_get_requires_login(self):
         """Test that github_select_org GET requires authentication."""
-        response = self.client.get(reverse("integrations:github_select_org", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:github_select_org"))
 
         self.assertEqual(response.status_code, 302)
         self.assertIn("/accounts/login/", response.url)
@@ -1054,7 +1038,7 @@ class GitHubSelectOrgViewTest(TestCase):
         non_member = UserFactory()
         self.client.force_login(non_member)
 
-        response = self.client.get(reverse("integrations:github_select_org", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:github_select_org"))
 
         self.assertEqual(response.status_code, 404)
 
@@ -1074,7 +1058,7 @@ class GitHubSelectOrgViewTest(TestCase):
 
         self.client.force_login(self.admin)
 
-        response = self.client.get(reverse("integrations:github_select_org", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:github_select_org"))
 
         # Should show organization selection page
         self.assertEqual(response.status_code, 200)
@@ -1084,7 +1068,7 @@ class GitHubSelectOrgViewTest(TestCase):
     def test_github_select_org_post_requires_login(self):
         """Test that github_select_org POST requires authentication."""
         response = self.client.post(
-            reverse("integrations:github_select_org", args=[self.team.slug]),
+            reverse("integrations:github_select_org"),
             {"organization_slug": "org1", "organization_id": "1001"},
         )
 
@@ -1097,7 +1081,7 @@ class GitHubSelectOrgViewTest(TestCase):
         self.client.force_login(non_member)
 
         response = self.client.post(
-            reverse("integrations:github_select_org", args=[self.team.slug]),
+            reverse("integrations:github_select_org"),
             {"organization_slug": "org1", "organization_id": "1001"},
         )
 
@@ -1111,7 +1095,7 @@ class GitHubSelectOrgViewTest(TestCase):
         self.client.force_login(self.admin)
 
         self.client.post(
-            reverse("integrations:github_select_org", args=[self.team.slug]),
+            reverse("integrations:github_select_org"),
             {"organization_slug": "acme-corp", "organization_id": "12345"},
         )
 
@@ -1130,13 +1114,13 @@ class GitHubSelectOrgViewTest(TestCase):
         self.client.force_login(self.admin)
 
         response = self.client.post(
-            reverse("integrations:github_select_org", args=[self.team.slug]),
+            reverse("integrations:github_select_org"),
             {"organization_slug": "acme-corp", "organization_id": "12345"},
         )
 
         # Should redirect to integrations home
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, reverse("integrations:integrations_home", args=[self.team.slug]))
+        self.assertEqual(response.url, reverse("integrations:integrations_home"))
 
     def test_github_select_org_post_shows_success_message(self):
         """Test that github_select_org POST shows success message."""
@@ -1146,7 +1130,7 @@ class GitHubSelectOrgViewTest(TestCase):
         self.client.force_login(self.admin)
 
         response = self.client.post(
-            reverse("integrations:github_select_org", args=[self.team.slug]),
+            reverse("integrations:github_select_org"),
             {"organization_slug": "acme-corp", "organization_id": "12345"},
             follow=True,
         )
@@ -1170,7 +1154,7 @@ class GitHubReposViewTest(TestCase):
 
     def test_github_repos_requires_login(self):
         """Test that github_repos redirects to login if user is not authenticated."""
-        response = self.client.get(reverse("integrations:github_repos", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:github_repos"))
 
         self.assertEqual(response.status_code, 302)
         self.assertIn("/accounts/login/", response.url)
@@ -1180,7 +1164,7 @@ class GitHubReposViewTest(TestCase):
         non_member = UserFactory()
         self.client.force_login(non_member)
 
-        response = self.client.get(reverse("integrations:github_repos", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:github_repos"))
 
         self.assertEqual(response.status_code, 404)
 
@@ -1188,17 +1172,17 @@ class GitHubReposViewTest(TestCase):
         """Test that github_repos redirects if GitHub integration doesn't exist."""
         self.client.force_login(self.admin)
 
-        response = self.client.get(reverse("integrations:github_repos", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:github_repos"))
 
         # Should redirect to integrations home
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, reverse("integrations:integrations_home", args=[self.team.slug]))
+        self.assertEqual(response.url, reverse("integrations:integrations_home"))
 
     def test_github_repos_requires_github_integration_shows_message(self):
         """Test that github_repos shows message if GitHub integration doesn't exist."""
         self.client.force_login(self.admin)
 
-        response = self.client.get(reverse("integrations:github_repos", args=[self.team.slug]), follow=True)
+        response = self.client.get(reverse("integrations:github_repos"), follow=True)
 
         messages = list(get_messages(response.wsgi_request))
         self.assertTrue(any("github" in str(m).lower() and "connect" in str(m).lower() for m in messages))
@@ -1218,7 +1202,7 @@ class GitHubReposViewTest(TestCase):
 
         self.client.force_login(self.member)
 
-        response = self.client.get(reverse("integrations:github_repos", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:github_repos"))
 
         # Should successfully render
         self.assertEqual(response.status_code, 200)
@@ -1252,7 +1236,7 @@ class GitHubReposViewTest(TestCase):
 
         self.client.force_login(self.member)
 
-        response = self.client.get(reverse("integrations:github_repos", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:github_repos"))
 
         # Should successfully render
         self.assertEqual(response.status_code, 200)
@@ -1278,7 +1262,7 @@ class GitHubReposViewTest(TestCase):
 
         self.client.force_login(self.member)
 
-        response = self.client.get(reverse("integrations:github_repos", args=[self.team.slug]), follow=True)
+        response = self.client.get(reverse("integrations:github_repos"), follow=True)
 
         # Should handle error and redirect
         self.assertEqual(response.status_code, 200)
@@ -1300,7 +1284,7 @@ class GitHubReposViewTest(TestCase):
 
         self.client.force_login(self.member)
 
-        response = self.client.get(reverse("integrations:github_repos", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:github_repos"))
 
         # Should allow access for regular members
         self.assertEqual(response.status_code, 200)
@@ -1316,7 +1300,7 @@ class GitHubReposViewTest(TestCase):
 
         self.client.force_login(self.admin)
 
-        response = self.client.get(reverse("integrations:github_repos", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:github_repos"))
 
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "integrations/github_repos.html")
@@ -1348,7 +1332,7 @@ class GitHubReposViewTest(TestCase):
 
         self.client.force_login(self.admin)
 
-        response = self.client.get(reverse("integrations:github_repos", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:github_repos"))
 
         # Should successfully render
         self.assertEqual(response.status_code, 200)
@@ -1380,7 +1364,7 @@ class GitHubReposViewTest(TestCase):
 
         self.client.force_login(self.admin)
 
-        response = self.client.get(reverse("integrations:github_repos", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:github_repos"))
 
         # Should successfully render
         self.assertEqual(response.status_code, 200)
@@ -1412,13 +1396,13 @@ class GitHubReposViewTest(TestCase):
 
         self.client.force_login(self.admin)
 
-        response = self.client.get(reverse("integrations:github_repos", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:github_repos"))
 
         # Should successfully render
         self.assertEqual(response.status_code, 200)
 
         # Should contain sync button with HTMX post to github_repo_sync
-        expected_url = reverse("integrations:github_repo_sync", args=[self.team.slug, tracked_repo.id])
+        expected_url = reverse("integrations:github_repo_sync", args=[tracked_repo.id])
         self.assertContains(response, expected_url)
         # Should have HTMX attributes
         self.assertContains(response, 'hx-post="')
@@ -1436,7 +1420,7 @@ class GitHubReposViewTest(TestCase):
 
         self.client.force_login(self.admin)
 
-        response = self.client.get(reverse("integrations:github_repos", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:github_repos"))
 
         # Should successfully render
         self.assertEqual(response.status_code, 200)
@@ -1465,14 +1449,14 @@ class GitHubRepoToggleViewTest(TestCase):
         self.client.force_login(self.admin)
 
         # Try GET request
-        response = self.client.get(reverse("integrations:github_repo_toggle", args=[self.team.slug, 12345]))
+        response = self.client.get(reverse("integrations:github_repo_toggle", args=[12345]))
 
         # Should return 405 Method Not Allowed
         self.assertEqual(response.status_code, 405)
 
     def test_github_repo_toggle_requires_login(self):
         """Test that github_repo_toggle redirects to login if user is not authenticated."""
-        response = self.client.post(reverse("integrations:github_repo_toggle", args=[self.team.slug, 12345]))
+        response = self.client.post(reverse("integrations:github_repo_toggle", args=[12345]))
 
         self.assertEqual(response.status_code, 302)
         self.assertIn("/accounts/login/", response.url)
@@ -1482,7 +1466,7 @@ class GitHubRepoToggleViewTest(TestCase):
         non_member = UserFactory()
         self.client.force_login(non_member)
 
-        response = self.client.post(reverse("integrations:github_repo_toggle", args=[self.team.slug, 12345]))
+        response = self.client.post(reverse("integrations:github_repo_toggle", args=[12345]))
 
         self.assertEqual(response.status_code, 404)
 
@@ -1491,7 +1475,7 @@ class GitHubRepoToggleViewTest(TestCase):
         self.client.force_login(self.member)
 
         response = self.client.post(
-            reverse("integrations:github_repo_toggle", args=[self.team.slug, 12345]),
+            reverse("integrations:github_repo_toggle", args=[12345]),
             {"full_name": "acme-corp/test-repo"},
         )
 
@@ -1506,7 +1490,7 @@ class GitHubRepoToggleViewTest(TestCase):
         self.client.force_login(other_admin)
 
         response = self.client.post(
-            reverse("integrations:github_repo_toggle", args=[other_team.slug, 12345]),
+            reverse("integrations:github_repo_toggle", args=[12345]),
             {"full_name": "acme-corp/test-repo"},
         )
 
@@ -1526,12 +1510,12 @@ class GitHubRepoToggleViewTest(TestCase):
 
         # Toggle to track the repo (non-HTMX request)
         response = self.client.post(
-            reverse("integrations:github_repo_toggle", args=[self.team.slug, repo_id]), {"full_name": full_name}
+            reverse("integrations:github_repo_toggle", args=[repo_id]), {"full_name": full_name}
         )
 
         # Should redirect for non-HTMX request
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, reverse("integrations:github_repos", args=[self.team.slug]))
+        self.assertEqual(response.url, reverse("integrations:github_repos"))
 
         # TrackedRepository should now exist
         self.assertTrue(TrackedRepository.objects.filter(team=self.team, github_repo_id=repo_id).exists())
@@ -1558,13 +1542,13 @@ class GitHubRepoToggleViewTest(TestCase):
 
         # Toggle to untrack the repo (non-HTMX request)
         response = self.client.post(
-            reverse("integrations:github_repo_toggle", args=[self.team.slug, repo_id]),
+            reverse("integrations:github_repo_toggle", args=[repo_id]),
             {"full_name": "acme-corp/test-repo"},
         )
 
         # Should redirect for non-HTMX request
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, reverse("integrations:github_repos", args=[self.team.slug]))
+        self.assertEqual(response.url, reverse("integrations:github_repos"))
 
         # TrackedRepository should be deleted
         self.assertFalse(TrackedRepository.objects.filter(pk=tracked_repo.pk).exists())
@@ -1575,7 +1559,7 @@ class GitHubRepoToggleViewTest(TestCase):
 
         # Make HTMX request to track a repo (indicated by HX-Request header)
         response = self.client.post(
-            reverse("integrations:github_repo_toggle", args=[self.team.slug, 12345]),
+            reverse("integrations:github_repo_toggle", args=[12345]),
             {"full_name": "acme-corp/test-repo"},
             HTTP_HX_REQUEST="true",
         )
@@ -1596,7 +1580,7 @@ class GitHubRepoToggleViewTest(TestCase):
         # Try to track repo without providing full_name
         repo_id = 12345
         self.client.post(
-            reverse("integrations:github_repo_toggle", args=[self.team.slug, repo_id]),
+            reverse("integrations:github_repo_toggle", args=[repo_id]),
             {},  # No full_name provided
         )
 
@@ -1637,7 +1621,7 @@ class GitHubReposWebhookStatusViewTest(TestCase):
 
         self.client.force_login(self.admin)
 
-        response = self.client.get(reverse("integrations:github_repos", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:github_repos"))
 
         # Should successfully render
         self.assertEqual(response.status_code, 200)
@@ -1666,7 +1650,7 @@ class GitHubReposWebhookStatusViewTest(TestCase):
 
         self.client.force_login(self.admin)
 
-        response = self.client.get(reverse("integrations:github_repos", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:github_repos"))
 
         # Should successfully render
         self.assertEqual(response.status_code, 200)
@@ -1704,9 +1688,7 @@ class GitHubRepoToggleWebhookIntegrationTest(TestCase):
         full_name = "acme-corp/test-repo"
 
         # Track the repo
-        self.client.post(
-            reverse("integrations:github_repo_toggle", args=[self.team.slug, repo_id]), {"full_name": full_name}
-        )
+        self.client.post(reverse("integrations:github_repo_toggle", args=[repo_id]), {"full_name": full_name})
 
         # Verify sync_repository_history was called after webhook registration
         mock_sync.assert_called_once()
@@ -1736,7 +1718,7 @@ class GitHubRepoToggleWebhookIntegrationTest(TestCase):
 
         # Track the repo - should succeed despite sync failure
         response = self.client.post(
-            reverse("integrations:github_repo_toggle", args=[self.team.slug, repo_id]), {"full_name": full_name}
+            reverse("integrations:github_repo_toggle", args=[repo_id]), {"full_name": full_name}
         )
 
         # Should redirect successfully
@@ -1763,9 +1745,7 @@ class GitHubRepoToggleWebhookIntegrationTest(TestCase):
         full_name = "acme-corp/test-repo"
 
         # Track the repo
-        self.client.post(
-            reverse("integrations:github_repo_toggle", args=[self.team.slug, repo_id]), {"full_name": full_name}
-        )
+        self.client.post(reverse("integrations:github_repo_toggle", args=[repo_id]), {"full_name": full_name})
 
         # Verify create_repository_webhook was called
         mock_create_webhook.assert_called_once()
@@ -1792,9 +1772,7 @@ class GitHubRepoToggleWebhookIntegrationTest(TestCase):
         full_name = "acme-corp/test-repo"
 
         # Track the repo
-        self.client.post(
-            reverse("integrations:github_repo_toggle", args=[self.team.slug, repo_id]), {"full_name": full_name}
-        )
+        self.client.post(reverse("integrations:github_repo_toggle", args=[repo_id]), {"full_name": full_name})
 
         # Verify webhook_id was stored in TrackedRepository
         tracked_repo = TrackedRepository.objects.get(team=self.team, github_repo_id=repo_id)
@@ -1823,9 +1801,7 @@ class GitHubRepoToggleWebhookIntegrationTest(TestCase):
         )
 
         # Untrack the repo
-        self.client.post(
-            reverse("integrations:github_repo_toggle", args=[self.team.slug, repo_id]), {"full_name": full_name}
-        )
+        self.client.post(reverse("integrations:github_repo_toggle", args=[repo_id]), {"full_name": full_name})
 
         # Verify delete_repository_webhook was called with correct arguments
         mock_delete_webhook.assert_called_once()
@@ -1849,7 +1825,7 @@ class GitHubRepoToggleWebhookIntegrationTest(TestCase):
 
         # Track the repo - should succeed despite webhook failure
         response = self.client.post(
-            reverse("integrations:github_repo_toggle", args=[self.team.slug, repo_id]), {"full_name": full_name}
+            reverse("integrations:github_repo_toggle", args=[repo_id]), {"full_name": full_name}
         )
 
         # Should redirect successfully
@@ -1888,7 +1864,7 @@ class GitHubRepoToggleWebhookIntegrationTest(TestCase):
 
         # Untrack the repo - should succeed despite webhook deletion failure
         response = self.client.post(
-            reverse("integrations:github_repo_toggle", args=[self.team.slug, repo_id]), {"full_name": full_name}
+            reverse("integrations:github_repo_toggle", args=[repo_id]), {"full_name": full_name}
         )
 
         # Should redirect successfully
@@ -1918,9 +1894,7 @@ class GitHubRepoSyncViewTest(TestCase):
 
     def test_github_repo_sync_requires_authentication(self):
         """Test that github_repo_sync redirects to login if user is not authenticated."""
-        response = self.client.post(
-            reverse("integrations:github_repo_sync", args=[self.team.slug, self.tracked_repo.id])
-        )
+        response = self.client.post(reverse("integrations:github_repo_sync", args=[self.tracked_repo.id]))
 
         self.assertEqual(response.status_code, 302)
         self.assertIn("/accounts/login/", response.url)
@@ -1930,9 +1904,7 @@ class GitHubRepoSyncViewTest(TestCase):
         non_member = UserFactory()
         self.client.force_login(non_member)
 
-        response = self.client.post(
-            reverse("integrations:github_repo_sync", args=[self.team.slug, self.tracked_repo.id])
-        )
+        response = self.client.post(reverse("integrations:github_repo_sync", args=[self.tracked_repo.id]))
 
         self.assertEqual(response.status_code, 404)
 
@@ -1941,9 +1913,7 @@ class GitHubRepoSyncViewTest(TestCase):
         self.client.force_login(self.admin)
 
         # Try GET request
-        response = self.client.get(
-            reverse("integrations:github_repo_sync", args=[self.team.slug, self.tracked_repo.id])
-        )
+        response = self.client.get(reverse("integrations:github_repo_sync", args=[self.tracked_repo.id]))
 
         # Should return 405 Method Not Allowed
         self.assertEqual(response.status_code, 405)
@@ -1953,7 +1923,7 @@ class GitHubRepoSyncViewTest(TestCase):
         self.client.force_login(self.admin)
 
         # Use a non-existent repo ID
-        response = self.client.post(reverse("integrations:github_repo_sync", args=[self.team.slug, 99999]))
+        response = self.client.post(reverse("integrations:github_repo_sync", args=[99999]))
 
         # Should return 404
         self.assertEqual(response.status_code, 404)
@@ -1967,7 +1937,7 @@ class GitHubRepoSyncViewTest(TestCase):
         self.client.force_login(self.admin)
 
         # Trigger manual sync
-        self.client.post(reverse("integrations:github_repo_sync", args=[self.team.slug, self.tracked_repo.id]))
+        self.client.post(reverse("integrations:github_repo_sync", args=[self.tracked_repo.id]))
 
         # Verify sync was called with the tracked repository
         mock_sync.assert_called_once()
@@ -1985,9 +1955,7 @@ class GitHubRepoSyncViewTest(TestCase):
         self.client.force_login(self.admin)
 
         # Trigger manual sync
-        response = self.client.post(
-            reverse("integrations:github_repo_sync", args=[self.team.slug, self.tracked_repo.id])
-        )
+        response = self.client.post(reverse("integrations:github_repo_sync", args=[self.tracked_repo.id]))
 
         # Should return 200
         self.assertEqual(response.status_code, 200)
@@ -2016,9 +1984,7 @@ class GitHubRepoSyncViewTest(TestCase):
         self.client.force_login(self.admin)
 
         # Trigger manual sync
-        response = self.client.post(
-            reverse("integrations:github_repo_sync", args=[self.team.slug, self.tracked_repo.id])
-        )
+        response = self.client.post(reverse("integrations:github_repo_sync", args=[self.tracked_repo.id]))
 
         # Should still return 200 (partial success)
         self.assertEqual(response.status_code, 200)
@@ -2041,9 +2007,7 @@ class GitHubRepoSyncViewTest(TestCase):
         self.client.force_login(self.admin)
 
         # Trigger manual sync
-        response = self.client.post(
-            reverse("integrations:github_repo_sync", args=[self.team.slug, self.tracked_repo.id])
-        )
+        response = self.client.post(reverse("integrations:github_repo_sync", args=[self.tracked_repo.id]))
 
         # Should return error response
         self.assertIn(response.status_code, [500, 400])  # Either is acceptable

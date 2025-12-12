@@ -33,7 +33,7 @@ class TestAIAdoptionChart(TestCase):
 
     def test_ai_adoption_chart_requires_login(self):
         """Test that ai_adoption_chart redirects to login page if user is not authenticated."""
-        response = self.client.get(reverse("metrics:chart_ai_adoption", args=[self.team.slug]))
+        response = self.client.get(reverse("metrics:chart_ai_adoption"))
 
         self.assertEqual(response.status_code, 302)
         self.assertIn("/accounts/login/", response.url)
@@ -43,7 +43,7 @@ class TestAIAdoptionChart(TestCase):
         non_member = UserFactory()
         self.client.force_login(non_member)
 
-        response = self.client.get(reverse("metrics:chart_ai_adoption", args=[self.team.slug]))
+        response = self.client.get(reverse("metrics:chart_ai_adoption"))
 
         self.assertEqual(response.status_code, 404)
 
@@ -51,7 +51,7 @@ class TestAIAdoptionChart(TestCase):
         """Test that ai_adoption_chart returns 404 for non-admin team members."""
         self.client.force_login(self.member_user)
 
-        response = self.client.get(reverse("metrics:chart_ai_adoption", args=[self.team.slug]))
+        response = self.client.get(reverse("metrics:chart_ai_adoption"))
 
         self.assertEqual(response.status_code, 404)
 
@@ -59,7 +59,7 @@ class TestAIAdoptionChart(TestCase):
         """Test that ai_adoption_chart returns 200 for admin users."""
         self.client.force_login(self.admin_user)
 
-        response = self.client.get(reverse("metrics:chart_ai_adoption", args=[self.team.slug]))
+        response = self.client.get(reverse("metrics:chart_ai_adoption"))
 
         self.assertEqual(response.status_code, 200)
 
@@ -67,7 +67,7 @@ class TestAIAdoptionChart(TestCase):
         """Test that ai_adoption_chart renders partials/ai_adoption_chart.html template."""
         self.client.force_login(self.admin_user)
 
-        response = self.client.get(reverse("metrics:chart_ai_adoption", args=[self.team.slug]))
+        response = self.client.get(reverse("metrics:chart_ai_adoption"))
 
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "metrics/partials/ai_adoption_chart.html")
@@ -76,7 +76,7 @@ class TestAIAdoptionChart(TestCase):
         """Test that ai_adoption_chart context contains chart_data."""
         self.client.force_login(self.admin_user)
 
-        response = self.client.get(reverse("metrics:chart_ai_adoption", args=[self.team.slug]))
+        response = self.client.get(reverse("metrics:chart_ai_adoption"))
 
         self.assertEqual(response.status_code, 200)
         self.assertIn("chart_data", response.context)
@@ -85,7 +85,7 @@ class TestAIAdoptionChart(TestCase):
         """Test that ai_adoption_chart defaults to 30 days if no query param provided."""
         self.client.force_login(self.admin_user)
 
-        response = self.client.get(reverse("metrics:chart_ai_adoption", args=[self.team.slug]))
+        response = self.client.get(reverse("metrics:chart_ai_adoption"))
 
         self.assertEqual(response.status_code, 200)
         # chart_data should be formatted using format_time_series
@@ -95,7 +95,7 @@ class TestAIAdoptionChart(TestCase):
         """Test that ai_adoption_chart accepts days=7 query parameter."""
         self.client.force_login(self.admin_user)
 
-        response = self.client.get(reverse("metrics:chart_ai_adoption", args=[self.team.slug]), {"days": "7"})
+        response = self.client.get(reverse("metrics:chart_ai_adoption"), {"days": "7"})
 
         self.assertEqual(response.status_code, 200)
         self.assertIn("chart_data", response.context)
@@ -104,7 +104,7 @@ class TestAIAdoptionChart(TestCase):
         """Test that ai_adoption_chart accepts days=90 query parameter."""
         self.client.force_login(self.admin_user)
 
-        response = self.client.get(reverse("metrics:chart_ai_adoption", args=[self.team.slug]), {"days": "90"})
+        response = self.client.get(reverse("metrics:chart_ai_adoption"), {"days": "90"})
 
         self.assertEqual(response.status_code, 200)
         self.assertIn("chart_data", response.context)
@@ -113,7 +113,7 @@ class TestAIAdoptionChart(TestCase):
         """Test that ai_adoption_chart formats data with format_time_series."""
         self.client.force_login(self.admin_user)
 
-        response = self.client.get(reverse("metrics:chart_ai_adoption", args=[self.team.slug]))
+        response = self.client.get(reverse("metrics:chart_ai_adoption"))
 
         self.assertEqual(response.status_code, 200)
         # Formatted data should have "date" and "count" keys
@@ -137,7 +137,7 @@ class TestAIQualityChart(TestCase):
 
     def test_ai_quality_chart_requires_login(self):
         """Test that ai_quality_chart redirects to login page if user is not authenticated."""
-        response = self.client.get(reverse("metrics:chart_ai_quality", args=[self.team.slug]))
+        response = self.client.get(reverse("metrics:chart_ai_quality"))
 
         self.assertEqual(response.status_code, 302)
         self.assertIn("/accounts/login/", response.url)
@@ -147,7 +147,7 @@ class TestAIQualityChart(TestCase):
         non_member = UserFactory()
         self.client.force_login(non_member)
 
-        response = self.client.get(reverse("metrics:chart_ai_quality", args=[self.team.slug]))
+        response = self.client.get(reverse("metrics:chart_ai_quality"))
 
         self.assertEqual(response.status_code, 404)
 
@@ -155,7 +155,7 @@ class TestAIQualityChart(TestCase):
         """Test that ai_quality_chart returns 404 for non-admin team members."""
         self.client.force_login(self.member_user)
 
-        response = self.client.get(reverse("metrics:chart_ai_quality", args=[self.team.slug]))
+        response = self.client.get(reverse("metrics:chart_ai_quality"))
 
         self.assertEqual(response.status_code, 404)
 
@@ -163,7 +163,7 @@ class TestAIQualityChart(TestCase):
         """Test that ai_quality_chart returns 200 for admin users."""
         self.client.force_login(self.admin_user)
 
-        response = self.client.get(reverse("metrics:chart_ai_quality", args=[self.team.slug]))
+        response = self.client.get(reverse("metrics:chart_ai_quality"))
 
         self.assertEqual(response.status_code, 200)
 
@@ -171,7 +171,7 @@ class TestAIQualityChart(TestCase):
         """Test that ai_quality_chart renders partials/ai_quality_chart.html template."""
         self.client.force_login(self.admin_user)
 
-        response = self.client.get(reverse("metrics:chart_ai_quality", args=[self.team.slug]))
+        response = self.client.get(reverse("metrics:chart_ai_quality"))
 
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "metrics/partials/ai_quality_chart.html")
@@ -180,7 +180,7 @@ class TestAIQualityChart(TestCase):
         """Test that ai_quality_chart context contains chart_data."""
         self.client.force_login(self.admin_user)
 
-        response = self.client.get(reverse("metrics:chart_ai_quality", args=[self.team.slug]))
+        response = self.client.get(reverse("metrics:chart_ai_quality"))
 
         self.assertEqual(response.status_code, 200)
         self.assertIn("chart_data", response.context)
@@ -189,7 +189,7 @@ class TestAIQualityChart(TestCase):
         """Test that ai_quality_chart defaults to 30 days if no query param provided."""
         self.client.force_login(self.admin_user)
 
-        response = self.client.get(reverse("metrics:chart_ai_quality", args=[self.team.slug]))
+        response = self.client.get(reverse("metrics:chart_ai_quality"))
 
         self.assertEqual(response.status_code, 200)
         # chart_data should be a dict with ai_avg and non_ai_avg
@@ -199,7 +199,7 @@ class TestAIQualityChart(TestCase):
         """Test that ai_quality_chart accepts days=7 query parameter."""
         self.client.force_login(self.admin_user)
 
-        response = self.client.get(reverse("metrics:chart_ai_quality", args=[self.team.slug]), {"days": "7"})
+        response = self.client.get(reverse("metrics:chart_ai_quality"), {"days": "7"})
 
         self.assertEqual(response.status_code, 200)
         self.assertIn("chart_data", response.context)
@@ -208,7 +208,7 @@ class TestAIQualityChart(TestCase):
         """Test that ai_quality_chart accepts days=90 query parameter."""
         self.client.force_login(self.admin_user)
 
-        response = self.client.get(reverse("metrics:chart_ai_quality", args=[self.team.slug]), {"days": "90"})
+        response = self.client.get(reverse("metrics:chart_ai_quality"), {"days": "90"})
 
         self.assertEqual(response.status_code, 200)
         self.assertIn("chart_data", response.context)
@@ -217,7 +217,7 @@ class TestAIQualityChart(TestCase):
         """Test that ai_quality_chart data contains ai_avg and non_ai_avg."""
         self.client.force_login(self.admin_user)
 
-        response = self.client.get(reverse("metrics:chart_ai_quality", args=[self.team.slug]))
+        response = self.client.get(reverse("metrics:chart_ai_quality"))
 
         self.assertEqual(response.status_code, 200)
         chart_data = response.context["chart_data"]
@@ -239,7 +239,7 @@ class TestCycleTimeChart(TestCase):
 
     def test_cycle_time_chart_requires_login(self):
         """Test that cycle_time_chart redirects to login page if user is not authenticated."""
-        response = self.client.get(reverse("metrics:chart_cycle_time", args=[self.team.slug]))
+        response = self.client.get(reverse("metrics:chart_cycle_time"))
 
         self.assertEqual(response.status_code, 302)
         self.assertIn("/accounts/login/", response.url)
@@ -249,7 +249,7 @@ class TestCycleTimeChart(TestCase):
         non_member = UserFactory()
         self.client.force_login(non_member)
 
-        response = self.client.get(reverse("metrics:chart_cycle_time", args=[self.team.slug]))
+        response = self.client.get(reverse("metrics:chart_cycle_time"))
 
         self.assertEqual(response.status_code, 404)
 
@@ -257,7 +257,7 @@ class TestCycleTimeChart(TestCase):
         """Test that cycle_time_chart returns 200 for regular team members."""
         self.client.force_login(self.member_user)
 
-        response = self.client.get(reverse("metrics:chart_cycle_time", args=[self.team.slug]))
+        response = self.client.get(reverse("metrics:chart_cycle_time"))
 
         self.assertEqual(response.status_code, 200)
 
@@ -265,7 +265,7 @@ class TestCycleTimeChart(TestCase):
         """Test that cycle_time_chart returns 200 for admin users."""
         self.client.force_login(self.admin_user)
 
-        response = self.client.get(reverse("metrics:chart_cycle_time", args=[self.team.slug]))
+        response = self.client.get(reverse("metrics:chart_cycle_time"))
 
         self.assertEqual(response.status_code, 200)
 
@@ -273,7 +273,7 @@ class TestCycleTimeChart(TestCase):
         """Test that cycle_time_chart renders partials/cycle_time_chart.html template."""
         self.client.force_login(self.member_user)
 
-        response = self.client.get(reverse("metrics:chart_cycle_time", args=[self.team.slug]))
+        response = self.client.get(reverse("metrics:chart_cycle_time"))
 
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "metrics/partials/cycle_time_chart.html")
@@ -282,7 +282,7 @@ class TestCycleTimeChart(TestCase):
         """Test that cycle_time_chart context contains chart_data."""
         self.client.force_login(self.member_user)
 
-        response = self.client.get(reverse("metrics:chart_cycle_time", args=[self.team.slug]))
+        response = self.client.get(reverse("metrics:chart_cycle_time"))
 
         self.assertEqual(response.status_code, 200)
         self.assertIn("chart_data", response.context)
@@ -291,7 +291,7 @@ class TestCycleTimeChart(TestCase):
         """Test that cycle_time_chart defaults to 30 days if no query param provided."""
         self.client.force_login(self.member_user)
 
-        response = self.client.get(reverse("metrics:chart_cycle_time", args=[self.team.slug]))
+        response = self.client.get(reverse("metrics:chart_cycle_time"))
 
         self.assertEqual(response.status_code, 200)
         # chart_data should be formatted using format_time_series
@@ -301,7 +301,7 @@ class TestCycleTimeChart(TestCase):
         """Test that cycle_time_chart accepts days=7 query parameter."""
         self.client.force_login(self.member_user)
 
-        response = self.client.get(reverse("metrics:chart_cycle_time", args=[self.team.slug]), {"days": "7"})
+        response = self.client.get(reverse("metrics:chart_cycle_time"), {"days": "7"})
 
         self.assertEqual(response.status_code, 200)
         self.assertIn("chart_data", response.context)
@@ -310,7 +310,7 @@ class TestCycleTimeChart(TestCase):
         """Test that cycle_time_chart accepts days=90 query parameter."""
         self.client.force_login(self.member_user)
 
-        response = self.client.get(reverse("metrics:chart_cycle_time", args=[self.team.slug]), {"days": "90"})
+        response = self.client.get(reverse("metrics:chart_cycle_time"), {"days": "90"})
 
         self.assertEqual(response.status_code, 200)
         self.assertIn("chart_data", response.context)
@@ -319,7 +319,7 @@ class TestCycleTimeChart(TestCase):
         """Test that cycle_time_chart formats data with format_time_series."""
         self.client.force_login(self.member_user)
 
-        response = self.client.get(reverse("metrics:chart_cycle_time", args=[self.team.slug]))
+        response = self.client.get(reverse("metrics:chart_cycle_time"))
 
         self.assertEqual(response.status_code, 200)
         # Formatted data should have "date" and "count" keys
@@ -343,7 +343,7 @@ class TestKeyMetricsCards(TestCase):
 
     def test_key_metrics_cards_requires_login(self):
         """Test that key_metrics_cards redirects to login page if user is not authenticated."""
-        response = self.client.get(reverse("metrics:cards_metrics", args=[self.team.slug]))
+        response = self.client.get(reverse("metrics:cards_metrics"))
 
         self.assertEqual(response.status_code, 302)
         self.assertIn("/accounts/login/", response.url)
@@ -353,7 +353,7 @@ class TestKeyMetricsCards(TestCase):
         non_member = UserFactory()
         self.client.force_login(non_member)
 
-        response = self.client.get(reverse("metrics:cards_metrics", args=[self.team.slug]))
+        response = self.client.get(reverse("metrics:cards_metrics"))
 
         self.assertEqual(response.status_code, 404)
 
@@ -361,7 +361,7 @@ class TestKeyMetricsCards(TestCase):
         """Test that key_metrics_cards returns 404 for non-admin team members."""
         self.client.force_login(self.member_user)
 
-        response = self.client.get(reverse("metrics:cards_metrics", args=[self.team.slug]))
+        response = self.client.get(reverse("metrics:cards_metrics"))
 
         self.assertEqual(response.status_code, 404)
 
@@ -369,7 +369,7 @@ class TestKeyMetricsCards(TestCase):
         """Test that key_metrics_cards returns 200 for admin users."""
         self.client.force_login(self.admin_user)
 
-        response = self.client.get(reverse("metrics:cards_metrics", args=[self.team.slug]))
+        response = self.client.get(reverse("metrics:cards_metrics"))
 
         self.assertEqual(response.status_code, 200)
 
@@ -377,7 +377,7 @@ class TestKeyMetricsCards(TestCase):
         """Test that key_metrics_cards renders partials/key_metrics_cards.html template."""
         self.client.force_login(self.admin_user)
 
-        response = self.client.get(reverse("metrics:cards_metrics", args=[self.team.slug]))
+        response = self.client.get(reverse("metrics:cards_metrics"))
 
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "metrics/partials/key_metrics_cards.html")
@@ -386,7 +386,7 @@ class TestKeyMetricsCards(TestCase):
         """Test that key_metrics_cards context contains metrics."""
         self.client.force_login(self.admin_user)
 
-        response = self.client.get(reverse("metrics:cards_metrics", args=[self.team.slug]))
+        response = self.client.get(reverse("metrics:cards_metrics"))
 
         self.assertEqual(response.status_code, 200)
         self.assertIn("metrics", response.context)
@@ -395,7 +395,7 @@ class TestKeyMetricsCards(TestCase):
         """Test that key_metrics_cards context contains previous_metrics for comparison."""
         self.client.force_login(self.admin_user)
 
-        response = self.client.get(reverse("metrics:cards_metrics", args=[self.team.slug]))
+        response = self.client.get(reverse("metrics:cards_metrics"))
 
         self.assertEqual(response.status_code, 200)
         self.assertIn("previous_metrics", response.context)
@@ -404,7 +404,7 @@ class TestKeyMetricsCards(TestCase):
         """Test that key_metrics_cards defaults to 30 days if no query param provided."""
         self.client.force_login(self.admin_user)
 
-        response = self.client.get(reverse("metrics:cards_metrics", args=[self.team.slug]))
+        response = self.client.get(reverse("metrics:cards_metrics"))
 
         self.assertEqual(response.status_code, 200)
         # metrics should be a dict with key metric keys
@@ -414,7 +414,7 @@ class TestKeyMetricsCards(TestCase):
         """Test that key_metrics_cards accepts days=7 query parameter."""
         self.client.force_login(self.admin_user)
 
-        response = self.client.get(reverse("metrics:cards_metrics", args=[self.team.slug]), {"days": "7"})
+        response = self.client.get(reverse("metrics:cards_metrics"), {"days": "7"})
 
         self.assertEqual(response.status_code, 200)
         self.assertIn("metrics", response.context)
@@ -423,7 +423,7 @@ class TestKeyMetricsCards(TestCase):
         """Test that key_metrics_cards accepts days=90 query parameter."""
         self.client.force_login(self.admin_user)
 
-        response = self.client.get(reverse("metrics:cards_metrics", args=[self.team.slug]), {"days": "90"})
+        response = self.client.get(reverse("metrics:cards_metrics"), {"days": "90"})
 
         self.assertEqual(response.status_code, 200)
         self.assertIn("metrics", response.context)
@@ -432,7 +432,7 @@ class TestKeyMetricsCards(TestCase):
         """Test that key_metrics_cards metrics contains required keys from get_key_metrics."""
         self.client.force_login(self.admin_user)
 
-        response = self.client.get(reverse("metrics:cards_metrics", args=[self.team.slug]))
+        response = self.client.get(reverse("metrics:cards_metrics"))
 
         self.assertEqual(response.status_code, 200)
         metrics = response.context["metrics"]
@@ -456,7 +456,7 @@ class TestTeamBreakdownTable(TestCase):
 
     def test_team_breakdown_table_requires_login(self):
         """Test that team_breakdown_table redirects to login page if user is not authenticated."""
-        response = self.client.get(reverse("metrics:table_breakdown", args=[self.team.slug]))
+        response = self.client.get(reverse("metrics:table_breakdown"))
 
         self.assertEqual(response.status_code, 302)
         self.assertIn("/accounts/login/", response.url)
@@ -466,7 +466,7 @@ class TestTeamBreakdownTable(TestCase):
         non_member = UserFactory()
         self.client.force_login(non_member)
 
-        response = self.client.get(reverse("metrics:table_breakdown", args=[self.team.slug]))
+        response = self.client.get(reverse("metrics:table_breakdown"))
 
         self.assertEqual(response.status_code, 404)
 
@@ -474,7 +474,7 @@ class TestTeamBreakdownTable(TestCase):
         """Test that team_breakdown_table returns 404 for non-admin team members."""
         self.client.force_login(self.member_user)
 
-        response = self.client.get(reverse("metrics:table_breakdown", args=[self.team.slug]))
+        response = self.client.get(reverse("metrics:table_breakdown"))
 
         self.assertEqual(response.status_code, 404)
 
@@ -482,7 +482,7 @@ class TestTeamBreakdownTable(TestCase):
         """Test that team_breakdown_table returns 200 for admin users."""
         self.client.force_login(self.admin_user)
 
-        response = self.client.get(reverse("metrics:table_breakdown", args=[self.team.slug]))
+        response = self.client.get(reverse("metrics:table_breakdown"))
 
         self.assertEqual(response.status_code, 200)
 
@@ -490,7 +490,7 @@ class TestTeamBreakdownTable(TestCase):
         """Test that team_breakdown_table renders partials/team_breakdown_table.html template."""
         self.client.force_login(self.admin_user)
 
-        response = self.client.get(reverse("metrics:table_breakdown", args=[self.team.slug]))
+        response = self.client.get(reverse("metrics:table_breakdown"))
 
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "metrics/partials/team_breakdown_table.html")
@@ -499,7 +499,7 @@ class TestTeamBreakdownTable(TestCase):
         """Test that team_breakdown_table context contains rows."""
         self.client.force_login(self.admin_user)
 
-        response = self.client.get(reverse("metrics:table_breakdown", args=[self.team.slug]))
+        response = self.client.get(reverse("metrics:table_breakdown"))
 
         self.assertEqual(response.status_code, 200)
         self.assertIn("rows", response.context)
@@ -508,7 +508,7 @@ class TestTeamBreakdownTable(TestCase):
         """Test that team_breakdown_table defaults to 30 days if no query param provided."""
         self.client.force_login(self.admin_user)
 
-        response = self.client.get(reverse("metrics:table_breakdown", args=[self.team.slug]))
+        response = self.client.get(reverse("metrics:table_breakdown"))
 
         self.assertEqual(response.status_code, 200)
         # rows should be a list of dicts
@@ -518,7 +518,7 @@ class TestTeamBreakdownTable(TestCase):
         """Test that team_breakdown_table accepts days=7 query parameter."""
         self.client.force_login(self.admin_user)
 
-        response = self.client.get(reverse("metrics:table_breakdown", args=[self.team.slug]), {"days": "7"})
+        response = self.client.get(reverse("metrics:table_breakdown"), {"days": "7"})
 
         self.assertEqual(response.status_code, 200)
         self.assertIn("rows", response.context)
@@ -527,7 +527,7 @@ class TestTeamBreakdownTable(TestCase):
         """Test that team_breakdown_table accepts days=90 query parameter."""
         self.client.force_login(self.admin_user)
 
-        response = self.client.get(reverse("metrics:table_breakdown", args=[self.team.slug]), {"days": "90"})
+        response = self.client.get(reverse("metrics:table_breakdown"), {"days": "90"})
 
         self.assertEqual(response.status_code, 200)
         self.assertIn("rows", response.context)
@@ -536,7 +536,7 @@ class TestTeamBreakdownTable(TestCase):
         """Test that team_breakdown_table rows contain required keys from get_team_breakdown."""
         self.client.force_login(self.admin_user)
 
-        response = self.client.get(reverse("metrics:table_breakdown", args=[self.team.slug]))
+        response = self.client.get(reverse("metrics:table_breakdown"))
 
         self.assertEqual(response.status_code, 200)
         rows = response.context["rows"]
@@ -562,7 +562,7 @@ class TestLeaderboardTable(TestCase):
 
     def test_leaderboard_table_requires_login(self):
         """Test that leaderboard_table redirects to login page if user is not authenticated."""
-        response = self.client.get(reverse("metrics:table_leaderboard", args=[self.team.slug]))
+        response = self.client.get(reverse("metrics:table_leaderboard"))
 
         self.assertEqual(response.status_code, 302)
         self.assertIn("/accounts/login/", response.url)
@@ -572,7 +572,7 @@ class TestLeaderboardTable(TestCase):
         non_member = UserFactory()
         self.client.force_login(non_member)
 
-        response = self.client.get(reverse("metrics:table_leaderboard", args=[self.team.slug]))
+        response = self.client.get(reverse("metrics:table_leaderboard"))
 
         self.assertEqual(response.status_code, 404)
 
@@ -580,7 +580,7 @@ class TestLeaderboardTable(TestCase):
         """Test that leaderboard_table returns 200 for regular team members."""
         self.client.force_login(self.member_user)
 
-        response = self.client.get(reverse("metrics:table_leaderboard", args=[self.team.slug]))
+        response = self.client.get(reverse("metrics:table_leaderboard"))
 
         self.assertEqual(response.status_code, 200)
 
@@ -588,7 +588,7 @@ class TestLeaderboardTable(TestCase):
         """Test that leaderboard_table returns 200 for admin users."""
         self.client.force_login(self.admin_user)
 
-        response = self.client.get(reverse("metrics:table_leaderboard", args=[self.team.slug]))
+        response = self.client.get(reverse("metrics:table_leaderboard"))
 
         self.assertEqual(response.status_code, 200)
 
@@ -596,7 +596,7 @@ class TestLeaderboardTable(TestCase):
         """Test that leaderboard_table renders partials/leaderboard_table.html template."""
         self.client.force_login(self.member_user)
 
-        response = self.client.get(reverse("metrics:table_leaderboard", args=[self.team.slug]))
+        response = self.client.get(reverse("metrics:table_leaderboard"))
 
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "metrics/partials/leaderboard_table.html")
@@ -605,7 +605,7 @@ class TestLeaderboardTable(TestCase):
         """Test that leaderboard_table context contains rows."""
         self.client.force_login(self.member_user)
 
-        response = self.client.get(reverse("metrics:table_leaderboard", args=[self.team.slug]))
+        response = self.client.get(reverse("metrics:table_leaderboard"))
 
         self.assertEqual(response.status_code, 200)
         self.assertIn("rows", response.context)
@@ -614,7 +614,7 @@ class TestLeaderboardTable(TestCase):
         """Test that leaderboard_table defaults to 30 days if no query param provided."""
         self.client.force_login(self.member_user)
 
-        response = self.client.get(reverse("metrics:table_leaderboard", args=[self.team.slug]))
+        response = self.client.get(reverse("metrics:table_leaderboard"))
 
         self.assertEqual(response.status_code, 200)
         # rows should be a list of dicts
@@ -624,7 +624,7 @@ class TestLeaderboardTable(TestCase):
         """Test that leaderboard_table accepts days=7 query parameter."""
         self.client.force_login(self.member_user)
 
-        response = self.client.get(reverse("metrics:table_leaderboard", args=[self.team.slug]), {"days": "7"})
+        response = self.client.get(reverse("metrics:table_leaderboard"), {"days": "7"})
 
         self.assertEqual(response.status_code, 200)
         self.assertIn("rows", response.context)
@@ -633,7 +633,7 @@ class TestLeaderboardTable(TestCase):
         """Test that leaderboard_table accepts days=90 query parameter."""
         self.client.force_login(self.member_user)
 
-        response = self.client.get(reverse("metrics:table_leaderboard", args=[self.team.slug]), {"days": "90"})
+        response = self.client.get(reverse("metrics:table_leaderboard"), {"days": "90"})
 
         self.assertEqual(response.status_code, 200)
         self.assertIn("rows", response.context)
@@ -642,7 +642,7 @@ class TestLeaderboardTable(TestCase):
         """Test that leaderboard_table rows contain required keys for AI detective leaderboard."""
         self.client.force_login(self.member_user)
 
-        response = self.client.get(reverse("metrics:table_leaderboard", args=[self.team.slug]))
+        response = self.client.get(reverse("metrics:table_leaderboard"))
 
         self.assertEqual(response.status_code, 200)
         rows = response.context["rows"]

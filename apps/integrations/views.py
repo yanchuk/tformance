@@ -122,7 +122,7 @@ def _validate_oauth_callback(request, team, verify_state_func, oauth_error_class
     # Check for OAuth denial
     if request.GET.get("error") == "access_denied":
         messages.error(request, f"{provider_name} authorization was cancelled.")
-        return None, redirect("integrations:integrations_home", team_slug=team.slug)
+        return None, redirect("integrations:integrations_home")
 
     # Get code and state from query params
     code = request.GET.get("code")
@@ -131,11 +131,11 @@ def _validate_oauth_callback(request, team, verify_state_func, oauth_error_class
     # Validate parameters
     if not code:
         messages.error(request, f"Missing authorization code from {provider_name}.")
-        return None, redirect("integrations:integrations_home", team_slug=team.slug)
+        return None, redirect("integrations:integrations_home")
 
     if not state:
         messages.error(request, f"Missing state parameter from {provider_name}.")
-        return None, redirect("integrations:integrations_home", team_slug=team.slug)
+        return None, redirect("integrations:integrations_home")
 
     # Verify state
     try:
@@ -145,10 +145,10 @@ def _validate_oauth_callback(request, team, verify_state_func, oauth_error_class
         # Verify team_id matches current team
         if team_id != team.id:
             messages.error(request, "Invalid state parameter.")
-            return None, redirect("integrations:integrations_home", team_slug=team.slug)
+            return None, redirect("integrations:integrations_home")
     except oauth_error_class:
         messages.error(request, "Invalid state parameter.")
-        return None, redirect("integrations:integrations_home", team_slug=team.slug)
+        return None, redirect("integrations:integrations_home")
 
     return code, None
 
@@ -197,7 +197,7 @@ def _sync_github_members_after_connection(team, access_token, org_slug):
 
 
 @login_and_team_required
-def integrations_home(request, team_slug):
+def integrations_home(request):
     """Display the integrations management page for a team.
 
     Shows the status of all integrations (GitHub, Jira, Slack) and provides
@@ -265,7 +265,7 @@ def integrations_home(request, team_slug):
 
 
 @team_admin_required
-def github_connect(request, team_slug):
+def github_connect(request):
     """Initiate GitHub OAuth flow for connecting a team's GitHub account.
 
     Redirects the user to GitHub's OAuth authorization page. On success,
@@ -285,10 +285,10 @@ def github_connect(request, team_slug):
     # Check if already connected
     if GitHubIntegration.objects.filter(team=team).exists():
         messages.info(request, "GitHub is already connected to this team.")
-        return redirect("integrations:integrations_home", team_slug=team.slug)
+        return redirect("integrations:integrations_home")
 
     # Build callback URL
-    callback_url = request.build_absolute_uri(reverse("integrations:github_callback", args=[team.slug]))
+    callback_url = request.build_absolute_uri(reverse("integrations:github_callback"))
 
     # Get authorization URL
     authorization_url = github_oauth.get_authorization_url(team.id, callback_url)
@@ -299,7 +299,7 @@ def github_connect(request, team_slug):
 
 @ratelimit(key="ip", rate="10/m", method=["GET", "POST"])
 @login_and_team_required
-def github_callback(request, team_slug):
+def github_callback(request):
     """Handle GitHub OAuth callback after user authorizes the app.
 
     Receives the authorization code from GitHub, exchanges it for an access token,
@@ -317,7 +317,7 @@ def github_callback(request, team_slug):
     # Check if rate limited
     if getattr(request, "limited", False):
         messages.error(request, "Too many requests. Please wait and try again.")
-        return redirect("integrations:integrations_home", team_slug=team_slug)
+        return redirect("integrations:integrations_home")
 
     team = request.team
 
@@ -329,7 +329,7 @@ def github_callback(request, team_slug):
         return error_response
 
     # Build callback URL
-    callback_url = request.build_absolute_uri(reverse("integrations:github_callback", args=[team.slug]))
+    callback_url = request.build_absolute_uri(reverse("integrations:github_callback"))
 
     # Exchange code for token
     try:
@@ -338,7 +338,7 @@ def github_callback(request, team_slug):
     except (GitHubOAuthError, KeyError, Exception) as e:
         logger.error(f"GitHub token exchange failed: {e}", exc_info=True)
         messages.error(request, "Failed to connect to GitHub. Please try again.")
-        return redirect("integrations:integrations_home", team_slug=team.slug)
+        return redirect("integrations:integrations_home")
 
     # Get user's organizations
     try:
@@ -346,7 +346,7 @@ def github_callback(request, team_slug):
     except GitHubOAuthError as e:
         logger.error(f"Failed to get GitHub organizations: {e}", exc_info=True)
         messages.error(request, "Failed to get organizations from GitHub. Please try again.")
-        return redirect("integrations:integrations_home", team_slug=team.slug)
+        return redirect("integrations:integrations_home")
 
     # Create credential for the team
     credential = _create_integration_credential(team, access_token, IntegrationCredential.PROVIDER_GITHUB, request.user)
@@ -361,14 +361,14 @@ def github_callback(request, team_slug):
         member_count = _sync_github_members_after_connection(team, access_token, org_slug)
 
         messages.success(request, f"Connected to {org_slug}. Imported {member_count} members.")
-        return redirect("integrations:integrations_home", team_slug=team.slug)
+        return redirect("integrations:integrations_home")
 
     # Multiple orgs - redirect to selection
-    return redirect("integrations:github_select_org", team_slug=team.slug)
+    return redirect("integrations:github_select_org")
 
 
 @team_admin_required
-def github_disconnect(request, team_slug):
+def github_disconnect(request):
     """Disconnect GitHub integration for a team.
 
     Removes the stored GitHub OAuth token and any associated data for the team.
@@ -395,11 +395,11 @@ def github_disconnect(request, team_slug):
     IntegrationCredential.objects.filter(team=team, provider=IntegrationCredential.PROVIDER_GITHUB).delete()
 
     messages.success(request, "GitHub integration disconnected successfully.")
-    return redirect("integrations:integrations_home", team_slug=team.slug)
+    return redirect("integrations:integrations_home")
 
 
 @login_and_team_required
-def github_select_org(request, team_slug):
+def github_select_org(request):
     """Allow user to select which GitHub organization to sync data from.
 
     Displays a list of GitHub organizations the authenticated user has access to,
@@ -419,7 +419,7 @@ def github_select_org(request, team_slug):
         credential = IntegrationCredential.objects.get(team=team, provider=IntegrationCredential.PROVIDER_GITHUB)
     except IntegrationCredential.DoesNotExist:
         messages.error(request, "No GitHub credential found. Please try connecting again.")
-        return redirect("integrations:integrations_home", team_slug=team.slug)
+        return redirect("integrations:integrations_home")
 
     if request.method == "POST":
         # Get selected org from form
@@ -435,7 +435,7 @@ def github_select_org(request, team_slug):
         member_count = _sync_github_members_after_connection(team, access_token, organization_slug)
 
         messages.success(request, f"Connected to {organization_slug}. Imported {member_count} members.")
-        return redirect("integrations:integrations_home", team_slug=team.slug)
+        return redirect("integrations:integrations_home")
 
     # GET request - show organization selection form
     try:
@@ -443,7 +443,7 @@ def github_select_org(request, team_slug):
         orgs = github_oauth.get_user_organizations(access_token)
     except (GitHubOAuthError, Exception):
         messages.error(request, "Failed to fetch organizations from GitHub.")
-        return redirect("integrations:integrations_home", team_slug=team.slug)
+        return redirect("integrations:integrations_home")
 
     context = {
         "organizations": orgs,
@@ -453,7 +453,7 @@ def github_select_org(request, team_slug):
 
 
 @login_and_team_required
-def github_members(request, team_slug):
+def github_members(request):
     """Display list of GitHub members discovered for the team.
 
     Shows all team members that have been imported from GitHub (those with github_id populated).
@@ -474,7 +474,7 @@ def github_members(request, team_slug):
         GitHubIntegration.objects.get(team=team)
     except GitHubIntegration.DoesNotExist:
         messages.error(request, "Please connect GitHub first.")
-        return redirect("integrations:integrations_home", team_slug=team.slug)
+        return redirect("integrations:integrations_home")
 
     # Query members with github_id populated
     members = TeamMember.objects.filter(team=team).exclude(github_id="")
@@ -487,7 +487,7 @@ def github_members(request, team_slug):
 
 
 @team_admin_required
-def github_members_sync(request, team_slug):
+def github_members_sync(request):
     """Trigger manual re-sync of GitHub members.
 
     Re-imports team members from the connected GitHub organization.
@@ -512,7 +512,7 @@ def github_members_sync(request, team_slug):
         integration = GitHubIntegration.objects.get(team=team)
     except GitHubIntegration.DoesNotExist:
         messages.error(request, "GitHub integration not found. Please connect GitHub first.")
-        return redirect("integrations:integrations_home", team_slug=team.slug)
+        return redirect("integrations:integrations_home")
 
     # Decrypt access token
     access_token = decrypt(integration.credential.access_token)
@@ -523,7 +523,7 @@ def github_members_sync(request, team_slug):
     except Exception as e:
         logger.error(f"Failed to sync GitHub members for team {team.slug}: {e}")
         messages.error(request, "Failed to sync GitHub members. Please try again.")
-        return redirect("integrations:github_members", team_slug=team.slug)
+        return redirect("integrations:github_members")
 
     # Show success message with results
     msg = (
@@ -532,11 +532,11 @@ def github_members_sync(request, team_slug):
     )
     messages.success(request, msg)
 
-    return redirect("integrations:github_members", team_slug=team.slug)
+    return redirect("integrations:github_members")
 
 
 @team_admin_required
-def github_member_toggle(request, team_slug, member_id):
+def github_member_toggle(request, member_id):
     """Toggle a team member's active/inactive status.
 
     Allows admins to activate or deactivate team members.
@@ -564,7 +564,7 @@ def github_member_toggle(request, team_slug, member_id):
         member = TeamMember.objects.get(id=member_id, team=team)
     except TeamMember.DoesNotExist:
         messages.error(request, "Team member not found.")
-        return redirect("integrations:github_members", team_slug=team.slug)
+        return redirect("integrations:github_members")
 
     member.is_active = not member.is_active
     member.save()
@@ -576,11 +576,11 @@ def github_member_toggle(request, team_slug, member_id):
         return render(request, "integrations/components/member_row.html", context)
 
     # Non-HTMX: redirect to members page
-    return redirect("integrations:github_members", team_slug=team.slug)
+    return redirect("integrations:github_members")
 
 
 @login_and_team_required
-def github_repos(request, team_slug):
+def github_repos(request):
     """Display list of GitHub repositories for the organization.
 
     Shows all repositories from the connected GitHub organization and marks
@@ -602,7 +602,7 @@ def github_repos(request, team_slug):
         integration = GitHubIntegration.objects.get(team=team)
     except GitHubIntegration.DoesNotExist:
         messages.error(request, "Please connect GitHub first.")
-        return redirect("integrations:integrations_home", team_slug=team.slug)
+        return redirect("integrations:integrations_home")
 
     # Decrypt access token
     access_token = decrypt(integration.credential.access_token)
@@ -613,7 +613,7 @@ def github_repos(request, team_slug):
     except GitHubOAuthError as e:
         logger.error(f"Failed to fetch GitHub repositories: {e}", exc_info=True)
         messages.error(request, "Failed to fetch repositories from GitHub. Please try again.")
-        return redirect("integrations:integrations_home", team_slug=team.slug)
+        return redirect("integrations:integrations_home")
 
     # Get tracked repos with webhook_id
     tracked_repos = TrackedRepository.objects.filter(team=team)
@@ -636,7 +636,7 @@ def github_repos(request, team_slug):
 
 
 @team_admin_required
-def github_repo_toggle(request, team_slug, repo_id):
+def github_repo_toggle(request, repo_id):
     """Toggle repository tracking on/off.
 
     Allows admins to track or untrack repositories.
@@ -740,11 +740,11 @@ def github_repo_toggle(request, team_slug, repo_id):
         return render(request, "integrations/components/repo_card.html", context)
 
     # Non-HTMX: redirect to repos page
-    return redirect("integrations:github_repos", team_slug=team.slug)
+    return redirect("integrations:github_repos")
 
 
 @login_and_team_required
-def github_repo_sync(request, team_slug, repo_id):
+def github_repo_sync(request, repo_id):
     """Manually trigger historical sync for a tracked repository.
 
     Args:
@@ -778,7 +778,7 @@ def github_repo_sync(request, team_slug, repo_id):
 
 
 @team_admin_required
-def jira_connect(request, team_slug):
+def jira_connect(request):
     """Initiate Jira OAuth flow for connecting a team's Jira account.
 
     Redirects the user to Atlassian's OAuth authorization page. On success,
@@ -798,10 +798,10 @@ def jira_connect(request, team_slug):
     # Check if already connected
     if JiraIntegration.objects.filter(team=team).exists():
         messages.info(request, "Jira is already connected to this team.")
-        return redirect("integrations:integrations_home", team_slug=team.slug)
+        return redirect("integrations:integrations_home")
 
     # Build callback URL
-    callback_url = request.build_absolute_uri(reverse("integrations:jira_callback", args=[team.slug]))
+    callback_url = request.build_absolute_uri(reverse("integrations:jira_callback"))
 
     # Get authorization URL
     authorization_url = jira_oauth.get_authorization_url(team.id, callback_url)
@@ -812,7 +812,7 @@ def jira_connect(request, team_slug):
 
 @ratelimit(key="ip", rate="10/m", method=["GET", "POST"])
 @login_and_team_required
-def jira_callback(request, team_slug):
+def jira_callback(request):
     """Handle Jira OAuth callback after user authorizes the app.
 
     Receives the authorization code from Atlassian, exchanges it for an access token,
@@ -830,7 +830,7 @@ def jira_callback(request, team_slug):
     # Check if rate limited
     if getattr(request, "limited", False):
         messages.error(request, "Too many requests. Please wait and try again.")
-        return redirect("integrations:integrations_home", team_slug=team_slug)
+        return redirect("integrations:integrations_home")
 
     team = request.team
 
@@ -842,7 +842,7 @@ def jira_callback(request, team_slug):
         return error_response
 
     # Build callback URL
-    callback_url = request.build_absolute_uri(reverse("integrations:jira_callback", args=[team.slug]))
+    callback_url = request.build_absolute_uri(reverse("integrations:jira_callback"))
 
     # Exchange code for token
     try:
@@ -851,7 +851,7 @@ def jira_callback(request, team_slug):
     except (JiraOAuthError, KeyError, Exception) as e:
         logger.error(f"Jira token exchange failed: {e}", exc_info=True)
         messages.error(request, "Failed to connect to Jira. Please try again.")
-        return redirect("integrations:integrations_home", team_slug=team.slug)
+        return redirect("integrations:integrations_home")
 
     # Get accessible resources (Jira sites)
     try:
@@ -859,7 +859,7 @@ def jira_callback(request, team_slug):
     except JiraOAuthError as e:
         logger.error(f"Failed to get Jira sites: {e}", exc_info=True)
         messages.error(request, "Failed to get accessible Jira sites. Please try again.")
-        return redirect("integrations:integrations_home", team_slug=team.slug)
+        return redirect("integrations:integrations_home")
 
     # Create encrypted credential for the team
     credential = _create_integration_credential(team, access_token, IntegrationCredential.PROVIDER_JIRA, request.user)
@@ -876,15 +876,15 @@ def jira_callback(request, team_slug):
         )
 
         messages.success(request, f"Connected to Jira site: {site['name']}")
-        return redirect("integrations:integrations_home", team_slug=team.slug)
+        return redirect("integrations:integrations_home")
 
     # Multiple sites - store in session and redirect to selection
     request.session["jira_sites"] = sites
-    return redirect("integrations:jira_select_site", team_slug=team.slug)
+    return redirect("integrations:jira_select_site")
 
 
 @team_admin_required
-def jira_disconnect(request, team_slug):
+def jira_disconnect(request):
     """Disconnect Jira integration for a team.
 
     Removes the stored Jira OAuth token and any associated data for the team.
@@ -911,11 +911,11 @@ def jira_disconnect(request, team_slug):
     IntegrationCredential.objects.filter(team=team, provider=IntegrationCredential.PROVIDER_JIRA).delete()
 
     messages.success(request, "Jira integration disconnected successfully.")
-    return redirect("integrations:integrations_home", team_slug=team.slug)
+    return redirect("integrations:integrations_home")
 
 
 @login_and_team_required
-def jira_select_site(request, team_slug):
+def jira_select_site(request):
     """Allow user to select which Jira site to sync data from.
 
     Displays a list of Jira sites the authenticated user has access to,
@@ -935,7 +935,7 @@ def jira_select_site(request, team_slug):
         credential = IntegrationCredential.objects.get(team=team, provider=IntegrationCredential.PROVIDER_JIRA)
     except IntegrationCredential.DoesNotExist:
         messages.error(request, "No Jira credential found. Please try connecting again.")
-        return redirect("integrations:integrations_home", team_slug=team.slug)
+        return redirect("integrations:integrations_home")
 
     if request.method == "POST":
         # Get selected site from form
@@ -953,7 +953,7 @@ def jira_select_site(request, team_slug):
         )
 
         messages.success(request, f"Connected to Jira site: {site_name}")
-        return redirect("integrations:integrations_home", team_slug=team.slug)
+        return redirect("integrations:integrations_home")
 
     # GET request - show site selection form
     try:
@@ -961,7 +961,7 @@ def jira_select_site(request, team_slug):
         sites = jira_oauth.get_accessible_resources(access_token)
     except (JiraOAuthError, Exception):
         messages.error(request, "Failed to fetch sites from Jira.")
-        return redirect("integrations:integrations_home", team_slug=team.slug)
+        return redirect("integrations:integrations_home")
 
     context = {
         "sites": sites,
@@ -971,7 +971,7 @@ def jira_select_site(request, team_slug):
 
 
 @team_admin_required
-def jira_projects_list(request, team_slug):
+def jira_projects_list(request):
     """Display list of Jira projects for the team.
 
     Shows all projects from the connected Jira site and marks
@@ -993,14 +993,14 @@ def jira_projects_list(request, team_slug):
         jira_integration = JiraIntegration.objects.get(team=team)
     except JiraIntegration.DoesNotExist:
         messages.error(request, "Please connect Jira first.")
-        return redirect("integrations:integrations_home", team_slug=team.slug)
+        return redirect("integrations:integrations_home")
 
     # Fetch projects from Jira API
     try:
         jira_projects = jira_client.get_accessible_projects(jira_integration.credential)
     except JiraClientError as e:
         messages.error(request, f"Failed to fetch projects: {str(e)}")
-        return redirect("integrations:integrations_home", team_slug=team.slug)
+        return redirect("integrations:integrations_home")
 
     # Get tracked projects for this team
     tracked_project_ids = set(TrackedJiraProject.objects.filter(team=team).values_list("jira_project_id", flat=True))
@@ -1018,7 +1018,7 @@ def jira_projects_list(request, team_slug):
 
 
 @team_admin_required
-def jira_project_toggle(request, team_slug):
+def jira_project_toggle(request):
     """Toggle project tracking on/off.
 
     Allows admins to track or untrack Jira projects.
@@ -1075,7 +1075,7 @@ def jira_project_toggle(request, team_slug):
 
 
 @team_admin_required
-def slack_connect(request, team_slug):
+def slack_connect(request):
     """Initiate Slack OAuth flow for connecting a team's Slack workspace.
 
     Redirects the user to Slack's OAuth authorization page. On success,
@@ -1095,10 +1095,10 @@ def slack_connect(request, team_slug):
     # Check if already connected
     if SlackIntegration.objects.filter(team=team).exists():
         messages.info(request, "Slack is already connected to this team.")
-        return redirect("integrations:integrations_home", team_slug=team.slug)
+        return redirect("integrations:integrations_home")
 
     # Build callback URL
-    callback_url = request.build_absolute_uri(reverse("integrations:slack_callback", args=[team.slug]))
+    callback_url = request.build_absolute_uri(reverse("integrations:slack_callback"))
 
     # Get authorization URL
     authorization_url = slack_oauth.get_authorization_url(team.id, callback_url)
@@ -1109,7 +1109,7 @@ def slack_connect(request, team_slug):
 
 @ratelimit(key="ip", rate="10/m", method=["GET", "POST"])
 @login_and_team_required
-def slack_callback(request, team_slug):
+def slack_callback(request):
     """Handle Slack OAuth callback after user authorizes the app.
 
     Receives the authorization code from Slack, exchanges it for an access token,
@@ -1127,7 +1127,7 @@ def slack_callback(request, team_slug):
     # Check if rate limited
     if getattr(request, "limited", False):
         messages.error(request, "Too many requests. Please wait and try again.")
-        return redirect("integrations:integrations_home", team_slug=team_slug)
+        return redirect("integrations:integrations_home")
 
     team = request.team
 
@@ -1139,7 +1139,7 @@ def slack_callback(request, team_slug):
         return error_response
 
     # Build callback URL
-    callback_url = request.build_absolute_uri(reverse("integrations:slack_callback", args=[team.slug]))
+    callback_url = request.build_absolute_uri(reverse("integrations:slack_callback"))
 
     # Exchange code for token
     try:
@@ -1151,7 +1151,7 @@ def slack_callback(request, team_slug):
     except (SlackOAuthError, KeyError, Exception) as e:
         logger.error(f"Slack token exchange failed: {e}", exc_info=True)
         messages.error(request, "Failed to connect to Slack. Please try again.")
-        return redirect("integrations:integrations_home", team_slug=team.slug)
+        return redirect("integrations:integrations_home")
 
     # Check if this workspace is already connected (update if so)
     existing_integration = SlackIntegration.objects.filter(team=team, workspace_id=workspace_id).first()
@@ -1185,11 +1185,11 @@ def slack_callback(request, team_slug):
 
         messages.success(request, f"Connected to Slack workspace: {workspace_name}")
 
-    return redirect("integrations:integrations_home", team_slug=team.slug)
+    return redirect("integrations:integrations_home")
 
 
 @team_admin_required
-def slack_disconnect(request, team_slug):
+def slack_disconnect(request):
     """Disconnect Slack integration for a team.
 
     Removes the stored Slack OAuth token and any associated data for the team.
@@ -1216,11 +1216,11 @@ def slack_disconnect(request, team_slug):
     IntegrationCredential.objects.filter(team=team, provider=IntegrationCredential.PROVIDER_SLACK).delete()
 
     messages.success(request, "Slack integration disconnected successfully.")
-    return redirect("integrations:integrations_home", team_slug=team.slug)
+    return redirect("integrations:integrations_home")
 
 
 @team_admin_required
-def slack_settings(request, team_slug):
+def slack_settings(request):
     """Configure Slack integration settings.
 
     GET: Display settings form
@@ -1244,7 +1244,7 @@ def slack_settings(request, team_slug):
         integration = SlackIntegration.objects.get(team=team)
     except SlackIntegration.DoesNotExist:
         messages.error(request, "Slack integration not found. Please connect Slack first.")
-        return redirect("integrations:integrations_home", team_slug=team.slug)
+        return redirect("integrations:integrations_home")
 
     if request.method == "POST":
         # Update leaderboard settings
@@ -1267,7 +1267,7 @@ def slack_settings(request, team_slug):
         integration.save()
 
         messages.success(request, "Slack settings updated successfully.")
-        return redirect("integrations:slack_settings", team_slug=team.slug)
+        return redirect("integrations:slack_settings")
 
     # GET request - show settings form
     context = {

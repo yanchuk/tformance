@@ -50,7 +50,7 @@
 
           <!-- Quick Links -->
           <div class="flex flex-wrap gap-2 mb-4">
-            <a href="{% url 'integrations:github_members' team_slug=request.team.slug %}"
+            <a href="{% url 'integrations:github_members' %}"
                class="app-btn-ghost app-btn-sm gap-1">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
@@ -58,7 +58,7 @@
               {% translate "Members" %}
               {% if member_count %}<span class="app-badge app-badge-default">{{ member_count }}</span>{% endif %}
             </a>
-            <a href="{% url 'integrations:github_repos' team_slug=request.team.slug %}"
+            <a href="{% url 'integrations:github_repos' %}"
                class="app-btn-ghost app-btn-sm gap-1">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
@@ -71,7 +71,7 @@
 
         <div class="flex justify-end">
           <form method="post"
-                action="{% url 'integrations:github_disconnect' team_slug=request.team.slug %}"
+                action="{% url 'integrations:github_disconnect' %}"
                 x-data="{ confirming: false }">
             {% csrf_token %}
             <button type="button"
@@ -99,7 +99,7 @@
         </div>
 
         <div class="flex justify-end">
-          <a href="{% url 'integrations:github_connect' team_slug=request.team.slug %}"
+          <a href="{% url 'integrations:github_connect' %}"
              class="app-btn-primary app-btn-sm">
             {% translate "Connect GitHub" %}
           </a>
@@ -145,7 +145,7 @@
 
           <!-- Quick Links -->
           <div class="flex flex-wrap gap-2 mb-4">
-            <a href="{% url 'integrations:jira_projects_list' team_slug=request.team.slug %}"
+            <a href="{% url 'integrations:jira_projects_list' %}"
                class="app-btn-ghost app-btn-sm gap-1">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
@@ -158,7 +158,7 @@
 
         <div class="flex justify-end">
           <form method="post"
-                action="{% url 'integrations:jira_disconnect' team_slug=request.team.slug %}"
+                action="{% url 'integrations:jira_disconnect' %}"
                 x-data="{ confirming: false }">
             {% csrf_token %}
             <button type="button"
@@ -186,7 +186,7 @@
         </div>
 
         <div class="flex justify-end">
-          <a href="{% url 'integrations:jira_connect' team_slug=request.team.slug %}"
+          <a href="{% url 'integrations:jira_connect' %}"
              class="app-btn-primary app-btn-sm">
             {% translate "Connect Jira" %}
           </a>
@@ -232,7 +232,7 @@
 
           <!-- Quick Links -->
           <div class="flex flex-wrap gap-2 mb-4">
-            <a href="{% url 'integrations:slack_settings' team_slug=request.team.slug %}"
+            <a href="{% url 'integrations:slack_settings' %}"
                class="app-btn-ghost app-btn-sm gap-1">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
@@ -245,7 +245,7 @@
 
         <div class="flex justify-end">
           <form method="post"
-                action="{% url 'integrations:slack_disconnect' team_slug=request.team.slug %}"
+                action="{% url 'integrations:slack_disconnect' %}"
                 x-data="{ confirming: false }">
             {% csrf_token %}
             <button type="button"
@@ -273,7 +273,7 @@
         </div>
 
         <div class="flex justify-end">
-          <a href="{% url 'integrations:slack_connect' team_slug=request.team.slug %}"
+          <a href="{% url 'integrations:slack_connect' %}"
              class="app-btn-primary app-btn-sm">
             {% translate "Connect Slack" %}
           </a>

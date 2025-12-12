@@ -40,7 +40,7 @@ class _ActiveSubscriptionRequired:
             messages.info(
                 request, _("Sorry, but you don't have access to that. {details}").format(details=check_result.message)
             )
-            return HttpResponseRedirect(reverse("subscriptions_team:subscription_details", args=[request.team.slug]))
+            return HttpResponseRedirect(reverse("subscriptions_team:subscription_details"))
         else:
             return self.f(request, *args, **kwargs)
 

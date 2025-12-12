@@ -56,37 +56,37 @@ class SubscriptionTests(TestCase):
 
     def test_gated_view_has_active_subscription(self):
         request = get_mock_request(self.team_with_sub, self.user_with_sub)
-        response = mock_gated_view(request, self.team_with_sub.slug)
+        response = mock_gated_view(request)
         self.assertEqual(response.status_code, 200)
 
     def test_gated_view_no_active_subscription(self):
         request = get_mock_request(self.team_without_sub, self.user_without_sub)
-        response = mock_gated_view(request, self.team_without_sub.slug)
+        response = mock_gated_view(request)
         self.assertEqual(response.status_code, 302)
 
     def test_gated_view_limit_to_plan_allow(self):
         """The subscription has access to this view because it is on to the correct plan."""
         request = get_mock_request(self.team_with_sub, self.user_with_sub)
-        response = mock_view_limited_to_plan_a(request, self.team_with_sub.slug)
+        response = mock_view_limited_to_plan_a(request)
         self.assertEqual(response.status_code, 200)
 
     def test_gated_view_limit_to_plan_deny(self):
         """The subscription does not have access to this view because it is limited to a different plan."""
         request = get_mock_request(self.team_with_sub, self.user_with_sub)
-        response = mock_view_limited_to_plan_b(request, self.team_with_sub.slug)
+        response = mock_view_limited_to_plan_b(request)
         self.assertEqual(response.status_code, 302)
 
 
 @active_subscription_required
-def mock_gated_view(request, team_slug):
+def mock_gated_view(request):
     return HttpResponse()
 
 
 @active_subscription_required(limit_to_plans=["plan-a"])
-def mock_view_limited_to_plan_a(request, team_slug):
+def mock_view_limited_to_plan_a(request):
     return HttpResponse()
 
 
 @active_subscription_required(limit_to_plans=["plan-b"])
-def mock_view_limited_to_plan_b(request, team_slug):
+def mock_view_limited_to_plan_b(request):
     return HttpResponse()

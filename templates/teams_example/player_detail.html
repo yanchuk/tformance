@@ -3,7 +3,7 @@
 {% block app %}
 <nav aria-label="breadcrumbs">
   <ol class="pg-breadcrumbs">
-    <li class=""><a href="{% url 'teams_example:player_list' request.team.slug %}">Players</a></li>
+    <li class=""><a href="{% url 'teams_example:player_list' %}">Players</a></li>
     <li class="pg-breadcrumb-active" aria-current="page">{{ player.name }}</li>
   </ol>
 </nav>
@@ -16,11 +16,11 @@
   </p>
   <p class="mt-2">You can edit this information by clicking the button below.</p>
   <div class="mt-2">
-    <a href="{% url 'teams_example:player_update' request.team.slug player.pk %}" class="pg-button-secondary">
+    <a href="{% url 'teams_example:player_update' player.pk %}" class="pg-button-secondary">
       <span class="pg-icon"><i class="fa fa-pencil"></i></span>
       <span>Edit</span>
     </a>
-    <a href="{% url 'teams_example:player_delete' request.team.slug player.pk %}" class="pg-button-danger">
+    <a href="{% url 'teams_example:player_delete' player.pk %}" class="pg-button-danger">
       <span class="pg-icon"><i class="fa fa-times"></i></span>
       <span>Delete</span>
     </a>

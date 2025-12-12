@@ -23,4 +23,4 @@ class Player(BaseTeamModel):
         return self.name
 
     def get_absolute_url(self):
-        return reverse("teams_example:player_detail", kwargs={"team_slug": self.team.slug, "pk": self.pk})
+        return reverse("teams_example:player_detail", kwargs={"pk": self.pk})

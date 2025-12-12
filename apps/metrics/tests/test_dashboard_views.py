@@ -31,7 +31,7 @@ class TestDashboardRedirect(TestCase):
 
     def test_dashboard_redirect_requires_login(self):
         """Test that dashboard_redirect redirects to login page if user is not authenticated."""
-        response = self.client.get(reverse("metrics:dashboard_redirect", args=[self.team.slug]))
+        response = self.client.get(reverse("metrics:dashboard_redirect"))
 
         self.assertEqual(response.status_code, 302)
         self.assertIn("/accounts/login/", response.url)
@@ -41,7 +41,7 @@ class TestDashboardRedirect(TestCase):
         non_member = UserFactory()
         self.client.force_login(non_member)
 
-        response = self.client.get(reverse("metrics:dashboard_redirect", args=[self.team.slug]))
+        response = self.client.get(reverse("metrics:dashboard_redirect"))
 
         self.assertEqual(response.status_code, 404)
 
@@ -49,19 +49,19 @@ class TestDashboardRedirect(TestCase):
         """Test that admin users are redirected to cto_overview."""
         self.client.force_login(self.admin_user)
 
-        response = self.client.get(reverse("metrics:dashboard_redirect", args=[self.team.slug]))
+        response = self.client.get(reverse("metrics:dashboard_redirect"))
 
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, reverse("metrics:cto_overview", args=[self.team.slug]))
+        self.assertEqual(response.url, reverse("metrics:cto_overview"))
 
     def test_dashboard_redirect_member_goes_to_team_dashboard(self):
         """Test that non-admin users are redirected to team_dashboard."""
         self.client.force_login(self.member_user)
 
-        response = self.client.get(reverse("metrics:dashboard_redirect", args=[self.team.slug]))
+        response = self.client.get(reverse("metrics:dashboard_redirect"))
 
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, reverse("metrics:team_dashboard", args=[self.team.slug]))
+        self.assertEqual(response.url, reverse("metrics:team_dashboard"))
 
 
 class TestCTOOverview(TestCase):
@@ -78,7 +78,7 @@ class TestCTOOverview(TestCase):
 
     def test_cto_overview_requires_login(self):
         """Test that cto_overview redirects to login page if user is not authenticated."""
-        response = self.client.get(reverse("metrics:cto_overview", args=[self.team.slug]))
+        response = self.client.get(reverse("metrics:cto_overview"))
 
         self.assertEqual(response.status_code, 302)
         self.assertIn("/accounts/login/", response.url)
@@ -88,7 +88,7 @@ class TestCTOOverview(TestCase):
         non_member = UserFactory()
         self.client.force_login(non_member)
 
-        response = self.client.get(reverse("metrics:cto_overview", args=[self.team.slug]))
+        response = self.client.get(reverse("metrics:cto_overview"))
 
         self.assertEqual(response.status_code, 404)
 
@@ -96,7 +96,7 @@ class TestCTOOverview(TestCase):
         """Test that cto_overview returns 404 for non-admin team members."""
         self.client.force_login(self.member_user)
 
-        response = self.client.get(reverse("metrics:cto_overview", args=[self.team.slug]))
+        response = self.client.get(reverse("metrics:cto_overview"))
 
         self.assertEqual(response.status_code, 404)
 
@@ -104,7 +104,7 @@ class TestCTOOverview(TestCase):
         """Test that cto_overview returns 200 for admin users."""
         self.client.force_login(self.admin_user)
 
-        response = self.client.get(reverse("metrics:cto_overview", args=[self.team.slug]))
+        response = self.client.get(reverse("metrics:cto_overview"))
 
         self.assertEqual(response.status_code, 200)
 
@@ -112,7 +112,7 @@ class TestCTOOverview(TestCase):
         """Test that cto_overview renders cto_overview.html template."""
         self.client.force_login(self.admin_user)
 
-        response = self.client.get(reverse("metrics:cto_overview", args=[self.team.slug]))
+        response = self.client.get(reverse("metrics:cto_overview"))
 
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "metrics/cto_overview.html")
@@ -121,7 +121,7 @@ class TestCTOOverview(TestCase):
         """Test that cto_overview context contains required keys."""
         self.client.force_login(self.admin_user)
 
-        response = self.client.get(reverse("metrics:cto_overview", args=[self.team.slug]))
+        response = self.client.get(reverse("metrics:cto_overview"))
 
         self.assertEqual(response.status_code, 200)
         self.assertIn("days", response.context)
@@ -133,7 +133,7 @@ class TestCTOOverview(TestCase):
         """Test that cto_overview sets active_tab to 'metrics'."""
         self.client.force_login(self.admin_user)
 
-        response = self.client.get(reverse("metrics:cto_overview", args=[self.team.slug]))
+        response = self.client.get(reverse("metrics:cto_overview"))
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["active_tab"], "metrics")
@@ -142,7 +142,7 @@ class TestCTOOverview(TestCase):
         """Test that cto_overview defaults to 30 days if no query param provided."""
         self.client.force_login(self.admin_user)
 
-        response = self.client.get(reverse("metrics:cto_overview", args=[self.team.slug]))
+        response = self.client.get(reverse("metrics:cto_overview"))
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["days"], 30)
@@ -151,7 +151,7 @@ class TestCTOOverview(TestCase):
         """Test that cto_overview accepts days=7 query parameter."""
         self.client.force_login(self.admin_user)
 
-        response = self.client.get(reverse("metrics:cto_overview", args=[self.team.slug]), {"days": "7"})
+        response = self.client.get(reverse("metrics:cto_overview"), {"days": "7"})
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["days"], 7)
@@ -160,7 +160,7 @@ class TestCTOOverview(TestCase):
         """Test that cto_overview accepts days=30 query parameter."""
         self.client.force_login(self.admin_user)
 
-        response = self.client.get(reverse("metrics:cto_overview", args=[self.team.slug]), {"days": "30"})
+        response = self.client.get(reverse("metrics:cto_overview"), {"days": "30"})
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["days"], 30)
@@ -169,7 +169,7 @@ class TestCTOOverview(TestCase):
         """Test that cto_overview accepts days=90 query parameter."""
         self.client.force_login(self.admin_user)
 
-        response = self.client.get(reverse("metrics:cto_overview", args=[self.team.slug]), {"days": "90"})
+        response = self.client.get(reverse("metrics:cto_overview"), {"days": "90"})
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["days"], 90)
@@ -178,7 +178,7 @@ class TestCTOOverview(TestCase):
         """Test that cto_overview correctly calculates date range based on days parameter."""
         self.client.force_login(self.admin_user)
 
-        response = self.client.get(reverse("metrics:cto_overview", args=[self.team.slug]), {"days": "7"})
+        response = self.client.get(reverse("metrics:cto_overview"), {"days": "7"})
 
         self.assertEqual(response.status_code, 200)
 
@@ -198,7 +198,7 @@ class TestCTOOverview(TestCase):
         self.client.force_login(self.admin_user)
 
         # Make HTMX request (indicated by HX-Request header)
-        response = self.client.get(reverse("metrics:cto_overview", args=[self.team.slug]), HTTP_HX_REQUEST="true")
+        response = self.client.get(reverse("metrics:cto_overview"), HTTP_HX_REQUEST="true")
 
         self.assertEqual(response.status_code, 200)
         # For HTMX, should use partial template (with #page-content or similar)
@@ -222,7 +222,7 @@ class TestTeamDashboard(TestCase):
 
     def test_team_dashboard_requires_login(self):
         """Test that team_dashboard redirects to login page if user is not authenticated."""
-        response = self.client.get(reverse("metrics:team_dashboard", args=[self.team.slug]))
+        response = self.client.get(reverse("metrics:team_dashboard"))
 
         self.assertEqual(response.status_code, 302)
         self.assertIn("/accounts/login/", response.url)
@@ -232,7 +232,7 @@ class TestTeamDashboard(TestCase):
         non_member = UserFactory()
         self.client.force_login(non_member)
 
-        response = self.client.get(reverse("metrics:team_dashboard", args=[self.team.slug]))
+        response = self.client.get(reverse("metrics:team_dashboard"))
 
         self.assertEqual(response.status_code, 404)
 
@@ -240,7 +240,7 @@ class TestTeamDashboard(TestCase):
         """Test that team_dashboard returns 200 for regular team members."""
         self.client.force_login(self.member_user)
 
-        response = self.client.get(reverse("metrics:team_dashboard", args=[self.team.slug]))
+        response = self.client.get(reverse("metrics:team_dashboard"))
 
         self.assertEqual(response.status_code, 200)
 
@@ -248,7 +248,7 @@ class TestTeamDashboard(TestCase):
         """Test that team_dashboard returns 200 for admin users (admins can see member view too)."""
         self.client.force_login(self.admin_user)
 
-        response = self.client.get(reverse("metrics:team_dashboard", args=[self.team.slug]))
+        response = self.client.get(reverse("metrics:team_dashboard"))
 
         self.assertEqual(response.status_code, 200)
 
@@ -256,7 +256,7 @@ class TestTeamDashboard(TestCase):
         """Test that team_dashboard renders team_dashboard.html template."""
         self.client.force_login(self.member_user)
 
-        response = self.client.get(reverse("metrics:team_dashboard", args=[self.team.slug]))
+        response = self.client.get(reverse("metrics:team_dashboard"))
 
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "metrics/team_dashboard.html")
@@ -265,7 +265,7 @@ class TestTeamDashboard(TestCase):
         """Test that team_dashboard context contains required keys."""
         self.client.force_login(self.member_user)
 
-        response = self.client.get(reverse("metrics:team_dashboard", args=[self.team.slug]))
+        response = self.client.get(reverse("metrics:team_dashboard"))
 
         self.assertEqual(response.status_code, 200)
         self.assertIn("days", response.context)
@@ -277,7 +277,7 @@ class TestTeamDashboard(TestCase):
         """Test that team_dashboard sets active_tab to 'metrics'."""
         self.client.force_login(self.member_user)
 
-        response = self.client.get(reverse("metrics:team_dashboard", args=[self.team.slug]))
+        response = self.client.get(reverse("metrics:team_dashboard"))
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["active_tab"], "metrics")
@@ -286,7 +286,7 @@ class TestTeamDashboard(TestCase):
         """Test that team_dashboard defaults to 30 days if no query param provided."""
         self.client.force_login(self.member_user)
 
-        response = self.client.get(reverse("metrics:team_dashboard", args=[self.team.slug]))
+        response = self.client.get(reverse("metrics:team_dashboard"))
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["days"], 30)
@@ -295,7 +295,7 @@ class TestTeamDashboard(TestCase):
         """Test that team_dashboard accepts days=7 query parameter."""
         self.client.force_login(self.member_user)
 
-        response = self.client.get(reverse("metrics:team_dashboard", args=[self.team.slug]), {"days": "7"})
+        response = self.client.get(reverse("metrics:team_dashboard"), {"days": "7"})
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["days"], 7)
@@ -304,7 +304,7 @@ class TestTeamDashboard(TestCase):
         """Test that team_dashboard accepts days=30 query parameter."""
         self.client.force_login(self.member_user)
 
-        response = self.client.get(reverse("metrics:team_dashboard", args=[self.team.slug]), {"days": "30"})
+        response = self.client.get(reverse("metrics:team_dashboard"), {"days": "30"})
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["days"], 30)
@@ -313,7 +313,7 @@ class TestTeamDashboard(TestCase):
         """Test that team_dashboard accepts days=90 query parameter."""
         self.client.force_login(self.member_user)
 
-        response = self.client.get(reverse("metrics:team_dashboard", args=[self.team.slug]), {"days": "90"})
+        response = self.client.get(reverse("metrics:team_dashboard"), {"days": "90"})
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["days"], 90)
@@ -322,7 +322,7 @@ class TestTeamDashboard(TestCase):
         """Test that team_dashboard correctly calculates date range based on days parameter."""
         self.client.force_login(self.member_user)
 
-        response = self.client.get(reverse("metrics:team_dashboard", args=[self.team.slug]), {"days": "7"})
+        response = self.client.get(reverse("metrics:team_dashboard"), {"days": "7"})
 
         self.assertEqual(response.status_code, 200)
 
@@ -342,7 +342,7 @@ class TestTeamDashboard(TestCase):
         self.client.force_login(self.member_user)
 
         # Make HTMX request (indicated by HX-Request header)
-        response = self.client.get(reverse("metrics:team_dashboard", args=[self.team.slug]), HTTP_HX_REQUEST="true")
+        response = self.client.get(reverse("metrics:team_dashboard"), HTTP_HX_REQUEST="true")
 
         self.assertEqual(response.status_code, 200)
         # For HTMX, should use partial template (with #page-content or similar)

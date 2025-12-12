@@ -11,7 +11,7 @@ from apps.teams.decorators import login_and_team_required, team_admin_required
 
 
 @team_admin_required
-def ai_adoption_chart(request: HttpRequest, team_slug: str) -> HttpResponse:
+def ai_adoption_chart(request: HttpRequest) -> HttpResponse:
     """AI adoption trend line chart (admin only)."""
     start_date, end_date = get_date_range_from_request(request)
     data = dashboard_service.get_ai_adoption_trend(request.team, start_date, end_date)
@@ -26,7 +26,7 @@ def ai_adoption_chart(request: HttpRequest, team_slug: str) -> HttpResponse:
 
 
 @team_admin_required
-def ai_quality_chart(request: HttpRequest, team_slug: str) -> HttpResponse:
+def ai_quality_chart(request: HttpRequest) -> HttpResponse:
     """AI vs non-AI quality comparison (admin only)."""
     start_date, end_date = get_date_range_from_request(request)
     chart_data = dashboard_service.get_ai_quality_comparison(request.team, start_date, end_date)
@@ -40,7 +40,7 @@ def ai_quality_chart(request: HttpRequest, team_slug: str) -> HttpResponse:
 
 
 @login_and_team_required
-def cycle_time_chart(request: HttpRequest, team_slug: str) -> HttpResponse:
+def cycle_time_chart(request: HttpRequest) -> HttpResponse:
     """Cycle time trend (all members)."""
     start_date, end_date = get_date_range_from_request(request)
     data = dashboard_service.get_cycle_time_trend(request.team, start_date, end_date)
@@ -55,7 +55,7 @@ def cycle_time_chart(request: HttpRequest, team_slug: str) -> HttpResponse:
 
 
 @team_admin_required
-def key_metrics_cards(request: HttpRequest, team_slug: str) -> HttpResponse:
+def key_metrics_cards(request: HttpRequest) -> HttpResponse:
     """Key metrics stat cards (admin only)."""
     start_date, end_date = get_date_range_from_request(request)
     metrics = dashboard_service.get_key_metrics(request.team, start_date, end_date)
@@ -77,7 +77,7 @@ def key_metrics_cards(request: HttpRequest, team_slug: str) -> HttpResponse:
 
 
 @team_admin_required
-def team_breakdown_table(request: HttpRequest, team_slug: str) -> HttpResponse:
+def team_breakdown_table(request: HttpRequest) -> HttpResponse:
     """Team breakdown table (admin only)."""
     start_date, end_date = get_date_range_from_request(request)
     rows = dashboard_service.get_team_breakdown(request.team, start_date, end_date)
@@ -91,7 +91,7 @@ def team_breakdown_table(request: HttpRequest, team_slug: str) -> HttpResponse:
 
 
 @login_and_team_required
-def leaderboard_table(request: HttpRequest, team_slug: str) -> HttpResponse:
+def leaderboard_table(request: HttpRequest) -> HttpResponse:
     """AI detective leaderboard (all members)."""
     start_date, end_date = get_date_range_from_request(request)
     rows = dashboard_service.get_ai_detective_leaderboard(request.team, start_date, end_date)

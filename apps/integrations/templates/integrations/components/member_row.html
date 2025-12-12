@@ -28,8 +28,8 @@
   {% if request.team_membership.role == 'admin' %}
     <td class="px-4 py-3 border-b border-elevated/50 text-right">
       <form method="post"
-            action="{% url 'integrations:github_member_toggle' team_slug=request.team.slug member_id=member.id %}"
-            hx-post="{% url 'integrations:github_member_toggle' team_slug=request.team.slug member_id=member.id %}"
+            action="{% url 'integrations:github_member_toggle' member_id=member.id %}"
+            hx-post="{% url 'integrations:github_member_toggle' member_id=member.id %}"
             hx-target="#member-row-{{ member.id }}"
             hx-swap="outerHTML">
         {% csrf_token %}

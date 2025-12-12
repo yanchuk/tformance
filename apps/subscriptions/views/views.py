@@ -26,7 +26,7 @@ log = logging.getLogger("tformance.subscription")
 
 @redirect_subscription_errors
 @login_and_team_required
-def subscription(request, team_slug):
+def subscription(request):
     # non-admins aren't allowed to manage team subscriptions
     if not is_admin(request.user, request.team):
         return TemplateResponse(request, "subscriptions/no_subsription_access.html")
@@ -119,7 +119,7 @@ def _upgrade_subscription(request, subscription_holder: SubscriptionModelBase):
 
 
 @login_and_team_required
-def subscription_demo(request, team_slug):
+def subscription_demo(request):
     subscription_holder = request.team
     subscription = subscription_holder.active_stripe_subscription
     wrapped_subscription = SubscriptionWrapper(subscription) if subscription else None
@@ -137,20 +137,20 @@ def subscription_demo(request, team_slug):
 
 @login_and_team_required
 @active_subscription_required
-def subscription_gated_page(request, team_slug):
+def subscription_gated_page(request):
     return render(request, "subscriptions/subscription_gated_page.html")
 
 
 @login_and_team_required
 @active_subscription_required
-def metered_billing_demo(request, team_slug):
+def metered_billing_demo(request):
     subscription_holder = request.team
     if request.method == "POST":
         form = UsageRecordForm(subscription_holder, request.POST)
         if form.is_valid():
             usage_data = form.save()
             messages.info(request, _("Successfully recorded {} units for metered billing.").format(usage_data.quantity))
-            return HttpResponseRedirect(reverse("subscriptions_team:subscription_demo", args=[team_slug]))
+            return HttpResponseRedirect(reverse("subscriptions_team:subscription_demo"))
     else:
         form = UsageRecordForm(subscription_holder)
 

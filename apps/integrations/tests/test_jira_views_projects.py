@@ -29,7 +29,7 @@ class JiraProjectsListViewTest(TestCase):
 
     def test_jira_projects_list_requires_login(self):
         """Test that jira_projects_list redirects to login if user is not authenticated."""
-        response = self.client.get(reverse("integrations:jira_projects_list", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:jira_projects_list"))
 
         self.assertEqual(response.status_code, 302)
         self.assertIn("/accounts/login/", response.url)
@@ -39,7 +39,7 @@ class JiraProjectsListViewTest(TestCase):
         non_member = UserFactory()
         self.client.force_login(non_member)
 
-        response = self.client.get(reverse("integrations:jira_projects_list", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:jira_projects_list"))
 
         self.assertEqual(response.status_code, 404)
 
@@ -47,7 +47,7 @@ class JiraProjectsListViewTest(TestCase):
         """Test that jira_projects_list returns 404 for non-admin team members."""
         self.client.force_login(self.member)
 
-        response = self.client.get(reverse("integrations:jira_projects_list", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:jira_projects_list"))
 
         self.assertEqual(response.status_code, 404)
 
@@ -55,11 +55,11 @@ class JiraProjectsListViewTest(TestCase):
         """Test that jira_projects_list redirects if Jira is not connected."""
         self.client.force_login(self.admin)
 
-        response = self.client.get(reverse("integrations:jira_projects_list", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:jira_projects_list"))
 
         # Should redirect to integrations home
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, reverse("integrations:integrations_home", args=[self.team.slug]))
+        self.assertEqual(response.url, reverse("integrations:integrations_home"))
 
     @patch("apps.integrations.services.jira_client.get_accessible_projects")
     def test_jira_projects_list_returns_200_and_renders_template(self, mock_get_projects):
@@ -75,7 +75,7 @@ class JiraProjectsListViewTest(TestCase):
 
         self.client.force_login(self.admin)
 
-        response = self.client.get(reverse("integrations:jira_projects_list", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:jira_projects_list"))
 
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "integrations/jira_projects_list.html")
@@ -94,7 +94,7 @@ class JiraProjectsListViewTest(TestCase):
 
         self.client.force_login(self.admin)
 
-        response = self.client.get(reverse("integrations:jira_projects_list", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:jira_projects_list"))
 
         # Should call get_accessible_projects
         mock_get_projects.assert_called_once()
@@ -128,7 +128,7 @@ class JiraProjectsListViewTest(TestCase):
 
         self.client.force_login(self.admin)
 
-        response = self.client.get(reverse("integrations:jira_projects_list", args=[self.team.slug]))
+        response = self.client.get(reverse("integrations:jira_projects_list"))
 
         # Context should show tracked status
         projects = response.context["projects"]
@@ -158,7 +158,7 @@ class JiraProjectToggleViewTest(TestCase):
     def test_jira_project_toggle_requires_login(self):
         """Test that jira_project_toggle redirects to login if user is not authenticated."""
         response = self.client.post(
-            reverse("integrations:jira_project_toggle", args=[self.team.slug]),
+            reverse("integrations:jira_project_toggle"),
             {
                 "project_id": "10001",
                 "project_key": "PROJ1",
@@ -176,7 +176,7 @@ class JiraProjectToggleViewTest(TestCase):
         self.client.force_login(non_member)
 
         response = self.client.post(
-            reverse("integrations:jira_project_toggle", args=[self.team.slug]),
+            reverse("integrations:jira_project_toggle"),
             {
                 "project_id": "10001",
                 "project_key": "PROJ1",
@@ -192,7 +192,7 @@ class JiraProjectToggleViewTest(TestCase):
         self.client.force_login(self.member)
 
         response = self.client.post(
-            reverse("integrations:jira_project_toggle", args=[self.team.slug]),
+            reverse("integrations:jira_project_toggle"),
             {
                 "project_id": "10001",
                 "project_key": "PROJ1",
@@ -212,7 +212,7 @@ class JiraProjectToggleViewTest(TestCase):
 
         # Try GET request
         response = self.client.get(
-            reverse("integrations:jira_project_toggle", args=[self.team.slug]),
+            reverse("integrations:jira_project_toggle"),
             {
                 "project_id": "10001",
                 "project_key": "PROJ1",
@@ -232,7 +232,7 @@ class JiraProjectToggleViewTest(TestCase):
         self.client.force_login(self.admin)
 
         self.client.post(
-            reverse("integrations:jira_project_toggle", args=[self.team.slug]),
+            reverse("integrations:jira_project_toggle"),
             {
                 "project_id": "10001",
                 "project_key": "PROJ1",
@@ -256,7 +256,7 @@ class JiraProjectToggleViewTest(TestCase):
         self.client.force_login(self.admin)
 
         response = self.client.post(
-            reverse("integrations:jira_project_toggle", args=[self.team.slug]),
+            reverse("integrations:jira_project_toggle"),
             {
                 "project_id": "10001",
                 "project_key": "PROJ1",
@@ -292,7 +292,7 @@ class JiraProjectToggleViewTest(TestCase):
         self.client.force_login(self.admin)
 
         self.client.post(
-            reverse("integrations:jira_project_toggle", args=[self.team.slug]),
+            reverse("integrations:jira_project_toggle"),
             {
                 "project_id": "10001",
                 "project_key": "PROJ1",
@@ -319,7 +319,7 @@ class JiraProjectToggleViewTest(TestCase):
         self.client.force_login(self.admin)
 
         response = self.client.post(
-            reverse("integrations:jira_project_toggle", args=[self.team.slug]),
+            reverse("integrations:jira_project_toggle"),
             {
                 "project_id": "10001",
                 "project_key": "PROJ1",
@@ -349,7 +349,7 @@ class JiraProjectToggleViewTest(TestCase):
 
         # Missing project_key
         response = self.client.post(
-            reverse("integrations:jira_project_toggle", args=[self.team.slug]),
+            reverse("integrations:jira_project_toggle"),
             {
                 "project_id": "10001",
                 "name": "Project One",

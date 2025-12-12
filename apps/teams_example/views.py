@@ -43,4 +43,4 @@ class PlayerUpdateView(PlayerViewMixin, UpdateView):
 
 class PlayerDeleteView(PlayerViewMixin, DeleteView):
     def get_success_url(self):
-        return reverse("teams_example:player_list", args=[self.request.team.slug])
+        return reverse("teams_example:player_list")

@@ -27,15 +27,15 @@ class SubscriptionGatingTests(TestCase):
     @patch("apps.teams.models.Team.has_active_subscription", return_value=True)
     def test_gated_view_has_active_subscription(self, _):
         request = get_mock_request(self.team, self.user)
-        response = mock_gated_view(request, self.team.slug)
+        response = mock_gated_view(request)
         self.assertEqual(response.status_code, 200)
 
     def test_gated_view_no_active_subscription(self):
         request = get_mock_request(self.team, self.user)
-        response = mock_gated_view(request, self.team.slug)
+        response = mock_gated_view(request)
         self.assertEqual(response.status_code, 302)
 
 
 @active_subscription_required
-def mock_gated_view(request, team_slug):
+def mock_gated_view(request):
     return HttpResponse()

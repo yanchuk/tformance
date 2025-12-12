@@ -45,7 +45,7 @@ def subscription_confirm(request):
 
 
 @login_and_team_required
-def checkout_canceled(request, team_slug):
+def checkout_canceled(request):
     subscription_holder = request.team
     messages.info(request, "Your upgrade was canceled.")
     return HttpResponseRedirect(get_subscription_urls(subscription_holder)["subscription_details"])

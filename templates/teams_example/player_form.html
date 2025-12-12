@@ -4,7 +4,7 @@
 {% block app %}
 <nav aria-label="breadcrumbs">
   <ol class="pg-breadcrumbs">
-    <li><a href="{% url 'teams_example:player_list' request.team.slug %}">Players</a></li>
+    <li><a href="{% url 'teams_example:player_list' %}">Players</a></li>
     {% if player %}
     <li><a href="{{ player.get_absolute_url }}">{{ player.name }}</a></li>
     <li class="pg-breadcrumb-active" aria-current="page">Edit</li>

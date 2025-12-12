@@ -13,13 +13,13 @@ from apps.web.forms import set_form_fields_disabled
 
 
 @login_and_team_required
-def team_membership_details(request, team_slug, membership_id):
+def team_membership_details(request, membership_id):
     membership = get_object_or_404(Membership, team=request.team, pk=membership_id)
     editing_self = membership.user == request.user
     can_edit_team_members = request.team_membership.is_admin()
     if not can_edit_team_members and not editing_self:
         messages.error(request, _("Sorry, you don't have permission to access that page."))
-        return HttpResponseRedirect(reverse("single_team:manage_team", args=[request.team.slug]))
+        return HttpResponseRedirect(reverse("single_team:manage_team"))
 
     if request.method == "POST":
         # these conditions should not be possible in the UI, but we still need to check to prevent malicious behavior
@@ -54,7 +54,7 @@ def team_membership_details(request, team_slug, membership_id):
 
 @login_and_team_required
 @require_POST
-def remove_team_membership(request, team_slug, membership_id):
+def remove_team_membership(request, membership_id):
     membership = get_object_or_404(Membership, team=request.team, pk=membership_id)
     removing_self = membership.user == request.user
     can_edit_team_members = request.team_membership.is_admin()
@@ -71,7 +71,7 @@ def remove_team_membership(request, team_slug, membership_id):
                     "Make another team member an administrator and try again."
                 ),
             )
-            return HttpResponseRedirect(reverse("single_team:manage_team", args=[request.team.slug]))
+            return HttpResponseRedirect(reverse("single_team:manage_team"))
 
     membership.delete()
     messages.success(
@@ -83,4 +83,4 @@ def remove_team_membership(request, team_slug, membership_id):
     if removing_self:
         return HttpResponseRedirect(reverse("web:home"))
     else:
-        return HttpResponseRedirect(reverse("single_team:manage_team", args=[request.team.slug]))
+        return HttpResponseRedirect(reverse("single_team:manage_team"))

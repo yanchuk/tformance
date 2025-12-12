@@ -52,7 +52,7 @@ def create_stripe_checkout_session(
     stripe = get_stripe_module()
     success_url = absolute_url(reverse("subscriptions:subscription_confirm"))
 
-    cancel_url = absolute_url(reverse("subscriptions_team:checkout_canceled", args=[subscription_holder.slug]))
+    cancel_url = absolute_url(reverse("subscriptions_team:checkout_canceled"))
 
     customer_kwargs = {}
     if subscription_holder.customer:
