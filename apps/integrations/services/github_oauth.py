@@ -124,7 +124,7 @@ def exchange_code_for_token(code: str, redirect_uri: str) -> dict[str, Any]:
     headers = {"Accept": "application/json"}
 
     try:
-        response = requests.post(GITHUB_OAUTH_TOKEN_URL, json=payload, headers=headers)
+        response = requests.post(GITHUB_OAUTH_TOKEN_URL, json=payload, headers=headers, timeout=30)
 
         if response.status_code != 200:
             error_data = response.json()

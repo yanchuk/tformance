@@ -8,9 +8,16 @@ import logging
 from urllib.parse import parse_qs
 
 from django.conf import settings
-from django.http import HttpResponse, HttpResponseForbidden
+from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
+from django_ratelimit.decorators import ratelimit
 from slack_sdk.signature import SignatureVerifier
+
+# Slack webhook rate limit: 100 requests per minute per IP
+SLACK_WEBHOOK_RATE_LIMIT = "100/m"
+
+# Maximum webhook payload size: 1 MB (Slack payloads are typically small)
+MAX_SLACK_PAYLOAD_SIZE = 1 * 1024 * 1024  # 1 MB in bytes
 
 from apps.integrations.services.slack_surveys import (
     ACTION_AI_GUESS_NO,
@@ -158,7 +165,14 @@ def handle_reviewer_response(payload: dict) -> None:
         logger.error(f"Error handling reviewer response for survey review {survey_review_id}: {e}")
 
 
+# SECURITY: @csrf_exempt justified - External webhook endpoint receiving requests from Slack servers.
+# Cannot use CSRF tokens. Alternative authentication: Slack signature validation using
+# X-Slack-Signature header with shared signing secret (HMAC-SHA256). Additional protections:
+# - Rate limiting: 100 requests/min per IP (django-ratelimit)
+# - Timestamp validation (built into SignatureVerifier, prevents replay attacks)
+# - POST-only method enforcement
 @csrf_exempt
+@ratelimit(key="ip", rate=SLACK_WEBHOOK_RATE_LIMIT, method="POST", block=True)
 def slack_interactions(request):
     """Handle Slack interaction payloads (button clicks).
 
@@ -167,14 +181,33 @@ def slack_interactions(request):
     3. Route to appropriate handler
     4. Return 200 acknowledgment
 
+    Rate limited to 100 requests per minute per IP.
+
+    Security Controls:
+        - Slack signature validation (X-Slack-Signature header)
+        - Timestamp validation (X-Slack-Request-Timestamp, prevents replay)
+        - Rate limiting: 100/min per IP
+        - POST-only method enforcement
+        - Payload size limit: 1 MB max
+
     Args:
         request: Django request object
 
     Returns:
-        HttpResponse (200 on success, 403 on invalid signature, 405 on wrong method)
+        HttpResponse (200 on success, 403 on invalid signature, 405 on wrong method, 413 on payload too large)
     """
     if request.method != "POST":
         return HttpResponse(status=405)
+
+    # Check payload size to prevent DoS via large payloads
+    content_length = request.META.get("CONTENT_LENGTH")
+    if content_length:
+        try:
+            if int(content_length) > MAX_SLACK_PAYLOAD_SIZE:
+                logger.warning(f"Slack webhook payload too large: {content_length} bytes")
+                return JsonResponse({"error": "Payload too large"}, status=413)
+        except (ValueError, TypeError):
+            pass  # Invalid content-length header, let Django handle it
 
     # Verify signature
     if not verify_slack_signature(request):

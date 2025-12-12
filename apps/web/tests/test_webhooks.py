@@ -102,15 +102,15 @@ class TestGitHubWebhook(TestCase):
         payload_bytes = json.dumps(payload).encode()
         signature = self._create_valid_signature(payload_bytes, self.github_integration.webhook_secret)
 
-        # Test with different event types
-        for event_type in ["pull_request", "push", "pull_request_review"]:
+        # Test with different event types (each needs unique delivery ID for replay protection)
+        for i, event_type in enumerate(["pull_request", "push", "pull_request_review"]):
             with self.subTest(event_type=event_type):
                 response = self.client.post(
                     self.webhook_url,
                     data=payload_bytes,
                     content_type="application/json",
                     HTTP_X_GITHUB_EVENT=event_type,
-                    HTTP_X_GITHUB_DELIVERY="72d3162e-cc78-11e3-81ab-4c9367dc0958",
+                    HTTP_X_GITHUB_DELIVERY=f"72d3162e-cc78-11e3-81ab-4c9367dc095{i}",
                     HTTP_X_HUB_SIGNATURE_256=signature,
                 )
                 self.assertEqual(response.status_code, 200)
@@ -134,9 +134,70 @@ class TestGitHubWebhook(TestCase):
             HTTP_X_HUB_SIGNATURE_256=signature,
         )
         self.assertEqual(response.status_code, 200)
-        # The response should indicate which team was identified
+        # Verify response is minimal (no internal IDs leaked for security)
         response_data = response.json()
-        self.assertEqual(response_data.get("team_id"), self.github_integration.team.id)
+        self.assertEqual(response_data.get("status"), "processed")
+        self.assertNotIn("team_id", response_data)  # Security: no internal IDs
+        # Verify handler was called with correct team
+        mock_handler.assert_called_once()
+        call_args = mock_handler.call_args
+        self.assertEqual(call_args[0][0], self.github_integration.team)
+
+    def test_endpoint_returns_400_for_missing_delivery_id(self):
+        """Test that webhook rejects requests without X-GitHub-Delivery header."""
+        payload = self._create_webhook_payload()
+        payload_bytes = json.dumps(payload).encode()
+        signature = self._create_valid_signature(payload_bytes, self.github_integration.webhook_secret)
+
+        response = self.client.post(
+            self.webhook_url,
+            data=payload_bytes,
+            content_type="application/json",
+            HTTP_X_GITHUB_EVENT="pull_request",
+            HTTP_X_HUB_SIGNATURE_256=signature,
+            # Missing HTTP_X_GITHUB_DELIVERY
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("delivery", response.json().get("error", "").lower())
+
+    @patch("apps.metrics.processors.handle_pull_request_event")
+    def test_replay_protection_rejects_duplicate_delivery(self, mock_handler):
+        """Test that webhook rejects duplicate deliveries (replay protection)."""
+        from django.test import override_settings
+
+        # Use LocMemCache for this test since default may be DummyCache
+        with override_settings(CACHES={"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}):
+            from django.core.cache import cache
+
+            cache.clear()  # Clear any existing cache
+
+            payload = self._create_webhook_payload()
+            payload_bytes = json.dumps(payload).encode()
+            signature = self._create_valid_signature(payload_bytes, self.github_integration.webhook_secret)
+            delivery_id = "unique-delivery-id-123"
+
+            # First request should succeed
+            response1 = self.client.post(
+                self.webhook_url,
+                data=payload_bytes,
+                content_type="application/json",
+                HTTP_X_GITHUB_EVENT="pull_request",
+                HTTP_X_GITHUB_DELIVERY=delivery_id,
+                HTTP_X_HUB_SIGNATURE_256=signature,
+            )
+            self.assertEqual(response1.status_code, 200)
+
+            # Second request with same delivery ID should be rejected
+            response2 = self.client.post(
+                self.webhook_url,
+                data=payload_bytes,
+                content_type="application/json",
+                HTTP_X_GITHUB_EVENT="pull_request",
+                HTTP_X_GITHUB_DELIVERY=delivery_id,
+                HTTP_X_HUB_SIGNATURE_256=signature,
+            )
+            self.assertEqual(response2.status_code, 409)  # Conflict
+            self.assertIn("duplicate", response2.json().get("error", "").lower())
 
     def test_endpoint_returns_404_if_repository_not_tracked(self):
         """Test that webhook returns 404 if repository is not in TrackedRepository."""

@@ -1,11 +1,14 @@
 import json
+import logging
 
 from django.conf import settings
+from django.core.cache import cache
 from django.http import Http404, HttpResponseNotAllowed, HttpResponseRedirect, JsonResponse
 from django.shortcuts import render
 from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
 from django.views.decorators.csrf import csrf_exempt
+from django_ratelimit.decorators import ratelimit
 from health_check.views import MainView
 
 from apps.integrations.models import TrackedRepository
@@ -13,6 +16,17 @@ from apps.integrations.services.github_webhooks import validate_webhook_signatur
 from apps.metrics import processors
 from apps.teams.decorators import login_and_team_required
 from apps.teams.helpers import get_open_invitations_for_user
+
+logger = logging.getLogger(__name__)
+
+# Webhook replay protection: cache timeout in seconds (1 hour)
+WEBHOOK_REPLAY_CACHE_TIMEOUT = 3600
+
+# Webhook rate limit: 100 requests per minute per IP
+WEBHOOK_RATE_LIMIT = "100/m"
+
+# Maximum webhook payload size: 5 MB (GitHub allows up to 25 MB, but we limit for safety)
+MAX_WEBHOOK_PAYLOAD_SIZE = 5 * 1024 * 1024  # 5 MB in bytes
 
 
 def home(request):
@@ -57,20 +71,57 @@ class HealthCheck(MainView):
         return super().get(request, *args, **kwargs)
 
 
+# SECURITY: @csrf_exempt justified - External webhook endpoint receiving requests from GitHub servers.
+# Cannot use CSRF tokens. Alternative authentication: HMAC-SHA256 signature validation using
+# X-Hub-Signature-256 header with shared webhook secret. Additional protections:
+# - Rate limiting: 100 requests/min per IP (django-ratelimit)
+# - Replay protection: Delivery ID caching with 1-hour TTL
+# - Signature timing-safe comparison via hmac.compare_digest()
 @csrf_exempt
+@ratelimit(key="ip", rate=WEBHOOK_RATE_LIMIT, method="POST", block=True)
 def github_webhook(request):
     """Handle GitHub webhook events.
 
     Validates the webhook signature and processes events from tracked repositories.
+    Includes replay protection using the X-GitHub-Delivery header.
+    Rate limited to 100 requests per minute per IP.
+
+    Security Controls:
+        - HMAC-SHA256 signature validation (X-Hub-Signature-256)
+        - Replay protection via X-GitHub-Delivery header caching
+        - Rate limiting: 100/min per IP
+        - POST-only method enforcement
+        - Payload size limit: 5 MB max
     """
     # Only accept POST requests
     if request.method != "POST":
         return HttpResponseNotAllowed(["POST"])
 
+    # Check payload size to prevent DoS via large payloads
+    content_length = request.META.get("CONTENT_LENGTH")
+    if content_length:
+        try:
+            if int(content_length) > MAX_WEBHOOK_PAYLOAD_SIZE:
+                logger.warning(f"Webhook payload too large: {content_length} bytes")
+                return JsonResponse({"error": "Payload too large"}, status=413)
+        except (ValueError, TypeError):
+            pass  # Invalid content-length header, let Django handle it
+
     # Check for signature header
     signature_header = request.META.get("HTTP_X_HUB_SIGNATURE_256")
     if not signature_header:
         return JsonResponse({"error": "Missing signature header"}, status=401)
+
+    # Check for delivery ID (replay protection)
+    delivery_id = request.META.get("HTTP_X_GITHUB_DELIVERY")
+    if not delivery_id:
+        return JsonResponse({"error": "Missing delivery ID"}, status=400)
+
+    # Check if this webhook has already been processed (replay protection)
+    cache_key = f"webhook:github:{delivery_id}"
+    if cache.get(cache_key):
+        logger.warning(f"Duplicate webhook delivery detected: {delivery_id}")
+        return JsonResponse({"error": "Duplicate delivery"}, status=409)
 
     # Parse the payload
     try:
@@ -106,11 +157,14 @@ def github_webhook(request):
     elif event_type == "pull_request_review":
         processors.handle_pull_request_review_event(team, payload)
 
-    # Return success response with event and team_id
+    # Mark webhook as processed (replay protection)
+    cache.set(cache_key, True, WEBHOOK_REPLAY_CACHE_TIMEOUT)
+
+    # Return minimal success response (avoid leaking internal IDs)
     return JsonResponse(
         {
+            "status": "processed",
             "event": event_type,
-            "team_id": team.id,
         },
         status=200,
     )

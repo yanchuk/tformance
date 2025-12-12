@@ -1,3 +1,13 @@
+"""Custom template tags for rendering form fields.
+
+Security Note:
+    - mark_safe() usage on line 10: Safe because rendered_values come from
+      _render_field() which processes Django form fields, not user input.
+    - |safe filter on help_text: Safe because help_text is defined in Python form
+      classes by developers, not from user input. Django's convention allows HTML
+      in help_text for formatting (links, emphasis, etc.).
+"""
+
 from django import template
 from django.utils.safestring import mark_safe
 

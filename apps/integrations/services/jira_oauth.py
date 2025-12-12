@@ -126,7 +126,7 @@ def _make_token_request(payload: dict[str, str], error_context: str) -> dict[str
     headers = {"Accept": "application/json"}
 
     try:
-        response = requests.post(JIRA_TOKEN_URL, json=payload, headers=headers)
+        response = requests.post(JIRA_TOKEN_URL, json=payload, headers=headers, timeout=30)
 
         if response.status_code != 200:
             error_data = response.json()
@@ -204,7 +204,7 @@ def get_accessible_resources(access_token: str) -> list[dict[str, Any]]:
     }
 
     try:
-        response = requests.get(JIRA_ACCESSIBLE_RESOURCES_URL, headers=headers)
+        response = requests.get(JIRA_ACCESSIBLE_RESOURCES_URL, headers=headers, timeout=30)
 
         if response.status_code != 200:
             raise JiraOAuthError(f"Failed to get accessible resources: {response.status_code}")

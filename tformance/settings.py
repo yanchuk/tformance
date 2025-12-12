@@ -125,6 +125,7 @@ if DEBUG:
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "apps.utils.middleware.SecurityHeadersMiddleware",  # Custom security headers
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.locale.LocaleMiddleware",
@@ -660,3 +661,26 @@ LOGGING = {
 # Used to encrypt OAuth tokens and other sensitive integration credentials
 # No default - must be set via environment variable (test key is set in conftest.py)
 INTEGRATION_ENCRYPTION_KEY = env("INTEGRATION_ENCRYPTION_KEY", default=None)
+
+# Production Security Settings
+# These settings are enabled when not in DEBUG mode
+if not DEBUG:
+    # HSTS (HTTP Strict Transport Security)
+    # Forces browsers to use HTTPS for all future requests
+    SECURE_HSTS_SECONDS = 31536000  # 1 year
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+
+    # Redirect all HTTP to HTTPS
+    SECURE_SSL_REDIRECT = True
+
+    # Ensure cookies are only sent over HTTPS (already set above, but explicit for production)
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+
+    # Prevent session hijacking by only allowing cookies from the same site
+    SESSION_COOKIE_HTTPONLY = True
+    CSRF_COOKIE_HTTPONLY = True
+
+    # X-Frame-Options - prevent clickjacking
+    X_FRAME_OPTIONS = "DENY"
