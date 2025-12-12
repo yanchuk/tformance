@@ -13,7 +13,7 @@ Product Requirements Documentation for AI Impact Analytics Platform MVP.
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Technical architecture, integrations, security |
 | [DATA-MODEL.md](DATA-MODEL.md) | Database schema, RLS policies, migrations |
 | [SLACK-BOT.md](SLACK-BOT.md) | Slack bot specification, message templates |
-| [DASHBOARDS.md](DASHBOARDS.md) | Metabase dashboard views and widgets |
+| [DASHBOARDS.md](DASHBOARDS.md) | Dashboard views (Chart.js + HTMX) |
 | [ONBOARDING.md](ONBOARDING.md) | User onboarding flow |
 
 ## Quick Summary
@@ -25,7 +25,7 @@ Product Requirements Documentation for AI Impact Analytics Platform MVP.
 | **MVP Integrations** | GitHub, Jira, GitHub Copilot, Slack |
 | **Data Storage** | BYOS - Client's Supabase |
 | **Sync Frequency** | Daily (not hourly) |
-| **Dashboards** | Metabase (embedded) |
+| **Dashboards** | Native (Chart.js + HTMX) |
 | **Pricing** | Per seat ($10-25/seat target) |
 
 ## v2 Scope (Not MVP)

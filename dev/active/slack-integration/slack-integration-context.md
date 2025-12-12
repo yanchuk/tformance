@@ -198,7 +198,7 @@ make ruff
 Phase 4 is COMPLETE. Next phase per IMPLEMENTATION-PLAN.md:
 
 **Phase 5: Basic Dashboard**
-- Metabase embedded dashboards
+- Native dashboards (Chart.js + HTMX)
 - Team metrics visualization
 - AI correlation views
 

@@ -22,7 +22,7 @@ All product requirements are in `/prd/`:
 | Decision | Choice | Why |
 |----------|--------|-----|
 | Client data storage | BYOS (client's Supabase) | Security/privacy differentiator |
-| Dashboards | Metabase (embedded) | Avoid custom UI for MVP |
+| Dashboards | Native (Chart.js + HTMX) | Already integrated, full design control |
 | Sync frequency | Daily | Simpler than real-time |
 | AI data source | Self-reported surveys (MVP) | Cursor API is Enterprise-only |
 | User discovery | GitHub org import | Auto-populate team |
@@ -54,10 +54,9 @@ Follow phases in [IMPLEMENTATION-PLAN.md](prd/IMPLEMENTATION-PLAN.md):
 
 ## Data Flow
 
-GitHub/Jira APIs → Our Backend → Client's Supabase → Metabase → User ↓ Slack Bot (surveys)
+GitHub/Jira APIs → Our Backend → PostgreSQL → Dashboard (Chart.js) → User ↓ Slack Bot (surveys)
 
-We store: OAuth tokens (encrypted), accounts, billing
-Client stores: All metrics, surveys, user data
+We store: OAuth tokens (encrypted), accounts, billing, all metrics/surveys (team-isolated)
 
 # Codebase Guidelines
 

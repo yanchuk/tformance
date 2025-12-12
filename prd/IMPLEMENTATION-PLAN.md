@@ -182,30 +182,38 @@ Even with single database, we maintain strict team isolation:
 
 **Goal:** First visible value - CTO can see metrics
 
-### 4.1 Dashboard Tool Setup
-- Install/configure BI tool (Metabase)
-- Connect to database
-- Set up embedding mechanism
+### 4.1 Dashboard Infrastructure
+- Create dashboard views and templates
+- Set up Chart.js integration (already in codebase via Vite)
+- Configure HTMX lazy loading pattern for charts
 
 ### 4.2 Core Metrics Dashboard
-- PR throughput chart
-- Cycle time trend
-- Review time trend
+- PR throughput chart (bar chart)
+- Cycle time trend (line chart)
+- Review time trend (line chart)
 - Jira velocity (if connected)
+- Stat cards with DaisyUI styling
 
 ### 4.3 User Context Filtering
-- Pass user role to dashboard
-- Filter data based on permissions
-- Layered visibility working
+- Django view-level permission checks
+- Filter data based on user role
+- Layered visibility working (dev/lead/admin)
 
-### 4.4 Dashboard Embedding
-- Embed dashboard in app
-- Handle authentication/authorization
-- Basic navigation between views
+### 4.4 Dashboard Components
+- Reusable chart components (line, bar, pie, scatter)
+- Stat card components
+- Data table components with sorting/filtering
+- Date range filter component
 
 **Milestone:** CTO can login and see real metrics from their GitHub/Jira
 
 **Why fourth:** This is first "value delivered" moment - everything before was setup
+
+**Technical Approach:**
+- Chart.js 4.5.1 already installed via Vite
+- Existing utilities in `assets/javascript/dashboard/dashboard-charts.js`
+- HTMX `hx-trigger="load"` for lazy loading charts
+- DaisyUI components for consistent styling
 
 ---
 
@@ -563,7 +571,7 @@ If timeline is tight, consider:
 
 | Original | Alternative | Trade-off |
 |----------|-------------|-----------|
-| Metabase embedding | Simple tables/charts | Less powerful but faster to build |
+| Full Chart.js dashboards | Simple HTML tables | Less visual but faster to build |
 | Slack bot | Email surveys | Lower engagement but simpler |
 | Daily sync | Manual sync button | Less automated but works |
 | AI Feedback System | Manual feedback form | Less sophisticated but validates demand |
@@ -593,7 +601,7 @@ These can happen in parallel with different people/streams:
 | 1. Core Models | Low | Standard Django models |
 | 2. GitHub | High | Most complex integration, webhooks |
 | 3. Jira | Medium | Similar pattern to GitHub |
-| 4. Dashboard | Medium | Depends on tool choice |
+| 4. Dashboard | Low | Chart.js already integrated |
 | 5. Slack | High | Interactive, real-time, multiple flows |
 | 6. AI Correlation | Low | Dashboard additions |
 | 7. Leaderboard | Low | Scheduled job + message |

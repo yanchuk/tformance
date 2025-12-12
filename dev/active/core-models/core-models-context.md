@@ -138,7 +138,7 @@ Phase 1 is complete. Next phases per IMPLEMENTATION-PLAN.md:
 
 1. **Phase 2: GitHub Integration** - OAuth flow, webhooks, sync
 2. **Phase 3: Jira Integration** - OAuth flow, sync
-3. **Phase 4: Basic Dashboard** - Metabase embedding
+3. **Phase 4: Basic Dashboard** - Native (Chart.js + HTMX)
 
 ---
 

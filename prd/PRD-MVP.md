@@ -15,7 +15,7 @@
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Technical architecture, integrations, security |
 | [DATA-MODEL.md](DATA-MODEL.md) | Database schema, RLS policies |
 | [SLACK-BOT.md](SLACK-BOT.md) | Slack bot specification, message templates |
-| [DASHBOARDS.md](DASHBOARDS.md) | Metabase dashboard views |
+| [DASHBOARDS.md](DASHBOARDS.md) | Dashboard views (Chart.js) |
 | [ONBOARDING.md](ONBOARDING.md) | User onboarding flow |
 
 ---
@@ -87,7 +87,7 @@ An analytics platform that helps CTOs of small-to-medium engineering teams under
 
 | Feature | Description |
 |---------|-------------|
-| **AI Correlation Dashboard** | Visualize AI usage vs delivery metrics (Metabase) |
+| **AI Correlation Dashboard** | Visualize AI usage vs delivery metrics |
 | **PR Survey System** | Author: "AI-assisted?" / Reviewer: Quality rating + AI guess |
 | **AI Detective Game** | Reveal if reviewer guessed correctly, weekly leaderboard |
 | **Layered Visibility** | Dev sees own, Lead sees team, CTO sees all |
@@ -177,7 +177,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for full security details.
 ### Architecture
 - **Backend:** Django (sync workers, Slack bot, auth)
 - **Database:** PostgreSQL (single database, team-isolated)
-- **Dashboards:** Metabase (embedded)
+- **Dashboards:** Native (Chart.js + HTMX + DaisyUI)
 - **Sync:** Daily batch + GitHub webhooks for real-time PR events
 
 ### Why Daily Sync (not hourly)
@@ -237,7 +237,6 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for full technical details.
 |----------|-------------------|
 | Exact pricing | Before launch |
 | Product name | Before launch |
-| Metabase hosting (cloud vs self-hosted) | Before development |
 
 ---
 

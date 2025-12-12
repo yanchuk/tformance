@@ -32,3 +32,6 @@ static/.vite/
 claude-code-infrastructure-showcase/
 # Playwright MCP screenshots
 .playwright-mcp/
+# Git worktrees (separate branches checked out in dev/active/)
+dev/active/security-fixes/
+dev/active/ui-review/
