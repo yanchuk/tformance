@@ -6,7 +6,8 @@
   {% trans "Email Address" %}
 {% endblock head_title %}
 {% block content %}
-  <h2 class="pg-subtitle">{% translate "Email Address" %}</h2>
+<div class="app-card">
+  <h2 class="text-xl font-bold text-slate-100 mb-4">{% translate "Email Address" %}</h2>
   {% if not emailaddresses %}
     {% include "account/snippets/warn_no_email.html" %}
   {% endif %}
@@ -14,30 +15,30 @@
   <form method="post" action="{{ action_url }}" class="space-y-4">
     {% csrf_token %}
     {% if current_emailaddress %}
-      <div class="w-full mt-2">
-        <label class="block mb-1 font-bold" for="current_email">
-          {% translate "Current email" %}:
+      <div class="app-form-group">
+        <label class="app-label" for="current_email">
+          {% translate "Current email" %}
         </label>
-        <input id="current_email" type="email" value="{{ current_emailaddress.email }}" disabled class="input input-ghost w-full" />
+        <input id="current_email" type="email" value="{{ current_emailaddress.email }}" disabled class="app-input opacity-70" />
       </div>
     {% endif %}
     {% if new_emailaddress %}
-      <div class="w-full mt-2">
-        <label class="block mb-1 font-bold" for="new_email">
+      <div class="app-form-group">
+        <label class="app-label" for="new_email">
           {% if not current_emailaddress %}
-            {% translate "Current email" %}:
+            {% translate "Current email" %}
           {% else %}
-            {% translate "Changing to" %}:
+            {% translate "Changing to" %}
           {% endif %}
         </label>
-        <input id="new_email" type="email" value="{{ new_emailaddress.email }}" disabled class="input input-ghost w-full" />
-        <small class="pg-text-muted">{% blocktranslate %}Your email address is still pending verification.{% endblocktranslate %}</small>
+        <input id="new_email" type="email" value="{{ new_emailaddress.email }}" disabled class="app-input opacity-70" />
+        <p class="app-helper">{% blocktranslate %}Your email address is still pending verification.{% endblocktranslate %}</p>
         <div class="flex gap-2 mt-2">
-          <button form="pending-email" type="submit" name="action_send" class="btn btn-secondary btn-sm">
+          <button form="pending-email" type="submit" name="action_send" class="app-btn-secondary app-btn-sm">
             {% trans 'Re-send Verification' %}
           </button>
           {% if current_emailaddress %}
-            <button form="pending-email" type="submit" name="action_remove" class="btn btn-error btn-sm">
+            <button form="pending-email" type="submit" name="action_remove" class="app-btn-danger app-btn-sm">
               {% trans 'Cancel Change' %}
             </button>
           {% endif %}
@@ -45,15 +46,17 @@
       </div>
     {% endif %}
     {% render_text_input form.email %}
-    <div class="mt-4">
-      <button name="action_add" type="submit" class="btn btn-primary">
+    <div class="pt-2">
+      <button name="action_add" type="submit" class="app-btn-primary">
         {% trans "Change Email" %}
       </button>
     </div>
   </form>
   {% if new_emailaddress %}
-    <form style="display: none" id="pending-email" method="post" action="{% url 'account_email' %}"> {% csrf_token %}
+    <form style="display: none" id="pending-email" method="post" action="{% url 'account_email' %}">
+      {% csrf_token %}
       <input type="hidden" name="email" value="{{ new_emailaddress.email }}">
     </form>
   {% endif %}
+</div>
 {% endblock content %}
