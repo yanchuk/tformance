@@ -28,6 +28,7 @@ from wagtail.contrib.sitemaps import Sitemap
 from wagtail.documents import urls as wagtaildocs_urls
 
 from apps.integrations.urls import team_urlpatterns as integrations_team_urls
+from apps.metrics.urls import team_urlpatterns as metrics_team_urls
 from apps.subscriptions.urls import team_urlpatterns as subscriptions_team_urls
 from apps.teams.urls import team_urlpatterns as single_team_urls
 from apps.web.sitemaps import StaticViewSitemap
@@ -46,6 +47,7 @@ team_urlpatterns = [
     path("subscription/", include(subscriptions_team_urls)),
     path("team/", include(single_team_urls)),
     path("integrations/", include(integrations_team_urls)),
+    path("metrics/", include(metrics_team_urls)),
     path("example/", include("apps.teams_example.urls")),
 ]
 
