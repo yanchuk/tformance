@@ -4,6 +4,7 @@
    add custom components using imports, as described here:
    https://tailwindcss.com/docs/using-with-preprocessors#build-time-imports
 */
+@import './app/tailwind/design-system.css';
 @import './app/tailwind/app-components.css';
 @import './app/tailwind/subscription-components.css';
 @import './app/tailwind/landing-page.css';

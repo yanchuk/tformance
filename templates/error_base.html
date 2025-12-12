@@ -1,17 +1,27 @@
 {% extends "web/base.html" %}
 {% load static %}
 {% block body %}
-<section class="section mt-7">
-  <div class="container">
-    <div class="pg-columns pg-columns-reversed pg-align-items-center">
-      <div class="pg-column">
-        <img class="img-fluid" src="{% static 'images/undraw/undraw_alert.svg' %}" alt="Uh-Oh">
-      </div>
-      <div class="pg-column">
+<div class="app-bg min-h-screen flex items-center justify-center px-4">
+  <div class="max-w-2xl w-full">
+    <div class="app-card text-center py-12">
+      <div class="mb-8">
+        <div class="w-24 h-24 mx-auto bg-rose-500/20 rounded-full flex items-center justify-center mb-6">
+          <i class="fa fa-exclamation-triangle text-4xl text-rose-400"></i>
+        </div>
         {% block error_details %}
         {% endblock %}
       </div>
+      <div class="flex flex-col sm:flex-row gap-3 justify-center">
+        <a href="{% url 'web:home' %}" class="app-btn-primary">
+          <i class="fa fa-home mr-2"></i>
+          Go Home
+        </a>
+        <button onclick="history.back()" class="app-btn-secondary">
+          <i class="fa fa-arrow-left mr-2"></i>
+          Go Back
+        </button>
+      </div>
     </div>
   </div>
-</section>
+</div>
 {% endblock%}

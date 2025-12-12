@@ -1,0 +1,570 @@
+/* =============================================================================
+   TFORMANCE DESIGN SYSTEM
+   Terminal-Native Dashboard Aesthetic
+   =============================================================================
+
+   Color Tokens (defined in tailwind.config.js):
+   - deep: #0f172a (slate-900) - deepest background
+   - surface: #1e293b (slate-800) - card backgrounds
+   - elevated: #334155 (slate-700) - borders, elevated elements
+   - muted: #64748b (slate-500) - muted text
+   - cyan: #06b6d4 - primary accent
+   - cyan-light: #22d3ee
+   - cyan-dark: #0891b2
+
+   Typography:
+   - font-sans: 'DM Sans' - UI text, headings
+   - font-mono: 'JetBrains Mono' - code, metrics, data
+   ============================================================================= */
+
+/* -----------------------------------------------------------------------------
+   PAGE BACKGROUNDS
+   ----------------------------------------------------------------------------- */
+
+/* Main app background - use on body or main containers */
+.app-bg {
+  @apply bg-deep min-h-screen;
+}
+
+/* Alternative surface background for contrast sections */
+.app-bg-surface {
+  @apply bg-surface;
+}
+
+/* Subtle grid pattern overlay (like landing page) */
+.app-bg-grid {
+  background-image:
+    linear-gradient(rgba(6, 182, 212, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(6, 182, 212, 0.03) 1px, transparent 1px);
+  background-size: 60px 60px;
+}
+
+/* -----------------------------------------------------------------------------
+   CARDS
+   ----------------------------------------------------------------------------- */
+
+/* Primary card style - dark surface with subtle border */
+.app-card {
+  @apply bg-surface rounded-xl border border-elevated;
+  @apply p-6;
+}
+
+/* Card with hover effect */
+.app-card-interactive {
+  @apply bg-surface rounded-xl border border-elevated p-6;
+  @apply hover:border-cyan/40 transition-colors duration-200;
+}
+
+/* Card header section */
+.app-card-header {
+  @apply flex items-center justify-between mb-4 pb-4 border-b border-elevated;
+}
+
+/* Card title */
+.app-card-title {
+  @apply text-lg font-semibold text-slate-100;
+}
+
+/* Card subtitle/description */
+.app-card-subtitle {
+  @apply text-sm text-slate-400;
+}
+
+/* Card body content */
+.app-card-body {
+  @apply text-slate-300;
+}
+
+/* Card footer/actions */
+.app-card-footer {
+  @apply flex items-center justify-end gap-3 mt-4 pt-4 border-t border-elevated;
+}
+
+/* -----------------------------------------------------------------------------
+   STAT/METRIC CARDS
+   ----------------------------------------------------------------------------- */
+
+/* Stat card container */
+.app-stat-card {
+  @apply bg-surface rounded-xl border border-elevated p-6;
+  @apply hover:border-cyan/40 transition-colors duration-200;
+}
+
+/* Large stat value - use font-mono for numbers */
+.app-stat-value {
+  @apply text-4xl md:text-5xl font-bold font-mono text-slate-100;
+}
+
+/* Stat value variants */
+.app-stat-value-positive {
+  @apply text-emerald-400;
+}
+
+.app-stat-value-negative {
+  @apply text-rose-400;
+}
+
+.app-stat-value-neutral {
+  @apply text-slate-100;
+}
+
+/* Stat label */
+.app-stat-label {
+  @apply text-sm text-slate-400 mt-2;
+}
+
+/* Stat change indicator */
+.app-stat-change {
+  @apply text-sm font-mono flex items-center gap-1 mt-1;
+}
+
+.app-stat-change-up {
+  @apply text-emerald-400;
+}
+
+.app-stat-change-down {
+  @apply text-rose-400;
+}
+
+/* -----------------------------------------------------------------------------
+   BUTTONS
+   ----------------------------------------------------------------------------- */
+
+/* Base button styles (use as mixin via multiple classes or standalone) */
+.app-btn,
+.app-btn-primary,
+.app-btn-secondary,
+.app-btn-ghost,
+.app-btn-danger {
+  @apply inline-flex items-center justify-center gap-2 px-4 py-2;
+  @apply rounded-lg font-medium transition-all duration-200;
+  @apply focus:outline-none focus:ring-2 focus:ring-cyan/50 focus:ring-offset-2 focus:ring-offset-deep;
+}
+
+/* Primary button - cyan accent */
+.app-btn-primary {
+  @apply bg-cyan hover:bg-cyan-dark text-deep;
+}
+
+/* Secondary button - outlined */
+.app-btn-secondary {
+  @apply bg-surface border border-elevated text-slate-200;
+  @apply hover:bg-elevated hover:border-slate-500;
+}
+
+/* Ghost button - transparent */
+.app-btn-ghost {
+  @apply bg-transparent text-slate-300;
+  @apply hover:bg-surface hover:text-slate-100;
+}
+
+/* Danger button */
+.app-btn-danger {
+  @apply bg-rose-600 hover:bg-rose-700 text-white;
+}
+
+/* Button sizes */
+.app-btn-sm {
+  @apply px-3 py-1.5 text-sm;
+}
+
+.app-btn-lg {
+  @apply px-6 py-3 text-lg;
+}
+
+/* Icon button */
+.app-btn-icon {
+  @apply p-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-surface;
+  @apply transition-colors duration-200;
+}
+
+/* -----------------------------------------------------------------------------
+   FORM INPUTS
+   ----------------------------------------------------------------------------- */
+
+/* Text input */
+.app-input {
+  @apply w-full px-4 py-2.5 rounded-lg;
+  @apply bg-deep border border-elevated text-slate-100;
+  @apply placeholder:text-slate-500;
+  @apply focus:outline-none focus:border-cyan focus:ring-1 focus:ring-cyan/50;
+  @apply transition-colors duration-200;
+}
+
+/* Select dropdown */
+.app-select {
+  @apply w-full px-4 py-2.5 rounded-lg appearance-none;
+  @apply bg-deep border border-elevated text-slate-100;
+  @apply focus:outline-none focus:border-cyan focus:ring-1 focus:ring-cyan/50;
+  @apply transition-colors duration-200;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%2364748b' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+  background-position: right 0.75rem center;
+  background-repeat: no-repeat;
+  background-size: 1.25em 1.25em;
+  padding-right: 2.5rem;
+}
+
+/* Textarea */
+.app-textarea {
+  @apply w-full px-4 py-3 rounded-lg;
+  @apply bg-deep border border-elevated text-slate-100;
+  @apply placeholder:text-slate-500;
+  @apply focus:outline-none focus:border-cyan focus:ring-1 focus:ring-cyan/50;
+  @apply transition-colors duration-200 resize-y;
+}
+
+/* Checkbox */
+.app-checkbox {
+  @apply w-5 h-5 rounded border-elevated bg-deep text-cyan;
+  @apply focus:ring-cyan focus:ring-offset-deep;
+}
+
+/* Form label */
+.app-label {
+  @apply block text-sm font-medium text-slate-300 mb-1.5;
+}
+
+/* Form helper text */
+.app-helper {
+  @apply text-xs text-slate-500 mt-1;
+}
+
+/* Form error */
+.app-error {
+  @apply text-xs text-rose-400 mt-1;
+}
+
+/* Form group */
+.app-form-group {
+  @apply mb-4;
+}
+
+/* -----------------------------------------------------------------------------
+   NAVIGATION
+   ----------------------------------------------------------------------------- */
+
+/* Sidebar container */
+.app-sidebar {
+  @apply w-64 bg-surface border-r border-elevated min-h-screen;
+  @apply flex flex-col;
+}
+
+/* Sidebar header */
+.app-sidebar-header {
+  @apply px-4 py-4 border-b border-elevated;
+}
+
+/* Sidebar navigation list */
+.app-sidebar-nav {
+  @apply flex-1 py-4;
+}
+
+/* Sidebar nav item */
+.app-sidebar-item {
+  @apply flex items-center gap-3 px-4 py-2.5 mx-2 rounded-lg;
+  @apply text-slate-400 transition-all duration-200;
+  @apply hover:bg-deep hover:text-slate-200;
+}
+
+/* Active sidebar item */
+.app-sidebar-item-active {
+  @apply bg-deep text-cyan border-l-2 border-cyan;
+}
+
+/* Sidebar section heading */
+.app-sidebar-heading {
+  @apply px-4 py-2 text-xs font-semibold uppercase tracking-wider text-slate-500;
+}
+
+/* Top navbar */
+.app-navbar {
+  @apply bg-surface border-b border-elevated;
+  @apply px-4 py-3 flex items-center justify-between;
+}
+
+/* -----------------------------------------------------------------------------
+   BADGES
+   ----------------------------------------------------------------------------- */
+
+.app-badge {
+  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+}
+
+.app-badge-default {
+  @apply bg-elevated text-slate-300;
+}
+
+.app-badge-primary {
+  @apply bg-cyan/20 text-cyan;
+}
+
+.app-badge-success {
+  @apply bg-emerald-500/20 text-emerald-400;
+}
+
+.app-badge-warning {
+  @apply bg-amber-500/20 text-amber-400;
+}
+
+.app-badge-danger {
+  @apply bg-rose-500/20 text-rose-400;
+}
+
+/* -----------------------------------------------------------------------------
+   TABLES
+   ----------------------------------------------------------------------------- */
+
+.app-table {
+  @apply w-full text-sm;
+}
+
+.app-table thead {
+  @apply bg-deep;
+}
+
+.app-table th {
+  @apply px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-400;
+  @apply border-b border-elevated;
+}
+
+.app-table td {
+  @apply px-4 py-3 text-slate-300;
+  @apply border-b border-elevated/50;
+}
+
+.app-table tbody tr {
+  @apply hover:bg-deep/50 transition-colors;
+}
+
+/* -----------------------------------------------------------------------------
+   ALERTS/MESSAGES
+   ----------------------------------------------------------------------------- */
+
+.app-alert {
+  @apply p-4 rounded-lg border flex items-start gap-3;
+}
+
+.app-alert-info {
+  @apply bg-cyan/10 border-cyan/30 text-cyan;
+}
+
+.app-alert-success {
+  @apply bg-emerald-500/10 border-emerald-500/30 text-emerald-400;
+}
+
+.app-alert-warning {
+  @apply bg-amber-500/10 border-amber-500/30 text-amber-400;
+}
+
+.app-alert-error {
+  @apply bg-rose-500/10 border-rose-500/30 text-rose-400;
+}
+
+/* -----------------------------------------------------------------------------
+   PROGRESS INDICATORS
+   ----------------------------------------------------------------------------- */
+
+/* Progress bar track */
+.app-progress {
+  @apply w-full h-2 bg-elevated rounded-full overflow-hidden;
+}
+
+/* Progress bar fill */
+.app-progress-bar {
+  @apply h-full bg-cyan rounded-full transition-all duration-300;
+}
+
+/* Step indicator */
+.app-steps {
+  @apply flex items-center justify-between;
+}
+
+.app-step {
+  @apply flex flex-col items-center;
+}
+
+.app-step-indicator {
+  @apply w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium;
+  @apply bg-elevated text-slate-400;
+}
+
+.app-step-indicator-active {
+  @apply bg-cyan text-deep;
+}
+
+.app-step-indicator-complete {
+  @apply bg-cyan text-deep;
+}
+
+.app-step-label {
+  @apply mt-2 text-xs text-slate-400;
+}
+
+.app-step-label-active {
+  @apply text-cyan;
+}
+
+/* Step connector line */
+.app-step-connector {
+  @apply flex-1 h-0.5 bg-elevated mx-2;
+}
+
+.app-step-connector-complete {
+  @apply bg-cyan;
+}
+
+/* -----------------------------------------------------------------------------
+   LOADING STATES
+   ----------------------------------------------------------------------------- */
+
+/* Skeleton loading */
+.app-skeleton {
+  @apply bg-elevated rounded animate-pulse;
+}
+
+/* Spinner */
+.app-spinner {
+  @apply animate-spin h-5 w-5 border-2 border-slate-600 border-t-cyan rounded-full;
+}
+
+/* -----------------------------------------------------------------------------
+   EMPTY STATES
+   ----------------------------------------------------------------------------- */
+
+.app-empty-state {
+  @apply text-center py-12;
+}
+
+.app-empty-state-icon {
+  @apply w-16 h-16 mx-auto mb-4 text-slate-600;
+}
+
+.app-empty-state-title {
+  @apply text-lg font-medium text-slate-300 mb-2;
+}
+
+.app-empty-state-description {
+  @apply text-slate-500 max-w-sm mx-auto;
+}
+
+/* -----------------------------------------------------------------------------
+   TOOLTIPS
+   ----------------------------------------------------------------------------- */
+
+.app-tooltip {
+  @apply absolute z-50 px-3 py-2 text-sm bg-deep border border-elevated rounded-lg shadow-xl;
+  @apply text-slate-200;
+}
+
+/* -----------------------------------------------------------------------------
+   DIVIDERS
+   ----------------------------------------------------------------------------- */
+
+.app-divider {
+  @apply border-t border-elevated my-4;
+}
+
+.app-divider-vertical {
+  @apply border-l border-elevated mx-4 h-full;
+}
+
+/* -----------------------------------------------------------------------------
+   TEXT UTILITIES
+   ----------------------------------------------------------------------------- */
+
+.app-text-muted {
+  @apply text-slate-500;
+}
+
+.app-text-secondary {
+  @apply text-slate-400;
+}
+
+.app-text-primary {
+  @apply text-slate-200;
+}
+
+.app-text-accent {
+  @apply text-cyan;
+}
+
+/* Monospace for data */
+.app-text-mono {
+  @apply font-mono;
+}
+
+/* Gradient text (like landing page) */
+.app-text-gradient {
+  @apply bg-gradient-to-r from-cyan to-cyan-light bg-clip-text text-transparent;
+}
+
+/* -----------------------------------------------------------------------------
+   PAGE LAYOUT
+   ----------------------------------------------------------------------------- */
+
+/* Page container with sidebar */
+.app-layout {
+  @apply flex min-h-screen bg-deep;
+}
+
+/* Main content area */
+.app-main {
+  @apply flex-1 p-6;
+}
+
+/* Page header */
+.app-page-header {
+  @apply mb-6;
+}
+
+.app-page-title {
+  @apply text-2xl font-bold text-slate-100;
+}
+
+.app-page-subtitle {
+  @apply text-slate-400 mt-1;
+}
+
+/* Content grid for dashboard */
+.app-grid {
+  @apply grid gap-6;
+}
+
+.app-grid-2 {
+  @apply grid-cols-1 md:grid-cols-2;
+}
+
+.app-grid-3 {
+  @apply grid-cols-1 md:grid-cols-2 lg:grid-cols-3;
+}
+
+.app-grid-4 {
+  @apply grid-cols-1 md:grid-cols-2 lg:grid-cols-4;
+}
+
+/* -----------------------------------------------------------------------------
+   DARK SCROLLBAR
+   ----------------------------------------------------------------------------- */
+
+.app-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: theme('colors.elevated') theme('colors.deep');
+}
+
+.app-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.app-scrollbar::-webkit-scrollbar-track {
+  background: theme('colors.deep');
+}
+
+.app-scrollbar::-webkit-scrollbar-thumb {
+  background: theme('colors.elevated');
+  border-radius: 4px;
+}
+
+.app-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: theme('colors.muted');
+}
