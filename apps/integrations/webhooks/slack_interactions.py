@@ -92,7 +92,7 @@ def handle_author_response(survey_id: str, ai_assisted: bool) -> None:
         ai_assisted: Whether PR was AI-assisted
     """
     try:
-        survey = PRSurvey.objects.get(id=int(survey_id))
+        survey = PRSurvey.objects.get(id=int(survey_id))  # noqa: TEAM001 - Webhook protected by signature validation
 
         # Ignore if already responded
         if survey.author_ai_assisted is not None:
@@ -146,7 +146,7 @@ def handle_reviewer_response(payload: dict) -> None:
         return
 
     try:
-        survey_review = PRSurveyReview.objects.get(id=int(survey_review_id))
+        survey_review = PRSurveyReview.objects.get(id=int(survey_review_id))  # noqa: TEAM001 - Webhook protected by signature validation
 
         # Ignore if already responded
         if survey_review.quality_rating is not None:

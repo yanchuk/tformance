@@ -381,6 +381,32 @@ This ensures you're using current API methods and best practices, not outdated p
 - The `Team` model is like a virtual tenant and most data access / functionality happens within
   the context of a `Team`.
 
+#### Team Isolation Linting (TEAM001)
+
+A custom linter enforces safe query patterns on `BaseTeamModel` subclasses to prevent tenant data leakage:
+
+```bash
+make lint-team-isolation        # Check production code
+make lint-team-isolation-all    # Include test files
+```
+
+**Safe patterns:**
+```python
+Model.objects.filter(team=team)      # Explicit team filter
+Model.for_team.filter(...)           # Team-scoped manager
+Model.objects.filter(related__in=team_scoped_qs)  # Filtering through relations
+```
+
+**Unsafe pattern (flagged):**
+```python
+Model.objects.filter(state='merged')  # TEAM001: Missing team filter
+```
+
+**Suppression:** When intentional unscoped access is needed (webhooks, Celery tasks with IDs from trusted sources):
+```python
+Model.objects.get(id=id)  # noqa: TEAM001 - ID from Celery task queue
+```
+
 #### Django URLs, Views and Teams
 
 - Many apps have a `urls.py` with a `urlpatterns` and a `team_urlpatterns` value.

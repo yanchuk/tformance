@@ -151,7 +151,7 @@ def github_webhook(request):
 
     # Look up the tracked repository
     try:
-        tracked_repo = TrackedRepository.objects.select_related("integration").get(github_repo_id=github_repo_id)
+        tracked_repo = TrackedRepository.objects.select_related("integration").get(github_repo_id=github_repo_id)  # noqa: TEAM001 - Webhook lookup, validated after
     except TrackedRepository.DoesNotExist:
         return JsonResponse({"error": "Repository not tracked"}, status=404)
 

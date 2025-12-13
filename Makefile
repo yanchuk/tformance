@@ -64,6 +64,14 @@ ruff-lint:  ## Runs ruff linter on the codebase
 
 ruff: ruff-format ruff-lint ## Formatting and linting using Ruff
 
+lint-team-isolation: ## Check for unsafe .objects. usage on team models
+	@uv run python scripts/lint_team_isolation.py apps/ --exclude-tests
+
+lint-team-isolation-all: ## Check all files including tests for team isolation
+	@uv run python scripts/lint_team_isolation.py apps/
+
+lint: ruff lint-team-isolation ## Run all linters (ruff + team isolation)
+
 npm-install-all: ## Runs npm install
 	@npm install
 

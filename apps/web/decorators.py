@@ -47,7 +47,7 @@ def require_valid_survey_token(allow_expired=False):
                 if allow_expired:
                     # Allow expired tokens if survey exists (user already completed it)
                     try:
-                        survey = PRSurvey.objects.get(token=token)
+                        survey = PRSurvey.objects.get(token=token)  # noqa: TEAM001 - Token-based lookup
                         request.survey = survey
                     except PRSurvey.DoesNotExist:
                         raise Http404("Survey not found")

@@ -97,7 +97,7 @@ def get_reviewer_accuracy_stats(reviewer: TeamMember) -> AccuracyStats:
     Returns: {correct: int, total: int, percentage: float}
     """
     # Use aggregation for better performance
-    stats = PRSurveyReview.objects.filter(
+    stats = PRSurveyReview.objects.filter(  # noqa: TEAM001 - reviewer is team-scoped
         reviewer=reviewer,
         guess_correct__isnull=False,
     ).aggregate(

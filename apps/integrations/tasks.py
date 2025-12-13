@@ -50,7 +50,7 @@ def sync_repository_task(self, repo_id: int) -> dict:
     """
     # Get TrackedRepository by id
     try:
-        tracked_repo = TrackedRepository.objects.get(id=repo_id)
+        tracked_repo = TrackedRepository.objects.get(id=repo_id)  # noqa: TEAM001 - ID from Celery task queue
     except TrackedRepository.DoesNotExist:
         logger.warning(f"TrackedRepository with id {repo_id} not found")
         return {"error": f"TrackedRepository with id {repo_id} not found"}
@@ -112,8 +112,8 @@ def sync_all_repositories_task() -> dict:
     logger.info("Starting sync for all repositories")
 
     # Query all tracked repositories with optimized counts
-    active_repos = TrackedRepository.objects.filter(is_active=True)
-    repos_skipped = TrackedRepository.objects.filter(is_active=False).count()
+    active_repos = TrackedRepository.objects.filter(is_active=True)  # noqa: TEAM001 - System job iterating all repos
+    repos_skipped = TrackedRepository.objects.filter(is_active=False).count()  # noqa: TEAM001 - System job
 
     repos_dispatched = 0
 
@@ -148,7 +148,7 @@ def sync_jira_project_task(self, project_id: int) -> dict:
     """
     # Get TrackedJiraProject by id
     try:
-        tracked_project = TrackedJiraProject.objects.get(id=project_id)
+        tracked_project = TrackedJiraProject.objects.get(id=project_id)  # noqa: TEAM001 - ID from Celery task queue
     except TrackedJiraProject.DoesNotExist:
         logger.warning(f"TrackedJiraProject with id {project_id} not found")
         return {"error": f"TrackedJiraProject with id {project_id} not found"}
@@ -210,8 +210,8 @@ def sync_all_jira_projects_task() -> dict:
     logger.info("Starting sync for all Jira projects")
 
     # Query all tracked Jira projects
-    active_projects = TrackedJiraProject.objects.filter(is_active=True)
-    projects_skipped = TrackedJiraProject.objects.filter(is_active=False).count()
+    active_projects = TrackedJiraProject.objects.filter(is_active=True)  # noqa: TEAM001 - System job iterating all projects
+    projects_skipped = TrackedJiraProject.objects.filter(is_active=False).count()  # noqa: TEAM001 - System job
 
     projects_dispatched = 0
 
@@ -287,7 +287,7 @@ def send_pr_surveys_task(pull_request_id: int) -> dict:
     """
     # Get PR by ID with related author for efficiency
     try:
-        pr = PullRequest.objects.select_related("author", "team").get(id=pull_request_id)
+        pr = PullRequest.objects.select_related("author", "team").get(id=pull_request_id)  # noqa: TEAM001 - ID from Celery task
     except PullRequest.DoesNotExist:
         logger.warning(f"PullRequest with id {pull_request_id} not found")
         return {"error": f"PullRequest with id {pull_request_id} not found"}
@@ -342,7 +342,7 @@ def send_pr_surveys_task(pull_request_id: int) -> dict:
 
     # Get unique reviewers from PR reviews
     reviewers = (
-        PRReview.objects.filter(pull_request=pr)
+        PRReview.objects.filter(pull_request=pr)  # noqa: TEAM001 - filtering by team-scoped PR
         .select_related("reviewer")
         .exclude(reviewer__isnull=True)
         .values_list("reviewer", flat=True)
@@ -351,11 +351,11 @@ def send_pr_surveys_task(pull_request_id: int) -> dict:
     # Convert IDs back to TeamMember objects
     from apps.metrics.models import TeamMember
 
-    reviewers = TeamMember.objects.filter(id__in=reviewers)
+    reviewers = TeamMember.objects.filter(id__in=reviewers)  # noqa: TEAM001 - IDs from team-scoped queryset
 
     # Optimize: Fetch all responded reviewer IDs in a single query to avoid N+1
     responded_reviewer_ids = set(
-        PRSurveyReview.objects.filter(survey_id=survey.id, responded_at__isnull=False).values_list(
+        PRSurveyReview.objects.filter(survey_id=survey.id, responded_at__isnull=False).values_list(  # noqa: TEAM001 - filtering by team-scoped survey
             "reviewer_id", flat=True
         )
     )
@@ -374,7 +374,7 @@ def send_pr_surveys_task(pull_request_id: int) -> dict:
 
         try:
             # Create reviewer survey entry if it doesn't exist (idempotency check)
-            if not PRSurveyReview.objects.filter(survey_id=survey.id, reviewer_id=reviewer.id).exists():
+            if not PRSurveyReview.objects.filter(survey_id=survey.id, reviewer_id=reviewer.id).exists():  # noqa: TEAM001 - filtering by team-scoped survey
                 create_reviewer_survey(survey, reviewer)
 
             # Build and send reviewer survey blocks
@@ -413,7 +413,7 @@ def send_reveal_task(survey_review_id: int) -> dict:
     """
     # Get PRSurveyReview
     try:
-        survey_review = PRSurveyReview.objects.select_related("survey", "reviewer", "survey__team").get(
+        survey_review = PRSurveyReview.objects.select_related("survey", "reviewer", "survey__team").get(  # noqa: TEAM001 - ID from Celery task
             id=survey_review_id
         )
     except PRSurveyReview.DoesNotExist:
@@ -526,7 +526,7 @@ def post_weekly_leaderboards_task() -> dict:
     errors = []
 
     # Get all SlackIntegrations
-    integrations = SlackIntegration.objects.select_related("team", "credential").all()
+    integrations = SlackIntegration.objects.select_related("team", "credential").all()  # noqa: TEAM001 - System job iterating all integrations
 
     for integration in integrations:
         teams_checked += 1
@@ -599,7 +599,7 @@ def post_survey_comment_task(self, pull_request_id: int) -> dict:
     """
     # Get PR by ID
     try:
-        pr = PullRequest.objects.get(id=pull_request_id)
+        pr = PullRequest.objects.get(id=pull_request_id)  # noqa: TEAM001 - ID from Celery task
     except PullRequest.DoesNotExist:
         logger.warning(f"PullRequest with id {pull_request_id} not found")
         return {"error": "PR not found"}
@@ -612,7 +612,7 @@ def post_survey_comment_task(self, pull_request_id: int) -> dict:
     # Skip if survey already exists (idempotent)
     from apps.metrics.models import PRSurvey
 
-    if PRSurvey.objects.filter(pull_request=pr).exists():
+    if PRSurvey.objects.filter(pull_request=pr).exists():  # noqa: TEAM001 - filtering by team-scoped PR
         logger.info(f"Skipping survey comment - survey already exists for PR: {pr.github_pr_id}")
         return {"skipped": True, "reason": "Survey already exists"}
 

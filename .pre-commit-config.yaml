@@ -11,3 +11,13 @@ repos:
       - id: ruff-check
         args: ["--fix"]
       - id: ruff-format
+
+  - repo: local
+    hooks:
+      - id: team-isolation-lint
+        name: Team Isolation Lint (TEAM001)
+        entry: uv run python scripts/lint_team_isolation.py
+        language: system
+        types: [python]
+        pass_filenames: false
+        args: ["apps/", "--exclude-tests"]

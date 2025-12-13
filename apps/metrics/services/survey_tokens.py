@@ -85,7 +85,7 @@ def validate_survey_token(token: str) -> "PRSurvey":
         raise InvalidTokenError("Token is required")
 
     try:
-        survey = PRSurvey.objects.get(token=token)
+        survey = PRSurvey.objects.get(token=token)  # noqa: TEAM001 - Token-based lookup (cryptographically secure)
     except PRSurvey.DoesNotExist:
         logger.warning("Token validation failed: token not found", extra={"token": token[:8] + "..."})
         raise InvalidTokenError("Invalid token")
