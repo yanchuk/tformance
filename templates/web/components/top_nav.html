@@ -13,7 +13,10 @@
         {% block mobile_nav %}
         <li>
           <a class="{% if request.path == '/' %}active{% endif %}" href="{% url 'web:home' %}">
-            <div>{{project_meta.NAME}}</div>
+            <div class="flex items-center gap-2">
+              <i class="fa-solid fa-rocket text-primary"></i>
+              <span class="font-bold text-lg tracking-tight">{{project_meta.NAME|title}}</span>
+            </div>
           </a>
         </li>
         {% if blog_url %}
@@ -28,9 +31,12 @@
     </div>
   </div>
   <div class="navbar-center hidden lg:flex">
-    <div role="tablist" class="tabs p-0">
-      <a class="tab {% if request.path == '/' %}tab-active{% endif %}" href="{% url 'web:home' %}">
-        <div>{{project_meta.NAME}}</div>
+    <div role="tablist" class="tabs p-0 items-center">
+      <a class="tab !h-auto py-2 {% if request.path == '/' %}tab-active{% endif %}" href="{% url 'web:home' %}">
+        <div class="flex items-center gap-2">
+           <i class="fa-solid fa-rocket text-primary text-xl"></i>
+           <span class="font-bold text-2xl tracking-tight font-sans">{{project_meta.NAME|title}}</span>
+        </div>
       </a>
       {% if blog_url %}
       <a class="tab {% if blog_url in request.path %}tab-active{% endif %}" href="{{ blog_url }}">
