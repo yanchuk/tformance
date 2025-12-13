@@ -18,13 +18,12 @@ class TestGetJiraUsers(TestCase):
 
     def setUp(self):
         """Set up test fixtures using factories."""
-        from apps.integrations.services.encryption import encrypt
-
+        # EncryptedTextField auto-encrypts, so use plaintext values
         self.team = TeamFactory()
         self.credential = IntegrationCredentialFactory(
             team=self.team,
             provider="jira",
-            access_token=encrypt("test_access_token_123"),
+            access_token="test_access_token_123",
         )
 
     @patch("apps.integrations.services.jira_user_matching.get_jira_client")
@@ -193,13 +192,12 @@ class TestSyncJiraUsers(TestCase):
 
     def setUp(self):
         """Set up test fixtures using factories."""
-        from apps.integrations.services.encryption import encrypt
-
+        # EncryptedTextField auto-encrypts, so use plaintext values
         self.team = TeamFactory()
         self.credential = IntegrationCredentialFactory(
             team=self.team,
             provider="jira",
-            access_token=encrypt("test_access_token_123"),
+            access_token="test_access_token_123",
         )
 
     @patch("apps.integrations.services.jira_user_matching.get_jira_users")

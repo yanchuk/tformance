@@ -3,8 +3,6 @@
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 
-from apps.integrations.services.encryption import decrypt
-
 
 class SlackClientError(Exception):
     """Exception raised for Slack client errors."""
@@ -16,13 +14,13 @@ def get_slack_client(credential) -> WebClient:
     """Create authenticated Slack WebClient from credential.
 
     Args:
-        credential: IntegrationCredential instance with encrypted access_token
+        credential: IntegrationCredential instance with EncryptedTextField access_token
 
     Returns:
         WebClient: Authenticated Slack WebClient instance
     """
-    token = decrypt(credential.access_token)
-    return WebClient(token=token)
+    # EncryptedTextField auto-decrypts access_token
+    return WebClient(token=credential.access_token)
 
 
 def send_dm(client: WebClient, user_id: str, blocks: list, text: str = "") -> dict:

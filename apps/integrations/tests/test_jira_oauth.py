@@ -528,37 +528,37 @@ class TestEnsureValidJiraToken(TestCase):
         from django.utils import timezone
 
         from apps.integrations.factories import IntegrationCredentialFactory
-        from apps.integrations.services.encryption import encrypt
 
+        # EncryptedTextField auto-encrypts, so use plaintext values
         # Create credential with valid token (expires in 10 minutes)
         self.valid_credential = IntegrationCredentialFactory(
             provider="jira",
-            access_token=encrypt("valid_access_token_123"),
-            refresh_token=encrypt("valid_refresh_token_456"),
+            access_token="valid_access_token_123",
+            refresh_token="valid_refresh_token_456",
             token_expires_at=timezone.now() + timezone.timedelta(minutes=10),
         )
 
         # Create credential with expiring soon token (expires in 3 minutes)
         self.expiring_credential = IntegrationCredentialFactory(
             provider="jira",
-            access_token=encrypt("expiring_access_token_789"),
-            refresh_token=encrypt("expiring_refresh_token_012"),
+            access_token="expiring_access_token_789",
+            refresh_token="expiring_refresh_token_012",
             token_expires_at=timezone.now() + timezone.timedelta(minutes=3),
         )
 
         # Create credential with expired token
         self.expired_credential = IntegrationCredentialFactory(
             provider="jira",
-            access_token=encrypt("expired_access_token_abc"),
-            refresh_token=encrypt("expired_refresh_token_def"),
+            access_token="expired_access_token_abc",
+            refresh_token="expired_refresh_token_def",
             token_expires_at=timezone.now() - timezone.timedelta(minutes=5),
         )
 
         # Create credential with no expiration date
         self.no_expiry_credential = IntegrationCredentialFactory(
             provider="jira",
-            access_token=encrypt("no_expiry_access_token_xyz"),
-            refresh_token=encrypt("no_expiry_refresh_token_uvw"),
+            access_token="no_expiry_access_token_xyz",
+            refresh_token="no_expiry_refresh_token_uvw",
             token_expires_at=None,
         )
 
@@ -608,8 +608,6 @@ class TestEnsureValidJiraToken(TestCase):
     @patch("apps.integrations.services.jira_oauth.refresh_access_token")
     def test_updates_credential_with_new_tokens_after_refresh(self, mock_refresh):
         """Test that ensure_valid_jira_token updates credential with new tokens after refresh."""
-        from apps.integrations.services.encryption import decrypt
-
         # Arrange
         mock_refresh.return_value = {
             "access_token": "refreshed_access_token",
@@ -623,9 +621,9 @@ class TestEnsureValidJiraToken(TestCase):
         # Assert - reload credential from database
         self.expired_credential.refresh_from_db()
 
-        # Check that tokens were updated
-        self.assertEqual(decrypt(self.expired_credential.access_token), "refreshed_access_token")
-        self.assertEqual(decrypt(self.expired_credential.refresh_token), "refreshed_refresh_token")
+        # Check that tokens were updated (EncryptedTextField auto-decrypts)
+        self.assertEqual(self.expired_credential.access_token, "refreshed_access_token")
+        self.assertEqual(self.expired_credential.refresh_token, "refreshed_refresh_token")
 
     @patch("apps.integrations.services.jira_oauth.refresh_access_token")
     def test_updates_token_expires_at_after_refresh(self, mock_refresh):

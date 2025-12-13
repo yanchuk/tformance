@@ -38,13 +38,12 @@ class TestGetSlackClient(TestCase):
 
     def setUp(self):
         """Set up test fixtures using factories."""
-        from apps.integrations.services.encryption import encrypt
-
+        # EncryptedTextField auto-encrypts, so use plaintext values
         self.team = TeamFactory()
         self.credential = IntegrationCredentialFactory(
             team=self.team,
             provider="slack",
-            access_token=encrypt("xoxb-test-slack-bot-token"),
+            access_token="xoxb-test-slack-bot-token",
         )
 
     @patch("apps.integrations.services.slack_client.WebClient")
@@ -61,23 +60,19 @@ class TestGetSlackClient(TestCase):
         self.assertEqual(result, mock_webclient_instance)
         mock_webclient_class.assert_called_once()
 
-    @patch("apps.integrations.services.slack_client.decrypt")
     @patch("apps.integrations.services.slack_client.WebClient")
-    def test_get_slack_client_uses_decrypted_token_from_credential(self, mock_webclient_class, mock_decrypt):
-        """Test that get_slack_client uses decrypted token from credential."""
+    def test_get_slack_client_uses_decrypted_token_from_credential(self, mock_webclient_class):
+        """Test that get_slack_client uses the decrypted token from credential via EncryptedTextField."""
         # Arrange
-        mock_decrypt.return_value = "xoxb-decrypted-slack-token"
         mock_webclient_instance = MagicMock()
         mock_webclient_class.return_value = mock_webclient_instance
 
         # Act
         get_slack_client(self.credential)
 
-        # Assert - decrypt should be called with the encrypted token
-        mock_decrypt.assert_called_once_with(self.credential.access_token)
-
         # Assert - WebClient should be instantiated with the decrypted token
-        mock_webclient_class.assert_called_once_with(token="xoxb-decrypted-slack-token")
+        # EncryptedTextField auto-decrypts when accessing credential.access_token
+        mock_webclient_class.assert_called_once_with(token="xoxb-test-slack-bot-token")
 
 
 class TestSendDM(TestCase):

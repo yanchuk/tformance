@@ -27,7 +27,8 @@ from apps.metrics.factories import TeamFactory
 from apps.users.models import CustomUser
 
 from .models import GitHubIntegration, IntegrationCredential, JiraIntegration, SlackIntegration, TrackedJiraProject
-from .services.encryption import encrypt
+
+# Note: encrypt no longer needed - EncryptedTextField handles this automatically
 
 
 class UserFactory(DjangoModelFactory):
@@ -51,8 +52,9 @@ class IntegrationCredentialFactory(DjangoModelFactory):
 
     team = factory.SubFactory(TeamFactory)
     provider = factory.Iterator(["github", "jira", "slack"])
-    access_token = factory.LazyFunction(lambda: encrypt("fake_access_token_12345"))
-    refresh_token = factory.LazyFunction(lambda: encrypt("fake_refresh_token_67890"))
+    # EncryptedTextField auto-encrypts on save, so use plaintext values
+    access_token = "fake_access_token_12345"
+    refresh_token = "fake_refresh_token_67890"
     token_expires_at = factory.LazyFunction(lambda: timezone.now() + timezone.timedelta(days=30))
     scopes = factory.List(["read:org", "repo"])
     connected_by = factory.SubFactory(UserFactory)

@@ -11,7 +11,7 @@ from django.conf import settings
 from django.core.signing import BadSignature, Signer
 from django.utils import timezone
 
-from apps.integrations.services.encryption import decrypt, encrypt
+# Note: encrypt/decrypt no longer needed - EncryptedTextField handles this automatically
 
 # Jira OAuth constants
 JIRA_AUTH_URL = "https://auth.atlassian.com/authorize"
@@ -233,16 +233,15 @@ def ensure_valid_jira_token(credential: "IntegrationCredential") -> str:  # noqa
     needs_refresh = credential.token_expires_at is None or credential.token_expires_at <= now + TOKEN_REFRESH_BUFFER
 
     if not needs_refresh:
-        # Token is valid, return decrypted
-        return decrypt(credential.access_token)
+        # Token is valid, EncryptedTextField auto-decrypts
+        return credential.access_token
 
-    # Refresh the token
-    decrypted_refresh_token = decrypt(credential.refresh_token)
-    token_data = refresh_access_token(decrypted_refresh_token)
+    # Refresh the token (EncryptedTextField auto-decrypts refresh_token)
+    token_data = refresh_access_token(credential.refresh_token)
 
-    # Update credential with new tokens
-    credential.access_token = encrypt(token_data["access_token"])
-    credential.refresh_token = encrypt(token_data["refresh_token"])
+    # Update credential with new tokens (EncryptedTextField auto-encrypts on save)
+    credential.access_token = token_data["access_token"]
+    credential.refresh_token = token_data["refresh_token"]
     credential.token_expires_at = now + timedelta(seconds=token_data["expires_in"])
     credential.save(update_fields=["access_token", "refresh_token", "token_expires_at"])
 

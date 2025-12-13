@@ -505,13 +505,13 @@ class TestSyncRepositoryHistory(TestCase):
         )
 
     @patch("apps.integrations.services.github_sync.get_repository_pull_requests")
-    @patch("apps.integrations.services.encryption.decrypt")
-    def test_sync_repository_history_creates_pull_requests(self, mock_decrypt, mock_get_prs):
+    # Note: EncryptedTextField handles decryption automatically
+    def test_sync_repository_history_creates_pull_requests(self, mock_get_prs):
         """Test that sync_repository_history creates PullRequest records from API data."""
         from apps.integrations.services.github_sync import sync_repository_history
         from apps.metrics.models import PullRequest
 
-        mock_decrypt.return_value = "decrypted_token"
+        # EncryptedTextField auto-decrypts access_token
         mock_get_prs.return_value = [
             {
                 "id": 123456789,
@@ -543,8 +543,8 @@ class TestSyncRepositoryHistory(TestCase):
         self.assertEqual(result["prs_synced"], 1)
 
     @patch("apps.integrations.services.github_sync.get_repository_pull_requests")
-    @patch("apps.integrations.services.encryption.decrypt")
-    def test_sync_repository_history_updates_existing_prs(self, mock_decrypt, mock_get_prs):
+    # Note: EncryptedTextField handles decryption automatically
+    def test_sync_repository_history_updates_existing_prs(self, mock_get_prs):
         """Test that sync_repository_history updates existing PRs (idempotent)."""
         from apps.integrations.services.github_sync import sync_repository_history
         from apps.metrics.factories import PullRequestFactory
@@ -559,7 +559,7 @@ class TestSyncRepositoryHistory(TestCase):
             state="open",
         )
 
-        mock_decrypt.return_value = "decrypted_token"
+        # EncryptedTextField auto-decrypts access_token
         mock_get_prs.return_value = [
             {
                 "id": 123456789,
@@ -589,13 +589,13 @@ class TestSyncRepositoryHistory(TestCase):
         self.assertEqual(result["prs_synced"], 1)
 
     @patch("apps.integrations.services.github_sync.get_repository_pull_requests")
-    @patch("apps.integrations.services.encryption.decrypt")
-    def test_sync_repository_history_maps_author_to_team_member(self, mock_decrypt, mock_get_prs):
+    # Note: EncryptedTextField handles decryption automatically
+    def test_sync_repository_history_maps_author_to_team_member(self, mock_get_prs):
         """Test that sync_repository_history links author FK correctly."""
         from apps.integrations.services.github_sync import sync_repository_history
         from apps.metrics.models import PullRequest
 
-        mock_decrypt.return_value = "decrypted_token"
+        # EncryptedTextField auto-decrypts access_token
         mock_get_prs.return_value = [
             {
                 "id": 123456789,
@@ -620,13 +620,13 @@ class TestSyncRepositoryHistory(TestCase):
         self.assertEqual(pr.author.github_id, "12345")
 
     @patch("apps.integrations.services.github_sync.get_repository_pull_requests")
-    @patch("apps.integrations.services.encryption.decrypt")
-    def test_sync_repository_history_handles_unknown_author(self, mock_decrypt, mock_get_prs):
+    # Note: EncryptedTextField handles decryption automatically
+    def test_sync_repository_history_handles_unknown_author(self, mock_get_prs):
         """Test that sync_repository_history sets author=None if not found."""
         from apps.integrations.services.github_sync import sync_repository_history
         from apps.metrics.models import PullRequest
 
-        mock_decrypt.return_value = "decrypted_token"
+        # EncryptedTextField auto-decrypts access_token
         mock_get_prs.return_value = [
             {
                 "id": 123456789,
@@ -650,15 +650,15 @@ class TestSyncRepositoryHistory(TestCase):
         self.assertIsNone(pr.author)
 
     @patch("apps.integrations.services.github_sync.get_repository_pull_requests")
-    @patch("apps.integrations.services.encryption.decrypt")
-    def test_sync_repository_history_calculates_cycle_time(self, mock_decrypt, mock_get_prs):
+    # Note: EncryptedTextField handles decryption automatically
+    def test_sync_repository_history_calculates_cycle_time(self, mock_get_prs):
         """Test that sync_repository_history calculates cycle_time_hours for merged PRs."""
         from decimal import Decimal
 
         from apps.integrations.services.github_sync import sync_repository_history
         from apps.metrics.models import PullRequest
 
-        mock_decrypt.return_value = "decrypted_token"
+        # EncryptedTextField auto-decrypts access_token
         mock_get_prs.return_value = [
             {
                 "id": 123456789,
@@ -684,14 +684,14 @@ class TestSyncRepositoryHistory(TestCase):
         self.assertEqual(pr.cycle_time_hours, Decimal("29.00"))
 
     @patch("apps.integrations.services.github_sync.get_repository_pull_requests")
-    @patch("apps.integrations.services.encryption.decrypt")
-    def test_sync_repository_history_updates_last_sync_at(self, mock_decrypt, mock_get_prs):
+    # Note: EncryptedTextField handles decryption automatically
+    def test_sync_repository_history_updates_last_sync_at(self, mock_get_prs):
         """Test that sync_repository_history updates TrackedRepository.last_sync_at."""
         from django.utils import timezone
 
         from apps.integrations.services.github_sync import sync_repository_history
 
-        mock_decrypt.return_value = "decrypted_token"
+        # EncryptedTextField auto-decrypts access_token
         mock_get_prs.return_value = []
 
         # Verify last_sync_at is None initially
@@ -709,12 +709,12 @@ class TestSyncRepositoryHistory(TestCase):
         self.assertLessEqual(self.tracked_repo.last_sync_at, after_sync)
 
     @patch("apps.integrations.services.github_sync.get_repository_pull_requests")
-    @patch("apps.integrations.services.encryption.decrypt")
-    def test_sync_repository_history_returns_summary(self, mock_decrypt, mock_get_prs):
+    # Note: EncryptedTextField handles decryption automatically
+    def test_sync_repository_history_returns_summary(self, mock_get_prs):
         """Test that sync_repository_history returns dict with prs_synced count."""
         from apps.integrations.services.github_sync import sync_repository_history
 
-        mock_decrypt.return_value = "decrypted_token"
+        # EncryptedTextField auto-decrypts access_token
         mock_get_prs.return_value = [
             {
                 "id": 1,
@@ -752,12 +752,12 @@ class TestSyncRepositoryHistory(TestCase):
 
     @patch("apps.integrations.services.github_sync.get_pull_request_reviews")
     @patch("apps.integrations.services.github_sync.get_repository_pull_requests")
-    @patch("apps.integrations.services.encryption.decrypt")
-    def test_sync_repository_history_fetches_reviews_for_each_pr(self, mock_decrypt, mock_get_prs, mock_get_reviews):
+    # Note: EncryptedTextField handles decryption automatically
+    def test_sync_repository_history_fetches_reviews_for_each_pr(self, mock_get_prs, mock_get_reviews):
         """Test that sync_repository_history calls get_pull_request_reviews for each PR."""
         from apps.integrations.services.github_sync import sync_repository_history
 
-        mock_decrypt.return_value = "decrypted_token"
+        # EncryptedTextField auto-decrypts access_token
         mock_get_prs.return_value = [
             {
                 "id": 123456789,
@@ -793,19 +793,19 @@ class TestSyncRepositoryHistory(TestCase):
         self.assertEqual(mock_get_reviews.call_count, 2)
         # First PR (number 42)
         first_call = mock_get_reviews.call_args_list[0]
-        self.assertEqual(first_call[0][0], "decrypted_token")  # access_token
+        self.assertEqual(first_call[0][0], "encrypted_token_12345")  # access_token
         self.assertEqual(first_call[0][1], "acme-corp/api-server")  # repo_full_name
         self.assertEqual(first_call[0][2], 42)  # pr_number
         # Second PR (number 43)
         second_call = mock_get_reviews.call_args_list[1]
-        self.assertEqual(second_call[0][0], "decrypted_token")
+        self.assertEqual(second_call[0][0], "encrypted_token_12345")
         self.assertEqual(second_call[0][1], "acme-corp/api-server")
         self.assertEqual(second_call[0][2], 43)
 
     @patch("apps.integrations.services.github_sync.get_pull_request_reviews")
     @patch("apps.integrations.services.github_sync.get_repository_pull_requests")
-    @patch("apps.integrations.services.encryption.decrypt")
-    def test_sync_repository_history_creates_review_records(self, mock_decrypt, mock_get_prs, mock_get_reviews):
+    # Note: EncryptedTextField handles decryption automatically
+    def test_sync_repository_history_creates_review_records(self, mock_get_prs, mock_get_reviews):
         """Test that sync_repository_history creates PRReview records from API data."""
         from apps.integrations.services.github_sync import sync_repository_history
         from apps.metrics.factories import TeamMemberFactory
@@ -818,7 +818,7 @@ class TestSyncRepositoryHistory(TestCase):
             display_name="Jane Reviewer",
         )
 
-        mock_decrypt.return_value = "decrypted_token"
+        # EncryptedTextField auto-decrypts access_token
         mock_get_prs.return_value = [
             {
                 "id": 123456789,
@@ -870,8 +870,8 @@ class TestSyncRepositoryHistory(TestCase):
 
     @patch("apps.integrations.services.github_sync.get_pull_request_reviews")
     @patch("apps.integrations.services.github_sync.get_repository_pull_requests")
-    @patch("apps.integrations.services.encryption.decrypt")
-    def test_sync_repository_history_maps_reviewer_to_team_member(self, mock_decrypt, mock_get_prs, mock_get_reviews):
+    # Note: EncryptedTextField handles decryption automatically
+    def test_sync_repository_history_maps_reviewer_to_team_member(self, mock_get_prs, mock_get_reviews):
         """Test that sync_repository_history links reviewer FK correctly."""
         from apps.integrations.services.github_sync import sync_repository_history
         from apps.metrics.factories import TeamMemberFactory
@@ -884,7 +884,7 @@ class TestSyncRepositoryHistory(TestCase):
             display_name="Jane Reviewer",
         )
 
-        mock_decrypt.return_value = "decrypted_token"
+        # EncryptedTextField auto-decrypts access_token
         mock_get_prs.return_value = [
             {
                 "id": 123456789,
@@ -918,8 +918,8 @@ class TestSyncRepositoryHistory(TestCase):
 
     @patch("apps.integrations.services.github_sync.get_pull_request_reviews")
     @patch("apps.integrations.services.github_sync.get_repository_pull_requests")
-    @patch("apps.integrations.services.encryption.decrypt")
-    def test_sync_repository_history_sets_first_review_at(self, mock_decrypt, mock_get_prs, mock_get_reviews):
+    # Note: EncryptedTextField handles decryption automatically
+    def test_sync_repository_history_sets_first_review_at(self, mock_get_prs, mock_get_reviews):
         """Test that sync_repository_history updates PR's first_review_at with earliest review."""
         from apps.integrations.services.github_sync import sync_repository_history
         from apps.metrics.factories import TeamMemberFactory
@@ -932,7 +932,7 @@ class TestSyncRepositoryHistory(TestCase):
             display_name="Jane Reviewer",
         )
 
-        mock_decrypt.return_value = "decrypted_token"
+        # EncryptedTextField auto-decrypts access_token
         mock_get_prs.return_value = [
             {
                 "id": 123456789,
@@ -975,8 +975,8 @@ class TestSyncRepositoryHistory(TestCase):
 
     @patch("apps.integrations.services.github_sync.get_pull_request_reviews")
     @patch("apps.integrations.services.github_sync.get_repository_pull_requests")
-    @patch("apps.integrations.services.encryption.decrypt")
-    def test_sync_repository_history_calculates_review_time(self, mock_decrypt, mock_get_prs, mock_get_reviews):
+    # Note: EncryptedTextField handles decryption automatically
+    def test_sync_repository_history_calculates_review_time(self, mock_get_prs, mock_get_reviews):
         """Test that sync_repository_history calculates review_time_hours correctly."""
         from decimal import Decimal
 
@@ -991,7 +991,7 @@ class TestSyncRepositoryHistory(TestCase):
             display_name="Jane Reviewer",
         )
 
-        mock_decrypt.return_value = "decrypted_token"
+        # EncryptedTextField auto-decrypts access_token
         mock_get_prs.return_value = [
             {
                 "id": 123456789,
@@ -1026,8 +1026,8 @@ class TestSyncRepositoryHistory(TestCase):
 
     @patch("apps.integrations.services.github_sync.get_pull_request_reviews")
     @patch("apps.integrations.services.github_sync.get_repository_pull_requests")
-    @patch("apps.integrations.services.encryption.decrypt")
-    def test_sync_repository_history_returns_reviews_synced_count(self, mock_decrypt, mock_get_prs, mock_get_reviews):
+    # Note: EncryptedTextField handles decryption automatically
+    def test_sync_repository_history_returns_reviews_synced_count(self, mock_get_prs, mock_get_reviews):
         """Test that sync_repository_history returns reviews_synced in summary."""
         from apps.integrations.services.github_sync import sync_repository_history
         from apps.metrics.factories import TeamMemberFactory
@@ -1039,7 +1039,7 @@ class TestSyncRepositoryHistory(TestCase):
             display_name="Jane Reviewer",
         )
 
-        mock_decrypt.return_value = "decrypted_token"
+        # EncryptedTextField auto-decrypts access_token
         mock_get_prs.return_value = [
             {
                 "id": 123456789,
@@ -1451,14 +1451,12 @@ class TestSyncRepositoryIncremental(TestCase):
         )
 
     @patch("apps.integrations.services.github_sync.sync_repository_history")
-    @patch("apps.integrations.services.encryption.decrypt")
-    def test_sync_repository_incremental_falls_back_to_full_sync_when_last_sync_at_is_none(
-        self, mock_decrypt, mock_sync_history
-    ):
+    # Note: EncryptedTextField handles decryption automatically
+    def test_sync_repository_incremental_falls_back_to_full_sync_when_last_sync_at_is_none(self, mock_sync_history):
         """Test that sync_repository_incremental calls sync_repository_history when last_sync_at is None."""
         from apps.integrations.services.github_sync import sync_repository_incremental
 
-        mock_decrypt.return_value = "decrypted_token"
+        # EncryptedTextField auto-decrypts access_token
         mock_sync_history.return_value = {
             "prs_synced": 10,
             "reviews_synced": 5,
@@ -1479,16 +1477,16 @@ class TestSyncRepositoryIncremental(TestCase):
         self.assertEqual(result["reviews_synced"], 5)
 
     @patch("apps.integrations.services.github_sync.get_updated_pull_requests")
-    @patch("apps.integrations.services.encryption.decrypt")
+    # Note: EncryptedTextField handles decryption automatically
     def test_sync_repository_incremental_calls_get_updated_pull_requests_with_since_parameter(
-        self, mock_decrypt, mock_get_updated_prs
+        self, mock_get_updated_prs
     ):
         """Test that sync_repository_incremental calls get_updated_pull_requests with correct since parameter."""
         from datetime import datetime
 
         from apps.integrations.services.github_sync import sync_repository_incremental
 
-        mock_decrypt.return_value = "decrypted_token"
+        # EncryptedTextField auto-decrypts access_token
         mock_get_updated_prs.return_value = []
 
         # Set last_sync_at to a known time
@@ -1500,18 +1498,18 @@ class TestSyncRepositoryIncremental(TestCase):
         sync_repository_incremental(self.tracked_repo)
 
         # Verify get_updated_pull_requests was called with correct parameters
-        mock_get_updated_prs.assert_called_once_with("decrypted_token", "acme-corp/api-server", last_sync_time)
+        mock_get_updated_prs.assert_called_once_with("encrypted_token_12345", "acme-corp/api-server", last_sync_time)
 
     @patch("apps.integrations.services.github_sync.get_updated_pull_requests")
-    @patch("apps.integrations.services.encryption.decrypt")
-    def test_sync_repository_incremental_creates_new_pull_requests(self, mock_decrypt, mock_get_updated_prs):
+    # Note: EncryptedTextField handles decryption automatically
+    def test_sync_repository_incremental_creates_new_pull_requests(self, mock_get_updated_prs):
         """Test that sync_repository_incremental creates new PullRequest records from updated PRs."""
         from datetime import datetime
 
         from apps.integrations.services.github_sync import sync_repository_incremental
         from apps.metrics.models import PullRequest
 
-        mock_decrypt.return_value = "decrypted_token"
+        # EncryptedTextField auto-decrypts access_token
         mock_get_updated_prs.return_value = [
             {
                 "id": 123456789,
@@ -1546,8 +1544,8 @@ class TestSyncRepositoryIncremental(TestCase):
         self.assertEqual(result["prs_synced"], 1)
 
     @patch("apps.integrations.services.github_sync.get_updated_pull_requests")
-    @patch("apps.integrations.services.encryption.decrypt")
-    def test_sync_repository_incremental_updates_existing_pull_requests(self, mock_decrypt, mock_get_updated_prs):
+    # Note: EncryptedTextField handles decryption automatically
+    def test_sync_repository_incremental_updates_existing_pull_requests(self, mock_get_updated_prs):
         """Test that sync_repository_incremental updates existing PRs (idempotent)."""
         from datetime import datetime
 
@@ -1564,7 +1562,7 @@ class TestSyncRepositoryIncremental(TestCase):
             state="open",
         )
 
-        mock_decrypt.return_value = "decrypted_token"
+        # EncryptedTextField auto-decrypts access_token
         mock_get_updated_prs.return_value = [
             {
                 "id": 123456789,
@@ -1600,16 +1598,16 @@ class TestSyncRepositoryIncremental(TestCase):
 
     @patch("apps.integrations.services.github_sync.get_pull_request_reviews")
     @patch("apps.integrations.services.github_sync.get_updated_pull_requests")
-    @patch("apps.integrations.services.encryption.decrypt")
+    # Note: EncryptedTextField handles decryption automatically
     def test_sync_repository_incremental_syncs_reviews_for_each_updated_pr(
-        self, mock_decrypt, mock_get_updated_prs, mock_get_reviews
+        self, mock_get_updated_prs, mock_get_reviews
     ):
         """Test that sync_repository_incremental calls get_pull_request_reviews for each updated PR."""
         from datetime import datetime
 
         from apps.integrations.services.github_sync import sync_repository_incremental
 
-        mock_decrypt.return_value = "decrypted_token"
+        # EncryptedTextField auto-decrypts access_token
         mock_get_updated_prs.return_value = [
             {
                 "id": 123456789,
@@ -1650,21 +1648,19 @@ class TestSyncRepositoryIncremental(TestCase):
         # Verify get_pull_request_reviews was called for each PR
         self.assertEqual(mock_get_reviews.call_count, 2)
         first_call = mock_get_reviews.call_args_list[0]
-        self.assertEqual(first_call[0][0], "decrypted_token")
+        self.assertEqual(first_call[0][0], "encrypted_token_12345")
         self.assertEqual(first_call[0][1], "acme-corp/api-server")
         self.assertEqual(first_call[0][2], 42)
 
         second_call = mock_get_reviews.call_args_list[1]
-        self.assertEqual(second_call[0][0], "decrypted_token")
+        self.assertEqual(second_call[0][0], "encrypted_token_12345")
         self.assertEqual(second_call[0][1], "acme-corp/api-server")
         self.assertEqual(second_call[0][2], 43)
 
     @patch("apps.integrations.services.github_sync.get_pull_request_reviews")
     @patch("apps.integrations.services.github_sync.get_updated_pull_requests")
-    @patch("apps.integrations.services.encryption.decrypt")
-    def test_sync_repository_incremental_creates_review_records(
-        self, mock_decrypt, mock_get_updated_prs, mock_get_reviews
-    ):
+    # Note: EncryptedTextField handles decryption automatically
+    def test_sync_repository_incremental_creates_review_records(self, mock_get_updated_prs, mock_get_reviews):
         """Test that sync_repository_incremental creates PRReview records from API data."""
         from datetime import datetime
 
@@ -1679,7 +1675,7 @@ class TestSyncRepositoryIncremental(TestCase):
             display_name="Jane Reviewer",
         )
 
-        mock_decrypt.return_value = "decrypted_token"
+        # EncryptedTextField auto-decrypts access_token
         mock_get_updated_prs.return_value = [
             {
                 "id": 123456789,
@@ -1720,14 +1716,14 @@ class TestSyncRepositoryIncremental(TestCase):
         self.assertEqual(result["reviews_synced"], 1)
 
     @patch("apps.integrations.services.github_sync.get_updated_pull_requests")
-    @patch("apps.integrations.services.encryption.decrypt")
-    def test_sync_repository_incremental_updates_last_sync_at(self, mock_decrypt, mock_get_updated_prs):
+    # Note: EncryptedTextField handles decryption automatically
+    def test_sync_repository_incremental_updates_last_sync_at(self, mock_get_updated_prs):
         """Test that sync_repository_incremental updates TrackedRepository.last_sync_at on completion."""
         from datetime import datetime
 
         from apps.integrations.services.github_sync import sync_repository_incremental
 
-        mock_decrypt.return_value = "decrypted_token"
+        # EncryptedTextField auto-decrypts access_token
         mock_get_updated_prs.return_value = []
 
         # Set initial last_sync_at
@@ -1750,14 +1746,14 @@ class TestSyncRepositoryIncremental(TestCase):
         self.assertLessEqual(self.tracked_repo.last_sync_at, after_sync)
 
     @patch("apps.integrations.services.github_sync.get_updated_pull_requests")
-    @patch("apps.integrations.services.encryption.decrypt")
-    def test_sync_repository_incremental_returns_correct_summary_dict(self, mock_decrypt, mock_get_updated_prs):
+    # Note: EncryptedTextField handles decryption automatically
+    def test_sync_repository_incremental_returns_correct_summary_dict(self, mock_get_updated_prs):
         """Test that sync_repository_incremental returns dict with prs_synced, reviews_synced, errors."""
         from datetime import datetime
 
         from apps.integrations.services.github_sync import sync_repository_incremental
 
-        mock_decrypt.return_value = "decrypted_token"
+        # EncryptedTextField auto-decrypts access_token
         mock_get_updated_prs.return_value = [
             {
                 "id": 1,
@@ -1803,17 +1799,15 @@ class TestSyncRepositoryIncremental(TestCase):
         self.assertIsInstance(result["errors"], list)
 
     @patch("apps.integrations.services.github_sync.get_updated_pull_requests")
-    @patch("apps.integrations.services.encryption.decrypt")
-    def test_sync_repository_incremental_handles_individual_pr_errors_gracefully(
-        self, mock_decrypt, mock_get_updated_prs
-    ):
+    # Note: EncryptedTextField handles decryption automatically
+    def test_sync_repository_incremental_handles_individual_pr_errors_gracefully(self, mock_get_updated_prs):
         """Test that sync_repository_incremental continues processing even if one PR fails."""
         from datetime import datetime
 
         from apps.integrations.services.github_sync import sync_repository_incremental
         from apps.metrics.models import PullRequest
 
-        mock_decrypt.return_value = "decrypted_token"
+        # EncryptedTextField auto-decrypts access_token
         # First PR has invalid data that will cause an error, second PR is valid
         mock_get_updated_prs.return_value = [
             {
@@ -2031,11 +2025,8 @@ class TestJiraKeyExtraction(TestCase):
         )
 
         # Mock the API to return PR with Jira key in title
-        with (
-            patch("apps.integrations.services.encryption.decrypt") as mock_decrypt,
-            patch("apps.integrations.services.github_sync.get_repository_pull_requests") as mock_get_prs,
-        ):
-            mock_decrypt.return_value = "decrypted_token"
+        # EncryptedTextField auto-decrypts access_token
+        with patch("apps.integrations.services.github_sync.get_repository_pull_requests") as mock_get_prs:
             mock_get_prs.return_value = [
                 {
                     "id": 123456789,
@@ -2094,11 +2085,8 @@ class TestJiraKeyExtraction(TestCase):
         )
 
         # Mock the API to return PR with Jira key in branch
-        with (
-            patch("apps.integrations.services.encryption.decrypt") as mock_decrypt,
-            patch("apps.integrations.services.github_sync.get_repository_pull_requests") as mock_get_prs,
-        ):
-            mock_decrypt.return_value = "decrypted_token"
+        # EncryptedTextField auto-decrypts access_token
+        with patch("apps.integrations.services.github_sync.get_repository_pull_requests") as mock_get_prs:
             mock_get_prs.return_value = [
                 {
                     "id": 123456789,
@@ -2160,11 +2148,8 @@ class TestJiraKeyExtraction(TestCase):
         )
 
         # Mock the API to return PR with Jira key in title
-        with (
-            patch("apps.integrations.services.encryption.decrypt") as mock_decrypt,
-            patch("apps.integrations.services.github_sync.get_updated_pull_requests") as mock_get_updated_prs,
-        ):
-            mock_decrypt.return_value = "decrypted_token"
+        # EncryptedTextField auto-decrypts access_token
+        with patch("apps.integrations.services.github_sync.get_updated_pull_requests") as mock_get_updated_prs:
             mock_get_updated_prs.return_value = [
                 {
                     "id": 987654321,

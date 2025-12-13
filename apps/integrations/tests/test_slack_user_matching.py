@@ -18,13 +18,12 @@ class TestGetSlackUsers(TestCase):
 
     def setUp(self):
         """Set up test fixtures using factories."""
-        from apps.integrations.services.encryption import encrypt
-
+        # EncryptedTextField auto-encrypts, so use plaintext values
         self.team = TeamFactory()
         self.credential = IntegrationCredentialFactory(
             team=self.team,
             provider="slack",
-            access_token=encrypt("xoxb-test-slack-token"),
+            access_token="xoxb-test-slack-token",
         )
 
     @patch("apps.integrations.services.slack_user_matching.get_workspace_users")
@@ -183,13 +182,12 @@ class TestSyncSlackUsers(TestCase):
 
     def setUp(self):
         """Set up test fixtures using factories."""
-        from apps.integrations.services.encryption import encrypt
-
+        # EncryptedTextField auto-encrypts, so use plaintext values
         self.team = TeamFactory()
         self.credential = IntegrationCredentialFactory(
             team=self.team,
             provider="slack",
-            access_token=encrypt("xoxb-test-slack-token"),
+            access_token="xoxb-test-slack-token",
         )
 
     @patch("apps.integrations.services.slack_user_matching.get_slack_users")

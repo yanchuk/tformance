@@ -11,6 +11,7 @@ from apps.integrations.constants import (
 )
 from apps.teams.models import BaseTeamModel
 from apps.users.models import CustomUser
+from apps.utils.fields import EncryptedTextField
 
 
 class IntegrationCredential(BaseTeamModel):
@@ -36,14 +37,14 @@ class IntegrationCredential(BaseTeamModel):
         verbose_name="Provider",
         help_text="The integration provider (GitHub, Jira, or Slack)",
     )
-    access_token = models.TextField(
+    access_token = EncryptedTextField(
         verbose_name="Access token",
-        help_text="OAuth access token for the integration",
+        help_text="OAuth access token for the integration (encrypted at rest)",
     )
-    refresh_token = models.TextField(
+    refresh_token = EncryptedTextField(
         blank=True,
         verbose_name="Refresh token",
-        help_text="OAuth refresh token for renewing access",
+        help_text="OAuth refresh token for renewing access (encrypted at rest)",
     )
     token_expires_at = models.DateTimeField(
         null=True,

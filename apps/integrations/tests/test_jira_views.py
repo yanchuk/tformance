@@ -266,7 +266,9 @@ class JiraCallbackViewTest(TestCase):
     @patch("apps.integrations.services.jira_oauth.exchange_code_for_token")
     @patch("apps.integrations.services.jira_oauth.verify_oauth_state")
     def test_jira_callback_stores_encrypted_token(self, mock_verify, mock_exchange, mock_get_resources):
-        """Test that jira_callback stores the access token encrypted."""
+        """Test that jira_callback stores the access token encrypted via EncryptedTextField."""
+        from django.db import connection
+
         # Mock state verification
         mock_verify.return_value = {"team_id": self.team.id}
 
@@ -290,14 +292,22 @@ class JiraCallbackViewTest(TestCase):
             {"code": "auth_code_123", "state": "valid_state"},
         )
 
-        # Get the credential
+        # Get the credential - access via model returns decrypted value (transparent encryption)
         credential = IntegrationCredential.objects.get(team=self.team, provider=IntegrationCredential.PROVIDER_JIRA)
+        self.assertEqual(credential.access_token, access_token)
 
-        # Token should NOT be stored as plaintext
-        self.assertNotEqual(credential.access_token, access_token)
+        # Verify the raw database value is encrypted (not plaintext)
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT access_token FROM integrations_integrationcredential WHERE id = %s",
+                [credential.id],
+            )
+            raw_db_value = cursor.fetchone()[0]
 
-        # Token should be encrypted (not equal to original)
-        self.assertGreater(len(credential.access_token), len(access_token))
+        # Raw DB value should be different from plaintext (encrypted)
+        self.assertNotEqual(raw_db_value, access_token)
+        # Encrypted value should be longer (Fernet adds overhead)
+        self.assertGreater(len(raw_db_value), len(access_token))
 
     @override_settings(JIRA_CLIENT_ID="test_client_id", JIRA_SECRET="test_secret")
     @patch("apps.integrations.services.jira_oauth.get_accessible_resources")

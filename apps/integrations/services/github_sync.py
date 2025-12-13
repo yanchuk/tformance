@@ -352,10 +352,8 @@ def sync_repository_history(
     """
     from django.utils import timezone
 
-    from apps.integrations.services.encryption import decrypt
-
-    # Decrypt the access token
-    access_token = decrypt(tracked_repo.integration.credential.access_token)
+    # EncryptedTextField auto-decrypts access_token
+    access_token = tracked_repo.integration.credential.access_token
 
     # Fetch PRs from GitHub
     prs_data = get_repository_pull_requests(access_token, tracked_repo.full_name)
@@ -386,10 +384,8 @@ def sync_repository_incremental(tracked_repo: "TrackedRepository") -> dict:  # n
 
     from django.utils import timezone
 
-    from apps.integrations.services.encryption import decrypt
-
-    # Decrypt the access token
-    access_token = decrypt(tracked_repo.integration.credential.access_token)
+    # EncryptedTextField auto-decrypts access_token
+    access_token = tracked_repo.integration.credential.access_token
 
     # Fetch updated PRs from GitHub since last sync
     prs_data = get_updated_pull_requests(access_token, tracked_repo.full_name, tracked_repo.last_sync_at)

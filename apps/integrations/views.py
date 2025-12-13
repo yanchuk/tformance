@@ -26,7 +26,8 @@ from apps.integrations.services import (
     member_sync,
     slack_oauth,
 )
-from apps.integrations.services.encryption import decrypt, encrypt
+
+# Note: encrypt/decrypt no longer needed - EncryptedTextField handles this automatically
 from apps.integrations.services.github_oauth import GitHubOAuthError
 from apps.integrations.services.jira_client import JiraClientError
 from apps.integrations.services.jira_oauth import JiraOAuthError
@@ -97,11 +98,11 @@ def _create_integration_credential(team, access_token, provider, user):
     Returns:
         IntegrationCredential: The created credential object.
     """
-    encrypted_token = encrypt(access_token)
+    # EncryptedTextField handles encryption automatically
     return IntegrationCredential.objects.create(
         team=team,
         provider=provider,
-        access_token=encrypted_token,
+        access_token=access_token,
         connected_by=user,
     )
 
@@ -430,17 +431,16 @@ def github_select_org(request):
         org_data = {"login": organization_slug, "id": int(organization_id)}
         _create_github_integration(team, credential, org_data)
 
-        # Sync members from GitHub
-        access_token = decrypt(credential.access_token)
-        member_count = _sync_github_members_after_connection(team, access_token, organization_slug)
+        # Sync members from GitHub (EncryptedTextField auto-decrypts)
+        member_count = _sync_github_members_after_connection(team, credential.access_token, organization_slug)
 
         messages.success(request, f"Connected to {organization_slug}. Imported {member_count} members.")
         return redirect("integrations:integrations_home")
 
     # GET request - show organization selection form
     try:
-        access_token = decrypt(credential.access_token)
-        orgs = github_oauth.get_user_organizations(access_token)
+        # EncryptedTextField auto-decrypts access_token
+        orgs = github_oauth.get_user_organizations(credential.access_token)
     except (GitHubOAuthError, Exception):
         messages.error(request, "Failed to fetch organizations from GitHub.")
         return redirect("integrations:integrations_home")
@@ -514,12 +514,11 @@ def github_members_sync(request):
         messages.error(request, "GitHub integration not found. Please connect GitHub first.")
         return redirect("integrations:integrations_home")
 
-    # Decrypt access token
-    access_token = decrypt(integration.credential.access_token)
-
-    # Call sync service
+    # Call sync service (EncryptedTextField auto-decrypts access_token)
     try:
-        result = member_sync.sync_github_members(team, access_token, integration.organization_slug)
+        result = member_sync.sync_github_members(
+            team, integration.credential.access_token, integration.organization_slug
+        )
     except Exception as e:
         logger.error(f"Failed to sync GitHub members for team {team.slug}: {e}")
         messages.error(request, "Failed to sync GitHub members. Please try again.")
@@ -604,12 +603,11 @@ def github_repos(request):
         messages.error(request, "Please connect GitHub first.")
         return redirect("integrations:integrations_home")
 
-    # Decrypt access token
-    access_token = decrypt(integration.credential.access_token)
-
-    # Fetch repos from GitHub API
+    # Fetch repos from GitHub API (EncryptedTextField auto-decrypts access_token)
     try:
-        repos = github_oauth.get_organization_repositories(access_token, integration.organization_slug)
+        repos = github_oauth.get_organization_repositories(
+            integration.credential.access_token, integration.organization_slug
+        )
     except GitHubOAuthError as e:
         logger.error(f"Failed to fetch GitHub repositories: {e}", exc_info=True)
         messages.error(request, "Failed to fetch repositories from GitHub. Please try again.")
@@ -667,8 +665,8 @@ def github_repo_toggle(request, repo_id):
     # Get full_name from POST data
     full_name = request.POST.get("full_name", "")
 
-    # Decrypt access token for webhook operations
-    access_token = decrypt(integration.credential.access_token)
+    # EncryptedTextField auto-decrypts access_token
+    access_token = integration.credential.access_token
 
     # Check if repo is already tracked
     webhook_id = None
@@ -957,8 +955,8 @@ def jira_select_site(request):
 
     # GET request - show site selection form
     try:
-        access_token = decrypt(credential.access_token)
-        sites = jira_oauth.get_accessible_resources(access_token)
+        # EncryptedTextField auto-decrypts access_token
+        sites = jira_oauth.get_accessible_resources(credential.access_token)
     except (JiraOAuthError, Exception):
         messages.error(request, "Failed to fetch sites from Jira.")
         return redirect("integrations:integrations_home")
@@ -1162,8 +1160,8 @@ def slack_callback(request):
         existing_integration.bot_user_id = bot_user_id
         existing_integration.save()
 
-        # Update credential
-        existing_integration.credential.access_token = encrypt(access_token)
+        # Update credential (EncryptedTextField auto-encrypts on save)
+        existing_integration.credential.access_token = access_token
         existing_integration.credential.connected_by = request.user
         existing_integration.credential.save()
 

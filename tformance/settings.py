@@ -662,6 +662,11 @@ LOGGING = {
 # No default - must be set via environment variable (test key is set in conftest.py)
 INTEGRATION_ENCRYPTION_KEY = env("INTEGRATION_ENCRYPTION_KEY", default=None)
 
+# Team Data Isolation
+# In production, raise an exception if team context is missing when using for_team manager
+# In development, allow silent fallback to empty queryset for easier debugging
+STRICT_TEAM_CONTEXT = not DEBUG
+
 # Production Security Settings
 # These settings are enabled when not in DEBUG mode
 if not DEBUG:
