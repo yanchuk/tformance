@@ -481,3 +481,234 @@ class TestSyncAllRepositoriesTask(TestCase):
         self.assertIn("repos_dispatched", result)
         # Should show 2 successful dispatches (repo1 and repo3)
         self.assertEqual(result["repos_dispatched"], 2)
+
+
+class TestPostSurveyCommentTask(TestCase):
+    """Tests for post_survey_comment_task Celery task."""
+
+    def setUp(self):
+        """Set up test fixtures using factories."""
+        from apps.metrics.factories import PullRequestFactory, TeamMemberFactory
+
+        self.team = TeamFactory()
+        self.credential = IntegrationCredentialFactory(
+            team=self.team,
+            provider="github",
+            access_token="encrypted_token_12345",
+        )
+        self.integration = GitHubIntegrationFactory(
+            team=self.team,
+            credential=self.credential,
+        )
+        self.author = TeamMemberFactory(team=self.team, github_username="alice")
+        self.pr = PullRequestFactory(
+            team=self.team,
+            state="merged",
+            author=self.author,
+            github_repo="acme-corp/api-server",
+            github_pr_id=123,
+        )
+
+    @patch("apps.integrations.services.github_comments.post_survey_comment")
+    def test_task_creates_pr_survey_for_merged_pr(self, mock_post_comment):
+        """Test that task creates PRSurvey for merged PR."""
+        from apps.integrations.tasks import post_survey_comment_task
+        from apps.metrics.models import PRSurvey
+
+        mock_post_comment.return_value = 999888777
+
+        # Call the task
+        result = post_survey_comment_task(self.pr.id)
+
+        # Verify PRSurvey was created
+        self.assertTrue(PRSurvey.objects.filter(pull_request=self.pr).exists())
+        survey = PRSurvey.objects.get(pull_request=self.pr)
+
+        # Verify survey has token
+        self.assertIsNotNone(survey.token)
+        self.assertGreater(len(survey.token), 0)
+
+        # Verify survey has token_expires_at
+        self.assertIsNotNone(survey.token_expires_at)
+
+        # Verify result contains survey_id
+        self.assertIn("survey_id", result)
+        self.assertEqual(result["survey_id"], survey.id)
+
+    @patch("apps.integrations.services.github_comments.post_survey_comment")
+    def test_task_posts_comment_to_github(self, mock_post_comment):
+        """Test that task posts comment to GitHub using post_survey_comment."""
+        from apps.integrations.tasks import post_survey_comment_task
+
+        comment_id = 999888777
+        mock_post_comment.return_value = comment_id
+
+        # Call the task
+        post_survey_comment_task(self.pr.id)
+
+        # Verify post_survey_comment was called with correct arguments
+        mock_post_comment.assert_called_once()
+        call_args = mock_post_comment.call_args
+        self.assertEqual(call_args[0][0].id, self.pr.id)  # PR
+        self.assertIsNotNone(call_args[0][1])  # Survey
+        self.assertEqual(call_args[0][2], "encrypted_token_12345")  # Access token
+
+    @patch("apps.integrations.services.github_comments.post_survey_comment")
+    def test_task_stores_github_comment_id_on_survey(self, mock_post_comment):
+        """Test that task stores github_comment_id on survey."""
+        from apps.integrations.tasks import post_survey_comment_task
+        from apps.metrics.models import PRSurvey
+
+        comment_id = 999888777
+        mock_post_comment.return_value = comment_id
+
+        # Call the task
+        result = post_survey_comment_task(self.pr.id)
+
+        # Verify survey has github_comment_id stored
+        survey = PRSurvey.objects.get(pull_request=self.pr)
+        self.assertEqual(survey.github_comment_id, comment_id)
+
+        # Verify result contains comment_id
+        self.assertIn("comment_id", result)
+        self.assertEqual(result["comment_id"], comment_id)
+
+    @patch("apps.integrations.services.github_comments.post_survey_comment")
+    def test_task_skips_non_merged_prs(self, mock_post_comment):
+        """Test that task skips PRs that are not merged."""
+        from apps.integrations.tasks import post_survey_comment_task
+        from apps.metrics.factories import PullRequestFactory
+        from apps.metrics.models import PRSurvey
+
+        # Create open PR
+        open_pr = PullRequestFactory(
+            team=self.team,
+            state="open",
+            author=self.author,
+        )
+
+        # Call the task
+        result = post_survey_comment_task(open_pr.id)
+
+        # Verify task was skipped
+        self.assertIsInstance(result, dict)
+        self.assertIn("skipped", result)
+        self.assertTrue(result["skipped"])
+        self.assertIn("reason", result)
+        self.assertIn("not merged", result["reason"].lower())
+
+        # Verify no survey was created
+        self.assertFalse(PRSurvey.objects.filter(pull_request=open_pr).exists())
+
+        # Verify post_survey_comment was NOT called
+        mock_post_comment.assert_not_called()
+
+    @patch("apps.integrations.services.github_comments.post_survey_comment")
+    def test_task_skips_if_survey_already_exists(self, mock_post_comment):
+        """Test that task is idempotent - skips if survey already exists."""
+        from apps.integrations.tasks import post_survey_comment_task
+        from apps.metrics.factories import PRSurveyFactory
+        from apps.metrics.models import PRSurvey
+
+        # Create existing survey
+        existing_survey = PRSurveyFactory(pull_request=self.pr, team=self.team)
+
+        # Call the task
+        result = post_survey_comment_task(self.pr.id)
+
+        # Verify task was skipped
+        self.assertIsInstance(result, dict)
+        self.assertIn("skipped", result)
+        self.assertTrue(result["skipped"])
+        self.assertIn("reason", result)
+        self.assertIn("already exists", result["reason"].lower())
+
+        # Verify no duplicate survey was created
+        self.assertEqual(PRSurvey.objects.filter(pull_request=self.pr).count(), 1)
+
+        # Verify existing survey was not modified
+        existing_survey.refresh_from_db()
+        self.assertEqual(existing_survey.id, PRSurvey.objects.get(pull_request=self.pr).id)
+
+        # Verify post_survey_comment was NOT called
+        mock_post_comment.assert_not_called()
+
+    @patch("apps.integrations.services.github_comments.post_survey_comment")
+    def test_task_skips_if_no_github_integration_exists(self, mock_post_comment):
+        """Test that task skips if no GitHub integration exists for team."""
+        from apps.integrations.tasks import post_survey_comment_task
+        from apps.metrics.factories import PullRequestFactory, TeamFactory
+        from apps.metrics.models import PRSurvey
+
+        # Create team without GitHub integration
+        team_without_integration = TeamFactory()
+        pr_no_integration = PullRequestFactory(
+            team=team_without_integration,
+            state="merged",
+        )
+
+        # Call the task
+        result = post_survey_comment_task(pr_no_integration.id)
+
+        # Verify task was skipped
+        self.assertIsInstance(result, dict)
+        self.assertIn("skipped", result)
+        self.assertTrue(result["skipped"])
+        self.assertIn("reason", result)
+        self.assertIn("no github integration", result["reason"].lower())
+
+        # Verify no survey was created
+        self.assertFalse(PRSurvey.objects.filter(pull_request=pr_no_integration).exists())
+
+        # Verify post_survey_comment was NOT called
+        mock_post_comment.assert_not_called()
+
+    @patch("apps.integrations.services.github_comments.post_survey_comment")
+    def test_task_handles_github_api_errors_gracefully(self, mock_post_comment):
+        """Test that task handles GitHub API errors gracefully without raising."""
+        from github import GithubException
+
+        from apps.integrations.tasks import post_survey_comment_task
+        from apps.metrics.models import PRSurvey
+
+        # Mock post_survey_comment to raise GithubException
+        mock_post_comment.side_effect = GithubException(403, "API rate limit exceeded")
+
+        # Call the task - should NOT raise
+        result = post_survey_comment_task(self.pr.id)
+
+        # Verify error is returned in result, not raised
+        self.assertIsInstance(result, dict)
+        self.assertIn("error", result)
+        self.assertIn("rate limit", result["error"].lower())
+
+        # Verify survey was created despite comment failure
+        self.assertTrue(PRSurvey.objects.filter(pull_request=self.pr).exists())
+
+        # Verify github_comment_id is None (comment was not posted)
+        survey = PRSurvey.objects.get(pull_request=self.pr)
+        self.assertIsNone(survey.github_comment_id)
+
+    @patch("apps.integrations.services.github_comments.post_survey_comment")
+    def test_task_returns_success_dict_with_survey_id_and_comment_id(self, mock_post_comment):
+        """Test that task returns success dict with survey_id and comment_id."""
+        from apps.integrations.tasks import post_survey_comment_task
+
+        comment_id = 123456789
+        mock_post_comment.return_value = comment_id
+
+        # Call the task
+        result = post_survey_comment_task(self.pr.id)
+
+        # Verify result is a dict with expected keys
+        self.assertIsInstance(result, dict)
+        self.assertIn("survey_id", result)
+        self.assertIn("comment_id", result)
+
+        # Verify values are correct
+        self.assertIsNotNone(result["survey_id"])
+        self.assertEqual(result["comment_id"], comment_id)
+
+        # Verify no error keys
+        self.assertNotIn("error", result)
+        self.assertNotIn("skipped", result)

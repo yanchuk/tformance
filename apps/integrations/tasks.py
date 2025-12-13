@@ -4,8 +4,16 @@ import logging
 
 from celery import shared_task
 from celery.exceptions import Retry
+from github import GithubException
 
-from apps.integrations.models import JiraIntegration, SlackIntegration, TrackedJiraProject, TrackedRepository
+from apps.integrations.models import (
+    GitHubIntegration,
+    JiraIntegration,
+    SlackIntegration,
+    TrackedJiraProject,
+    TrackedRepository,
+)
+from apps.integrations.services import github_comments
 from apps.integrations.services.github_sync import sync_repository_incremental
 from apps.integrations.services.jira_sync import sync_project_issues
 from apps.integrations.services.jira_user_matching import sync_jira_users
@@ -549,3 +557,80 @@ def post_weekly_leaderboards_task() -> dict:
         "leaderboards_posted": leaderboards_posted,
         "errors": errors,
     }
+
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+def post_survey_comment_task(self, pull_request_id: int) -> dict:
+    """Post survey comment to merged PR.
+
+    Creates a PRSurvey and posts survey invitation comment to GitHub.
+    Retries up to 3 times with exponential backoff on transient errors.
+
+    Args:
+        self: Celery task instance (bound task)
+        pull_request_id: ID of the PullRequest to create survey for
+
+    Returns:
+        dict with survey_id and comment_id on success
+        or dict with skipped/error status and reason
+    """
+    # Get PR by ID
+    try:
+        pr = PullRequest.objects.get(id=pull_request_id)
+    except PullRequest.DoesNotExist:
+        logger.warning(f"PullRequest with id {pull_request_id} not found")
+        return {"error": "PR not found"}
+
+    # Skip non-merged PRs
+    if pr.state != "merged":
+        logger.info(f"Skipping survey comment for non-merged PR: {pr.github_pr_id}")
+        return {"skipped": True, "reason": "PR not merged"}
+
+    # Skip if survey already exists (idempotent)
+    from apps.metrics.models import PRSurvey
+
+    if PRSurvey.objects.filter(pull_request=pr).exists():
+        logger.info(f"Skipping survey comment - survey already exists for PR: {pr.github_pr_id}")
+        return {"skipped": True, "reason": "Survey already exists"}
+
+    # Check for GitHub integration
+    try:
+        github_integration = GitHubIntegration.objects.get(team=pr.team)
+    except GitHubIntegration.DoesNotExist:
+        logger.info(f"Skipping survey comment - no GitHub integration for team {pr.team.name}")
+        return {"skipped": True, "reason": "No GitHub integration"}
+
+    # Create survey (this sets token and expiry)
+    survey = create_pr_survey(pr)
+    logger.info(f"Starting to post survey comment for PR {pr.github_pr_id} (survey {survey.id})")
+
+    # Post comment to GitHub with retry logic
+    try:
+        comment_id = github_comments.post_survey_comment(pr, survey, github_integration.credential.access_token)
+
+        # Store comment ID on survey (in case post_survey_comment didn't persist it)
+        survey.github_comment_id = comment_id
+        survey.save(update_fields=["github_comment_id"])
+
+        logger.info(f"Successfully posted survey comment {comment_id} for PR {pr.github_pr_id}")
+        return {"survey_id": survey.id, "comment_id": comment_id}
+    except GithubException as exc:
+        # Calculate exponential backoff
+        countdown = self.default_retry_delay * (2**self.request.retries)
+
+        try:
+            # Retry with exponential backoff for transient errors
+            logger.warning(f"Failed to post survey comment for PR {pr.github_pr_id}, retrying in {countdown}s: {exc}")
+            raise self.retry(exc=exc, countdown=countdown)
+        except Retry:
+            # Re-raise Retry exception to allow Celery to retry
+            raise
+        except Exception:
+            # Max retries exhausted - log to Sentry and return error
+            from sentry_sdk import capture_exception
+
+            error_msg = f"GitHub API error: {exc}"
+            logger.error(f"Failed permanently to post survey comment for PR {pr.github_pr_id}: {error_msg}")
+            capture_exception(exc)
+
+            return {"error": error_msg, "survey_id": survey.id}
