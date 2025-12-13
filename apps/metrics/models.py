@@ -671,6 +671,17 @@ class PRSurvey(BaseTeamModel):
 
         return self.token_expires_at < timezone.now()
 
+    def has_author_responded(self) -> bool:
+        """Check if the author has responded to the survey.
+
+        The author_ai_assisted field starts as None and becomes a boolean (True/False)
+        once the author responds. This method checks if it's been set to a boolean value.
+
+        Returns:
+            bool: True if the author has responded, False otherwise
+        """
+        return isinstance(self.author_ai_assisted, bool)
+
 
 class PRSurveyReview(BaseTeamModel):
     """Reviewer's response to a PR survey."""

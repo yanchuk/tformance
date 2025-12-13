@@ -1,9 +1,11 @@
 """Tests for Celery tasks in apps.integrations.tasks."""
 
+from datetime import timedelta
 from unittest.mock import MagicMock, patch
 
 from celery.exceptions import Retry
 from django.test import TestCase
+from django.utils import timezone
 
 from apps.integrations.factories import (
     GitHubIntegrationFactory,
@@ -481,6 +483,243 @@ class TestSyncAllRepositoriesTask(TestCase):
         self.assertIn("repos_dispatched", result)
         # Should show 2 successful dispatches (repo1 and repo3)
         self.assertEqual(result["repos_dispatched"], 2)
+
+
+class TestSkipRespondedReviewers(TestCase):
+    """Tests for skipping reviewers who have already responded via GitHub web survey."""
+
+    def setUp(self):
+        """Set up test fixtures using factories."""
+        from apps.integrations.factories import SlackIntegrationFactory
+        from apps.metrics.factories import (
+            PRReviewFactory,
+            PullRequestFactory,
+            TeamMemberFactory,
+        )
+
+        self.team = TeamFactory()
+        self.slack_credential = IntegrationCredentialFactory(
+            team=self.team,
+            provider="slack",
+            access_token="encrypted_slack_token",
+        )
+        self.slack_integration = SlackIntegrationFactory(
+            team=self.team,
+            credential=self.slack_credential,
+            surveys_enabled=True,
+        )
+
+        # Create author with Slack ID
+        self.author = TeamMemberFactory(team=self.team, slack_user_id="U001AUTHOR")
+
+        # Create merged PR
+        self.pr = PullRequestFactory(
+            team=self.team,
+            state="merged",
+            author=self.author,
+        )
+
+        # Create reviewers with Slack IDs
+        self.reviewer1 = TeamMemberFactory(team=self.team, slack_user_id="U002REV1", display_name="Reviewer One")
+        self.reviewer2 = TeamMemberFactory(team=self.team, slack_user_id="U003REV2", display_name="Reviewer Two")
+
+        # Create PR reviews to link reviewers to PR
+        PRReviewFactory(pull_request=self.pr, reviewer=self.reviewer1)
+        PRReviewFactory(pull_request=self.pr, reviewer=self.reviewer2)
+
+    @patch("apps.integrations.tasks.create_pr_survey")
+    @patch("apps.integrations.tasks.send_dm")
+    @patch("apps.integrations.tasks.get_slack_client")
+    def test_skip_reviewer_already_responded_via_github(self, mock_get_client, mock_send_dm, mock_create_survey):
+        """Test that reviewer who responded via GitHub web survey doesn't get Slack DM."""
+        from apps.integrations.tasks import send_pr_surveys_task
+        from apps.metrics.factories import PRSurveyFactory, PRSurveyReviewFactory
+
+        # Create survey and mock create_pr_survey to return it
+        survey = PRSurveyFactory(
+            team=self.team,
+            pull_request=self.pr,
+            author=self.author,
+            author_ai_assisted=None,
+        )
+        mock_create_survey.return_value = survey
+
+        # Create PRSurveyReview for reviewer1 with responded_at set (GitHub web response)
+        PRSurveyReviewFactory(
+            team=self.team,
+            survey=survey,
+            reviewer=self.reviewer1,
+            responded_at=timezone.now() - timedelta(hours=2),
+            ai_guess=True,
+            quality_rating=3,
+        )
+
+        # Mock Slack client
+        mock_get_client.return_value = MagicMock()
+
+        # Call task
+        result = send_pr_surveys_task(self.pr.id)
+
+        # Verify only ONE reviewer got DM (reviewer2), not reviewer1
+        # mock_send_dm should be called twice: once for author, once for reviewer2 (not reviewer1)
+        self.assertEqual(mock_send_dm.call_count, 2)
+
+        # Verify result shows 1 reviewer skipped
+        self.assertIn("reviewers_skipped", result)
+        self.assertEqual(result["reviewers_skipped"], 1)
+        self.assertEqual(result["reviewers_sent"], 1)  # Only reviewer2 got DM
+
+    @patch("apps.integrations.tasks.create_pr_survey")
+    @patch("apps.integrations.tasks.send_dm")
+    @patch("apps.integrations.tasks.get_slack_client")
+    def test_skip_author_already_responded_via_github(self, mock_get_client, mock_send_dm, mock_create_survey):
+        """Test that author who responded via GitHub doesn't get Slack DM."""
+        from apps.integrations.tasks import send_pr_surveys_task
+        from apps.metrics.factories import PRSurveyFactory
+
+        # Create survey with author already responded
+        survey = PRSurveyFactory(
+            team=self.team,
+            pull_request=self.pr,
+            author=self.author,
+            author_ai_assisted=True,
+            author_responded_at=timezone.now() - timedelta(hours=1),
+        )
+        mock_create_survey.return_value = survey
+
+        # Mock Slack client
+        mock_get_client.return_value = MagicMock()
+
+        # Call task
+        result = send_pr_surveys_task(self.pr.id)
+
+        # Verify author DM was NOT sent, but reviewer DMs were sent
+        # mock_send_dm should be called twice (only for the 2 reviewers)
+        self.assertEqual(mock_send_dm.call_count, 2)
+
+        # Verify result shows author was skipped
+        self.assertIn("author_skipped", result)
+        self.assertTrue(result["author_skipped"])
+        self.assertFalse(result["author_sent"])
+        self.assertEqual(result["reviewers_sent"], 2)
+
+    @patch("apps.integrations.tasks.create_pr_survey")
+    @patch("apps.integrations.tasks.send_dm")
+    @patch("apps.integrations.tasks.get_slack_client")
+    def test_sends_dm_when_reviewer_has_not_responded(self, mock_get_client, mock_send_dm, mock_create_survey):
+        """Test that reviewers without responses get Slack DMs as normal."""
+        from apps.integrations.tasks import send_pr_surveys_task
+        from apps.metrics.factories import PRSurveyFactory
+
+        # Create survey without any responses
+        survey = PRSurveyFactory(
+            team=self.team,
+            pull_request=self.pr,
+            author=self.author,
+            author_ai_assisted=None,
+        )
+        mock_create_survey.return_value = survey
+
+        # Mock Slack client
+        mock_get_client.return_value = MagicMock()
+
+        # Call task (no PRSurveyReview exists for any reviewer)
+        result = send_pr_surveys_task(self.pr.id)
+
+        # Verify DMs were sent to author + 2 reviewers = 3 total
+        self.assertEqual(mock_send_dm.call_count, 3)
+
+        # Verify result shows all sent, none skipped
+        self.assertTrue(result["author_sent"])
+        self.assertEqual(result["reviewers_sent"], 2)
+        self.assertEqual(result.get("reviewers_skipped", 0), 0)
+        self.assertEqual(result.get("author_skipped", False), False)
+
+    @patch("apps.integrations.tasks.create_pr_survey")
+    @patch("apps.integrations.tasks.send_dm")
+    @patch("apps.integrations.tasks.get_slack_client")
+    def test_sends_dm_when_prsurveyreview_exists_but_not_responded(
+        self, mock_get_client, mock_send_dm, mock_create_survey
+    ):
+        """Test that reviewer with PRSurveyReview but responded_at=None still gets DM."""
+        from apps.integrations.tasks import send_pr_surveys_task
+        from apps.metrics.factories import PRSurveyFactory, PRSurveyReviewFactory
+
+        # Create survey
+        survey = PRSurveyFactory(
+            team=self.team,
+            pull_request=self.pr,
+            author=self.author,
+            author_ai_assisted=None,
+        )
+        mock_create_survey.return_value = survey
+
+        # Create PRSurveyReview for reviewer1 but WITHOUT responded_at (survey sent via Slack, not responded yet)
+        PRSurveyReviewFactory(
+            team=self.team,
+            survey=survey,
+            reviewer=self.reviewer1,
+            responded_at=None,  # Not responded yet
+            ai_guess=None,
+            quality_rating=None,
+        )
+
+        # Mock Slack client
+        mock_get_client.return_value = MagicMock()
+
+        # Call task
+        result = send_pr_surveys_task(self.pr.id)
+
+        # Verify DMs were sent to author + 2 reviewers = 3 total
+        self.assertEqual(mock_send_dm.call_count, 3)
+
+        # Verify no reviewers were skipped
+        self.assertEqual(result.get("reviewers_skipped", 0), 0)
+        self.assertEqual(result["reviewers_sent"], 2)
+
+    @patch("apps.integrations.tasks.create_pr_survey")
+    @patch("apps.integrations.tasks.send_dm")
+    @patch("apps.integrations.tasks.get_slack_client")
+    def test_task_returns_skipped_counts(self, mock_get_client, mock_send_dm, mock_create_survey):
+        """Test that task returns reviewers_skipped and author_skipped in result."""
+        from apps.integrations.tasks import send_pr_surveys_task
+        from apps.metrics.factories import PRSurveyFactory, PRSurveyReviewFactory
+
+        # Create survey with author responded
+        survey = PRSurveyFactory(
+            team=self.team,
+            pull_request=self.pr,
+            author=self.author,
+            author_ai_assisted=False,
+            author_responded_at=timezone.now() - timedelta(hours=2),
+        )
+        mock_create_survey.return_value = survey
+
+        # Create responded survey review for reviewer1
+        PRSurveyReviewFactory(
+            team=self.team,
+            survey=survey,
+            reviewer=self.reviewer1,
+            responded_at=timezone.now() - timedelta(hours=3),
+            ai_guess=False,
+            quality_rating=2,
+        )
+
+        # Mock Slack client
+        mock_get_client.return_value = MagicMock()
+
+        # Call task
+        result = send_pr_surveys_task(self.pr.id)
+
+        # Verify result has skip counts
+        self.assertIn("author_skipped", result)
+        self.assertIn("reviewers_skipped", result)
+        self.assertTrue(result["author_skipped"])
+        self.assertEqual(result["reviewers_skipped"], 1)
+
+        # Verify only reviewer2 got DM
+        self.assertEqual(result["reviewers_sent"], 1)
+        self.assertFalse(result["author_sent"])
 
 
 class TestPostSurveyCommentTask(TestCase):

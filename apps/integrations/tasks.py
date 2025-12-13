@@ -318,20 +318,27 @@ def send_pr_surveys_task(pull_request_id: int) -> dict:
 
     # Track results
     author_sent = False
+    author_skipped = False
     reviewers_sent = 0
+    reviewers_skipped = 0
     errors = []
 
     # Send author DM if author has slack_user_id
     if pr.author and pr.author.slack_user_id:
-        try:
-            blocks = build_author_survey_blocks(pr, survey)
-            send_dm(client, pr.author.slack_user_id, blocks, text="PR Survey")
-            author_sent = True
-            logger.info(f"Sent author survey to {pr.author.display_name}")
-        except Exception as e:
-            error_msg = f"Failed to send author DM: {e}"
-            logger.error(error_msg)
-            errors.append(error_msg)
+        # Check if author already responded via GitHub (author_ai_assisted is set to a boolean value)
+        if survey.has_author_responded():
+            logger.info(f"Skipping author {pr.author.display_name} - already responded via GitHub")
+            author_skipped = True
+        else:
+            try:
+                blocks = build_author_survey_blocks(pr, survey)
+                send_dm(client, pr.author.slack_user_id, blocks, text="PR Survey")
+                author_sent = True
+                logger.info(f"Sent author survey to {pr.author.display_name}")
+            except Exception as e:
+                error_msg = f"Failed to send author DM: {e}"
+                logger.error(error_msg)
+                errors.append(error_msg)
 
     # Get unique reviewers from PR reviews
     reviewers = (
@@ -346,15 +353,30 @@ def send_pr_surveys_task(pull_request_id: int) -> dict:
 
     reviewers = TeamMember.objects.filter(id__in=reviewers)
 
+    # Optimize: Fetch all responded reviewer IDs in a single query to avoid N+1
+    responded_reviewer_ids = set(
+        PRSurveyReview.objects.filter(
+            survey_id=survey.id,
+            responded_at__isnull=False
+        ).values_list("reviewer_id", flat=True)
+    )
+
     # Send reviewer DMs
     for reviewer in reviewers:
         if not reviewer.slack_user_id:
             logger.info(f"Skipping reviewer {reviewer.display_name} - no slack_user_id")
             continue
 
+        # Check if reviewer already responded via GitHub
+        if reviewer.id in responded_reviewer_ids:
+            logger.info(f"Skipping reviewer {reviewer.display_name} - already responded via GitHub")
+            reviewers_skipped += 1
+            continue
+
         try:
-            # Create reviewer survey entry (side effect - record in DB)
-            create_reviewer_survey(survey, reviewer)
+            # Create reviewer survey entry if it doesn't exist (idempotency check)
+            if not PRSurveyReview.objects.filter(survey_id=survey.id, reviewer_id=reviewer.id).exists():
+                create_reviewer_survey(survey, reviewer)
 
             # Build and send reviewer survey blocks
             blocks = build_reviewer_survey_blocks(pr, survey, reviewer)
@@ -368,7 +390,9 @@ def send_pr_surveys_task(pull_request_id: int) -> dict:
 
     return {
         "author_sent": author_sent,
+        "author_skipped": author_skipped,
         "reviewers_sent": reviewers_sent,
+        "reviewers_skipped": reviewers_skipped,
         "errors": errors,
     }
 
