@@ -1,5 +1,7 @@
 """Custom middleware for security and utility functions."""
 
+from django.conf import settings
+
 
 class SecurityHeadersMiddleware:
     """Middleware to add security headers to all responses.
@@ -41,13 +43,18 @@ class SecurityHeadersMiddleware:
         # Tighten these directives based on your actual requirements
         # Note: 'unsafe-inline' is needed for HTMX and Alpine.js to work
         # In production, consider using nonces for stricter CSP
+
+        # In DEBUG mode, allow Vite dev server (localhost:5173)
+        vite_src = "http://localhost:5173" if settings.DEBUG else ""
+        ws_src = "ws://localhost:5173" if settings.DEBUG else ""
+
         csp_directives = [
             "default-src 'self'",
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com",
-            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net",
-            "font-src 'self' https://fonts.gstatic.com",
+            f"script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com {vite_src}".strip(),
+            f"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com {vite_src}".strip(),
+            "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com",
             "img-src 'self' data: https: blob:",
-            "connect-src 'self' https://api.github.com https://api.atlassian.com https://slack.com wss:",
+            f"connect-src 'self' https://api.github.com https://api.atlassian.com https://slack.com wss: {vite_src} {ws_src}".strip(),
             "frame-ancestors 'none'",
             "form-action 'self'",
             "base-uri 'self'",
