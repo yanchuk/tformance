@@ -1,194 +1,125 @@
 # GitHub Surveys - Task Checklist
 
-**Last Updated:** 2024-12-13
+**Last Updated:** 2025-12-13
 
-## Overview
+## Status: ALL PHASES COMPLETE ✅
 
-This checklist tracks implementation progress for the GitHub-based survey system.
-
-**Estimated Total Effort:** 10-12 days
-**Status:** ✅ COMPLETED
-
----
+All 6 implementation phases are complete with 94+ tests passing.
 
 ## Phase 1: Foundation - Token System ✅
 
-### 1.1 Model Updates ✅
+### 1.1 Model Fields ✅
+- [x] Add `token` field to PRSurvey (CharField, unique, indexed)
+- [x] Add `token_expires_at` field (DateTimeField, indexed)
+- [x] Add `github_comment_id` field (BigIntegerField, nullable)
+- [x] Add `is_token_expired()` method
+- [x] Create migrations
+- [x] Tests: 13 tests in `TestPRSurveyTokenFields`
 
-- [x] Add `token` field to `PRSurvey` model (CharField, max_length=64, unique, indexed)
-- [x] Add `token_expires_at` field to `PRSurvey` model (DateTimeField, null=True, indexed)
-- [x] Add `github_comment_id` field to `PRSurvey` model (BigIntegerField, null=True)
-- [x] Add `is_token_expired()` method to PRSurvey model
-- [x] Create and run migrations (0001, 0002)
-- [x] Update `PRSurveyFactory` to generate tokens
-
-### 1.2 Token Service ✅
-
+### 1.2 Token Generation ✅
 - [x] Create `apps/metrics/services/survey_tokens.py`
-- [x] Implement `generate_survey_token()` function (secrets.token_urlsafe(32))
-- [x] Implement `set_survey_token(survey, expiry_days=7)` function
-- [x] Implement `validate_survey_token(token)` function
-- [x] Create custom exceptions: `SurveyTokenError`, `InvalidTokenError`, `ExpiredTokenError`
-- [x] Integrate token generation into `create_pr_survey()` in survey_service.py
+- [x] Implement `generate_survey_token()` - 43-char URL-safe token
+- [x] Implement `set_survey_token(survey, expiry_days=7)`
+- [x] Integrate with `create_pr_survey()` - auto-generate token
+- [x] Tests: 10 tests in `TestTokenGenerationService` + `TestCreatePRSurveyIntegration`
 
-### 1.3 Token Tests ✅ (32 tests)
-
-- [x] Test token field exists and is unique
-- [x] Test token generation produces unique URL-safe tokens
-- [x] Test token validation with valid/invalid/expired tokens
-- [x] Test custom exceptions
-
----
+### 1.3 Token Validation ✅
+- [x] Implement `validate_survey_token(token)` - returns PRSurvey or raises
+- [x] Add `SurveyTokenError` base exception
+- [x] Add `InvalidTokenError` for None/empty/not-found
+- [x] Add `ExpiredTokenError` for expired tokens
+- [x] Add structured logging (WARNING/INFO/DEBUG levels)
+- [x] Tests: 9 tests in `TestTokenValidationService`
 
 ## Phase 2: Web Survey Views ✅
 
-### 2.1 URL Configuration ✅
+- [x] Add 5 URL patterns in `apps/web/urls.py`
+- [x] Create `survey_landing` view
+- [x] Create `survey_author` view
+- [x] Create `survey_reviewer` view
+- [x] Create `survey_submit` view (POST handler)
+- [x] Create `survey_complete` view
+- [x] Tests: 26 tests in `apps/web/tests/test_survey_views.py`
 
-- [x] `survey/<str:token>/` - landing (survey_landing)
-- [x] `survey/<str:token>/author/` - author form (survey_author)
-- [x] `survey/<str:token>/reviewer/` - reviewer form (survey_reviewer)
-- [x] `survey/<str:token>/submit/` - form submission (survey_submit)
-- [x] `survey/<str:token>/complete/` - completion (survey_complete)
+## Phase 3: Form Submission ✅
 
-### 2.2 Survey Views ✅
-
-- [x] `survey_landing()` - validates token, redirects to appropriate form
-- [x] `survey_author()` - shows author survey form
-- [x] `survey_reviewer()` - shows reviewer survey form
-- [x] `survey_submit()` - handles POST, records responses
-- [x] `survey_complete()` - shows thank you message
-
-### 2.3 View Tests ✅ (43 tests)
-
-- [x] URL pattern tests
-- [x] Authentication requirement tests
-- [x] Token validation tests (invalid, expired)
-- [x] Form submission tests
-
----
-
-## Phase 3: Survey Templates ✅
-
-### 3.1 Templates Created ✅
-
-- [x] `templates/web/surveys/base.html` - base template
-- [x] `templates/web/surveys/author.html` - AI assistance question
-- [x] `templates/web/surveys/reviewer.html` - quality + AI guess
-- [x] `templates/web/surveys/complete.html` - thank you page
-
-### 3.2 Form Submission ✅
-
-- [x] Author submission records `author_ai_assisted` and `author_responded_at`
-- [x] Reviewer submission creates `PRSurveyReview` with quality_rating, ai_guess
-- [x] Duplicate submissions are ignored (idempotent)
-
----
+- [x] Implement author form submission logic
+- [x] Implement reviewer form submission logic
+- [x] Handle duplicate submissions gracefully
+- [x] Tests: 10 additional tests
 
 ## Phase 4: Authorization ✅
 
-### 4.1 Authorization Decorators ✅
-
-- [x] `get_user_github_id(user)` - gets GitHub ID from SocialAccount
-- [x] `verify_author_access(user, survey)` - verifies user is PR author
-- [x] `verify_reviewer_access(user, survey)` - verifies user is PR reviewer
-- [x] `@require_survey_author_access` decorator
-- [x] `@require_survey_reviewer_access` decorator
-
-### 4.2 Authorization Tests ✅ (7 tests)
-
-- [x] Author can access author survey
-- [x] Non-author gets 403
-- [x] Reviewer can access reviewer survey
-- [x] Non-reviewer gets 403
-- [x] User without GitHub account gets 403
-
----
+- [x] Create `@require_valid_survey_token` decorator
+- [x] Create `@require_survey_author_access` decorator
+- [x] Create `@require_survey_reviewer_access` decorator
+- [x] Verify GitHub identity via `SocialAccount`
+- [x] Add authorization logging
+- [x] Tests: 7 authorization tests
 
 ## Phase 5: GitHub Comment Service ✅
 
-### 5.1 Comment Service ✅
-
-- [x] `build_survey_comment_body(pr, survey)` - builds markdown with @mentions and URLs
-- [x] `post_survey_comment(pr, survey, access_token)` - posts to GitHub API
-- [x] Error handling with GithubException
-- [x] Logging for success and failure
-
-### 5.2 Comment Tests ✅ (11 tests)
-
-- [x] Comment body generation tests
-- [x] @mention tests (author and reviewers)
-- [x] URL generation tests
-- [x] GitHub API call tests (mocked)
-
----
+- [x] Create `apps/integrations/services/github_comments.py`
+- [x] Implement `build_survey_comment_body()` with @mentions
+- [x] Implement `post_survey_comment()` using PyGithub
+- [x] Handle `GithubException` with logging
+- [x] Store `github_comment_id` after posting
+- [x] Tests: 11 tests in `test_github_comments.py`
 
 ## Phase 6: Celery Task Integration ✅
 
-### 6.1 Task Implementation ✅
+- [x] Add `post_survey_comment_task` to `apps/integrations/tasks.py`
+- [x] Idempotency checks (skip if survey exists, PR not merged, no integration)
+- [x] Retry logic (3x with exponential backoff: 60s, 120s, 240s)
+- [x] Sentry integration for final failures
+- [x] Tests: 8 tests in `TestPostSurveyCommentTask`
 
-- [x] `post_survey_comment_task(pull_request_id)` - main task
-- [x] Creates PRSurvey with token
-- [x] Posts comment to GitHub
-- [x] Stores github_comment_id
-- [x] Retry logic (3 retries, exponential backoff)
-- [x] Sentry integration for permanent failures
+## Phase 7: Skip Responded Reviewers ✅
 
-### 6.2 Task Tests ✅ (8 tests)
+- [x] Add `has_author_responded()` method to PRSurvey model
+- [x] Skip author Slack DM if already responded via GitHub
+- [x] Skip reviewer Slack DM if already responded via GitHub
+- [x] Optimize reviewer check (single query vs N+1)
+- [x] Return `author_skipped` and `reviewers_skipped` in task result
+- [x] Tests: 5 tests in `TestSkipRespondedReviewers`
 
-- [x] Task creates survey for merged PR
-- [x] Task posts comment to GitHub
-- [x] Task skips non-merged PRs
-- [x] Task is idempotent (skips existing surveys)
-- [x] Task handles missing GitHub integration
-- [x] Task handles GitHub API errors gracefully
+## Remaining Work (Not Started)
 
----
+### Phase 8: Trigger Integration
+- [ ] Wire up `post_survey_comment_task` to GitHub webhook (on PR merge)
+- [ ] Add team setting for survey channel preference (github/slack/both)
 
-## Test Summary
+### Phase 9: Manual E2E Testing
+- [ ] Test full flow: PR merge → GitHub comment → web form → response saved
+- [ ] Verify Slack skip logic works when GitHub response exists
 
-| Category | Tests |
-|----------|-------|
-| Token System | 32 |
-| Survey Views | 43 |
-| GitHub Comments | 11 |
-| Celery Task | 8 |
-| **Total New Tests** | **94** |
-| **Full Suite** | **1185** |
+## Files Created
 
----
+| File | Purpose |
+|------|---------|
+| `apps/metrics/services/survey_tokens.py` | Token generation/validation |
+| `apps/metrics/tests/test_survey_tokens.py` | Token tests (32) |
+| `apps/web/decorators.py` | Survey view decorators |
+| `apps/web/tests/test_survey_views.py` | View tests (43) |
+| `apps/integrations/services/github_comments.py` | Comment service |
+| `apps/integrations/tests/test_github_comments.py` | Comment tests (11) |
+| `templates/web/surveys/*.html` | Survey templates (4) |
 
-## Files Created/Modified
+## Files Modified
 
-### New Files
-- `apps/metrics/services/survey_tokens.py` - Token generation/validation
-- `apps/metrics/tests/test_survey_tokens.py` - Token tests
-- `apps/integrations/services/github_comments.py` - GitHub comment service
-- `apps/integrations/tests/test_github_comments.py` - Comment tests
-- `apps/web/tests/test_survey_views.py` - View tests
-- `templates/web/surveys/base.html` - Base template
-- `templates/web/surveys/author.html` - Author form
-- `templates/web/surveys/reviewer.html` - Reviewer form
-- `templates/web/surveys/complete.html` - Completion page
+| File | Changes |
+|------|---------|
+| `apps/metrics/models.py` | Token fields, `is_token_expired()`, `has_author_responded()` |
+| `apps/metrics/factories.py` | `token_expires_at` default |
+| `apps/metrics/services/survey_service.py` | Auto-generate token in `create_pr_survey()` |
+| `apps/web/urls.py` | 5 survey URL patterns |
+| `apps/web/views.py` | 5 survey views + helpers |
+| `apps/integrations/tasks.py` | `post_survey_comment_task`, skip logic in `send_pr_surveys_task` |
+| `apps/integrations/tests/test_tasks.py` | Task tests (8 + 5) |
 
-### Modified Files
-- `apps/metrics/models.py` - Added token fields to PRSurvey
-- `apps/metrics/services/survey_service.py` - Token integration
-- `apps/metrics/factories.py` - Factory updates
-- `apps/web/urls.py` - Survey URL patterns
-- `apps/web/views.py` - Survey views
-- `apps/web/decorators.py` - Authorization decorators
-- `apps/integrations/tasks.py` - Celery task
+## Migrations
 
-### Migrations
 - `apps/metrics/migrations/0001_prsurvey_github_comment_id_prsurvey_token_and_more.py`
 - `apps/metrics/migrations/0002_alter_prsurvey_token_expires_at.py`
 
----
-
-## Completion Checklist
-
-- [x] All tests pass (`make test`)
-- [x] Code formatted (`make ruff`)
-- [x] No new linting errors
-- [x] Migration tested
-- [x] Documentation updated
+All migrations applied.
