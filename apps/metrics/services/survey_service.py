@@ -3,20 +3,33 @@
 Handles creating surveys, recording responses, and triggering reveals.
 """
 
+from typing import TypedDict
+
 from django.db.models import Count, Q
 from django.utils import timezone
 
 from apps.integrations.models import SlackIntegration
 from apps.metrics.models import PRSurvey, PRSurveyReview, PullRequest, TeamMember
+from apps.metrics.services import survey_tokens
+
+
+class AccuracyStats(TypedDict):
+    """Type definition for reviewer accuracy statistics."""
+
+    correct: int
+    total: int
+    percentage: float
 
 
 def create_pr_survey(pull_request: PullRequest) -> PRSurvey:
     """Create survey for a merged PR. Sets author from PR."""
-    return PRSurvey.objects.create(
+    survey = PRSurvey.objects.create(
         team=pull_request.team,
         pull_request=pull_request,
         author=pull_request.author,
     )
+    survey_tokens.set_survey_token(survey)
+    return survey
 
 
 def record_author_response(survey: PRSurvey, ai_assisted: bool) -> None:
@@ -78,7 +91,7 @@ def _can_send_reveal(survey: PRSurvey) -> bool:
         return False
 
 
-def get_reviewer_accuracy_stats(reviewer: TeamMember) -> dict:
+def get_reviewer_accuracy_stats(reviewer: TeamMember) -> AccuracyStats:
     """Get reviewer's guess accuracy stats.
 
     Returns: {correct: int, total: int, percentage: float}

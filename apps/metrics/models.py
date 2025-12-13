@@ -614,6 +614,30 @@ class PRSurvey(BaseTeamModel):
         help_text="The PR author",
     )
 
+    # Token fields for survey access
+    token = models.CharField(
+        max_length=64,
+        unique=True,
+        db_index=True,
+        null=True,
+        blank=True,
+        verbose_name="Token",
+        help_text="Unique token for accessing the survey via URL",
+    )
+    token_expires_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        db_index=True,
+        verbose_name="Token Expires At",
+        help_text="When the survey token expires (typically 7 days after creation)",
+    )
+    github_comment_id = models.BigIntegerField(
+        null=True,
+        blank=True,
+        verbose_name="GitHub Comment ID",
+        help_text="The GitHub comment ID where the survey was posted",
+    )
+
     author_ai_assisted = models.BooleanField(
         null=True,
         verbose_name="Author AI Assisted",
@@ -638,6 +662,14 @@ class PRSurvey(BaseTeamModel):
 
     def __str__(self):
         return f"Survey for PR #{self.pull_request.github_pr_id}"
+
+    def is_token_expired(self):
+        """Check if the survey token has expired."""
+        if self.token_expires_at is None:
+            return True
+        from django.utils import timezone
+
+        return self.token_expires_at < timezone.now()
 
 
 class PRSurveyReview(BaseTeamModel):

@@ -200,6 +200,7 @@ class PRSurveyFactory(DjangoModelFactory):
     author_responded_at = factory.LazyAttribute(
         lambda o: timezone.now() - timedelta(hours=random.randint(1, 48)) if o.author_ai_assisted is not None else None
     )
+    token_expires_at = factory.LazyFunction(lambda: timezone.now() + timedelta(days=7))
 
 
 class PRSurveyReviewFactory(DjangoModelFactory):
