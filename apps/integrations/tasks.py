@@ -355,10 +355,9 @@ def send_pr_surveys_task(pull_request_id: int) -> dict:
 
     # Optimize: Fetch all responded reviewer IDs in a single query to avoid N+1
     responded_reviewer_ids = set(
-        PRSurveyReview.objects.filter(
-            survey_id=survey.id,
-            responded_at__isnull=False
-        ).values_list("reviewer_id", flat=True)
+        PRSurveyReview.objects.filter(survey_id=survey.id, responded_at__isnull=False).values_list(
+            "reviewer_id", flat=True
+        )
     )
 
     # Send reviewer DMs
