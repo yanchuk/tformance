@@ -284,8 +284,8 @@ class TestBulkOperationIsolation(TeamIsolationTestCase):
         # This should only aggregate Team A's data
         avg_additions = PullRequest.for_team.aggregate(avg=Avg("additions"))
 
-        # Verify it's not aggregating Team B's data
-        all_avg = PullRequest.objects.aggregate(avg=Avg("additions"))
+        # Verify it's not aggregating Team B's data (unscoped query for comparison)
+        _all_avg = PullRequest.objects.aggregate(avg=Avg("additions"))  # noqa: TEAM001
 
         # The averages should be different if Team A and B have different data
         # (they should because factories generate random data)

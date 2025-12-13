@@ -41,16 +41,16 @@ def require_valid_survey_token(allow_expired=False):
             try:
                 survey = validate_survey_token(token)
                 request.survey = survey
-            except InvalidTokenError:
-                raise Http404("Survey not found")
+            except InvalidTokenError as e:
+                raise Http404("Survey not found") from e
             except ExpiredTokenError:
                 if allow_expired:
                     # Allow expired tokens if survey exists (user already completed it)
                     try:
                         survey = PRSurvey.objects.get(token=token)  # noqa: TEAM001 - Token-based lookup
                         request.survey = survey
-                    except PRSurvey.DoesNotExist:
-                        raise Http404("Survey not found")
+                    except PRSurvey.DoesNotExist as e:
+                        raise Http404("Survey not found") from e
                 else:
                     return HttpResponse("Survey link has expired", status=410)
 
@@ -76,9 +76,7 @@ def verify_author_access(user, survey):
     if not github_id:
         return False
     author = survey.author
-    if not author or author.github_id != github_id:
-        return False
-    return True
+    return author is not None and author.github_id == github_id
 
 
 def verify_reviewer_access(user, survey):

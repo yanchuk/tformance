@@ -152,7 +152,7 @@ class TestPostSurveyComment(TestCase):
         access_token = "gho_test_token"
 
         # Act
-        result = post_survey_comment(self.pr, self.survey, access_token)
+        post_survey_comment(self.pr, self.survey, access_token)
 
         # Assert
         mock_get_client.assert_called_once_with(access_token)

@@ -93,18 +93,17 @@ class TeamIsolationVisitor(ast.NodeVisitor):
                     return
 
                 # Check if team= is in the call arguments
-                if not self._has_team_filter(node):
-                    # Also check for chained .filter(team=...) calls on the same line
-                    if not self._has_chained_team_filter(node.lineno):
-                        self.violations.append(
-                            Violation(
-                                file=self.filename,
-                                line=node.lineno,
-                                col=node.col_offset,
-                                model=model_name,
-                                method=method_name,
-                            )
+                # Also check for chained .filter(team=...) calls on the same line
+                if not self._has_team_filter(node) and not self._has_chained_team_filter(node.lineno):
+                    self.violations.append(
+                        Violation(
+                            file=self.filename,
+                            line=node.lineno,
+                            col=node.col_offset,
+                            model=model_name,
+                            method=method_name,
                         )
+                    )
 
         self.generic_visit(node)
 
@@ -130,10 +129,7 @@ class TeamIsolationVisitor(ast.NodeVisitor):
         objects_attr = func_attr.value
         model_node = objects_attr.value
 
-        if isinstance(model_node, ast.Name):
-            model_name = model_node.id
-        else:
-            model_name = ""
+        model_name = model_node.id if isinstance(model_node, ast.Name) else ""
 
         return model_name, method_name
 

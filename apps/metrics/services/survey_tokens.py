@@ -88,7 +88,7 @@ def validate_survey_token(token: str) -> "PRSurvey":
         survey = PRSurvey.objects.get(token=token)  # noqa: TEAM001 - Token-based lookup (cryptographically secure)
     except PRSurvey.DoesNotExist:
         logger.warning("Token validation failed: token not found", extra={"token": token[:8] + "..."})
-        raise InvalidTokenError("Invalid token")
+        raise InvalidTokenError("Invalid token") from None
 
     if survey.is_token_expired():
         logger.info(

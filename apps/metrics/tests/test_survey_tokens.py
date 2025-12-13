@@ -400,7 +400,7 @@ class TestTokenValidationService(TestCase):
 
     def test_validate_survey_token_raises_expired_token_error_for_expired_token(self):
         """Test that validate_survey_token raises ExpiredTokenError for expired token."""
-        survey = PRSurveyFactory(
+        PRSurveyFactory(
             team=self.team,
             pull_request=self.pr,
             author=self.member,

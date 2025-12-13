@@ -13,12 +13,6 @@ from django.views.decorators.csrf import csrf_exempt
 from django_ratelimit.decorators import ratelimit
 from slack_sdk.signature import SignatureVerifier
 
-# Slack webhook rate limit: 100 requests per minute per IP
-SLACK_WEBHOOK_RATE_LIMIT = "100/m"
-
-# Maximum webhook payload size: 1 MB (Slack payloads are typically small)
-MAX_SLACK_PAYLOAD_SIZE = 1 * 1024 * 1024  # 1 MB in bytes
-
 from apps.integrations.services.slack_surveys import (
     ACTION_AI_GUESS_NO,
     ACTION_AI_GUESS_YES,
@@ -32,6 +26,12 @@ from apps.metrics.models import PRSurvey, PRSurveyReview
 from apps.metrics.services.survey_service import record_author_response, record_reviewer_response
 
 logger = logging.getLogger(__name__)
+
+# Slack webhook rate limit: 100 requests per minute per IP
+SLACK_WEBHOOK_RATE_LIMIT = "100/m"
+
+# Maximum webhook payload size: 1 MB (Slack payloads are typically small)
+MAX_SLACK_PAYLOAD_SIZE = 1 * 1024 * 1024  # 1 MB in bytes
 
 # Map quality action IDs to rating values
 QUALITY_ACTION_MAP = {

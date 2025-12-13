@@ -48,13 +48,25 @@ class SecurityHeadersMiddleware:
         vite_src = "http://localhost:5173" if settings.DEBUG else ""
         ws_src = "ws://localhost:5173" if settings.DEBUG else ""
 
+        script_src = (
+            f"script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com {vite_src}"
+        )
+        style_src = (
+            f"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com "
+            f"https://cdn.jsdelivr.net https://cdnjs.cloudflare.com {vite_src}"
+        )
+        connect_src = (
+            f"connect-src 'self' https://api.github.com https://api.atlassian.com "
+            f"https://slack.com wss: {vite_src} {ws_src}"
+        )
+
         csp_directives = [
             "default-src 'self'",
-            f"script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com {vite_src}".strip(),
-            f"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com {vite_src}".strip(),
+            script_src.strip(),
+            style_src.strip(),
             "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com",
             "img-src 'self' data: https: blob:",
-            f"connect-src 'self' https://api.github.com https://api.atlassian.com https://slack.com wss: {vite_src} {ws_src}".strip(),
+            connect_src.strip(),
             "frame-ancestors 'none'",
             "form-action 'self'",
             "base-uri 'self'",
