@@ -12,16 +12,8 @@
 
 @config "../../tailwind.config.js";
 
-/* Uncomment to use flowbite's theme system and plugin. This may conflict with parts of DaisyUI */
-/* @import "flowbite/src/themes/default"; */
-@plugin "flowbite/plugin" {
-  /* the forms plugin is disabled here because it conflicts with DaisyUI form styles */
-  forms: false;
-}
 @plugin "@tailwindcss/typography";
 @plugin "daisyui";
-
-@source "../../node_modules/flowbite";
 
 /*
   The default border color has changed to `currentColor` in Tailwind CSS v4,
