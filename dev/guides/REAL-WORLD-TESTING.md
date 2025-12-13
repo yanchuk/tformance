@@ -1,0 +1,578 @@
+# Real-World Integration Testing Guide
+
+This guide walks you through setting up ngrok and creating real GitHub, Jira, and Slack apps for end-to-end integration testing.
+
+## Table of Contents
+
+1. [Prerequisites](#prerequisites)
+2. [Phase 1: ngrok Setup](#phase-1-ngrok-setup)
+3. [Phase 2: GitHub App Setup](#phase-2-github-app-setup)
+4. [Phase 3: Jira App Setup](#phase-3-jira-app-setup)
+5. [Phase 4: Slack App Setup](#phase-4-slack-app-setup)
+6. [Phase 5: Testing Checklist](#phase-5-testing-checklist)
+7. [Troubleshooting](#troubleshooting)
+
+---
+
+## Prerequisites
+
+Before starting, ensure you have:
+
+- [ ] Local development environment running (`make dev`)
+- [ ] Access to create apps on GitHub, Atlassian, and Slack
+- [ ] A GitHub organization (free tier works - see below)
+- [ ] A test Jira Cloud site (free tier available)
+- [ ] A test Slack workspace (create one for free)
+
+### Creating a Free GitHub Organization
+
+The app requires a GitHub **organization** (personal accounts alone won't work).
+
+1. Go to https://github.com/organizations/new
+2. Choose **Free** plan (includes unlimited repos and collaborators)
+3. Name it something like `yourname-test`
+4. Complete setup
+5. Create or fork a test repository into the organization
+
+Free orgs include: unlimited public/private repos, unlimited collaborators, 2,000 Actions minutes/month.
+
+---
+
+## Phase 1: Tunnel Setup
+
+You need a public URL to receive OAuth callbacks and webhooks. Choose one option:
+
+| Option | Stable URL | Setup | Best For |
+|--------|------------|-------|----------|
+| **Cloudflare Tunnel** | Yes | Simple | Already have Cloudflare |
+| **Tailscale Funnel** | Yes | Requires Tailscale | Already use Tailscale |
+| **ngrok** | No (free tier) | Simple | Quick testing |
+
+---
+
+### Option A: Cloudflare Tunnel (Recommended)
+
+Cloudflare Tunnel provides stable URLs and excellent performance.
+
+#### Quick Tunnel (Random URL)
+
+```bash
+# Install cloudflared
+brew install cloudflared
+
+# Start tunnel (no account needed for quick tunnels)
+cloudflared tunnel --url http://localhost:8000
+```
+
+You'll see:
+```
+Your quick Tunnel has been created! Visit it at:
+https://random-words-here.trycloudflare.com
+```
+
+#### Stable Subdomain (Requires Cloudflare Account + Domain)
+
+```bash
+# Login to Cloudflare
+cloudflared tunnel login
+
+# Create named tunnel
+cloudflared tunnel create tformance-dev
+
+# Route to your domain
+cloudflared tunnel route dns tformance-dev dev.yourdomain.com
+
+# Run tunnel
+cloudflared tunnel run tformance-dev
+```
+
+---
+
+### Option B: Tailscale Funnel
+
+If you already use Tailscale, Funnel exposes your local server to the internet.
+
+#### Enable Funnel
+
+1. Go to https://login.tailscale.com/admin/acls
+2. Add Funnel to your ACL policy (or use the toggle in admin console)
+
+#### Start Funnel
+
+```bash
+# Expose port 8000 to internet
+tailscale funnel 8000
+```
+
+You'll get a URL like: `https://your-machine-name.tail1234.ts.net`
+
+---
+
+### Option C: ngrok
+
+ngrok is simple but free tier URLs change on restart.
+
+#### Install ngrok
+
+```bash
+# macOS (Homebrew)
+brew install ngrok
+
+# Or download from https://ngrok.com/download
+```
+
+#### Create Account & Configure
+
+1. Sign up at https://dashboard.ngrok.com/signup
+2. Copy your authtoken from https://dashboard.ngrok.com/get-started/your-authtoken
+3. Configure:
+   ```bash
+   ngrok config add-authtoken YOUR_AUTHTOKEN
+   ```
+
+#### Start Tunnel
+
+```bash
+ngrok http 8000
+```
+
+You'll see:
+```
+Forwarding   https://abc123.ngrok-free.app -> http://localhost:8000
+```
+
+> **Note:** Free ngrok URLs change each restart. You'll need to update OAuth callback URLs each time.
+
+---
+
+### Configure Django for Your Tunnel
+
+Regardless of which tunnel you chose, add the domain to `.env`:
+
+```bash
+# Replace with your actual tunnel domain
+ALLOWED_HOSTS=localhost,127.0.0.1,your-tunnel-domain.com
+CSRF_TRUSTED_ORIGINS=https://your-tunnel-domain.com
+```
+
+Restart Django:
+```bash
+make dev
+```
+
+### Verify Tunnel is Working
+
+1. Visit your tunnel URL in browser
+2. You should see the app homepage
+3. Test health endpoint: `curl https://your-tunnel-domain.com/health/`
+
+---
+
+## Phase 2: GitHub App Setup
+
+You'll create a GitHub OAuth App to enable GitHub integration.
+
+### 2.1 Create GitHub OAuth App
+
+1. Go to https://github.com/settings/developers
+2. Click **OAuth Apps** in the left sidebar
+3. Click **New OAuth App**
+
+### 2.2 Configure OAuth App
+
+Fill in the form:
+
+| Field | Value |
+|-------|-------|
+| **Application name** | `AI Impact Analytics (Dev)` |
+| **Homepage URL** | `https://YOUR_NGROK_URL` |
+| **Authorization callback URL** | `https://YOUR_NGROK_URL/a/YOUR_TEAM_SLUG/integrations/github/callback/` |
+
+> **Note:** Replace `YOUR_TEAM_SLUG` with your actual team slug (e.g., `demo-team`). You can find this in the URL when viewing your team.
+
+### 2.3 Get Credentials
+
+After creating the app:
+1. Copy the **Client ID**
+2. Click **Generate a new client secret**
+3. Copy the **Client Secret** immediately (shown only once)
+
+### 2.4 Update .env
+
+```bash
+GITHUB_CLIENT_ID="your_client_id_here"
+GITHUB_SECRET_ID="your_client_secret_here"
+```
+
+### 2.5 GitHub Webhook URL
+
+For GitHub webhooks (PR events), the app uses:
+```
+https://YOUR_NGROK_URL/webhooks/github/
+```
+
+This is configured automatically when you track repositories in the app.
+
+---
+
+## Phase 3: Jira App Setup
+
+You'll create an Atlassian OAuth 2.0 app for Jira integration.
+
+### 3.1 Create Atlassian Developer Account
+
+1. Go to https://developer.atlassian.com/console/myapps/
+2. Sign in with your Atlassian account (create one if needed)
+
+### 3.2 Create OAuth 2.0 App
+
+1. Click **Create** -> **OAuth 2.0 integration**
+2. Enter app name: `AI Impact Analytics (Dev)`
+3. Check **I agree to the Terms**
+4. Click **Create**
+
+### 3.3 Configure Permissions
+
+1. In your new app, go to **Permissions**
+2. Click **Add** next to **Jira API**
+3. Click **Configure** next to Jira API
+4. Add these scopes:
+   - `read:jira-work` - Read project, issue, and sprint data
+   - `read:jira-user` - Read user information
+5. Click **Save**
+
+### 3.4 Configure Authorization
+
+1. Go to **Authorization** in the left sidebar
+2. Click **Add** next to **OAuth 2.0 (3LO)**
+3. Set the **Callback URL**:
+   ```
+   https://YOUR_NGROK_URL/a/YOUR_TEAM_SLUG/integrations/jira/callback/
+   ```
+4. Click **Save changes**
+
+### 3.5 Get Credentials
+
+1. Go to **Settings** in the left sidebar
+2. Copy the **Client ID**
+3. Copy the **Secret** (click reveal if needed)
+
+### 3.6 Update .env
+
+```bash
+JIRA_CLIENT_ID="your_client_id_here"
+JIRA_CLIENT_SECRET="your_client_secret_here"
+```
+
+### 3.7 Create Test Jira Site (if needed)
+
+If you don't have a Jira Cloud site:
+1. Go to https://www.atlassian.com/software/jira/free
+2. Click **Get it free**
+3. Create a new site (e.g., `yourname-test.atlassian.net`)
+4. Create a test project
+
+---
+
+## Phase 4: Slack App Setup
+
+You'll create a Slack App with Bot capabilities.
+
+### 4.1 Create Slack App
+
+1. Go to https://api.slack.com/apps
+2. Click **Create New App**
+3. Choose **From scratch**
+4. Enter:
+   - **App Name:** `AI Impact Analytics (Dev)`
+   - **Workspace:** Select your test workspace
+5. Click **Create App**
+
+### 4.2 Configure OAuth & Permissions
+
+1. In the left sidebar, click **OAuth & Permissions**
+2. Scroll to **Redirect URLs**
+3. Click **Add New Redirect URL**
+4. Add:
+   ```
+   https://YOUR_NGROK_URL/a/YOUR_TEAM_SLUG/integrations/slack/callback/
+   ```
+5. Click **Save URLs**
+
+### 4.3 Add Bot Scopes
+
+Scroll down to **Scopes** -> **Bot Token Scopes** and add:
+
+| Scope | Purpose |
+|-------|---------|
+| `chat:write` | Send messages and surveys |
+| `users:read` | Read workspace users for matching |
+| `users:read.email` | Read user emails for matching |
+
+### 4.4 Configure Interactivity
+
+For survey button clicks to work:
+
+1. In left sidebar, click **Interactivity & Shortcuts**
+2. Toggle **Interactivity** to **On**
+3. Set **Request URL**:
+   ```
+   https://YOUR_NGROK_URL/integrations/webhooks/slack/interactions/
+   ```
+4. Click **Save Changes**
+
+### 4.5 Install App to Workspace
+
+1. Go back to **OAuth & Permissions**
+2. Click **Install to Workspace**
+3. Review permissions and click **Allow**
+
+### 4.6 Get Credentials
+
+From the **Basic Information** page:
+1. Scroll to **App Credentials**
+2. Copy **Client ID**
+3. Copy **Client Secret**
+4. Copy **Signing Secret**
+
+### 4.7 Update .env
+
+```bash
+SLACK_CLIENT_ID="your_client_id_here"
+SLACK_CLIENT_SECRET="your_client_secret_here"
+SLACK_SIGNING_SECRET="your_signing_secret_here"
+```
+
+---
+
+## Phase 5: Testing Checklist
+
+After setting up all integrations, test each flow.
+
+### Pre-Test Setup
+
+```bash
+# 1. Ensure ngrok is running
+ngrok http 8000
+
+# 2. Restart Django with updated .env
+make dev
+
+# 3. Verify the app is accessible
+curl -I https://YOUR_NGROK_URL/health/
+```
+
+### GitHub Integration Tests
+
+- [ ] **OAuth Flow**
+  1. Go to Integrations page
+  2. Click "Connect GitHub"
+  3. Authorize the app on GitHub
+  4. Verify redirect back with success message
+
+- [ ] **Organization Selection** (if multiple orgs)
+  1. After OAuth, select your test organization
+  2. Verify organization is saved
+
+- [ ] **Member Sync**
+  1. Go to GitHub Members page
+  2. Click "Sync Members"
+  3. Verify org members are listed
+
+- [ ] **Repository Tracking**
+  1. Go to GitHub Repos page
+  2. Toggle a repo to track it
+  3. Verify webhook is created (check repo Settings -> Webhooks)
+
+- [ ] **Webhook Reception**
+  1. Create or merge a PR in tracked repo
+  2. Check Django logs for webhook received
+  3. Verify PR data appears in database
+
+### Jira Integration Tests
+
+- [ ] **OAuth Flow**
+  1. Go to Integrations page
+  2. Click "Connect Jira"
+  3. Authorize on Atlassian
+  4. Verify redirect back with success
+
+- [ ] **Site Selection** (if multiple sites)
+  1. Select your test Jira site
+  2. Verify site is saved
+
+- [ ] **Project Listing**
+  1. Go to Jira Projects page
+  2. Verify projects from your site are listed
+
+- [ ] **Project Tracking**
+  1. Toggle a project to track it
+  2. Verify it's marked as tracked
+
+### Slack Integration Tests
+
+- [ ] **OAuth Flow**
+  1. Go to Integrations page
+  2. Click "Connect Slack"
+  3. Authorize the app
+  4. Verify redirect back with success
+
+- [ ] **Bot Token Verification**
+  1. Check that bot token was saved (admin panel)
+  2. Verify team_name and team_id are populated
+
+- [ ] **Survey Settings**
+  1. Go to Slack Settings page
+  2. Configure survey channel and timing
+  3. Save settings
+
+- [ ] **Survey Button Interaction**
+  1. Trigger a test survey (merge a PR with tracked repo)
+  2. Click a button in the Slack survey
+  3. Verify interaction is received (check Django logs)
+  4. Verify survey response is saved
+
+### End-to-End Flow Test
+
+- [ ] **Full PR Survey Flow**
+  1. Ensure GitHub and Slack are connected
+  2. Create a PR in tracked repo
+  3. Get it reviewed and merge
+  4. Verify author receives Slack survey
+  5. Verify reviewer receives Slack survey
+  6. Complete both surveys
+  7. Verify "reveal" message is sent
+
+---
+
+## Troubleshooting
+
+### ngrok Issues
+
+**Problem:** "Tunnel session not found"
+```bash
+# Restart ngrok
+pkill ngrok
+ngrok http 8000
+```
+
+**Problem:** "Invalid Host header"
+- Add ngrok domain to `ALLOWED_HOSTS` in `.env`
+- Add to `CSRF_TRUSTED_ORIGINS`
+
+**Problem:** ngrok URL changed
+- Free ngrok URLs change on restart
+- Update all OAuth callback URLs in GitHub/Jira/Slack apps
+- Update `.env` with new domain
+
+### GitHub OAuth Issues
+
+**Problem:** "Redirect URI mismatch"
+- Ensure callback URL exactly matches what's in GitHub OAuth App settings
+- Check team slug is correct
+- Ensure using HTTPS (ngrok provides this)
+
+**Problem:** "Bad credentials" on API calls
+- Token may have expired
+- Disconnect and reconnect GitHub integration
+
+**Problem:** Webhook not received
+- Check webhook is created in repo Settings -> Webhooks
+- Check "Recent Deliveries" for errors
+- Verify ngrok is running and URL is correct
+
+### Jira OAuth Issues
+
+**Problem:** "Invalid redirect_uri"
+- Callback URL must exactly match Atlassian app settings
+- Include the full path with team slug
+
+**Problem:** "Access denied"
+- Ensure required scopes are configured in Atlassian app
+- User may not have access to requested resources
+
+**Problem:** "No accessible resources"
+- User hasn't granted access to any Jira sites
+- Add user to a Jira site and try again
+
+### Slack OAuth Issues
+
+**Problem:** "Invalid redirect_uri"
+- Callback URL must be in Slack app's Redirect URLs list
+- URL must use HTTPS
+
+**Problem:** "Missing scope"
+- Add required scopes in OAuth & Permissions
+- Reinstall app to workspace after adding scopes
+
+**Problem:** Button clicks not working
+- Verify Interactivity is enabled
+- Check Request URL is correct
+- Check Django logs for signature verification errors
+
+**Problem:** "Invalid signature" on interactions
+- `SLACK_SIGNING_SECRET` may be wrong
+- Re-copy from Slack app Basic Information page
+
+### General Debugging
+
+```bash
+# Watch Django logs
+make dev
+
+# Check database for saved data
+make dbshell
+SELECT * FROM integrations_githubintegration;
+SELECT * FROM integrations_slackintegration;
+SELECT * FROM integrations_jiraintegration;
+
+# Check Celery task queue (if using)
+celery -A tformance inspect active
+```
+
+---
+
+## Quick Reference: URLs Summary
+
+| Service | URL Type | Path |
+|---------|----------|------|
+| GitHub | OAuth Callback | `/a/{team_slug}/integrations/github/callback/` |
+| GitHub | Webhook | `/webhooks/github/` |
+| Jira | OAuth Callback | `/a/{team_slug}/integrations/jira/callback/` |
+| Slack | OAuth Callback | `/a/{team_slug}/integrations/slack/callback/` |
+| Slack | Interactions | `/integrations/webhooks/slack/interactions/` |
+
+---
+
+## Quick Reference: Environment Variables
+
+```bash
+# ngrok domain (update when URL changes)
+ALLOWED_HOSTS=localhost,127.0.0.1,YOUR_NGROK_DOMAIN
+CSRF_TRUSTED_ORIGINS=https://YOUR_NGROK_DOMAIN
+
+# GitHub OAuth App
+GITHUB_CLIENT_ID="..."
+GITHUB_SECRET_ID="..."
+
+# Jira OAuth App (Atlassian)
+JIRA_CLIENT_ID="..."
+JIRA_CLIENT_SECRET="..."
+
+# Slack App
+SLACK_CLIENT_ID="..."
+SLACK_CLIENT_SECRET="..."
+SLACK_SIGNING_SECRET="..."
+```
+
+---
+
+## Next Steps After Testing
+
+Once integrations are verified:
+
+1. **Document any issues** found during testing
+2. **Create seed data** for demo purposes
+3. **Test the dashboard** with real synced data
+4. **Verify survey flow** end-to-end
+5. **Test Celery scheduled tasks** for daily sync
