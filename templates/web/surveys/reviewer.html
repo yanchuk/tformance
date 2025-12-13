@@ -1,0 +1,25 @@
+{% extends "web/surveys/base.html" %}
+
+{% block title %}Reviewer Survey{% endblock %}
+
+{% block content %}
+  <h1>Reviewer Survey</h1>
+  <p>Please rate the quality of this pull request and guess if AI was used.</p>
+  <form method="post" action="{% url 'web:survey_submit' token=token %}">
+    {% csrf_token %}
+    <div>
+      <label>Quality rating:</label>
+      <select name="quality">
+        <option value="1">Could be better</option>
+        <option value="2">OK</option>
+        <option value="3">Super</option>
+      </select>
+    </div>
+    <div>
+      <label>Do you think AI was used?</label>
+      <input type="radio" name="ai_guess" value="true"> Yes
+      <input type="radio" name="ai_guess" value="false"> No
+    </div>
+    <button type="submit">Submit</button>
+  </form>
+{% endblock %}

@@ -1,0 +1,13 @@
+{% extends "web/surveys/base.html" %}
+
+{% block title %}Author Survey{% endblock %}
+
+{% block content %}
+  <h1>Author Survey</h1>
+  <p>Did you use AI assistance for this pull request?</p>
+  <form method="post" action="{% url 'web:survey_submit' token=token %}">
+    {% csrf_token %}
+    <button type="submit" name="ai_assisted" value="true">Yes</button>
+    <button type="submit" name="ai_assisted" value="false">No</button>
+  </form>
+{% endblock %}

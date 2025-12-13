@@ -25,6 +25,12 @@ urlpatterns = [
         ),
         name="flowbite",
     ),
+    # Survey views (public, token-based access)
+    path("survey/<str:token>/", views.survey_landing, name="survey_landing"),
+    path("survey/<str:token>/author/", views.survey_author, name="survey_author"),
+    path("survey/<str:token>/reviewer/", views.survey_reviewer, name="survey_reviewer"),
+    path("survey/<str:token>/submit/", views.survey_submit, name="survey_submit"),
+    path("survey/<str:token>/complete/", views.survey_complete, name="survey_complete"),
 ]
 
 

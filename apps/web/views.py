@@ -2,8 +2,14 @@ import json
 import logging
 
 from django.conf import settings
+from django.contrib.auth.decorators import login_required
 from django.core.cache import cache
-from django.http import Http404, HttpResponseNotAllowed, HttpResponseRedirect, JsonResponse
+from django.http import (
+    Http404,
+    HttpResponseNotAllowed,
+    HttpResponseRedirect,
+    JsonResponse,
+)
 from django.shortcuts import render
 from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
@@ -14,8 +20,15 @@ from health_check.views import MainView
 from apps.integrations.models import TrackedRepository
 from apps.integrations.services.github_webhooks import validate_webhook_signature
 from apps.metrics import processors
+from apps.metrics.models import PRSurveyReview, TeamMember
+from apps.metrics.services.survey_service import record_author_response, record_reviewer_response
 from apps.teams.decorators import login_and_team_required
 from apps.teams.helpers import get_open_invitations_for_user
+from apps.web.decorators import (
+    require_survey_author_access,
+    require_survey_reviewer_access,
+    require_valid_survey_token,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -168,3 +181,123 @@ def github_webhook(request):
         },
         status=200,
     )
+
+
+# Survey Views (token-based access)
+
+
+@login_required
+@require_valid_survey_token()
+def survey_landing(request, token):
+    """Landing page for survey - redirects to author or reviewer form based on user."""
+    # For now, just redirect to author form (minimal implementation)
+    # In full implementation, would check if user is author or reviewer
+    return HttpResponseRedirect(reverse("web:survey_author", kwargs={"token": token}))
+
+
+@login_required
+@require_valid_survey_token()
+@require_survey_author_access
+def survey_author(request, token):
+    """Show author survey form (AI assistance question)."""
+    return render(request, "web/surveys/author.html", {"survey": request.survey, "token": token})
+
+
+@login_required
+@require_valid_survey_token()
+@require_survey_reviewer_access
+def survey_reviewer(request, token):
+    """Show reviewer survey form (quality + AI guess)."""
+    return render(request, "web/surveys/reviewer.html", {"survey": request.survey, "token": token})
+
+
+def _is_author_submission(post_data):
+    """Check if POST data represents an author survey submission."""
+    return "ai_assisted" in post_data and "quality_rating" not in post_data
+
+
+def _is_reviewer_submission(post_data):
+    """Check if POST data represents a reviewer survey submission."""
+    return "quality_rating" in post_data and "ai_guess" in post_data
+
+
+def _handle_author_submission(survey, post_data):
+    """Process author survey submission."""
+    if survey.author_ai_assisted is not None:
+        logger.info(f"Author already responded to survey {survey.id}, skipping duplicate submission")
+        return
+
+    ai_assisted = post_data.get("ai_assisted") == "true"
+    record_author_response(survey, ai_assisted)
+    logger.info(f"Author response recorded for survey {survey.id}: ai_assisted={ai_assisted}")
+
+
+def _handle_reviewer_submission(survey, post_data):
+    """Process reviewer survey submission."""
+    # Validate required fields
+    quality_rating_str = post_data.get("quality_rating")
+    ai_guess_str = post_data.get("ai_guess")
+    reviewer_id = post_data.get("reviewer_id")
+
+    if not all([quality_rating_str, ai_guess_str, reviewer_id]):
+        logger.warning(f"Reviewer submission missing required fields for survey {survey.id}")
+        return
+
+    # Parse and validate quality rating
+    try:
+        quality_rating = int(quality_rating_str)
+    except (ValueError, TypeError):
+        logger.warning(f"Invalid quality_rating for survey {survey.id}: {quality_rating_str}")
+        return
+
+    ai_guess = ai_guess_str == "true"
+
+    # Get the reviewer TeamMember
+    try:
+        reviewer = TeamMember.objects.get(id=reviewer_id, team=survey.team)
+    except TeamMember.DoesNotExist:
+        logger.warning(f"Invalid reviewer_id {reviewer_id} for survey {survey.id}")
+        return
+
+    # Get or create PRSurveyReview for this reviewer
+    survey_review, created = PRSurveyReview.objects.get_or_create(
+        survey=survey, reviewer=reviewer, defaults={"team": survey.team}
+    )
+
+    # Record the response (only if not already responded)
+    if survey_review.responded_at is not None:
+        logger.info(f"Reviewer {reviewer.id} already responded to survey {survey.id}, skipping duplicate")
+        return
+
+    record_reviewer_response(survey_review, quality_rating, ai_guess)
+    logger.info(
+        f"Reviewer response recorded for survey {survey.id}: "
+        f"reviewer={reviewer.id}, quality_rating={quality_rating}, ai_guess={ai_guess}"
+    )
+
+
+@login_required
+@require_valid_survey_token()
+def survey_submit(request, token):
+    """Handle survey form submission."""
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+
+    survey = request.survey
+
+    # Determine submission type and handle accordingly
+    if _is_author_submission(request.POST):
+        _handle_author_submission(survey, request.POST)
+    elif _is_reviewer_submission(request.POST):
+        _handle_reviewer_submission(survey, request.POST)
+    else:
+        logger.warning(f"Unknown submission type for survey {survey.id}")
+
+    return HttpResponseRedirect(reverse("web:survey_complete", kwargs={"token": token}))
+
+
+@login_required
+@require_valid_survey_token(allow_expired=True)
+def survey_complete(request, token):
+    """Show thank you message after survey completion."""
+    return render(request, "web/surveys/complete.html", {"survey": request.survey, "token": token})
