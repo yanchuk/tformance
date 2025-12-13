@@ -167,7 +167,7 @@ def _map_github_pr_to_fields(team, pr_data: dict) -> dict:
 
 def _trigger_pr_surveys_if_merged(pr: PullRequest, action: str, is_merged: bool) -> None:
     """
-    Trigger PR survey task if the PR was just merged.
+    Trigger PR survey tasks if the PR was just merged.
 
     Args:
         pr: PullRequest instance
@@ -175,6 +175,7 @@ def _trigger_pr_surveys_if_merged(pr: PullRequest, action: str, is_merged: bool)
         is_merged: Whether the PR was merged
     """
     if action == "closed" and is_merged:
+        # Trigger Slack surveys
         try:
             from apps.integrations.tasks import send_pr_surveys_task
 
@@ -183,6 +184,16 @@ def _trigger_pr_surveys_if_merged(pr: PullRequest, action: str, is_merged: bool)
         except Exception as e:
             # Log error but don't break webhook response
             logger.error(f"Failed to dispatch send_pr_surveys_task for PR {pr.id}: {e}")
+
+        # Trigger GitHub comment survey (independent)
+        try:
+            from apps.integrations.tasks import post_survey_comment_task
+
+            post_survey_comment_task.delay(pr.id)
+            logger.debug(f"Dispatched post_survey_comment_task for PR {pr.id}")
+        except Exception as e:
+            # Log error but don't break webhook response
+            logger.error(f"Failed to dispatch post_survey_comment_task for PR {pr.id}: {e}")
 
 
 def handle_pull_request_event(team, payload: dict) -> PullRequest | None:

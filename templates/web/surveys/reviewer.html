@@ -3,23 +3,133 @@
 {% block title %}Reviewer Survey{% endblock %}
 
 {% block content %}
-  <h1>Reviewer Survey</h1>
-  <p>Please rate the quality of this pull request and guess if AI was used.</p>
-  <form method="post" action="{% url 'web:survey_submit' token=token %}">
-    {% csrf_token %}
-    <div>
-      <label>Quality rating:</label>
-      <select name="quality">
-        <option value="1">Could be better</option>
-        <option value="2">OK</option>
-        <option value="3">Super</option>
-      </select>
+<div class="w-full max-w-md opacity-0 animate-fade-in-up">
+  <div class="card bg-base-200/80 shadow-2xl survey-card">
+    <div class="card-body p-6 sm:p-8">
+      <!-- PR Context -->
+      <div class="opacity-0 animate-fade-in-up animate-delay-100">
+        <div class="flex items-center gap-2 text-base-content/60 text-sm font-mono mb-2">
+          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 16 16">
+            <path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"/>
+          </svg>
+          <span>{{ survey.pull_request.repository.full_name|default:"repository" }}</span>
+        </div>
+
+        <h2 class="card-title text-xl sm:text-2xl font-bold text-base-content leading-tight">
+          {{ survey.pull_request.title }}
+        </h2>
+
+        <p class="text-sm text-base-content/60 mt-1">
+          by {{ survey.author.display_name|default:"Author" }}
+        </p>
+      </div>
+
+      <!-- Divider -->
+      <div class="divider my-4 opacity-0 animate-fade-in-up animate-delay-200"></div>
+
+      <!-- Form -->
+      <form method="post"
+            action="{% url 'web:survey_submit' token=token %}"
+            x-data="{ submitting: false, quality: null, aiGuess: null }"
+            @submit="submitting = true"
+            class="opacity-0 animate-fade-in-up animate-delay-200">
+        {% csrf_token %}
+        {% if reviewer %}
+        <input type="hidden" name="reviewer_id" value="{{ reviewer.id }}">
+        {% endif %}
+
+        <!-- Quality Rating -->
+        <div class="mb-6">
+          <p class="text-base font-medium text-base-content/90 mb-3">
+            How would you rate the code quality?
+          </p>
+
+          <div class="survey-btn-group grid grid-cols-3 gap-2">
+            <!-- Could be better -->
+            <label class="cursor-pointer"
+                   :class="{ 'ring-2 ring-warning ring-offset-2 ring-offset-base-200': quality === '1' }">
+              <input type="radio" name="quality_rating" value="1" class="hidden" x-model="quality" required>
+              <div class="btn btn-sm sm:btn-md w-full flex-col h-auto py-3 gap-1 transition-all"
+                   :class="quality === '1' ? 'btn-warning' : 'btn-outline hover:btn-warning'">
+                <span class="text-lg">😕</span>
+                <span class="text-xs">Could be better</span>
+              </div>
+            </label>
+
+            <!-- OK -->
+            <label class="cursor-pointer"
+                   :class="{ 'ring-2 ring-info ring-offset-2 ring-offset-base-200': quality === '2' }">
+              <input type="radio" name="quality_rating" value="2" class="hidden" x-model="quality" required>
+              <div class="btn btn-sm sm:btn-md w-full flex-col h-auto py-3 gap-1 transition-all"
+                   :class="quality === '2' ? 'btn-info' : 'btn-outline hover:btn-info'">
+                <span class="text-lg">👍</span>
+                <span class="text-xs">OK</span>
+              </div>
+            </label>
+
+            <!-- Super -->
+            <label class="cursor-pointer"
+                   :class="{ 'ring-2 ring-success ring-offset-2 ring-offset-base-200': quality === '3' }">
+              <input type="radio" name="quality_rating" value="3" class="hidden" x-model="quality" required>
+              <div class="btn btn-sm sm:btn-md w-full flex-col h-auto py-3 gap-1 transition-all"
+                   :class="quality === '3' ? 'btn-success' : 'btn-outline hover:btn-success'">
+                <span class="text-lg">🌟</span>
+                <span class="text-xs">Super</span>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- AI Guess -->
+        <div class="mb-6">
+          <p class="text-base font-medium text-base-content/90 mb-3">
+            Was this PR AI-assisted?
+          </p>
+
+          <div class="survey-btn-group flex gap-3">
+            <!-- Yes -->
+            <label class="flex-1 cursor-pointer"
+                   :class="{ 'ring-2 ring-primary ring-offset-2 ring-offset-base-200': aiGuess === 'true' }">
+              <input type="radio" name="ai_guess" value="true" class="hidden" x-model="aiGuess" required>
+              <div class="btn btn-md w-full gap-2 transition-all"
+                   :class="aiGuess === 'true' ? 'btn-primary' : 'btn-outline hover:btn-primary'">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                Yes, I think so
+              </div>
+            </label>
+
+            <!-- No -->
+            <label class="flex-1 cursor-pointer"
+                   :class="{ 'ring-2 ring-secondary ring-offset-2 ring-offset-base-200': aiGuess === 'false' }">
+              <input type="radio" name="ai_guess" value="false" class="hidden" x-model="aiGuess" required>
+              <div class="btn btn-md w-full gap-2 transition-all"
+                   :class="aiGuess === 'false' ? 'btn-secondary' : 'btn-outline hover:btn-secondary'">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                No, I don't think so
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- Submit -->
+        <button type="submit"
+                :disabled="!quality || !aiGuess || submitting"
+                class="btn btn-primary btn-block btn-lg"
+                :class="{ 'loading': submitting }">
+          <span x-show="!submitting">Submit Response</span>
+          <span x-show="submitting">Submitting...</span>
+        </button>
+      </form>
+
+      <!-- Privacy note -->
+      <p class="text-xs text-base-content/40 text-center mt-4 opacity-0 animate-fade-in-up animate-delay-300">
+        Your guess will be revealed after the author responds.
+      </p>
     </div>
-    <div>
-      <label>Do you think AI was used?</label>
-      <input type="radio" name="ai_guess" value="true"> Yes
-      <input type="radio" name="ai_guess" value="false"> No
-    </div>
-    <button type="submit">Submit</button>
-  </form>
+  </div>
+</div>
 {% endblock %}

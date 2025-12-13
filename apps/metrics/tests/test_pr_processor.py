@@ -331,6 +331,78 @@ class TestPullRequestEventHandler(TestCase):
             self.assertIsNotNone(result)
             self.assertEqual(result.state, "merged")
 
+    def test_dispatches_github_survey_comment_task_on_merge(self):
+        """Test that PR merge dispatches post_survey_comment_task for GitHub comment survey."""
+        from unittest.mock import patch
+
+        from apps.metrics.processors import handle_pull_request_event
+
+        # Create a merged PR payload
+        payload = self._make_payload(
+            action="closed",
+            state="closed",
+            merged=True,
+            merged_at="2025-01-02T15:00:00Z",
+        )
+
+        # Mock both tasks
+        with patch("apps.integrations.tasks.send_pr_surveys_task") as mock_slack_task:
+            with patch("apps.integrations.tasks.post_survey_comment_task") as mock_github_task:
+                result = handle_pull_request_event(self.team, payload)
+
+                # Verify both tasks were dispatched with correct PR ID
+                mock_slack_task.delay.assert_called_once_with(result.id)
+                mock_github_task.delay.assert_called_once_with(result.id)
+
+    def test_does_not_dispatch_github_task_when_not_merged(self):
+        """Test that PR close without merge does NOT dispatch post_survey_comment_task."""
+        from unittest.mock import patch
+
+        from apps.metrics.processors import handle_pull_request_event
+
+        # Create a closed (not merged) PR payload
+        payload = self._make_payload(
+            action="closed",
+            state="closed",
+            merged=False,
+        )
+
+        # Mock both tasks
+        with patch("apps.integrations.tasks.send_pr_surveys_task") as mock_slack_task:
+            with patch("apps.integrations.tasks.post_survey_comment_task") as mock_github_task:
+                handle_pull_request_event(self.team, payload)
+
+                # Verify neither task was dispatched
+                mock_slack_task.delay.assert_not_called()
+                mock_github_task.delay.assert_not_called()
+
+    def test_github_task_independent_of_slack_task_failure(self):
+        """Test that GitHub comment task is dispatched even if Slack task fails."""
+        from unittest.mock import patch
+
+        from apps.metrics.processors import handle_pull_request_event
+
+        # Create a merged PR payload
+        payload = self._make_payload(
+            action="closed",
+            state="closed",
+            merged=True,
+            merged_at="2025-01-02T15:00:00Z",
+        )
+
+        # Mock Slack task to raise error, GitHub task to succeed
+        with patch("apps.integrations.tasks.send_pr_surveys_task") as mock_slack_task:
+            with patch("apps.integrations.tasks.post_survey_comment_task") as mock_github_task:
+                mock_slack_task.delay.side_effect = Exception("Slack connection error")
+
+                result = handle_pull_request_event(self.team, payload)
+
+                # Verify GitHub task was still dispatched despite Slack failure
+                mock_github_task.delay.assert_called_once_with(result.id)
+                # Verify the webhook still returned successfully
+                self.assertIsNotNone(result)
+                self.assertEqual(result.state, "merged")
+
 
 class TestPullRequestReviewEventHandler(TestCase):
     """Tests for handle_pull_request_review_event webhook processor."""

@@ -208,7 +208,19 @@ def survey_author(request, token):
 @require_survey_reviewer_access
 def survey_reviewer(request, token):
     """Show reviewer survey form (quality + AI guess)."""
-    return render(request, "web/surveys/reviewer.html", {"survey": request.survey, "token": token})
+    # Get the current user's TeamMember to pass reviewer_id to template
+    from apps.web.decorators import get_user_github_id
+
+    github_id = get_user_github_id(request.user)
+    reviewer = None
+    if github_id:
+        reviewer = TeamMember.objects.filter(team=request.survey.team, github_id=github_id).first()
+
+    return render(
+        request,
+        "web/surveys/reviewer.html",
+        {"survey": request.survey, "token": token, "reviewer": reviewer},
+    )
 
 
 def _is_author_submission(post_data):
@@ -233,7 +245,14 @@ def _handle_author_submission(survey, post_data):
 
 
 def _handle_reviewer_submission(survey, post_data):
-    """Process reviewer survey submission."""
+    """Process reviewer survey submission.
+
+    Returns:
+        dict or None: Reveal data if author has responded, None otherwise.
+        Reveal data contains: guess_correct, was_ai, accuracy
+    """
+    from apps.metrics.services.survey_service import get_reviewer_accuracy_stats
+
     # Validate required fields
     quality_rating_str = post_data.get("quality_rating")
     ai_guess_str = post_data.get("ai_guess")
@@ -241,14 +260,14 @@ def _handle_reviewer_submission(survey, post_data):
 
     if not all([quality_rating_str, ai_guess_str, reviewer_id]):
         logger.warning(f"Reviewer submission missing required fields for survey {survey.id}")
-        return
+        return None
 
     # Parse and validate quality rating
     try:
         quality_rating = int(quality_rating_str)
     except (ValueError, TypeError):
         logger.warning(f"Invalid quality_rating for survey {survey.id}: {quality_rating_str}")
-        return
+        return None
 
     ai_guess = ai_guess_str == "true"
 
@@ -257,7 +276,7 @@ def _handle_reviewer_submission(survey, post_data):
         reviewer = TeamMember.objects.get(id=reviewer_id, team=survey.team)
     except TeamMember.DoesNotExist:
         logger.warning(f"Invalid reviewer_id {reviewer_id} for survey {survey.id}")
-        return
+        return None
 
     # Get or create PRSurveyReview for this reviewer
     survey_review, created = PRSurveyReview.objects.get_or_create(
@@ -267,13 +286,26 @@ def _handle_reviewer_submission(survey, post_data):
     # Record the response (only if not already responded)
     if survey_review.responded_at is not None:
         logger.info(f"Reviewer {reviewer.id} already responded to survey {survey.id}, skipping duplicate")
-        return
+        return None
 
     record_reviewer_response(survey_review, quality_rating, ai_guess)
     logger.info(
         f"Reviewer response recorded for survey {survey.id}: "
         f"reviewer={reviewer.id}, quality_rating={quality_rating}, ai_guess={ai_guess}"
     )
+
+    # Build reveal data if author has responded
+    if survey.author_ai_assisted is not None:
+        # Refresh survey_review to get updated guess_correct
+        survey_review.refresh_from_db()
+        accuracy_stats = get_reviewer_accuracy_stats(reviewer)
+        return {
+            "guess_correct": survey_review.guess_correct,
+            "was_ai": survey.author_ai_assisted,
+            "accuracy": accuracy_stats,
+        }
+
+    return None
 
 
 @login_required
@@ -284,14 +316,23 @@ def survey_submit(request, token):
         return HttpResponseNotAllowed(["POST"])
 
     survey = request.survey
+    reveal_data = None
+    is_reviewer = False
 
     # Determine submission type and handle accordingly
     if _is_author_submission(request.POST):
         _handle_author_submission(survey, request.POST)
     elif _is_reviewer_submission(request.POST):
-        _handle_reviewer_submission(survey, request.POST)
+        is_reviewer = True
+        reveal_data = _handle_reviewer_submission(survey, request.POST)
     else:
         logger.warning(f"Unknown submission type for survey {survey.id}")
+
+    # Store reveal data in session for the complete page
+    if reveal_data:
+        request.session["survey_reveal"] = reveal_data
+        request.session["survey_reveal_token"] = token
+    request.session["is_reviewer_submission"] = is_reviewer
 
     return HttpResponseRedirect(reverse("web:survey_complete", kwargs={"token": token}))
 
@@ -300,4 +341,21 @@ def survey_submit(request, token):
 @require_valid_survey_token(allow_expired=True)
 def survey_complete(request, token):
     """Show thank you message after survey completion."""
-    return render(request, "web/surveys/complete.html", {"survey": request.survey, "token": token})
+    # Get reveal data from session (only if it matches this survey token)
+    reveal = None
+    is_reviewer_submission = request.session.pop("is_reviewer_submission", False)
+
+    if request.session.get("survey_reveal_token") == token:
+        reveal = request.session.pop("survey_reveal", None)
+        request.session.pop("survey_reveal_token", None)
+
+    return render(
+        request,
+        "web/surveys/complete.html",
+        {
+            "survey": request.survey,
+            "token": token,
+            "reveal": reveal,
+            "is_reviewer_submission": is_reviewer_submission,
+        },
+    )

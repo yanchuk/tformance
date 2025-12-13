@@ -125,6 +125,7 @@ class TestSendPRSurveysTask(TestCase):
         SlackIntegrationFactory(team=self.team, surveys_enabled=True)
 
         mock_survey = MagicMock(id=1)
+        mock_survey.has_author_responded.return_value = False  # Author hasn't responded yet
         mock_create_survey.return_value = mock_survey
         mock_build_blocks.return_value = [{"type": "section", "text": {"type": "mrkdwn", "text": "Test"}}]
         mock_client = MagicMock()
@@ -203,6 +204,7 @@ class TestSendPRSurveysTask(TestCase):
         SlackIntegrationFactory(team=self.team, surveys_enabled=True)
 
         mock_survey = MagicMock(id=1)
+        mock_survey.has_author_responded.return_value = False  # Author hasn't responded yet
         mock_create_survey.return_value = mock_survey
         mock_client = MagicMock()
         mock_get_client.return_value = mock_client

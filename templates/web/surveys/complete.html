@@ -3,6 +3,83 @@
 {% block title %}Survey Complete{% endblock %}
 
 {% block content %}
-  <h1>Thank you!</h1>
-  <p>Thank you for completing the survey.</p>
+<div class="w-full max-w-md opacity-0 animate-fade-in-up">
+  <div class="card bg-base-200/80 shadow-2xl survey-card">
+    <div class="card-body p-6 sm:p-8 text-center">
+      <!-- Success Icon -->
+      <div class="opacity-0 animate-fade-in-up animate-delay-100">
+        <div class="w-20 h-20 mx-auto mb-4 rounded-full bg-success/20 flex items-center justify-center">
+          <svg class="w-10 h-10 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+          </svg>
+        </div>
+
+        <h2 class="text-2xl font-bold text-base-content mb-2">Thank you!</h2>
+        <p class="text-base-content/70">Your response has been recorded.</p>
+      </div>
+
+      {% if reveal %}
+      <!-- Reveal Section -->
+      <div class="divider my-6 opacity-0 animate-fade-in-up animate-delay-200"></div>
+
+      <div class="opacity-0 animate-fade-in-up animate-delay-200">
+        {% if reveal.guess_correct %}
+        <!-- Correct Guess -->
+        <div class="mb-4">
+          <div class="text-5xl mb-3">🎯</div>
+          <p class="text-xl font-bold text-success mb-2">Nice detective work!</p>
+          <p class="text-base-content/80">
+            You guessed correctly &mdash; this PR
+            <span class="font-semibold">{% if reveal.was_ai %}was{% else %}wasn't{% endif %}</span>
+            AI-assisted.
+          </p>
+        </div>
+        {% else %}
+        <!-- Wrong Guess -->
+        <div class="mb-4">
+          <div class="text-5xl mb-3">🤔</div>
+          <p class="text-xl font-bold text-warning mb-2">Not quite!</p>
+          <p class="text-base-content/80">
+            This PR
+            <span class="font-semibold">{% if reveal.was_ai %}was{% else %}wasn't{% endif %}</span>
+            AI-assisted.
+          </p>
+        </div>
+        {% endif %}
+
+        <!-- Accuracy Stats -->
+        {% if reveal.accuracy %}
+        <div class="stats shadow bg-base-300/50 mt-4">
+          <div class="stat">
+            <div class="stat-title text-base-content/60">Your Accuracy</div>
+            <div class="stat-value text-3xl {% if reveal.guess_correct %}text-success{% else %}text-warning{% endif %}">
+              {{ reveal.accuracy.percentage|floatformat:0 }}%
+            </div>
+            <div class="stat-desc text-base-content/50">
+              {{ reveal.accuracy.correct }}/{{ reveal.accuracy.total }} correct guesses
+            </div>
+          </div>
+        </div>
+        {% endif %}
+      </div>
+      {% else %}
+      <!-- No reveal yet (author hasn't responded) -->
+      {% if is_reviewer_submission %}
+      <div class="mt-4 opacity-0 animate-fade-in-up animate-delay-200">
+        <p class="text-sm text-base-content/50">
+          Your guess result will be available once the author responds.
+        </p>
+      </div>
+      {% endif %}
+      {% endif %}
+
+      <!-- Optional: Link back -->
+      <div class="mt-6 opacity-0 animate-fade-in-up animate-delay-300">
+        <p class="text-xs text-base-content/40">
+          You can close this page now.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}
