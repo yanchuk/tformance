@@ -21,7 +21,7 @@ All product requirements are in `/prd/`:
 
 | Decision | Choice | Why |
 |----------|--------|-----|
-| Client data storage | BYOS (client's Supabase) | Security/privacy differentiator |
+| Client data storage | Single DB (team-isolated) | Faster MVP, lower onboarding friction. BYOS deferred to Phase 12 if demand exists |
 | Dashboards | Native (Chart.js + HTMX) | Already integrated, full design control |
 | Sync frequency | Daily | Simpler than real-time |
 | AI data source | Self-reported surveys (MVP) | Cursor API is Enterprise-only |
@@ -30,18 +30,17 @@ All product requirements are in `/prd/`:
 ## Implementation Order
 
 Follow phases in [IMPLEMENTATION-PLAN.md](prd/IMPLEMENTATION-PLAN.md):
-1. Foundation (auth, secrets)
-2. BYOS (client DB connection)
-3. GitHub integration
-4. Jira integration
-5. Basic dashboard
-6. Slack bot + surveys
-7. AI correlation views
-8. Leaderboard
-9. Copilot metrics
-10. Billing
+1. Foundation (auth, secrets, encrypted storage)
+2. GitHub integration
+3. Jira integration
+4. Basic dashboard
+5. Slack bot + surveys
+6. AI correlation views
+7. Leaderboard
+8. Copilot metrics
+9. Billing
 
-**MVP checkpoint = Phase 6 complete.**
+**MVP checkpoint = Phase 5 complete.**
 
 ## Integrations
 
