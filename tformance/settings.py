@@ -508,6 +508,8 @@ CACHES = {
 
 CELERY_BROKER_URL = CELERY_RESULT_BACKEND = REDIS_URL
 CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
+# Run tasks synchronously in tests (no broker needed)
+CELERY_TASK_ALWAYS_EAGER = env.bool("CELERY_TASK_ALWAYS_EAGER", default=False)
 
 # Add tasks to this dict and run `python manage.py bootstrap_celery_tasks` to create them
 SCHEDULED_TASKS = {
