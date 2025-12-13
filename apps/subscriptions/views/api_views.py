@@ -35,7 +35,9 @@ class CreateCheckoutSession(APIView):
     @method_decorator(team_admin_required)
     def post(self, request, team_slug):
         subscription_holder = request.team
-        price_id = request.POST["priceId"]
+        price_id = request.POST.get("priceId")
+        if not price_id:
+            return Response({"error": "priceId is required"}, status=400)
         checkout_session = create_stripe_checkout_session(
             subscription_holder,
             price_id,

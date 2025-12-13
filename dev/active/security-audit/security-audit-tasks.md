@@ -54,35 +54,41 @@
 ## Phase 2: Access Control & Data Protection (P1)
 
 ### Section 2.1: Authorization Audit
-- [ ] 2.1.1 Audit team isolation in all views
-  - Review `apps/integrations/views.py` - all views use team from request
-  - Review `apps/metrics/` views
-  - Review `apps/dashboard/` views
-  - Review `apps/subscriptions/` views
-- [ ] 2.1.2 Review `@team_admin_required` usage
-  - Verify all admin-only actions are protected
-  - Check disconnect endpoints
-  - Check settings modification endpoints
+- [x] 2.1.1 Audit team isolation in all views ✅ COMPLETED
+  - Reviewed `apps/integrations/views.py` - all queries filter by `team=team`
+  - `apps/metrics/` has no views.py (uses service layer with team param)
+  - `apps/dashboard/views.py` - superuser-only admin dashboard (intentionally system-wide)
+  - `apps/subscriptions/views/views.py` - no direct .objects. calls
+  - All team-scoped queries properly filter by team
+- [x] 2.1.2 Review `@team_admin_required` usage ✅ COMPLETED
+  - All disconnect endpoints protected: github_disconnect, jira_disconnect, slack_disconnect
+  - All settings endpoints protected: slack_settings
+  - All toggle/modification endpoints protected (member toggle, repo toggle, project toggle)
+  - Team delete and invitation management protected
+  - Dashboard/metrics admin views protected
 - [x] 2.1.3 Add IDOR (Insecure Direct Object Reference) tests ✅ COMPLETED
   - Created `apps/metrics/tests/test_security_isolation.py`
   - 18 tests covering all team-scoped models
   - Tests TeamMember, PullRequest, PRReview, Commit, JiraIssue isolation
   - Tests PRSurvey, PRSurveyReview, WeeklyMetrics isolation
   - Tests direct ID access prevention (IDOR)
-- [ ] 2.1.4 Review Membership role escalation
-  - Verify role can only be changed by admin
-  - Verify invitation role assignment is validated
-  - Check for self-promotion vulnerabilities
-- [ ] 2.1.5 Audit API permission classes
-  - Review DRF viewsets
-  - Verify team scoping on API endpoints
-  - Check API key team association
+- [x] 2.1.4 Review Membership role escalation ✅ COMPLETED
+  - Role changes require admin permission (is_admin check)
+  - Users cannot change their own role (editing_self check)
+  - Invitation roles constrained to ROLE_CHOICES (admin/member)
+  - Last admin cannot be removed (admin_count check)
+- [x] 2.1.5 Audit API permission classes ✅ COMPLETED
+  - TeamViewSet: IsAuthenticatedOrHasUserAPIKey + TeamAccessPermissions
+  - InvitationViewSet: Admin check for create, member check for read
+  - get_queryset() filters to user's teams or team context
+  - HasUserAPIKey validates API key and populates request.user
 
 ### Section 2.2: Input Validation & Injection Prevention
-- [ ] 2.2.1 Audit all POST data handling
-  - Review `request.POST.get()` usage in views
-  - Add validation for integer conversions
-  - Add validation for string inputs
+- [x] 2.2.1 Audit all POST data handling ✅ COMPLETED
+  - Reviewed all request.POST.get() usage in views
+  - Fixed integer conversion in slack_settings (added try/except)
+  - Fixed missing validation in CreateCheckoutSession API (added 400 response)
+  - All views use Django forms or explicit validation
 - [x] 2.2.2 Review `mark_safe` usage ✅ COMPLETED
   - Fixed `apps/content/blocks.py` XSS vulnerability
   - Added `bleach` library for HTML sanitization
@@ -97,10 +103,11 @@
   - Create `apps/utils/sanitization.py`
   - Add HTML sanitization function
   - Add SQL-safe string validation
-- [ ] 2.2.5 Review SQL query construction
-  - Audit `apps/web/migrations/` for raw SQL
-  - Check for any raw() or extra() usage
-  - Verify parameterized queries
+- [x] 2.2.5 Review SQL query construction ✅ COMPLETED
+  - Only one raw SQL in migrations (sequence reset in 0001_initial.py) - safe
+  - No .raw() or .extra() usage in application code
+  - No cursor.execute() or connection.execute() calls
+  - All queries use Django ORM with parameterized queries
 
 ### Section 2.3: Data Isolation Testing
 - [x] 2.3.1 Create cross-team access test suite ✅ COMPLETED
@@ -109,13 +116,16 @@
   - Tests JiraIssue, PRSurvey, PRSurveyReview, WeeklyMetrics isolation
   - Tests bulk operations and filter chaining
   - Tests direct ID access prevention (IDOR)
-- [ ] 2.3.2 Audit `objects` vs `for_team` manager usage
-  - Search for `.objects.` in views
-  - Verify team filtering for each case
-  - Document exceptions (admin panel)
-- [ ] 2.3.3 Review admin panel team scoping
-  - Verify admin users see only their teams
-  - Check for data leakage in admin
+- [x] 2.3.2 Audit `objects` vs `for_team` manager usage ✅ COMPLETED
+  - Views: All team-scoped queries use `team=team` filter from request.team
+  - Services: dashboard_service.py receives team param, filters all queries
+  - Processors: All webhook handlers filter by team from tracked repository
+  - Management commands: Admin-only tools (not exposed to users)
+- [x] 2.3.3 Review admin panel team scoping ✅ COMPLETED
+  - Django admin is for platform superusers only (not team admins)
+  - All models have list_filter=["team"] for filtering
+  - Team admins manage teams via application UI
+  - Appropriate for multi-tenant SaaS - superusers need full visibility
 
 ---
 
@@ -246,9 +256,9 @@
 |-------|---------|----------|-------|
 | 1 | 1.1 OAuth Tokens | 0/5 | |
 | 1 | 1.2 Webhooks | 5/5 | ✅ COMPLETE - Info leak, replay, rate limit, csrf docs, payload limits |
-| 2 | 2.1 Authorization | 1/5 | IDOR tests created |
-| 2 | 2.2 Input Validation | 2/5 | XSS fixed, |safe filter audited |
-| 2 | 2.3 Data Isolation | 1/3 | Cross-team test suite created |
+| 2 | 2.1 Authorization | 5/5 | ✅ COMPLETE - IDOR tests, view audit, decorator review, role escalation, API perms |
+| 2 | 2.2 Input Validation | 4/5 | XSS fixed, |safe audited, SQL reviewed, POST handling fixed |
+| 2 | 2.3 Data Isolation | 3/3 | ✅ COMPLETE - Cross-team tests, manager audit, admin scoping |
 | 3 | 3.1 Sessions | 1/4 | Session rotation added |
 | 3 | 3.2 API | 0/4 | |
 | 3 | 3.3 Headers | 5/5 | ✅ COMPLETE |
@@ -256,7 +266,7 @@
 | 4 | 4.2 Dependencies | 3/4 | ✅ Vulnerabilities fixed, Dependabot |
 | 4 | 4.3 Production | 0/5 | HSTS settings added |
 
-**Total:** 18/49 tasks completed (37%)
+**Total:** 26/49 tasks completed (53%)
 
 ### Additional Fixes Applied
 - Added HTTP request timeouts (30s) to prevent DoS

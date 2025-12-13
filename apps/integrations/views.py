@@ -1249,7 +1249,10 @@ def slack_settings(request):
     if request.method == "POST":
         # Update leaderboard settings
         integration.leaderboard_channel_id = request.POST.get("leaderboard_channel_id", "")
-        integration.leaderboard_day = int(request.POST.get("leaderboard_day", 0))
+        try:
+            integration.leaderboard_day = int(request.POST.get("leaderboard_day", 0))
+        except (ValueError, TypeError):
+            integration.leaderboard_day = 0
 
         # Parse time string (format: "HH:MM")
         time_str = request.POST.get("leaderboard_time", "09:00")
