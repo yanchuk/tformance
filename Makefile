@@ -72,6 +72,24 @@ lint-team-isolation-all: ## Check all files including tests for team isolation
 
 lint: ruff lint-team-isolation ## Run all linters (ruff + team isolation)
 
+e2e: ## Run all E2E tests (requires dev server running)
+	@npx playwright test
+
+e2e-smoke: ## Run smoke E2E tests only (fast, for pre-commit)
+	@npx playwright test --grep @smoke
+
+e2e-auth: ## Run authentication E2E tests
+	@npx playwright test auth.spec.ts
+
+e2e-dashboard: ## Run dashboard E2E tests
+	@npx playwright test dashboard.spec.ts
+
+e2e-ui: ## Run E2E tests with UI mode (interactive)
+	@npx playwright test --ui
+
+e2e-report: ## Show last E2E test report
+	@npx playwright show-report
+
 npm-install-all: ## Runs npm install
 	@npm install
 

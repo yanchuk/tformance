@@ -142,10 +142,46 @@ make migrate          # Apply migrations
 ### Testing
 
 ```bash
-make test                              # Run all tests
+make test                              # Run all Django unit tests
 make test ARGS='apps.module.tests.test_file'  # Run specific test
 make test ARGS='path.to.test --keepdb'        # Run with options
 ```
+
+### E2E Testing (Playwright)
+
+E2E tests verify user flows in a real browser. **Requires dev server running.**
+
+```bash
+# Run all E2E tests
+make e2e
+
+# Run smoke tests only (fast, ~4s)
+make e2e-smoke
+
+# Run specific test suites
+make e2e-auth           # Authentication tests
+make e2e-dashboard      # Dashboard tests
+
+# Interactive mode
+make e2e-ui             # Open Playwright UI for debugging
+
+# View test report
+make e2e-report
+```
+
+**Test Files:** `tests/e2e/`
+- `smoke.spec.ts` - Basic page loads, health checks
+- `auth.spec.ts` - Login, logout, access control
+- `dashboard.spec.ts` - CTO dashboard, navigation
+- `integrations.spec.ts` - Integration status pages
+
+**When to Run E2E Tests:**
+- After changing views, templates, or URL patterns
+- After modifying authentication or access control
+- Before major releases
+- When debugging user-reported issues
+
+**Test Credentials:** `admin@example.com` / `admin123`
 
 ### Python Code Quality
 
