@@ -16,8 +16,8 @@ repos:
     hooks:
       - id: team-isolation-lint
         name: Team Isolation Lint (TEAM001)
-        entry: uv run python scripts/lint_team_isolation.py
-        language: system
+        entry: python scripts/lint_team_isolation.py
+        language: python
         types: [python]
         pass_filenames: false
         args: ["apps/", "--exclude-tests"]
