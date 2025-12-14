@@ -30,25 +30,30 @@ class TestGetTeamQuickStats(TestCase):
         stats = get_team_quick_stats(self.team, days=7)
 
         self.assertIsInstance(stats, dict)
+        # Check nested structure
         self.assertIn("prs_merged", stats)
-        self.assertIn("prs_merged_change", stats)
-        self.assertIn("avg_cycle_time_hours", stats)
-        self.assertIn("cycle_time_change", stats)
-        self.assertIn("ai_assisted_percent", stats)
-        self.assertIn("ai_percent_change", stats)
-        self.assertIn("avg_quality_rating", stats)
-        self.assertIn("quality_change", stats)
+        self.assertIn("count", stats["prs_merged"])
+        self.assertIn("change_percent", stats["prs_merged"])
+        self.assertIn("avg_cycle_time", stats)
+        self.assertIn("hours", stats["avg_cycle_time"])
+        self.assertIn("change_percent", stats["avg_cycle_time"])
+        self.assertIn("ai_assisted", stats)
+        self.assertIn("percent", stats["ai_assisted"])
+        self.assertIn("change_points", stats["ai_assisted"])
+        self.assertIn("avg_quality", stats)
+        self.assertIn("rating", stats["avg_quality"])
+        self.assertIn("change", stats["avg_quality"])
         self.assertIn("recent_activity", stats)
 
         # With no data, should return zero/None values
-        self.assertEqual(stats["prs_merged"], 0)
-        self.assertEqual(stats["prs_merged_change"], 0.0)
-        self.assertIsNone(stats["avg_cycle_time_hours"])
-        self.assertIsNone(stats["cycle_time_change"])
-        self.assertEqual(stats["ai_assisted_percent"], 0.0)
-        self.assertEqual(stats["ai_percent_change"], 0.0)
-        self.assertIsNone(stats["avg_quality_rating"])
-        self.assertIsNone(stats["quality_change"])
+        self.assertEqual(stats["prs_merged"]["count"], 0)
+        self.assertIsNone(stats["prs_merged"]["change_percent"])
+        self.assertIsNone(stats["avg_cycle_time"]["hours"])
+        self.assertIsNone(stats["avg_cycle_time"]["change_percent"])
+        self.assertIsNone(stats["ai_assisted"]["percent"])
+        self.assertIsNone(stats["ai_assisted"]["change_points"])
+        self.assertIsNone(stats["avg_quality"]["rating"])
+        self.assertIsNone(stats["avg_quality"]["change"])
         self.assertIsInstance(stats["recent_activity"], list)
         self.assertEqual(len(stats["recent_activity"]), 0)
 
@@ -93,7 +98,7 @@ class TestGetTeamQuickStats(TestCase):
         )
 
         stats = get_team_quick_stats(self.team, days=7)
-        self.assertEqual(stats["prs_merged"], 3)
+        self.assertEqual(stats["prs_merged"]["count"], 3)
 
     def test_prs_merged_change_calculates_percentage_correctly(self):
         """Test that prs_merged_change calculates % change vs previous period."""
@@ -120,8 +125,8 @@ class TestGetTeamQuickStats(TestCase):
         stats = get_team_quick_stats(self.team, days=7)
 
         # 4 current vs 2 previous = +100% change
-        self.assertEqual(stats["prs_merged"], 4)
-        self.assertEqual(stats["prs_merged_change"], 100.0)
+        self.assertEqual(stats["prs_merged"]["count"], 4)
+        self.assertEqual(stats["prs_merged"]["change_percent"], 100.0)
 
     def test_prs_merged_change_handles_zero_previous_period(self):
         """Test that prs_merged_change handles zero PRs in previous period."""
@@ -139,8 +144,9 @@ class TestGetTeamQuickStats(TestCase):
         stats = get_team_quick_stats(self.team, days=7)
 
         # When previous is 0 and current > 0, change should be 100%
-        self.assertEqual(stats["prs_merged"], 3)
-        self.assertEqual(stats["prs_merged_change"], 100.0)
+        self.assertEqual(stats["prs_merged"]["count"], 3)
+        # When previous is 0, change_percent should be None
+        self.assertIsNone(stats["prs_merged"]["change_percent"])
 
     def test_prs_merged_change_handles_negative_change(self):
         """Test that prs_merged_change handles negative change correctly."""
@@ -167,8 +173,8 @@ class TestGetTeamQuickStats(TestCase):
         stats = get_team_quick_stats(self.team, days=7)
 
         # 2 current vs 4 previous = -50% change
-        self.assertEqual(stats["prs_merged"], 2)
-        self.assertEqual(stats["prs_merged_change"], -50.0)
+        self.assertEqual(stats["prs_merged"]["count"], 2)
+        self.assertEqual(stats["prs_merged"]["change_percent"], -50.0)
 
     def test_avg_cycle_time_hours_is_calculated_correctly(self):
         """Test that avg_cycle_time_hours is calculated from merged PRs."""
@@ -200,7 +206,7 @@ class TestGetTeamQuickStats(TestCase):
         stats = get_team_quick_stats(self.team, days=7)
 
         # Average = (10 + 20 + 30) / 3 = 20.00
-        self.assertEqual(stats["avg_cycle_time_hours"], 20.0)
+        self.assertEqual(stats["avg_cycle_time"]["hours"], 20.0)
 
     def test_avg_cycle_time_hours_ignores_null_values(self):
         """Test that avg_cycle_time_hours ignores PRs with null cycle times."""
@@ -234,7 +240,7 @@ class TestGetTeamQuickStats(TestCase):
         stats = get_team_quick_stats(self.team, days=7)
 
         # Average = (10 + 20) / 2 = 15.00
-        self.assertEqual(stats["avg_cycle_time_hours"], 15.0)
+        self.assertEqual(stats["avg_cycle_time"]["hours"], 15.0)
 
     def test_avg_cycle_time_hours_returns_none_when_no_data(self):
         """Test that avg_cycle_time_hours returns None when no PRs with cycle times exist."""
@@ -251,7 +257,7 @@ class TestGetTeamQuickStats(TestCase):
 
         stats = get_team_quick_stats(self.team, days=7)
 
-        self.assertIsNone(stats["avg_cycle_time_hours"])
+        self.assertIsNone(stats["avg_cycle_time"]["hours"])
 
     def test_cycle_time_change_compares_to_previous_period(self):
         """Test that cycle_time_change calculates % change vs previous period."""
@@ -292,8 +298,8 @@ class TestGetTeamQuickStats(TestCase):
         stats = get_team_quick_stats(self.team, days=7)
 
         # 20 current vs 10 previous = +100% change
-        self.assertEqual(stats["avg_cycle_time_hours"], 20.0)
-        self.assertEqual(stats["cycle_time_change"], 100.0)
+        self.assertEqual(stats["avg_cycle_time"]["hours"], 20.0)
+        self.assertEqual(stats["avg_cycle_time"]["change_percent"], 100.0)
 
     def test_cycle_time_change_returns_none_when_no_previous_data(self):
         """Test that cycle_time_change returns None when no previous period data exists."""
@@ -310,8 +316,8 @@ class TestGetTeamQuickStats(TestCase):
 
         stats = get_team_quick_stats(self.team, days=7)
 
-        self.assertEqual(stats["avg_cycle_time_hours"], 20.0)
-        self.assertIsNone(stats["cycle_time_change"])
+        self.assertEqual(stats["avg_cycle_time"]["hours"], 20.0)
+        self.assertIsNone(stats["avg_cycle_time"]["change_percent"])
 
     def test_ai_assisted_percent_is_calculated_from_pr_survey_data(self):
         """Test that ai_assisted_percent is calculated from PRSurvey data."""
@@ -373,7 +379,7 @@ class TestGetTeamQuickStats(TestCase):
         stats = get_team_quick_stats(self.team, days=7)
 
         # 2 out of 4 = 50%
-        self.assertEqual(stats["ai_assisted_percent"], 50.0)
+        self.assertEqual(stats["ai_assisted"]["percent"], 50.0)
 
     def test_ai_assisted_percent_ignores_null_survey_responses(self):
         """Test that ai_assisted_percent ignores surveys where author_ai_assisted is None."""
@@ -423,7 +429,7 @@ class TestGetTeamQuickStats(TestCase):
         stats = get_team_quick_stats(self.team, days=7)
 
         # 1 out of 2 answered = 50%
-        self.assertEqual(stats["ai_assisted_percent"], 50.0)
+        self.assertEqual(stats["ai_assisted"]["percent"], 50.0)
 
     def test_ai_assisted_percent_returns_zero_when_no_surveys(self):
         """Test that ai_assisted_percent returns 0 when no survey data exists."""
@@ -439,7 +445,8 @@ class TestGetTeamQuickStats(TestCase):
 
         stats = get_team_quick_stats(self.team, days=7)
 
-        self.assertEqual(stats["ai_assisted_percent"], 0.0)
+        # No surveys means percent is None (no data to calculate from)
+        self.assertIsNone(stats["ai_assisted"]["percent"])
 
     def test_ai_percent_change_calculates_percentage_point_change(self):
         """Test that ai_percent_change calculates percentage point change."""
@@ -504,8 +511,8 @@ class TestGetTeamQuickStats(TestCase):
         stats = get_team_quick_stats(self.team, days=7)
 
         # 75% current - 25% previous = +50 percentage points
-        self.assertEqual(stats["ai_assisted_percent"], 75.0)
-        self.assertEqual(stats["ai_percent_change"], 50.0)
+        self.assertEqual(stats["ai_assisted"]["percent"], 75.0)
+        self.assertEqual(stats["ai_assisted"]["change_points"], 50.0)
 
     def test_avg_quality_rating_is_calculated_from_pr_survey_review_data(self):
         """Test that avg_quality_rating is calculated from PRSurveyReview data."""
@@ -569,7 +576,7 @@ class TestGetTeamQuickStats(TestCase):
         stats = get_team_quick_stats(self.team, days=7)
 
         # Average = (3 + 2 + 1) / 3 = 2.0
-        self.assertEqual(stats["avg_quality_rating"], 2.0)
+        self.assertEqual(stats["avg_quality"]["rating"], 2.0)
 
     def test_avg_quality_rating_handles_multiple_reviews_per_pr(self):
         """Test that avg_quality_rating handles multiple reviews per PR correctly."""
@@ -604,7 +611,7 @@ class TestGetTeamQuickStats(TestCase):
         stats = get_team_quick_stats(self.team, days=7)
 
         # Average = (3 + 1) / 2 = 2.0
-        self.assertEqual(stats["avg_quality_rating"], 2.0)
+        self.assertEqual(stats["avg_quality"]["rating"], 2.0)
 
     def test_avg_quality_rating_ignores_null_ratings(self):
         """Test that avg_quality_rating ignores reviews with null quality_rating."""
@@ -669,7 +676,7 @@ class TestGetTeamQuickStats(TestCase):
         stats = get_team_quick_stats(self.team, days=7)
 
         # Average = (3 + 1) / 2 = 2.0
-        self.assertEqual(stats["avg_quality_rating"], 2.0)
+        self.assertEqual(stats["avg_quality"]["rating"], 2.0)
 
     def test_avg_quality_rating_returns_none_when_no_reviews(self):
         """Test that avg_quality_rating returns None when no review data exists."""
@@ -690,7 +697,7 @@ class TestGetTeamQuickStats(TestCase):
 
         stats = get_team_quick_stats(self.team, days=7)
 
-        self.assertIsNone(stats["avg_quality_rating"])
+        self.assertIsNone(stats["avg_quality"]["rating"])
 
     def test_quality_change_compares_to_previous_period(self):
         """Test that quality_change calculates change vs previous period."""
@@ -757,8 +764,8 @@ class TestGetTeamQuickStats(TestCase):
         stats = get_team_quick_stats(self.team, days=7)
 
         # 3.0 current - 2.0 previous = +1.0 change
-        self.assertEqual(stats["avg_quality_rating"], 3.0)
-        self.assertEqual(stats["quality_change"], 1.0)
+        self.assertEqual(stats["avg_quality"]["rating"], 3.0)
+        self.assertEqual(stats["avg_quality"]["change"], 1.0)
 
     def test_quality_change_returns_none_when_no_previous_data(self):
         """Test that quality_change returns None when no previous period data exists."""
@@ -781,8 +788,8 @@ class TestGetTeamQuickStats(TestCase):
 
         stats = get_team_quick_stats(self.team, days=7)
 
-        self.assertEqual(stats["avg_quality_rating"], 3.0)
-        self.assertIsNone(stats["quality_change"])
+        self.assertEqual(stats["avg_quality"]["rating"], 3.0)
+        self.assertIsNone(stats["avg_quality"]["change"])
 
     def test_recent_activity_returns_last_5_items(self):
         """Test that recent_activity returns last 5 activity items."""
@@ -975,7 +982,7 @@ class TestGetTeamQuickStats(TestCase):
 
         stats = get_team_quick_stats(self.team, days=7)
 
-        self.assertEqual(stats["prs_merged"], 1)
+        self.assertEqual(stats["prs_merged"]["count"], 1)
 
     def test_different_days_parameter_30_days(self):
         """Test that days=30 parameter filters correctly."""
@@ -999,7 +1006,7 @@ class TestGetTeamQuickStats(TestCase):
 
         stats = get_team_quick_stats(self.team, days=30)
 
-        self.assertEqual(stats["prs_merged"], 1)
+        self.assertEqual(stats["prs_merged"]["count"], 1)
 
     def test_different_days_parameter_90_days(self):
         """Test that days=90 parameter filters correctly."""
@@ -1023,7 +1030,7 @@ class TestGetTeamQuickStats(TestCase):
 
         stats = get_team_quick_stats(self.team, days=90)
 
-        self.assertEqual(stats["prs_merged"], 1)
+        self.assertEqual(stats["prs_merged"]["count"], 1)
 
     def test_isolates_data_by_team(self):
         """Test that stats are properly isolated by team."""
@@ -1056,4 +1063,4 @@ class TestGetTeamQuickStats(TestCase):
         stats = get_team_quick_stats(self.team, days=7)
 
         # Should only count our team's PR
-        self.assertEqual(stats["prs_merged"], 1)
+        self.assertEqual(stats["prs_merged"]["count"], 1)

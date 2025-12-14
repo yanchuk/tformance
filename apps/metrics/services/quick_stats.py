@@ -190,13 +190,21 @@ def get_team_quick_stats(team, days: int = 7) -> dict[str, Any]:
     recent_activity = recent_activity[:5]
 
     return {
-        "prs_merged": prs_merged,
-        "prs_merged_change": prs_merged_change,
-        "avg_cycle_time_hours": avg_cycle_time_hours,
-        "cycle_time_change": cycle_time_change,
-        "ai_assisted_percent": ai_assisted_percent,
-        "ai_percent_change": ai_percent_change,
-        "avg_quality_rating": avg_quality_rating,
-        "quality_change": quality_change,
+        "prs_merged": {
+            "count": prs_merged,
+            "change_percent": prs_merged_change if previous_prs_count > 0 else None,
+        },
+        "avg_cycle_time": {
+            "hours": avg_cycle_time_hours,
+            "change_percent": cycle_time_change,
+        },
+        "ai_assisted": {
+            "percent": ai_assisted_percent if current_survey_count > 0 else None,
+            "change_points": ai_percent_change if previous_survey_count > 0 else None,
+        },
+        "avg_quality": {
+            "rating": avg_quality_rating,
+            "change": quality_change,
+        },
         "recent_activity": recent_activity,
     }
