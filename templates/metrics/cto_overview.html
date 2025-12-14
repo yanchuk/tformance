@@ -5,9 +5,8 @@
 {% load django_vite %}
 
 {% block app %}
-<div id="page-content">
   {% partialdef page-content inline %}
-  <div class="app-card">
+  <div id="page-content" class="app-card">
     <!-- Header with title and filters -->
     <div class="flex justify-between items-center mb-6">
       <h1 class="pg-title">{% trans "CTO Overview" %}</h1>
@@ -198,7 +197,6 @@
     </div>
   </div>
   {% endpartialdef page-content %}
-</div>
 {% endblock %}
 
 {% block page_js %}

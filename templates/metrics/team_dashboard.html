@@ -5,9 +5,8 @@
 {% load django_vite %}
 
 {% block app %}
-<div id="page-content">
   {% partialdef page-content inline %}
-  <div class="app-card">
+  <div id="page-content" class="app-card">
     <!-- Header with title and filters -->
     <div class="flex justify-between items-center mb-6">
       <h1 class="pg-title">{% trans "Team Dashboard" %}</h1>
@@ -116,7 +115,7 @@
       </div>
 
       <!-- Two-column grid for Review Distribution and Leaderboard -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
         <!-- Review Distribution -->
         <div class="card bg-base-100 shadow-md">
           <div class="card-body">
@@ -224,7 +223,6 @@
     </div>
   </div>
   {% endpartialdef page-content %}
-</div>
 {% endblock %}
 
 {% block page_js %}

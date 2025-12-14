@@ -165,6 +165,31 @@ test.describe('Dashboard Tests @dashboard', () => {
       await expect(page.getByText('PRs Merged').first()).toBeVisible();
     });
 
+    test('multiple sequential filter clicks work without page reload', async ({ page }) => {
+      // This test ensures HTMX target element is preserved after partial swaps
+      // Bug: id="page-content" was outside partialdef, causing outerHTML swap to remove target
+      await page.goto('/app/metrics/dashboard/team/?days=7');
+      await page.waitForLoadState('domcontentloaded');
+
+      // First click: 7d -> 30d
+      await page.getByRole('link', { name: '30d' }).click();
+      await expect(page).toHaveURL(/\?days=30/);
+      await page.waitForTimeout(300); // Allow HTMX swap
+
+      // Second click: 30d -> 90d (this would fail before the fix)
+      await page.getByRole('link', { name: '90d' }).click();
+      await expect(page).toHaveURL(/\?days=90/);
+      await page.waitForTimeout(300);
+
+      // Third click: 90d -> 7d (verify it still works)
+      await page.getByRole('link', { name: '7d' }).click();
+      await expect(page).toHaveURL(/\?days=7/);
+
+      // Verify page content is still intact
+      await expect(page.getByRole('heading', { name: 'Team Dashboard' })).toBeVisible();
+      await expect(page.getByText('PRs Merged').first()).toBeVisible();
+    });
+
     // New high-value reports tests
     test('review time trend section displays', async ({ page }) => {
       await page.goto('/app/metrics/dashboard/team/');
@@ -276,6 +301,30 @@ test.describe('Dashboard Tests @dashboard', () => {
       // Verify CTO Overview heading is still unique (not duplicated)
       const afterSwapHeadingCount = await page.getByRole('heading', { name: 'CTO Overview' }).count();
       expect(afterSwapHeadingCount).toBe(1);
+    });
+
+    test('multiple sequential filter clicks work without page reload', async ({ page }) => {
+      // This test ensures HTMX target element is preserved after partial swaps
+      await page.goto('/app/metrics/dashboard/cto/?days=7');
+      await page.waitForLoadState('domcontentloaded');
+
+      // First click: 7d -> 30d
+      await page.getByRole('link', { name: '30d' }).click();
+      await expect(page).toHaveURL(/\?days=30/);
+      await page.waitForTimeout(300);
+
+      // Second click: 30d -> 90d
+      await page.getByRole('link', { name: '90d' }).click();
+      await expect(page).toHaveURL(/\?days=90/);
+      await page.waitForTimeout(300);
+
+      // Third click: 90d -> 7d
+      await page.getByRole('link', { name: '7d' }).click();
+      await expect(page).toHaveURL(/\?days=7/);
+
+      // Verify page content is still intact
+      await expect(page.getByRole('heading', { name: 'CTO Overview' })).toBeVisible();
+      await expect(page.getByText('PRs Merged').first()).toBeVisible();
     });
 
     // High-value reports tests for CTO Dashboard
