@@ -1,0 +1,230 @@
+# Dashboard UX Improvements - Tasks
+
+**Last Updated:** 2024-12-14
+
+## Phase 1: App Home Page Redesign
+
+### 1.1 Backend Services
+
+- [ ] Create `apps/integrations/services/status.py`
+  - [ ] Implement `get_team_integration_status(team)` function
+  - [ ] Return GitHub, Jira, Slack connection status
+  - [ ] Include org/site names and counts
+  - [ ] Add `has_data` flag based on PR count
+  - [ ] Write tests for status service
+
+- [ ] Create `apps/metrics/services/quick_stats.py`
+  - [ ] Implement `get_team_quick_stats(team, days=7)` function
+  - [ ] Calculate PRs merged count and change %
+  - [ ] Calculate average cycle time and change %
+  - [ ] Calculate AI-assisted % and change
+  - [ ] Calculate average quality rating and change
+  - [ ] Get recent activity list (last 5 items)
+  - [ ] Write tests for quick stats service
+
+### 1.2 View Updates
+
+- [ ] Update `apps/web/views.py::team_home()`
+  - [ ] Import new services
+  - [ ] Call `get_team_integration_status()`
+  - [ ] Conditionally call `get_team_quick_stats()` if has_data
+  - [ ] Pass context to template
+  - [ ] Write/update view tests
+
+### 1.3 Template: New User State
+
+- [ ] Create `templates/web/components/setup_wizard.html`
+  - [ ] Step 1: Connect GitHub (required badge)
+  - [ ] Step 2: Connect Jira (optional badge)
+  - [ ] Step 3: Connect Slack (optional badge)
+  - [ ] Progress indicator
+  - [ ] Link buttons to integration pages
+  - [ ] Style with DaisyUI steps component
+
+### 1.4 Template: Data User State
+
+- [ ] Create `templates/web/components/quick_stats.html`
+  - [ ] 4 stat cards in grid
+  - [ ] PRs merged with change indicator
+  - [ ] Cycle time with change indicator
+  - [ ] AI-assisted % with change indicator
+  - [ ] Quality rating with change indicator
+  - [ ] Use DaisyUI stat component
+
+- [ ] Create `templates/web/components/recent_activity.html`
+  - [ ] List of recent events
+  - [ ] PR merged events
+  - [ ] Survey response events
+  - [ ] Limit to 5 items
+
+- [ ] Create `templates/web/components/setup_prompt.html`
+  - [ ] Warning/info banner for missing integrations
+  - [ ] Link to connect missing service
+  - [ ] Dismissible (optional)
+
+### 1.5 Template: App Home Rewrite
+
+- [ ] Rewrite `templates/web/app_home.html`
+  - [ ] Conditional rendering based on integration status
+  - [ ] Include setup_wizard for new users
+  - [ ] Include quick_stats for data users
+  - [ ] Include recent_activity for data users
+  - [ ] Include setup_prompt for partial setup
+  - [ ] Quick action buttons (View Analytics, Leaderboard)
+  - [ ] Responsive design
+
+---
+
+## Phase 2: Dashboard Layout Fix
+
+### 2.1 Layout Changes
+
+- [ ] Update `templates/metrics/team_dashboard.html`
+  - [ ] Change grid from `lg:grid-cols-2` to single column
+  - [ ] Stack all widgets vertically
+  - [ ] Add key metrics cards at top (like CTO overview)
+  - [ ] Ensure proper spacing (gap-6)
+
+### 2.2 Add Key Metrics Cards
+
+- [ ] Add stats cards container to team_dashboard
+  - [ ] Use HTMX to load `metrics:cards_metrics`
+  - [ ] Same pattern as CTO overview
+  - [ ] Show loading skeleton
+
+---
+
+## Phase 3: Additional Charts
+
+### 3.1 PR Throughput Chart
+
+- [ ] Create view `apps/metrics/views/chart_views.py::pr_throughput_chart()`
+  - [ ] Query PRs grouped by date
+  - [ ] Calculate daily/weekly counts
+  - [ ] Return chart data JSON
+  - [ ] Write tests
+
+- [ ] Add URL pattern `charts/pr-throughput/`
+
+- [ ] Create `templates/metrics/partials/pr_throughput.html`
+  - [ ] Canvas element with ID
+  - [ ] Chart.js bar chart config
+  - [ ] Responsive sizing
+
+### 3.2 Review Distribution Chart
+
+- [ ] Create view `apps/metrics/views/chart_views.py::review_distribution_chart()`
+  - [ ] Query reviews grouped by reviewer
+  - [ ] Calculate counts per person
+  - [ ] Return chart data JSON
+  - [ ] Write tests
+
+- [ ] Add URL pattern `charts/review-distribution/`
+
+- [ ] Create `templates/metrics/partials/review_distribution.html`
+  - [ ] Canvas element with ID
+  - [ ] Chart.js pie/doughnut chart config
+  - [ ] Legend with names
+
+### 3.3 Recent PRs Table
+
+- [ ] Create view `apps/metrics/views/chart_views.py::recent_prs_table()`
+  - [ ] Query last 10 merged PRs
+  - [ ] Include author, cycle time, quality, AI status
+  - [ ] Support pagination via HTMX
+  - [ ] Write tests
+
+- [ ] Add URL pattern `tables/recent-prs/`
+
+- [ ] Create `templates/metrics/partials/recent_prs.html`
+  - [ ] DaisyUI table component
+  - [ ] PR title linked to GitHub
+  - [ ] Author with avatar
+  - [ ] Cycle time in hours
+  - [ ] Quality badge
+  - [ ] AI status badge
+
+### 3.4 Update Team Dashboard Template
+
+- [ ] Add PR Throughput section to team_dashboard.html
+- [ ] Add Review Distribution section
+- [ ] Add Recent PRs section
+- [ ] Order: Stats → Throughput → Cycle Time → Distribution → Leaderboard → Recent PRs
+
+---
+
+## Phase 4: Polish & Testing
+
+### 4.1 Empty States
+
+- [ ] Design empty state for charts with no data
+  - [ ] Helpful message explaining why empty
+  - [ ] Link to relevant action (e.g., connect GitHub)
+  - [ ] Consistent visual style
+
+- [ ] Implement empty states in:
+  - [ ] PR Throughput chart
+  - [ ] Cycle Time chart
+  - [ ] Review Distribution chart
+  - [ ] Recent PRs table
+  - [ ] AI Detective Leaderboard
+
+### 4.2 Loading States
+
+- [ ] Verify all HTMX containers have loading indicators
+- [ ] Use consistent spinner style (DaisyUI loading)
+- [ ] Skeleton loaders for tables
+
+### 4.3 Responsive Design
+
+- [ ] Test home page on mobile
+- [ ] Test dashboard on mobile
+- [ ] Test tablet breakpoints
+- [ ] Adjust grid/flex as needed
+
+### 4.4 E2E Tests
+
+- [ ] Add E2E test for new user home page
+  - [ ] Verify setup wizard displays
+  - [ ] Verify links work
+
+- [ ] Add E2E test for data user home page
+  - [ ] Verify stats display
+  - [ ] Verify recent activity
+
+- [ ] Add E2E test for team dashboard
+  - [ ] Verify all charts load
+  - [ ] Verify filter changes update charts
+
+### 4.5 Unit Tests
+
+- [ ] Integration status service tests
+- [ ] Quick stats service tests
+- [ ] Chart view tests
+- [ ] Table view tests
+
+---
+
+## Verification Checklist
+
+After implementation, verify:
+
+- [ ] New user sees setup wizard on `/app/`
+- [ ] User with data sees stats on `/app/`
+- [ ] Setup prompt shows for missing integrations
+- [ ] Team dashboard has stacked layout
+- [ ] Team dashboard shows key metrics cards
+- [ ] All charts load without errors
+- [ ] Filters update all charts
+- [ ] Mobile layout is usable
+- [ ] All tests pass
+- [ ] No console errors
+
+---
+
+## Notes
+
+- Use test accounts: `user@example.com` / `user123` for member view
+- Reference `templates/metrics/cto_overview.html` for chart patterns
+- Follow HTMX lazy loading pattern from existing charts
+- Use DaisyUI components consistently
