@@ -54,9 +54,9 @@ def cycle_time_chart(request: HttpRequest) -> HttpResponse:
     )
 
 
-@team_admin_required
+@login_and_team_required
 def key_metrics_cards(request: HttpRequest) -> HttpResponse:
-    """Key metrics stat cards (admin only)."""
+    """Key metrics stat cards (all team members)."""
     start_date, end_date = get_date_range_from_request(request)
     metrics = dashboard_service.get_key_metrics(request.team, start_date, end_date)
 
@@ -98,6 +98,34 @@ def leaderboard_table(request: HttpRequest) -> HttpResponse:
     return TemplateResponse(
         request,
         "metrics/partials/leaderboard_table.html",
+        {
+            "rows": rows,
+        },
+    )
+
+
+@login_and_team_required
+def review_distribution_chart(request: HttpRequest) -> HttpResponse:
+    """Review distribution by reviewer (all members)."""
+    start_date, end_date = get_date_range_from_request(request)
+    data = dashboard_service.get_review_distribution(request.team, start_date, end_date)
+    return TemplateResponse(
+        request,
+        "metrics/partials/review_distribution_chart.html",
+        {
+            "chart_data": data,
+        },
+    )
+
+
+@login_and_team_required
+def recent_prs_table(request: HttpRequest) -> HttpResponse:
+    """Recent PRs with AI status (all members)."""
+    start_date, end_date = get_date_range_from_request(request)
+    rows = dashboard_service.get_recent_prs(request.team, start_date, end_date, limit=10)
+    return TemplateResponse(
+        request,
+        "metrics/partials/recent_prs_table.html",
         {
             "rows": rows,
         },

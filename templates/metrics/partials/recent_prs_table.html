@@ -1,0 +1,90 @@
+{% load i18n %}
+<div class="overflow-x-auto">
+  {% if rows %}
+  <table class="table w-full">
+    <thead>
+      <tr>
+        <th>{% trans "Pull Request" %}</th>
+        <th>{% trans "Author" %}</th>
+        <th class="text-center">{% trans "AI" %}</th>
+        <th class="text-center">{% trans "Quality" %}</th>
+        <th class="text-right">{% trans "Merged" %}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      <tr>
+        <td class="max-w-xs">
+          <a href="{{ row.url }}" target="_blank" rel="noopener noreferrer" class="link link-hover line-clamp-1" title="{{ row.title }}">
+            {{ row.title }}
+          </a>
+        </td>
+        <td>
+          <div class="flex items-center gap-2">
+            <div class="avatar placeholder">
+              <div class="bg-neutral text-neutral-content rounded-full w-6">
+                <span class="text-xs">{{ row.author|slice:":2"|upper }}</span>
+              </div>
+            </div>
+            <span class="text-sm">{{ row.author }}</span>
+          </div>
+        </td>
+        <td class="text-center">
+          {% if row.ai_assisted is True %}
+          <span class="badge badge-primary badge-sm" title="{% trans 'AI-assisted' %}">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            </svg>
+            {% trans "Yes" %}
+          </span>
+          {% elif row.ai_assisted is False %}
+          <span class="badge badge-ghost badge-sm">{% trans "No" %}</span>
+          {% else %}
+          <span class="text-base-content/40 text-sm">-</span>
+          {% endif %}
+        </td>
+        <td class="text-center">
+          {% if row.avg_quality %}
+          <div class="flex items-center justify-center gap-1">
+            {% if row.avg_quality >= 2.5 %}
+            <span class="text-success">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+              </svg>
+            </span>
+            {% elif row.avg_quality >= 1.5 %}
+            <span class="text-warning">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+              </svg>
+            </span>
+            {% else %}
+            <span class="text-base-content/40">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+              </svg>
+            </span>
+            {% endif %}
+            <span class="text-sm font-mono">{{ row.avg_quality|floatformat:1 }}</span>
+          </div>
+          {% else %}
+          <span class="text-base-content/40 text-sm">-</span>
+          {% endif %}
+        </td>
+        <td class="text-right text-sm text-base-content/60 whitespace-nowrap">
+          {{ row.merged_at|timesince }} {% trans "ago" %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="flex flex-col items-center justify-center py-12 text-base-content/50">
+    <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+    </svg>
+    <p>{% trans "No merged PRs for this period" %}</p>
+    <p class="text-sm mt-1">{% trans "PRs will appear here as they are merged" %}</p>
+  </div>
+  {% endif %}
+</div>

@@ -14,9 +14,21 @@
       {% include "metrics/partials/filters.html" %}
     </div>
 
-    <!-- Charts Row -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-      <!-- Cycle Time Trend -->
+    <!-- Key Metrics Cards -->
+    <div id="key-metrics-container"
+         hx-get="{% url 'metrics:cards_metrics' %}?days={{ days }}"
+         hx-trigger="load"
+         hx-swap="innerHTML">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        {% for i in "1234" %}
+        <div class="skeleton h-24 w-full rounded-lg"></div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Stacked Charts -->
+    <div class="space-y-6">
+      <!-- Cycle Time Trend (full width) -->
       <div class="card bg-base-100 shadow-md">
         <div class="card-body">
           <h2 class="card-title text-base">{% trans "Cycle Time Trend" %}</h2>
@@ -31,22 +43,69 @@
         </div>
       </div>
 
-      <!-- AI Detective Leaderboard -->
+      <!-- Two-column grid for Review Distribution and Leaderboard -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Review Distribution -->
+        <div class="card bg-base-100 shadow-md">
+          <div class="card-body">
+            <h2 class="card-title text-base">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+              {% trans "Review Distribution" %}
+            </h2>
+            <p class="text-sm text-base-content/60 mb-4">{% trans "How reviews are distributed across team members" %}</p>
+            <div id="review-distribution-container"
+                 hx-get="{% url 'metrics:chart_review_distribution' %}?days={{ days }}"
+                 hx-trigger="load"
+                 hx-swap="innerHTML">
+              <div class="skeleton h-48 w-full rounded-lg"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- AI Detective Leaderboard -->
+        <div class="card bg-base-100 shadow-md">
+          <div class="card-body">
+            <h2 class="card-title text-base">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16.5 18.75h-9m9 0a3 3 0 013 3h-15a3 3 0 013-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 01-.982-3.172M9.497 14.25a7.454 7.454 0 00.981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 007.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M18.75 4.236a28.06 28.06 0 012.916.52 6.003 6.003 0 01-5.395 4.972m0 0a6.726 6.726 0 01-2.749 1.35m0 0a6.772 6.772 0 01-3.044 0" />
+              </svg>
+              {% trans "AI Detective Leaderboard" %}
+            </h2>
+            <p class="text-sm text-base-content/60 mb-4">{% trans "Who's best at spotting AI-assisted code?" %}</p>
+            <div id="leaderboard-container"
+                 hx-get="{% url 'metrics:table_leaderboard' %}?days={{ days }}"
+                 hx-trigger="load"
+                 hx-swap="innerHTML">
+              <div class="skeleton h-48 w-full rounded-lg"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent PRs (full width) -->
       <div class="card bg-base-100 shadow-md">
         <div class="card-body">
-          <h2 class="card-title text-base">{% trans "AI Detective Leaderboard" %}</h2>
-          <div id="leaderboard-container"
-               hx-get="{% url 'metrics:table_leaderboard' %}?days={{ days }}"
+          <h2 class="card-title text-base">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            </svg>
+            {% trans "Recent Pull Requests" %}
+          </h2>
+          <p class="text-sm text-base-content/60 mb-4">{% trans "Latest merged PRs with AI status and quality scores" %}</p>
+          <div id="recent-prs-container"
+               hx-get="{% url 'metrics:table_recent_prs' %}?days={{ days }}"
                hx-trigger="load"
                hx-swap="innerHTML">
-            <div class="skeleton h-48 w-full rounded-lg"></div>
+            <div class="skeleton h-64 w-full rounded-lg"></div>
           </div>
         </div>
       </div>
     </div>
 
     <!-- Info Card -->
-    <div class="alert alert-info mb-6">
+    <div class="alert alert-info mt-6">
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
       <span>{% trans "The AI Detective game tracks how well reviewers can guess if a PR was AI-assisted. Respond to Slack surveys to participate!" %}</span>
     </div>
