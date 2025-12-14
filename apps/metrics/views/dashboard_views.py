@@ -48,11 +48,15 @@ def dashboard_redirect(request: HttpRequest) -> HttpResponse:
 def cto_overview(request: HttpRequest) -> HttpResponse:
     """CTO Overview Dashboard - Admin only."""
     context = _get_date_range_context(request)
-    return TemplateResponse(request, "metrics/cto_overview.html", context)
+    # Return partial for HTMX requests (e.g., days filter changes)
+    template = "metrics/cto_overview.html#page-content" if request.htmx else "metrics/cto_overview.html"
+    return TemplateResponse(request, template, context)
 
 
 @login_and_team_required
 def team_dashboard(request: HttpRequest) -> HttpResponse:
     """Team Dashboard - All team members."""
     context = _get_date_range_context(request)
-    return TemplateResponse(request, "metrics/team_dashboard.html", context)
+    # Return partial for HTMX requests (e.g., days filter changes)
+    template = "metrics/team_dashboard.html#page-content" if request.htmx else "metrics/team_dashboard.html"
+    return TemplateResponse(request, template, context)
