@@ -223,6 +223,42 @@ test.describe('Dashboard Tests @dashboard', () => {
       await page.getByRole('link', { name: '90d' }).click();
       await expect(page).toHaveURL(/\?days=90/);
     });
+
+    // High-value reports tests for CTO Dashboard
+    test('review time trend section displays', async ({ page }) => {
+      await page.goto('/app/metrics/dashboard/cto/');
+      await page.waitForLoadState('domcontentloaded');
+
+      await expect(page.getByRole('heading', { name: 'Review Time Trend' })).toBeVisible();
+    });
+
+    test('PR size distribution section displays', async ({ page }) => {
+      await page.goto('/app/metrics/dashboard/cto/');
+      await page.waitForLoadState('domcontentloaded');
+
+      await expect(page.getByRole('heading', { name: 'PR Size Distribution' })).toBeVisible();
+    });
+
+    test('quality indicators section displays', async ({ page }) => {
+      await page.goto('/app/metrics/dashboard/cto/');
+      await page.waitForLoadState('domcontentloaded');
+
+      await expect(page.getByRole('heading', { name: 'Quality Indicators' })).toBeVisible();
+    });
+
+    test('reviewer workload section displays', async ({ page }) => {
+      await page.goto('/app/metrics/dashboard/cto/');
+      await page.waitForLoadState('domcontentloaded');
+
+      await expect(page.getByRole('heading', { name: 'Reviewer Workload' })).toBeVisible();
+    });
+
+    test('unlinked PRs section displays', async ({ page }) => {
+      await page.goto('/app/metrics/dashboard/cto/');
+      await page.waitForLoadState('domcontentloaded');
+
+      await expect(page.getByRole('heading', { name: 'PRs Missing Jira Links' })).toBeVisible();
+    });
   });
 
   test.describe('Navigation', () => {
