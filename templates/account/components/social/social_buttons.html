@@ -3,7 +3,7 @@
 {% get_socialapps as socialapps %}
 {% if socialapps %}
 <div class="app-divider my-4"></div>
-<p class="text-center text-slate-500 text-sm mb-4">{% translate "or continue with" %}</p>
+<p class="text-center text-slate-400 text-sm mb-4">{% translate "or continue with" %}</p>
 {% endif %}
 {% for provider in socialapps %}
   {% include 'account/components/social/login_with_social_button.html' with app=app %}

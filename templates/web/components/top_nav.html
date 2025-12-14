@@ -31,7 +31,7 @@
     </div>
   </div>
   <div class="navbar-center hidden lg:flex">
-    <div role="tablist" class="tabs p-0 items-center">
+    <nav class="tabs p-0 items-center" aria-label="Main navigation">
       <a class="tab !h-auto py-2 {% if request.path == '/' %}tab-active{% endif %}" href="{% url 'web:home' %}">
         <div class="flex items-center gap-2">
            <i class="fa-solid fa-rocket text-primary text-xl"></i>
@@ -43,7 +43,7 @@
         {% translate "Blog" %}
       </a>
       {% endif %}
-    </div>
+    </nav>
   </div>
   <div class="navbar-end">
     {% if not user.is_authenticated %}

@@ -34,8 +34,8 @@ Usage:
     {% if not integration_status.slack.connected %}
       <a href="{% url 'integrations:slack_connect' %}" class="btn btn-sm btn-ghost">{% trans "Connect Slack" %}</a>
     {% endif %}
-    <button class="btn btn-sm btn-ghost btn-square" @click="show = false">
-      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <button class="btn btn-sm btn-ghost btn-square" @click="show = false" aria-label="Dismiss notification">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
       </svg>
     </button>
