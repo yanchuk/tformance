@@ -1,6 +1,71 @@
 # Dashboard UX Improvements - Tasks
 
-**Last Updated:** 2024-12-14
+**Last Updated:** 2025-12-14
+
+## Phase 0: Critical Bug Fixes (NEW - Priority: Critical)
+
+### 0.1 HTMX Days Filter Bug - Full Page Nested Inside Content ✅ FIXED
+
+**Bug**: Clicking 7d/30d/90d filter buttons on Team Dashboard causes the entire page (header, sidebar, content) to be nested inside the content area, resulting in duplicate navigation.
+
+**Root Cause**: The `team_dashboard` view always returns full template, even for HTMX requests.
+
+**Fix Location**: `apps/metrics/views/dashboard_views.py:55-58`
+
+- [x] Update `team_dashboard` view to check `request.htmx`
+  ```python
+  @login_and_team_required
+  def team_dashboard(request: HttpRequest) -> HttpResponse:
+      context = _get_date_range_context(request)
+      template = "metrics/team_dashboard.html#page-content" if request.htmx else "metrics/team_dashboard.html"
+      return TemplateResponse(request, template, context)
+  ```
+- [x] Apply same fix to `cto_overview` view
+- [x] Add E2E test for days filter to prevent regression (tests/e2e/dashboard.spec.ts)
+
+### 0.2 Quick Stats Data Structure Mismatch
+
+**Bug**: App home page shows "-" for all quick stats (Cycle Time, AI-Assisted, Quality).
+
+**Root Cause**: Service returns flat keys but template expects nested structure.
+
+**Service returns**:
+```python
+{"prs_merged": 7, "prs_merged_change": -22.0, "avg_cycle_time_hours": 26.0, ...}
+```
+
+**Template expects**:
+```django
+{{ quick_stats.prs_merged.count }}
+{{ quick_stats.prs_merged.change_percent }}
+```
+
+**Fix Options**:
+- [ ] Option A: Update service to return nested dicts (breaks other consumers)
+- [ ] Option B: Update template to use flat keys (simpler, recommended)
+
+**Recommended fix** - update `templates/web/components/quick_stats.html`:
+```django
+{{ quick_stats.prs_merged }}
+{{ quick_stats.prs_merged_change|floatformat:0 }}%
+{{ quick_stats.avg_cycle_time_hours|floatformat:1 }}
+```
+
+### 0.3 Slack Icon Color (Low Priority)
+
+**Issue**: Slack icon uses brand red (#E01E5A) which may be confused with error state.
+
+**Location**: `templates/web/app_home.html:92`
+```html
+<svg class="h-5 w-5" viewBox="0 0 24 24" fill="#E01E5A">
+```
+
+**Options**:
+- [ ] Keep as-is (official brand color)
+- [ ] Use multi-color logo like on landing page
+- [ ] Use teal to match app theme
+
+---
 
 ## Phase 1: App Home Page Redesign
 

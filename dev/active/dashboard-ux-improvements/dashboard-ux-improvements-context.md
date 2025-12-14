@@ -1,6 +1,25 @@
 # Dashboard UX Improvements - Context
 
-**Last Updated:** 2024-12-14
+**Last Updated:** 2025-12-14
+
+## Recent Fixes (2025-12-14)
+
+### HTMX Days Filter Bug - FIXED
+- **Files Modified**: `apps/metrics/views/dashboard_views.py`
+- **Solution**: Added `request.htmx` check to return partial template (`#page-content`) for HTMX requests
+- **E2E Tests Added**: `tests/e2e/dashboard.spec.ts` - "HTMX partial swap" tests for both dashboards
+
+### Slack Icon Color - Investigated
+- **Finding**: The red color (#E01E5A) is Slack's official brand color, not a bug
+- **Location**: `templates/web/app_home.html:92`
+- **Decision**: Keep as-is (official brand color) or optionally change to teal for consistency
+
+### Quick Stats on App Home - Known Issue
+- **Issue**: Shows "-" for some stats on app home page
+- **Root Cause**: Service returns flat dict but template expects nested structure
+- **Status**: Needs fix (update template or service)
+
+---
 
 ## Key Files
 
