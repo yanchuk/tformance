@@ -576,3 +576,252 @@ class TestGetTeamBreakdown(TestCase):
         names = [m["member_name"] for m in result]
         self.assertIn("Active", names)
         self.assertNotIn("Inactive", names)
+
+
+class TestGetReviewDistribution(TestCase):
+    """Tests for get_review_distribution function."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.team = TeamFactory()
+        self.start_date = date(2024, 1, 1)
+        self.end_date = date(2024, 1, 31)
+
+    def test_get_review_distribution_returns_list_of_dicts(self):
+        """Test that get_review_distribution returns a list of reviewer dicts."""
+        result = dashboard_service.get_review_distribution(self.team, self.start_date, self.end_date)
+
+        self.assertIsInstance(result, list)
+
+    def test_get_review_distribution_counts_reviews_per_reviewer(self):
+        """Test that get_review_distribution counts reviews per reviewer."""
+        reviewer1 = TeamMemberFactory(team=self.team, display_name="Alice")
+        reviewer2 = TeamMemberFactory(team=self.team, display_name="Bob")
+
+        # Create multiple PRs with surveys - each reviewer can only review each survey once
+        # Alice reviews 3 PRs, Bob reviews 2 PRs
+        for i in range(3):
+            pr = PullRequestFactory(
+                team=self.team,
+                state="merged",
+                merged_at=timezone.make_aware(timezone.datetime(2024, 1, 10 + i, 12, 0)),
+            )
+            survey = PRSurveyFactory(team=self.team, pull_request=pr)
+            PRSurveyReviewFactory(
+                team=self.team,
+                survey=survey,
+                reviewer=reviewer1,
+                responded_at=timezone.make_aware(timezone.datetime(2024, 1, 11 + i, 12, 0)),
+            )
+
+        for i in range(2):
+            pr = PullRequestFactory(
+                team=self.team,
+                state="merged",
+                merged_at=timezone.make_aware(timezone.datetime(2024, 1, 15 + i, 12, 0)),
+            )
+            survey = PRSurveyFactory(team=self.team, pull_request=pr)
+            PRSurveyReviewFactory(
+                team=self.team,
+                survey=survey,
+                reviewer=reviewer2,
+                responded_at=timezone.make_aware(timezone.datetime(2024, 1, 16 + i, 12, 0)),
+            )
+
+        result = dashboard_service.get_review_distribution(self.team, self.start_date, self.end_date)
+
+        # Should have 2 reviewers
+        self.assertEqual(len(result), 2)
+
+        alice_data = next((r for r in result if r["reviewer_name"] == "Alice"), None)
+        bob_data = next((r for r in result if r["reviewer_name"] == "Bob"), None)
+
+        self.assertIsNotNone(alice_data)
+        self.assertIsNotNone(bob_data)
+        self.assertEqual(alice_data["count"], 3)
+        self.assertEqual(bob_data["count"], 2)
+
+    def test_get_review_distribution_only_counts_reviews_in_date_range(self):
+        """Test that get_review_distribution only counts reviews in the date range."""
+        reviewer = TeamMemberFactory(team=self.team, display_name="Alice")
+
+        # In-range PR and review
+        pr_in_range = PullRequestFactory(
+            team=self.team,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 10, 12, 0)),
+        )
+        survey_in = PRSurveyFactory(team=self.team, pull_request=pr_in_range)
+        PRSurveyReviewFactory(
+            team=self.team,
+            survey=survey_in,
+            reviewer=reviewer,
+            responded_at=timezone.make_aware(timezone.datetime(2024, 1, 12, 12, 0)),
+        )
+
+        # Out-of-range review (before start date) - needs separate PR/survey
+        pr_out_range = PullRequestFactory(
+            team=self.team,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2023, 12, 10, 12, 0)),
+        )
+        survey_out = PRSurveyFactory(team=self.team, pull_request=pr_out_range)
+        PRSurveyReviewFactory(
+            team=self.team,
+            survey=survey_out,
+            reviewer=reviewer,
+            responded_at=timezone.make_aware(timezone.datetime(2023, 12, 15, 12, 0)),
+        )
+
+        result = dashboard_service.get_review_distribution(self.team, self.start_date, self.end_date)
+
+        # Should only count the 1 review in range
+        alice_data = next((r for r in result if r["reviewer_name"] == "Alice"), None)
+        self.assertEqual(alice_data["count"], 1)
+
+    def test_get_review_distribution_handles_no_data(self):
+        """Test that get_review_distribution handles empty dataset."""
+        result = dashboard_service.get_review_distribution(self.team, self.start_date, self.end_date)
+
+        self.assertEqual(result, [])
+
+
+class TestGetRecentPrs(TestCase):
+    """Tests for get_recent_prs function."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.team = TeamFactory()
+        self.start_date = date(2024, 1, 1)
+        self.end_date = date(2024, 1, 31)
+
+    def test_get_recent_prs_returns_list_of_dicts(self):
+        """Test that get_recent_prs returns a list of PR dicts."""
+        result = dashboard_service.get_recent_prs(self.team, self.start_date, self.end_date)
+
+        self.assertIsInstance(result, list)
+
+    def test_get_recent_prs_includes_required_fields(self):
+        """Test that get_recent_prs includes all required fields."""
+        author = TeamMemberFactory(team=self.team, display_name="Alice")
+        pr = PullRequestFactory(
+            team=self.team,
+            author=author,
+            state="merged",
+            title="Add feature X",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 10, 12, 0)),
+        )
+        survey = PRSurveyFactory(team=self.team, pull_request=pr, author_ai_assisted=True)
+        PRSurveyReviewFactory(team=self.team, survey=survey, quality_rating=3)
+
+        result = dashboard_service.get_recent_prs(self.team, self.start_date, self.end_date)
+
+        self.assertEqual(len(result), 1)
+        pr_data = result[0]
+
+        self.assertIn("title", pr_data)
+        self.assertIn("author", pr_data)
+        self.assertIn("merged_at", pr_data)
+        self.assertIn("ai_assisted", pr_data)
+        self.assertIn("avg_quality", pr_data)
+        self.assertIn("url", pr_data)
+
+    def test_get_recent_prs_returns_correct_data(self):
+        """Test that get_recent_prs returns correct PR data."""
+        author = TeamMemberFactory(team=self.team, display_name="Bob")
+        reviewer1 = TeamMemberFactory(team=self.team, display_name="Reviewer1")
+        reviewer2 = TeamMemberFactory(team=self.team, display_name="Reviewer2")
+        merged_time = timezone.make_aware(timezone.datetime(2024, 1, 15, 14, 30))
+        pr = PullRequestFactory(
+            team=self.team,
+            author=author,
+            state="merged",
+            title="Fix bug Y",
+            merged_at=merged_time,
+            github_repo="org/repo",
+            github_pr_id=123,
+        )
+        survey = PRSurveyFactory(team=self.team, pull_request=pr, author_ai_assisted=True)
+        PRSurveyReviewFactory(team=self.team, survey=survey, reviewer=reviewer1, quality_rating=2)
+        PRSurveyReviewFactory(team=self.team, survey=survey, reviewer=reviewer2, quality_rating=3)
+
+        result = dashboard_service.get_recent_prs(self.team, self.start_date, self.end_date)
+
+        pr_data = result[0]
+        self.assertEqual(pr_data["title"], "Fix bug Y")
+        self.assertEqual(pr_data["author"], "Bob")
+        self.assertEqual(pr_data["merged_at"], merged_time)
+        self.assertTrue(pr_data["ai_assisted"])
+        self.assertEqual(pr_data["avg_quality"], 2.5)  # (2 + 3) / 2
+        self.assertEqual(pr_data["url"], "https://github.com/org/repo/pull/123")
+
+    def test_get_recent_prs_orders_by_merged_at_descending(self):
+        """Test that get_recent_prs orders by merged_at descending (most recent first)."""
+        author = TeamMemberFactory(team=self.team)
+        PullRequestFactory(
+            team=self.team,
+            author=author,
+            state="merged",
+            title="First PR",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 5, 12, 0)),
+        )
+        PullRequestFactory(
+            team=self.team,
+            author=author,
+            state="merged",
+            title="Second PR",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 15, 12, 0)),
+        )
+        PullRequestFactory(
+            team=self.team,
+            author=author,
+            state="merged",
+            title="Third PR",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 10, 12, 0)),
+        )
+
+        result = dashboard_service.get_recent_prs(self.team, self.start_date, self.end_date)
+
+        self.assertEqual(result[0]["title"], "Second PR")  # Most recent
+        self.assertEqual(result[1]["title"], "Third PR")
+        self.assertEqual(result[2]["title"], "First PR")
+
+    def test_get_recent_prs_limits_results(self):
+        """Test that get_recent_prs limits results to specified count."""
+        author = TeamMemberFactory(team=self.team)
+        for i in range(15):
+            PullRequestFactory(
+                team=self.team,
+                author=author,
+                state="merged",
+                title=f"PR {i}",
+                merged_at=timezone.make_aware(timezone.datetime(2024, 1, i + 1, 12, 0)),
+            )
+
+        result = dashboard_service.get_recent_prs(self.team, self.start_date, self.end_date, limit=10)
+
+        self.assertEqual(len(result), 10)
+
+    def test_get_recent_prs_handles_pr_without_survey(self):
+        """Test that get_recent_prs handles PRs without surveys."""
+        author = TeamMemberFactory(team=self.team, display_name="Charlie")
+        PullRequestFactory(
+            team=self.team,
+            author=author,
+            state="merged",
+            title="No Survey PR",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 10, 12, 0)),
+        )
+
+        result = dashboard_service.get_recent_prs(self.team, self.start_date, self.end_date)
+
+        self.assertEqual(len(result), 1)
+        pr_data = result[0]
+        self.assertIsNone(pr_data["ai_assisted"])
+        self.assertIsNone(pr_data["avg_quality"])
+
+    def test_get_recent_prs_handles_no_data(self):
+        """Test that get_recent_prs handles empty dataset."""
+        result = dashboard_service.get_recent_prs(self.team, self.start_date, self.end_date)
+
+        self.assertEqual(result, [])

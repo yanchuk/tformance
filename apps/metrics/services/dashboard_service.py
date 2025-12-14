@@ -274,3 +274,96 @@ def get_ai_detective_leaderboard(team: Team, start_date: date, end_date: date) -
         }
         for r in reviews
     ]
+
+
+def get_review_distribution(team: Team, start_date: date, end_date: date) -> list[dict]:
+    """Get review distribution by reviewer (for pie chart).
+
+    Args:
+        team: Team instance
+        start_date: Start date (inclusive)
+        end_date: End date (inclusive)
+
+    Returns:
+        list of dicts with keys:
+            - reviewer_name (str): Reviewer display name
+            - count (int): Number of reviews
+    """
+    reviews = (
+        PRSurveyReview.objects.filter(
+            team=team,
+            responded_at__gte=start_date,
+            responded_at__lte=end_date,
+        )
+        .values("reviewer__display_name")
+        .annotate(count=Count("id"))
+        .order_by("-count")
+    )
+
+    return [
+        {
+            "reviewer_name": r["reviewer__display_name"],
+            "count": r["count"],
+        }
+        for r in reviews
+    ]
+
+
+def get_recent_prs(team: Team, start_date: date, end_date: date, limit: int = 10) -> list[dict]:
+    """Get recent PRs with AI status and quality scores.
+
+    Args:
+        team: Team instance
+        start_date: Start date (inclusive)
+        end_date: End date (inclusive)
+        limit: Maximum number of PRs to return (default 10)
+
+    Returns:
+        list of dicts with keys:
+            - title (str): PR title
+            - author (str): Author display name
+            - merged_at (datetime): Merge timestamp
+            - ai_assisted (bool or None): Whether AI-assisted, None if no survey
+            - avg_quality (float or None): Average quality rating, None if no reviews
+            - url (str): PR URL
+    """
+    prs = (
+        _get_merged_prs_in_range(team, start_date, end_date)
+        .select_related("author")
+        .prefetch_related("survey", "survey__reviews")
+        .order_by("-merged_at")[:limit]
+    )
+
+    result = []
+    for pr in prs:
+        # Get survey data if exists
+        ai_assisted = None
+        avg_quality = None
+
+        try:
+            survey = pr.survey
+            ai_assisted = survey.author_ai_assisted
+            reviews = survey.reviews.all()
+            if reviews:
+                total_rating = sum(r.quality_rating for r in reviews if r.quality_rating is not None)
+                count = sum(1 for r in reviews if r.quality_rating is not None)
+                if count > 0:
+                    avg_quality = total_rating / count
+        except PRSurvey.DoesNotExist:
+            pass
+
+        # Construct GitHub URL from repo and PR ID
+        github_url = f"https://github.com/{pr.github_repo}/pull/{pr.github_pr_id}"
+
+        result.append(
+            {
+                "title": pr.title,
+                "author": pr.author.display_name if pr.author else "Unknown",
+                "merged_at": pr.merged_at,
+                "ai_assisted": ai_assisted,
+                "avg_quality": avg_quality,
+                "url": github_url,
+            }
+        )
+
+    return result
