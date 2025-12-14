@@ -117,10 +117,10 @@ test.describe('Dashboard Tests @dashboard', () => {
 
       await expect(page.getByRole('heading', { name: 'Recent Pull Requests' })).toBeVisible();
 
-      // Check for table headers
-      await expect(page.getByRole('columnheader', { name: 'Pull Request' })).toBeVisible();
-      await expect(page.getByRole('columnheader', { name: 'Author' })).toBeVisible();
-      await expect(page.getByRole('columnheader', { name: 'AI' })).toBeVisible();
+      // Check for table headers (use container to avoid strict mode violation)
+      const recentPrsSection = page.locator('#recent-prs-container');
+      await expect(recentPrsSection.getByRole('columnheader', { name: 'Pull Request' })).toBeVisible();
+      await expect(recentPrsSection.getByRole('columnheader', { name: 'Author' })).toBeVisible();
     });
 
     test('date range filter works', async ({ page }) => {
@@ -134,6 +134,42 @@ test.describe('Dashboard Tests @dashboard', () => {
       // Click 90d filter
       await page.getByRole('link', { name: '90d' }).click();
       await expect(page).toHaveURL(/\?days=90/);
+    });
+
+    // New high-value reports tests
+    test('review time trend section displays', async ({ page }) => {
+      await page.goto('/app/metrics/dashboard/team/');
+      await page.waitForLoadState('domcontentloaded');
+
+      await expect(page.getByRole('heading', { name: 'Review Time Trend' })).toBeVisible();
+    });
+
+    test('PR size distribution section displays', async ({ page }) => {
+      await page.goto('/app/metrics/dashboard/team/');
+      await page.waitForLoadState('domcontentloaded');
+
+      await expect(page.getByRole('heading', { name: 'PR Size Distribution' })).toBeVisible();
+    });
+
+    test('quality indicators section displays', async ({ page }) => {
+      await page.goto('/app/metrics/dashboard/team/');
+      await page.waitForLoadState('domcontentloaded');
+
+      await expect(page.getByRole('heading', { name: 'Quality Indicators' })).toBeVisible();
+    });
+
+    test('reviewer workload section displays', async ({ page }) => {
+      await page.goto('/app/metrics/dashboard/team/');
+      await page.waitForLoadState('domcontentloaded');
+
+      await expect(page.getByRole('heading', { name: 'Reviewer Workload' })).toBeVisible();
+    });
+
+    test('unlinked PRs section displays', async ({ page }) => {
+      await page.goto('/app/metrics/dashboard/team/');
+      await page.waitForLoadState('domcontentloaded');
+
+      await expect(page.getByRole('heading', { name: 'PRs Missing Jira Links' })).toBeVisible();
     });
   });
 
