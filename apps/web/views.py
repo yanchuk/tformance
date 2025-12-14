@@ -19,8 +19,10 @@ from health_check.views import MainView
 
 from apps.integrations.models import TrackedRepository
 from apps.integrations.services.github_webhooks import validate_webhook_signature
+from apps.integrations.services.status import get_team_integration_status
 from apps.metrics import processors
 from apps.metrics.models import PRSurveyReview, TeamMember
+from apps.metrics.services.quick_stats import get_team_quick_stats
 from apps.metrics.services.survey_service import record_author_response, record_reviewer_response
 from apps.teams.decorators import login_and_team_required
 from apps.teams.helpers import get_open_invitations_for_user
@@ -61,15 +63,26 @@ def home(request):
 
 @login_and_team_required
 def team_home(request):
-    return render(
-        request,
-        "web/app_home.html",
-        context={
-            "team": request.team,
-            "active_tab": "dashboard",
-            "page_title": _("{team} Dashboard").format(team=request.team),
-        },
-    )
+    """Team home page with conditional content based on integration status.
+
+    Shows setup wizard for new users (no integrations) or quick stats
+    and recent activity for users with data.
+    """
+    team = request.team
+    integration_status = get_team_integration_status(team)
+
+    context = {
+        "team": team,
+        "active_tab": "dashboard",
+        "page_title": _("{team} Dashboard").format(team=team),
+        "integration_status": integration_status,
+    }
+
+    # Only fetch quick stats if the team has data
+    if integration_status["has_data"]:
+        context["quick_stats"] = get_team_quick_stats(team, days=7)
+
+    return render(request, "web/app_home.html", context)
 
 
 def simulate_error(request):

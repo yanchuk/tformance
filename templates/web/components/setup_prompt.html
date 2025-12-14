@@ -1,0 +1,44 @@
+{% comment %}
+Setup Prompt Component
+Shows a banner for users with GitHub connected but missing optional integrations.
+
+Required context:
+- integration_status: dict with github, jira, slack status
+
+Usage:
+  {% include "web/components/setup_prompt.html" %}
+{% endcomment %}
+{% load i18n %}
+
+{% if integration_status.github.connected and not integration_status.jira.connected or not integration_status.slack.connected %}
+<div class="alert shadow-sm mb-6" x-data="{ show: true }" x-show="show" x-transition>
+  <svg xmlns="http://www.w3.org/2000/svg" class="stroke-info shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+  </svg>
+  <div>
+    <h3 class="font-medium">{% trans "Enhance your insights" %}</h3>
+    <p class="text-sm text-base-content/70">
+      {% if not integration_status.jira.connected and not integration_status.slack.connected %}
+        {% trans "Connect Jira to link PRs with issues, and Slack to collect AI usage surveys." %}
+      {% elif not integration_status.jira.connected %}
+        {% trans "Connect Jira to automatically link pull requests with issues." %}
+      {% elif not integration_status.slack.connected %}
+        {% trans "Connect Slack to send AI usage surveys to your team." %}
+      {% endif %}
+    </p>
+  </div>
+  <div class="flex-none flex gap-2">
+    {% if not integration_status.jira.connected %}
+      <a href="{% url 'integrations:jira_connect' %}" class="btn btn-sm btn-ghost">{% trans "Connect Jira" %}</a>
+    {% endif %}
+    {% if not integration_status.slack.connected %}
+      <a href="{% url 'integrations:slack_connect' %}" class="btn btn-sm btn-ghost">{% trans "Connect Slack" %}</a>
+    {% endif %}
+    <button class="btn btn-sm btn-ghost btn-square" @click="show = false">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+      </svg>
+    </button>
+  </div>
+</div>
+{% endif %}

@@ -1,0 +1,99 @@
+{% comment %}
+Recent Activity Component
+Shows a list of recent PRs and survey events.
+
+Required context:
+- quick_stats.recent_activity: list of dicts with type, title, author, timestamp, url
+
+Usage:
+  {% include "web/components/recent_activity.html" %}
+{% endcomment %}
+{% load i18n %}
+
+<div class="card bg-base-100 shadow">
+  <div class="card-body">
+    <h2 class="card-title text-base">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+      {% trans "Recent Activity" %}
+    </h2>
+
+    {% if quick_stats.recent_activity %}
+      <div class="divide-y divide-base-200">
+        {% for activity in quick_stats.recent_activity %}
+          <div class="py-3 flex items-start gap-3">
+            <!-- Activity Icon -->
+            <div class="flex-shrink-0 mt-1">
+              {% if activity.type == "pr_merged" %}
+                <div class="w-8 h-8 rounded-full bg-success/20 flex items-center justify-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+              {% elif activity.type == "survey_response" %}
+                <div class="w-8 h-8 rounded-full bg-info/20 flex items-center justify-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-info" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+              {% else %}
+                <div class="w-8 h-8 rounded-full bg-base-200 flex items-center justify-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-base-content/60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+              {% endif %}
+            </div>
+
+            <!-- Activity Content -->
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-medium truncate">
+                {% if activity.url %}
+                  <a href="{{ activity.url }}" target="_blank" rel="noopener noreferrer" class="hover:text-primary">
+                    {{ activity.title }}
+                  </a>
+                {% else %}
+                  {{ activity.title }}
+                {% endif %}
+              </p>
+              <p class="text-xs text-base-content/60">
+                {% if activity.author %}
+                  <span class="font-medium">{{ activity.author }}</span> &middot;
+                {% endif %}
+                {% if activity.type == "pr_merged" %}
+                  {% trans "PR merged" %}
+                {% elif activity.type == "survey_response" %}
+                  {% trans "Survey completed" %}
+                {% endif %}
+              </p>
+            </div>
+
+            <!-- Timestamp -->
+            <div class="flex-shrink-0 text-xs text-base-content/50">
+              {{ activity.timestamp|timesince }}
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+
+      <!-- View All Link -->
+      <div class="card-actions justify-end mt-4">
+        <a href="{% url 'metrics:team_dashboard' %}" class="btn btn-ghost btn-sm">
+          {% trans "View Dashboard" %}
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+          </svg>
+        </a>
+      </div>
+    {% else %}
+      <div class="py-8 text-center text-base-content/60">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto mb-3 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <p class="text-sm">{% trans "No recent activity yet." %}</p>
+        <p class="text-xs mt-1">{% trans "Activity will appear here as PRs are merged." %}</p>
+      </div>
+    {% endif %}
+  </div>
+</div>

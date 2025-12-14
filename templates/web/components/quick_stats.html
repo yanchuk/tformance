@@ -1,0 +1,131 @@
+{% comment %}
+Quick Stats Component
+Shows key metrics cards for users with data.
+
+Required context:
+- quick_stats: dict from get_team_quick_stats()
+
+Usage:
+  {% include "web/components/quick_stats.html" %}
+{% endcomment %}
+{% load i18n %}
+
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+  <!-- PRs Merged -->
+  <div class="stat bg-base-100 shadow rounded-lg">
+    <div class="stat-figure text-primary">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+      </svg>
+    </div>
+    <div class="stat-title">{% trans "PRs Merged" %}</div>
+    <div class="stat-value text-primary">{{ quick_stats.prs_merged.count }}</div>
+    <div class="stat-desc">
+      {% if quick_stats.prs_merged.change_percent is not None %}
+        {% if quick_stats.prs_merged.change_percent > 0 %}
+          <span class="text-success">+{{ quick_stats.prs_merged.change_percent|floatformat:0 }}%</span>
+        {% elif quick_stats.prs_merged.change_percent < 0 %}
+          <span class="text-error">{{ quick_stats.prs_merged.change_percent|floatformat:0 }}%</span>
+        {% else %}
+          <span>{% trans "No change" %}</span>
+        {% endif %}
+        {% trans "vs last period" %}
+      {% else %}
+        {% trans "Last 7 days" %}
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Avg Cycle Time -->
+  <div class="stat bg-base-100 shadow rounded-lg">
+    <div class="stat-figure text-secondary">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    </div>
+    <div class="stat-title">{% trans "Avg Cycle Time" %}</div>
+    <div class="stat-value text-secondary">
+      {% if quick_stats.avg_cycle_time.hours is not None %}
+        {{ quick_stats.avg_cycle_time.hours|floatformat:1 }}<span class="text-lg">h</span>
+      {% else %}
+        -
+      {% endif %}
+    </div>
+    <div class="stat-desc">
+      {% if quick_stats.avg_cycle_time.change_percent is not None %}
+        {% if quick_stats.avg_cycle_time.change_percent < 0 %}
+          <span class="text-success">{{ quick_stats.avg_cycle_time.change_percent|floatformat:0 }}%</span>
+        {% elif quick_stats.avg_cycle_time.change_percent > 0 %}
+          <span class="text-error">+{{ quick_stats.avg_cycle_time.change_percent|floatformat:0 }}%</span>
+        {% else %}
+          <span>{% trans "No change" %}</span>
+        {% endif %}
+        {% trans "vs last period" %}
+      {% else %}
+        {% trans "PR creation to merge" %}
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- AI-Assisted % -->
+  <div class="stat bg-base-100 shadow rounded-lg">
+    <div class="stat-figure text-accent">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+      </svg>
+    </div>
+    <div class="stat-title">{% trans "AI-Assisted" %}</div>
+    <div class="stat-value text-accent">
+      {% if quick_stats.ai_assisted.percent is not None %}
+        {{ quick_stats.ai_assisted.percent|floatformat:0 }}<span class="text-lg">%</span>
+      {% else %}
+        -
+      {% endif %}
+    </div>
+    <div class="stat-desc">
+      {% if quick_stats.ai_assisted.change_points is not None %}
+        {% if quick_stats.ai_assisted.change_points > 0 %}
+          <span class="text-success">+{{ quick_stats.ai_assisted.change_points|floatformat:0 }}pp</span>
+        {% elif quick_stats.ai_assisted.change_points < 0 %}
+          <span class="text-error">{{ quick_stats.ai_assisted.change_points|floatformat:0 }}pp</span>
+        {% else %}
+          <span>{% trans "No change" %}</span>
+        {% endif %}
+        {% trans "vs last period" %}
+      {% else %}
+        {% trans "Of surveyed PRs" %}
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Avg Quality -->
+  <div class="stat bg-base-100 shadow rounded-lg">
+    <div class="stat-figure text-info">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+      </svg>
+    </div>
+    <div class="stat-title">{% trans "Avg Quality" %}</div>
+    <div class="stat-value text-info">
+      {% if quick_stats.avg_quality.rating is not None %}
+        {{ quick_stats.avg_quality.rating|floatformat:1 }}<span class="text-lg">/3</span>
+      {% else %}
+        -
+      {% endif %}
+    </div>
+    <div class="stat-desc">
+      {% if quick_stats.avg_quality.change is not None %}
+        {% if quick_stats.avg_quality.change > 0 %}
+          <span class="text-success">+{{ quick_stats.avg_quality.change|floatformat:1 }}</span>
+        {% elif quick_stats.avg_quality.change < 0 %}
+          <span class="text-error">{{ quick_stats.avg_quality.change|floatformat:1 }}</span>
+        {% else %}
+          <span>{% trans "No change" %}</span>
+        {% endif %}
+        {% trans "vs last period" %}
+      {% else %}
+        {% trans "Reviewer ratings" %}
+      {% endif %}
+    </div>
+  </div>
+</div>
