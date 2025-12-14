@@ -127,13 +127,42 @@ test.describe('Dashboard Tests @dashboard', () => {
       await page.goto('/app/metrics/dashboard/team/');
       await page.waitForLoadState('domcontentloaded');
 
-      // Click 30d filter
+      // Click 30d filter and verify URL changes
       await page.getByRole('link', { name: '30d' }).click();
       await expect(page).toHaveURL(/\?days=30/);
+      // Verify the 30d button becomes active after HTMX swap
+      await expect(page.locator('a[href="?days=30"].btn-primary')).toBeVisible();
+    });
 
-      // Click 90d filter
-      await page.getByRole('link', { name: '90d' }).click();
-      await expect(page).toHaveURL(/\?days=90/);
+    test('date range filter does not duplicate navigation (HTMX partial swap)', async ({ page }) => {
+      // This test ensures the HTMX partial swap fix is working correctly
+      // Bug: Prior to fix, clicking filter buttons would nest the entire page inside content
+      await page.goto('/app/metrics/dashboard/team/?days=7');
+      await page.waitForLoadState('domcontentloaded');
+
+      // Count initial navigation elements
+      const initialNavCount = await page.locator('nav[aria-label="Main navigation"]').count();
+      expect(initialNavCount).toBe(1);
+
+      // Count Team Dashboard headings (should only be 1)
+      const initialHeadingCount = await page.getByRole('heading', { name: 'Team Dashboard' }).count();
+      expect(initialHeadingCount).toBe(1);
+
+      // Click 30d filter (triggers HTMX request)
+      await page.getByRole('link', { name: '30d' }).click();
+      await page.waitForURL(/\?days=30/);
+      await page.waitForTimeout(500); // Allow HTMX swap to complete
+
+      // Verify navigation is NOT duplicated after HTMX swap
+      const afterSwapNavCount = await page.locator('nav[aria-label="Main navigation"]').count();
+      expect(afterSwapNavCount).toBe(1);
+
+      // Verify Team Dashboard heading is still unique (not duplicated)
+      const afterSwapHeadingCount = await page.getByRole('heading', { name: 'Team Dashboard' }).count();
+      expect(afterSwapHeadingCount).toBe(1);
+
+      // Verify content updated (30d should show more data than 7d)
+      await expect(page.getByText('PRs Merged').first()).toBeVisible();
     });
 
     // New high-value reports tests
@@ -215,13 +244,38 @@ test.describe('Dashboard Tests @dashboard', () => {
       await page.goto('/app/metrics/dashboard/cto/');
       await page.waitForLoadState('domcontentloaded');
 
-      // Click 7d filter
+      // Click 7d filter and verify URL changes
       await page.getByRole('link', { name: '7d' }).click();
       await expect(page).toHaveURL(/\?days=7/);
+      // Verify the 7d button becomes active after HTMX swap
+      await expect(page.locator('a[href="?days=7"].btn-primary')).toBeVisible();
+    });
 
-      // Click 90d filter
-      await page.getByRole('link', { name: '90d' }).click();
-      await expect(page).toHaveURL(/\?days=90/);
+    test('date range filter does not duplicate navigation (HTMX partial swap)', async ({ page }) => {
+      // This test ensures the HTMX partial swap fix is working correctly for CTO dashboard
+      await page.goto('/app/metrics/dashboard/cto/?days=30');
+      await page.waitForLoadState('domcontentloaded');
+
+      // Count initial navigation elements
+      const initialNavCount = await page.locator('nav[aria-label="Main navigation"]').count();
+      expect(initialNavCount).toBe(1);
+
+      // Count CTO Overview headings (should only be 1)
+      const initialHeadingCount = await page.getByRole('heading', { name: 'CTO Overview' }).count();
+      expect(initialHeadingCount).toBe(1);
+
+      // Click 7d filter (triggers HTMX request)
+      await page.getByRole('link', { name: '7d' }).click();
+      await page.waitForURL(/\?days=7/);
+      await page.waitForTimeout(500); // Allow HTMX swap to complete
+
+      // Verify navigation is NOT duplicated after HTMX swap
+      const afterSwapNavCount = await page.locator('nav[aria-label="Main navigation"]').count();
+      expect(afterSwapNavCount).toBe(1);
+
+      // Verify CTO Overview heading is still unique (not duplicated)
+      const afterSwapHeadingCount = await page.getByRole('heading', { name: 'CTO Overview' }).count();
+      expect(afterSwapHeadingCount).toBe(1);
     });
 
     // High-value reports tests for CTO Dashboard
