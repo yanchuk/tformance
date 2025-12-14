@@ -1,0 +1,37 @@
+{% load i18n %}
+<div class="grid grid-cols-2 gap-4">
+  <!-- Reverts Card -->
+  <div class="stat bg-base-200 rounded-lg p-4">
+    <div class="stat-title text-xs">{% trans "Reverts" %}</div>
+    <div class="stat-value text-2xl">{{ stats.revert_count }}</div>
+    <div class="stat-desc">
+      {% if stats.revert_pct > 10 %}
+      <span class="badge badge-error badge-sm">{{ stats.revert_pct }}%</span>
+      {% elif stats.revert_pct > 5 %}
+      <span class="badge badge-warning badge-sm">{{ stats.revert_pct }}%</span>
+      {% else %}
+      <span class="badge badge-success badge-sm">{{ stats.revert_pct }}%</span>
+      {% endif %}
+      {% trans "of PRs" %}
+    </div>
+  </div>
+
+  <!-- Hotfixes Card -->
+  <div class="stat bg-base-200 rounded-lg p-4">
+    <div class="stat-title text-xs">{% trans "Hotfixes" %}</div>
+    <div class="stat-value text-2xl">{{ stats.hotfix_count }}</div>
+    <div class="stat-desc">
+      {% if stats.hotfix_pct > 10 %}
+      <span class="badge badge-error badge-sm">{{ stats.hotfix_pct }}%</span>
+      {% elif stats.hotfix_pct > 5 %}
+      <span class="badge badge-warning badge-sm">{{ stats.hotfix_pct }}%</span>
+      {% else %}
+      <span class="badge badge-success badge-sm">{{ stats.hotfix_pct }}%</span>
+      {% endif %}
+      {% trans "of PRs" %}
+    </div>
+  </div>
+</div>
+<div class="text-center text-xs text-base-content/50 mt-2">
+  {% trans "Based on" %} {{ stats.total_prs }} {% trans "merged PRs" %}
+</div>

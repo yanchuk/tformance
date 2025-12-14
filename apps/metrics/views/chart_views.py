@@ -130,3 +130,74 @@ def recent_prs_table(request: HttpRequest) -> HttpResponse:
             "rows": rows,
         },
     )
+
+
+@login_and_team_required
+def review_time_chart(request: HttpRequest) -> HttpResponse:
+    """Review time trend (all members)."""
+    start_date, end_date = get_date_range_from_request(request)
+    data = dashboard_service.get_review_time_trend(request.team, start_date, end_date)
+    chart_data = chart_formatters.format_time_series(data)
+    return TemplateResponse(
+        request,
+        "metrics/partials/review_time_chart.html",
+        {
+            "chart_data": chart_data,
+        },
+    )
+
+
+@login_and_team_required
+def pr_size_chart(request: HttpRequest) -> HttpResponse:
+    """PR size distribution (all members)."""
+    start_date, end_date = get_date_range_from_request(request)
+    data = dashboard_service.get_pr_size_distribution(request.team, start_date, end_date)
+    return TemplateResponse(
+        request,
+        "metrics/partials/pr_size_chart.html",
+        {
+            "chart_data": data,
+        },
+    )
+
+
+@login_and_team_required
+def revert_rate_card(request: HttpRequest) -> HttpResponse:
+    """Revert and hotfix rate stats (all members)."""
+    start_date, end_date = get_date_range_from_request(request)
+    stats = dashboard_service.get_revert_hotfix_stats(request.team, start_date, end_date)
+    return TemplateResponse(
+        request,
+        "metrics/partials/revert_rate_card.html",
+        {
+            "stats": stats,
+        },
+    )
+
+
+@login_and_team_required
+def unlinked_prs_table(request: HttpRequest) -> HttpResponse:
+    """PRs without Jira links (all members)."""
+    start_date, end_date = get_date_range_from_request(request)
+    rows = dashboard_service.get_unlinked_prs(request.team, start_date, end_date, limit=10)
+    return TemplateResponse(
+        request,
+        "metrics/partials/unlinked_prs_table.html",
+        {
+            "rows": rows,
+        },
+    )
+
+
+@login_and_team_required
+def reviewer_workload_table(request: HttpRequest) -> HttpResponse:
+    """Reviewer workload analysis (all members)."""
+    start_date, end_date = get_date_range_from_request(request)
+    rows = dashboard_service.get_reviewer_workload(request.team, start_date, end_date)
+    return TemplateResponse(
+        request,
+        "metrics/partials/reviewer_workload_table.html",
+        {
+            "rows": rows,
+        },
+    )

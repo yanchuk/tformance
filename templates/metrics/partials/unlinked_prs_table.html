@@ -1,0 +1,37 @@
+{% load i18n %}
+<div>
+  {% if rows %}
+  <div class="overflow-x-auto">
+    <table class="table table-sm">
+      <thead>
+        <tr>
+          <th>{% trans "Pull Request" %}</th>
+          <th>{% trans "Author" %}</th>
+          <th>{% trans "Merged" %}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr class="hover">
+          <td>
+            <a href="{{ row.url }}" target="_blank" rel="noopener" class="link link-primary text-sm">
+              {{ row.title|truncatechars:50 }}
+            </a>
+          </td>
+          <td class="text-sm">{{ row.author }}</td>
+          <td class="text-sm text-base-content/60">{{ row.merged_at|date:"M d, H:i" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="flex flex-col items-center justify-center py-8 text-base-content/50">
+    <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mb-2 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+    <p class="font-medium text-success">{% trans "All PRs have Jira links!" %}</p>
+    <p class="text-xs">{% trans "Great job keeping PRs linked to tickets" %}</p>
+  </div>
+  {% endif %}
+</div>
