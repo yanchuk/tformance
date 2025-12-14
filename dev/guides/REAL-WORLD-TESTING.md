@@ -186,9 +186,7 @@ Fill in the form:
 |-------|-------|
 | **Application name** | `AI Impact Analytics (Dev)` |
 | **Homepage URL** | `https://YOUR_NGROK_URL` |
-| **Authorization callback URL** | `https://YOUR_NGROK_URL/a/YOUR_TEAM_SLUG/integrations/github/callback/` |
-
-> **Note:** Replace `YOUR_TEAM_SLUG` with your actual team slug (e.g., `demo-team`). You can find this in the URL when viewing your team.
+| **Authorization callback URL** | `https://YOUR_NGROK_URL/app/integrations/github/callback/` |
 
 ### 2.3 Get Credentials
 
@@ -247,7 +245,7 @@ You'll create an Atlassian OAuth 2.0 app for Jira integration.
 2. Click **Add** next to **OAuth 2.0 (3LO)**
 3. Set the **Callback URL**:
    ```
-   https://YOUR_NGROK_URL/a/YOUR_TEAM_SLUG/integrations/jira/callback/
+   https://YOUR_NGROK_URL/app/integrations/jira/callback/
    ```
 4. Click **Save changes**
 
@@ -295,7 +293,7 @@ You'll create a Slack App with Bot capabilities.
 3. Click **Add New Redirect URL**
 4. Add:
    ```
-   https://YOUR_NGROK_URL/a/YOUR_TEAM_SLUG/integrations/slack/callback/
+   https://YOUR_NGROK_URL/app/integrations/slack/callback/
    ```
 5. Click **Save URLs**
 
@@ -469,7 +467,7 @@ ngrok http 8000
 
 **Problem:** "Redirect URI mismatch"
 - Ensure callback URL exactly matches what's in GitHub OAuth App settings
-- Check team slug is correct
+- URL should be `/app/integrations/github/callback/`
 - Ensure using HTTPS (ngrok provides this)
 
 **Problem:** "Bad credentials" on API calls
@@ -485,7 +483,7 @@ ngrok http 8000
 
 **Problem:** "Invalid redirect_uri"
 - Callback URL must exactly match Atlassian app settings
-- Include the full path with team slug
+- URL should be `/app/integrations/jira/callback/`
 
 **Problem:** "Access denied"
 - Ensure required scopes are configured in Atlassian app
@@ -536,10 +534,10 @@ celery -A tformance inspect active
 
 | Service | URL Type | Path |
 |---------|----------|------|
-| GitHub | OAuth Callback | `/a/{team_slug}/integrations/github/callback/` |
+| GitHub | OAuth Callback | `/app/integrations/github/callback/` |
 | GitHub | Webhook | `/webhooks/github/` |
-| Jira | OAuth Callback | `/a/{team_slug}/integrations/jira/callback/` |
-| Slack | OAuth Callback | `/a/{team_slug}/integrations/slack/callback/` |
+| Jira | OAuth Callback | `/app/integrations/jira/callback/` |
+| Slack | OAuth Callback | `/app/integrations/slack/callback/` |
 | Slack | Interactions | `/integrations/webhooks/slack/interactions/` |
 
 ---
