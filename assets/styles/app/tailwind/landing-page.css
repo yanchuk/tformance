@@ -31,9 +31,9 @@
   @apply inline-block w-2 h-5 bg-cyan ml-1 animate-blink;
 }
 
-/* Gradient text effect */
+/* Gradient text effect - using brighter colors for accessibility */
 .gradient-text {
-  @apply bg-gradient-to-r from-cyan to-cyan-light bg-clip-text text-transparent;
+  @apply bg-gradient-to-r from-cyan-light to-slate-100 bg-clip-text text-transparent;
 }
 
 /* Stat card styling */

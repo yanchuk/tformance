@@ -125,8 +125,8 @@ const weeklyBarChart = (ctx, data, label) => {
       datasets: [{
         label: label,
         data: chartData,
-        backgroundColor: 'rgba(6, 182, 212, 0.7)',
-        borderColor: 'rgba(6, 182, 212, 1)',
+        backgroundColor: 'rgba(94, 158, 176, 0.7)',  // Softer teal
+        borderColor: 'rgba(94, 158, 176, 1)',  // Softer teal
         borderWidth: 1
       }]
     },

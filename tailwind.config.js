@@ -16,16 +16,19 @@ module.exports = {
         mono: ['JetBrains Mono', 'monospace'],
       },
       colors: {
-        // Landing page custom colors
+        // Base background colors (dark slate)
         deep: '#0f172a',      // Slate 900 - deepest background
         surface: '#1e293b',   // Slate 800 - card backgrounds
         elevated: '#334155',  // Slate 700 - elevated elements
-        muted: '#64748b',     // Slate 500 - muted text
+        muted: '#94a3b8',     // Slate 400 - muted text (lighter for better contrast)
+        // Primary accent - softer teal (was harsh cyan)
         cyan: {
-          DEFAULT: '#06b6d4',
-          light: '#22d3ee',
-          dark: '#0891b2',
+          DEFAULT: '#5e9eb0',  // Muted teal - softer than #06b6d4
+          light: '#7ab5c4',    // Light muted teal
+          dark: '#4a8a9c',     // Dark muted teal
         },
+        // Keep reference to old cyan for migration
+        'cyan-bright': '#06b6d4',
       },
       aspectRatio: {
         '3/2': '3 / 2',

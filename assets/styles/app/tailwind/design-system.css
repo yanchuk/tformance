@@ -7,10 +7,17 @@
    - deep: #0f172a (slate-900) - deepest background
    - surface: #1e293b (slate-800) - card backgrounds
    - elevated: #334155 (slate-700) - borders, elevated elements
-   - muted: #64748b (slate-500) - muted text
-   - cyan: #06b6d4 - primary accent
-   - cyan-light: #22d3ee
-   - cyan-dark: #0891b2
+   - muted: #94a3b8 (slate-400) - muted text (lighter for accessibility)
+   - cyan: #5e9eb0 - primary accent (muted teal, softer than old #06b6d4)
+   - cyan-light: #7ab5c4
+   - cyan-dark: #4a8a9c
+
+   DaisyUI Semantic Colors (from custom "tformance" theme):
+   - primary: Muted teal (use text-primary, bg-primary)
+   - success: Soft green (use text-success, bg-success)
+   - warning: Soft amber (use text-warning, bg-warning)
+   - error: Soft red (use text-error, bg-error)
+   - info: Soft blue (use text-info, bg-info)
 
    Typography:
    - font-sans: 'DM Sans' - UI text, headings
@@ -34,8 +41,8 @@
 /* Subtle grid pattern overlay (like landing page) */
 .app-bg-grid {
   background-image:
-    linear-gradient(rgba(6, 182, 212, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(6, 182, 212, 0.03) 1px, transparent 1px);
+    linear-gradient(rgba(94, 158, 176, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(94, 158, 176, 0.03) 1px, transparent 1px);
   background-size: 60px 60px;
 }
 
@@ -186,7 +193,7 @@
 .app-input {
   @apply w-full px-4 py-2.5 rounded-lg;
   @apply bg-deep border border-elevated text-slate-100;
-  @apply placeholder:text-slate-500;
+  @apply placeholder:text-slate-400;
   @apply focus:outline-none focus:border-cyan focus:ring-1 focus:ring-cyan/50;
   @apply transition-colors duration-200;
 }
@@ -208,7 +215,7 @@
 .app-textarea {
   @apply w-full px-4 py-3 rounded-lg;
   @apply bg-deep border border-elevated text-slate-100;
-  @apply placeholder:text-slate-500;
+  @apply placeholder:text-slate-400;
   @apply focus:outline-none focus:border-cyan focus:ring-1 focus:ring-cyan/50;
   @apply transition-colors duration-200 resize-y;
 }
@@ -226,7 +233,7 @@
 
 /* Form helper text */
 .app-helper {
-  @apply text-xs text-slate-500 mt-1;
+  @apply text-xs text-slate-400 mt-1;
 }
 
 /* Form error */
@@ -273,7 +280,7 @@
 
 /* Sidebar section heading */
 .app-sidebar-heading {
-  @apply px-4 py-2 text-xs font-semibold uppercase tracking-wider text-slate-500;
+  @apply px-4 py-2 text-xs font-semibold uppercase tracking-wider text-slate-400;
 }
 
 /* Top navbar */
@@ -444,7 +451,7 @@
 }
 
 .app-empty-state-description {
-  @apply text-slate-500 max-w-sm mx-auto;
+  @apply text-slate-400 max-w-sm mx-auto;
 }
 
 /* -----------------------------------------------------------------------------
@@ -473,7 +480,7 @@
    ----------------------------------------------------------------------------- */
 
 .app-text-muted {
-  @apply text-slate-500;
+  @apply text-slate-400;  /* Updated from slate-500 for better contrast */
 }
 
 .app-text-secondary {
@@ -567,4 +574,15 @@
 
 .app-scrollbar::-webkit-scrollbar-thumb:hover {
   background: theme('colors.muted');
+}
+
+/* -----------------------------------------------------------------------------
+   DAISYUI OVERRIDES
+   Override DaisyUI defaults for better accessibility
+   ----------------------------------------------------------------------------- */
+
+/* Menu title contrast fix - DaisyUI default is too dark */
+.menu-title,
+.menu-title > span {
+  @apply !text-slate-400;
 }
