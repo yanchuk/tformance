@@ -137,9 +137,10 @@ def get_team_quick_stats(team, days: int = 7) -> dict[str, Any]:
     recent_activity = []
 
     # Get recent merged PRs with prefetched surveys
+    # Note: PRSurvey filter is safe because it's prefetching related objects from already team-filtered PRs
     survey_prefetch = Prefetch(
         "survey",
-        queryset=PRSurvey.objects.filter(author_ai_assisted__isnull=False),
+        queryset=PRSurvey.objects.filter(author_ai_assisted__isnull=False),  # noqa: TEAM001
     )
     recent_prs = current_prs.select_related("author").prefetch_related(survey_prefetch).order_by("-merged_at")[:10]
 

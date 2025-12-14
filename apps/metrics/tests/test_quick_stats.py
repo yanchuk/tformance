@@ -896,8 +896,8 @@ class TestGetTeamQuickStats(TestCase):
         """Test that recent_activity includes both types and sorts by timestamp."""
         now = timezone.now()
 
-        # Create PR merged 3 hours ago
-        pr1 = PullRequestFactory(
+        # Create PR merged 3 hours ago (not directly used, but creates activity)
+        PullRequestFactory(
             team=self.team,
             author=self.member1,
             state="merged",

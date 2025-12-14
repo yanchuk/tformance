@@ -154,7 +154,7 @@ class TestGetTeamIntegrationStatus(TestCase):
         # Create PRs
         pr1 = PullRequestFactory(team=self.team)
         pr2 = PullRequestFactory(team=self.team)
-        pr3 = PullRequestFactory(team=self.team)
+        PullRequestFactory(team=self.team)  # pr3 - needed for count
 
         # Create surveys for some PRs
         PRSurveyFactory(team=self.team, pull_request=pr1)
@@ -183,7 +183,7 @@ class TestGetTeamIntegrationStatus(TestCase):
 
         # Create some data (using existing members as authors to avoid creating extra members)
         pr1 = PullRequestFactory(team=self.team, author=members[0])
-        pr2 = PullRequestFactory(team=self.team, author=members[1])
+        PullRequestFactory(team=self.team, author=members[1])  # pr2 - for count
         PRSurveyFactory(team=self.team, pull_request=pr1)
 
         status = get_team_integration_status(self.team)
