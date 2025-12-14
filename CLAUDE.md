@@ -496,4 +496,6 @@ Model.objects.get(id=id)  # noqa: TEAM001 - ID from Celery task queue
 ### Build System
 
 - Code is bundled using vite and served with `django-vite`.
-
+- Before pushing, always run:
+  .venv/bin/pre-commit run --all-files  # Lint check
+  make test                              # Unit tests
