@@ -330,7 +330,7 @@ class TestCycleTimeChart(TestCase):
 
 
 class TestKeyMetricsCards(TestCase):
-    """Tests for key_metrics_cards view (admin-only)."""
+    """Tests for key_metrics_cards view (all team members)."""
 
     def setUp(self):
         """Set up test fixtures using factories."""
@@ -357,13 +357,13 @@ class TestKeyMetricsCards(TestCase):
 
         self.assertEqual(response.status_code, 404)
 
-    def test_key_metrics_cards_requires_admin_role(self):
-        """Test that key_metrics_cards returns 404 for non-admin team members."""
+    def test_key_metrics_cards_allows_member_role(self):
+        """Test that key_metrics_cards returns 200 for regular team members."""
         self.client.force_login(self.member_user)
 
         response = self.client.get(reverse("metrics:cards_metrics"))
 
-        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.status_code, 200)
 
     def test_key_metrics_cards_returns_200_for_admin(self):
         """Test that key_metrics_cards returns 200 for admin users."""
