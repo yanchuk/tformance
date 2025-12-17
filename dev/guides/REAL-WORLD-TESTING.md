@@ -1,11 +1,22 @@
 # Real-World Integration Testing Guide
 
-This guide walks you through setting up ngrok and creating real GitHub, Jira, and Slack apps for end-to-end integration testing.
+This guide walks you through setting up a tunnel (Cloudflare Tunnel recommended) and creating real GitHub, Jira, and Slack apps for end-to-end integration testing.
+
+**Example domain used throughout:** `dev.ianchuk.com` (replace with your own tunnel domain)
+
+## Testing Progress
+
+| Integration | Status | Date Verified | Notes |
+|-------------|--------|---------------|-------|
+| Tunnel | ✅ Verified | 2025-12-17 | Cloudflare Tunnel at `dev.ianchuk.com` |
+| GitHub OAuth | ✅ Verified | 2025-12-17 | OAuth flow, org selection, member sync working |
+| Jira OAuth | ⏳ Pending | - | - |
+| Slack OAuth | ⏳ Pending | - | - |
 
 ## Table of Contents
 
 1. [Prerequisites](#prerequisites)
-2. [Phase 1: ngrok Setup](#phase-1-ngrok-setup)
+2. [Phase 1: Tunnel Setup](#phase-1-tunnel-setup)
 3. [Phase 2: GitHub App Setup](#phase-2-github-app-setup)
 4. [Phase 3: Jira App Setup](#phase-3-jira-app-setup)
 5. [Phase 4: Slack App Setup](#phase-4-slack-app-setup)
@@ -40,119 +51,45 @@ Free orgs include: unlimited public/private repos, unlimited collaborators, 2,00
 
 ## Phase 1: Tunnel Setup
 
-You need a public URL to receive OAuth callbacks and webhooks. Choose one option:
+You need a public URL to receive OAuth callbacks and webhooks. This guide uses **Cloudflare Tunnel** with domain `dev.ianchuk.com`.
 
-| Option | Stable URL | Setup | Best For |
-|--------|------------|-------|----------|
-| **Cloudflare Tunnel** | Yes | Simple | Already have Cloudflare |
-| **Tailscale Funnel** | Yes | Requires Tailscale | Already use Tailscale |
-| **ngrok** | No (free tier) | Simple | Quick testing |
-
----
-
-### Option A: Cloudflare Tunnel (Recommended)
-
-Cloudflare Tunnel provides stable URLs and excellent performance.
-
-#### Quick Tunnel (Random URL)
+### Install Cloudflared
 
 ```bash
-# Install cloudflared
 brew install cloudflared
-
-# Start tunnel (no account needed for quick tunnels)
-cloudflared tunnel --url http://localhost:8000
 ```
 
-You'll see:
-```
-Your quick Tunnel has been created! Visit it at:
-https://random-words-here.trycloudflare.com
-```
+### Using the Existing Tunnel
 
-#### Stable Subdomain (Requires Cloudflare Account + Domain)
+A persistent tunnel is already configured at `dev.ianchuk.com`. To start it:
 
 ```bash
-# Login to Cloudflare
-cloudflared tunnel login
-
-# Create named tunnel
-cloudflared tunnel create tformance-dev
-
-# Route to your domain
-cloudflared tunnel route dns tformance-dev dev.yourdomain.com
-
-# Run tunnel
 cloudflared tunnel run tformance-dev
 ```
 
----
-
-### Option B: Tailscale Funnel
-
-If you already use Tailscale, Funnel exposes your local server to the internet.
-
-#### Enable Funnel
-
-1. Go to https://login.tailscale.com/admin/acls
-2. Add Funnel to your ACL policy (or use the toggle in admin console)
-
-#### Start Funnel
-
-```bash
-# Expose port 8000 to internet
-tailscale funnel 8000
-```
-
-You'll get a URL like: `https://your-machine-name.tail1234.ts.net`
-
----
-
-### Option C: ngrok
-
-ngrok is simple but free tier URLs change on restart.
-
-#### Install ngrok
-
-```bash
-# macOS (Homebrew)
-brew install ngrok
-
-# Or download from https://ngrok.com/download
-```
-
-#### Create Account & Configure
-
-1. Sign up at https://dashboard.ngrok.com/signup
-2. Copy your authtoken from https://dashboard.ngrok.com/get-started/your-authtoken
-3. Configure:
-   ```bash
-   ngrok config add-authtoken YOUR_AUTHTOKEN
-   ```
-
-#### Start Tunnel
-
-```bash
-ngrok http 8000
-```
-
-You'll see:
-```
-Forwarding   https://abc123.ngrok-free.app -> http://localhost:8000
-```
-
-> **Note:** Free ngrok URLs change each restart. You'll need to update OAuth callback URLs each time.
+The tunnel config is at `~/.cloudflared/config.yml` and routes traffic to `http://localhost:8000`.
 
 ---
 
 ### Configure Django for Your Tunnel
 
-Regardless of which tunnel you chose, add the domain to `.env`:
+Add the tunnel domain to `.env`:
 
 ```bash
-# Replace with your actual tunnel domain
-ALLOWED_HOSTS=localhost,127.0.0.1,your-tunnel-domain.com
-CSRF_TRUSTED_ORIGINS=https://your-tunnel-domain.com
+# Example with dev.ianchuk.com (replace with your tunnel domain)
+ALLOWED_HOSTS=localhost,127.0.0.1,dev.ianchuk.com
+CSRF_TRUSTED_ORIGINS=https://dev.ianchuk.com
+
+# Trust proxy headers (required for OAuth redirect URLs to use https://)
+USE_X_FORWARDED_HOST=True
+
+# Disable Vite dev server (required for tunnel - avoids CORS errors)
+DJANGO_VITE_DEV_MODE=False
+```
+
+Build static assets (required when `DJANGO_VITE_DEV_MODE=False`):
+```bash
+npm run build
 ```
 
 Restart Django:
@@ -162,9 +99,23 @@ make dev
 
 ### Verify Tunnel is Working
 
-1. Visit your tunnel URL in browser
-2. You should see the app homepage
-3. Test health endpoint: `curl https://your-tunnel-domain.com/health/`
+1. Visit your tunnel URL in browser (e.g., `https://dev.ianchuk.com`)
+2. You should see the app homepage with proper styling (no CORS errors in console)
+3. Test health endpoint:
+   ```bash
+   curl -s -o /dev/null -w "%{http_code}" https://dev.ianchuk.com/health/
+   # Expected: 200
+   ```
+4. Test login page loads:
+   ```bash
+   curl -s -o /dev/null -w "%{http_code}" https://dev.ianchuk.com/accounts/login/
+   # Expected: 200
+   ```
+
+**Troubleshooting Tunnel:**
+- If you see CORS errors in browser console, ensure `DJANGO_VITE_DEV_MODE=False` is set and you ran `npm run build`
+- If you get 503 errors, check that Django is running on port 8000
+- For Cloudflare Tunnel: check `~/.cloudflared/config.yml` has correct ingress rules
 
 ---
 
@@ -185,8 +136,8 @@ Fill in the form:
 | Field | Value |
 |-------|-------|
 | **Application name** | `AI Impact Analytics (Dev)` |
-| **Homepage URL** | `https://YOUR_NGROK_URL` |
-| **Authorization callback URL** | `https://YOUR_NGROK_URL/app/integrations/github/callback/` |
+| **Homepage URL** | `https://dev.ianchuk.com` |
+| **Authorization callback URL** | `https://dev.ianchuk.com/app/integrations/github/callback/` |
 
 ### 2.3 Get Credentials
 
@@ -202,11 +153,37 @@ GITHUB_CLIENT_ID="your_client_id_here"
 GITHUB_SECRET_ID="your_client_secret_here"
 ```
 
-### 2.5 GitHub Webhook URL
+Restart Django after updating `.env`:
+```bash
+pkill -f runserver && make dev
+```
+
+### 2.5 Verify GitHub Setup
+
+1. **Test OAuth flow initiates correctly:**
+   - Log in to the app at `https://dev.ianchuk.com`
+   - Go to **Integrations** page
+   - Click **Connect GitHub**
+   - You should be redirected to GitHub's authorization page
+   - Authorize the app
+   - You should be redirected back to the app with a success message
+
+2. **Verify in Django logs:**
+   ```
+   HTTP GET /app/integrations/github/callback/?code=... 302
+   ```
+
+3. **Check database:**
+   ```bash
+   make dbshell
+   SELECT id, organization_slug, created_at FROM integrations_githubintegration;
+   ```
+
+### 2.6 GitHub Webhook URL
 
 For GitHub webhooks (PR events), the app uses:
 ```
-https://YOUR_NGROK_URL/webhooks/github/
+https://dev.ianchuk.com/webhooks/github/
 ```
 
 This is configured automatically when you track repositories in the app.
@@ -245,7 +222,7 @@ You'll create an Atlassian OAuth 2.0 app for Jira integration.
 2. Click **Add** next to **OAuth 2.0 (3LO)**
 3. Set the **Callback URL**:
    ```
-   https://YOUR_NGROK_URL/app/integrations/jira/callback/
+   https://dev.ianchuk.com/app/integrations/jira/callback/
    ```
 4. Click **Save changes**
 
@@ -262,7 +239,37 @@ JIRA_CLIENT_ID="your_client_id_here"
 JIRA_CLIENT_SECRET="your_client_secret_here"
 ```
 
-### 3.7 Create Test Jira Site (if needed)
+Restart Django after updating `.env`:
+```bash
+pkill -f runserver && make dev
+```
+
+### 3.7 Verify Jira Setup
+
+1. **Test OAuth flow initiates correctly:**
+   - Log in to the app at `https://dev.ianchuk.com`
+   - Go to **Integrations** page
+   - Click **Connect Jira**
+   - You should be redirected to Atlassian's authorization page
+   - Select your Jira site and authorize
+   - You should be redirected back to the app with a success message
+
+2. **Verify in Django logs:**
+   ```
+   HTTP GET /app/integrations/jira/callback/?code=... 302
+   ```
+
+3. **Check database:**
+   ```bash
+   make dbshell
+   SELECT id, site_name, cloud_id, created_at FROM integrations_jiraintegration;
+   ```
+
+4. **Test API access:**
+   - Go to Jira Projects page in the app
+   - You should see a list of projects from your Jira site
+
+### 3.8 Create Test Jira Site (if needed)
 
 If you don't have a Jira Cloud site:
 1. Go to https://www.atlassian.com/software/jira/free
@@ -293,7 +300,7 @@ You'll create a Slack App with Bot capabilities.
 3. Click **Add New Redirect URL**
 4. Add:
    ```
-   https://YOUR_NGROK_URL/app/integrations/slack/callback/
+   https://dev.ianchuk.com/app/integrations/slack/callback/
    ```
 5. Click **Save URLs**
 
@@ -315,7 +322,7 @@ For survey button clicks to work:
 2. Toggle **Interactivity** to **On**
 3. Set **Request URL**:
    ```
-   https://YOUR_NGROK_URL/integrations/webhooks/slack/interactions/
+   https://dev.ianchuk.com/integrations/webhooks/slack/interactions/
    ```
 4. Click **Save Changes**
 
@@ -341,6 +348,37 @@ SLACK_CLIENT_SECRET="your_client_secret_here"
 SLACK_SIGNING_SECRET="your_signing_secret_here"
 ```
 
+Restart Django after updating `.env`:
+```bash
+pkill -f runserver && make dev
+```
+
+### 4.8 Verify Slack Setup
+
+1. **Test OAuth flow initiates correctly:**
+   - Log in to the app at `https://dev.ianchuk.com`
+   - Go to **Integrations** page
+   - Click **Connect Slack**
+   - You should be redirected to Slack's authorization page
+   - Select your workspace and authorize
+   - You should be redirected back to the app with a success message
+
+2. **Verify in Django logs:**
+   ```
+   HTTP GET /app/integrations/slack/callback/?code=... 302
+   ```
+
+3. **Check database:**
+   ```bash
+   make dbshell
+   SELECT id, workspace_name, team_id, created_at FROM integrations_slackintegration;
+   ```
+
+4. **Test bot token works:**
+   - Go to Slack Settings page in the app
+   - You should be able to configure survey settings
+   - The workspace name should be displayed
+
 ---
 
 ## Phase 5: Testing Checklist
@@ -350,14 +388,18 @@ After setting up all integrations, test each flow.
 ### Pre-Test Setup
 
 ```bash
-# 1. Ensure ngrok is running
-ngrok http 8000
+# 1. Ensure your tunnel is running (Cloudflare Tunnel example)
+cloudflared tunnel run tformance-dev
 
-# 2. Restart Django with updated .env
-make dev
+# 2. Ensure static assets are built
+npm run build
 
-# 3. Verify the app is accessible
-curl -I https://YOUR_NGROK_URL/health/
+# 3. Restart Django with updated .env (Vite dev mode disabled)
+DJANGO_VITE_DEV_MODE=False make dev
+
+# 4. Verify the app is accessible
+curl -s -o /dev/null -w "%{http_code}" https://dev.ianchuk.com/health/
+# Expected: 200
 ```
 
 ### GitHub Integration Tests
@@ -445,30 +487,46 @@ curl -I https://YOUR_NGROK_URL/health/
 
 ## Troubleshooting
 
-### ngrok Issues
+### Cloudflare Tunnel Issues
 
-**Problem:** "Tunnel session not found"
-```bash
-# Restart ngrok
-pkill ngrok
-ngrok http 8000
-```
+**Problem:** 503 "Service Unavailable"
+- Check Django is running on port 8000: `curl http://localhost:8000/`
+- Check tunnel config has ingress rules:
+  ```bash
+  cat ~/.cloudflared/config.yml
+  # Should have: service: http://localhost:8000
+  ```
+- If no config, run with URL flag: `cloudflared tunnel run --url http://localhost:8000 tformance-dev`
 
-**Problem:** "Invalid Host header"
-- Add ngrok domain to `ALLOWED_HOSTS` in `.env`
-- Add to `CSRF_TRUSTED_ORIGINS`
+**Problem:** "No ingress rules defined"
+- Create config file at `~/.cloudflared/config.yml`:
+  ```yaml
+  tunnel: tformance-dev
+  credentials-file: /path/to/.cloudflared/TUNNEL_ID.json
 
-**Problem:** ngrok URL changed
-- Free ngrok URLs change on restart
-- Update all OAuth callback URLs in GitHub/Jira/Slack apps
-- Update `.env` with new domain
+  ingress:
+    - hostname: dev.ianchuk.com
+      service: http://localhost:8000
+    - service: http_status:404
+  ```
+
+### Vite / CORS Issues
+
+**Problem:** CORS errors in browser console for `/static/` files
+- Set `DJANGO_VITE_DEV_MODE=False` in `.env`
+- Run `npm run build` to build static assets
+- Restart Django
+
+**Problem:** Styles/JS not loading through tunnel
+- Ensure `npm run build` was run after any frontend changes
+- Check `static/.vite/manifest.json` exists
 
 ### GitHub OAuth Issues
 
 **Problem:** "Redirect URI mismatch"
 - Ensure callback URL exactly matches what's in GitHub OAuth App settings
-- URL should be `/app/integrations/github/callback/`
-- Ensure using HTTPS (ngrok provides this)
+- URL should be `https://dev.ianchuk.com/app/integrations/github/callback/`
+- Ensure using HTTPS
 
 **Problem:** "Bad credentials" on API calls
 - Token may have expired
@@ -477,7 +535,7 @@ ngrok http 8000
 **Problem:** Webhook not received
 - Check webhook is created in repo Settings -> Webhooks
 - Check "Recent Deliveries" for errors
-- Verify ngrok is running and URL is correct
+- Verify tunnel is running and URL is correct
 
 ### Jira OAuth Issues
 
@@ -532,22 +590,30 @@ celery -A tformance inspect active
 
 ## Quick Reference: URLs Summary
 
-| Service | URL Type | Path |
-|---------|----------|------|
-| GitHub | OAuth Callback | `/app/integrations/github/callback/` |
-| GitHub | Webhook | `/webhooks/github/` |
-| Jira | OAuth Callback | `/app/integrations/jira/callback/` |
-| Slack | OAuth Callback | `/app/integrations/slack/callback/` |
-| Slack | Interactions | `/integrations/webhooks/slack/interactions/` |
+Using `dev.ianchuk.com` as the example domain:
+
+| Service | URL Type | Full URL |
+|---------|----------|----------|
+| GitHub | OAuth Callback | `https://dev.ianchuk.com/app/integrations/github/callback/` |
+| GitHub | Webhook | `https://dev.ianchuk.com/webhooks/github/` |
+| Jira | OAuth Callback | `https://dev.ianchuk.com/app/integrations/jira/callback/` |
+| Slack | OAuth Callback | `https://dev.ianchuk.com/app/integrations/slack/callback/` |
+| Slack | Interactions | `https://dev.ianchuk.com/integrations/webhooks/slack/interactions/` |
 
 ---
 
 ## Quick Reference: Environment Variables
 
 ```bash
-# ngrok domain (update when URL changes)
-ALLOWED_HOSTS=localhost,127.0.0.1,YOUR_NGROK_DOMAIN
-CSRF_TRUSTED_ORIGINS=https://YOUR_NGROK_DOMAIN
+# Tunnel domain (example with dev.ianchuk.com)
+ALLOWED_HOSTS=localhost,127.0.0.1,dev.ianchuk.com
+CSRF_TRUSTED_ORIGINS=https://dev.ianchuk.com
+
+# Trust proxy headers (required for OAuth redirect URLs to use https://)
+USE_X_FORWARDED_HOST=True
+
+# Disable Vite dev server for tunnel (avoids CORS errors)
+DJANGO_VITE_DEV_MODE=False
 
 # GitHub OAuth App
 GITHUB_CLIENT_ID="..."
