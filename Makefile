@@ -48,7 +48,13 @@ dbshell: ## Get a Database shell
 test: ## Run Django tests
 	@uv run manage.py test ${ARGS}
 
-init: setup-env start-bg migrations migrate npm-install-all bootstrap_content  ## Quickly get up and running (start containers and bootstrap DB)
+init: setup-env start-bg migrations migrate npm-install-all bootstrap_content install-hooks  ## Quickly get up and running (start containers and bootstrap DB)
+
+install-hooks: ## Install git hooks (pre-push runs tests)
+	@echo "Installing git hooks..."
+	@cp scripts/hooks/pre-push .git/hooks/pre-push
+	@chmod +x .git/hooks/pre-push
+	@echo "✅ Git hooks installed"
 
 uv: ## Run a uv command
 	@uv $(filter-out $@,$(MAKECMDGOALS))

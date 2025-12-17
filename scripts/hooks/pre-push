@@ -1,0 +1,19 @@
+#!/bin/bash
+# Pre-push hook: Run tests before pushing to remote
+# Skip with: git push --no-verify
+
+echo "Running tests before push..."
+
+# Run tests with keepdb for speed
+make test ARGS='--keepdb'
+TEST_EXIT_CODE=$?
+
+if [ $TEST_EXIT_CODE -ne 0 ]; then
+    echo ""
+    echo "❌ Tests failed! Push aborted."
+    echo "Fix the failing tests or use 'git push --no-verify' to skip."
+    exit 1
+fi
+
+echo "✅ All tests passed. Proceeding with push."
+exit 0
