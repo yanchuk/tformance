@@ -627,6 +627,8 @@ SILENCED_SYSTEM_CHECKS = [
 if "test" in sys.argv:
     # Silence unnecessary warnings in tests
     SILENCED_SYSTEM_CHECKS.append("djstripe.I002")
+    # Use fast password hasher for tests (PBKDF2 is intentionally slow for security)
+    PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
 
 
 # Sentry setup
