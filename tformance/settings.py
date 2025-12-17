@@ -37,6 +37,12 @@ DEBUG = env.bool("DEBUG", default=False)
 # SECURITY: Empty default - must explicitly set ALLOWED_HOSTS in all environments
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=[])
 
+# Trust proxy headers when behind a reverse proxy (Cloudflare Tunnel, nginx, etc.)
+# Set USE_X_FORWARDED_HOST=True and SECURE_PROXY_SSL_HEADER=True in .env when using tunnels
+if env.bool("USE_X_FORWARDED_HOST", default=False):
+    USE_X_FORWARDED_HOST = True
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
 
 # Application definition
 
@@ -527,6 +533,11 @@ SCHEDULED_TASKS = {
         "task": "apps.integrations.tasks.sync_all_repositories_task",
         "schedule": schedules.crontab(minute=0, hour=4),  # 4 AM UTC
         "expire_seconds": 60 * 60 * 4,  # 4 hour expiry
+    },
+    "sync-github-members-daily": {
+        "task": "apps.integrations.tasks.sync_all_github_members_task",
+        "schedule": schedules.crontab(minute=15, hour=4),  # 4:15 AM UTC (after repos)
+        "expire_seconds": 60 * 60,  # 1 hour expiry
     },
     "sync-jira-projects-daily": {
         "task": "apps.integrations.tasks.sync_all_jira_projects_task",
