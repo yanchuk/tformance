@@ -17,6 +17,7 @@ from apps.integrations.services import github_comments
 from apps.integrations.services.github_sync import sync_repository_incremental
 from apps.integrations.services.jira_sync import sync_project_issues
 from apps.integrations.services.jira_user_matching import sync_jira_users
+from apps.integrations.services.member_sync import sync_github_members
 from apps.integrations.services.slack_client import get_slack_client, send_channel_message, send_dm
 from apps.integrations.services.slack_leaderboard import (
     build_leaderboard_blocks,
@@ -132,6 +133,96 @@ def sync_all_repositories_task() -> dict:
     return {
         "repos_dispatched": repos_dispatched,
         "repos_skipped": repos_skipped,
+    }
+
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+def sync_github_members_task(self, integration_id: int) -> dict:
+    """Sync GitHub organization members for a team.
+
+    Args:
+        self: Celery task instance (bound task)
+        integration_id: ID of the GitHubIntegration to sync members for
+
+    Returns:
+        Dict with sync results (created, updated, unchanged, failed) or error status
+    """
+    from celery.exceptions import Retry as CeleryRetry
+
+    # Get GitHubIntegration by id
+    try:
+        integration = GitHubIntegration.objects.select_related("team", "credential").get(id=integration_id)  # noqa: TEAM001 - ID from Celery task queue
+    except GitHubIntegration.DoesNotExist:
+        logger.warning(f"GitHubIntegration with id {integration_id} not found")
+        return {"error": f"GitHubIntegration with id {integration_id} not found"}
+
+    # Check if org is selected
+    if not integration.organization_slug:
+        logger.info(f"Skipping member sync - no org selected for team {integration.team.name}")
+        return {"skipped": True, "reason": "No organization selected"}
+
+    # Sync members
+    logger.info(f"Starting GitHub member sync for team: {integration.team.name} (org: {integration.organization_slug})")
+    try:
+        result = sync_github_members(
+            team=integration.team,
+            access_token=integration.credential.access_token,
+            org_slug=integration.organization_slug,
+        )
+        logger.info(
+            f"Successfully synced GitHub members for team {integration.team.name}: "
+            f"created={result['created']}, updated={result['updated']}, unchanged={result['unchanged']}"
+        )
+        return result
+    except Exception as exc:
+        # Calculate exponential backoff
+        countdown = self.default_retry_delay * (2**self.request.retries)
+
+        try:
+            logger.warning(f"Member sync failed for {integration.team.name}, retrying in {countdown}s: {exc}")
+            raise self.retry(exc=exc, countdown=countdown)
+        except CeleryRetry:
+            raise
+        except Exception:
+            from sentry_sdk import capture_exception
+
+            logger.error(f"Member sync failed permanently for {integration.team.name}: {exc}")
+            capture_exception(exc)
+            return {"error": str(exc)}
+
+
+@shared_task
+def sync_all_github_members_task() -> dict:
+    """Dispatch member sync tasks for all GitHub integrations with organizations.
+
+    Returns:
+        Dict with counts: integrations_dispatched, integrations_skipped
+    """
+    logger.info("Starting GitHub member sync for all teams")
+
+    # Query all GitHub integrations with an organization selected
+    integrations = GitHubIntegration.objects.exclude(organization_slug__isnull=True).exclude(organization_slug="")  # noqa: TEAM001 - System job iterating all integrations
+
+    integrations_dispatched = 0
+    integrations_skipped = 0
+
+    for integration in integrations:
+        try:
+            sync_github_members_task.delay(integration.id)
+            integrations_dispatched += 1
+        except Exception as e:
+            logger.error(f"Failed to dispatch member sync task for team {integration.team_id}: {e}")
+            integrations_skipped += 1
+            continue
+
+    logger.info(
+        f"Finished dispatching GitHub member sync tasks. "
+        f"Dispatched: {integrations_dispatched}, Skipped: {integrations_skipped}"
+    )
+
+    return {
+        "integrations_dispatched": integrations_dispatched,
+        "integrations_skipped": integrations_skipped,
     }
 
 
