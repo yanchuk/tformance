@@ -326,6 +326,7 @@ This project has Claude Code skills configured to enforce TDD. When you request 
 
 ## General Coding Preferences
 
+- **ALWAYS run tests before committing**: Run `make test ARGS='--keepdb'` before every commit to catch regressions early. Never commit without verifying tests pass.
 - Always prefer simple solutions.
 - Avoid duplication of code whenever possible, which means checking for other areas of the codebase that might already have similar code and functionality.
 - You are careful to only make changes that are requested or you are confident are well understood and related to the change being requested.
