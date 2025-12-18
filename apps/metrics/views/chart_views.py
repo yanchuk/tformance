@@ -201,3 +201,46 @@ def reviewer_workload_table(request: HttpRequest) -> HttpResponse:
             "rows": rows,
         },
     )
+
+
+@team_admin_required
+def copilot_metrics_card(request: HttpRequest) -> HttpResponse:
+    """Copilot metrics card (admin only)."""
+    start_date, end_date = get_date_range_from_request(request)
+    metrics = dashboard_service.get_copilot_metrics(request.team, start_date, end_date)
+    return TemplateResponse(
+        request,
+        "metrics/partials/copilot_metrics_card.html",
+        {
+            "metrics": metrics,
+        },
+    )
+
+
+@team_admin_required
+def copilot_trend_chart(request: HttpRequest) -> HttpResponse:
+    """Copilot usage trend chart (admin only)."""
+    start_date, end_date = get_date_range_from_request(request)
+    data = dashboard_service.get_copilot_trend(request.team, start_date, end_date)
+    chart_data = chart_formatters.format_time_series(data, date_key="week", value_key="acceptance_rate")
+    return TemplateResponse(
+        request,
+        "metrics/partials/copilot_trend_chart.html",
+        {
+            "chart_data": chart_data,
+        },
+    )
+
+
+@team_admin_required
+def copilot_members_table(request: HttpRequest) -> HttpResponse:
+    """Copilot usage by member table (admin only)."""
+    start_date, end_date = get_date_range_from_request(request)
+    rows = dashboard_service.get_copilot_by_member(request.team, start_date, end_date)
+    return TemplateResponse(
+        request,
+        "metrics/partials/copilot_members_table.html",
+        {
+            "rows": rows,
+        },
+    )

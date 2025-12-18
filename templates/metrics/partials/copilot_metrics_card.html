@@ -1,0 +1,32 @@
+{% load i18n %}
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+  <!-- Total Suggestions -->
+  <div class="stat bg-base-100 shadow rounded-lg">
+    <div class="stat-title">{% trans "Total Suggestions" %}</div>
+    <div class="stat-value text-primary">{{ metrics.total_suggestions|default:0 }}</div>
+    <div class="stat-desc">{% trans "Copilot suggestions shown" %}</div>
+  </div>
+
+  <!-- Total Accepted -->
+  <div class="stat bg-base-100 shadow rounded-lg">
+    <div class="stat-title">{% trans "Total Accepted" %}</div>
+    <div class="stat-value text-secondary">{{ metrics.total_accepted|default:0 }}</div>
+    <div class="stat-desc">{% trans "Suggestions accepted by team" %}</div>
+  </div>
+
+  <!-- Acceptance Rate -->
+  <div class="stat bg-base-100 shadow rounded-lg">
+    <div class="stat-title">{% trans "Acceptance Rate" %}</div>
+    <div class="stat-value text-accent">
+      {% if metrics.acceptance_rate %}{{ metrics.acceptance_rate|floatformat:1 }}%{% else %}-{% endif %}
+    </div>
+    <div class="stat-desc">{% trans "Of suggestions shown" %}</div>
+  </div>
+
+  <!-- Active Users -->
+  <div class="stat bg-base-100 shadow rounded-lg">
+    <div class="stat-title">{% trans "Active Users" %}</div>
+    <div class="stat-value text-info">{{ metrics.active_users|default:0 }}</div>
+    <div class="stat-desc">{% trans "Team members using Copilot" %}</div>
+  </div>
+</div>

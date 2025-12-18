@@ -653,3 +653,306 @@ class TestLeaderboardTable(TestCase):
             self.assertIn("correct", rows[0])
             self.assertIn("total", rows[0])
             self.assertIn("percentage", rows[0])
+
+
+class TestCopilotMetricsCard(TestCase):
+    """Tests for copilot_metrics_card view (admin-only)."""
+
+    def setUp(self):
+        """Set up test fixtures using factories."""
+        self.team = TeamFactory()
+        self.admin_user = UserFactory()
+        self.member_user = UserFactory()
+        self.team.members.add(self.admin_user, through_defaults={"role": ROLE_ADMIN})
+        self.team.members.add(self.member_user, through_defaults={"role": ROLE_MEMBER})
+        self.client = Client()
+
+    def test_copilot_metrics_card_requires_login(self):
+        """Test that copilot_metrics_card redirects to login page if user is not authenticated."""
+        response = self.client.get(reverse("metrics:cards_copilot"))
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/accounts/login/", response.url)
+
+    def test_copilot_metrics_card_requires_team_membership(self):
+        """Test that copilot_metrics_card returns 404 if user is not a team member."""
+        non_member = UserFactory()
+        self.client.force_login(non_member)
+
+        response = self.client.get(reverse("metrics:cards_copilot"))
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_copilot_metrics_card_requires_admin_role(self):
+        """Test that copilot_metrics_card returns 404 for non-admin team members."""
+        self.client.force_login(self.member_user)
+
+        response = self.client.get(reverse("metrics:cards_copilot"))
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_copilot_metrics_card_returns_200_for_admin(self):
+        """Test that copilot_metrics_card returns 200 for admin users."""
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(reverse("metrics:cards_copilot"))
+
+        self.assertEqual(response.status_code, 200)
+
+    def test_copilot_metrics_card_renders_correct_template(self):
+        """Test that copilot_metrics_card renders partials/copilot_metrics_card.html template."""
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(reverse("metrics:cards_copilot"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "metrics/partials/copilot_metrics_card.html")
+
+    def test_copilot_metrics_card_context_has_metrics(self):
+        """Test that copilot_metrics_card context contains metrics."""
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(reverse("metrics:cards_copilot"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("metrics", response.context)
+
+    def test_copilot_metrics_card_default_days_is_30(self):
+        """Test that copilot_metrics_card defaults to 30 days if no query param provided."""
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(reverse("metrics:cards_copilot"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIsInstance(response.context["metrics"], dict)
+
+    def test_copilot_metrics_card_accepts_days_query_param_7(self):
+        """Test that copilot_metrics_card accepts days=7 query parameter."""
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(reverse("metrics:cards_copilot"), {"days": "7"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("metrics", response.context)
+
+    def test_copilot_metrics_card_accepts_days_query_param_90(self):
+        """Test that copilot_metrics_card accepts days=90 query parameter."""
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(reverse("metrics:cards_copilot"), {"days": "90"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("metrics", response.context)
+
+    def test_copilot_metrics_card_handles_empty_data_gracefully(self):
+        """Test that copilot_metrics_card handles empty data without errors."""
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(reverse("metrics:cards_copilot"))
+
+        self.assertEqual(response.status_code, 200)
+        # Should return metrics dict even with no data
+        self.assertIn("metrics", response.context)
+        self.assertIsInstance(response.context["metrics"], dict)
+
+
+class TestCopilotTrendChart(TestCase):
+    """Tests for copilot_trend_chart view (admin-only)."""
+
+    def setUp(self):
+        """Set up test fixtures using factories."""
+        self.team = TeamFactory()
+        self.admin_user = UserFactory()
+        self.member_user = UserFactory()
+        self.team.members.add(self.admin_user, through_defaults={"role": ROLE_ADMIN})
+        self.team.members.add(self.member_user, through_defaults={"role": ROLE_MEMBER})
+        self.client = Client()
+
+    def test_copilot_trend_chart_requires_login(self):
+        """Test that copilot_trend_chart redirects to login page if user is not authenticated."""
+        response = self.client.get(reverse("metrics:chart_copilot_trend"))
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/accounts/login/", response.url)
+
+    def test_copilot_trend_chart_requires_team_membership(self):
+        """Test that copilot_trend_chart returns 404 if user is not a team member."""
+        non_member = UserFactory()
+        self.client.force_login(non_member)
+
+        response = self.client.get(reverse("metrics:chart_copilot_trend"))
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_copilot_trend_chart_requires_admin_role(self):
+        """Test that copilot_trend_chart returns 404 for non-admin team members."""
+        self.client.force_login(self.member_user)
+
+        response = self.client.get(reverse("metrics:chart_copilot_trend"))
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_copilot_trend_chart_returns_200_for_admin(self):
+        """Test that copilot_trend_chart returns 200 for admin users."""
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(reverse("metrics:chart_copilot_trend"))
+
+        self.assertEqual(response.status_code, 200)
+
+    def test_copilot_trend_chart_renders_correct_template(self):
+        """Test that copilot_trend_chart renders partials/copilot_trend_chart.html template."""
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(reverse("metrics:chart_copilot_trend"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "metrics/partials/copilot_trend_chart.html")
+
+    def test_copilot_trend_chart_context_has_chart_data(self):
+        """Test that copilot_trend_chart context contains chart_data."""
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(reverse("metrics:chart_copilot_trend"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("chart_data", response.context)
+
+    def test_copilot_trend_chart_default_days_is_30(self):
+        """Test that copilot_trend_chart defaults to 30 days if no query param provided."""
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(reverse("metrics:chart_copilot_trend"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIsInstance(response.context["chart_data"], list)
+
+    def test_copilot_trend_chart_accepts_days_query_param_7(self):
+        """Test that copilot_trend_chart accepts days=7 query parameter."""
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(reverse("metrics:chart_copilot_trend"), {"days": "7"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("chart_data", response.context)
+
+    def test_copilot_trend_chart_accepts_days_query_param_90(self):
+        """Test that copilot_trend_chart accepts days=90 query parameter."""
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(reverse("metrics:chart_copilot_trend"), {"days": "90"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("chart_data", response.context)
+
+    def test_copilot_trend_chart_handles_empty_data_gracefully(self):
+        """Test that copilot_trend_chart handles empty data without errors."""
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(reverse("metrics:chart_copilot_trend"))
+
+        self.assertEqual(response.status_code, 200)
+        # Should return empty list even with no data
+        self.assertIn("chart_data", response.context)
+        self.assertIsInstance(response.context["chart_data"], list)
+
+
+class TestCopilotMembersTable(TestCase):
+    """Tests for copilot_members_table view (admin-only)."""
+
+    def setUp(self):
+        """Set up test fixtures using factories."""
+        self.team = TeamFactory()
+        self.admin_user = UserFactory()
+        self.member_user = UserFactory()
+        self.team.members.add(self.admin_user, through_defaults={"role": ROLE_ADMIN})
+        self.team.members.add(self.member_user, through_defaults={"role": ROLE_MEMBER})
+        self.client = Client()
+
+    def test_copilot_members_table_requires_login(self):
+        """Test that copilot_members_table redirects to login page if user is not authenticated."""
+        response = self.client.get(reverse("metrics:table_copilot_members"))
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/accounts/login/", response.url)
+
+    def test_copilot_members_table_requires_team_membership(self):
+        """Test that copilot_members_table returns 404 if user is not a team member."""
+        non_member = UserFactory()
+        self.client.force_login(non_member)
+
+        response = self.client.get(reverse("metrics:table_copilot_members"))
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_copilot_members_table_requires_admin_role(self):
+        """Test that copilot_members_table returns 404 for non-admin team members."""
+        self.client.force_login(self.member_user)
+
+        response = self.client.get(reverse("metrics:table_copilot_members"))
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_copilot_members_table_returns_200_for_admin(self):
+        """Test that copilot_members_table returns 200 for admin users."""
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(reverse("metrics:table_copilot_members"))
+
+        self.assertEqual(response.status_code, 200)
+
+    def test_copilot_members_table_renders_correct_template(self):
+        """Test that copilot_members_table renders partials/copilot_members_table.html template."""
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(reverse("metrics:table_copilot_members"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "metrics/partials/copilot_members_table.html")
+
+    def test_copilot_members_table_context_has_rows(self):
+        """Test that copilot_members_table context contains rows."""
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(reverse("metrics:table_copilot_members"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("rows", response.context)
+
+    def test_copilot_members_table_default_days_is_30(self):
+        """Test that copilot_members_table defaults to 30 days if no query param provided."""
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(reverse("metrics:table_copilot_members"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIsInstance(response.context["rows"], list)
+
+    def test_copilot_members_table_accepts_days_query_param_7(self):
+        """Test that copilot_members_table accepts days=7 query parameter."""
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(reverse("metrics:table_copilot_members"), {"days": "7"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("rows", response.context)
+
+    def test_copilot_members_table_accepts_days_query_param_90(self):
+        """Test that copilot_members_table accepts days=90 query parameter."""
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(reverse("metrics:table_copilot_members"), {"days": "90"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("rows", response.context)
+
+    def test_copilot_members_table_handles_empty_data_gracefully(self):
+        """Test that copilot_members_table handles empty data without errors."""
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(reverse("metrics:table_copilot_members"))
+
+        self.assertEqual(response.status_code, 200)
+        # Should return empty list even with no data
+        self.assertIn("rows", response.context)
+        self.assertIsInstance(response.context["rows"], list)

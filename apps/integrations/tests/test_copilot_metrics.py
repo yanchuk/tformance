@@ -10,6 +10,8 @@ from apps.integrations.services.copilot_metrics import (
     CopilotMetricsError,
     check_copilot_availability,
     fetch_copilot_metrics,
+    fetch_copilot_seats,
+    get_seat_utilization,
     map_copilot_to_ai_usage,
     parse_metrics_response,
 )
@@ -568,3 +570,271 @@ class TestCopilotDataStorage(TestCase):
         # (333 / 1000) * 100 = 33.30%
         expected_rate = Decimal("33.30")
         self.assertEqual(result["acceptance_rate"], expected_rate)
+
+
+class TestFetchCopilotSeats(TestCase):
+    """Tests for fetching Copilot seat utilization from GitHub API."""
+
+    @patch("apps.integrations.services.copilot_metrics.requests.get")
+    def test_fetch_copilot_seats_success(self, mock_get):
+        """Test that fetch_copilot_seats returns seat data on success."""
+        # Arrange
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "total_seats": 10,
+            "seats": [
+                {
+                    "created_at": "2025-01-01T00:00:00Z",
+                    "updated_at": "2025-12-18T00:00:00Z",
+                    "pending_cancellation_date": None,
+                    "last_activity_at": "2025-12-17T00:00:00Z",
+                    "last_activity_editor": "vscode",
+                    "assignee": {
+                        "login": "user1",
+                        "id": 12345,
+                        "type": "User",
+                    },
+                },
+                {
+                    "created_at": "2025-01-15T00:00:00Z",
+                    "updated_at": "2025-12-18T00:00:00Z",
+                    "pending_cancellation_date": None,
+                    "last_activity_at": "2025-11-01T00:00:00Z",
+                    "last_activity_editor": "vscode",
+                    "assignee": {
+                        "login": "user2",
+                        "id": 67890,
+                        "type": "User",
+                    },
+                },
+            ],
+            "seat_breakdown": {
+                "total": 10,
+                "active_this_cycle": 8,
+                "inactive_this_cycle": 2,
+            },
+        }
+        mock_get.return_value = mock_response
+
+        access_token = "gho_test_token_seats"
+        org_slug = "test-org"
+
+        # Act
+        result = fetch_copilot_seats(access_token, org_slug)
+
+        # Assert
+        self.assertIsInstance(result, dict)
+        self.assertEqual(result["total_seats"], 10)
+        self.assertIn("seats", result)
+        self.assertEqual(len(result["seats"]), 2)
+        self.assertIn("seat_breakdown", result)
+        self.assertEqual(result["seat_breakdown"]["active_this_cycle"], 8)
+        self.assertEqual(result["seat_breakdown"]["inactive_this_cycle"], 2)
+
+        # Verify correct API endpoint was called
+        expected_url = "https://api.github.com/orgs/test-org/copilot/billing/seats"
+        mock_get.assert_called_once()
+        actual_url = mock_get.call_args[0][0]
+        self.assertEqual(actual_url, expected_url)
+
+    @patch("apps.integrations.services.copilot_metrics.requests.get")
+    def test_fetch_copilot_seats_handles_403_error(self, mock_get):
+        """Test that fetch_copilot_seats raises CopilotMetricsError on 403 (insufficient permissions)."""
+        # Arrange
+        mock_response = MagicMock()
+        mock_response.status_code = 403
+        mock_response.json.return_value = {
+            "message": "Resource not accessible by integration",
+            "documentation_url": "https://docs.github.com/rest/copilot/copilot-user-management",
+        }
+        mock_get.return_value = mock_response
+
+        access_token = "gho_token_no_permission"
+        org_slug = "restricted-org"
+
+        # Act & Assert
+        with self.assertRaises(CopilotMetricsError) as context:
+            fetch_copilot_seats(access_token, org_slug)
+
+        self.assertIn("403", str(context.exception))
+
+    @patch("apps.integrations.services.copilot_metrics.requests.get")
+    def test_fetch_copilot_seats_handles_network_error(self, mock_get):
+        """Test that fetch_copilot_seats raises CopilotMetricsError on network error."""
+        # Arrange
+        mock_get.side_effect = Exception("Connection timeout")
+
+        access_token = "gho_token"
+        org_slug = "test-org"
+
+        # Act & Assert
+        with self.assertRaises(CopilotMetricsError):
+            fetch_copilot_seats(access_token, org_slug)
+
+    @patch("apps.integrations.services.copilot_metrics.requests.get")
+    def test_fetch_copilot_seats_sends_correct_headers(self, mock_get):
+        """Test that fetch_copilot_seats sends correct authorization and accept headers."""
+        # Arrange
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "total_seats": 5,
+            "seats": [],
+            "seat_breakdown": {"total": 5, "active_this_cycle": 5, "inactive_this_cycle": 0},
+        }
+        mock_get.return_value = mock_response
+
+        access_token = "gho_test_token_headers"
+        org_slug = "test-org"
+
+        # Act
+        fetch_copilot_seats(access_token, org_slug)
+
+        # Assert
+        call_kwargs = mock_get.call_args[1]
+        self.assertIn("headers", call_kwargs)
+        self.assertEqual(call_kwargs["headers"]["Authorization"], f"Bearer {access_token}")
+        self.assertEqual(call_kwargs["headers"]["Accept"], "application/vnd.github+json")
+
+
+class TestGetSeatUtilization(TestCase):
+    """Tests for calculating Copilot seat utilization metrics."""
+
+    def test_get_seat_utilization_calculates_correct_metrics(self):
+        """Test that get_seat_utilization calculates all metrics correctly."""
+        # Arrange
+        seats_data = {
+            "total_seats": 10,
+            "seats": [
+                {"assignee": {"login": "user1"}},
+                {"assignee": {"login": "user2"}},
+                {"assignee": {"login": "user3"}},
+                {"assignee": {"login": "user4"}},
+                {"assignee": {"login": "user5"}},
+                {"assignee": {"login": "user6"}},
+                {"assignee": {"login": "user7"}},
+                {"assignee": {"login": "user8"}},
+            ],
+            "seat_breakdown": {
+                "total": 10,
+                "active_this_cycle": 8,
+                "inactive_this_cycle": 2,
+            },
+        }
+
+        # Act
+        result = get_seat_utilization(seats_data)
+
+        # Assert
+        self.assertIsInstance(result, dict)
+        self.assertEqual(result["total_seats"], 10)
+        self.assertEqual(result["active_seats"], 8)
+        self.assertEqual(result["inactive_seats"], 2)
+        self.assertEqual(result["utilization_rate"], Decimal("80.00"))  # 8/10 * 100
+        self.assertEqual(result["monthly_cost"], Decimal("190.00"))  # 10 * $19
+        self.assertEqual(result["cost_per_active_user"], Decimal("23.75"))  # $190 / 8
+
+    def test_get_seat_utilization_handles_full_utilization(self):
+        """Test that get_seat_utilization handles 100% utilization correctly."""
+        # Arrange
+        seats_data = {
+            "total_seats": 5,
+            "seats": [
+                {"assignee": {"login": f"user{i}"}} for i in range(5)
+            ],
+            "seat_breakdown": {
+                "total": 5,
+                "active_this_cycle": 5,
+                "inactive_this_cycle": 0,
+            },
+        }
+
+        # Act
+        result = get_seat_utilization(seats_data)
+
+        # Assert
+        self.assertEqual(result["total_seats"], 5)
+        self.assertEqual(result["active_seats"], 5)
+        self.assertEqual(result["inactive_seats"], 0)
+        self.assertEqual(result["utilization_rate"], Decimal("100.00"))
+        self.assertEqual(result["monthly_cost"], Decimal("95.00"))  # 5 * $19
+        self.assertEqual(result["cost_per_active_user"], Decimal("19.00"))  # $95 / 5
+
+    def test_get_seat_utilization_handles_zero_active_seats(self):
+        """Test that get_seat_utilization handles zero active users gracefully."""
+        # Arrange
+        seats_data = {
+            "total_seats": 3,
+            "seats": [
+                {"assignee": {"login": "user1"}},
+                {"assignee": {"login": "user2"}},
+                {"assignee": {"login": "user3"}},
+            ],
+            "seat_breakdown": {
+                "total": 3,
+                "active_this_cycle": 0,
+                "inactive_this_cycle": 3,
+            },
+        }
+
+        # Act
+        result = get_seat_utilization(seats_data)
+
+        # Assert
+        self.assertEqual(result["total_seats"], 3)
+        self.assertEqual(result["active_seats"], 0)
+        self.assertEqual(result["inactive_seats"], 3)
+        self.assertEqual(result["utilization_rate"], Decimal("0.00"))
+        self.assertEqual(result["monthly_cost"], Decimal("57.00"))  # 3 * $19
+        # cost_per_active_user should be None or 0 when no active users
+        self.assertIsNone(result["cost_per_active_user"])
+
+    def test_get_seat_utilization_handles_partial_utilization(self):
+        """Test that get_seat_utilization calculates metrics for partial utilization."""
+        # Arrange
+        seats_data = {
+            "total_seats": 20,
+            "seats": [{"assignee": {"login": f"user{i}"}} for i in range(20)],
+            "seat_breakdown": {
+                "total": 20,
+                "active_this_cycle": 13,
+                "inactive_this_cycle": 7,
+            },
+        }
+
+        # Act
+        result = get_seat_utilization(seats_data)
+
+        # Assert
+        self.assertEqual(result["total_seats"], 20)
+        self.assertEqual(result["active_seats"], 13)
+        self.assertEqual(result["inactive_seats"], 7)
+        self.assertEqual(result["utilization_rate"], Decimal("65.00"))  # 13/20 * 100
+        self.assertEqual(result["monthly_cost"], Decimal("380.00"))  # 20 * $19
+        # $380 / 13 = 29.230769... rounds to 29.23
+        self.assertEqual(result["cost_per_active_user"], Decimal("29.23"))
+
+    def test_get_seat_utilization_precision(self):
+        """Test that get_seat_utilization maintains correct decimal precision."""
+        # Arrange - Edge case with precise division
+        seats_data = {
+            "total_seats": 3,
+            "seats": [{"assignee": {"login": f"user{i}"}} for i in range(3)],
+            "seat_breakdown": {
+                "total": 3,
+                "active_this_cycle": 2,
+                "inactive_this_cycle": 1,
+            },
+        }
+
+        # Act
+        result = get_seat_utilization(seats_data)
+
+        # Assert
+        # 2/3 * 100 = 66.666... should round to 66.67
+        self.assertEqual(result["utilization_rate"], Decimal("66.67"))
+        # 3 * $19 = $57
+        self.assertEqual(result["monthly_cost"], Decimal("57.00"))
+        # $57 / 2 = $28.50
+        self.assertEqual(result["cost_per_active_user"], Decimal("28.50"))

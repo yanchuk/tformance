@@ -50,4 +50,16 @@ document.addEventListener('htmx:afterSwap', function(event) {
       AppDashboardCharts.weeklyBarChart(ctx, data, "Avg Cycle Time (hours)");
     }
   }
+
+  // Copilot Trend Chart - uses weekly aggregated data
+  const copilotTrendData = document.getElementById('copilot-trend-data');
+  const copilotTrendChart = document.getElementById('copilot-trend-chart');
+  if (copilotTrendData && copilotTrendChart) {
+    destroyChartIfExists(copilotTrendChart);
+    const data = JSON.parse(copilotTrendData.textContent);
+    if (data && data.length > 0) {
+      const ctx = copilotTrendChart.getContext('2d');
+      AppDashboardCharts.weeklyBarChart(ctx, data, "Copilot Acceptance Rate (%)");
+    }
+  }
 });

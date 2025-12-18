@@ -8,6 +8,9 @@ import requests
 GITHUB_API_BASE_URL = "https://api.github.com"
 GITHUB_API_VERSION = "application/vnd.github+json"
 
+# Copilot pricing constants
+COPILOT_SEAT_PRICE = Decimal("19.00")  # Monthly cost per seat in USD
+
 
 class CopilotMetricsError(Exception):
     """Exception raised when Copilot metrics API calls fail."""
@@ -40,6 +43,38 @@ def _build_github_headers(access_token):
         "Authorization": f"Bearer {access_token}",
         "Accept": GITHUB_API_VERSION,
     }
+
+
+def _make_github_api_request(url, headers, params=None, error_prefix="GitHub API"):
+    """Make a GitHub API request with consistent error handling.
+
+    Args:
+        url: Full API endpoint URL
+        headers: Request headers
+        params: Optional query parameters
+        error_prefix: Prefix for error messages
+
+    Returns:
+        dict or list: Parsed JSON response
+
+    Raises:
+        CopilotMetricsError: If the API call fails or returns an error status
+    """
+    try:
+        response = requests.get(url, headers=headers, params=params)
+
+        if response.status_code == 403:
+            raise CopilotMetricsError(
+                f"{error_prefix} unavailable (403): {response.json().get('message', 'Forbidden')}"
+            )
+
+        response.raise_for_status()
+        return response.json()
+
+    except CopilotMetricsError:
+        raise
+    except Exception as e:
+        raise CopilotMetricsError(f"Failed to fetch {error_prefix}: {str(e)}")
 
 
 def check_copilot_availability(access_token, org_slug):
@@ -89,21 +124,7 @@ def fetch_copilot_metrics(access_token, org_slug, since=None, until=None):
     if until:
         params["until"] = until
 
-    try:
-        response = requests.get(url, headers=headers, params=params)
-
-        if response.status_code == 403:
-            raise CopilotMetricsError(
-                f"Copilot metrics unavailable (403): {response.json().get('message', 'Forbidden')}"
-            )
-
-        response.raise_for_status()
-        return response.json()
-
-    except CopilotMetricsError:
-        raise
-    except Exception as e:
-        raise CopilotMetricsError(f"Failed to fetch Copilot metrics: {str(e)}")
+    return _make_github_api_request(url, headers, params, error_prefix="Copilot metrics")
 
 
 def parse_metrics_response(data):
@@ -169,4 +190,63 @@ def map_copilot_to_ai_usage(parsed_day_data):
         "suggestions_shown": suggestions_shown,
         "suggestions_accepted": suggestions_accepted,
         "acceptance_rate": acceptance_rate,
+    }
+
+
+def fetch_copilot_seats(access_token, org_slug):
+    """Fetch Copilot seat utilization data from GitHub API.
+
+    Args:
+        access_token: GitHub OAuth access token
+        org_slug: GitHub organization slug
+
+    Returns:
+        dict: Seat data including total_seats, seats list, and seat_breakdown
+
+    Raises:
+        CopilotMetricsError: If the API call fails or returns an error status
+    """
+    url = f"{GITHUB_API_BASE_URL}/orgs/{org_slug}/copilot/billing/seats"
+    headers = _build_github_headers(access_token)
+
+    return _make_github_api_request(url, headers, error_prefix="Copilot seats")
+
+
+def get_seat_utilization(seats_data):
+    """Calculate Copilot seat utilization metrics.
+
+    Args:
+        seats_data: Dict from fetch_copilot_seats containing seat information
+
+    Returns:
+        dict: Utilization metrics including total_seats, active_seats, inactive_seats,
+              utilization_rate, monthly_cost, and cost_per_active_user
+    """
+    total_seats = seats_data["total_seats"]
+    seat_breakdown = seats_data["seat_breakdown"]
+    active_seats = seat_breakdown["active_this_cycle"]
+    inactive_seats = seat_breakdown["inactive_this_cycle"]
+
+    # Calculate utilization rate
+    if total_seats > 0:
+        utilization_rate = (Decimal(active_seats) / Decimal(total_seats) * 100).quantize(Decimal("0.01"))
+    else:
+        utilization_rate = Decimal("0.00")
+
+    # Calculate monthly costs
+    monthly_cost = (Decimal(total_seats) * COPILOT_SEAT_PRICE).quantize(Decimal("0.01"))
+
+    # Calculate cost per active user
+    if active_seats > 0:
+        cost_per_active_user = (monthly_cost / Decimal(active_seats)).quantize(Decimal("0.01"))
+    else:
+        cost_per_active_user = None
+
+    return {
+        "total_seats": total_seats,
+        "active_seats": active_seats,
+        "inactive_seats": inactive_seats,
+        "utilization_rate": utilization_rate,
+        "monthly_cost": monthly_cost,
+        "cost_per_active_user": cost_per_active_user,
     }
