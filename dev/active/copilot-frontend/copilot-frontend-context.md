@@ -1,177 +1,124 @@
 # Copilot Frontend Context
 
 **Last Updated: 2025-12-18**
-**Status: PLANNING**
+**Status: COMPLETE**
 
-## Files to Create
+## Implementation Summary
+
+All 6 phases of the Copilot frontend implementation have been completed using TDD (Red-Green-Refactor). The implementation adds:
+
+1. **Seat Utilization Service** - Functions to fetch and calculate seat utilization metrics
+2. **Dashboard HTMX Views** - Three new views for Copilot metrics cards, trend chart, and members table
+3. **Integrations Home Card** - Copilot status card on integrations home page
+4. **Dashboard Partials** - Templates for displaying Copilot data
+5. **CTO Overview Integration** - Copilot section added to main dashboard
+6. **Chart.js Integration** - JavaScript for rendering acceptance rate trend chart
+
+## Files Created
 
 | File | Purpose |
 |------|---------|
-| `apps/integrations/services/copilot_metrics.py` | Add `fetch_copilot_seats()` function |
-| `apps/metrics/views.py` | Add HTMX views for Copilot metrics |
-| `apps/metrics/urls.py` | Add URL patterns for Copilot endpoints |
-| `templates/metrics/partials/copilot_metrics_card.html` | Key metrics card partial |
-| `templates/metrics/partials/copilot_trend_chart.html` | Acceptance rate chart partial |
-| `templates/metrics/partials/copilot_members_table.html` | Per-member breakdown table |
-| `templates/integrations/components/copilot_card.html` | Integrations home Copilot card |
-| `tests/e2e/copilot.spec.ts` | E2E tests for Copilot UI |
+| `templates/metrics/partials/copilot_metrics_card.html` | DaisyUI stat cards for key metrics |
+| `templates/metrics/partials/copilot_trend_chart.html` | Chart.js line chart for acceptance rate |
+| `templates/metrics/partials/copilot_members_table.html` | Zebra table with member breakdown |
 
-## Files to Modify
+## Files Modified
 
 | File | Changes |
 |------|---------|
-| `apps/integrations/services/copilot_metrics.py` | Add seat utilization functions |
-| `apps/integrations/tests/test_copilot_metrics.py` | Add seat utilization tests |
-| `apps/integrations/views.py` | Update `integrations_home` context |
-| `apps/integrations/templates/integrations/home.html` | Add Copilot card section |
-| `templates/metrics/cto_overview.html` | Add Copilot charts section |
-| `apps/metrics/views.py` | Add Copilot HTMX endpoints |
-| `apps/metrics/urls.py` | Add Copilot URL patterns |
+| `apps/integrations/services/copilot_metrics.py` | Added `fetch_copilot_seats()`, `get_seat_utilization()`, `_make_github_api_request()` helper, `COPILOT_SEAT_PRICE` constant |
+| `apps/integrations/tests/test_copilot_metrics.py` | Added 9 tests for seat utilization |
+| `apps/metrics/views/chart_views.py` | Added `copilot_metrics_card()`, `copilot_trend_chart()`, `copilot_members_table()` |
+| `apps/metrics/urls.py` | Added URL patterns: `cards/copilot/`, `charts/copilot-trend/`, `tables/copilot-members/` |
+| `apps/metrics/tests/test_views.py` | Added 30 tests for Copilot views |
+| `templates/integrations/home.html` | Added Copilot card with violet theme |
+| `templates/metrics/cto_overview.html` | Added Copilot section with divider, charts, tables |
+| `assets/javascript/app.js` | Added Chart.js initialization for copilot-trend-chart |
+| `Makefile` | Separated `test` and `test-parallel` targets |
 
 ## Key Implementation Details
 
-### Seat Utilization Service Functions
+### Seat Utilization Functions
 
 ```python
 # apps/integrations/services/copilot_metrics.py
 
-def fetch_copilot_seats(access_token: str, org_slug: str) -> dict:
-    """Fetch Copilot seat assignments from GitHub API.
+COPILOT_SEAT_PRICE = Decimal("19.00")  # Monthly cost per seat in USD
 
-    Returns:
-        dict with keys:
-            - total_seats (int): Paid seats
-            - seats (list): Individual seat assignments
-            - seat_breakdown (dict): Active/inactive counts
-    """
-    url = f"{GITHUB_API_BASE_URL}/orgs/{org_slug}/copilot/billing/seats"
-    headers = _build_github_headers(access_token)
-    response = requests.get(url, headers=headers)
-    response.raise_for_status()
-    return response.json()
+def fetch_copilot_seats(access_token, org_slug):
+    """Fetch Copilot seat data from /orgs/{org}/copilot/billing/seats"""
 
-
-def get_seat_utilization(seats_data: dict) -> dict:
-    """Calculate seat utilization metrics.
-
-    Returns:
-        dict with keys:
-            - total_seats (int)
-            - active_seats (int)
-            - inactive_seats (int)
-            - utilization_rate (Decimal): 0.00 to 100.00
-            - monthly_cost (Decimal): $19 per seat
-            - cost_per_active (Decimal): Monthly cost / active users
-    """
+def get_seat_utilization(seats_data):
+    """Returns: total_seats, active_seats, inactive_seats, utilization_rate, monthly_cost, cost_per_active_user"""
 ```
 
 ### HTMX View Patterns
 
 ```python
-# apps/metrics/views.py
+# apps/metrics/views/chart_views.py
 
-@login_and_team_required
+@team_admin_required
 def copilot_metrics_card(request):
     """HTMX endpoint for Copilot key metrics card."""
-    team = request.team
-    days = int(request.GET.get("days", 30))
-    end_date = date.today()
-    start_date = end_date - timedelta(days=days)
-
-    metrics = get_copilot_metrics(team, start_date, end_date)
-    return render(request, "metrics/partials/copilot_metrics_card.html", {
-        "metrics": metrics
-    })
+    start_date, end_date = get_date_range_from_request(request)
+    metrics = dashboard_service.get_copilot_metrics(request.team, start_date, end_date)
+    return TemplateResponse(request, "metrics/partials/copilot_metrics_card.html", {"metrics": metrics})
 ```
 
-### Template Pattern (HTMX Loading)
+### URL Patterns
 
-```html
-<!-- In cto_overview.html -->
-<div id="copilot-metrics-container"
-     hx-get="{% url 'metrics:copilot_metrics_card' %}?days={{ days }}"
-     hx-trigger="load"
-     hx-swap="innerHTML">
-  <div class="skeleton h-24 w-full rounded-lg"></div>
-</div>
+```python
+# apps/metrics/urls.py
+path("cards/copilot/", views.copilot_metrics_card, name="cards_copilot"),
+path("charts/copilot-trend/", views.copilot_trend_chart, name="chart_copilot_trend"),
+path("tables/copilot-members/", views.copilot_members_table, name="table_copilot_members"),
 ```
 
-## Data Flow
+## Key Decisions Made
 
+1. **Violet theme for Copilot** - Consistent with GitHub Copilot branding
+2. **$19/seat pricing** - Copilot Business tier (standard)
+3. **HTMX lazy loading** - Follows existing CTO dashboard pattern
+4. **Chart.js for trend** - Reuses existing `AppDashboardCharts.weeklyBarChart()`
+5. **DaisyUI components** - Stat cards, zebra tables, skeleton loaders
+6. **TDD workflow** - 39 new tests added across service and views
+
+## Test Coverage
+
+- **Service tests**: 9 new tests in `test_copilot_metrics.py`
+- **View tests**: 30 new tests in `test_views.py`
+- **Total tests**: 1389 (all passing)
+
+## Commits
+
+1. `69230e6` - Copilot backend implementation (Phases 1-6 of backend)
+2. `eac9efb` - Copilot frontend implementation (all 6 frontend phases)
+3. (pending) - Linter fix for B904 error
+
+## Current State
+
+- All implementation complete
+- All tests passing locally
+- Linter fix applied (B904 `raise ... from e`)
+- Ready to commit linter fix and push
+
+## Next Steps
+
+1. Commit linter fix
+2. Push to trigger passing CI
+3. Move task to `dev/completed/`
+4. Real-world testing with actual Copilot data
+
+## Verification Commands
+
+```bash
+# Run unit tests
+make test ARGS='apps.integrations.tests.test_copilot_metrics --keepdb'
+make test ARGS='apps.metrics.tests.test_views --keepdb'
+
+# Run linter
+.venv/bin/ruff check apps/integrations/services/copilot_metrics.py
+
+# Full test suite
+make test ARGS='--keepdb'
 ```
-User visits CTO Overview
-    │
-    ▼
-Page loads with skeleton placeholders
-    │
-    ▼
-HTMX triggers hx-get requests to:
-├── /metrics/copilot/card/
-├── /metrics/copilot/trend/
-└── /metrics/copilot/members/
-    │
-    ▼
-Views call dashboard_service functions:
-├── get_copilot_metrics()
-├── get_copilot_trend()
-└── get_copilot_by_member()
-    │
-    ▼
-HTML partials rendered and swapped in
-```
-
-## API Reference
-
-### GitHub Copilot Billing Seats API
-
-**Endpoint**: `GET /orgs/{org}/copilot/billing/seats`
-
-**Headers**:
-```
-Authorization: Bearer {token}
-Accept: application/vnd.github+json
-```
-
-**Response Structure**:
-```json
-{
-  "total_seats": 10,
-  "seats": [
-    {
-      "assignee": {
-        "login": "octocat",
-        "id": 1,
-        "avatar_url": "https://..."
-      },
-      "assigning_team": null,
-      "last_activity_at": "2025-12-15T10:30:00Z",
-      "last_activity_editor": "vscode/1.85.0",
-      "created_at": "2025-01-01T00:00:00Z"
-    }
-  ],
-  "seat_breakdown": {
-    "total": 10,
-    "added_this_cycle": 2,
-    "pending_invitation": 1,
-    "pending_cancellation": 0,
-    "active_this_cycle": 8,
-    "inactive_this_cycle": 2
-  }
-}
-```
-
-## Key Decisions
-
-1. **HTMX for loading** - Follow existing pattern in cto_overview.html
-2. **Chart.js for visualization** - Consistent with other dashboard charts
-3. **DaisyUI cards** - Match existing UI components
-4. **$19/seat pricing** - Copilot Business tier assumption
-5. **30-day activity window** - Match GitHub's "active this cycle" definition
-
-## Dependencies
-
-- `apps/integrations/services/copilot_metrics.py` (existing)
-- `apps/metrics/services/dashboard_service.py` (existing)
-- Chart.js (available)
-- DaisyUI/Tailwind (available)
-- HTMX (available)

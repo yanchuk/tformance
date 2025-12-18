@@ -74,7 +74,7 @@ def _make_github_api_request(url, headers, params=None, error_prefix="GitHub API
     except CopilotMetricsError:
         raise
     except Exception as e:
-        raise CopilotMetricsError(f"Failed to fetch {error_prefix}: {str(e)}")
+        raise CopilotMetricsError(f"Failed to fetch {error_prefix}: {str(e)}") from e
 
 
 def check_copilot_availability(access_token, org_slug):

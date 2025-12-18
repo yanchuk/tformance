@@ -740,9 +740,7 @@ class TestGetSeatUtilization(TestCase):
         # Arrange
         seats_data = {
             "total_seats": 5,
-            "seats": [
-                {"assignee": {"login": f"user{i}"}} for i in range(5)
-            ],
+            "seats": [{"assignee": {"login": f"user{i}"}} for i in range(5)],
             "seat_breakdown": {
                 "total": 5,
                 "active_this_cycle": 5,
