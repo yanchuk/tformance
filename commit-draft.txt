@@ -1,0 +1,23 @@
+Branch: main
+Date: 2025-12-18
+
+Changed files:
+- .claude/settings.json
+- package-lock.json
+
+Suggested commit message (editable):
+chore: update Claude settings and package-lock
+
+Details:
+- Update `.claude/settings.json` (local config)
+- Regenerate `package-lock.json` (dependency lock)
+
+Checklist before commit:
+- Run `make test` and ensure all tests pass
+- Run lint/format if applicable
+
+To commit with this message:
+1) Review changes: `git diff --staged` or `git diff` for unstaged
+2) Commit: `git commit -F commit-draft.txt`
+
+If you want me to create the commit now, reply with "commit now" or provide a different commit message.
