@@ -970,7 +970,7 @@ class TestAggregateWeeklyMetricsTasks(TestCase):
 
     @patch("apps.integrations.tasks.aggregate_team_weekly_metrics")
     def test_aggregate_team_weekly_metrics_task_calls_service(self, mock_aggregate):
-        """Test that aggregate_team_weekly_metrics_task calls aggregate_team_weekly_metrics with correct team and week_start."""
+        """Test that task calls aggregate_team_weekly_metrics with correct team and week."""
         from apps.integrations.tasks import aggregate_team_weekly_metrics_task
         from apps.metrics.factories import WeeklyMetricsFactory
 
@@ -1049,9 +1049,9 @@ class TestAggregateWeeklyMetricsTasks(TestCase):
 
         # Create teams
         team_with_github = TeamFactory()
-        team_without_github = TeamFactory()
+        TeamFactory()  # Team without GitHub integration - should be skipped
 
-        # Only team1 has GitHub integration
+        # Only team_with_github has GitHub integration
         GitHubIntegrationFactory(team=team_with_github)
 
         # Mock the delay method
