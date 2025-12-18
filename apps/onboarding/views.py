@@ -73,8 +73,8 @@ def onboarding_start(request):
     """Start of onboarding wizard - prompts user to connect GitHub."""
     # If user already has a team, redirect to dashboard
     if request.user.teams.exists():
-        team = request.user.teams.first()
-        return redirect("web_team:home", team_slug=team.slug)
+        # Redirect to /app/ which auto-selects the team
+        return redirect("web:home")
 
     return render(
         request,
@@ -88,8 +88,8 @@ def github_connect(request):
     """Initiate GitHub OAuth flow for onboarding."""
     # If user already has a team, redirect to dashboard
     if request.user.teams.exists():
-        team = request.user.teams.first()
-        return redirect("web_team:home", team_slug=team.slug)
+        # Redirect to /app/ which auto-selects the team
+        return redirect("web:home")
 
     # Build callback URL
     callback_url = request.build_absolute_uri(reverse("onboarding:github_callback"))
@@ -125,8 +125,8 @@ def github_callback(request):
 
     # If user already has a team, redirect to dashboard
     if request.user.teams.exists():
-        team = request.user.teams.first()
-        return redirect("web_team:home", team_slug=team.slug)
+        # Redirect to /app/ which auto-selects the team
+        return redirect("web:home")
 
     # Validate state parameter
     state = request.GET.get("state")
@@ -192,8 +192,8 @@ def select_organization(request):
     """Select which GitHub organization to use for the team."""
     # If user already has a team, redirect to dashboard
     if request.user.teams.exists():
-        team = request.user.teams.first()
-        return redirect("web_team:home", team_slug=team.slug)
+        # Redirect to /app/ which auto-selects the team
+        return redirect("web:home")
 
     # Get orgs from session
     orgs = request.session.get(ONBOARDING_ORGS_KEY, [])

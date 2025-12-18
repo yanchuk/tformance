@@ -1,3 +1,5 @@
+import uuid
+
 from allauth.account.models import EmailAddress
 from allauth.account.views import SignupView
 from django.conf import settings
@@ -16,6 +18,12 @@ from ..roles import is_member
 
 
 def accept_invitation(request, invitation_id):
+    # Validate UUID format before database lookup
+    try:
+        uuid.UUID(str(invitation_id))
+    except (ValueError, TypeError):
+        raise Http404("Invalid invitation ID") from None
+
     invitation = get_object_or_404(Invitation, id=invitation_id)
     if not invitation.is_accepted:
         # set invitation in the session in case needed later - e.g. to redirect after login
@@ -29,7 +37,7 @@ def accept_invitation(request, invitation_id):
                 team=invitation.team.name
             ),
         )
-        return HttpResponseRedirect(reverse("web_team:home"))
+        return HttpResponseRedirect(reverse("web:home"))
 
     if request.method == "POST":
         # accept invitation workflow
@@ -44,7 +52,7 @@ def accept_invitation(request, invitation_id):
                 process_invitation(invitation, request.user)
                 clear_invite_from_session(request)
                 messages.success(request, _("You successfully joined {}").format(invitation.team.name))
-                return HttpResponseRedirect(reverse("web_team:home"))
+                return HttpResponseRedirect(reverse("web:home"))
 
     account_exists = CustomUser.objects.filter(email=invitation.email).exists()
     owned_email_address = None
@@ -71,6 +79,12 @@ class SignupAfterInvite(SignupView):
         from ..models import Invitation
 
         invitation_id = self.kwargs["invitation_id"]
+
+        # Validate UUID format before database lookup
+        try:
+            uuid.UUID(str(invitation_id))
+        except (ValueError, TypeError):
+            raise Http404("Invalid invitation ID") from None
 
         invitation = get_object_or_404(Invitation, id=invitation_id)
         if invitation.is_accepted:
