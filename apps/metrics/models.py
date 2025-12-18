@@ -515,6 +515,11 @@ class JiraIssue(BaseTeamModel):
     def __str__(self):
         return self.jira_key
 
+    @property
+    def related_prs(self):
+        """Get all PRs that reference this Jira issue via jira_key."""
+        return PullRequest.objects.filter(team=self.team, jira_key=self.jira_key)
+
 
 class AIUsageDaily(BaseTeamModel):
     """Daily AI tool usage metrics (Copilot, Cursor, etc.)."""

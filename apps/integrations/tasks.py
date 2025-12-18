@@ -38,6 +38,7 @@ from apps.integrations.services.slack_surveys import (
 )
 from apps.integrations.services.slack_user_matching import sync_slack_users
 from apps.metrics.models import PRReview, PRSurveyReview, PullRequest
+from apps.metrics.services.aggregation_service import aggregate_team_weekly_metrics
 from apps.metrics.services.survey_service import create_pr_survey, create_reviewer_survey, get_reviewer_accuracy_stats
 from apps.teams.models import Team
 
@@ -931,3 +932,71 @@ def post_survey_comment_task(self, pull_request_id: int) -> dict:
             capture_exception(exc)
 
             return {"error": error_msg, "survey_id": survey.id}
+
+
+@shared_task
+def aggregate_team_weekly_metrics_task(team_id: int):
+    """Aggregate weekly metrics for a single team.
+
+    Args:
+        team_id: ID of the Team to aggregate metrics for
+
+    Returns:
+        int: Count of WeeklyMetrics records created/updated, or None/0 if error
+    """
+    from datetime import date, timedelta
+
+    # Get Team by id
+    try:
+        team = Team.objects.get(id=team_id)
+    except Team.DoesNotExist:
+        logger.warning(f"Team with id {team_id} not found")
+        return None
+
+    # Calculate previous week's Monday
+    today = date.today()
+    days_since_monday = today.weekday()  # 0=Monday, 6=Sunday
+    this_monday = today - timedelta(days=days_since_monday)
+    previous_monday = this_monday - timedelta(days=7)
+
+    # Call aggregation service
+    logger.info(f"Starting weekly metrics aggregation for team {team.name} (week starting {previous_monday})")
+    try:
+        weekly_metrics = aggregate_team_weekly_metrics(team, previous_monday)
+        count = len(weekly_metrics)
+        logger.info(f"Successfully aggregated {count} weekly metrics for team {team.name}")
+        return count
+    except Exception as exc:
+        from sentry_sdk import capture_exception
+
+        logger.error(f"Failed to aggregate weekly metrics for team {team.name}: {exc}")
+        capture_exception(exc)
+        return 0
+
+
+@shared_task
+def aggregate_all_teams_weekly_metrics_task():
+    """Aggregate weekly metrics for all teams with GitHub integration.
+
+    Returns:
+        int: Count of teams processed
+    """
+    logger.info("Starting weekly metrics aggregation for all teams")
+
+    # Find all teams with GitHubIntegration
+    integrations = GitHubIntegration.objects.select_related("team").all()  # noqa: TEAM001 - System job iterating all integrations
+
+    teams_processed = 0
+
+    # Dispatch aggregate_team_weekly_metrics_task for each team
+    for integration in integrations:
+        try:
+            aggregate_team_weekly_metrics_task.delay(integration.team.id)
+            teams_processed += 1
+        except Exception as e:
+            logger.error(f"Failed to dispatch weekly metrics aggregation for team {integration.team.id}: {e}")
+            continue
+
+    logger.info(f"Finished dispatching weekly metrics aggregation tasks. Processed: {teams_processed}")
+
+    return teams_processed

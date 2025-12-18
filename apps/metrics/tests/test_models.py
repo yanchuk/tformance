@@ -1056,6 +1056,92 @@ class TestJiraIssueModel(TestCase):
         self.assertEqual(JiraIssue._meta.verbose_name_plural, "Jira Issues")
 
 
+class TestJiraIssuePRLinking(TestCase):
+    """Tests for JiraIssue-PullRequest bidirectional linking via jira_key."""
+
+    def setUp(self):
+        """Set up test fixtures using factories."""
+        from apps.metrics.factories import JiraIssueFactory, PullRequestFactory, TeamFactory
+
+        self.team1 = TeamFactory()
+        self.team2 = TeamFactory()
+
+    def tearDown(self):
+        """Clean up team context."""
+        unset_current_team()
+
+    def test_related_prs_returns_prs_with_matching_jira_key(self):
+        """Test that related_prs returns PRs with matching jira_key."""
+        from apps.metrics.factories import JiraIssueFactory, PullRequestFactory
+
+        # Create JiraIssue with jira_key="PROJ-123"
+        jira_issue = JiraIssueFactory(team=self.team1, jira_key="PROJ-123")
+
+        # Create PR with jira_key="PROJ-123" (same team)
+        pr_matching = PullRequestFactory(team=self.team1, jira_key="PROJ-123")
+
+        # Create PR with jira_key="PROJ-456" (same team, different key)
+        pr_different = PullRequestFactory(team=self.team1, jira_key="PROJ-456")
+
+        # Assert related_prs contains only the matching PR
+        related = list(jira_issue.related_prs)
+        self.assertEqual(len(related), 1)
+        self.assertEqual(related[0].pk, pr_matching.pk)
+        self.assertNotIn(pr_different, related)
+
+    def test_related_prs_returns_empty_queryset_when_no_matches(self):
+        """Test that related_prs returns empty queryset when no matches."""
+        from apps.metrics.factories import JiraIssueFactory, PullRequestFactory
+
+        # Create JiraIssue with jira_key="PROJ-789"
+        jira_issue = JiraIssueFactory(team=self.team1, jira_key="PROJ-789")
+
+        # Create PR with different jira_key
+        PullRequestFactory(team=self.team1, jira_key="PROJ-999")
+
+        # Assert related_prs is empty
+        related = list(jira_issue.related_prs)
+        self.assertEqual(len(related), 0)
+
+    def test_related_prs_respects_team_isolation(self):
+        """Test that related_prs respects team isolation."""
+        from apps.metrics.factories import JiraIssueFactory, PullRequestFactory
+
+        # Create JiraIssue with jira_key="PROJ-123" in team1
+        jira_issue = JiraIssueFactory(team=self.team1, jira_key="PROJ-123")
+
+        # Create PR with jira_key="PROJ-123" in team1
+        pr_team1 = PullRequestFactory(team=self.team1, jira_key="PROJ-123")
+
+        # Create PR with jira_key="PROJ-123" in team2 (different team!)
+        pr_team2 = PullRequestFactory(team=self.team2, jira_key="PROJ-123")
+
+        # Assert related_prs only contains the PR from team1
+        related = list(jira_issue.related_prs)
+        self.assertEqual(len(related), 1)
+        self.assertEqual(related[0].pk, pr_team1.pk)
+        self.assertNotIn(pr_team2, related)
+
+    def test_related_prs_returns_multiple_prs_for_same_jira_key(self):
+        """Test that related_prs returns multiple PRs for same jira_key."""
+        from apps.metrics.factories import JiraIssueFactory, PullRequestFactory
+
+        # Create JiraIssue with jira_key="PROJ-100"
+        jira_issue = JiraIssueFactory(team=self.team1, jira_key="PROJ-100")
+
+        # Create 3 PRs all with jira_key="PROJ-100"
+        pr1 = PullRequestFactory(team=self.team1, jira_key="PROJ-100")
+        pr2 = PullRequestFactory(team=self.team1, jira_key="PROJ-100")
+        pr3 = PullRequestFactory(team=self.team1, jira_key="PROJ-100")
+
+        # Assert related_prs contains all 3 PRs
+        related = list(jira_issue.related_prs)
+        self.assertEqual(len(related), 3)
+        self.assertIn(pr1, related)
+        self.assertIn(pr2, related)
+        self.assertIn(pr3, related)
+
+
 class TestAIUsageDailyModel(TestCase):
     """Tests for AIUsageDaily model."""
 

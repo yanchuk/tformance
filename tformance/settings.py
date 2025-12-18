@@ -549,6 +549,11 @@ SCHEDULED_TASKS = {
         "schedule": schedules.crontab(minute=0),  # Every hour on the hour
         "expire_seconds": 60 * 30,  # 30 minute expiry
     },
+    "aggregate-weekly-metrics-monday": {
+        "task": "apps.integrations.tasks.aggregate_all_teams_weekly_metrics_task",
+        "schedule": schedules.crontab(minute=0, hour=1, day_of_week=1),  # Monday 1 AM UTC
+        "expire_seconds": 60 * 60 * 2,  # 2 hour expiry
+    },
 }
 
 # Channels / Daphne setup

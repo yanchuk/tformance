@@ -951,3 +951,122 @@ class TestPostSurveyCommentTask(TestCase):
         # Verify no error keys
         self.assertNotIn("error", result)
         self.assertNotIn("skipped", result)
+
+
+class TestAggregateWeeklyMetricsTasks(TestCase):
+    """Tests for weekly metrics aggregation Celery tasks."""
+
+    def setUp(self):
+        """Set up test fixtures using factories."""
+        from datetime import date, timedelta
+
+        self.team = TeamFactory()
+
+        # Calculate previous week's Monday for test assertions
+        today = date.today()
+        days_since_monday = today.weekday()
+        last_monday = today - timedelta(days=days_since_monday + 7)
+        self.expected_week_start = last_monday
+
+    @patch("apps.integrations.tasks.aggregate_team_weekly_metrics")
+    def test_aggregate_team_weekly_metrics_task_calls_service(self, mock_aggregate):
+        """Test that aggregate_team_weekly_metrics_task calls aggregate_team_weekly_metrics with correct team and week_start."""
+        from apps.integrations.tasks import aggregate_team_weekly_metrics_task
+        from apps.metrics.factories import WeeklyMetricsFactory
+
+        # Mock the service to return some WeeklyMetrics instances
+        mock_weekly_metrics = [
+            WeeklyMetricsFactory.build(),
+            WeeklyMetricsFactory.build(),
+        ]
+        mock_aggregate.return_value = mock_weekly_metrics
+
+        # Call the task
+        result = aggregate_team_weekly_metrics_task(self.team.id)
+
+        # Verify aggregate_team_weekly_metrics was called once
+        mock_aggregate.assert_called_once()
+
+        # Verify it was called with correct team
+        call_args = mock_aggregate.call_args
+        self.assertEqual(call_args[0][0].id, self.team.id)
+
+        # Verify it was called with previous week's Monday
+        actual_week_start = call_args[0][1]
+        self.assertEqual(actual_week_start, self.expected_week_start)
+
+        # Verify result contains count of records created/updated
+        self.assertEqual(result, 2)
+
+    def test_aggregate_team_weekly_metrics_task_handles_missing_team(self):
+        """Test that aggregate_team_weekly_metrics_task handles Team.DoesNotExist gracefully."""
+        from apps.integrations.tasks import aggregate_team_weekly_metrics_task
+
+        non_existent_team_id = 99999
+
+        # Call the task with non-existent team_id - should not raise exception
+        result = aggregate_team_weekly_metrics_task(non_existent_team_id)
+
+        # Verify result is None or 0 (no exception raised)
+        self.assertIn(result, [None, 0])
+
+    @patch("apps.integrations.tasks.aggregate_team_weekly_metrics_task")
+    def test_aggregate_all_teams_weekly_metrics_task_dispatches_per_team(self, mock_task):
+        """Test that aggregate_all_teams_weekly_metrics_task dispatches task for each team with GitHub integration."""
+        from apps.integrations.tasks import aggregate_all_teams_weekly_metrics_task
+
+        # Create multiple teams with GitHubIntegration
+        team1 = TeamFactory()
+        team2 = TeamFactory()
+        team3 = TeamFactory()
+
+        GitHubIntegrationFactory(team=team1)
+        GitHubIntegrationFactory(team=team2)
+        GitHubIntegrationFactory(team=team3)
+
+        # Mock the delay method
+        mock_delay = MagicMock()
+        mock_task.delay = mock_delay
+
+        # Call the task
+        result = aggregate_all_teams_weekly_metrics_task()
+
+        # Verify delay was called for each team
+        self.assertEqual(mock_delay.call_count, 3)
+
+        # Verify the correct team IDs were passed
+        called_team_ids = {call[0][0] for call in mock_delay.call_args_list}
+        expected_team_ids = {team1.id, team2.id, team3.id}
+        self.assertEqual(called_team_ids, expected_team_ids)
+
+        # Verify result contains count of teams processed
+        self.assertEqual(result, 3)
+
+    @patch("apps.integrations.tasks.aggregate_team_weekly_metrics_task")
+    def test_aggregate_all_teams_weekly_metrics_task_skips_teams_without_github(self, mock_task):
+        """Test that aggregate_all_teams_weekly_metrics_task skips teams without GitHub integration."""
+        from apps.integrations.tasks import aggregate_all_teams_weekly_metrics_task
+
+        # Create teams
+        team_with_github = TeamFactory()
+        team_without_github = TeamFactory()
+
+        # Only team1 has GitHub integration
+        GitHubIntegrationFactory(team=team_with_github)
+
+        # Mock the delay method
+        mock_delay = MagicMock()
+        mock_task.delay = mock_delay
+
+        # Call the task
+        result = aggregate_all_teams_weekly_metrics_task()
+
+        # Verify delay was called only once (for team with GitHub integration)
+        self.assertEqual(mock_delay.call_count, 1)
+
+        # Verify only the team with GitHub integration was dispatched
+        called_team_ids = {call[0][0] for call in mock_delay.call_args_list}
+        self.assertEqual(called_team_ids, {team_with_github.id})
+
+        # Verify result contains count of teams processed (only 1)
+        self.assertEqual(result, 1)
