@@ -1310,7 +1310,7 @@ def copilot_sync(request):
     try:
         GitHubIntegration.objects.get(team=team)
     except GitHubIntegration.DoesNotExist:
-        raise Http404("GitHub integration not found")
+        raise Http404("GitHub integration not found") from None
 
     # Trigger sync task
     from apps.integrations.tasks import sync_copilot_metrics_task

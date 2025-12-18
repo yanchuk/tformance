@@ -753,10 +753,7 @@ def get_copilot_by_member(team: Team, start_date: date, end_date: date) -> list[
         suggestions = entry["suggestions"] or 0
         accepted = entry["accepted"] or 0
 
-        if suggestions > 0:
-            acceptance_rate = Decimal(str(round((accepted / suggestions) * 100, 2)))
-        else:
-            acceptance_rate = Decimal("0.00")
+        acceptance_rate = Decimal(str(round(accepted / suggestions * 100, 2))) if suggestions > 0 else Decimal("0.00")
 
         result.append(
             {
