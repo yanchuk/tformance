@@ -24,7 +24,7 @@ All product requirements are in `/prd/`:
 | Client data storage | Single DB (team-isolated) | Faster MVP, lower onboarding friction. BYOS deferred to Phase 12 if demand exists |
 | Dashboards | Native (Chart.js + HTMX) | Already integrated, full design control |
 | Sync frequency | Daily | Simpler than real-time |
-| AI data source | Self-reported surveys (MVP) | Cursor API is Enterprise-only |
+| AI data source | Surveys + Copilot API (MVP) | Surveys for all, Copilot for teams with 5+ licenses |
 | User discovery | GitHub org import | Auto-populate team |
 
 ## Implementation Order
@@ -40,7 +40,7 @@ Follow phases in [IMPLEMENTATION-PLAN.md](prd/IMPLEMENTATION-PLAN.md):
 8. Copilot metrics
 9. Billing
 
-**MVP checkpoint = Phase 5 complete.**
+**MVP checkpoint = Phase 8 complete (includes Copilot metrics).**
 
 ## Integrations
 

@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 from django.test import TestCase, override_settings
 
 from apps.integrations.services.github_oauth import (
+    GITHUB_OAUTH_SCOPES,
     GitHubOAuthError,
     create_oauth_state,
     exchange_code_for_token,
@@ -17,6 +18,23 @@ from apps.integrations.services.github_oauth import (
     verify_oauth_state,
 )
 from apps.metrics.factories import TeamFactory
+
+
+class TestGitHubOAuthScopes(TestCase):
+    """Tests for GitHub OAuth scopes configuration."""
+
+    def test_github_oauth_scopes_includes_copilot_billing(self):
+        """Test that GITHUB_OAUTH_SCOPES constant includes manage_billing:copilot scope."""
+        # This scope is required to access Copilot usage metrics via GitHub API
+        self.assertIn("manage_billing:copilot", GITHUB_OAUTH_SCOPES)
+
+    def test_github_oauth_scopes_includes_all_required_scopes(self):
+        """Test that GITHUB_OAUTH_SCOPES includes all required scopes for the application."""
+        required_scopes = ["read:org", "repo", "read:user", "manage_billing:copilot"]
+
+        for scope in required_scopes:
+            with self.subTest(scope=scope):
+                self.assertIn(scope, GITHUB_OAUTH_SCOPES, f"Missing required scope: {scope}")
 
 
 class TestOAuthStateGeneration(TestCase):
@@ -139,6 +157,19 @@ class TestAuthorizationURL(TestCase):
         self.assertTrue(
             "read:user" in url or "read%3Auser" in url,
             "Authorization URL should contain 'read:user' scope",
+        )
+
+    def test_authorization_url_includes_copilot_billing_scope(self):
+        """Test that authorization URL includes manage_billing:copilot scope for Copilot metrics."""
+        team = TeamFactory()
+        redirect_uri = "http://localhost:8000/integrations/github/callback"
+
+        url = get_authorization_url(team.id, redirect_uri)
+
+        # Scope may be URL encoded, so check for both forms
+        self.assertTrue(
+            "manage_billing:copilot" in url or "manage_billing%3Acopilot" in url,
+            "Authorization URL should contain 'manage_billing:copilot' scope for Copilot API access",
         )
 
     def test_authorization_url_includes_state_parameter(self):

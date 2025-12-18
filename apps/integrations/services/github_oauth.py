@@ -15,7 +15,20 @@ GITHUB_OAUTH_AUTHORIZE_URL = "https://github.com/login/oauth/authorize"
 GITHUB_OAUTH_TOKEN_URL = "https://github.com/login/oauth/access_token"
 GITHUB_API_BASE_URL = "https://api.github.com"
 GITHUB_API_VERSION = "application/vnd.github.v3+json"
-GITHUB_OAUTH_SCOPES = "read:org repo read:user"
+
+# OAuth scopes required for GitHub integration
+# read:org - Access organization membership and teams
+# repo - Access repositories (code, PRs, commits)
+# read:user - Access user profile information
+# manage_billing:copilot - Access GitHub Copilot usage metrics
+GITHUB_OAUTH_SCOPES = " ".join(
+    [
+        "read:org",
+        "repo",
+        "read:user",
+        "manage_billing:copilot",
+    ]
+)
 
 
 class GitHubOAuthError(Exception):

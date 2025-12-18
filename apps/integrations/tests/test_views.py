@@ -2021,3 +2021,66 @@ class GitHubRepoSyncViewTest(TestCase):
 
         # Should return error response
         self.assertIn(response.status_code, [500, 400])  # Either is acceptable
+
+
+class TestCopilotSettings(TestCase):
+    """Tests for Copilot settings functionality in integrations views."""
+
+    def setUp(self):
+        """Set up test fixtures using factories."""
+
+        self.team = TeamFactory()
+        self.admin = UserFactory()
+        self.member = UserFactory()
+        self.team.members.add(self.admin, through_defaults={"role": ROLE_ADMIN})
+        self.team.members.add(self.member, through_defaults={"role": ROLE_MEMBER})
+        self.client = Client()
+
+    def test_integration_home_shows_copilot_status_when_github_connected(self):
+        """Test that integrations_home includes copilot_available in context when GitHub is connected."""
+        from apps.metrics.factories import AIUsageDailyFactory, TeamMemberFactory
+
+        # Create GitHub integration
+        GitHubIntegrationFactory(team=self.team)
+
+        # Create some AI usage data to test last sync
+        team_member = TeamMemberFactory(team=self.team)
+        AIUsageDailyFactory(team=self.team, member=team_member, source="copilot")
+
+        self.client.force_login(self.admin)
+
+        response = self.client.get(reverse("integrations:integrations_home"))
+
+        # Should return 200
+        self.assertEqual(response.status_code, 200)
+
+        # Context should include copilot_available
+        self.assertIn("copilot_available", response.context)
+
+        # Context should include copilot_last_sync
+        self.assertIn("copilot_last_sync", response.context)
+
+    def test_copilot_sync_view_triggers_sync_task(self):
+        """Test that copilot_sync view triggers Copilot metrics sync."""
+        # Create GitHub integration
+        GitHubIntegrationFactory(team=self.team)
+
+        self.client.force_login(self.admin)
+
+        # Trigger copilot sync
+        response = self.client.post(reverse("integrations:copilot_sync"))
+
+        # Should return success response (exact behavior depends on implementation)
+        # Could be 200 JSON, or 302 redirect
+        self.assertIn(response.status_code, [200, 302])
+
+    def test_copilot_sync_view_requires_github_integration(self):
+        """Test that copilot_sync view returns 404 if no GitHub integration exists."""
+        # No GitHub integration created
+        self.client.force_login(self.admin)
+
+        # Try to trigger copilot sync
+        response = self.client.post(reverse("integrations:copilot_sync"))
+
+        # Should return 404 or redirect with error
+        self.assertIn(response.status_code, [404, 302])

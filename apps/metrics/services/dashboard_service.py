@@ -8,10 +8,10 @@ import statistics
 from datetime import date
 from decimal import Decimal
 
-from django.db.models import Avg, Case, CharField, Count, Q, QuerySet, Value, When
+from django.db.models import Avg, Case, CharField, Count, Q, QuerySet, Sum, Value, When
 from django.db.models.functions import TruncWeek
 
-from apps.metrics.models import PRReview, PRSurvey, PRSurveyReview, PullRequest, TeamMember
+from apps.metrics.models import AIUsageDaily, PRReview, PRSurvey, PRSurveyReview, PullRequest, TeamMember
 from apps.teams.models import Team
 
 # PR Size Categories
@@ -616,3 +616,155 @@ def get_reviewer_workload(team: Team, start_date: date, end_date: date) -> list[
         }
         for r in reviews
     ]
+
+
+def get_copilot_metrics(team: Team, start_date: date, end_date: date) -> dict:
+    """Get Copilot metrics summary for a team within a date range.
+
+    Args:
+        team: Team instance
+        start_date: Start date (inclusive)
+        end_date: End date (inclusive)
+
+    Returns:
+        dict with keys:
+            - total_suggestions (int): Total suggestions shown
+            - total_accepted (int): Total suggestions accepted
+            - acceptance_rate (Decimal): Acceptance rate percentage (0.00 to 100.00)
+            - active_users (int): Count of distinct members using Copilot
+    """
+    copilot_usage = AIUsageDaily.objects.filter(
+        team=team,
+        source="copilot",
+        date__gte=start_date,
+        date__lte=end_date,
+    )
+
+    # Aggregate totals
+    stats = copilot_usage.aggregate(
+        total_suggestions=Sum("suggestions_shown"),
+        total_accepted=Sum("suggestions_accepted"),
+        active_users=Count("member", distinct=True),
+    )
+
+    total_suggestions = stats["total_suggestions"] or 0
+    total_accepted = stats["total_accepted"] or 0
+    active_users = stats["active_users"] or 0
+
+    # Calculate acceptance rate
+    if total_suggestions > 0:
+        acceptance_rate = Decimal(str(round((total_accepted / total_suggestions) * 100, 2)))
+    else:
+        acceptance_rate = Decimal("0.00")
+
+    return {
+        "total_suggestions": total_suggestions,
+        "total_accepted": total_accepted,
+        "acceptance_rate": acceptance_rate,
+        "active_users": active_users,
+    }
+
+
+def get_copilot_trend(team: Team, start_date: date, end_date: date) -> list[dict]:
+    """Get Copilot acceptance rate trend by week.
+
+    Args:
+        team: Team instance
+        start_date: Start date (inclusive)
+        end_date: End date (inclusive)
+
+    Returns:
+        list of dicts with keys:
+            - week (date): Week start date
+            - acceptance_rate (Decimal): Acceptance rate percentage for that week
+    """
+    copilot_usage = AIUsageDaily.objects.filter(
+        team=team,
+        source="copilot",
+        date__gte=start_date,
+        date__lte=end_date,
+    )
+
+    # Group by week and calculate acceptance rate
+    weekly_data = (
+        copilot_usage.annotate(week=TruncWeek("date"))
+        .values("week")
+        .annotate(
+            total_suggestions=Sum("suggestions_shown"),
+            total_accepted=Sum("suggestions_accepted"),
+        )
+        .order_by("week")
+    )
+
+    result = []
+    for entry in weekly_data:
+        total_suggestions = entry["total_suggestions"] or 0
+        total_accepted = entry["total_accepted"] or 0
+
+        if total_suggestions > 0:
+            acceptance_rate = Decimal(str(round((total_accepted / total_suggestions) * 100, 2)))
+        else:
+            acceptance_rate = Decimal("0.00")
+
+        result.append(
+            {
+                "week": entry["week"],
+                "acceptance_rate": acceptance_rate,
+            }
+        )
+
+    return result
+
+
+def get_copilot_by_member(team: Team, start_date: date, end_date: date) -> list[dict]:
+    """Get Copilot metrics breakdown by member.
+
+    Args:
+        team: Team instance
+        start_date: Start date (inclusive)
+        end_date: End date (inclusive)
+
+    Returns:
+        list of dicts with keys:
+            - member_name (str): Team member display name
+            - suggestions (int): Total suggestions shown
+            - accepted (int): Total suggestions accepted
+            - acceptance_rate (Decimal): Acceptance rate percentage
+    """
+    copilot_usage = AIUsageDaily.objects.filter(
+        team=team,
+        source="copilot",
+        date__gte=start_date,
+        date__lte=end_date,
+    )
+
+    # Group by member and calculate totals
+    member_data = (
+        copilot_usage.values("member__display_name")
+        .annotate(
+            suggestions=Sum("suggestions_shown"),
+            accepted=Sum("suggestions_accepted"),
+        )
+        .order_by("-suggestions")
+    )
+
+    result = []
+    for entry in member_data:
+        suggestions = entry["suggestions"] or 0
+        accepted = entry["accepted"] or 0
+
+        if suggestions > 0:
+            acceptance_rate = Decimal(str(round((accepted / suggestions) * 100, 2)))
+        else:
+            acceptance_rate = Decimal("0.00")
+
+        result.append(
+            {
+                "member_name": entry["member__display_name"],
+                "suggestions": suggestions,
+                "accepted": accepted,
+                "acceptance_rate": acceptance_rate,
+            }
+        )
+
+    return result

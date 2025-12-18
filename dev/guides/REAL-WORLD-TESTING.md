@@ -10,6 +10,7 @@ This guide walks you through setting up a tunnel (Cloudflare Tunnel recommended)
 |-------------|--------|---------------|-------|
 | Tunnel | ✅ Verified | 2025-12-17 | Cloudflare Tunnel at `dev.ianchuk.com` |
 | GitHub OAuth | ✅ Verified | 2025-12-17 | OAuth flow, org selection, member sync working |
+| GitHub Copilot | ⏳ Pending | - | Requires org with 5+ Copilot licenses |
 | Jira OAuth | ⏳ Pending | - | - |
 | Slack OAuth | ⏳ Pending | - | - |
 
@@ -18,10 +19,11 @@ This guide walks you through setting up a tunnel (Cloudflare Tunnel recommended)
 1. [Prerequisites](#prerequisites)
 2. [Phase 1: Tunnel Setup](#phase-1-tunnel-setup)
 3. [Phase 2: GitHub App Setup](#phase-2-github-app-setup)
-4. [Phase 3: Jira App Setup](#phase-3-jira-app-setup)
-5. [Phase 4: Slack App Setup](#phase-4-slack-app-setup)
-6. [Phase 5: Testing Checklist](#phase-5-testing-checklist)
-7. [Troubleshooting](#troubleshooting)
+4. [Phase 2.5: GitHub Copilot Testing](#phase-25-github-copilot-testing)
+5. [Phase 3: Jira App Setup](#phase-3-jira-app-setup)
+6. [Phase 4: Slack App Setup](#phase-4-slack-app-setup)
+7. [Phase 5: Testing Checklist](#phase-5-testing-checklist)
+8. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -187,6 +189,132 @@ https://dev.ianchuk.com/webhooks/github/
 ```
 
 This is configured automatically when you track repositories in the app.
+
+---
+
+## Phase 2.5: GitHub Copilot Testing
+
+GitHub Copilot integration requires an organization with **5+ active Copilot licenses** to return metrics data.
+
+### Prerequisites for Copilot Testing
+
+- GitHub integration already connected (Phase 2)
+- Organization has GitHub Copilot Business or Enterprise
+- At least 5 users with active Copilot licenses
+- Users have IDE telemetry enabled
+
+**Note:** If your org has <5 Copilot licenses, the API returns 403 and the app shows "Copilot metrics unavailable".
+
+### 2.5.1 Verify OAuth Scope
+
+The GitHub OAuth App should request `manage_billing:copilot` scope. This is configured in `apps/integrations/services/github_oauth.py`:
+
+```python
+GITHUB_OAUTH_SCOPES = " ".join([
+    "read:org",
+    "repo",
+    "read:user",
+    "manage_billing:copilot",  # Required for Copilot metrics
+])
+```
+
+If you connected GitHub before this scope was added, disconnect and reconnect to get the new permissions.
+
+### 2.5.2 Test Copilot Availability Check
+
+```bash
+# Via Django shell
+make shell
+
+from apps.integrations.models import GitHubIntegration
+from apps.integrations.services.copilot_metrics import check_copilot_availability
+
+gh = GitHubIntegration.objects.first()
+available = check_copilot_availability(gh.access_token, gh.organization_slug)
+print(f"Copilot available: {available}")
+```
+
+### 2.5.3 Test Metrics Fetch
+
+```bash
+# Via Django shell
+make shell
+
+from apps.integrations.models import GitHubIntegration
+from apps.integrations.services.copilot_metrics import fetch_copilot_metrics, parse_metrics_response
+
+gh = GitHubIntegration.objects.first()
+try:
+    raw_data = fetch_copilot_metrics(gh.access_token, gh.organization_slug)
+    print(f"Days of data: {len(raw_data)}")
+    parsed = parse_metrics_response(raw_data)
+    for day in parsed[:3]:
+        print(f"{day['date']}: {day['code_completions_accepted']}/{day['code_completions_total']} accepted")
+except Exception as e:
+    print(f"Error: {e}")
+```
+
+### 2.5.4 Test Seat Utilization (Future)
+
+Once seat utilization is implemented:
+
+```bash
+# Via Django shell
+make shell
+
+from apps.integrations.models import GitHubIntegration
+from apps.integrations.services.copilot_metrics import fetch_copilot_seats, get_seat_utilization
+
+gh = GitHubIntegration.objects.first()
+seats = fetch_copilot_seats(gh.access_token, gh.organization_slug)
+utilization = get_seat_utilization(seats)
+print(f"Utilization: {utilization['utilization_rate']}%")
+print(f"Active: {utilization['active_seats']}/{utilization['total_seats']}")
+```
+
+### 2.5.5 Test Sync Task
+
+```bash
+# Via Django shell
+make shell
+
+from apps.integrations.tasks import sync_copilot_metrics_task
+from apps.teams.models import Team
+
+team = Team.objects.first()
+result = sync_copilot_metrics_task(team.id)
+print(f"Sync result: {result}")
+```
+
+### 2.5.6 Verify Data in Database
+
+```sql
+-- Via psql
+make dbshell
+
+SELECT date, source, suggestions_shown, suggestions_accepted, acceptance_rate
+FROM metrics_aiusagedaily
+WHERE source = 'copilot'
+ORDER BY date DESC
+LIMIT 10;
+```
+
+### Copilot Troubleshooting
+
+**Problem:** "Copilot metrics unavailable (403)"
+- Organization needs 5+ active Copilot licenses
+- Check the organization's Copilot settings on GitHub
+- Verify the OAuth token has `manage_billing:copilot` scope
+
+**Problem:** Empty metrics response
+- Copilot metrics are processed daily, may take 24h to appear
+- Users need IDE telemetry enabled in their Copilot settings
+- Check if any users have been active recently
+
+**Problem:** "CopilotMetricsError: Failed to fetch"
+- Check network connectivity to GitHub API
+- Verify access token hasn't expired
+- Check GitHub API status page
 
 ---
 
@@ -428,6 +556,29 @@ curl -s -o /dev/null -w "%{http_code}" https://dev.ianchuk.com/health/
   1. Create or merge a PR in tracked repo
   2. Check Django logs for webhook received
   3. Verify PR data appears in database
+
+### GitHub Copilot Tests (requires 5+ Copilot licenses)
+
+- [ ] **Copilot Availability**
+  1. Ensure GitHub is connected
+  2. Run availability check in Django shell
+  3. Verify returns True/False appropriately
+
+- [ ] **Metrics Fetch** (if available)
+  1. Run metrics fetch in Django shell
+  2. Verify daily metrics are returned
+  3. Check acceptance rates are calculated
+
+- [ ] **Sync Task**
+  1. Run `sync_copilot_metrics_task(team_id)` manually
+  2. Verify AIUsageDaily records created
+  3. Check `source='copilot'` in database
+
+- [ ] **Dashboard Display** (after frontend implementation)
+  1. Go to CTO Overview dashboard
+  2. Verify Copilot metrics card displays
+  3. Verify acceptance rate chart renders
+  4. Verify per-member table shows data
 
 ### Jira Integration Tests
 

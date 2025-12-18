@@ -303,9 +303,9 @@ Even with single database, we maintain strict team isolation:
 
 ---
 
-## Phase 8: Copilot Metrics (Enhancement)
+## Phase 8: Copilot Metrics
 
-**Goal:** Add API-based AI usage data
+**Goal:** Add API-based AI usage data (MVP)
 
 ### 8.1 Copilot API Integration
 - Check if org has 5+ Copilot licenses
@@ -318,7 +318,7 @@ Even with single database, we maintain strict team isolation:
 
 **Milestone:** Teams with Copilot see richer AI usage data
 
-**Why eighth:** Optional enhancement - MVP works without it (surveys provide AI data)
+**Why eighth:** Complements survey data with actual Copilot metrics for teams that have it
 
 ---
 
@@ -550,14 +550,16 @@ Phase 4: Basic Dashboard    Phase 5: Slack & Surveys
 
 ## Minimum Viable Product Checkpoint
 
-**After Phase 6, you have an MVP:**
+**After Phase 8, you have an MVP:**
 - ✅ Data models for all metrics
 - ✅ GitHub and Jira data syncing
 - ✅ Dashboard showing metrics
 - ✅ PR surveys working
 - ✅ AI correlation visible
+- ✅ Weekly leaderboard posting
+- ✅ Copilot metrics integration (for teams with 5+ licenses)
 
-Phases 7-12 are polish, differentiation, and monetization.
+Phases 9-12 are polish, onboarding, and monetization.
 
 **First "wow" moment:** Phase 6 completion
 **First paying customer possible:** Phase 10 completion
