@@ -1061,7 +1061,7 @@ class TestJiraIssuePRLinking(TestCase):
 
     def setUp(self):
         """Set up test fixtures using factories."""
-        from apps.metrics.factories import JiraIssueFactory, PullRequestFactory, TeamFactory
+        from apps.metrics.factories import TeamFactory
 
         self.team1 = TeamFactory()
         self.team2 = TeamFactory()

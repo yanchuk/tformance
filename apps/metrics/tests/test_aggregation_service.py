@@ -4,7 +4,7 @@ Tests for WeeklyMetrics aggregation service.
 These tests verify the aggregation of weekly metrics per team member.
 """
 
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 from decimal import Decimal
 
 from django.test import TestCase
@@ -82,9 +82,7 @@ class TestComputeMemberWeeklyMetrics(TestCase):
         """Test that with no data, the function returns zero values."""
         # Given a member with no activity
         # When computing weekly metrics
-        metrics = compute_member_weekly_metrics(
-            self.team, self.member, self.week_start, self.week_end
-        )
+        metrics = compute_member_weekly_metrics(self.team, self.member, self.week_start, self.week_end)
 
         # Then all metrics should be zero or None
         self.assertEqual(metrics["prs_merged"], 0)
@@ -103,7 +101,7 @@ class TestComputeMemberWeeklyMetrics(TestCase):
     def test_compute_member_weekly_metrics_with_full_data(self):
         """Test computing metrics with all types of data present."""
         # Given merged PRs in the week
-        pr1 = PullRequestFactory(
+        PullRequestFactory(
             team=self.team,
             author=self.member,
             state="merged",
@@ -116,7 +114,7 @@ class TestComputeMemberWeeklyMetrics(TestCase):
             is_revert=False,
             is_hotfix=False,
         )
-        pr2 = PullRequestFactory(
+        PullRequestFactory(
             team=self.team,
             author=self.member,
             state="merged",
@@ -139,9 +137,7 @@ class TestComputeMemberWeeklyMetrics(TestCase):
         )
 
         # When computing weekly metrics
-        metrics = compute_member_weekly_metrics(
-            self.team, self.member, self.week_start, self.week_end
-        )
+        metrics = compute_member_weekly_metrics(self.team, self.member, self.week_start, self.week_end)
 
         # Then metrics should be aggregated correctly
         self.assertEqual(metrics["prs_merged"], 2)
@@ -221,9 +217,7 @@ class TestComputeMemberWeeklyMetrics(TestCase):
         )
 
         # When computing weekly metrics
-        metrics = compute_member_weekly_metrics(
-            self.team, self.member, self.week_start, self.week_end
-        )
+        metrics = compute_member_weekly_metrics(self.team, self.member, self.week_start, self.week_end)
 
         # Then AI metrics should be calculated correctly
         self.assertEqual(metrics["ai_assisted_prs"], 1)  # Only pr1
@@ -258,9 +252,7 @@ class TestComputeMemberWeeklyMetrics(TestCase):
         )
 
         # When computing weekly metrics
-        metrics = compute_member_weekly_metrics(
-            self.team, self.member, self.week_start, self.week_end
-        )
+        metrics = compute_member_weekly_metrics(self.team, self.member, self.week_start, self.week_end)
 
         # Then only the PR in the week should be counted
         self.assertEqual(metrics["prs_merged"], 1)
@@ -290,9 +282,7 @@ class TestComputeMemberWeeklyMetrics(TestCase):
         )
 
         # When computing weekly metrics
-        metrics = compute_member_weekly_metrics(
-            self.team, self.member, self.week_start, self.week_end
-        )
+        metrics = compute_member_weekly_metrics(self.team, self.member, self.week_start, self.week_end)
 
         # Then only merged PRs should be counted
         self.assertEqual(metrics["prs_merged"], 1)

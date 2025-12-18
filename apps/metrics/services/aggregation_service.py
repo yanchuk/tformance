@@ -58,9 +58,7 @@ def _get_week_datetime_range(week_start: date, week_end: date) -> tuple:
     return start_datetime, end_datetime
 
 
-def compute_member_weekly_metrics(
-    team, member: TeamMember, week_start: date, week_end: date
-) -> dict:
+def compute_member_weekly_metrics(team, member: TeamMember, week_start: date, week_end: date) -> dict:
     """
     Compute weekly metrics for a single team member.
 
@@ -105,29 +103,23 @@ def compute_member_weekly_metrics(
     ).count()
 
     # Query PR surveys for AI metrics (with select_related for optimization)
-    surveys = (
-        PRSurvey.objects.filter(
-            team=team,
-            author=member,
-            pull_request__merged_at__gte=start_datetime,
-            pull_request__merged_at__lte=end_datetime,
-        )
-        .select_related("pull_request")
-    )
+    surveys = PRSurvey.objects.filter(
+        team=team,
+        author=member,
+        pull_request__merged_at__gte=start_datetime,
+        pull_request__merged_at__lte=end_datetime,
+    ).select_related("pull_request")
 
     ai_assisted_prs = surveys.filter(author_ai_assisted=True).count()
     surveys_completed = surveys.filter(author_responded_at__isnull=False).count()
 
     # Query survey reviews for quality ratings (with select_related for optimization)
-    reviews = (
-        PRSurveyReview.objects.filter(
-            team=team,
-            survey__author=member,
-            survey__pull_request__merged_at__gte=start_datetime,
-            survey__pull_request__merged_at__lte=end_datetime,
-        )
-        .select_related("survey__pull_request")
-    )
+    reviews = PRSurveyReview.objects.filter(
+        team=team,
+        survey__author=member,
+        survey__pull_request__merged_at__gte=start_datetime,
+        survey__pull_request__merged_at__lte=end_datetime,
+    ).select_related("survey__pull_request")
 
     review_aggregates = reviews.aggregate(
         avg_quality_rating=Avg("quality_rating"),
@@ -139,8 +131,7 @@ def compute_member_weekly_metrics(
     guess_accuracy = None
     if review_aggregates["total_guesses"] and review_aggregates["total_guesses"] > 0:
         guess_accuracy = Decimal(
-            (review_aggregates["correct_guesses"] / review_aggregates["total_guesses"])
-            * 100
+            (review_aggregates["correct_guesses"] / review_aggregates["total_guesses"]) * 100
         ).quantize(Decimal("0.01"))
 
     return {
