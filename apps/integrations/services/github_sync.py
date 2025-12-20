@@ -14,6 +14,10 @@ __all__ = [
     "get_updated_pull_requests",
     "sync_repository_history",
     "sync_repository_incremental",
+    "sync_pr_commits",
+    "sync_pr_check_runs",
+    "sync_pr_files",
+    "sync_repository_deployments",
 ]
 
 
@@ -273,6 +277,228 @@ def _sync_pr_reviews(
     return reviews_synced
 
 
+def sync_pr_commits(
+    pr: "PullRequest",  # noqa: F821
+    pr_number: int,
+    access_token: str,
+    repo_full_name: str,
+    team,
+    errors: list,
+) -> int:
+    """Sync commits for a single pull request.
+
+    Args:
+        pr: PullRequest instance to sync commits for
+        pr_number: GitHub PR number
+        access_token: GitHub access token
+        repo_full_name: Repository full name (owner/repo)
+        team: Team instance
+        errors: List to append error messages to
+
+    Returns:
+        Number of commits successfully synced
+    """
+    from apps.metrics.models import Commit
+    from apps.metrics.processors import _get_team_member_by_github_id, _parse_github_timestamp
+
+    commits_synced = 0
+
+    try:
+        # Create GitHub client and get PR
+        github = Github(access_token)
+        repo = github.get_repo(repo_full_name)
+        github_pr = repo.get_pull(pr_number)
+
+        # Iterate over commits
+        for commit in github_pr.get_commits():
+            try:
+                # Extract commit data
+                sha = commit.sha
+                message = commit.commit.message
+                committed_at = _parse_github_timestamp(commit.commit.author.date.isoformat().replace("+00:00", "Z"))
+                additions = commit.stats.additions
+                deletions = commit.stats.deletions
+
+                # Look up author by github_id (may be None)
+                author = None
+                if commit.author is not None:
+                    author = _get_team_member_by_github_id(team, str(commit.author.id))
+
+                # Create or update commit record
+                Commit.objects.update_or_create(
+                    team=team,
+                    github_sha=sha,
+                    defaults={
+                        "github_repo": repo_full_name,
+                        "author": author,
+                        "message": message,
+                        "committed_at": committed_at,
+                        "additions": additions,
+                        "deletions": deletions,
+                        "pull_request": pr,
+                    },
+                )
+                commits_synced += 1
+
+            except Exception as e:
+                # Log error but continue processing other commits
+                error_msg = f"Failed to sync commit {commit.sha[:8]} for PR #{pr_number}: {str(e)}"
+                errors.append(error_msg)
+                continue
+
+    except Exception as e:
+        # Log error if we can't fetch commits at all
+        error_msg = f"Failed to fetch commits for PR #{pr_number}: {str(e)}"
+        errors.append(error_msg)
+
+    return commits_synced
+
+
+def sync_pr_check_runs(
+    pr: "PullRequest",  # noqa: F821
+    pr_number: int,
+    access_token: str,
+    repo_full_name: str,
+    team,
+    errors: list,
+) -> int:
+    """Sync CI/CD check runs for a pull request.
+
+    Args:
+        pr: PullRequest instance to sync check runs for
+        pr_number: GitHub PR number
+        access_token: GitHub access token
+        repo_full_name: Repository full name (owner/repo)
+        team: Team instance
+        errors: List to append error messages to
+
+    Returns:
+        Number of check runs successfully synced
+    """
+    from apps.metrics.models import PRCheckRun
+
+    check_runs_synced = 0
+
+    try:
+        # Create GitHub client and get PR
+        github = Github(access_token)
+        repo = github.get_repo(repo_full_name)
+        github_pr = repo.get_pull(pr_number)
+
+        # Get head commit SHA
+        head_sha = github_pr.head.sha
+
+        # Get commit object
+        commit = repo.get_commit(head_sha)
+
+        # Get check runs for this commit
+        check_runs = commit.get_check_runs()
+
+        # Iterate over check runs
+        for check_run in check_runs:
+            try:
+                # Calculate duration if both timestamps present
+                duration_seconds = None
+                if check_run.started_at and check_run.completed_at:
+                    duration = (check_run.completed_at - check_run.started_at).total_seconds()
+                    duration_seconds = int(duration)
+
+                # Create or update check run record
+                PRCheckRun.objects.update_or_create(
+                    team=team,
+                    github_check_run_id=check_run.id,
+                    defaults={
+                        "pull_request": pr,
+                        "name": check_run.name,
+                        "status": check_run.status,
+                        "conclusion": check_run.conclusion,
+                        "started_at": check_run.started_at,
+                        "completed_at": check_run.completed_at,
+                        "duration_seconds": duration_seconds,
+                    },
+                )
+                check_runs_synced += 1
+
+            except Exception as e:
+                # Log error but continue processing other check runs
+                error_msg = f"Failed to sync check run {check_run.id} for PR #{pr_number}: {str(e)}"
+                errors.append(error_msg)
+                continue
+
+    except Exception as e:
+        # Log error if we can't fetch check runs at all
+        error_msg = f"Failed to fetch check runs for PR #{pr_number}: {str(e)}"
+        errors.append(error_msg)
+
+    return check_runs_synced
+
+
+def sync_pr_files(
+    pr: "PullRequest",  # noqa: F821
+    pr_number: int,
+    access_token: str,
+    repo_full_name: str,
+    team,
+    errors: list,
+) -> int:
+    """Sync files changed in a PR from GitHub.
+
+    Args:
+        pr: PullRequest instance to sync files for
+        pr_number: GitHub PR number
+        access_token: GitHub access token
+        repo_full_name: Repository full name (owner/repo)
+        team: Team instance
+        errors: List to append error messages to
+
+    Returns:
+        Number of files successfully synced
+    """
+    from apps.metrics.models import PRFile
+
+    files_synced = 0
+
+    try:
+        # Create GitHub client and get PR
+        github = Github(access_token)
+        repo = github.get_repo(repo_full_name)
+        github_pr = repo.get_pull(pr_number)
+
+        # Fetch files from GitHub API
+        files = github_pr.get_files()
+
+        # Iterate over files
+        for file in files:
+            try:
+                # Create or update file record
+                PRFile.objects.update_or_create(
+                    team=team,
+                    pull_request=pr,
+                    filename=file.filename,
+                    defaults={
+                        "status": file.status,
+                        "additions": file.additions,
+                        "deletions": file.deletions,
+                        "changes": file.changes,
+                        "file_category": PRFile.categorize_file(file.filename),
+                    },
+                )
+                files_synced += 1
+
+            except Exception as e:
+                # Log error but continue processing other files
+                error_msg = f"Failed to sync file {file.filename} for PR #{pr_number}: {str(e)}"
+                errors.append(error_msg)
+                continue
+
+    except Exception as e:
+        # Log error if we can't fetch files at all
+        error_msg = f"Failed to fetch files for PR #{pr_number}: {str(e)}"
+        errors.append(error_msg)
+
+    return files_synced
+
+
 def _process_prs(
     prs_data: list[dict],
     tracked_repo: "TrackedRepository",  # noqa: F821
@@ -398,3 +624,79 @@ def sync_repository_incremental(tracked_repo: "TrackedRepository") -> dict:  # n
     tracked_repo.save()
 
     return result
+
+
+def sync_repository_deployments(
+    repo_full_name: str,
+    access_token: str,
+    team,
+    errors: list,
+) -> int:
+    """Sync deployments from a GitHub repository.
+
+    Args:
+        repo_full_name: Repository in "owner/repo" format
+        access_token: GitHub OAuth access token
+        team: Team instance
+        errors: List to append error messages to
+
+    Returns:
+        Number of deployments successfully synced
+    """
+    from apps.metrics.models import Deployment
+    from apps.metrics.processors import _get_team_member_by_github_id
+
+    deployments_synced = 0
+
+    try:
+        # Create GitHub client
+        github = Github(access_token)
+
+        # Get repository
+        repo = github.get_repo(repo_full_name)
+
+        # Get deployments
+        deployments = repo.get_deployments()
+
+        # Process each deployment
+        for deployment in deployments:
+            try:
+                # Get deployment statuses (first is latest)
+                statuses = deployment.get_statuses()
+                status_list = list(statuses)
+
+                # Use first status if available, otherwise default to "pending"
+                status = status_list[0].state if status_list else "pending"
+
+                # Map creator to TeamMember if present
+                creator = None
+                if deployment.creator:
+                    creator = _get_team_member_by_github_id(team, str(deployment.creator.id))
+
+                # Create or update deployment record
+                Deployment.objects.update_or_create(
+                    team=team,
+                    github_deployment_id=deployment.id,
+                    defaults={
+                        "github_repo": repo_full_name,
+                        "environment": deployment.environment,
+                        "status": status,
+                        "creator": creator,
+                        "deployed_at": deployment.created_at,
+                        "sha": deployment.sha or "",  # GitHub deployment SHA
+                    },
+                )
+                deployments_synced += 1
+
+            except Exception as e:
+                # Log error but continue processing other deployments
+                error_msg = f"Failed to sync deployment {deployment.id} for {repo_full_name}: {str(e)}"
+                errors.append(error_msg)
+                continue
+
+    except Exception as e:
+        # Log error for the entire repository
+        error_msg = f"Failed to fetch deployments for {repo_full_name}: {str(e)}"
+        errors.append(error_msg)
+
+    return deployments_synced

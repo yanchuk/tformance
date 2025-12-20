@@ -2173,3 +2173,1325 @@ class TestJiraKeyExtraction(TestCase):
         # Verify jira_key was saved to PullRequest record
         pr = PullRequest.objects.get(team=team, github_pr_id=987654321)
         self.assertEqual(pr.jira_key, "ABC-999")
+
+
+class TestSyncPRCommits(TestCase):
+    """Tests for syncing commits from a GitHub pull request."""
+
+    def _create_mock_commit(
+        self,
+        sha: str,
+        message: str,
+        author_id: int,
+        author_login: str,
+        committed_at: str = "2025-01-01T10:00:00Z",
+        additions: int = 10,
+        deletions: int = 5,
+    ) -> MagicMock:
+        """Create a mock PyGithub Commit object with all required attributes."""
+        mock_commit = MagicMock()
+        mock_commit.sha = sha
+
+        # Mock commit details
+        mock_commit.commit.message = message
+        mock_commit.commit.author.date = datetime.fromisoformat(committed_at.replace("Z", "+00:00"))
+
+        # Mock author (can be None for commits by non-GitHub users)
+        if author_id:
+            mock_author = MagicMock()
+            mock_author.id = author_id
+            mock_author.login = author_login
+            mock_commit.author = mock_author
+        else:
+            mock_commit.author = None
+
+        # Mock stats
+        mock_stats = MagicMock()
+        mock_stats.additions = additions
+        mock_stats.deletions = deletions
+        mock_commit.stats = mock_stats
+
+        return mock_commit
+
+    @patch("apps.integrations.services.github_sync.Github")
+    def test_sync_pr_commits_creates_commit_records(self, mock_github_class):
+        """Test that sync_pr_commits creates Commit records from GitHub PR commits."""
+        from apps.integrations.services.github_sync import sync_pr_commits
+        from apps.metrics.factories import PullRequestFactory, TeamFactory, TeamMemberFactory
+        from apps.metrics.models import Commit
+
+        # Set up test data
+        team = TeamFactory()
+        member = TeamMemberFactory(team=team, github_id="12345", display_name="John Dev")
+        pr = PullRequestFactory(team=team, github_pr_id=101, github_repo="acme/repo", author=member)
+
+        # Mock commits
+        mock_commit1 = self._create_mock_commit(
+            sha="abc123def456789012345678901234567890abcd",
+            message="Add feature X",
+            author_id=12345,
+            author_login="john",
+            committed_at="2025-01-01T10:00:00Z",
+            additions=50,
+            deletions=10,
+        )
+        mock_commit2 = self._create_mock_commit(
+            sha="def456abc123789012345678901234567890abcd",
+            message="Fix typo",
+            author_id=12345,
+            author_login="john",
+            committed_at="2025-01-01T11:00:00Z",
+            additions=5,
+            deletions=2,
+        )
+
+        # Mock PyGithub PR object
+        mock_pr = MagicMock()
+        mock_pr.get_commits.return_value = [mock_commit1, mock_commit2]
+
+        # Mock GitHub client chain
+        mock_github = MagicMock()
+        mock_repo = MagicMock()
+        mock_repo.get_pull.return_value = mock_pr
+        mock_github.get_repo.return_value = mock_repo
+        mock_github_class.return_value = mock_github
+
+        # Call sync function
+        access_token = "gho_test_token"
+        errors = []
+        sync_pr_commits(
+            pr=pr,
+            pr_number=101,
+            access_token=access_token,
+            repo_full_name="acme/repo",
+            team=team,
+            errors=errors,
+        )
+
+        # Verify commits were created
+        commits = Commit.objects.filter(team=team, pull_request=pr).order_by("committed_at")
+        self.assertEqual(commits.count(), 2)
+
+        # Check first commit
+        commit1 = commits[0]
+        self.assertEqual(commit1.github_sha, "abc123def456789012345678901234567890abcd")
+        self.assertEqual(commit1.github_repo, "acme/repo")
+        self.assertEqual(commit1.message, "Add feature X")
+        self.assertEqual(commit1.author, member)
+        self.assertEqual(commit1.additions, 50)
+        self.assertEqual(commit1.deletions, 10)
+        self.assertEqual(commit1.pull_request, pr)
+
+        # Check second commit
+        commit2 = commits[1]
+        self.assertEqual(commit2.github_sha, "def456abc123789012345678901234567890abcd")
+        self.assertEqual(commit2.message, "Fix typo")
+
+    @patch("apps.integrations.services.github_sync.Github")
+    def test_sync_pr_commits_links_to_pull_request(self, mock_github_class):
+        """Test that sync_pr_commits correctly links commits to the pull request."""
+        from apps.integrations.services.github_sync import sync_pr_commits
+        from apps.metrics.factories import PullRequestFactory, TeamFactory, TeamMemberFactory
+        from apps.metrics.models import Commit
+
+        # Set up test data
+        team = TeamFactory()
+        member = TeamMemberFactory(team=team, github_id="12345")
+        pr = PullRequestFactory(team=team, github_pr_id=102, github_repo="acme/repo", author=member)
+
+        # Mock commit
+        mock_commit = self._create_mock_commit(
+            sha="abc123def456789012345678901234567890abcd",
+            message="Update README",
+            author_id=12345,
+            author_login="dev",
+            committed_at="2025-01-01T10:00:00Z",
+            additions=20,
+            deletions=5,
+        )
+
+        # Mock PyGithub PR object
+        mock_pr = MagicMock()
+        mock_pr.get_commits.return_value = [mock_commit]
+
+        # Mock GitHub client chain
+        mock_github = MagicMock()
+        mock_repo = MagicMock()
+        mock_repo.get_pull.return_value = mock_pr
+        mock_github.get_repo.return_value = mock_repo
+        mock_github_class.return_value = mock_github
+
+        # Call sync function
+        errors = []
+        sync_pr_commits(
+            pr=pr,
+            pr_number=102,
+            access_token="gho_test_token",
+            repo_full_name="acme/repo",
+            team=team,
+            errors=errors,
+        )
+
+        # Verify commit is linked to PR
+        commit = Commit.objects.get(team=team, github_sha="abc123def456789012345678901234567890abcd")
+        self.assertEqual(commit.pull_request, pr)
+        self.assertEqual(commit.pull_request.github_pr_id, 102)
+
+    @patch("apps.integrations.services.github_sync.Github")
+    def test_sync_pr_commits_maps_author_by_github_id(self, mock_github_class):
+        """Test that sync_pr_commits maps commit author to TeamMember via github_id."""
+        from apps.integrations.services.github_sync import sync_pr_commits
+        from apps.metrics.factories import PullRequestFactory, TeamFactory, TeamMemberFactory
+        from apps.metrics.models import Commit
+
+        # Set up test data with specific github_id
+        team = TeamFactory()
+        member = TeamMemberFactory(team=team, github_id="99999", display_name="Jane Developer")
+        pr = PullRequestFactory(team=team, github_pr_id=103, github_repo="acme/repo", author=member)
+
+        # Mock commit with matching github_id
+        mock_commit = self._create_mock_commit(
+            sha="abc123def456789012345678901234567890abcd",
+            message="Implement feature Y",
+            author_id=99999,  # Matches member.github_id
+            author_login="jane",
+            committed_at="2025-01-01T10:00:00Z",
+            additions=100,
+            deletions=20,
+        )
+
+        # Mock PyGithub PR object
+        mock_pr = MagicMock()
+        mock_pr.get_commits.return_value = [mock_commit]
+
+        # Mock GitHub client chain
+        mock_github = MagicMock()
+        mock_repo = MagicMock()
+        mock_repo.get_pull.return_value = mock_pr
+        mock_github.get_repo.return_value = mock_repo
+        mock_github_class.return_value = mock_github
+
+        # Call sync function
+        errors = []
+        sync_pr_commits(
+            pr=pr,
+            pr_number=103,
+            access_token="gho_test_token",
+            repo_full_name="acme/repo",
+            team=team,
+            errors=errors,
+        )
+
+        # Verify commit author was mapped via github_id
+        commit = Commit.objects.get(team=team, github_sha="abc123def456789012345678901234567890abcd")
+        self.assertEqual(commit.author, member)
+        self.assertEqual(commit.author.github_id, "99999")
+        self.assertEqual(commit.author.display_name, "Jane Developer")
+
+    @patch("apps.integrations.services.github_sync.Github")
+    def test_sync_pr_commits_handles_unknown_author(self, mock_github_class):
+        """Test that sync_pr_commits sets author=None if GitHub user not found in team."""
+        from apps.integrations.services.github_sync import sync_pr_commits
+        from apps.metrics.factories import PullRequestFactory, TeamFactory, TeamMemberFactory
+        from apps.metrics.models import Commit
+
+        # Set up test data
+        team = TeamFactory()
+        member = TeamMemberFactory(team=team, github_id="12345")
+        pr = PullRequestFactory(team=team, github_pr_id=104, github_repo="acme/repo", author=member)
+
+        # Mock commit with unknown author (github_id not in team)
+        mock_commit = self._create_mock_commit(
+            sha="abc123def456789012345678901234567890abcd",
+            message="External contribution",
+            author_id=88888,  # Does NOT match any team member
+            author_login="external-contributor",
+            committed_at="2025-01-01T10:00:00Z",
+            additions=15,
+            deletions=3,
+        )
+
+        # Mock PyGithub PR object
+        mock_pr = MagicMock()
+        mock_pr.get_commits.return_value = [mock_commit]
+
+        # Mock GitHub client chain
+        mock_github = MagicMock()
+        mock_repo = MagicMock()
+        mock_repo.get_pull.return_value = mock_pr
+        mock_github.get_repo.return_value = mock_repo
+        mock_github_class.return_value = mock_github
+
+        # Call sync function
+        errors = []
+        sync_pr_commits(
+            pr=pr,
+            pr_number=104,
+            access_token="gho_test_token",
+            repo_full_name="acme/repo",
+            team=team,
+            errors=errors,
+        )
+
+        # Verify commit was created with author=None
+        commit = Commit.objects.get(team=team, github_sha="abc123def456789012345678901234567890abcd")
+        self.assertIsNone(commit.author)
+        self.assertEqual(commit.message, "External contribution")
+
+    @patch("apps.integrations.services.github_sync.Github")
+    def test_sync_pr_commits_handles_null_author(self, mock_github_class):
+        """Test that sync_pr_commits handles commits with no author (e.g., deleted accounts)."""
+        from apps.integrations.services.github_sync import sync_pr_commits
+        from apps.metrics.factories import PullRequestFactory, TeamFactory, TeamMemberFactory
+        from apps.metrics.models import Commit
+
+        # Set up test data
+        team = TeamFactory()
+        member = TeamMemberFactory(team=team, github_id="12345")
+        pr = PullRequestFactory(team=team, github_pr_id=105, github_repo="acme/repo", author=member)
+
+        # Mock commit with no author (author field is None)
+        mock_commit = self._create_mock_commit(
+            sha="abc123def456789012345678901234567890abcd",
+            message="Commit from deleted account",
+            author_id=None,  # No GitHub user
+            author_login=None,
+            committed_at="2025-01-01T10:00:00Z",
+            additions=5,
+            deletions=1,
+        )
+
+        # Mock PyGithub PR object
+        mock_pr = MagicMock()
+        mock_pr.get_commits.return_value = [mock_commit]
+
+        # Mock GitHub client chain
+        mock_github = MagicMock()
+        mock_repo = MagicMock()
+        mock_repo.get_pull.return_value = mock_pr
+        mock_github.get_repo.return_value = mock_repo
+        mock_github_class.return_value = mock_github
+
+        # Call sync function
+        errors = []
+        sync_pr_commits(
+            pr=pr,
+            pr_number=105,
+            access_token="gho_test_token",
+            repo_full_name="acme/repo",
+            team=team,
+            errors=errors,
+        )
+
+        # Verify commit was created with author=None
+        commit = Commit.objects.get(team=team, github_sha="abc123def456789012345678901234567890abcd")
+        self.assertIsNone(commit.author)
+
+    @patch("apps.integrations.services.github_sync.Github")
+    def test_sync_pr_commits_updates_existing_commits(self, mock_github_class):
+        """Test that sync_pr_commits is idempotent - updates existing commits."""
+        from apps.integrations.services.github_sync import sync_pr_commits
+        from apps.metrics.factories import CommitFactory, PullRequestFactory, TeamFactory, TeamMemberFactory
+        from apps.metrics.models import Commit
+
+        # Set up test data
+        team = TeamFactory()
+        member = TeamMemberFactory(team=team, github_id="12345")
+        pr = PullRequestFactory(team=team, github_pr_id=106, github_repo="acme/repo", author=member)
+
+        # Create existing commit with same SHA
+        CommitFactory(
+            team=team,
+            github_sha="abc123def456789012345678901234567890abcd",
+            github_repo="acme/repo",
+            message="Old message",
+            author=member,
+            additions=10,
+            deletions=5,
+            pull_request=pr,
+        )
+
+        # Mock commit with updated data
+        mock_commit = self._create_mock_commit(
+            sha="abc123def456789012345678901234567890abcd",  # Same SHA
+            message="Updated message",  # Different message
+            author_id=12345,
+            author_login="dev",
+            committed_at="2025-01-01T10:00:00Z",
+            additions=25,  # Different stats
+            deletions=8,
+        )
+
+        # Mock PyGithub PR object
+        mock_pr = MagicMock()
+        mock_pr.get_commits.return_value = [mock_commit]
+
+        # Mock GitHub client chain
+        mock_github = MagicMock()
+        mock_repo = MagicMock()
+        mock_repo.get_pull.return_value = mock_pr
+        mock_github.get_repo.return_value = mock_repo
+        mock_github_class.return_value = mock_github
+
+        # Call sync function
+        errors = []
+        sync_pr_commits(
+            pr=pr,
+            pr_number=106,
+            access_token="gho_test_token",
+            repo_full_name="acme/repo",
+            team=team,
+            errors=errors,
+        )
+
+        # Verify only one commit exists (updated, not duplicated)
+        self.assertEqual(
+            Commit.objects.filter(team=team, github_sha="abc123def456789012345678901234567890abcd").count(), 1
+        )
+
+        # Verify commit was updated
+        commit = Commit.objects.get(team=team, github_sha="abc123def456789012345678901234567890abcd")
+        self.assertEqual(commit.message, "Updated message")
+        self.assertEqual(commit.additions, 25)
+        self.assertEqual(commit.deletions, 8)
+
+
+class TestSyncPRCheckRuns(TestCase):
+    """Tests for syncing check runs from a GitHub pull request."""
+
+    def _create_mock_check_run(
+        self,
+        check_run_id: int,
+        name: str,
+        status: str,
+        conclusion: str | None = None,
+        started_at: str | None = None,
+        completed_at: str | None = None,
+    ) -> MagicMock:
+        """Create a mock PyGithub CheckRun object with all required attributes."""
+        mock_check_run = MagicMock()
+        mock_check_run.id = check_run_id
+        mock_check_run.name = name
+        mock_check_run.status = status
+        mock_check_run.conclusion = conclusion
+        mock_check_run.started_at = datetime.fromisoformat(started_at.replace("Z", "+00:00")) if started_at else None
+        mock_check_run.completed_at = (
+            datetime.fromisoformat(completed_at.replace("Z", "+00:00")) if completed_at else None
+        )
+        return mock_check_run
+
+    @patch("apps.integrations.services.github_sync.Github")
+    def test_sync_pr_check_runs_creates_records(self, mock_github_class):
+        """Test that sync_pr_check_runs creates PRCheckRun records from GitHub check runs."""
+        from apps.integrations.services.github_sync import sync_pr_check_runs
+        from apps.metrics.factories import PullRequestFactory, TeamFactory, TeamMemberFactory
+        from apps.metrics.models import PRCheckRun
+
+        # Set up test data
+        team = TeamFactory()
+        member = TeamMemberFactory(team=team, github_id="12345", display_name="John Dev")
+        pr = PullRequestFactory(
+            team=team,
+            github_pr_id=101,
+            github_repo="acme/repo",
+            author=member,
+        )
+
+        # Mock check runs
+        mock_check_run1 = self._create_mock_check_run(
+            check_run_id=11111,
+            name="pytest",
+            status="completed",
+            conclusion="success",
+            started_at="2025-01-01T10:00:00Z",
+            completed_at="2025-01-01T10:05:00Z",
+        )
+        mock_check_run2 = self._create_mock_check_run(
+            check_run_id=22222,
+            name="eslint",
+            status="completed",
+            conclusion="failure",
+            started_at="2025-01-01T10:00:00Z",
+            completed_at="2025-01-01T10:02:00Z",
+        )
+
+        # Mock check runs response
+        mock_check_runs = MagicMock()
+        mock_check_runs.__iter__ = MagicMock(return_value=iter([mock_check_run1, mock_check_run2]))
+
+        # Mock commit object
+        mock_commit = MagicMock()
+        mock_commit.get_check_runs.return_value = mock_check_runs
+
+        # Mock PyGithub chain
+        mock_github = MagicMock()
+        mock_repo = MagicMock()
+        mock_repo.get_commit.return_value = mock_commit
+        mock_github.get_repo.return_value = mock_repo
+        mock_github_class.return_value = mock_github
+
+        # Mock the PR to return head SHA
+        mock_pr = MagicMock()
+        mock_pr.head.sha = "abc123def456"
+        mock_repo.get_pull.return_value = mock_pr
+
+        # Call sync function
+        access_token = "gho_test_token"
+        errors = []
+        sync_pr_check_runs(
+            pr=pr,
+            pr_number=101,
+            access_token=access_token,
+            repo_full_name="acme/repo",
+            team=team,
+            errors=errors,
+        )
+
+        # Verify check runs were created
+        check_runs = PRCheckRun.objects.filter(team=team, pull_request=pr).order_by("github_check_run_id")
+        self.assertEqual(check_runs.count(), 2)
+
+        # Check first check run
+        check_run1 = check_runs[0]
+        self.assertEqual(check_run1.github_check_run_id, 11111)
+        self.assertEqual(check_run1.name, "pytest")
+        self.assertEqual(check_run1.status, "completed")
+        self.assertEqual(check_run1.conclusion, "success")
+        self.assertEqual(check_run1.pull_request, pr)
+        self.assertIsNotNone(check_run1.started_at)
+        self.assertIsNotNone(check_run1.completed_at)
+
+        # Check second check run
+        check_run2 = check_runs[1]
+        self.assertEqual(check_run2.github_check_run_id, 22222)
+        self.assertEqual(check_run2.name, "eslint")
+        self.assertEqual(check_run2.conclusion, "failure")
+
+    @patch("apps.integrations.services.github_sync.Github")
+    def test_sync_pr_check_runs_calculates_duration(self, mock_github_class):
+        """Test that sync_pr_check_runs calculates duration_seconds from started_at and completed_at."""
+        from apps.integrations.services.github_sync import sync_pr_check_runs
+        from apps.metrics.factories import PullRequestFactory, TeamFactory, TeamMemberFactory
+        from apps.metrics.models import PRCheckRun
+
+        # Set up test data
+        team = TeamFactory()
+        member = TeamMemberFactory(team=team, github_id="12345")
+        pr = PullRequestFactory(team=team, github_pr_id=102, github_repo="acme/repo", author=member)
+
+        # Mock check run with 5 minute duration (300 seconds)
+        mock_check_run = self._create_mock_check_run(
+            check_run_id=33333,
+            name="build",
+            status="completed",
+            conclusion="success",
+            started_at="2025-01-01T10:00:00Z",
+            completed_at="2025-01-01T10:05:00Z",  # 5 minutes later
+        )
+
+        # Mock check runs response
+        mock_check_runs = MagicMock()
+        mock_check_runs.__iter__ = MagicMock(return_value=iter([mock_check_run]))
+
+        # Mock commit object
+        mock_commit = MagicMock()
+        mock_commit.get_check_runs.return_value = mock_check_runs
+
+        # Mock PyGithub chain
+        mock_github = MagicMock()
+        mock_repo = MagicMock()
+        mock_repo.get_commit.return_value = mock_commit
+        mock_github.get_repo.return_value = mock_repo
+        mock_github_class.return_value = mock_github
+
+        # Mock the PR to return head SHA
+        mock_pr = MagicMock()
+        mock_pr.head.sha = "abc123def456"
+        mock_repo.get_pull.return_value = mock_pr
+
+        # Call sync function
+        errors = []
+        sync_pr_check_runs(
+            pr=pr,
+            pr_number=102,
+            access_token="gho_test_token",
+            repo_full_name="acme/repo",
+            team=team,
+            errors=errors,
+        )
+
+        # Verify duration was calculated correctly
+        check_run = PRCheckRun.objects.get(team=team, github_check_run_id=33333)
+        self.assertEqual(check_run.duration_seconds, 300)  # 5 minutes = 300 seconds
+
+    @patch("apps.integrations.services.github_sync.Github")
+    def test_sync_pr_check_runs_handles_pending_check(self, mock_github_class):
+        """Test that sync_pr_check_runs handles in_progress check runs with no conclusion."""
+        from apps.integrations.services.github_sync import sync_pr_check_runs
+        from apps.metrics.factories import PullRequestFactory, TeamFactory, TeamMemberFactory
+        from apps.metrics.models import PRCheckRun
+
+        # Set up test data
+        team = TeamFactory()
+        member = TeamMemberFactory(team=team, github_id="12345")
+        pr = PullRequestFactory(team=team, github_pr_id=103, github_repo="acme/repo", author=member)
+
+        # Mock check run that's still in progress
+        mock_check_run = self._create_mock_check_run(
+            check_run_id=44444,
+            name="deploy",
+            status="in_progress",
+            conclusion=None,  # No conclusion yet
+            started_at="2025-01-01T10:00:00Z",
+            completed_at=None,  # Not completed yet
+        )
+
+        # Mock check runs response
+        mock_check_runs = MagicMock()
+        mock_check_runs.__iter__ = MagicMock(return_value=iter([mock_check_run]))
+
+        # Mock commit object
+        mock_commit = MagicMock()
+        mock_commit.get_check_runs.return_value = mock_check_runs
+
+        # Mock PyGithub chain
+        mock_github = MagicMock()
+        mock_repo = MagicMock()
+        mock_repo.get_commit.return_value = mock_commit
+        mock_github.get_repo.return_value = mock_repo
+        mock_github_class.return_value = mock_github
+
+        # Mock the PR to return head SHA
+        mock_pr = MagicMock()
+        mock_pr.head.sha = "abc123def456"
+        mock_repo.get_pull.return_value = mock_pr
+
+        # Call sync function
+        errors = []
+        sync_pr_check_runs(
+            pr=pr,
+            pr_number=103,
+            access_token="gho_test_token",
+            repo_full_name="acme/repo",
+            team=team,
+            errors=errors,
+        )
+
+        # Verify check run was created with correct state
+        check_run = PRCheckRun.objects.get(team=team, github_check_run_id=44444)
+        self.assertEqual(check_run.status, "in_progress")
+        self.assertIsNone(check_run.conclusion)
+        self.assertIsNone(check_run.completed_at)
+        self.assertIsNone(check_run.duration_seconds)  # No duration if not completed
+
+    @patch("apps.integrations.services.github_sync.Github")
+    def test_sync_pr_check_runs_updates_existing(self, mock_github_class):
+        """Test that sync_pr_check_runs updates existing check runs (idempotent)."""
+        from apps.integrations.services.github_sync import sync_pr_check_runs
+        from apps.metrics.factories import PRCheckRunFactory, PullRequestFactory, TeamFactory, TeamMemberFactory
+        from apps.metrics.models import PRCheckRun
+
+        # Set up test data
+        team = TeamFactory()
+        member = TeamMemberFactory(team=team, github_id="12345")
+        pr = PullRequestFactory(team=team, github_pr_id=104, github_repo="acme/repo", author=member)
+
+        # Create existing check run that's in progress
+        PRCheckRunFactory(
+            team=team,
+            pull_request=pr,
+            github_check_run_id=55555,
+            name="integration-tests",
+            status="in_progress",
+            conclusion=None,
+            started_at=datetime(2025, 1, 1, 10, 0, 0, tzinfo=UTC),
+            completed_at=None,
+            duration_seconds=None,
+        )
+
+        # Mock updated check run (now completed)
+        mock_check_run = self._create_mock_check_run(
+            check_run_id=55555,  # Same ID
+            name="integration-tests",
+            status="completed",  # Updated status
+            conclusion="success",  # Now has conclusion
+            started_at="2025-01-01T10:00:00Z",
+            completed_at="2025-01-01T10:10:00Z",  # Now completed
+        )
+
+        # Mock check runs response
+        mock_check_runs = MagicMock()
+        mock_check_runs.__iter__ = MagicMock(return_value=iter([mock_check_run]))
+
+        # Mock commit object
+        mock_commit = MagicMock()
+        mock_commit.get_check_runs.return_value = mock_check_runs
+
+        # Mock PyGithub chain
+        mock_github = MagicMock()
+        mock_repo = MagicMock()
+        mock_repo.get_commit.return_value = mock_commit
+        mock_github.get_repo.return_value = mock_repo
+        mock_github_class.return_value = mock_github
+
+        # Mock the PR to return head SHA
+        mock_pr = MagicMock()
+        mock_pr.head.sha = "abc123def456"
+        mock_repo.get_pull.return_value = mock_pr
+
+        # Call sync function
+        errors = []
+        sync_pr_check_runs(
+            pr=pr,
+            pr_number=104,
+            access_token="gho_test_token",
+            repo_full_name="acme/repo",
+            team=team,
+            errors=errors,
+        )
+
+        # Verify only one check run exists (not duplicated)
+        self.assertEqual(PRCheckRun.objects.filter(team=team, github_check_run_id=55555).count(), 1)
+
+        # Verify check run was updated
+        check_run = PRCheckRun.objects.get(team=team, github_check_run_id=55555)
+        self.assertEqual(check_run.status, "completed")
+        self.assertEqual(check_run.conclusion, "success")
+        self.assertIsNotNone(check_run.completed_at)
+        self.assertEqual(check_run.duration_seconds, 600)  # 10 minutes = 600 seconds
+
+
+class TestSyncPRFiles(TestCase):
+    """Tests for syncing files changed in a pull request."""
+
+    def _create_mock_file(
+        self,
+        filename: str,
+        status: str,
+        additions: int,
+        deletions: int,
+        changes: int,
+    ) -> MagicMock:
+        """Create a mock PyGithub File object with all required attributes."""
+        mock_file = MagicMock()
+        mock_file.filename = filename
+        mock_file.status = status
+        mock_file.additions = additions
+        mock_file.deletions = deletions
+        mock_file.changes = changes
+        return mock_file
+
+    @patch("apps.integrations.services.github_sync.Github")
+    def test_sync_pr_files_creates_records(self, mock_github_class):
+        """Test that sync_pr_files creates PRFile records for each file changed in a PR."""
+        from apps.integrations.services.github_sync import sync_pr_files
+        from apps.metrics.factories import PullRequestFactory, TeamFactory, TeamMemberFactory
+        from apps.metrics.models import PRFile
+
+        # Set up test data
+        team = TeamFactory()
+        member = TeamMemberFactory(team=team, github_id="12345", display_name="John Dev")
+        pr = PullRequestFactory(
+            team=team,
+            github_pr_id=101,
+            github_repo="acme/repo",
+            author=member,
+        )
+
+        # Mock files from GitHub API
+        mock_file1 = self._create_mock_file(
+            filename="src/api/views.py",
+            status="modified",
+            additions=25,
+            deletions=10,
+            changes=35,
+        )
+        mock_file2 = self._create_mock_file(
+            filename="tests/test_views.py",
+            status="added",
+            additions=50,
+            deletions=0,
+            changes=50,
+        )
+        mock_file3 = self._create_mock_file(
+            filename="README.md",
+            status="modified",
+            additions=5,
+            deletions=2,
+            changes=7,
+        )
+
+        # Mock PyGithub PR object and API chain
+        mock_github_pr = MagicMock()
+        mock_github_pr.get_files.return_value = [mock_file1, mock_file2, mock_file3]
+
+        mock_repo = MagicMock()
+        mock_repo.get_pull.return_value = mock_github_pr
+
+        mock_github_instance = MagicMock()
+        mock_github_instance.get_repo.return_value = mock_repo
+        mock_github_class.return_value = mock_github_instance
+
+        # Call sync function
+        errors = []
+        files_synced = sync_pr_files(
+            pr=pr,
+            pr_number=101,
+            access_token="fake-token",
+            repo_full_name="acme/repo",
+            team=team,
+            errors=errors,
+        )
+
+        # Verify files were created
+        files = PRFile.objects.filter(team=team, pull_request=pr).order_by("filename")
+        self.assertEqual(files.count(), 3)
+        self.assertEqual(files_synced, 3)
+        self.assertEqual(errors, [])
+
+        # Check first file (README.md)
+        file1 = files[0]
+        self.assertEqual(file1.filename, "README.md")
+        self.assertEqual(file1.status, "modified")
+        self.assertEqual(file1.additions, 5)
+        self.assertEqual(file1.deletions, 2)
+        self.assertEqual(file1.changes, 7)
+        self.assertEqual(file1.pull_request, pr)
+
+        # Check second file (src/api/views.py)
+        file2 = files[1]
+        self.assertEqual(file2.filename, "src/api/views.py")
+        self.assertEqual(file2.status, "modified")
+        self.assertEqual(file2.additions, 25)
+        self.assertEqual(file2.deletions, 10)
+
+        # Check third file (tests/test_views.py)
+        file3 = files[2]
+        self.assertEqual(file3.filename, "tests/test_views.py")
+        self.assertEqual(file3.status, "added")
+        self.assertEqual(file3.additions, 50)
+        self.assertEqual(file3.deletions, 0)
+
+        # Verify API calls were made
+        mock_github_class.assert_called_once_with("fake-token")
+        mock_github_instance.get_repo.assert_called_once_with("acme/repo")
+        mock_repo.get_pull.assert_called_once_with(101)
+        mock_github_pr.get_files.assert_called_once()
+
+    @patch("apps.integrations.services.github_sync.Github")
+    def test_sync_pr_files_categorizes_files(self, mock_github_class):
+        """Test that sync_pr_files uses categorize_file() to set file_category."""
+        from apps.integrations.services.github_sync import sync_pr_files
+        from apps.metrics.factories import PullRequestFactory, TeamFactory, TeamMemberFactory
+        from apps.metrics.models import PRFile
+
+        # Set up test data
+        team = TeamFactory()
+        member = TeamMemberFactory(team=team, github_id="12345")
+        pr = PullRequestFactory(team=team, github_pr_id=102, github_repo="acme/repo", author=member)
+
+        # Mock files with different categories
+        mock_files = [
+            self._create_mock_file("src/views.py", "modified", 10, 5, 15),  # backend
+            self._create_mock_file("src/components/Header.tsx", "added", 20, 0, 20),  # frontend
+            self._create_mock_file("tests/test_api.py", "modified", 15, 3, 18),  # test
+            self._create_mock_file("README.md", "modified", 5, 1, 6),  # docs
+            self._create_mock_file("config.yaml", "added", 10, 0, 10),  # config
+            self._create_mock_file("data.csv", "added", 5, 0, 5),  # other
+        ]
+
+        # Mock PyGithub PR object and API chain
+        mock_github_pr = MagicMock()
+        mock_github_pr.get_files.return_value = mock_files
+
+        mock_repo = MagicMock()
+        mock_repo.get_pull.return_value = mock_github_pr
+
+        mock_github_instance = MagicMock()
+        mock_github_instance.get_repo.return_value = mock_repo
+        mock_github_class.return_value = mock_github_instance
+
+        # Call sync function
+        errors = []
+        sync_pr_files(
+            pr=pr,
+            pr_number=102,
+            access_token="fake-token",
+            repo_full_name="acme/repo",
+            team=team,
+            errors=errors,
+        )
+
+        # Verify files were categorized correctly using PRFile.categorize_file()
+        files = PRFile.objects.filter(team=team, pull_request=pr)
+        self.assertEqual(files.count(), 6)
+
+        # Check categories match what categorize_file() returns
+        backend_file = files.get(filename="src/views.py")
+        self.assertEqual(backend_file.file_category, "backend")
+
+        frontend_file = files.get(filename="src/components/Header.tsx")
+        self.assertEqual(frontend_file.file_category, "frontend")
+
+        test_file = files.get(filename="tests/test_api.py")
+        self.assertEqual(test_file.file_category, "test")
+
+        docs_file = files.get(filename="README.md")
+        self.assertEqual(docs_file.file_category, "docs")
+
+        config_file = files.get(filename="config.yaml")
+        self.assertEqual(config_file.file_category, "config")
+
+        other_file = files.get(filename="data.csv")
+        self.assertEqual(other_file.file_category, "other")
+
+    @patch("apps.integrations.services.github_sync.Github")
+    def test_sync_pr_files_updates_existing(self, mock_github_class):
+        """Test that sync_pr_files updates existing PRFile records on re-sync."""
+        from apps.integrations.factories import PRFileFactory
+        from apps.integrations.services.github_sync import sync_pr_files
+        from apps.metrics.factories import PullRequestFactory, TeamFactory, TeamMemberFactory
+        from apps.metrics.models import PRFile
+
+        # Set up test data
+        team = TeamFactory()
+        member = TeamMemberFactory(team=team, github_id="12345")
+        pr = PullRequestFactory(team=team, github_pr_id=103, github_repo="acme/repo", author=member)
+
+        # Create existing file record (from previous sync)
+        PRFileFactory(
+            team=team,
+            pull_request=pr,
+            filename="src/utils.py",
+            status="added",
+            additions=20,
+            deletions=0,
+            changes=20,
+            file_category="backend",
+        )
+
+        # Mock updated file (author added more code)
+        mock_file = self._create_mock_file(
+            filename="src/utils.py",  # Same filename
+            status="modified",  # Status changed from 'added' to 'modified'
+            additions=35,  # More additions
+            deletions=5,  # Now has deletions
+            changes=40,  # More changes
+        )
+
+        # Mock PyGithub PR object and API chain
+        mock_github_pr = MagicMock()
+        mock_github_pr.get_files.return_value = [mock_file]
+
+        mock_repo = MagicMock()
+        mock_repo.get_pull.return_value = mock_github_pr
+
+        mock_github_instance = MagicMock()
+        mock_github_instance.get_repo.return_value = mock_repo
+        mock_github_class.return_value = mock_github_instance
+
+        # Call sync function
+        errors = []
+        files_synced = sync_pr_files(
+            pr=pr,
+            pr_number=103,
+            access_token="fake-token",
+            repo_full_name="acme/repo",
+            team=team,
+            errors=errors,
+        )
+
+        # Verify only one file exists (not duplicated)
+        self.assertEqual(PRFile.objects.filter(team=team, filename="src/utils.py").count(), 1)
+        self.assertEqual(files_synced, 1)
+
+        # Verify file was updated
+        file = PRFile.objects.get(team=team, filename="src/utils.py")
+        self.assertEqual(file.status, "modified")
+        self.assertEqual(file.additions, 35)
+        self.assertEqual(file.deletions, 5)
+        self.assertEqual(file.changes, 40)
+        self.assertEqual(file.file_category, "backend")  # Category still correct
+
+    @patch("apps.integrations.services.github_sync.Github")
+    def test_sync_pr_files_handles_api_error(self, mock_github_class):
+        """Test that sync_pr_files accumulates errors on API failure."""
+        from github import GithubException
+
+        from apps.integrations.services.github_sync import sync_pr_files
+        from apps.metrics.factories import PullRequestFactory, TeamFactory, TeamMemberFactory
+        from apps.metrics.models import PRFile
+
+        # Set up test data
+        team = TeamFactory()
+        member = TeamMemberFactory(team=team, github_id="12345")
+        pr = PullRequestFactory(team=team, github_pr_id=104, github_repo="acme/repo", author=member)
+
+        # Mock PyGithub to raise exception when getting PR
+        mock_repo = MagicMock()
+        mock_repo.get_pull.side_effect = GithubException(404, {"message": "Not Found"})
+
+        mock_github_instance = MagicMock()
+        mock_github_instance.get_repo.return_value = mock_repo
+        mock_github_class.return_value = mock_github_instance
+
+        # Call sync function
+        errors = []
+        files_synced = sync_pr_files(
+            pr=pr,
+            pr_number=104,
+            access_token="fake-token",
+            repo_full_name="acme/repo",
+            team=team,
+            errors=errors,
+        )
+
+        # Verify error was accumulated (not raised)
+        self.assertEqual(files_synced, 0)
+        self.assertEqual(len(errors), 1)
+        self.assertIn("104", errors[0])
+
+        # Verify no files were created
+        self.assertEqual(PRFile.objects.filter(team=team, pull_request=pr).count(), 0)
+
+
+class TestSyncRepositoryDeployments(TestCase):
+    """Tests for syncing deployments from a GitHub repository."""
+
+    def _create_mock_deployment(
+        self,
+        deployment_id: int,
+        environment: str,
+        creator_id: int | None = None,
+        created_at: str = "2025-01-15T10:00:00Z",
+        sha: str = "a" * 40,
+    ) -> MagicMock:
+        """Create a mock PyGithub Deployment object with all required attributes."""
+        mock_deployment = MagicMock()
+        mock_deployment.id = deployment_id
+        mock_deployment.environment = environment
+        mock_deployment.created_at = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+        mock_deployment.sha = sha
+
+        # Mock creator
+        if creator_id:
+            mock_creator = MagicMock()
+            mock_creator.id = creator_id
+            mock_deployment.creator = mock_creator
+        else:
+            mock_deployment.creator = None
+
+        return mock_deployment
+
+    def _create_mock_deployment_status(
+        self,
+        state: str,
+        created_at: str = "2025-01-15T10:05:00Z",
+    ) -> MagicMock:
+        """Create a mock PyGithub DeploymentStatus object."""
+        mock_status = MagicMock()
+        mock_status.state = state
+        mock_status.created_at = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+        return mock_status
+
+    @patch("apps.integrations.services.github_sync.Github")
+    def test_sync_repository_deployments_creates_records(self, mock_github_class):
+        """Test that sync_repository_deployments creates Deployment records from GitHub deployments."""
+        from apps.integrations.services.github_sync import sync_repository_deployments
+        from apps.metrics.factories import TeamFactory, TeamMemberFactory
+        from apps.metrics.models import Deployment
+
+        # Set up test data
+        team = TeamFactory()
+        member = TeamMemberFactory(team=team, github_id="12345", display_name="Deploy Bot")
+
+        # Mock deployments
+        mock_deployment1 = self._create_mock_deployment(
+            deployment_id=1001,
+            environment="production",
+            creator_id=12345,
+            created_at="2025-01-15T10:00:00Z",
+        )
+        mock_deployment2 = self._create_mock_deployment(
+            deployment_id=1002,
+            environment="staging",
+            creator_id=12345,
+            created_at="2025-01-15T11:00:00Z",
+        )
+
+        # Mock deployment statuses (first status is latest)
+        mock_status1 = self._create_mock_deployment_status(state="success", created_at="2025-01-15T10:05:00Z")
+        mock_status2 = self._create_mock_deployment_status(state="pending", created_at="2025-01-15T11:02:00Z")
+
+        mock_deployment1.get_statuses.return_value = [mock_status1]
+        mock_deployment2.get_statuses.return_value = [mock_status2]
+
+        # Mock PyGithub repository and API chain
+        mock_repo = MagicMock()
+        mock_repo.get_deployments.return_value = [mock_deployment1, mock_deployment2]
+
+        mock_github_instance = MagicMock()
+        mock_github_instance.get_repo.return_value = mock_repo
+        mock_github_class.return_value = mock_github_instance
+
+        # Call sync function
+        errors = []
+        deployments_synced = sync_repository_deployments(
+            repo_full_name="acme/repo",
+            access_token="fake-token",
+            team=team,
+            errors=errors,
+        )
+
+        # Verify deployments were created
+        self.assertEqual(deployments_synced, 2)
+        self.assertEqual(len(errors), 0)
+
+        # Verify database records
+        deployment1 = Deployment.objects.get(team=team, github_deployment_id=1001)
+        self.assertEqual(deployment1.github_repo, "acme/repo")
+        self.assertEqual(deployment1.environment, "production")
+        self.assertEqual(deployment1.status, "success")
+        self.assertEqual(deployment1.creator, member)
+        self.assertEqual(deployment1.deployed_at, datetime.fromisoformat("2025-01-15T10:00:00+00:00"))
+        self.assertEqual(deployment1.sha, "a" * 40)  # Default SHA from mock
+
+        deployment2 = Deployment.objects.get(team=team, github_deployment_id=1002)
+        self.assertEqual(deployment2.environment, "staging")
+        self.assertEqual(deployment2.status, "pending")
+        self.assertEqual(deployment2.sha, "a" * 40)  # Default SHA from mock
+
+        # Verify API calls
+        mock_github_class.assert_called_once_with("fake-token")
+        mock_github_instance.get_repo.assert_called_once_with("acme/repo")
+        mock_repo.get_deployments.assert_called_once()
+        mock_deployment1.get_statuses.assert_called_once()
+        mock_deployment2.get_statuses.assert_called_once()
+
+    @patch("apps.integrations.services.github_sync.Github")
+    def test_sync_repository_deployments_gets_latest_status(self, mock_github_class):
+        """Test that sync_repository_deployments uses the first status from get_statuses()."""
+        from apps.integrations.services.github_sync import sync_repository_deployments
+        from apps.metrics.factories import TeamFactory
+        from apps.metrics.models import Deployment
+
+        # Set up test data
+        team = TeamFactory()
+
+        # Mock deployment with multiple statuses (first is latest)
+        mock_deployment = self._create_mock_deployment(
+            deployment_id=2001,
+            environment="production",
+            created_at="2025-01-16T14:00:00Z",
+        )
+
+        # Multiple statuses - first one should be used
+        mock_status_latest = self._create_mock_deployment_status(state="success", created_at="2025-01-16T14:10:00Z")
+        mock_status_older = self._create_mock_deployment_status(state="pending", created_at="2025-01-16T14:05:00Z")
+        mock_deployment.get_statuses.return_value = [mock_status_latest, mock_status_older]
+
+        # Mock PyGithub repository
+        mock_repo = MagicMock()
+        mock_repo.get_deployments.return_value = [mock_deployment]
+
+        mock_github_instance = MagicMock()
+        mock_github_instance.get_repo.return_value = mock_repo
+        mock_github_class.return_value = mock_github_instance
+
+        # Call sync function
+        errors = []
+        sync_repository_deployments(
+            repo_full_name="acme/repo",
+            access_token="fake-token",
+            team=team,
+            errors=errors,
+        )
+
+        # Verify the latest status (first in list) was used
+        deployment = Deployment.objects.get(team=team, github_deployment_id=2001)
+        self.assertEqual(deployment.status, "success")  # Not "pending"
+
+    @patch("apps.integrations.services.github_sync.Github")
+    def test_sync_repository_deployments_maps_creator(self, mock_github_class):
+        """Test that sync_repository_deployments links deployment creator to TeamMember."""
+        from apps.integrations.services.github_sync import sync_repository_deployments
+        from apps.metrics.factories import TeamFactory, TeamMemberFactory
+        from apps.metrics.models import Deployment
+
+        # Set up test data with a team member
+        team = TeamFactory()
+        creator = TeamMemberFactory(team=team, github_id="99999", display_name="Jane Deployer")
+
+        # Mock deployment with creator
+        mock_deployment = self._create_mock_deployment(
+            deployment_id=3001,
+            environment="production",
+            creator_id=99999,
+            created_at="2025-01-17T09:00:00Z",
+        )
+
+        # Mock status
+        mock_status = self._create_mock_deployment_status(state="success")
+        mock_deployment.get_statuses.return_value = [mock_status]
+
+        # Mock PyGithub repository
+        mock_repo = MagicMock()
+        mock_repo.get_deployments.return_value = [mock_deployment]
+
+        mock_github_instance = MagicMock()
+        mock_github_instance.get_repo.return_value = mock_repo
+        mock_github_class.return_value = mock_github_instance
+
+        # Call sync function
+        errors = []
+        sync_repository_deployments(
+            repo_full_name="acme/repo",
+            access_token="fake-token",
+            team=team,
+            errors=errors,
+        )
+
+        # Verify creator was linked
+        deployment = Deployment.objects.get(team=team, github_deployment_id=3001)
+        self.assertEqual(deployment.creator, creator)
+        self.assertEqual(deployment.creator.display_name, "Jane Deployer")
+
+    @patch("apps.integrations.services.github_sync.Github")
+    def test_sync_repository_deployments_maps_creator_handles_missing_member(self, mock_github_class):
+        """Test that sync_repository_deployments handles deployments when creator is not a TeamMember."""
+        from apps.integrations.services.github_sync import sync_repository_deployments
+        from apps.metrics.factories import TeamFactory
+        from apps.metrics.models import Deployment
+
+        # Set up test data (no team member with github_id=88888)
+        team = TeamFactory()
+
+        # Mock deployment with creator that's not in our team
+        mock_deployment = self._create_mock_deployment(
+            deployment_id=4001,
+            environment="production",
+            creator_id=88888,  # Not a team member
+            created_at="2025-01-18T12:00:00Z",
+        )
+
+        # Mock status
+        mock_status = self._create_mock_deployment_status(state="success")
+        mock_deployment.get_statuses.return_value = [mock_status]
+
+        # Mock PyGithub repository
+        mock_repo = MagicMock()
+        mock_repo.get_deployments.return_value = [mock_deployment]
+
+        mock_github_instance = MagicMock()
+        mock_github_instance.get_repo.return_value = mock_repo
+        mock_github_class.return_value = mock_github_instance
+
+        # Call sync function
+        errors = []
+        sync_repository_deployments(
+            repo_full_name="acme/repo",
+            access_token="fake-token",
+            team=team,
+            errors=errors,
+        )
+
+        # Verify deployment was created with no creator
+        deployment = Deployment.objects.get(team=team, github_deployment_id=4001)
+        self.assertIsNone(deployment.creator)
+
+    @patch("apps.integrations.services.github_sync.Github")
+    def test_sync_repository_deployments_updates_existing(self, mock_github_class):
+        """Test that sync_repository_deployments updates existing records on re-sync."""
+        from apps.integrations.services.github_sync import sync_repository_deployments
+        from apps.metrics.factories import TeamFactory
+        from apps.metrics.models import Deployment
+
+        # Set up test data
+        team = TeamFactory()
+
+        # Create an existing deployment record with "pending" status
+        Deployment.objects.create(
+            team=team,
+            github_deployment_id=5001,
+            github_repo="acme/repo",
+            environment="production",
+            status="pending",
+            deployed_at=datetime.fromisoformat("2025-01-19T08:00:00+00:00"),
+        )
+
+        # Mock deployment with updated status
+        mock_deployment = self._create_mock_deployment(
+            deployment_id=5001,
+            environment="production",
+            created_at="2025-01-19T08:00:00Z",
+        )
+
+        # Mock status showing success now
+        mock_status = self._create_mock_deployment_status(state="success", created_at="2025-01-19T08:10:00Z")
+        mock_deployment.get_statuses.return_value = [mock_status]
+
+        # Mock PyGithub repository
+        mock_repo = MagicMock()
+        mock_repo.get_deployments.return_value = [mock_deployment]
+
+        mock_github_instance = MagicMock()
+        mock_github_instance.get_repo.return_value = mock_repo
+        mock_github_class.return_value = mock_github_instance
+
+        # Verify initial state
+        self.assertEqual(Deployment.objects.filter(team=team, github_deployment_id=5001).count(), 1)
+        initial_deployment = Deployment.objects.get(team=team, github_deployment_id=5001)
+        self.assertEqual(initial_deployment.status, "pending")
+
+        # Call sync function
+        errors = []
+        deployments_synced = sync_repository_deployments(
+            repo_full_name="acme/repo",
+            access_token="fake-token",
+            team=team,
+            errors=errors,
+        )
+
+        # Verify deployment was updated (not duplicated)
+        self.assertEqual(deployments_synced, 1)
+        self.assertEqual(Deployment.objects.filter(team=team, github_deployment_id=5001).count(), 1)
+
+        updated_deployment = Deployment.objects.get(team=team, github_deployment_id=5001)
+        self.assertEqual(updated_deployment.status, "success")  # Updated from "pending"
+
+    @patch("apps.integrations.services.github_sync.Github")
+    def test_sync_repository_deployments_handles_api_error(self, mock_github_class):
+        """Test that sync_repository_deployments accumulates errors on API failure."""
+        from github import GithubException
+
+        from apps.integrations.services.github_sync import sync_repository_deployments
+        from apps.metrics.factories import TeamFactory
+        from apps.metrics.models import Deployment
+
+        # Set up test data
+        team = TeamFactory()
+
+        # Mock PyGithub to raise exception when getting deployments
+        mock_repo = MagicMock()
+        mock_repo.get_deployments.side_effect = GithubException(403, {"message": "Forbidden"})
+
+        mock_github_instance = MagicMock()
+        mock_github_instance.get_repo.return_value = mock_repo
+        mock_github_class.return_value = mock_github_instance
+
+        # Call sync function
+        errors = []
+        deployments_synced = sync_repository_deployments(
+            repo_full_name="acme/repo",
+            access_token="fake-token",
+            team=team,
+            errors=errors,
+        )
+
+        # Verify error was accumulated (not raised)
+        self.assertEqual(deployments_synced, 0)
+        self.assertEqual(len(errors), 1)
+        self.assertIn("acme/repo", errors[0])
+
+        # Verify no deployments were created
+        self.assertEqual(Deployment.objects.filter(team=team).count(), 0)

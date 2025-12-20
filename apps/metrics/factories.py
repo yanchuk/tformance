@@ -30,7 +30,10 @@ from apps.teams.models import Team
 from .models import (
     AIUsageDaily,
     Commit,
+    Deployment,
     JiraIssue,
+    PRCheckRun,
+    PRComment,
     PRReview,
     PRSurvey,
     PRSurveyReview,
@@ -123,6 +126,68 @@ class PRReviewFactory(DjangoModelFactory):
     )
 
 
+class PRCommentFactory(DjangoModelFactory):
+    """Factory for PRComment model."""
+
+    class Meta:
+        model = PRComment
+
+    team = factory.SubFactory(TeamFactory)
+    pull_request = factory.SubFactory(PullRequestFactory, team=factory.SelfAttribute("..team"))
+    github_comment_id = factory.Sequence(lambda n: 200000 + n)
+    author = factory.SubFactory(TeamMemberFactory, team=factory.SelfAttribute("..team"))
+    body = factory.Faker("paragraph", nb_sentences=3)
+    comment_type = factory.Iterator(["issue", "issue", "review"])  # 66% issue comments
+    path = factory.LazyAttribute(
+        lambda o: factory.Iterator(["src/app.py", "src/utils.py", "README.md", "tests/test_models.py"]).evaluate(
+            None, None, None
+        )
+        if o.comment_type == "review"
+        else None
+    )
+    line = factory.LazyAttribute(lambda o: random.randint(1, 500) if o.comment_type == "review" else None)
+    in_reply_to_id = None  # Most comments are not replies
+    comment_created_at = factory.LazyAttribute(
+        lambda o: o.pull_request.pr_created_at + timedelta(hours=random.randint(1, 48))
+        if o.pull_request.pr_created_at
+        else timezone.now()
+    )
+    comment_updated_at = factory.LazyAttribute(
+        lambda o: o.comment_created_at + timedelta(hours=random.randint(0, 12))
+        if random.random() < 0.2
+        else None  # 20% of comments are edited
+    )
+
+
+class PRCheckRunFactory(DjangoModelFactory):
+    """Factory for PRCheckRun model."""
+
+    class Meta:
+        model = PRCheckRun
+
+    team = factory.SubFactory(TeamFactory)
+    pull_request = factory.SubFactory(PullRequestFactory, team=factory.SelfAttribute("..team"))
+    github_check_run_id = factory.Sequence(lambda n: 100000 + n)
+    name = factory.Iterator(["pytest", "eslint", "build", "deploy", "type-check", "integration-tests"])
+    status = factory.Iterator(["completed", "completed", "completed", "in_progress"])
+    conclusion = factory.LazyAttribute(
+        lambda o: random.choice(["success", "success", "success", "failure", "skipped"])
+        if o.status == "completed"
+        else None
+    )
+    started_at = factory.LazyAttribute(
+        lambda o: o.pull_request.pr_created_at + timedelta(minutes=random.randint(1, 30))
+        if o.pull_request.pr_created_at
+        else timezone.now() - timedelta(minutes=random.randint(1, 30))
+    )
+    completed_at = factory.LazyAttribute(
+        lambda o: o.started_at + timedelta(minutes=random.randint(1, 15)) if o.status == "completed" else None
+    )
+    duration_seconds = factory.LazyAttribute(
+        lambda o: int((o.completed_at - o.started_at).total_seconds()) if o.completed_at and o.started_at else None
+    )
+
+
 class CommitFactory(DjangoModelFactory):
     """Factory for Commit model."""
 
@@ -138,6 +203,23 @@ class CommitFactory(DjangoModelFactory):
     additions = factory.LazyFunction(lambda: random.randint(5, 200))
     deletions = factory.LazyFunction(lambda: random.randint(2, 100))
     pull_request = None  # Often standalone commits
+
+
+class DeploymentFactory(DjangoModelFactory):
+    """Factory for Deployment model."""
+
+    class Meta:
+        model = Deployment
+
+    team = factory.SubFactory(TeamFactory)
+    github_deployment_id = factory.Sequence(lambda n: 100000 + n)
+    github_repo = factory.Iterator(["org/frontend", "org/backend", "org/api", "org/infra"])
+    environment = factory.Iterator(["production", "production", "staging", "development"])  # 50% production
+    status = factory.Iterator(["success", "success", "success", "failure", "pending"])  # 60% success
+    creator = factory.SubFactory(TeamMemberFactory, team=factory.SelfAttribute("..team"))
+    deployed_at = factory.LazyFunction(lambda: timezone.now() - timedelta(hours=random.randint(1, 168)))
+    pull_request = None  # Optional FK
+    sha = factory.LazyFunction(lambda: "".join(random.choices("0123456789abcdef", k=40)))
 
 
 class JiraIssueFactory(DjangoModelFactory):

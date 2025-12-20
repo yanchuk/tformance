@@ -7,7 +7,11 @@ from django.utils import timezone as django_timezone
 from apps.metrics.models import (
     AIUsageDaily,
     Commit,
+    Deployment,
     JiraIssue,
+    PRCheckRun,
+    PRComment,
+    PRFile,
     PRReview,
     PRSurvey,
     PRSurveyReview,
@@ -1968,3 +1972,675 @@ class TestPullRequestFactory(TestCase):
         pr = PullRequestFactory()
         self.assertEqual(pr.jira_key, "")
         self.assertIsNotNone(pr.pk)
+
+
+class TestPRCheckRunModel(TestCase):
+    """Tests for PRCheckRun model."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.team = Team.objects.create(name="Test Team", slug="test-team")
+        self.author = TeamMember.objects.create(team=self.team, display_name="Author", github_username="author")
+        self.pull_request = PullRequest.objects.create(
+            team=self.team, github_pr_id=1, github_repo="org/repo", state="open", author=self.author
+        )
+
+    def tearDown(self):
+        """Clean up team context."""
+        unset_current_team()
+
+    def test_pr_check_run_creation(self):
+        """Test that PRCheckRun can be created with required fields."""
+        check_run = PRCheckRun.objects.create(
+            team=self.team,
+            github_check_run_id=123456789,
+            pull_request=self.pull_request,
+            name="pytest",
+            status="completed",
+            conclusion="success",
+        )
+        self.assertEqual(check_run.github_check_run_id, 123456789)
+        self.assertEqual(check_run.pull_request, self.pull_request)
+        self.assertEqual(check_run.name, "pytest")
+        self.assertEqual(check_run.status, "completed")
+        self.assertEqual(check_run.conclusion, "success")
+        self.assertIsNotNone(check_run.pk)
+
+    def test_pr_check_run_pull_request_relationship(self):
+        """Test that PRCheckRun has correct foreign key relationship with PullRequest."""
+        check_run1 = PRCheckRun.objects.create(
+            team=self.team,
+            github_check_run_id=111,
+            pull_request=self.pull_request,
+            name="eslint",
+            status="completed",
+        )
+        check_run2 = PRCheckRun.objects.create(
+            team=self.team,
+            github_check_run_id=222,
+            pull_request=self.pull_request,
+            name="build",
+            status="in_progress",
+        )
+
+        # Test forward relationship
+        self.assertEqual(check_run1.pull_request, self.pull_request)
+        self.assertEqual(check_run2.pull_request, self.pull_request)
+
+        # Test reverse relationship via related_name='check_runs'
+        check_runs = self.pull_request.check_runs.all()
+        self.assertEqual(check_runs.count(), 2)
+        self.assertIn(check_run1, check_runs)
+        self.assertIn(check_run2, check_runs)
+
+    def test_pr_check_run_unique_constraint(self):
+        """Test that unique constraint on (team, github_check_run_id) is enforced."""
+        PRCheckRun.objects.create(
+            team=self.team,
+            github_check_run_id=999,
+            pull_request=self.pull_request,
+            name="test-check",
+            status="queued",
+        )
+        # Attempt to create another check run with same github_check_run_id in same team
+        with self.assertRaises(IntegrityError):
+            PRCheckRun.objects.create(
+                team=self.team,
+                github_check_run_id=999,
+                pull_request=self.pull_request,
+                name="different-check",
+                status="completed",
+            )
+
+    def test_pr_check_run_str_representation(self):
+        """Test that PRCheckRun.__str__ returns sensible format."""
+        check_run = PRCheckRun.objects.create(
+            team=self.team,
+            github_check_run_id=555,
+            pull_request=self.pull_request,
+            name="pytest",
+            status="completed",
+            conclusion="failure",
+        )
+        str_repr = str(check_run)
+        # Should contain key identifying information
+        self.assertIn("pytest", str_repr)
+        # Should indicate it's a check run
+        self.assertTrue(len(str_repr) > 0)
+
+
+class TestPRFileModel(TestCase):
+    """Tests for PRFile model."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.team = Team.objects.create(name="Test Team", slug="test-team")
+        self.author = TeamMember.objects.create(
+            team=self.team,
+            display_name="John Doe",
+            github_username="johndoe",
+            github_id="123",
+        )
+        self.pull_request = PullRequest.objects.create(
+            team=self.team,
+            github_pr_id=1,
+            github_repo="org/repo",
+            title="Test PR",
+            author=self.author,
+            state="open",
+            pr_created_at=django_timezone.now(),
+        )
+
+    def tearDown(self):
+        """Clean up team context."""
+        unset_current_team()
+
+    def test_pr_file_creation(self):
+        """Test that PRFile can be created with all required fields."""
+        pr_file = PRFile.objects.create(
+            team=self.team,
+            pull_request=self.pull_request,
+            filename="src/components/Button.tsx",
+            status="modified",
+            additions=10,
+            deletions=5,
+            changes=15,
+            file_category="frontend",
+        )
+        self.assertEqual(pr_file.filename, "src/components/Button.tsx")
+        self.assertEqual(pr_file.status, "modified")
+        self.assertEqual(pr_file.additions, 10)
+        self.assertEqual(pr_file.deletions, 5)
+        self.assertEqual(pr_file.changes, 15)
+        self.assertEqual(pr_file.file_category, "frontend")
+        self.assertIsNotNone(pr_file.pk)
+
+    def test_pr_file_pull_request_relationship(self):
+        """Test that PRFile has correct foreign key relationship with PullRequest."""
+        file1 = PRFile.objects.create(
+            team=self.team,
+            pull_request=self.pull_request,
+            filename="src/app.py",
+            status="modified",
+            additions=20,
+            deletions=10,
+            changes=30,
+            file_category="backend",
+        )
+        file2 = PRFile.objects.create(
+            team=self.team,
+            pull_request=self.pull_request,
+            filename="README.md",
+            status="modified",
+            additions=5,
+            deletions=2,
+            changes=7,
+            file_category="docs",
+        )
+
+        # Test forward relationship
+        self.assertEqual(file1.pull_request, self.pull_request)
+        self.assertEqual(file2.pull_request, self.pull_request)
+
+        # Test reverse relationship via related_name='files'
+        files = self.pull_request.files.all()
+        self.assertEqual(files.count(), 2)
+        self.assertIn(file1, files)
+        self.assertIn(file2, files)
+
+    def test_pr_file_unique_constraint(self):
+        """Test that unique constraint on (team, pull_request, filename) is enforced."""
+        PRFile.objects.create(
+            team=self.team,
+            pull_request=self.pull_request,
+            filename="src/utils.py",
+            status="added",
+            additions=100,
+            deletions=0,
+            changes=100,
+            file_category="backend",
+        )
+        # Attempt to create another file with same team, pull_request, and filename
+        with self.assertRaises(IntegrityError):
+            PRFile.objects.create(
+                team=self.team,
+                pull_request=self.pull_request,
+                filename="src/utils.py",
+                status="modified",
+                additions=10,
+                deletions=5,
+                changes=15,
+                file_category="backend",
+            )
+
+    def test_pr_file_categorize_frontend(self):
+        """Test that frontend files are categorized correctly."""
+        self.assertEqual(PRFile.categorize_file("src/App.tsx"), "frontend")
+        self.assertEqual(PRFile.categorize_file("components/Button.jsx"), "frontend")
+        self.assertEqual(PRFile.categorize_file("pages/Home.vue"), "frontend")
+        self.assertEqual(PRFile.categorize_file("styles/main.css"), "frontend")
+        self.assertEqual(PRFile.categorize_file("styles/app.scss"), "frontend")
+        self.assertEqual(PRFile.categorize_file("templates/index.html"), "frontend")
+
+    def test_pr_file_categorize_backend(self):
+        """Test that backend files are categorized correctly."""
+        self.assertEqual(PRFile.categorize_file("src/app.py"), "backend")
+        self.assertEqual(PRFile.categorize_file("main.go"), "backend")
+        self.assertEqual(PRFile.categorize_file("src/Main.java"), "backend")
+        self.assertEqual(PRFile.categorize_file("app/controllers/user.rb"), "backend")
+        self.assertEqual(PRFile.categorize_file("src/lib.rs"), "backend")
+
+    def test_pr_file_categorize_test(self):
+        """Test that test files are categorized correctly."""
+        self.assertEqual(PRFile.categorize_file("src/app_test.py"), "test")
+        self.assertEqual(PRFile.categorize_file("test_utils.py"), "test")
+        self.assertEqual(PRFile.categorize_file("tests/integration_test.go"), "test")
+        self.assertEqual(PRFile.categorize_file("components/Button.spec.tsx"), "test")
+        self.assertEqual(PRFile.categorize_file("app.spec.js"), "test")
+
+    def test_pr_file_categorize_docs(self):
+        """Test that documentation files are categorized correctly."""
+        self.assertEqual(PRFile.categorize_file("README.md"), "docs")
+        self.assertEqual(PRFile.categorize_file("docs/setup.rst"), "docs")
+        self.assertEqual(PRFile.categorize_file("CHANGELOG.txt"), "docs")
+
+    def test_pr_file_categorize_config(self):
+        """Test that configuration files are categorized correctly."""
+        self.assertEqual(PRFile.categorize_file("package.json"), "config")
+        self.assertEqual(PRFile.categorize_file("config.yaml"), "config")
+        self.assertEqual(PRFile.categorize_file("settings.yml"), "config")
+        self.assertEqual(PRFile.categorize_file("pyproject.toml"), "config")
+        self.assertEqual(PRFile.categorize_file("setup.ini"), "config")
+        self.assertEqual(PRFile.categorize_file(".env"), "config")
+
+    def test_pr_file_categorize_other(self):
+        """Test that unrecognized files are categorized as 'other'."""
+        self.assertEqual(PRFile.categorize_file("data.csv"), "other")
+        self.assertEqual(PRFile.categorize_file("image.png"), "other")
+        self.assertEqual(PRFile.categorize_file("unknown.xyz"), "other")
+
+
+class TestDeploymentModel(TestCase):
+    """Tests for Deployment model."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.team = Team.objects.create(name="Test Team", slug="test-team")
+        self.creator = TeamMember.objects.create(
+            team=self.team,
+            display_name="John Doe",
+            github_username="johndoe",
+            github_id="123",
+        )
+        self.author = TeamMember.objects.create(
+            team=self.team,
+            display_name="Jane Smith",
+            github_username="janesmith",
+            github_id="456",
+        )
+        self.pull_request = PullRequest.objects.create(
+            team=self.team,
+            github_pr_id=1,
+            github_repo="org/repo",
+            title="Test PR",
+            author=self.author,
+            state="merged",
+            pr_created_at=django_timezone.now(),
+        )
+
+    def tearDown(self):
+        """Clean up team context."""
+        unset_current_team()
+
+    def test_deployment_creation(self):
+        """Test that Deployment can be created with all fields."""
+        deployment = Deployment.objects.create(
+            team=self.team,
+            github_deployment_id=123456789,
+            github_repo="org/repo",
+            environment="production",
+            status="success",
+            creator=self.creator,
+            deployed_at=django_timezone.now(),
+            pull_request=self.pull_request,
+            sha="a" * 40,
+        )
+        self.assertEqual(deployment.github_deployment_id, 123456789)
+        self.assertEqual(deployment.github_repo, "org/repo")
+        self.assertEqual(deployment.environment, "production")
+        self.assertEqual(deployment.status, "success")
+        self.assertEqual(deployment.creator, self.creator)
+        self.assertEqual(deployment.pull_request, self.pull_request)
+        self.assertEqual(deployment.sha, "a" * 40)
+        self.assertIsNotNone(deployment.deployed_at)
+        self.assertIsNotNone(deployment.pk)
+
+    def test_deployment_team_relationship(self):
+        """Test that deployment belongs to team."""
+        deployment = Deployment.objects.create(
+            team=self.team,
+            github_deployment_id=987654321,
+            github_repo="org/repo",
+            environment="staging",
+            status="success",
+            deployed_at=django_timezone.now(),
+            sha="b" * 40,
+        )
+        self.assertEqual(deployment.team, self.team)
+
+        # Test team filtering
+        team2 = Team.objects.create(name="Team Two", slug="team-two")
+        deployment2 = Deployment.objects.create(
+            team=team2,
+            github_deployment_id=111111111,
+            github_repo="org/other-repo",
+            environment="production",
+            status="success",
+            deployed_at=django_timezone.now(),
+            sha="c" * 40,
+        )
+
+        team1_deployments = Deployment.objects.filter(team=self.team)
+        self.assertEqual(team1_deployments.count(), 1)
+        self.assertIn(deployment, team1_deployments)
+        self.assertNotIn(deployment2, team1_deployments)
+
+    def test_deployment_unique_constraint(self):
+        """Test that unique constraint on (team, github_deployment_id) is enforced."""
+        Deployment.objects.create(
+            team=self.team,
+            github_deployment_id=999,
+            github_repo="org/repo",
+            environment="production",
+            status="success",
+            deployed_at=django_timezone.now(),
+            sha="d" * 40,
+        )
+        # Attempt to create another deployment with same github_deployment_id in same team
+        with self.assertRaises(IntegrityError):
+            Deployment.objects.create(
+                team=self.team,
+                github_deployment_id=999,
+                github_repo="org/other-repo",
+                environment="staging",
+                status="failure",
+                deployed_at=django_timezone.now(),
+                sha="e" * 40,
+            )
+
+    def test_deployment_str_representation(self):
+        """Test that __str__ returns meaningful string."""
+        deployment = Deployment.objects.create(
+            team=self.team,
+            github_deployment_id=555,
+            github_repo="org/frontend",
+            environment="production",
+            status="success",
+            deployed_at=django_timezone.now(),
+            sha="f" * 40,
+        )
+        str_repr = str(deployment)
+        # Should contain repo and environment at minimum
+        self.assertIn("org/frontend", str_repr)
+        self.assertIn("production", str_repr)
+
+    def test_deployment_creator_relationship(self):
+        """Test optional FK to TeamMember for creator."""
+        # Test with creator
+        deployment_with_creator = Deployment.objects.create(
+            team=self.team,
+            github_deployment_id=777,
+            github_repo="org/repo",
+            environment="staging",
+            status="success",
+            creator=self.creator,
+            deployed_at=django_timezone.now(),
+            sha="g" * 40,
+        )
+        self.assertEqual(deployment_with_creator.creator, self.creator)
+
+        # Test without creator (null=True)
+        deployment_no_creator = Deployment.objects.create(
+            team=self.team,
+            github_deployment_id=888,
+            github_repo="org/repo",
+            environment="production",
+            status="success",
+            deployed_at=django_timezone.now(),
+            sha="h" * 40,
+        )
+        self.assertIsNone(deployment_no_creator.creator)
+
+    def test_deployment_pull_request_relationship(self):
+        """Test optional FK to PullRequest."""
+        # Test with pull_request
+        deployment_with_pr = Deployment.objects.create(
+            team=self.team,
+            github_deployment_id=333,
+            github_repo="org/repo",
+            environment="production",
+            status="success",
+            pull_request=self.pull_request,
+            deployed_at=django_timezone.now(),
+            sha="i" * 40,
+        )
+        self.assertEqual(deployment_with_pr.pull_request, self.pull_request)
+
+        # Test without pull_request (null=True)
+        deployment_no_pr = Deployment.objects.create(
+            team=self.team,
+            github_deployment_id=444,
+            github_repo="org/repo",
+            environment="staging",
+            status="success",
+            deployed_at=django_timezone.now(),
+            sha="j" * 40,
+        )
+        self.assertIsNone(deployment_no_pr.pull_request)
+
+
+class TestPRCommentModel(TestCase):
+    """Tests for PRComment model."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.team = Team.objects.create(name="Test Team", slug="test-team")
+        self.author = TeamMember.objects.create(
+            team=self.team,
+            display_name="John Doe",
+            github_username="johndoe",
+            github_id="123",
+        )
+        self.reviewer = TeamMember.objects.create(
+            team=self.team,
+            display_name="Jane Smith",
+            github_username="janesmith",
+            github_id="456",
+        )
+        self.pull_request = PullRequest.objects.create(
+            team=self.team,
+            github_pr_id=1,
+            github_repo="org/repo",
+            title="Test PR",
+            author=self.author,
+            state="open",
+            pr_created_at=django_timezone.now(),
+        )
+
+    def tearDown(self):
+        """Clean up team context."""
+        unset_current_team()
+
+    def test_pr_comment_creation(self):
+        """Test that PRComment can be created with all required fields."""
+        comment_created = django_timezone.now()
+        comment_updated = comment_created + django_timezone.timedelta(hours=1)
+
+        comment = PRComment.objects.create(
+            team=self.team,
+            github_comment_id=12345,
+            pull_request=self.pull_request,
+            author=self.author,
+            body="This is a test comment",
+            comment_type="issue",
+            comment_created_at=comment_created,
+            comment_updated_at=comment_updated,
+        )
+        self.assertEqual(comment.github_comment_id, 12345)
+        self.assertEqual(comment.pull_request, self.pull_request)
+        self.assertEqual(comment.author, self.author)
+        self.assertEqual(comment.body, "This is a test comment")
+        self.assertEqual(comment.comment_type, "issue")
+        self.assertIsNone(comment.path)
+        self.assertIsNone(comment.line)
+        self.assertIsNone(comment.in_reply_to_id)
+        self.assertEqual(comment.comment_created_at, comment_created)
+        self.assertEqual(comment.comment_updated_at, comment_updated)
+        self.assertIsNotNone(comment.pk)
+
+    def test_pr_comment_team_relationship(self):
+        """Test that PRComment belongs to the correct team."""
+        comment = PRComment.objects.create(
+            team=self.team,
+            github_comment_id=12345,
+            pull_request=self.pull_request,
+            author=self.author,
+            body="Team test comment",
+            comment_type="issue",
+            comment_created_at=django_timezone.now(),
+        )
+        self.assertEqual(comment.team, self.team)
+
+    def test_pr_comment_unique_constraint(self):
+        """Test that unique constraint on (team, github_comment_id) is enforced."""
+        PRComment.objects.create(
+            team=self.team,
+            github_comment_id=99999,
+            pull_request=self.pull_request,
+            author=self.author,
+            body="First comment",
+            comment_type="issue",
+            comment_created_at=django_timezone.now(),
+        )
+        # Attempt to create another comment with same team and github_comment_id
+        with self.assertRaises(IntegrityError):
+            PRComment.objects.create(
+                team=self.team,
+                github_comment_id=99999,
+                pull_request=self.pull_request,
+                author=self.reviewer,
+                body="Duplicate comment",
+                comment_type="issue",
+                comment_created_at=django_timezone.now(),
+            )
+
+    def test_pr_comment_str_representation(self):
+        """Test that PRComment __str__ returns meaningful string."""
+        comment = PRComment.objects.create(
+            team=self.team,
+            github_comment_id=12345,
+            pull_request=self.pull_request,
+            author=self.author,
+            body="This is a very long comment body that should be truncated in the string representation",
+            comment_type="issue",
+            comment_created_at=django_timezone.now(),
+        )
+        str_repr = str(comment)
+        self.assertIsNotNone(str_repr)
+        self.assertNotEqual(str_repr, "")
+        # Should contain some identifying information
+        self.assertTrue(
+            "comment" in str_repr.lower() or "12345" in str_repr or str(self.pull_request.github_pr_id) in str_repr
+        )
+
+    def test_pr_comment_author_relationship(self):
+        """Test that PRComment has correct optional FK relationship with TeamMember."""
+        # Test with author
+        comment_with_author = PRComment.objects.create(
+            team=self.team,
+            github_comment_id=11111,
+            pull_request=self.pull_request,
+            author=self.author,
+            body="Comment with author",
+            comment_type="issue",
+            comment_created_at=django_timezone.now(),
+        )
+        self.assertEqual(comment_with_author.author, self.author)
+
+        # Test without author (null=True)
+        comment_no_author = PRComment.objects.create(
+            team=self.team,
+            github_comment_id=22222,
+            pull_request=self.pull_request,
+            author=None,
+            body="Comment without author",
+            comment_type="issue",
+            comment_created_at=django_timezone.now(),
+        )
+        self.assertIsNone(comment_no_author.author)
+
+    def test_pr_comment_pull_request_relationship(self):
+        """Test that PRComment has correct required FK relationship with PullRequest."""
+        comment1 = PRComment.objects.create(
+            team=self.team,
+            github_comment_id=33333,
+            pull_request=self.pull_request,
+            author=self.author,
+            body="First comment on PR",
+            comment_type="issue",
+            comment_created_at=django_timezone.now(),
+        )
+        comment2 = PRComment.objects.create(
+            team=self.team,
+            github_comment_id=44444,
+            pull_request=self.pull_request,
+            author=self.reviewer,
+            body="Second comment on PR",
+            comment_type="review",
+            path="src/app.py",
+            line=42,
+            comment_created_at=django_timezone.now(),
+        )
+
+        # Test forward relationship
+        self.assertEqual(comment1.pull_request, self.pull_request)
+        self.assertEqual(comment2.pull_request, self.pull_request)
+
+        # Test reverse relationship via related_name='comments'
+        comments = self.pull_request.comments.all()
+        self.assertEqual(comments.count(), 2)
+        self.assertIn(comment1, comments)
+        self.assertIn(comment2, comments)
+
+    def test_pr_comment_type_choices(self):
+        """Test that PRComment validates comment_type choices (issue vs review)."""
+        # Test "issue" type
+        issue_comment = PRComment.objects.create(
+            team=self.team,
+            github_comment_id=55555,
+            pull_request=self.pull_request,
+            author=self.author,
+            body="Issue comment",
+            comment_type="issue",
+            comment_created_at=django_timezone.now(),
+        )
+        self.assertEqual(issue_comment.comment_type, "issue")
+
+        # Test "review" type
+        review_comment = PRComment.objects.create(
+            team=self.team,
+            github_comment_id=66666,
+            pull_request=self.pull_request,
+            author=self.reviewer,
+            body="Review comment",
+            comment_type="review",
+            path="src/utils.py",
+            line=10,
+            comment_created_at=django_timezone.now(),
+        )
+        self.assertEqual(review_comment.comment_type, "review")
+
+    def test_pr_comment_review_fields(self):
+        """Test that path and line fields work correctly for review comments."""
+        # Review comment with path and line
+        review_comment = PRComment.objects.create(
+            team=self.team,
+            github_comment_id=77777,
+            pull_request=self.pull_request,
+            author=self.reviewer,
+            body="Please fix this line",
+            comment_type="review",
+            path="src/components/Button.tsx",
+            line=25,
+            comment_created_at=django_timezone.now(),
+        )
+        self.assertEqual(review_comment.path, "src/components/Button.tsx")
+        self.assertEqual(review_comment.line, 25)
+
+        # Issue comment without path and line
+        issue_comment = PRComment.objects.create(
+            team=self.team,
+            github_comment_id=88888,
+            pull_request=self.pull_request,
+            author=self.author,
+            body="General comment",
+            comment_type="issue",
+            comment_created_at=django_timezone.now(),
+        )
+        self.assertIsNone(issue_comment.path)
+        self.assertIsNone(issue_comment.line)
+
+        # Review comment with in_reply_to_id for threaded comments
+        reply_comment = PRComment.objects.create(
+            team=self.team,
+            github_comment_id=99998,
+            pull_request=self.pull_request,
+            author=self.author,
+            body="Thanks for the feedback",
+            comment_type="review",
+            path="src/components/Button.tsx",
+            line=25,
+            in_reply_to_id=77777,
+            comment_created_at=django_timezone.now(),
+        )
+        self.assertEqual(reply_comment.in_reply_to_id, 77777)

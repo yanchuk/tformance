@@ -3,7 +3,10 @@ from django.contrib import admin
 from .models import (
     AIUsageDaily,
     Commit,
+    Deployment,
     JiraIssue,
+    PRCheckRun,
+    PRFile,
     PRReview,
     PRSurvey,
     PRSurveyReview,
@@ -92,6 +95,28 @@ class PRReviewAdmin(admin.ModelAdmin):
     search_fields = ["pull_request__title", "reviewer__display_name"]
     ordering = ["-submitted_at"]
     raw_id_fields = ["pull_request", "reviewer"]
+
+
+@admin.register(PRCheckRun)
+class PRCheckRunAdmin(admin.ModelAdmin):
+    """Admin for PRCheckRun - CI/CD check runs."""
+
+    list_display = ["pull_request", "name", "status", "conclusion", "duration_seconds", "completed_at", "team"]
+    list_filter = ["team", "status", "conclusion", "name"]
+    search_fields = ["pull_request__title", "name"]
+    ordering = ["-started_at"]
+    raw_id_fields = ["pull_request"]
+
+
+@admin.register(PRFile)
+class PRFileAdmin(admin.ModelAdmin):
+    """Admin for PRFile - files changed in PRs."""
+
+    list_display = ["filename", "pull_request", "status", "file_category", "additions", "deletions", "changes", "team"]
+    list_filter = ["team", "status", "file_category"]
+    search_fields = ["filename", "pull_request__title"]
+    ordering = ["pull_request", "filename"]
+    raw_id_fields = ["pull_request"]
 
 
 @admin.register(Commit)
@@ -234,4 +259,23 @@ class WeeklyMetricsAdmin(admin.ModelAdmin):
         ("Jira Metrics", {"fields": ("story_points_completed", "issues_resolved")}),
         ("AI Metrics", {"fields": ("ai_assisted_prs",)}),
         ("Survey Metrics", {"fields": ("avg_quality_rating", "surveys_completed", "guess_accuracy")}),
+    )
+
+
+@admin.register(Deployment)
+class DeploymentAdmin(admin.ModelAdmin):
+    """Admin for Deployment - GitHub deployments."""
+
+    list_display = ["github_deployment_id", "github_repo", "environment", "status", "creator", "deployed_at", "team"]
+    list_filter = ["team", "environment", "status", "github_repo"]
+    search_fields = ["github_repo", "sha", "creator__display_name"]
+    ordering = ["-deployed_at"]
+    readonly_fields = ["created_at", "updated_at"]
+    raw_id_fields = ["creator", "pull_request"]
+    date_hierarchy = "deployed_at"
+
+    fieldsets = (
+        (None, {"fields": ("team", "github_deployment_id", "github_repo", "environment", "status")}),
+        ("Details", {"fields": ("creator", "pull_request", "sha")}),
+        ("Timestamps", {"fields": ("deployed_at", "created_at", "updated_at"), "classes": ("collapse",)}),
     )

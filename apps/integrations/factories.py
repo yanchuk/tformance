@@ -24,6 +24,7 @@ from django.utils import timezone
 from factory.django import DjangoModelFactory
 
 from apps.metrics.factories import TeamFactory
+from apps.metrics.models import PRFile
 from apps.users.models import CustomUser
 
 from .models import GitHubIntegration, IntegrationCredential, JiraIntegration, SlackIntegration, TrackedJiraProject
@@ -159,3 +160,22 @@ class SlackIntegrationFactory(DjangoModelFactory):
     last_sync_at = None
     sync_status = "pending"
     last_sync_error = None
+
+
+class PRFileFactory(DjangoModelFactory):
+    """Factory for PRFile model."""
+
+    class Meta:
+        model = PRFile
+
+    team = factory.SubFactory(TeamFactory)
+    pull_request = factory.SubFactory(
+        "apps.metrics.factories.PullRequestFactory",
+        team=factory.SelfAttribute("..team"),
+    )
+    filename = factory.Sequence(lambda n: f"src/file_{n}.py")
+    status = factory.Iterator(["added", "modified", "removed", "renamed"])
+    additions = factory.Faker("random_int", min=0, max=100)
+    deletions = factory.Faker("random_int", min=0, max=50)
+    changes = factory.LazyAttribute(lambda o: o.additions + o.deletions)
+    file_category = factory.LazyAttribute(lambda o: PRFile.categorize_file(o.filename))

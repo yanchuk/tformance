@@ -312,6 +312,198 @@ class PRReview(BaseTeamModel):
         return f"Review on #{self.pull_request.github_pr_id} by {self.reviewer}"
 
 
+class PRCheckRun(BaseTeamModel):
+    """CI/CD check run for a pull request."""
+
+    STATUS_CHOICES = [
+        ("queued", "Queued"),
+        ("in_progress", "In Progress"),
+        ("completed", "Completed"),
+    ]
+
+    CONCLUSION_CHOICES = [
+        ("success", "Success"),
+        ("failure", "Failure"),
+        ("skipped", "Skipped"),
+        ("cancelled", "Cancelled"),
+        ("timed_out", "Timed Out"),
+        ("action_required", "Action Required"),
+        ("neutral", "Neutral"),
+        ("stale", "Stale"),
+    ]
+
+    github_check_run_id = models.BigIntegerField(
+        verbose_name="GitHub Check Run ID",
+        help_text="The check run ID from GitHub",
+    )
+    pull_request = models.ForeignKey(
+        PullRequest,
+        on_delete=models.CASCADE,
+        related_name="check_runs",
+        verbose_name="Pull request",
+        help_text="The PR this check run belongs to",
+    )
+    name = models.CharField(
+        max_length=255,
+        verbose_name="Check name",
+        help_text="Name of the check (e.g., pytest, eslint, build)",
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        verbose_name="Status",
+        help_text="Current status of the check run",
+    )
+    conclusion = models.CharField(
+        max_length=20,
+        choices=CONCLUSION_CHOICES,
+        null=True,
+        blank=True,
+        verbose_name="Conclusion",
+        help_text="Final conclusion of the check run",
+    )
+    started_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Started at",
+        help_text="When the check run started",
+    )
+    completed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Completed at",
+        help_text="When the check run completed",
+    )
+    duration_seconds = models.IntegerField(
+        null=True,
+        blank=True,
+        verbose_name="Duration (seconds)",
+        help_text="How long the check run took",
+    )
+
+    class Meta:
+        ordering = ["-started_at"]
+        verbose_name = "PR Check Run"
+        verbose_name_plural = "PR Check Runs"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["team", "github_check_run_id"],
+                name="unique_team_check_run",
+            )
+        ]
+        indexes = [
+            models.Index(fields=["pull_request", "name"], name="check_run_pr_name_idx"),
+            models.Index(fields=["started_at"], name="check_run_started_at_idx"),
+        ]
+
+    def __str__(self):
+        return f"{self.name} ({self.conclusion or self.status})"
+
+
+class PRFile(BaseTeamModel):
+    """File changed in a pull request."""
+
+    STATUS_CHOICES = [
+        ("added", "Added"),
+        ("modified", "Modified"),
+        ("removed", "Removed"),
+        ("renamed", "Renamed"),
+    ]
+
+    CATEGORY_CHOICES = [
+        ("frontend", "Frontend"),
+        ("backend", "Backend"),
+        ("test", "Test"),
+        ("docs", "Documentation"),
+        ("config", "Configuration"),
+        ("other", "Other"),
+    ]
+
+    pull_request = models.ForeignKey(
+        PullRequest,
+        on_delete=models.CASCADE,
+        related_name="files",
+        verbose_name="Pull request",
+        help_text="The PR this file belongs to",
+    )
+    filename = models.CharField(
+        max_length=500,
+        verbose_name="Filename",
+        help_text="Path to the file",
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        verbose_name="Status",
+        help_text="File change status",
+    )
+    additions = models.IntegerField(
+        default=0,
+        verbose_name="Additions",
+        help_text="Lines added",
+    )
+    deletions = models.IntegerField(
+        default=0,
+        verbose_name="Deletions",
+        help_text="Lines deleted",
+    )
+    changes = models.IntegerField(
+        default=0,
+        verbose_name="Changes",
+        help_text="Total changes",
+    )
+    file_category = models.CharField(
+        max_length=50,
+        choices=CATEGORY_CHOICES,
+        verbose_name="File category",
+        help_text="Categorized file type",
+    )
+
+    class Meta:
+        ordering = ["filename"]
+        verbose_name = "PR File"
+        verbose_name_plural = "PR Files"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["team", "pull_request", "filename"],
+                name="unique_team_pr_file",
+            )
+        ]
+        indexes = [
+            models.Index(fields=["pull_request", "file_category"], name="pr_file_category_idx"),
+        ]
+
+    @staticmethod
+    def categorize_file(filename: str) -> str:
+        """Categorize file based on extension and path."""
+        filename_lower = filename.lower()
+
+        # Test files (check first - may have .py extension)
+        if "test" in filename_lower or "spec" in filename_lower:
+            return "test"
+
+        # Frontend
+        if filename_lower.endswith((".tsx", ".jsx", ".vue", ".css", ".scss", ".html")):
+            return "frontend"
+
+        # Backend
+        if filename_lower.endswith((".py", ".go", ".java", ".rb", ".rs")):
+            return "backend"
+
+        # Docs
+        if filename_lower.endswith((".md", ".rst", ".txt")):
+            return "docs"
+
+        # Config
+        if filename_lower.endswith((".json", ".yaml", ".yml", ".toml", ".ini", ".env")):
+            return "config"
+
+        return "other"
+
+    def __str__(self):
+        return f"{self.filename} ({self.file_category})"
+
+
 class Commit(BaseTeamModel):
     """
     A Git commit from GitHub.
@@ -887,3 +1079,94 @@ class WeeklyMetrics(BaseTeamModel):
 
     def __str__(self):
         return f"{self.member} - Week of {self.week_start}"
+
+
+class Deployment(BaseTeamModel):
+    """
+    A deployment from GitHub.
+
+    Tracks deployment events to production and staging environments,
+    including status, creator, and associated pull requests.
+    """
+
+    STATUS_CHOICES = [
+        ("success", "Success"),
+        ("failure", "Failure"),
+        ("pending", "Pending"),
+        ("error", "Error"),
+    ]
+
+    ENVIRONMENT_CHOICES = [
+        ("production", "Production"),
+        ("staging", "Staging"),
+    ]
+
+    github_deployment_id = models.BigIntegerField(
+        verbose_name="GitHub Deployment ID",
+        help_text="The deployment ID from GitHub",
+    )
+    github_repo = models.CharField(
+        max_length=255,
+        verbose_name="GitHub repository",
+        help_text="Repository name (e.g., 'owner/repo')",
+    )
+    environment = models.CharField(
+        max_length=100,
+        choices=ENVIRONMENT_CHOICES,
+        verbose_name="Environment",
+        help_text="Deployment environment",
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        verbose_name="Status",
+        help_text="Deployment status",
+    )
+    creator = models.ForeignKey(
+        TeamMember,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="deployments",
+        verbose_name="Creator",
+        help_text="The team member who created the deployment",
+    )
+    deployed_at = models.DateTimeField(
+        verbose_name="Deployed at",
+        help_text="When the deployment occurred",
+    )
+    pull_request = models.ForeignKey(
+        PullRequest,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="deployments",
+        verbose_name="Pull request",
+        help_text="The PR associated with this deployment",
+    )
+    sha = models.CharField(
+        max_length=40,
+        verbose_name="Git SHA",
+        help_text="The commit SHA deployed",
+    )
+
+    class Meta:
+        ordering = ["-deployed_at"]
+        verbose_name = "Deployment"
+        verbose_name_plural = "Deployments"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["team", "github_deployment_id"],
+                name="unique_team_deployment",
+            )
+        ]
+        indexes = [
+            models.Index(fields=["github_repo", "environment"], name="deployment_repo_env_idx"),
+            models.Index(fields=["deployed_at"], name="deployment_deployed_at_idx"),
+            models.Index(fields=["status"], name="deployment_status_idx"),
+            models.Index(fields=["pull_request"], name="deployment_pr_idx"),
+            models.Index(fields=["creator", "status"], name="deployment_creator_status_idx"),
+        ]
+
+    def __str__(self):
+        return f"{self.github_repo} - {self.environment}"
