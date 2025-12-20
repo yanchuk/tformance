@@ -1,18 +1,29 @@
 """
 Management command to seed demo data for development.
 
-Usage:
-    # Seed default demo data (1 team, 5 members, ~50 PRs, etc.)
-    python manage.py seed_demo_data
+Supports two modes:
+1. Scenario-based seeding (recommended) - Uses predefined scenarios with coherent data
+2. Legacy mode - Uses simple factory-based seeding
 
-    # Seed with custom amounts
+Usage:
+    # Scenario-based seeding (recommended)
+    python manage.py seed_demo_data --scenario ai-success --seed 42
+    python manage.py seed_demo_data --scenario review-bottleneck --seed 123
+    python manage.py seed_demo_data --scenario baseline
+    python manage.py seed_demo_data --scenario detective-game
+
+    # List available scenarios
+    python manage.py seed_demo_data --list-scenarios
+
+    # Scenario with options
+    python manage.py seed_demo_data --scenario ai-success --no-github
+    python manage.py seed_demo_data --scenario ai-success --source-repo tiangolo/fastapi
+
+    # Legacy mode (backward compatible)
     python manage.py seed_demo_data --teams 2 --members 10 --prs 100
 
     # Clear existing data before seeding
-    python manage.py seed_demo_data --clear
-
-    # Seed specific team by slug
-    python manage.py seed_demo_data --team-slug my-team
+    python manage.py seed_demo_data --clear --scenario ai-success
 """
 
 from django.core.management.base import BaseCommand
@@ -39,6 +50,7 @@ from apps.metrics.models import (
     TeamMember,
     WeeklyMetrics,
 )
+from apps.metrics.seeding import ScenarioDataGenerator, get_scenario, list_scenarios
 from apps.teams.models import Team
 
 
@@ -46,23 +58,55 @@ class Command(BaseCommand):
     help = "Seed demo data for development and testing"
 
     def add_arguments(self, parser):
+        # Scenario-based seeding (new)
+        parser.add_argument(
+            "--scenario",
+            type=str,
+            choices=["ai-success", "review-bottleneck", "baseline", "detective-game"],
+            help="Use scenario-based seeding with predefined patterns",
+        )
+        parser.add_argument(
+            "--seed",
+            type=int,
+            default=42,
+            help="Random seed for reproducible generation (default: 42)",
+        )
+        parser.add_argument(
+            "--source-repo",
+            type=str,
+            action="append",
+            dest="source_repos",
+            help="GitHub repo to fetch PR data from (can specify multiple)",
+        )
+        parser.add_argument(
+            "--no-github",
+            action="store_true",
+            help="Skip fetching real PR data from GitHub",
+        )
+        parser.add_argument(
+            "--list-scenarios",
+            action="store_true",
+            help="List available scenarios and exit",
+        )
+
+        # Legacy mode arguments (backward compatible)
         parser.add_argument(
             "--teams",
             type=int,
             default=1,
-            help="Number of teams to create (default: 1)",
+            help="[Legacy] Number of teams to create (default: 1)",
         )
         parser.add_argument(
             "--members",
             type=int,
             default=5,
-            help="Number of team members per team (default: 5)",
+            help="[Legacy] Number of team members per team (default: 5)",
         )
         parser.add_argument(
             "--prs",
             type=int,
             default=50,
-            help="Number of pull requests per team (default: 50)",
+            help="[Legacy] Number of pull requests per team (default: 50)",
         )
         parser.add_argument(
             "--clear",
@@ -76,9 +120,104 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
+        # Handle --list-scenarios
+        if options["list_scenarios"]:
+            self.print_scenarios()
+            return
+
         if options["clear"]:
             self.clear_data()
 
+        # Scenario-based seeding (new mode)
+        if options["scenario"]:
+            self.handle_scenario_mode(options)
+            return
+
+        # Legacy mode (backward compatible)
+        self.handle_legacy_mode(options)
+
+    def handle_scenario_mode(self, options):
+        """Handle scenario-based seeding."""
+        scenario_name = options["scenario"]
+        seed = options["seed"]
+        fetch_github = not options["no_github"]
+
+        self.stdout.write(f"\nScenario-based seeding: {scenario_name}")
+        self.stdout.write(f"  Seed: {seed}")
+        self.stdout.write(f"  GitHub data: {'enabled' if fetch_github else 'disabled'}")
+
+        # Get or create team
+        scenario = get_scenario(scenario_name)
+        team = self.get_or_create_scenario_team(scenario, options)
+        if not team:
+            return
+
+        # Check for existing data
+        existing_prs = PullRequest.objects.filter(team=team).count()
+        if existing_prs > 0 and not options["clear"]:
+            msg = f"  Team already has {existing_prs} PRs. Use --clear to reseed."
+            self.stdout.write(self.style.WARNING(msg))
+            return
+
+        # Override source repos if specified
+        if options["source_repos"]:
+            scenario.config.github_source_repos = options["source_repos"]
+
+        # Generate data
+        generator = ScenarioDataGenerator(
+            scenario=scenario,
+            seed=seed,
+            fetch_github=fetch_github,
+        )
+
+        stats = generator.generate(team)
+
+        self.stdout.write(self.style.SUCCESS("\nScenario data seeded successfully!"))
+        self.stdout.write(f"  Team members: {stats.team_members_created}")
+        self.stdout.write(f"  Pull requests: {stats.prs_created}")
+        self.stdout.write(f"    - From GitHub: {stats.github_prs_used}")
+        self.stdout.write(f"    - From factory: {stats.factory_prs_used}")
+        self.stdout.write(f"  Reviews: {stats.reviews_created}")
+        self.stdout.write(f"  Commits: {stats.commits_created}")
+        self.stdout.write(f"  Surveys: {stats.surveys_created}")
+        self.stdout.write(f"  AI usage records: {stats.ai_usage_records}")
+        self.stdout.write(f"  Weekly metrics: {stats.weekly_metrics_created}")
+
+    def get_or_create_scenario_team(self, scenario, options):
+        """Get or create team for scenario."""
+        if options["team_slug"]:
+            try:
+                team = Team.objects.get(slug=options["team_slug"])
+                self.stdout.write(f"Using existing team: {team.name}")
+                return team
+            except Team.DoesNotExist:
+                self.stdout.write(self.style.ERROR(f"Team with slug '{options['team_slug']}' not found"))
+                return None
+
+        # Use scenario's default team config
+        team, created = Team.objects.get_or_create(
+            slug=scenario.config.team_slug,
+            defaults={"name": scenario.config.team_name},
+        )
+        if created:
+            self.stdout.write(f"Created team: {team.name} (slug: {team.slug})")
+        else:
+            self.stdout.write(f"Using existing team: {team.name} (slug: {team.slug})")
+        return team
+
+    def print_scenarios(self):
+        """Print available scenarios."""
+        self.stdout.write("\nAvailable scenarios:")
+        self.stdout.write("=" * 60)
+        for info in list_scenarios():
+            self.stdout.write(f"\n  {info['name']}")
+            self.stdout.write(f"    {info['description']}")
+            self.stdout.write(f"    Members: {info['member_count']}, Weeks: {info['weeks']}")
+        self.stdout.write("\n" + "=" * 60)
+        self.stdout.write("\nUsage: python manage.py seed_demo_data --scenario <name>")
+
+    def handle_legacy_mode(self, options):
+        """Handle legacy factory-based seeding."""
         teams = self.get_or_create_teams(options)
 
         for team in teams:
