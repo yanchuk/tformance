@@ -1,0 +1,93 @@
+{% load i18n %}
+<div class="grid grid-cols-2 gap-4">
+  <!-- Review Rounds Card -->
+  <div class="stat bg-base-200 rounded-lg p-4">
+    <div class="stat-title text-xs">{% trans "Avg Review Rounds" %}</div>
+    <div class="stat-value text-2xl font-mono">
+      {% if metrics.avg_review_rounds %}
+        {{ metrics.avg_review_rounds|floatformat:1 }}
+      {% else %}
+        —
+      {% endif %}
+    </div>
+    <div class="stat-desc">
+      {% if metrics.avg_review_rounds %}
+        {% if metrics.avg_review_rounds > 3 %}
+        <span class="badge badge-warning badge-sm">{% trans "High iteration" %}</span>
+        {% elif metrics.avg_review_rounds > 1.5 %}
+        <span class="badge badge-info badge-sm">{% trans "Normal" %}</span>
+        {% else %}
+        <span class="badge badge-success badge-sm">{% trans "Low iteration" %}</span>
+        {% endif %}
+      {% else %}
+        {% trans "No data" %}
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Fix Response Time Card -->
+  <div class="stat bg-base-200 rounded-lg p-4">
+    <div class="stat-title text-xs">{% trans "Avg Fix Response" %}</div>
+    <div class="stat-value text-2xl font-mono">
+      {% if metrics.avg_fix_response_hours %}
+        {{ metrics.avg_fix_response_hours|floatformat:1 }}<span class="text-sm">h</span>
+      {% else %}
+        —
+      {% endif %}
+    </div>
+    <div class="stat-desc">
+      {% if metrics.avg_fix_response_hours %}
+        {% if metrics.avg_fix_response_hours > 24 %}
+        <span class="badge badge-warning badge-sm">{% trans "Slow response" %}</span>
+        {% elif metrics.avg_fix_response_hours > 8 %}
+        <span class="badge badge-info badge-sm">{% trans "Normal" %}</span>
+        {% else %}
+        <span class="badge badge-success badge-sm">{% trans "Fast response" %}</span>
+        {% endif %}
+      {% else %}
+        {% trans "No data" %}
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Commits After Review Card -->
+  <div class="stat bg-base-200 rounded-lg p-4">
+    <div class="stat-title text-xs">{% trans "Commits After Review" %}</div>
+    <div class="stat-value text-2xl font-mono">
+      {% if metrics.avg_commits_after_first_review %}
+        {{ metrics.avg_commits_after_first_review|floatformat:1 }}
+      {% else %}
+        —
+      {% endif %}
+    </div>
+    <div class="stat-desc">
+      {% if metrics.avg_commits_after_first_review %}
+        {% trans "per PR (avg)" %}
+      {% else %}
+        {% trans "No data" %}
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Total Comments Card -->
+  <div class="stat bg-base-200 rounded-lg p-4">
+    <div class="stat-title text-xs">{% trans "Avg Comments" %}</div>
+    <div class="stat-value text-2xl font-mono">
+      {% if metrics.avg_total_comments %}
+        {{ metrics.avg_total_comments|floatformat:1 }}
+      {% else %}
+        —
+      {% endif %}
+    </div>
+    <div class="stat-desc">
+      {% if metrics.avg_total_comments %}
+        {% trans "per PR (avg)" %}
+      {% else %}
+        {% trans "No data" %}
+      {% endif %}
+    </div>
+  </div>
+</div>
+<div class="text-center text-xs text-base-content/70 mt-2">
+  {% trans "Based on" %} {{ metrics.prs_with_metrics }} {% trans "PRs with iteration data" %}
+</div>

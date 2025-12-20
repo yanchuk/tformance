@@ -716,6 +716,91 @@ def get_copilot_trend(team: Team, start_date: date, end_date: date) -> list[dict
     return result
 
 
+def get_iteration_metrics(team: Team, start_date: date, end_date: date) -> dict:
+    """Get iteration metrics averages for merged PRs within a date range.
+
+    Aggregates iteration metrics (review rounds, fix response time, etc.)
+    from PRs that have been analyzed by the sync pipeline.
+
+    Args:
+        team: Team instance
+        start_date: Start date (inclusive)
+        end_date: End date (inclusive)
+
+    Returns:
+        dict with keys:
+            - avg_review_rounds (Decimal or None): Average review rounds
+            - avg_fix_response_hours (Decimal or None): Average fix response time
+            - avg_commits_after_first_review (Decimal or None): Average commits after first review
+            - avg_total_comments (Decimal or None): Average total comments
+            - prs_with_metrics (int): Count of PRs with iteration metrics
+    """
+    prs = _get_merged_prs_in_range(team, start_date, end_date)
+
+    # Get PRs with at least one non-null iteration metric
+    prs_with_metrics = prs.filter(review_rounds__isnull=False)
+
+    # Aggregate averages
+    stats = prs_with_metrics.aggregate(
+        avg_review_rounds=Avg("review_rounds"),
+        avg_fix_response_hours=Avg("avg_fix_response_hours"),
+        avg_commits_after_first_review=Avg("commits_after_first_review"),
+        avg_total_comments=Avg("total_comments"),
+        prs_count=Count("id"),
+    )
+
+    # Convert to Decimal with 2 decimal places
+    def to_decimal(value):
+        if value is None:
+            return None
+        return Decimal(str(round(float(value), 2)))
+
+    return {
+        "avg_review_rounds": to_decimal(stats["avg_review_rounds"]),
+        "avg_fix_response_hours": to_decimal(stats["avg_fix_response_hours"]),
+        "avg_commits_after_first_review": to_decimal(stats["avg_commits_after_first_review"]),
+        "avg_total_comments": to_decimal(stats["avg_total_comments"]),
+        "prs_with_metrics": stats["prs_count"],
+    }
+
+
+def get_reviewer_correlations(team: Team) -> list[dict]:
+    """Get reviewer correlation data for a team.
+
+    Returns all reviewer pairs with their agreement statistics, ordered by
+    the number of PRs reviewed together (most active pairs first).
+
+    Args:
+        team: Team instance
+
+    Returns:
+        list of dicts with keys:
+            - reviewer_1_name (str): First reviewer display name
+            - reviewer_2_name (str): Second reviewer display name
+            - prs_reviewed_together (int): Count of PRs reviewed together
+            - agreement_rate (Decimal): Agreement percentage (0.00 to 100.00)
+            - is_redundant (bool): Whether the pair shows redundancy (95%+ agreement on 10+ PRs)
+    """
+    from apps.metrics.models import ReviewerCorrelation
+
+    correlations = (
+        ReviewerCorrelation.objects.filter(team=team)
+        .select_related("reviewer_1", "reviewer_2")
+        .order_by("-prs_reviewed_together")
+    )
+
+    return [
+        {
+            "reviewer_1_name": c.reviewer_1.display_name,
+            "reviewer_2_name": c.reviewer_2.display_name,
+            "prs_reviewed_together": c.prs_reviewed_together,
+            "agreement_rate": c.agreement_rate,
+            "is_redundant": c.is_redundant,
+        }
+        for c in correlations
+    ]
+
+
 def get_copilot_by_member(team: Team, start_date: date, end_date: date) -> list[dict]:
     """Get Copilot metrics breakdown by member.
 

@@ -244,3 +244,38 @@ def copilot_members_table(request: HttpRequest) -> HttpResponse:
             "rows": rows,
         },
     )
+
+
+@login_and_team_required
+def iteration_metrics_card(request: HttpRequest) -> HttpResponse:
+    """Iteration metrics card (all members).
+
+    Shows average review rounds, fix response time, commits after first review,
+    and total comments for PRs in the date range.
+    """
+    start_date, end_date = get_date_range_from_request(request)
+    metrics = dashboard_service.get_iteration_metrics(request.team, start_date, end_date)
+    return TemplateResponse(
+        request,
+        "metrics/partials/iteration_metrics_card.html",
+        {
+            "metrics": metrics,
+        },
+    )
+
+
+@team_admin_required
+def reviewer_correlations_table(request: HttpRequest) -> HttpResponse:
+    """Reviewer correlations table (admin only).
+
+    Shows agreement rates between reviewer pairs to identify
+    potentially redundant review assignments.
+    """
+    rows = dashboard_service.get_reviewer_correlations(request.team)
+    return TemplateResponse(
+        request,
+        "metrics/partials/reviewer_correlations_table.html",
+        {
+            "rows": rows,
+        },
+    )

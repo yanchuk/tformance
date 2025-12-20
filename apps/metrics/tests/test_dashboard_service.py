@@ -2480,3 +2480,267 @@ class TestCopilotDashboardService(TestCase):
         self.assertEqual(bob_data["suggestions"], 150)
         self.assertEqual(bob_data["accepted"], 90)
         self.assertEqual(bob_data["acceptance_rate"], Decimal("60.00"))
+
+
+class TestGetIterationMetrics(TestCase):
+    """Tests for get_iteration_metrics function."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.team = TeamFactory()
+        self.member = TeamMemberFactory(team=self.team)
+        self.start_date = date(2024, 1, 1)
+        self.end_date = date(2024, 1, 31)
+
+    def test_get_iteration_metrics_returns_dict_with_required_keys(self):
+        """Test that get_iteration_metrics returns a dict with all required keys."""
+        result = dashboard_service.get_iteration_metrics(self.team, self.start_date, self.end_date)
+
+        self.assertIn("avg_review_rounds", result)
+        self.assertIn("avg_fix_response_hours", result)
+        self.assertIn("avg_commits_after_first_review", result)
+        self.assertIn("avg_total_comments", result)
+        self.assertIn("prs_with_metrics", result)
+
+    def test_get_iteration_metrics_calculates_averages(self):
+        """Test that get_iteration_metrics calculates averages correctly."""
+        # Create PRs with iteration metrics
+        PullRequestFactory(
+            team=self.team,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 15, 12, 0)),
+            review_rounds=2,
+            avg_fix_response_hours=Decimal("4.00"),
+            commits_after_first_review=3,
+            total_comments=10,
+        )
+        PullRequestFactory(
+            team=self.team,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 20, 12, 0)),
+            review_rounds=4,
+            avg_fix_response_hours=Decimal("8.00"),
+            commits_after_first_review=5,
+            total_comments=20,
+        )
+
+        result = dashboard_service.get_iteration_metrics(self.team, self.start_date, self.end_date)
+
+        # Averages: review_rounds=(2+4)/2=3, fix_response=(4+8)/2=6, commits=(3+5)/2=4, comments=(10+20)/2=15
+        self.assertEqual(result["avg_review_rounds"], Decimal("3.00"))
+        self.assertEqual(result["avg_fix_response_hours"], Decimal("6.00"))
+        self.assertEqual(result["avg_commits_after_first_review"], Decimal("4.00"))
+        self.assertEqual(result["avg_total_comments"], Decimal("15.00"))
+        self.assertEqual(result["prs_with_metrics"], 2)
+
+    def test_get_iteration_metrics_handles_no_data(self):
+        """Test that get_iteration_metrics handles empty dataset gracefully."""
+        result = dashboard_service.get_iteration_metrics(self.team, self.start_date, self.end_date)
+
+        self.assertIsNone(result["avg_review_rounds"])
+        self.assertIsNone(result["avg_fix_response_hours"])
+        self.assertIsNone(result["avg_commits_after_first_review"])
+        self.assertIsNone(result["avg_total_comments"])
+        self.assertEqual(result["prs_with_metrics"], 0)
+
+    def test_get_iteration_metrics_handles_null_values(self):
+        """Test that get_iteration_metrics handles PRs with null iteration metrics."""
+        # PR with metrics
+        PullRequestFactory(
+            team=self.team,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 15, 12, 0)),
+            review_rounds=2,
+            avg_fix_response_hours=Decimal("4.00"),
+            commits_after_first_review=3,
+            total_comments=10,
+        )
+        # PR without metrics (nulls)
+        PullRequestFactory(
+            team=self.team,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 20, 12, 0)),
+            review_rounds=None,
+            avg_fix_response_hours=None,
+            commits_after_first_review=None,
+            total_comments=None,
+        )
+
+        result = dashboard_service.get_iteration_metrics(self.team, self.start_date, self.end_date)
+
+        # Should only count PRs with non-null values
+        self.assertEqual(result["avg_review_rounds"], Decimal("2.00"))
+        self.assertEqual(result["prs_with_metrics"], 1)
+
+    def test_get_iteration_metrics_filters_by_team(self):
+        """Test that get_iteration_metrics only includes data from the specified team."""
+        other_team = TeamFactory()
+
+        # Create PR for target team
+        PullRequestFactory(
+            team=self.team,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 15, 12, 0)),
+            review_rounds=2,
+        )
+
+        # Create PR for other team (should be excluded)
+        PullRequestFactory(
+            team=other_team,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 15, 12, 0)),
+            review_rounds=10,
+        )
+
+        result = dashboard_service.get_iteration_metrics(self.team, self.start_date, self.end_date)
+
+        self.assertEqual(result["avg_review_rounds"], Decimal("2.00"))
+
+    def test_get_iteration_metrics_filters_by_date_range(self):
+        """Test that get_iteration_metrics only includes PRs within date range."""
+        # PR in range
+        PullRequestFactory(
+            team=self.team,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 15, 12, 0)),
+            review_rounds=2,
+        )
+
+        # PR out of range
+        PullRequestFactory(
+            team=self.team,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 2, 15, 12, 0)),
+            review_rounds=10,
+        )
+
+        result = dashboard_service.get_iteration_metrics(self.team, self.start_date, self.end_date)
+
+        self.assertEqual(result["avg_review_rounds"], Decimal("2.00"))
+
+
+class TestGetReviewerCorrelations(TestCase):
+    """Tests for get_reviewer_correlations function."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        from apps.metrics.factories import ReviewerCorrelationFactory
+
+        self.team = TeamFactory()
+        self.reviewer1 = TeamMemberFactory(team=self.team, display_name="Alice")
+        self.reviewer2 = TeamMemberFactory(team=self.team, display_name="Bob")
+        self.ReviewerCorrelationFactory = ReviewerCorrelationFactory
+
+    def test_get_reviewer_correlations_returns_list_of_dicts(self):
+        """Test that get_reviewer_correlations returns a list of dicts."""
+        result = dashboard_service.get_reviewer_correlations(self.team)
+
+        self.assertIsInstance(result, list)
+
+    def test_get_reviewer_correlations_includes_required_keys(self):
+        """Test that each correlation has required keys."""
+        self.ReviewerCorrelationFactory(
+            team=self.team,
+            reviewer_1=self.reviewer1,
+            reviewer_2=self.reviewer2,
+            prs_reviewed_together=10,
+            agreements=8,
+            disagreements=2,
+        )
+
+        result = dashboard_service.get_reviewer_correlations(self.team)
+
+        self.assertEqual(len(result), 1)
+        corr = result[0]
+        self.assertIn("reviewer_1_name", corr)
+        self.assertIn("reviewer_2_name", corr)
+        self.assertIn("prs_reviewed_together", corr)
+        self.assertIn("agreement_rate", corr)
+        self.assertIn("is_redundant", corr)
+
+    def test_get_reviewer_correlations_returns_correct_data(self):
+        """Test that get_reviewer_correlations returns correct data."""
+        self.ReviewerCorrelationFactory(
+            team=self.team,
+            reviewer_1=self.reviewer1,
+            reviewer_2=self.reviewer2,
+            prs_reviewed_together=10,
+            agreements=8,
+            disagreements=2,
+        )
+
+        result = dashboard_service.get_reviewer_correlations(self.team)
+
+        corr = result[0]
+        self.assertEqual(corr["reviewer_1_name"], "Alice")
+        self.assertEqual(corr["reviewer_2_name"], "Bob")
+        self.assertEqual(corr["prs_reviewed_together"], 10)
+        self.assertEqual(corr["agreement_rate"], Decimal("80.00"))
+        self.assertFalse(corr["is_redundant"])  # 80% < 95% threshold
+
+    def test_get_reviewer_correlations_detects_redundant_pair(self):
+        """Test that get_reviewer_correlations detects redundant reviewer pairs."""
+        self.ReviewerCorrelationFactory(
+            team=self.team,
+            reviewer_1=self.reviewer1,
+            reviewer_2=self.reviewer2,
+            prs_reviewed_together=15,  # >= 10 sample size
+            agreements=15,  # 100% agreement > 95% threshold
+            disagreements=0,
+        )
+
+        result = dashboard_service.get_reviewer_correlations(self.team)
+
+        corr = result[0]
+        self.assertTrue(corr["is_redundant"])
+
+    def test_get_reviewer_correlations_filters_by_team(self):
+        """Test that get_reviewer_correlations only includes data from the specified team."""
+        other_team = TeamFactory()
+        other_r1 = TeamMemberFactory(team=other_team)
+        other_r2 = TeamMemberFactory(team=other_team)
+
+        # Create correlation for target team
+        self.ReviewerCorrelationFactory(
+            team=self.team,
+            reviewer_1=self.reviewer1,
+            reviewer_2=self.reviewer2,
+            prs_reviewed_together=10,
+        )
+
+        # Create correlation for other team
+        self.ReviewerCorrelationFactory(
+            team=other_team,
+            reviewer_1=other_r1,
+            reviewer_2=other_r2,
+            prs_reviewed_together=20,
+        )
+
+        result = dashboard_service.get_reviewer_correlations(self.team)
+
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["prs_reviewed_together"], 10)
+
+    def test_get_reviewer_correlations_orders_by_prs_reviewed_desc(self):
+        """Test that get_reviewer_correlations orders by PRs reviewed descending."""
+        reviewer3 = TeamMemberFactory(team=self.team, display_name="Charlie")
+
+        # Create correlations with different PR counts
+        self.ReviewerCorrelationFactory(
+            team=self.team,
+            reviewer_1=self.reviewer1,
+            reviewer_2=self.reviewer2,
+            prs_reviewed_together=5,
+        )
+        self.ReviewerCorrelationFactory(
+            team=self.team,
+            reviewer_1=self.reviewer2,
+            reviewer_2=reviewer3,
+            prs_reviewed_together=15,
+        )
+
+        result = dashboard_service.get_reviewer_correlations(self.team)
+
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result[0]["prs_reviewed_together"], 15)  # Higher count first
+        self.assertEqual(result[1]["prs_reviewed_together"], 5)

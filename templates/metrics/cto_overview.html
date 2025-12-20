@@ -208,6 +208,25 @@
       </div>
     </div>
 
+    <!-- Iteration Metrics -->
+    <div class="card bg-base-100 shadow-md mb-6">
+      <div class="card-body">
+        <h2 class="card-title text-base">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-accent-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          {% trans "Iteration Metrics" %}
+        </h2>
+        <p class="text-sm text-base-content/80 mb-4">{% trans "Review round-trips and response times" %}</p>
+        <div id="iteration-metrics-container"
+             hx-get="{% url 'metrics:cards_iteration_metrics' %}?days={{ days }}"
+             hx-trigger="load"
+             hx-swap="innerHTML">
+          <div class="skeleton h-32 w-full rounded-lg"></div>
+        </div>
+      </div>
+    </div>
+
     <!-- Team Breakdown Table -->
     <div class="card bg-base-100 shadow-md mb-6">
       <div class="card-body">
@@ -233,6 +252,25 @@
         <p class="text-sm text-base-content/80 mb-4">{% trans "Identify bottlenecks in code review" %}</p>
         <div id="reviewer-workload-container"
              hx-get="{% url 'metrics:table_reviewer_workload' %}?days={{ days }}"
+             hx-trigger="load"
+             hx-swap="innerHTML">
+          <div class="skeleton h-48 w-full rounded-lg"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Reviewer Correlations -->
+    <div class="card bg-base-100 shadow-md mb-6">
+      <div class="card-body">
+        <h2 class="card-title text-base">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-accent-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+          </svg>
+          {% trans "Reviewer Correlations" %}
+        </h2>
+        <p class="text-sm text-base-content/80 mb-4">{% trans "Identify redundant reviewer pairs" %}</p>
+        <div id="reviewer-correlations-container"
+             hx-get="{% url 'metrics:table_reviewer_correlations' %}"
              hx-trigger="load"
              hx-swap="innerHTML">
           <div class="skeleton h-48 w-full rounded-lg"></div>
