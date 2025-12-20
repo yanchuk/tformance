@@ -1,13 +1,14 @@
 from django.contrib import messages
-from django.http import HttpResponseForbidden, HttpResponseRedirect
-from django.shortcuts import get_object_or_404, render
+from django.contrib.auth.decorators import login_required
+from django.http import Http404, HttpResponseForbidden, HttpResponseRedirect
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
 from django.views.decorators.http import require_POST
 
 from apps.teams.decorators import login_and_team_required
 from apps.teams.forms import MembershipForm
-from apps.teams.models import Membership
+from apps.teams.models import Membership, Team
 from apps.teams.roles import ROLE_ADMIN
 from apps.web.forms import set_form_fields_disabled
 
@@ -84,3 +85,19 @@ def remove_team_membership(request, membership_id):
         return HttpResponseRedirect(reverse("web:home"))
     else:
         return HttpResponseRedirect(reverse("single_team:manage_team"))
+
+
+@login_required
+def switch_team(request, team_slug):
+    """Switch the active team in the user's session."""
+    team = get_object_or_404(Team, slug=team_slug)
+
+    # Verify user is a member of this team
+    if not request.user.teams.filter(id=team.id).exists():
+        raise Http404("Team not found")
+
+    # Update session with new team
+    request.session["team"] = team.id
+
+    # Redirect to dashboard
+    return redirect("web_team:home")

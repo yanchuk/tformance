@@ -48,7 +48,7 @@ class Team(SubscriptionModelBase, BaseModel):
 
     @property
     def dashboard_url(self) -> str:
-        return reverse("web_team:home")
+        return reverse("teams:switch_team", kwargs={"team_slug": self.slug})
 
 
 class Membership(BaseModel):

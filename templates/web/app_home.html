@@ -65,9 +65,9 @@
                   <span class="text-sm font-medium">{% trans "GitHub" %}</span>
                 </div>
                 {% if integration_status.github.connected %}
-                  <span class="badge badge-success badge-sm">{% trans "Connected" %}</span>
+                  <span class="badge badge-success badge-sm whitespace-nowrap">{% trans "Connected" %}</span>
                 {% else %}
-                  <span class="badge badge-ghost badge-sm">{% trans "Not connected" %}</span>
+                  <span class="badge badge-ghost badge-sm whitespace-nowrap">{% trans "Not connected" %}</span>
                 {% endif %}
               </div>
 
@@ -80,9 +80,9 @@
                   <span class="text-sm font-medium">{% trans "Jira" %}</span>
                 </div>
                 {% if integration_status.jira.connected %}
-                  <span class="badge badge-success badge-sm">{% trans "Connected" %}</span>
+                  <span class="badge badge-success badge-sm whitespace-nowrap">{% trans "Connected" %}</span>
                 {% else %}
-                  <span class="badge badge-ghost badge-sm">{% trans "Not connected" %}</span>
+                  <span class="badge badge-ghost badge-sm whitespace-nowrap">{% trans "Not connected" %}</span>
                 {% endif %}
               </div>
 
@@ -95,9 +95,9 @@
                   <span class="text-sm font-medium">{% trans "Slack" %}</span>
                 </div>
                 {% if integration_status.slack.connected %}
-                  <span class="badge badge-success badge-sm">{% trans "Connected" %}</span>
+                  <span class="badge badge-success badge-sm whitespace-nowrap">{% trans "Connected" %}</span>
                 {% else %}
-                  <span class="badge badge-ghost badge-sm">{% trans "Not connected" %}</span>
+                  <span class="badge badge-ghost badge-sm whitespace-nowrap">{% trans "Not connected" %}</span>
                 {% endif %}
               </div>
             </div>
