@@ -1,12 +1,12 @@
 # Color Scheme Consolidation - Tasks
 
-**Last Updated:** 2025-12-20 (Session 2 - Phase 1 Complete)
+**Last Updated:** 2025-12-20 (Session 3 - Phase 2 Complete)
 
 ## Progress Overview
 
 - [x] Phase 0: Initial Setup (completed Session 1)
 - [x] Phase 1: Expand Semantic Classes (completed Session 2)
-- [ ] Phase 2: Marketing Pages Refactor
+- [x] Phase 2: Marketing Pages Refactor (completed Session 3)
 - [ ] Phase 3: App Pages Refactor
 - [ ] Phase 4: Onboarding & Error Pages
 - [ ] Phase 5: Validation & Cleanup
@@ -55,43 +55,62 @@
 
 ---
 
-## Phase 2: Marketing Pages Refactor
+## Phase 2: Marketing Pages Refactor [COMPLETED]
 
-### 2.1 Hero section [S]
-- [ ] Update `hero_terminal.html`
-- [ ] Replace 7 stone-* occurrences
-- [ ] Verify accessibility
+### 2.1 Hero section [S] [COMPLETED]
+- [x] Update `hero_terminal.html`
+- [x] Replace stone-* with text-base-content variants
+- [x] Fix button border visibility (border-base-content/30)
+- [x] Verify accessibility
 
-### 2.2 Features section [M]
-- [ ] Update `features_grid.html` (20 occurrences)
-- [ ] Update `feature_highlight.html` (7 occurrences)
-- [ ] Replace emerald-* with semantic classes
+### 2.2 Features section [M] [COMPLETED]
+- [x] Update `features_grid.html` (20 occurrences)
+- [x] Replace emerald-* with semantic classes
 
-### 2.3 How it works section [S]
-- [ ] Update `how_it_works.html`
-- [ ] Replace 14 stone-* occurrences
+### 2.3 How it works section [S] [COMPLETED]
+- [x] Update `how_it_works.html`
+- [x] Replace stone-* with text-base-content variants
 
-### 2.4 What you get section [M]
-- [ ] Update `what_you_get.html`
-- [ ] Replace 24 stone-* occurrences
+### 2.4 What you get section [M] [COMPLETED]
+- [x] Update `what_you_get.html`
+- [x] Replace stone-* with text-base-content variants
 
-### 2.5 Pricing section [M]
-- [ ] Update `pricing_simple.html`
-- [ ] Replace 12 stone-* + 5 emerald-* occurrences
+### 2.5 Pricing section [M] [COMPLETED]
+- [x] Update `pricing_simple.html`
+- [x] Replace stone-* + emerald-* with semantic classes
 
-### 2.6 FAQ section [M]
-- [ ] Update `faq.html`
-- [ ] Replace 26 stone-* occurrences
+### 2.6 FAQ section [M] [COMPLETED]
+- [x] Update `faq.html`
+- [x] Replace stone-* with text-base-content variants
 
-### 2.7 Security & Trust sections [M]
-- [ ] Update `security.html` (14 occurrences)
-- [ ] Update `data_transparency.html` (4 occurrences)
-- [ ] Update `built_with_you.html` (21 occurrences)
+### 2.7 Security & Trust sections [M] [COMPLETED]
+- [x] Update `security.html`
+- [x] Update `data_transparency.html`
+- [x] Update `built_with_you.html`
 
-### 2.8 Footer & CTA sections [S]
-- [ ] Update `footer.html`
-- [ ] Update `cta_terminal.html`
-- [ ] Update `cta.html`
+### 2.8 Footer & CTA sections [S] [COMPLETED]
+- [x] Update `cta_terminal.html`
+- [x] Update `problem_discovery.html`
+- [x] Update `problem_statement.html`
+- [x] Update `integrations.html`
+
+### 2.9 Terminal Always-Dark Styling [S] [COMPLETED]
+- [x] Force terminal dark in light theme
+- [x] Override text colors inside terminal
+- [x] Fix verdict line color (lighter orange #FB923C)
+
+### 2.10 Theme Toggle & Navigation [S] [COMPLETED]
+- [x] Show theme toggle for all users (not just authenticated)
+- [x] Add spacing between header elements (gap-2)
+- [x] Fix theme flicker on page navigation
+
+### 2.11 Light Theme Accessibility [S] [COMPLETED]
+- [x] Add text-teal-400 contrast override
+- [x] Add text-accent-primary contrast override
+- [x] Add text-purple-300 contrast override
+- [x] Add text-amber-400 contrast override
+- [x] Add text-accent-error contrast override
+- [x] All 9 accessibility tests passing
 
 ---
 
@@ -151,10 +170,10 @@
 - [ ] Add `make lint-colors` command
 - [ ] Document in CLAUDE.md
 
-### 5.3 Update documentation [S]
-- [ ] Update CLAUDE.md Design System section
-- [ ] Add color usage examples
-- [ ] Document semantic class reference
+### 5.3 Update documentation [S] [COMPLETED]
+- [x] Update CLAUDE.md Design System section
+- [x] Add color usage examples
+- [x] Document semantic class reference
 
 ### 5.4 Remove unused code [S]
 - [ ] Audit tailwind.config.js
@@ -163,7 +182,7 @@
 
 ---
 
-## Additional Fixes
+## Additional Fixes [COMPLETED]
 
 ### Fix sign-in button positioning [S] [COMPLETED]
 - [x] Sign-in button too close to window edge on main page
