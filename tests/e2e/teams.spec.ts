@@ -247,6 +247,29 @@ test.describe('Team Management @teams', () => {
       const hasTeamLink = await teamLink.isVisible().catch(() => false);
       // Team link should be in navigation
     });
+
+    test('team switcher has dropdown indicator and opens on click', async ({ page }) => {
+      await page.goto('/app/');
+      await page.waitForLoadState('domcontentloaded');
+
+      // Find the team switcher button in sidebar
+      const teamSwitcher = page.locator('.dropdown').filter({ has: page.getByRole('button') }).first();
+
+      // Check that team switcher exists and has chevron icon
+      await expect(teamSwitcher).toBeVisible();
+
+      // The button should have a chevron-down SVG (path d="M19 9l-7 7-7-7")
+      const chevronIcon = teamSwitcher.locator('svg path[d="M19 9l-7 7-7-7"]');
+      await expect(chevronIcon).toBeVisible();
+
+      // Click the team switcher to open dropdown
+      const switcherButton = teamSwitcher.getByRole('button');
+      await switcherButton.click();
+
+      // Dropdown content should be visible after click
+      const dropdownContent = teamSwitcher.locator('.dropdown-content');
+      await expect(dropdownContent).toBeVisible();
+    });
   });
 });
 
