@@ -181,6 +181,7 @@ python manage.py seed_demo_data --teams 2 --members 10 --prs 100
 - `991dae8` - Phases 1-3: Foundation, scenarios, GitHub fetcher
 - `4f799db` - Phase 4: Data generator
 - `9cecf39` - Phase 5: Enhanced command
+- `3e5c597` - Fix PR titles showing NOT_PROVIDED in seeded data
 
 **No migrations needed** - pure Python utility code.
 
@@ -221,3 +222,32 @@ python manage.py seed_demo_data --teams 2 --members 10 --prs 100
 - Linter removing imports - re-added after lint
 
 **Total: 73 tests passing**
+
+### Session 2025-12-20 (QA Testing & Bug Fix)
+
+**QA Testing with Playwright MCP**
+- Used Playwright MCP to verify seeded data displays correctly in UI
+- Logged in as admin, navigated to dashboard and analytics pages
+- Verified all metrics, charts, and PR tables render properly
+
+**Bug Found: PR titles showing `NOT_PROVIDED`**
+- **Symptom**: PR titles displayed as `<class 'django.db.models.fields.NOT_PROVIDED'>`
+- **Cause**: In `data_generator.py`, when no GitHub data available, code used:
+  ```python
+  title=github_pr.title if github_pr else PullRequestFactory._meta.model._meta.get_field("title").default
+  ```
+  The `default` attribute returns `NOT_PROVIDED` class when no default is set on the model field.
+- **Fix**: Build kwargs dict and only include title when github_pr exists:
+  ```python
+  pr_kwargs = {...}
+  if github_pr:
+      pr_kwargs["title"] = github_pr.title
+  pr = PullRequestFactory(**pr_kwargs)
+  ```
+- **Commit**: `3e5c597` - Fix PR titles showing NOT_PROVIDED in seeded data
+
+**Other Finding: Team switching sidebar bug**
+- Discovered that team links in sidebar all go to `/app/` without changing the session team
+- The `dashboard_url` property on Team model returns same URL for all teams
+- This is a pre-existing bug, not related to seeding work
+- Workaround: Manually update session team ID via Django shell
