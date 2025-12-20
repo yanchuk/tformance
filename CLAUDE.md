@@ -81,22 +81,43 @@ We store: OAuth tokens (encrypted), accounts, billing, all metrics/surveys (team
 The visual design follows the **"Sunset Dashboard"** direction - warm, approachable, and friendly while maintaining developer credibility.
 
 **Design Resources:**
-- Full implementation plan: `dev/visual-improvement-plan.md`
 - Design tokens & CSS classes: `assets/styles/app/tailwind/design-system.css`
+- Theme definitions: `assets/styles/site-tailwind.css`
+- Tailwind config: `tailwind.config.js`
 
-### Color Palette
+### Color System Architecture
 
-| Token | Hex | Usage |
-|-------|-----|-------|
-| `accent-primary` | `#F97316` | Coral orange - main brand, CTAs, active states |
-| `accent-secondary` | `#FDA4AF` | Warm rose - highlights, secondary actions |
-| `accent-tertiary` | `#2DD4BF` | Teal - success states, positive metrics |
-| `accent-warning` | `#FBBF24` | Amber - caution states |
-| `accent-error` | `#F87171` | Soft red - errors, negative metrics |
-| `accent-info` | `#60A5FA` | Soft blue - informational |
-| `deep` | `#171717` | Main background (neutral-900) |
-| `surface` | `#262626` | Cards, panels (neutral-800) |
-| `elevated` | `#404040` | Borders, dividers (neutral-700) |
+**IMPORTANT: Always use semantic DaisyUI colors, never hardcoded Tailwind colors.**
+
+Colors are managed at three levels:
+1. **DaisyUI Themes** (`site-tailwind.css`) - Define `tformance` (dark) and `tformance-light` themes
+2. **Semantic Classes** (`design-system.css`) - App-specific `app-*` classes for common patterns
+3. **Light Theme Overrides** (`site-tailwind.css`) - WCAG AA contrast fixes for light theme
+
+### Color Usage Rules
+
+| Use Case | Correct Class | Avoid |
+|----------|--------------|-------|
+| Primary text | `text-base-content` | `text-white`, `text-stone-*` |
+| Secondary text | `text-base-content/80` | `text-gray-400`, `text-stone-400` |
+| Muted text | `text-base-content/70` | `text-gray-500` |
+| Backgrounds | `bg-base-100`, `bg-base-200` | `bg-deep`, `bg-surface`, `bg-neutral-*` |
+| Borders | `border-base-300` | `border-elevated`, `border-neutral-*` |
+| Success/positive | `text-success`, `app-status-connected` | `text-emerald-*`, `text-green-*` |
+| Error/negative | `text-error` | `text-red-*` |
+| Warning | `text-warning` | `text-amber-*` |
+| Primary accent | `text-primary`, `bg-primary` | `text-orange-*`, `bg-accent-primary` |
+
+### DaisyUI Theme Tokens
+
+| Token | Dark (`tformance`) | Light (`tformance-light`) |
+|-------|-------------------|--------------------------|
+| `base-100` | `#1e1e1e` | `#FAFAF8` |
+| `base-200` | `#282725` | `#FFFFFF` |
+| `base-300` | `#363636` | `#E5E7EB` |
+| `base-content` | `#d4d0c8` | `#1F2937` |
+| `primary` | `#F97316` | `#C2410C` |
+| `accent` | `#2DD4BF` | `#10B981` |
 
 ### Typography
 
@@ -107,7 +128,7 @@ The visual design follows the **"Sunset Dashboard"** direction - warm, approacha
 
 1. **Warm over cold** - Use coral/orange accents instead of typical blue/purple
 2. **WCAG AA compliant** - All color combinations meet 4.5:1+ contrast ratio
-3. **Semantic colors** - Teal for success/positive, soft red for errors/negative
+3. **Semantic colors** - Use DaisyUI tokens that adapt to theme
 4. **Terminal aesthetic** - Monospace fonts for data, dark backgrounds
 
 ### CSS Classes
@@ -129,6 +150,11 @@ Use the `app-*` prefixed utility classes from `design-system.css`:
 
 <!-- Badges -->
 <span class="app-badge app-badge-success">Active</span>
+
+<!-- Status indicators -->
+<span class="app-status-connected">Connected</span>
+<span class="app-status-disconnected">Disconnected</span>
+<span class="app-status-error">Error</span>
 ```
 
 ## Commands you can run
