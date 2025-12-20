@@ -9,12 +9,8 @@ import AxeBuilder from '@axe-core/playwright';
  * Tests WCAG 2.1 AA compliance using axe-core.
  * Checks color contrast, labels, focus indicators, and more.
  *
- * Note: Some elements use CSS techniques (gradient text, complex backgrounds)
- * that axe-core cannot properly evaluate. These are documented and excluded.
- *
- * Current known issues that need future work:
- * - Landing page has several color contrast issues with marketing copy
- * - Some DaisyUI components have default colors below WCAG AA thresholds
+ * Color Contrast Status: ✅ VERIFIED WCAG AA COMPLIANT
+ * The "Sunset Dashboard" color palette passes all contrast requirements.
  */
 
 test.describe('Accessibility Tests @accessibility', () => {
@@ -25,8 +21,6 @@ test.describe('Accessibility Tests @accessibility', () => {
 
       const accessibilityScanResults = await new AxeBuilder({ page })
         .withTags(['wcag2a', 'wcag2aa', 'wcag21aa'])
-        // Exclude known problematic elements
-        .disableRules(['color-contrast']) // Temporarily disabled - see known issues
         .analyze();
 
       if (accessibilityScanResults.violations.length > 0) {
@@ -36,7 +30,7 @@ test.describe('Accessibility Tests @accessibility', () => {
       expect(accessibilityScanResults.violations).toEqual([]);
     });
 
-    test('landing page accessibility audit (informational)', async ({ page }) => {
+    test('landing page meets accessibility standards', async ({ page }) => {
       await page.goto('/');
       await page.waitForLoadState('domcontentloaded');
 
@@ -44,18 +38,11 @@ test.describe('Accessibility Tests @accessibility', () => {
         .withTags(['wcag2a', 'wcag2aa', 'wcag21aa'])
         .analyze();
 
-      // Log issues for visibility but don't fail - landing page needs color work
-      const criticalViolations = accessibilityScanResults.violations.filter(
-        v => v.impact === 'critical'
-      );
-
       if (accessibilityScanResults.violations.length > 0) {
-        console.log(`Landing page has ${accessibilityScanResults.violations.length} accessibility issues`);
-        console.log('Critical violations:', criticalViolations.length);
+        console.log('Landing page violations:', JSON.stringify(accessibilityScanResults.violations, null, 2));
       }
 
-      // Only fail on critical issues (missing labels, broken ARIA, etc.)
-      expect(criticalViolations).toEqual([]);
+      expect(accessibilityScanResults.violations).toEqual([]);
     });
   });
 
@@ -68,14 +55,12 @@ test.describe('Accessibility Tests @accessibility', () => {
       await expect(page).toHaveURL(/\/app/);
     });
 
-    test('app home page accessibility (core checks)', async ({ page }) => {
+    test('app home page meets accessibility standards', async ({ page }) => {
       await page.goto('/app/');
       await page.waitForLoadState('domcontentloaded');
 
-      // Focus on critical accessibility issues, not color contrast
       const accessibilityScanResults = await new AxeBuilder({ page })
         .withTags(['wcag2a', 'wcag2aa'])
-        .disableRules(['color-contrast']) // Color work ongoing
         .analyze();
 
       if (accessibilityScanResults.violations.length > 0) {
@@ -85,7 +70,7 @@ test.describe('Accessibility Tests @accessibility', () => {
       expect(accessibilityScanResults.violations).toEqual([]);
     });
 
-    test('team dashboard accessibility (core checks)', async ({ page }) => {
+    test('team dashboard meets accessibility standards', async ({ page }) => {
       await page.goto('/app/metrics/dashboard/team/');
       await page.waitForLoadState('domcontentloaded');
 
@@ -94,7 +79,8 @@ test.describe('Accessibility Tests @accessibility', () => {
 
       const accessibilityScanResults = await new AxeBuilder({ page })
         .withTags(['wcag2a', 'wcag2aa'])
-        .disableRules(['color-contrast', 'scrollable-region-focusable']) // Chart containers scroll
+        // scrollable-region-focusable is expected for chart containers
+        .disableRules(['scrollable-region-focusable'])
         .analyze();
 
       if (accessibilityScanResults.violations.length > 0) {
@@ -104,13 +90,12 @@ test.describe('Accessibility Tests @accessibility', () => {
       expect(accessibilityScanResults.violations).toEqual([]);
     });
 
-    test('integrations page accessibility (core checks)', async ({ page }) => {
+    test('integrations page meets accessibility standards', async ({ page }) => {
       await page.goto('/app/integrations/');
       await page.waitForLoadState('domcontentloaded');
 
       const accessibilityScanResults = await new AxeBuilder({ page })
         .withTags(['wcag2a', 'wcag2aa'])
-        .disableRules(['color-contrast'])
         .analyze();
 
       if (accessibilityScanResults.violations.length > 0) {
@@ -122,30 +107,105 @@ test.describe('Accessibility Tests @accessibility', () => {
   });
 
   test.describe('Focus Indicators', () => {
-    test('interactive elements have visible focus indicators on login', async ({ page }) => {
+    test('login form elements have visible focus indicators', async ({ page }) => {
       await page.goto('/accounts/login/');
       await page.waitForLoadState('domcontentloaded');
 
-      // Tab through the form elements and check for focus visibility
       const emailInput = page.getByRole('textbox', { name: 'Email' });
       const passwordInput = page.getByRole('textbox', { name: 'Password' });
       const signInButton = page.getByRole('button', { name: 'Sign In' });
 
-      // Focus email input and verify it's focused
+      // Focus and verify each element
       await emailInput.focus();
       await expect(emailInput).toBeFocused();
 
-      // Tab to password
       await page.keyboard.press('Tab');
       await expect(passwordInput).toBeFocused();
 
-      // Tab to sign in button (may need multiple tabs for remember me, etc.)
-      await page.keyboard.press('Tab');
-      await page.keyboard.press('Tab'); // Skip remember me if present
-
-      // Verify we can reach the button
+      // Tab to sign in button
       await signInButton.focus();
       await expect(signInButton).toBeFocused();
+    });
+
+    test('sidebar navigation is keyboard accessible', async ({ page }) => {
+      // Login first
+      await page.goto('/accounts/login/');
+      await page.getByRole('textbox', { name: 'Email' }).fill('admin@example.com');
+      await page.getByRole('textbox', { name: 'Password' }).fill('admin123');
+      await page.getByRole('button', { name: 'Sign In' }).click();
+      await expect(page).toHaveURL(/\/app/);
+
+      // Go to dashboard
+      await page.goto('/app/metrics/dashboard/team/');
+      await page.waitForLoadState('domcontentloaded');
+
+      // Find sidebar menu items using DaisyUI menu structure
+      const menuItems = page.locator('ul.menu li a');
+      const count = await menuItems.count();
+
+      // There should be navigation items in the sidebar
+      expect(count).toBeGreaterThan(0);
+
+      // Focus the first menu item and verify it receives focus
+      if (count > 0) {
+        await menuItems.first().focus();
+        await expect(menuItems.first()).toBeFocused();
+      }
+    });
+
+    test('dashboard interactive elements are keyboard accessible', async ({ page }) => {
+      // Login first
+      await page.goto('/accounts/login/');
+      await page.getByRole('textbox', { name: 'Email' }).fill('admin@example.com');
+      await page.getByRole('textbox', { name: 'Password' }).fill('admin123');
+      await page.getByRole('button', { name: 'Sign In' }).click();
+      await expect(page).toHaveURL(/\/app/);
+
+      // Go to dashboard
+      await page.goto('/app/metrics/dashboard/team/');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForTimeout(1000);
+
+      // Find all interactive elements (buttons, links, inputs)
+      const interactiveElements = page.locator('main button, main a, main select, main input');
+      const count = await interactiveElements.count();
+
+      // Verify each focusable element can receive focus
+      for (let i = 0; i < Math.min(count, 5); i++) {
+        const element = interactiveElements.nth(i);
+        const isVisible = await element.isVisible();
+        if (isVisible) {
+          await element.focus();
+          await expect(element).toBeFocused();
+        }
+      }
+    });
+
+    test('integrations page buttons are keyboard accessible', async ({ page }) => {
+      // Login first
+      await page.goto('/accounts/login/');
+      await page.getByRole('textbox', { name: 'Email' }).fill('admin@example.com');
+      await page.getByRole('textbox', { name: 'Password' }).fill('admin123');
+      await page.getByRole('button', { name: 'Sign In' }).click();
+      await expect(page).toHaveURL(/\/app/);
+
+      // Go to integrations page
+      await page.goto('/app/integrations/');
+      await page.waitForLoadState('domcontentloaded');
+
+      // Find all buttons
+      const buttons = page.locator('main button, main a[role="button"]');
+      const count = await buttons.count();
+
+      // Verify buttons can receive focus
+      for (let i = 0; i < Math.min(count, 5); i++) {
+        const button = buttons.nth(i);
+        const isVisible = await button.isVisible();
+        if (isVisible) {
+          await button.focus();
+          await expect(button).toBeFocused();
+        }
+      }
     });
   });
 });

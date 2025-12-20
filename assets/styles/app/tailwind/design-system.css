@@ -623,3 +623,52 @@
 .menu li > *:not(ul, .menu-title, details, .btn):hover:not(.menu-active):not(.active) {
   @apply bg-deep/50 text-neutral-200;
 }
+
+/* -----------------------------------------------------------------------------
+   REDUCED MOTION ACCESSIBILITY
+   Respects user's motion preferences for accessibility
+   ----------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  /* Disable all CSS animations */
+  .app-skeleton,
+  .app-spinner {
+    animation: none !important;
+  }
+
+  /* Disable all transitions */
+  .app-card-interactive,
+  .app-stat-card,
+  .app-btn,
+  .app-btn-primary,
+  .app-btn-secondary,
+  .app-btn-ghost,
+  .app-btn-danger,
+  .app-btn-icon,
+  .app-input,
+  .app-select,
+  .app-textarea,
+  .app-sidebar-item,
+  .app-progress-bar,
+  .app-table tbody tr {
+    transition: none !important;
+  }
+
+  /* Keep visual indicators static but visible */
+  .app-skeleton {
+    @apply opacity-50;
+  }
+
+  .app-spinner {
+    @apply border-accent-primary border-l-transparent;
+  }
+
+  /* Reduce motion in any element with transitions */
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
