@@ -14,7 +14,10 @@
         <li>
           <a class="{% if request.path == '/' %}active{% endif %}" href="{% url 'web:home' %}">
             <div class="flex items-center gap-2">
-              <i class="fa-solid fa-rocket text-primary"></i>
+              <div class="w-6 h-6 rounded-md bg-gradient-to-br from-accent-primary to-pink-500
+                          flex items-center justify-center shadow-md shadow-accent-primary/20">
+                <span class="font-bold text-white text-xs">T</span>
+              </div>
               <span class="font-bold text-lg tracking-tight">{{project_meta.NAME|title}}</span>
             </div>
           </a>
@@ -34,7 +37,10 @@
     <nav class="tabs p-0 items-center" aria-label="Main navigation">
       <a class="tab !h-auto py-2 {% if request.path == '/' %}tab-active{% endif %}" href="{% url 'web:home' %}">
         <div class="flex items-center gap-2">
-           <i class="fa-solid fa-rocket text-primary text-xl"></i>
+           <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-accent-primary to-pink-500
+                       flex items-center justify-center shadow-lg shadow-accent-primary/20">
+             <span class="font-bold text-white text-sm">T</span>
+           </div>
            <span class="font-bold text-2xl tracking-tight font-sans">{{project_meta.NAME|title}}</span>
         </div>
       </a>

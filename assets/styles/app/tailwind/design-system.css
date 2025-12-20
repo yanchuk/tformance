@@ -608,3 +608,18 @@
 .menu-title > span {
   @apply !text-neutral-400;
 }
+
+/* DaisyUI menu-active override for warm Sunset Dashboard colors */
+.menu li > *:not(ul, .menu-title, details, .btn):active,
+.menu li > *:not(ul, .menu-title, details, .btn).active,
+.menu li > *:not(ul, .menu-title, details, .btn).menu-active,
+.menu li > details > summary:active {
+  @apply !bg-deep !text-accent-primary;
+  @apply border-l-2 border-accent-primary;
+  @apply rounded-r-lg rounded-l-none;
+}
+
+/* Menu hover states - warm highlight */
+.menu li > *:not(ul, .menu-title, details, .btn):hover:not(.menu-active):not(.active) {
+  @apply bg-deep/50 text-neutral-200;
+}

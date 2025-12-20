@@ -1,5 +1,6 @@
 'use strict';
 import Chart from 'chart.js/auto';
+import { TformanceChartTheme, getChartDefaults, getBarStyle } from './chart-theme';
 
 function listToDict(list) {
   // gpt
@@ -30,12 +31,20 @@ function getTimeSeriesData(start, end, data) {
 
 const barChartWithDates = (ctx, start, end, data, label) => {
   const chartData = getTimeSeriesData(start, end, data);
+  const barStyle = getBarStyle();
+  const chartDefaults = getChartDefaults();
+
   return new Chart(ctx, {
     type: 'bar',
     data: {
       datasets: [{
         label: label,
         data: chartData,
+        backgroundColor: barStyle.backgroundColor,
+        borderColor: barStyle.borderColor,
+        borderWidth: barStyle.borderWidth,
+        borderRadius: barStyle.borderRadius,
+        hoverBackgroundColor: barStyle.hoverBackgroundColor,
       }]
     },
     options: {
@@ -44,21 +53,36 @@ const barChartWithDates = (ctx, start, end, data, label) => {
       plugins: {
         legend: {
           display: false
-        }
+        },
+        tooltip: chartDefaults.plugins.tooltip,
       },
       scales: {
         x: {
           title: {
             display: true,
-            text: 'Date'
-          }
+            text: 'Date',
+            color: TformanceChartTheme.axis.titleColor,
+          },
+          ticks: {
+            color: TformanceChartTheme.axis.color,
+          },
+          grid: {
+            color: TformanceChartTheme.grid.color,
+          },
         },
         y: {
           beginAtZero: true,
           title: {
             display: true,
             text: label,
-          }
+            color: TformanceChartTheme.axis.titleColor,
+          },
+          ticks: {
+            color: TformanceChartTheme.axis.color,
+          },
+          grid: {
+            color: TformanceChartTheme.grid.color,
+          },
         }
       }
     }
@@ -72,13 +96,26 @@ const cumulativeChartWithDates = (ctx, start, end, data, label, startValue) => {
     currentValue += row.y;
     row.y = currentValue;
   }
+
+  const lineStyle = TformanceChartTheme.line;
+  const chartDefaults = getChartDefaults();
+
   return new Chart(ctx, {
     type: 'line',
     data: {
       datasets: [{
         label: label,
-        fill: true,
+        fill: lineStyle.fill,
         data: chartData,
+        backgroundColor: lineStyle.backgroundColor,
+        borderColor: lineStyle.borderColor,
+        borderWidth: lineStyle.borderWidth,
+        tension: lineStyle.tension,
+        pointBackgroundColor: lineStyle.pointBackgroundColor,
+        pointBorderColor: lineStyle.pointBorderColor,
+        pointBorderWidth: lineStyle.pointBorderWidth,
+        pointRadius: lineStyle.pointRadius,
+        pointHoverRadius: lineStyle.pointHoverRadius,
       }]
     },
     options: {
@@ -87,37 +124,59 @@ const cumulativeChartWithDates = (ctx, start, end, data, label, startValue) => {
       plugins: {
         legend: {
           display: false
-        }
+        },
+        tooltip: chartDefaults.plugins.tooltip,
       },
       scales: {
         x: {
           title: {
             display: true,
-            text: 'Date'
-          }
+            text: 'Date',
+            color: TformanceChartTheme.axis.titleColor,
+          },
+          ticks: {
+            color: TformanceChartTheme.axis.color,
+          },
+          grid: {
+            color: TformanceChartTheme.grid.color,
+          },
         },
         y: {
           beginAtZero: true,
           title: {
             display: true,
             text: label,
-          }
+            color: TformanceChartTheme.axis.titleColor,
+          },
+          ticks: {
+            color: TformanceChartTheme.axis.color,
+          },
+          grid: {
+            color: TformanceChartTheme.grid.color,
+          },
         }
       }
     }
   });
-
 }
 /**
  * Bar chart for weekly/aggregated data (no daily interpolation)
  * Use this for data that already has aggregated weekly points.
+ * @param {CanvasRenderingContext2D} ctx - Canvas context
+ * @param {Array} data - Chart data [{date, count}, ...]
+ * @param {string} label - Y-axis label
+ * @param {Object} options - { ai: boolean } for AI-specific styling (purple)
  */
-const weeklyBarChart = (ctx, data, label) => {
+const weeklyBarChart = (ctx, data, label, options = {}) => {
   // Convert data to Chart.js format: {labels: [], data: []}
   const chartData = data.map(item => ({
     x: item.date,
     y: item.count
   }));
+
+  // Get theme-based bar styling
+  const barStyle = getBarStyle(options);
+  const chartDefaults = getChartDefaults();
 
   return new Chart(ctx, {
     type: 'bar',
@@ -125,9 +184,11 @@ const weeklyBarChart = (ctx, data, label) => {
       datasets: [{
         label: label,
         data: chartData,
-        backgroundColor: 'rgba(94, 158, 176, 0.7)',  // Softer teal
-        borderColor: 'rgba(94, 158, 176, 1)',  // Softer teal
-        borderWidth: 1
+        backgroundColor: barStyle.backgroundColor,
+        borderColor: barStyle.borderColor,
+        borderWidth: barStyle.borderWidth,
+        borderRadius: barStyle.borderRadius,
+        hoverBackgroundColor: barStyle.hoverBackgroundColor,
       }]
     },
     options: {
@@ -136,21 +197,36 @@ const weeklyBarChart = (ctx, data, label) => {
       plugins: {
         legend: {
           display: false
-        }
+        },
+        tooltip: chartDefaults.plugins.tooltip,
       },
       scales: {
         x: {
           title: {
             display: true,
-            text: 'Week'
-          }
+            text: 'Week',
+            color: TformanceChartTheme.axis.titleColor,
+          },
+          ticks: {
+            color: TformanceChartTheme.axis.color,
+          },
+          grid: {
+            color: TformanceChartTheme.grid.color,
+          },
         },
         y: {
           beginAtZero: true,
           title: {
             display: true,
             text: label,
-          }
+            color: TformanceChartTheme.axis.titleColor,
+          },
+          ticks: {
+            color: TformanceChartTheme.axis.color,
+          },
+          grid: {
+            color: TformanceChartTheme.grid.color,
+          },
         }
       }
     }
