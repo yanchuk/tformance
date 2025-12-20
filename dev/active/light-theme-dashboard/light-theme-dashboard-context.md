@@ -1,10 +1,10 @@
 # Light Theme Dashboard - Context Document
 
-**Last Updated:** 2025-12-20 (Session 4 - COMPLETE)
+**Last Updated:** 2025-12-20 (Session 5 - Dark Mode Toggle Added)
 
 ## Current Status
 
-**Progress: 100% Complete ✅**
+**Progress: 100% Complete ✅ + Dark Mode Toggle**
 
 ### Implementation Complete
 - ✅ tformance-light theme created and applied to all app pages
@@ -15,6 +15,7 @@
 - ✅ Responsive layouts verified (desktop, tablet, mobile)
 - ✅ Focus states verified for accessibility
 - ✅ All DaisyUI components automatically adapt
+- ✅ Dark mode toggle for app pages (Light/Dark/System options)
 
 ### Commits Made
 - `7b82105` - Add tformance-light theme for internal dashboard
@@ -22,6 +23,8 @@
 - `2a8075e` - Fix hardcoded colors in chart/table partials
 - `405c6cd` - Add light theme support to Chart.js
 - `11c85d0` - Fix hardcoded colors in empty_state.html
+- `29e2a33` - Add dark mode toggle with syncDarkMode function
+- `d47f459` - Fix z-index and auth-only display
 
 ### Ready for Production
 This task is complete. Move documentation to `dev/completed/` when merging to main.
@@ -226,7 +229,7 @@ Reference screenshots saved in `.playwright-mcp/`:
 ## Open Questions
 
 1. Should surveys also use light theme? (Probably yes)
-2. Do we need a theme toggle for users? (Probably not for MVP)
+2. ~~Do we need a theme toggle for users?~~ **DONE** - Toggle implemented for app pages
 3. Should charts use exact same colors or optimized for light? (Optimized)
 
 ---
@@ -295,3 +298,35 @@ User provided feedback for future features (not current scope):
    - Focus state verification screenshots
 
 **Task Complete - Ready for Production**
+
+### Session 5 (2025-12-20) - Dark Mode Toggle
+
+**Feature Added: Theme Toggle for App Pages**
+
+User requested ability to switch between light/dark themes. Implementation:
+
+1. **Files Created/Modified:**
+   - `assets/javascript/theme.js` (NEW) - `syncDarkMode()` function
+   - `assets/javascript/site.js` - Added theme import
+   - `templates/web/base.html` - Flash prevention inline script
+   - `templates/web/components/top_nav.html` - Toggle include (auth-only)
+   - `templates/web/components/dark_mode_selector.html` - Fixed z-index (z-1 → z-50)
+
+2. **Design Decision:**
+   - Marketing pages remain dark-only (hardcoded `bg-deep`, `text-slate-*` throughout)
+   - Toggle only shows for authenticated users (app pages)
+   - Making marketing theme-aware would require updating ~10 component templates
+
+3. **How It Works:**
+   - localStorage stores theme preference ('tformance', 'tformance-light', or 'system')
+   - Inline script in `<head>` prevents flash on page load
+   - `syncDarkMode()` applies theme and listens for system preference changes
+   - Pre-existing `dark_mode_selector.html` component handles UI
+
+4. **Commits:**
+   - `29e2a33` - Add dark mode toggle with syncDarkMode function
+   - `d47f459` - Fix z-index and auth-only display
+
+**Screenshots:**
+- `dashboard-dark-theme.png` - Dark theme on dashboard
+- `dashboard-light-theme.png` - Light theme on dashboard
