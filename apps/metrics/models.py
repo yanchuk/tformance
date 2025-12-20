@@ -1295,3 +1295,88 @@ class Deployment(BaseTeamModel):
 
     def __str__(self):
         return f"{self.github_repo} - {self.environment}"
+
+
+class ReviewerCorrelation(BaseTeamModel):
+    """
+    Tracks agreement/disagreement patterns between pairs of reviewers.
+
+    Used to identify:
+    - Redundant reviewer pairings (always agree, adding one to both doesn't add value)
+    - Complementary reviewers (different perspectives, catch different issues)
+    """
+
+    # Reviewer pair
+    reviewer_1 = models.ForeignKey(
+        TeamMember,
+        on_delete=models.CASCADE,
+        related_name="correlations_as_reviewer_1",
+        verbose_name="Reviewer 1",
+        help_text="First reviewer in the pair",
+    )
+    reviewer_2 = models.ForeignKey(
+        TeamMember,
+        on_delete=models.CASCADE,
+        related_name="correlations_as_reviewer_2",
+        verbose_name="Reviewer 2",
+        help_text="Second reviewer in the pair",
+    )
+
+    # Statistics
+    prs_reviewed_together = models.IntegerField(
+        default=0,
+        verbose_name="PRs reviewed together",
+        help_text="Number of PRs where both reviewers submitted reviews",
+    )
+    agreements = models.IntegerField(
+        default=0,
+        verbose_name="Agreements",
+        help_text="Number of PRs where both approved or both requested changes",
+    )
+    disagreements = models.IntegerField(
+        default=0,
+        verbose_name="Disagreements",
+        help_text="Number of PRs where one approved and the other requested changes",
+    )
+
+    # Thresholds for redundancy detection
+    REDUNDANCY_THRESHOLD = 95  # 95% agreement rate
+    MIN_SAMPLE_SIZE = 10  # Minimum PRs reviewed together
+
+    class Meta:
+        ordering = ["-prs_reviewed_together"]
+        verbose_name = "Reviewer Correlation"
+        verbose_name_plural = "Reviewer Correlations"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["team", "reviewer_1", "reviewer_2"],
+                name="unique_team_reviewer_pair",
+            )
+        ]
+        indexes = [
+            models.Index(fields=["reviewer_1", "reviewer_2"], name="correlation_pair_idx"),
+            models.Index(fields=["prs_reviewed_together"], name="correlation_count_idx"),
+        ]
+
+    @property
+    def agreement_rate(self):
+        """Calculate agreement rate as a percentage."""
+        from decimal import Decimal
+
+        if self.prs_reviewed_together == 0:
+            return Decimal("0.00")
+        rate = (self.agreements / self.prs_reviewed_together) * 100
+        return Decimal(str(round(rate, 2)))
+
+    @property
+    def is_redundant(self):
+        """Check if this reviewer pair is potentially redundant.
+
+        A pair is considered redundant if:
+        - They have reviewed at least MIN_SAMPLE_SIZE PRs together
+        - Their agreement rate is >= REDUNDANCY_THRESHOLD
+        """
+        return self.prs_reviewed_together >= self.MIN_SAMPLE_SIZE and self.agreement_rate >= self.REDUNDANCY_THRESHOLD
+
+    def __str__(self):
+        return f"{self.reviewer_1.display_name} ↔ {self.reviewer_2.display_name}: {self.agreement_rate:.2f}% agreement"

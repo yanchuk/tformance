@@ -12,6 +12,7 @@ from .models import (
     PRSurvey,
     PRSurveyReview,
     PullRequest,
+    ReviewerCorrelation,
     TeamMember,
     WeeklyMetrics,
 )
@@ -303,3 +304,39 @@ class DeploymentAdmin(admin.ModelAdmin):
         ("Details", {"fields": ("creator", "pull_request", "sha")}),
         ("Timestamps", {"fields": ("deployed_at", "created_at", "updated_at"), "classes": ("collapse",)}),
     )
+
+
+@admin.register(ReviewerCorrelation)
+class ReviewerCorrelationAdmin(admin.ModelAdmin):
+    """Admin for ReviewerCorrelation - reviewer agreement patterns."""
+
+    list_display = [
+        "reviewer_1",
+        "reviewer_2",
+        "prs_reviewed_together",
+        "agreements",
+        "disagreements",
+        "get_agreement_rate",
+        "get_is_redundant",
+        "team",
+    ]
+    list_filter = ["team"]
+    search_fields = ["reviewer_1__display_name", "reviewer_2__display_name"]
+    ordering = ["-prs_reviewed_together"]
+    readonly_fields = ["created_at", "updated_at", "get_agreement_rate", "get_is_redundant"]
+    raw_id_fields = ["reviewer_1", "reviewer_2"]
+
+    fieldsets = (
+        (None, {"fields": ("team", "reviewer_1", "reviewer_2")}),
+        ("Statistics", {"fields": ("prs_reviewed_together", "agreements", "disagreements")}),
+        ("Calculated", {"fields": ("get_agreement_rate", "get_is_redundant")}),
+        ("Timestamps", {"fields": ("created_at", "updated_at"), "classes": ("collapse",)}),
+    )
+
+    @admin.display(description="Agreement Rate")
+    def get_agreement_rate(self, obj):
+        return f"{obj.agreement_rate:.2f}%"
+
+    @admin.display(description="Redundant?", boolean=True)
+    def get_is_redundant(self, obj):
+        return obj.is_redundant
