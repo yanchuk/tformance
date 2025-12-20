@@ -197,6 +197,11 @@
   color: oklch(0.55 0.15 80) !important; /* Darker amber for 4.5:1+ contrast */
 }
 
+/* Warning text contrast fix for light theme */
+[data-theme="tformance-light"] .text-warning {
+  color: oklch(0.55 0.15 80) !important; /* Darker amber for 4.5:1+ contrast */
+}
+
 /* Accent-error contrast fix for light theme */
 [data-theme="tformance-light"] .text-accent-error {
   color: oklch(0.50 0.18 25) !important; /* Darker red for 4.5:1+ contrast */
