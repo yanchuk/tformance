@@ -3,8 +3,8 @@
 {% load i18n %}
 {% block app %}
 <section class="app-card max-w-md">
-  <h1 class="text-2xl font-bold text-stone-100 mb-2">{% translate "Sign Out" %}</h1>
-  <p class="text-stone-400 mb-6">{% translate 'Are you sure you want to sign out?' %}</p>
+  <h1 class="text-2xl font-bold text-base-content mb-2">{% translate "Sign Out" %}</h1>
+  <p class="text-base-content/70 mb-6">{% translate 'Are you sure you want to sign out?' %}</p>
   <form method="post" action="{% url 'account_logout' %}">
     {% csrf_token %}
     {% if redirect_field_value %}

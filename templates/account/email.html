@@ -4,9 +4,9 @@
 {% block head_title %}{% translate "E-mail Addresses" %}{% endblock %}
 {% block content %}
 <div class="app-card">
-  <h1 class="text-2xl font-bold text-stone-100 mb-4">{% translate "E-mail Addresses" %}</h1>
+  <h1 class="text-2xl font-bold text-base-content mb-4">{% translate "E-mail Addresses" %}</h1>
   {% if user.emailaddress_set.all %}
-  <p class="text-stone-400 mb-4">{% translate 'The following e-mail addresses are associated with your account:' %}</p>
+  <p class="text-base-content/70 mb-4">{% translate 'The following e-mail addresses are associated with your account:' %}</p>
   <form action="{% url 'account_email' %}" method="post">
     {% csrf_token %}
     <fieldset class="space-y-3 mb-4">
@@ -17,7 +17,7 @@
                  value="{{ emailaddress.email }}"
                  class="app-checkbox rounded-full"/>
           <span class="flex-1">
-            <span class="text-stone-200">{{ emailaddress.email }}</span>
+            <span class="text-base-content">{{ emailaddress.email }}</span>
             <span class="flex gap-2 mt-1">
               {% if emailaddress.verified %}
                 <span class="app-badge app-badge-success">{% translate "Verified" %}</span>
@@ -45,7 +45,7 @@
   {% endif %}
   {% if can_add_email %}
   <div class="border-t border-elevated my-6"></div>
-  <h2 class="text-lg font-semibold text-stone-200 mb-4">{% translate "Add E-mail Address" %}</h2>
+  <h2 class="text-lg font-semibold text-base-content mb-4">{% translate "Add E-mail Address" %}</h2>
   <form method="post" action="{% url 'account_email' %}" class="space-y-4">
     {% csrf_token %}
     {% render_form_fields form %}
