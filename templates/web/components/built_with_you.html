@@ -1,4 +1,4 @@
-{% load i18n %}
+{% load i18n static %}
 <section class="bg-deep py-16 md:py-24">
   <div class="max-w-5xl mx-auto px-4">
     <div class="text-center mb-12">
@@ -11,9 +11,9 @@
       <!-- Founder Story -->
       <div>
         <div class="flex items-center gap-4 mb-6">
-          <div class="w-16 h-16 rounded-full bg-gradient-to-br from-accent-primary to-accent-secondary flex items-center justify-center text-white text-2xl font-bold">
-            O
-          </div>
+          <img src="{% static 'images/team/oleksii-ianchuk.jpeg' %}"
+               alt="Oleksii Ianchuk"
+               class="w-16 h-16 rounded-full object-cover">
           <div>
             <h3 class="text-lg font-semibold text-slate-100">Oleksii Ianchuk</h3>
             <p class="text-sm text-slate-400">Technical Product Manager</p>
