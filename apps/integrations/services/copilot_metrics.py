@@ -61,7 +61,7 @@ def _make_github_api_request(url, headers, params=None, error_prefix="GitHub API
         CopilotMetricsError: If the API call fails or returns an error status
     """
     try:
-        response = requests.get(url, headers=headers, params=params)
+        response = requests.get(url, headers=headers, params=params, timeout=30)
 
         if response.status_code == 403:
             raise CopilotMetricsError(
@@ -90,7 +90,7 @@ def check_copilot_availability(access_token, org_slug):
     url = _build_copilot_metrics_url(org_slug)
     headers = _build_github_headers(access_token)
 
-    response = requests.get(url, headers=headers)
+    response = requests.get(url, headers=headers, timeout=30)
 
     if response.status_code == 200:
         return True

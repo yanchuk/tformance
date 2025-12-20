@@ -39,7 +39,7 @@ class CustomUser(AbstractUser):
     @property
     def gravatar_id(self) -> str:
         # https://en.gravatar.com/site/implement/hash/
-        return hashlib.md5(self.email.lower().strip().encode("utf-8")).hexdigest()
+        return hashlib.md5(self.email.lower().strip().encode("utf-8"), usedforsecurity=False).hexdigest()
 
     @cached_property
     def has_verified_email(self):
