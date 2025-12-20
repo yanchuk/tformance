@@ -83,8 +83,8 @@
   --color-base-300: oklch(0.92 0.005 250);      /* #E5E7EB - Light gray borders */
   --color-base-content: oklch(0.27 0.02 260);   /* #1F2937 - Dark gray text */
 
-  /* Primary - Coral orange (same as dark theme - brand consistency) */
-  --color-primary: oklch(0.70 0.18 45);         /* #F97316 - Coral orange */
+  /* Primary - Darker orange for WCAG AA contrast with white text */
+  --color-primary: oklch(0.55 0.18 45);         /* #C2410C - Orange-700 (4.5:1 with white) */
   --color-primary-content: oklch(1 0 0);        /* #FFFFFF - White text on primary */
 
   /* Secondary - Warm rose (same as dark theme) */
@@ -137,4 +137,12 @@
   --primary: var(--color-primary);
   --danger: var(--color-error);
   --success: var(--color-success);
+}
+
+/*
+  Light theme accessibility overrides
+  Fix DaisyUI menu-title contrast ratio for WCAG AA compliance
+*/
+[data-theme="tformance-light"] .menu-title {
+  color: oklch(0.45 0.02 260); /* ~#4B5563 - Gray-600 for 4.5:1+ contrast */
 }

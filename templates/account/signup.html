@@ -11,7 +11,7 @@
 <div class="min-h-screen flex items-center justify-center app-bg py-12 px-4">
   <div class="w-full max-w-md">
     <div class="app-card">
-      <h2 class="text-center text-2xl font-bold text-slate-100 mb-6">
+      <h2 class="text-center text-2xl font-bold text-base-content mb-6">
         {% translate "Sign Up" %}
       </h2>
       <form class="space-y-4" method="post">
@@ -41,7 +41,7 @@
         </div>
       </form>
       {% include 'account/components/social/social_buttons.html' %}
-      <div class="text-sm text-slate-400 mt-4 text-center">
+      <div class="text-sm text-base-content/70 mt-4 text-center">
         {% translate "Already have account?" %}
         <a href="{% url 'account_login' %}" class="font-medium text-cyan hover:text-cyan-light transition-colors">
           {% translate "Go to sign in." %}

@@ -37,12 +37,12 @@
         {% if github_integration %}
           <div class="space-y-2 mb-4">
             <div class="flex items-center gap-2 text-sm">
-              <span class="text-base-content/50">{% translate "Organization:" %}</span>
+              <span class="text-base-content/70">{% translate "Organization:" %}</span>
               <span class="font-medium text-base-content">{{ github_integration.organization_slug }}</span>
             </div>
             {% if github_integration.last_sync_at %}
               <div class="flex items-center gap-2 text-sm">
-                <span class="text-base-content/50">{% translate "Last sync:" %}</span>
+                <span class="text-base-content/70">{% translate "Last sync:" %}</span>
                 <span class="text-base-content/80">{{ github_integration.last_sync_at|timesince }} {% translate "ago" %}</span>
               </div>
             {% endif %}
@@ -92,10 +92,10 @@
         </div>
       {% else %}
         <div class="flex items-center gap-2 mb-4 p-3 bg-base-300 rounded-lg">
-          <svg class="w-5 h-5 text-base-content/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-5 h-5 text-base-content/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
           </svg>
-          <span class="text-base-content/50">{% translate "Not connected" %}</span>
+          <span class="text-base-content/70">{% translate "Not connected" %}</span>
         </div>
 
         <div class="flex justify-end">
@@ -132,12 +132,12 @@
         {% if jira_integration %}
           <div class="space-y-2 mb-4">
             <div class="flex items-center gap-2 text-sm">
-              <span class="text-base-content/50">{% translate "Site:" %}</span>
+              <span class="text-base-content/70">{% translate "Site:" %}</span>
               <span class="font-medium text-base-content">{{ jira_integration.site_name }}</span>
             </div>
             {% if jira_integration.last_sync_at %}
               <div class="flex items-center gap-2 text-sm">
-                <span class="text-base-content/50">{% translate "Last sync:" %}</span>
+                <span class="text-base-content/70">{% translate "Last sync:" %}</span>
                 <span class="text-base-content/80">{{ jira_integration.last_sync_at|timesince }} {% translate "ago" %}</span>
               </div>
             {% endif %}
@@ -179,10 +179,10 @@
         </div>
       {% else %}
         <div class="flex items-center gap-2 mb-4 p-3 bg-base-300 rounded-lg">
-          <svg class="w-5 h-5 text-base-content/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-5 h-5 text-base-content/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
           </svg>
-          <span class="text-base-content/50">{% translate "Not connected" %}</span>
+          <span class="text-base-content/70">{% translate "Not connected" %}</span>
         </div>
 
         <div class="flex justify-end">
@@ -219,12 +219,12 @@
         {% if slack_integration %}
           <div class="space-y-2 mb-4">
             <div class="flex items-center gap-2 text-sm">
-              <span class="text-base-content/50">{% translate "Workspace:" %}</span>
+              <span class="text-base-content/70">{% translate "Workspace:" %}</span>
               <span class="font-medium text-base-content">{{ slack_integration.workspace_name }}</span>
             </div>
             {% if slack_integration.last_sync_at %}
               <div class="flex items-center gap-2 text-sm">
-                <span class="text-base-content/50">{% translate "Last sync:" %}</span>
+                <span class="text-base-content/70">{% translate "Last sync:" %}</span>
                 <span class="text-base-content/80">{{ slack_integration.last_sync_at|timesince }} {% translate "ago" %}</span>
               </div>
             {% endif %}
@@ -266,10 +266,10 @@
         </div>
       {% else %}
         <div class="flex items-center gap-2 mb-4 p-3 bg-base-300 rounded-lg">
-          <svg class="w-5 h-5 text-base-content/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-5 h-5 text-base-content/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
           </svg>
-          <span class="text-base-content/50">{% translate "Not connected" %}</span>
+          <span class="text-base-content/70">{% translate "Not connected" %}</span>
         </div>
 
         <div class="flex justify-end">
@@ -305,17 +305,17 @@
 
         <div class="space-y-2 mb-4">
           <div class="flex items-center gap-2 text-sm">
-            <span class="text-base-content/50">{% translate "Source:" %}</span>
+            <span class="text-base-content/70">{% translate "Source:" %}</span>
             <span class="font-medium text-base-content">{% translate "GitHub Organization" %}</span>
           </div>
           {% if copilot_last_sync %}
             <div class="flex items-center gap-2 text-sm">
-              <span class="text-base-content/50">{% translate "Last sync:" %}</span>
+              <span class="text-base-content/70">{% translate "Last sync:" %}</span>
               <span class="text-base-content/80">{{ copilot_last_sync.created_at|timesince }} {% translate "ago" %}</span>
             </div>
           {% else %}
             <div class="flex items-center gap-2 text-sm">
-              <span class="text-base-content/50">{% translate "Status:" %}</span>
+              <span class="text-base-content/70">{% translate "Status:" %}</span>
               <span class="text-base-content/80">{% translate "No data synced yet" %}</span>
             </div>
           {% endif %}
@@ -334,10 +334,10 @@
         </div>
       {% else %}
         <div class="flex items-center gap-2 mb-4 p-3 bg-base-300 rounded-lg">
-          <svg class="w-5 h-5 text-base-content/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-5 h-5 text-base-content/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
           </svg>
-          <span class="text-base-content/50">{% translate "Not available" %}</span>
+          <span class="text-base-content/70">{% translate "Not available" %}</span>
         </div>
 
         <p class="text-sm text-base-content/60 mb-4">

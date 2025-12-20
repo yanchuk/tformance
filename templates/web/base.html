@@ -40,7 +40,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
-    <!-- Theme flash prevention - must run before CSS loads -->
+    {% if user.is_authenticated %}
+    <!-- Theme flash prevention - only for authenticated users (app pages) -->
     <script>
     (function(){
       var s=localStorage.getItem('theme')||'system';
@@ -49,6 +50,7 @@
       document.documentElement.className=d?'dark':'light';
     })();
     </script>
+    {% endif %}
     <link rel="stylesheet" href="{% vite_asset_url 'assets/styles/site-base.css' %}">
     <link rel="stylesheet" href="{% vite_asset_url 'assets/styles/site-tailwind.css' %}">
 

@@ -96,7 +96,7 @@
 
 /* Card subtitle/description */
 .app-card-subtitle {
-  @apply text-sm text-base-content/60;
+  @apply text-sm text-base-content/70;
 }
 
 /* Card body content */
@@ -139,7 +139,7 @@
 
 /* Stat label */
 .app-stat-label {
-  @apply text-sm text-base-content/60 mt-2;
+  @apply text-sm text-base-content/70 mt-2;
 }
 
 /* Stat change indicator */
@@ -502,11 +502,11 @@
    ----------------------------------------------------------------------------- */
 
 .app-text-muted {
-  @apply text-base-content/50;
+  @apply text-base-content/70;
 }
 
 .app-text-secondary {
-  @apply text-base-content/60;
+  @apply text-base-content/70;
 }
 
 .app-text-primary {
@@ -551,7 +551,7 @@
 }
 
 .app-page-subtitle {
-  @apply text-base-content/60 mt-1;
+  @apply text-base-content/70 mt-1;
 }
 
 /* Content grid for dashboard */
@@ -603,10 +603,10 @@
    Override DaisyUI defaults for better accessibility
    ----------------------------------------------------------------------------- */
 
-/* Menu title contrast fix - DaisyUI default is too dark */
+/* Menu title contrast fix - DaisyUI default is too dark, /70 meets WCAG AA 4.5:1 */
 .menu-title,
 .menu-title > span {
-  @apply !text-base-content/60;
+  @apply !text-base-content/70;
 }
 
 /* DaisyUI menu-active override for warm Sunset Dashboard colors */

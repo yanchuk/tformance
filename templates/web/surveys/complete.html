@@ -55,7 +55,7 @@
             <div class="stat-value text-3xl {% if reveal.guess_correct %}text-success{% else %}text-warning{% endif %}">
               {{ reveal.accuracy.percentage|floatformat:0 }}%
             </div>
-            <div class="stat-desc text-base-content/50">
+            <div class="stat-desc text-base-content/70">
               {{ reveal.accuracy.correct }}/{{ reveal.accuracy.total }} correct guesses
             </div>
           </div>
@@ -66,7 +66,7 @@
       <!-- No reveal yet (author hasn't responded) -->
       {% if is_reviewer_submission %}
       <div class="mt-4 opacity-0 animate-fade-in-up animate-delay-200">
-        <p class="text-sm text-base-content/50">
+        <p class="text-sm text-base-content/70">
           Your guess result will be available once the author responds.
         </p>
       </div>

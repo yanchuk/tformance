@@ -14,6 +14,12 @@ import AxeBuilder from '@axe-core/playwright';
  */
 
 test.describe('Accessibility Tests @accessibility', () => {
+  // Clear localStorage before each test to prevent theme state leakage
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/');
+    await page.evaluate(() => localStorage.clear());
+  });
+
   test.describe('Public Pages', () => {
     test('login page meets accessibility standards', async ({ page }) => {
       await page.goto('/accounts/login/');
@@ -135,21 +141,30 @@ test.describe('Accessibility Tests @accessibility', () => {
       await page.getByRole('button', { name: 'Sign In' }).click();
       await expect(page).toHaveURL(/\/app/);
 
-      // Go to dashboard
+      // Go to dashboard - set larger viewport to ensure sidebar is visible
+      await page.setViewportSize({ width: 1280, height: 720 });
       await page.goto('/app/metrics/dashboard/team/');
       await page.waitForLoadState('domcontentloaded');
 
-      // Find sidebar menu items using DaisyUI menu structure
-      const menuItems = page.locator('ul.menu li a');
+      // Find visible sidebar menu links (excluding menu-title items)
+      const menuItems = page.locator('ul.menu li a:visible');
       const count = await menuItems.count();
 
       // There should be navigation items in the sidebar
       expect(count).toBeGreaterThan(0);
 
-      // Focus the first menu item and verify it receives focus
+      // Focus menu items and verify they receive focus (don't click - that navigates away)
       if (count > 0) {
-        await menuItems.first().focus();
-        await expect(menuItems.first()).toBeFocused();
+        const firstItem = menuItems.first();
+        await firstItem.focus();
+        await expect(firstItem).toBeFocused();
+
+        // Tab to next item and verify focus moves
+        if (count > 1) {
+          const secondItem = menuItems.nth(1);
+          await secondItem.focus();
+          await expect(secondItem).toBeFocused();
+        }
       }
     });
 

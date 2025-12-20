@@ -38,7 +38,7 @@ test.describe('Copilot Metrics @copilot', () => {
       );
 
       // Wait for HTMX to load cards
-      await page.waitForSelector('.stat', { timeout: 5000 }).catch(() => null);
+      await page.waitForSelector('.stat', { timeout: 5000 }).catch((): null => null);
 
       // Check for specific Copilot metrics
       const suggestionsCard = page.getByText(/suggestions/i);
