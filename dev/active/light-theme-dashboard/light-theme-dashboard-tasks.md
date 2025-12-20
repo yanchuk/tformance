@@ -1,6 +1,6 @@
 # Light Theme Dashboard - Task Checklist
 
-**Last Updated:** 2025-12-20 (Session 2)
+**Last Updated:** 2025-12-20 (Session 3)
 
 Use this checklist to track implementation progress. Mark tasks with `[x]` when complete.
 
@@ -21,9 +21,9 @@ Use this checklist to track implementation progress. Mark tasks with `[x]` when 
   - [x] Update `.app-sidebar-*` variants
   - [x] Update text utility classes
 
-- [ ] **1.3** Define Chart.js color palette for light theme
-  - [ ] Create theme-aware color configuration
-  - [ ] Test chart readability on light background
+- [x] **1.3** Define Chart.js color palette for light theme
+  - [x] Create theme-aware color configuration
+  - [x] Test chart readability on light background
 
 ---
 
@@ -60,14 +60,14 @@ Use this checklist to track implementation progress. Mark tasks with `[x]` when 
 
 ---
 
-## Phase 4: Dashboard Home ✅ MOSTLY COMPLETE
+## Phase 4: Dashboard Home ✅ COMPLETE
 
 - [x] **4.1** Update `app_home.html`
   - [x] Update page background (via base template)
   - [x] Update card backgrounds (via design system)
   - [x] Update text colors (via design system)
   - [x] Update badge colors (DaisyUI theme-aware)
-  - [ ] Test all three states (has data, waiting, setup)
+  - [x] Test all three states (has data, waiting, setup)
 
 - [x] **4.2** Update `quick_stats.html`
   - [x] Update stat card backgrounds
@@ -81,51 +81,51 @@ Use this checklist to track implementation progress. Mark tasks with `[x]` when 
   - [x] Update timestamp colors
   - [x] Update icon backgrounds
 
-- [ ] **4.4** Update setup components
-  - [ ] Update `setup_wizard.html`
-  - [ ] Update `setup_prompt.html`
-  - [ ] Update `empty_state.html`
+- [x] **4.4** Update setup components
+  - [x] Update `setup_wizard.html` (already theme-aware)
+  - [x] Update `setup_prompt.html` (already theme-aware)
+  - [x] Update `empty_state.html` (fixed text-neutral colors)
 
 ---
 
-## Phase 5: Metrics Dashboard ⏳ IN PROGRESS
+## Phase 5: Metrics Dashboard ✅ COMPLETE
 
 - [x] **5.1** Update `team_dashboard.html` (mostly working via design system)
   - [x] Update main container styling
   - [x] Update card containers
   - [x] Update section headers
-  - [ ] Update alert styling
+  - [x] Update alert styling (DaisyUI theme-aware)
 
 - [x] **5.2** Update `key_metrics_cards.html`
   - [x] Update card backgrounds
   - [x] Update metric values
   - [x] Update trend indicators
 
-- [ ] **5.3** Update chart partials (charts work but may need color tweaks)
-  - [ ] `cycle_time_chart.html` - Update Chart.js config
-  - [ ] `review_time_chart.html` - Update Chart.js config
-  - [ ] `pr_size_chart.html` - Update Chart.js config
-  - [ ] `review_distribution_chart.html` - Update Chart.js config
-  - [ ] `ai_adoption_chart.html` - Update Chart.js config
-  - [ ] `ai_quality_chart.html` - Update Chart.js config
-  - [ ] `copilot_trend_chart.html` - Update Chart.js config
+- [x] **5.3** Update chart partials (fixed empty state text colors)
+  - [x] `cycle_time_chart.html` - Fixed text-neutral-300
+  - [x] `review_time_chart.html` - Fixed text-neutral-300
+  - [x] `pr_size_chart.html` - Fixed text-neutral-300
+  - [x] `review_distribution_chart.html` - Fixed text-neutral-300/400
+  - [x] `ai_adoption_chart.html` - Fixed text-neutral-300
+  - [x] `ai_quality_chart.html` - Fixed text-neutral-300
+  - [x] `copilot_trend_chart.html` - Fixed text-neutral-300
 
-- [ ] **5.4** Update table partials (may need review)
-  - [ ] `leaderboard_table.html`
-  - [ ] `recent_prs_table.html`
-  - [ ] `reviewer_workload_table.html`
-  - [ ] `team_breakdown_table.html`
-  - [ ] `unlinked_prs_table.html`
-  - [ ] `copilot_members_table.html`
+- [x] **5.4** Update table partials (fixed empty state text colors)
+  - [x] `leaderboard_table.html` - Fixed text-neutral-300/400
+  - [x] `recent_prs_table.html` - Fixed text-neutral-300/400
+  - [x] `reviewer_workload_table.html` - Fixed text-neutral-300
+  - [x] `team_breakdown_table.html` - Fixed text-neutral-300
+  - [x] `unlinked_prs_table.html` - Fixed text-neutral-400
+  - [x] `copilot_members_table.html` - Fixed text-neutral-300
 
 - [x] **5.5** Update `cto_overview.html`
   - [x] Update page styling (working)
   - [x] Update card layouts
   - [x] Test all visualizations (basic check done)
 
-- [ ] **5.6** Update `revert_rate_card.html`
-- [ ] **5.7** Update `copilot_metrics_card.html`
-- [ ] **5.8** Update `filters.html`
+- [x] **5.6** Update `revert_rate_card.html` (DaisyUI theme-aware)
+- [x] **5.7** Update `copilot_metrics_card.html` (DaisyUI theme-aware)
+- [x] **5.8** Update `filters.html` (DaisyUI theme-aware)
 
 ---
 
@@ -136,12 +136,12 @@ Use this checklist to track implementation progress. Mark tasks with `[x]` when 
   - [x] Replace bg-elevated with bg-base-300
   - [x] Update icon colors
 
-- [ ] **6.2** Update Jira integration pages
-  - [ ] `jira_projects_list.html`
-  - [ ] `jira_select_site.html`
+- [x] **6.2** Update Jira integration pages
+  - [x] `jira_projects_list.html` - Extends app_base.html (inherits light theme)
+  - [x] `jira_select_site.html` - Standalone (not in app context)
 
-- [ ] **6.3** Update Slack settings
-  - [ ] `slack_settings.html`
+- [x] **6.3** Update Slack settings
+  - [x] `slack_settings.html` - Extends app_base.html (inherits light theme)
 
 ---
 
@@ -176,14 +176,14 @@ Use this checklist to track implementation progress. Mark tasks with `[x]` when 
 
 | Phase | Status | Tasks Done |
 |-------|--------|------------|
-| Phase 1 | ✅ Complete | 2/3 (Chart.js pending) |
+| Phase 1 | ✅ Complete | 3/3 |
 | Phase 2 | ✅ Complete | 2/2 |
 | Phase 3 | ✅ Complete | 3/3 |
-| Phase 4 | ⏳ Mostly Done | 3/4 |
-| Phase 5 | ⏳ In Progress | 3/8 |
-| Phase 6 | ⏳ Partial | 1/3 |
+| Phase 4 | ✅ Complete | 4/4 |
+| Phase 5 | ✅ Complete | 8/8 |
+| Phase 6 | ✅ Complete | 3/3 |
 | Phase 7 | ⏳ Pending | 0/4 |
-| **Total** | **~60%** | **~14/26** |
+| **Total** | **~85%** | **~23/27** |
 
 ---
 
@@ -226,4 +226,34 @@ Use this checklist to track implementation progress. Mark tasks with `[x]` when 
 - Jira/Slack settings pages not yet reviewed
 - Need full accessibility audit
 - Setup wizard components not tested
+
+### Session 3 Progress (2025-12-20)
+
+1. **Made Chart.js theme-aware**
+   - Updated `chart-theme.js` to detect light vs dark theme
+   - Grid lines, axis text, tooltips now adapt to theme
+   - Data colors (coral, teal, purple) remain consistent
+
+2. **Fixed all chart/table partials**
+   - Replaced `text-neutral-300/400` with `text-base-content/60/50`
+   - 13 partial templates updated
+
+3. **Fixed `empty_state.html` component**
+   - Replaced hardcoded neutral colors with theme-aware classes
+
+4. **Reviewed Jira/Slack/setup pages**
+   - `setup_wizard.html` - Already theme-aware
+   - `setup_prompt.html` - Already theme-aware
+   - Jira/Slack settings pages inherit from `app_base.html`
+
+5. **Commits Made:**
+   - `2a8075e` - Fix hardcoded colors in chart/table partials
+   - `405c6cd` - Add light theme support to Chart.js
+   - `2ae425e` - Update light theme dashboard documentation
+   - `11c85d0` - Fix hardcoded colors in empty_state.html
+
+### Remaining Work (Phase 7)
+- Full accessibility audit (contrast ratios, focus states)
+- Cross-browser testing (Chrome, Firefox, Safari)
+- Update CLAUDE.md design system section
 
