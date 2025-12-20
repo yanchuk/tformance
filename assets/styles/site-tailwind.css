@@ -18,6 +18,7 @@
 /*
   Custom tformance theme - "Sunset Dashboard"
   Warm, approachable dark theme with coral/orange accents
+  Inspired by Easy Eyes theme for reduced eye strain
   See: dev/visual-improvement-plan.md
 */
 @plugin "daisyui/theme" {
@@ -26,11 +27,11 @@
   prefersdark: true;
   color-scheme: dark;
 
-  /* Base colors - warm neutral backgrounds */
-  --color-base-100: oklch(0.145 0 0);          /* #171717 - Main background */
-  --color-base-200: oklch(0.185 0 0);          /* #262626 - Cards, panels */
-  --color-base-300: oklch(0.30 0 0);           /* #404040 - Borders, dividers */
-  --color-base-content: oklch(0.98 0 0);       /* #FAFAFA - Light text */
+  /* Base colors - Easy Eyes inspired warm neutrals */
+  --color-base-100: oklch(0.17 0 0);           /* #1e1e1e - Softer main background */
+  --color-base-200: oklch(0.19 0.005 60);      /* #282725 - Warm cards/panels */
+  --color-base-300: oklch(0.27 0 0);           /* #363636 - Subtler borders */
+  --color-base-content: oklch(0.85 0.015 85);  /* #d4d0c8 - Warm beige text (easy on eyes) */
 
   /* Primary - Coral orange (main brand) */
   --color-primary: oklch(0.70 0.18 45);        /* #F97316 - Coral orange */
@@ -38,28 +39,28 @@
 
   /* Secondary - Warm rose (highlights) */
   --color-secondary: oklch(0.80 0.10 10);      /* #FDA4AF - Warm rose */
-  --color-secondary-content: oklch(0.145 0 0); /* #171717 - Dark text on secondary */
+  --color-secondary-content: oklch(0.17 0 0);  /* Dark text on secondary */
 
   /* Accent - Teal (success, positive) */
   --color-accent: oklch(0.78 0.14 175);        /* #2DD4BF - Teal */
-  --color-accent-content: oklch(0.145 0 0);    /* #171717 - Dark text on accent */
+  --color-accent-content: oklch(0.17 0 0);     /* Dark text on accent */
 
   /* Neutral - Warm gray */
-  --color-neutral: oklch(0.185 0 0);           /* #262626 */
-  --color-neutral-content: oklch(0.85 0 0);    /* #D4D4D4 */
+  --color-neutral: oklch(0.19 0.005 60);       /* #282725 - Warm neutral */
+  --color-neutral-content: oklch(0.80 0.01 85);/* #c8c4bc - Warm muted text */
 
-  /* Status colors - Warm palette */
-  --color-info: oklch(0.68 0.12 250);          /* #60A5FA - Soft blue */
-  --color-info-content: oklch(0.145 0 0);
+  /* Status colors - Slightly muted for eye comfort */
+  --color-info: oklch(0.65 0.10 250);          /* Softer blue */
+  --color-info-content: oklch(0.17 0 0);
 
-  --color-success: oklch(0.78 0.14 175);       /* #2DD4BF - Teal */
-  --color-success-content: oklch(0.145 0 0);
+  --color-success: oklch(0.72 0.12 160);       /* Softer teal-green */
+  --color-success-content: oklch(0.17 0 0);
 
-  --color-warning: oklch(0.82 0.16 85);        /* #FBBF24 - Amber */
+  --color-warning: oklch(0.78 0.14 85);        /* Softer amber */
   --color-warning-content: oklch(0.20 0 0);
 
-  --color-error: oklch(0.68 0.14 25);          /* #F87171 - Soft red */
-  --color-error-content: oklch(0.98 0 0);
+  --color-error: oklch(0.65 0.12 25);          /* Softer red */
+  --color-error-content: oklch(0.95 0 0);
 }
 
 /*
@@ -141,8 +142,17 @@
 
 /*
   Light theme accessibility overrides
-  Fix DaisyUI menu-title contrast ratio for WCAG AA compliance
+  Fix DaisyUI component contrast ratios for WCAG AA compliance
 */
 [data-theme="tformance-light"] .menu-title {
   color: oklch(0.45 0.02 260); /* ~#4B5563 - Gray-600 for 4.5:1+ contrast */
+}
+
+[data-theme="tformance-light"] .stat-title,
+[data-theme="tformance-light"] .stat-desc {
+  color: oklch(0.40 0.02 260); /* Darker gray for 4.5:1+ contrast on light bg */
+}
+
+[data-theme="tformance-light"] .text-error {
+  color: oklch(0.50 0.20 25); /* Darker red for light theme */
 }

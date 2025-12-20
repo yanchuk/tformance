@@ -25,7 +25,7 @@
         <td class="text-right font-mono">
           <div class="flex flex-col items-end">
             <span class="font-semibold">{{ row.suggestions|default:0 }}</span>
-            <span class="text-xs text-base-content/60">{{ row.accepted|default:0 }} accepted</span>
+            <span class="text-xs text-base-content/80">{{ row.accepted|default:0 }} accepted</span>
           </div>
         </td>
         <td class="text-right">
@@ -46,7 +46,7 @@
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
       </svg>
     </div>
-    <p class="text-base-content/60 font-medium">{% trans "No Copilot usage data yet" %}</p>
+    <p class="text-base-content/80 font-medium">{% trans "No Copilot usage data yet" %}</p>
   </div>
   {% endif %}
 </div>

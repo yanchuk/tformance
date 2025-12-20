@@ -73,7 +73,7 @@ Usage:
               {% if integration_status.github.connected %}
                 <p class="text-xs text-success">{{ integration_status.github.org_name }}</p>
               {% else %}
-                <p class="text-xs text-base-content/60">{% trans "Track PRs and reviews" %}</p>
+                <p class="text-xs text-base-content/80">{% trans "Track PRs and reviews" %}</p>
               {% endif %}
             </div>
           </div>
@@ -99,7 +99,7 @@ Usage:
               {% if integration_status.jira.connected %}
                 <p class="text-xs text-success">{{ integration_status.jira.site_name }}</p>
               {% else %}
-                <p class="text-xs text-base-content/60">{% trans "Link PRs to issues" %}</p>
+                <p class="text-xs text-base-content/80">{% trans "Link PRs to issues" %}</p>
               {% endif %}
             </div>
           </div>
@@ -125,7 +125,7 @@ Usage:
               {% if integration_status.slack.connected %}
                 <p class="text-xs text-success">{{ integration_status.slack.workspace_name }}</p>
               {% else %}
-                <p class="text-xs text-base-content/60">{% trans "Send AI surveys" %}</p>
+                <p class="text-xs text-base-content/80">{% trans "Send AI surveys" %}</p>
               {% endif %}
             </div>
           </div>

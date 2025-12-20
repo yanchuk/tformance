@@ -16,11 +16,11 @@ module.exports = {
         mono: ['JetBrains Mono', 'monospace'],
       },
       colors: {
-        // Base background colors - warm neutrals (Sunset Dashboard)
-        deep: '#171717',      // neutral-900 - main background
-        surface: '#262626',   // neutral-800 - cards, panels
-        elevated: '#404040',  // neutral-700 - borders, dividers
-        muted: '#A3A3A3',     // neutral-400 - muted text
+        // Base background colors - Easy Eyes inspired warm neutrals
+        deep: '#1e1e1e',      // Softer main background
+        surface: '#282725',   // Warm cards, panels
+        elevated: '#363636',  // Subtler borders, dividers
+        muted: '#9a9690',     // Warm muted text
 
         // New accent system - warm coral/orange palette
         accent: {

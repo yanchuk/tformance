@@ -22,16 +22,16 @@
         </div>
         <div>
           <h2 class="font-semibold text-base-content">GitHub</h2>
-          <p class="text-sm text-base-content/60">{% translate "Pull requests, commits, and reviews" %}</p>
+          <p class="text-sm text-base-content/80">{% translate "Pull requests, commits, and reviews" %}</p>
         </div>
       </div>
 
       {% if github_connected %}
-        <div class="flex items-center gap-2 mb-4 p-3 bg-emerald-500/10 rounded-lg border border-emerald-500/30">
-          <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div class="app-status-pill-connected mb-4">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
           </svg>
-          <span class="text-emerald-400 font-medium">{% translate "Connected" %}</span>
+          <span>{% translate "Connected" %}</span>
         </div>
 
         {% if github_integration %}
@@ -117,16 +117,16 @@
         </div>
         <div>
           <h2 class="font-semibold text-base-content">Jira</h2>
-          <p class="text-sm text-base-content/60">{% translate "Issues and sprint tracking" %}</p>
+          <p class="text-sm text-base-content/80">{% translate "Issues and sprint tracking" %}</p>
         </div>
       </div>
 
       {% if jira_connected %}
-        <div class="flex items-center gap-2 mb-4 p-3 bg-emerald-500/10 rounded-lg border border-emerald-500/30">
-          <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div class="app-status-pill-connected mb-4">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
           </svg>
-          <span class="text-emerald-400 font-medium">{% translate "Connected" %}</span>
+          <span>{% translate "Connected" %}</span>
         </div>
 
         {% if jira_integration %}
@@ -204,16 +204,16 @@
         </div>
         <div>
           <h2 class="font-semibold text-base-content">Slack</h2>
-          <p class="text-sm text-base-content/60">{% translate "PR surveys and leaderboards" %}</p>
+          <p class="text-sm text-base-content/80">{% translate "PR surveys and leaderboards" %}</p>
         </div>
       </div>
 
       {% if slack_connected %}
-        <div class="flex items-center gap-2 mb-4 p-3 bg-emerald-500/10 rounded-lg border border-emerald-500/30">
-          <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div class="app-status-pill-connected mb-4">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
           </svg>
-          <span class="text-emerald-400 font-medium">{% translate "Connected" %}</span>
+          <span>{% translate "Connected" %}</span>
         </div>
 
         {% if slack_integration %}
@@ -291,16 +291,16 @@
         </div>
         <div>
           <h2 class="font-semibold text-base-content">GitHub Copilot</h2>
-          <p class="text-sm text-base-content/60">{% translate "AI coding assistant metrics" %}</p>
+          <p class="text-sm text-base-content/80">{% translate "AI coding assistant metrics" %}</p>
         </div>
       </div>
 
       {% if copilot_available %}
         <div class="flex items-center gap-2 mb-4 p-3 bg-violet-500/10 rounded-lg border border-violet-500/30">
-          <svg class="w-5 h-5 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-5 h-5 text-violet-600 dark:text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
           </svg>
-          <span class="text-violet-400 font-medium">{% translate "Available" %}</span>
+          <span class="text-violet-600 dark:text-violet-400 font-medium">{% translate "Available" %}</span>
         </div>
 
         <div class="space-y-2 mb-4">
@@ -340,7 +340,7 @@
           <span class="text-base-content/70">{% translate "Not available" %}</span>
         </div>
 
-        <p class="text-sm text-base-content/60 mb-4">
+        <p class="text-sm text-base-content/80 mb-4">
           {% translate "Connect GitHub first to access Copilot metrics. Requires an organization with 5+ Copilot licenses." %}
         </p>
       {% endif %}

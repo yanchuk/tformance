@@ -38,7 +38,7 @@
               </svg>
               {% trans "Cycle Time Trend" %}
             </h2>
-            <p class="text-sm text-base-content/60 mb-2">{% trans "Time from PR creation to merge" %}</p>
+            <p class="text-sm text-base-content/80 mb-2">{% trans "Time from PR creation to merge" %}</p>
             <div id="cycle-time-container"
                  hx-get="{% url 'metrics:chart_cycle_time' %}?days={{ days }}"
                  hx-trigger="load"
@@ -60,7 +60,7 @@
               </svg>
               {% trans "Review Time Trend" %}
             </h2>
-            <p class="text-sm text-base-content/60 mb-2">{% trans "Time to first code review" %}</p>
+            <p class="text-sm text-base-content/80 mb-2">{% trans "Time to first code review" %}</p>
             <div id="review-time-container"
                  hx-get="{% url 'metrics:chart_review_time' %}?days={{ days }}"
                  hx-trigger="load"
@@ -84,7 +84,7 @@
               </svg>
               {% trans "PR Size Distribution" %}
             </h2>
-            <p class="text-sm text-base-content/60 mb-2">{% trans "Lines changed per PR (smaller is better)" %}</p>
+            <p class="text-sm text-base-content/80 mb-2">{% trans "Lines changed per PR (smaller is better)" %}</p>
             <div id="pr-size-container"
                  hx-get="{% url 'metrics:chart_pr_size' %}?days={{ days }}"
                  hx-trigger="load"
@@ -103,7 +103,7 @@
               </svg>
               {% trans "Quality Indicators" %}
             </h2>
-            <p class="text-sm text-base-content/60 mb-2">{% trans "Reverts and hotfixes (lower is better)" %}</p>
+            <p class="text-sm text-base-content/80 mb-2">{% trans "Reverts and hotfixes (lower is better)" %}</p>
             <div id="revert-rate-container"
                  hx-get="{% url 'metrics:cards_revert_rate' %}?days={{ days }}"
                  hx-trigger="load"
@@ -125,7 +125,7 @@
               </svg>
               {% trans "Review Distribution" %}
             </h2>
-            <p class="text-sm text-base-content/60 mb-4">{% trans "How reviews are distributed across team members" %}</p>
+            <p class="text-sm text-base-content/80 mb-4">{% trans "How reviews are distributed across team members" %}</p>
             <div id="review-distribution-container"
                  hx-get="{% url 'metrics:chart_review_distribution' %}?days={{ days }}"
                  hx-trigger="load"
@@ -144,7 +144,7 @@
               </svg>
               {% trans "AI Detective Leaderboard" %}
             </h2>
-            <p class="text-sm text-base-content/60 mb-4">{% trans "Who's best at spotting AI-assisted code?" %}</p>
+            <p class="text-sm text-base-content/80 mb-4">{% trans "Who's best at spotting AI-assisted code?" %}</p>
             <div id="leaderboard-container"
                  hx-get="{% url 'metrics:table_leaderboard' %}?days={{ days }}"
                  hx-trigger="load"
@@ -164,7 +164,7 @@
             </svg>
             {% trans "Reviewer Workload" %}
           </h2>
-          <p class="text-sm text-base-content/60 mb-4">{% trans "Identify bottlenecks in code review" %}</p>
+          <p class="text-sm text-base-content/80 mb-4">{% trans "Identify bottlenecks in code review" %}</p>
           <div id="reviewer-workload-container"
                hx-get="{% url 'metrics:table_reviewer_workload' %}?days={{ days }}"
                hx-trigger="load"
@@ -185,7 +185,7 @@
               </svg>
               {% trans "Recent Pull Requests" %}
             </h2>
-            <p class="text-sm text-base-content/60 mb-4">{% trans "Latest merged PRs with AI status" %}</p>
+            <p class="text-sm text-base-content/80 mb-4">{% trans "Latest merged PRs with AI status" %}</p>
             <div id="recent-prs-container"
                  hx-get="{% url 'metrics:table_recent_prs' %}?days={{ days }}"
                  hx-trigger="load"
@@ -204,7 +204,7 @@
               </svg>
               {% trans "PRs Missing Jira Links" %}
             </h2>
-            <p class="text-sm text-base-content/60 mb-4">{% trans "Track process compliance" %}</p>
+            <p class="text-sm text-base-content/80 mb-4">{% trans "Track process compliance" %}</p>
             <div id="unlinked-prs-container"
                  hx-get="{% url 'metrics:table_unlinked_prs' %}?days={{ days }}"
                  hx-trigger="load"

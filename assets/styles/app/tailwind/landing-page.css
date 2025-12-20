@@ -55,7 +55,7 @@
 }
 
 .stat-label {
-  @apply text-slate-400 mt-2 text-sm md:text-base;
+  @apply text-stone-400 mt-2 text-sm md:text-base;
 }
 
 /* Feature card styling */

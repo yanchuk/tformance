@@ -96,7 +96,7 @@
 
 /* Card subtitle/description */
 .app-card-subtitle {
-  @apply text-sm text-base-content/70;
+  @apply text-sm text-base-content/80;
 }
 
 /* Card body content */
@@ -139,7 +139,7 @@
 
 /* Stat label */
 .app-stat-label {
-  @apply text-sm text-base-content/70 mt-2;
+  @apply text-sm text-base-content/80 mt-2;
 }
 
 /* Stat change indicator */
@@ -203,7 +203,7 @@
 
 /* Icon button */
 .app-btn-icon {
-  @apply p-2 rounded-lg text-base-content/60 hover:text-base-content hover:bg-base-200;
+  @apply p-2 rounded-lg text-base-content/80 hover:text-base-content hover:bg-base-200;
   @apply transition-colors duration-200;
 }
 
@@ -255,7 +255,7 @@
 
 /* Form helper text */
 .app-helper {
-  @apply text-xs text-base-content/60 mt-1;
+  @apply text-xs text-base-content/80 mt-1;
 }
 
 /* Form error */
@@ -291,7 +291,7 @@
 /* Sidebar nav item */
 .app-sidebar-item {
   @apply flex items-center gap-3 px-4 py-2.5 mx-2 rounded-lg;
-  @apply text-base-content/60 transition-all duration-200;
+  @apply text-base-content/80 transition-all duration-200;
   @apply hover:bg-base-100 hover:text-base-content;
 }
 
@@ -302,7 +302,7 @@
 
 /* Sidebar section heading */
 .app-sidebar-heading {
-  @apply px-4 py-2 text-xs font-semibold uppercase tracking-wider text-base-content/60;
+  @apply px-4 py-2 text-xs font-semibold uppercase tracking-wider text-base-content/80;
 }
 
 /* Top navbar */
@@ -340,6 +340,44 @@
 }
 
 /* -----------------------------------------------------------------------------
+   STATUS INDICATORS
+   Theme-aware status colors for integration states, etc.
+   ----------------------------------------------------------------------------- */
+
+.app-status-connected {
+  @apply text-emerald-600 dark:text-emerald-400;
+}
+
+.app-status-available {
+  @apply text-violet-600 dark:text-violet-400;
+}
+
+.app-status-disconnected {
+  @apply text-base-content/60;
+}
+
+.app-status-error {
+  @apply text-red-600 dark:text-red-400;
+}
+
+/* Status indicator with background (pill style) */
+.app-status-pill {
+  @apply inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium;
+}
+
+.app-status-pill-connected {
+  @apply bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400;
+}
+
+.app-status-pill-available {
+  @apply bg-violet-500/10 border border-violet-500/30 text-violet-600 dark:text-violet-400;
+}
+
+.app-status-pill-disconnected {
+  @apply bg-base-300 text-base-content/60;
+}
+
+/* -----------------------------------------------------------------------------
    TABLES
    ----------------------------------------------------------------------------- */
 
@@ -352,7 +390,7 @@
 }
 
 .app-table th {
-  @apply px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-base-content/60;
+  @apply px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-base-content/80;
   @apply border-b border-base-300;
 }
 
@@ -414,7 +452,7 @@
 
 .app-step-indicator {
   @apply w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium;
-  @apply bg-base-300 text-base-content/60;
+  @apply bg-base-300 text-base-content/80;
 }
 
 .app-step-indicator-active {
@@ -426,7 +464,7 @@
 }
 
 .app-step-label {
-  @apply mt-2 text-xs text-base-content/60;
+  @apply mt-2 text-xs text-base-content/80;
 }
 
 .app-step-label-active {
@@ -473,7 +511,7 @@
 }
 
 .app-empty-state-description {
-  @apply text-base-content/60 max-w-sm mx-auto;
+  @apply text-base-content/80 max-w-sm mx-auto;
 }
 
 /* -----------------------------------------------------------------------------
@@ -502,11 +540,11 @@
    ----------------------------------------------------------------------------- */
 
 .app-text-muted {
-  @apply text-base-content/70;
+  @apply text-base-content/80;
 }
 
 .app-text-secondary {
-  @apply text-base-content/70;
+  @apply text-base-content/80;
 }
 
 .app-text-primary {
@@ -551,7 +589,7 @@
 }
 
 .app-page-subtitle {
-  @apply text-base-content/70 mt-1;
+  @apply text-base-content/80 mt-1;
 }
 
 /* Content grid for dashboard */
@@ -606,7 +644,7 @@
 /* Menu title contrast fix - DaisyUI default is too dark, /70 meets WCAG AA 4.5:1 */
 .menu-title,
 .menu-title > span {
-  @apply !text-base-content/70;
+  @apply !text-base-content/80;
 }
 
 /* DaisyUI menu-active override for warm Sunset Dashboard colors */

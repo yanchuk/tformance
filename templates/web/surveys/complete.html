@@ -51,7 +51,7 @@
         {% if reveal.accuracy %}
         <div class="stats shadow bg-base-300/50 mt-4">
           <div class="stat">
-            <div class="stat-title text-base-content/60">Your Accuracy</div>
+            <div class="stat-title text-base-content/80">Your Accuracy</div>
             <div class="stat-value text-3xl {% if reveal.guess_correct %}text-success{% else %}text-warning{% endif %}">
               {{ reveal.accuracy.percentage|floatformat:0 }}%
             </div>
