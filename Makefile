@@ -79,7 +79,13 @@ lint-team-isolation: ## Check for unsafe .objects. usage on team models
 lint-team-isolation-all: ## Check all files including tests for team isolation
 	@uv run python scripts/lint_team_isolation.py apps/
 
-lint: ruff lint-team-isolation ## Run all linters (ruff + team isolation)
+lint-colors: ## Check templates for hardcoded colors (use semantic DaisyUI classes)
+	@uv run python scripts/lint_colors.py templates/
+
+lint-colors-fix: ## Check templates for hardcoded colors with fix suggestions
+	@uv run python scripts/lint_colors.py templates/ --fix-suggestions
+
+lint: ruff lint-team-isolation lint-colors ## Run all linters (ruff + team isolation + colors)
 
 e2e: ## Run all E2E tests (requires dev server running)
 	@npx playwright test

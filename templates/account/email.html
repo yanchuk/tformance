@@ -11,7 +11,7 @@
     {% csrf_token %}
     <fieldset class="space-y-3 mb-4">
       {% for emailaddress in user.emailaddress_set.all %}
-        <label for="email_radio_{{ forloop.counter }}" class="flex items-center gap-3 p-3 rounded-lg bg-elevated/50 hover:bg-elevated cursor-pointer transition-colors {% if emailaddress.primary %}border border-cyan/30{% endif %}">
+        <label for="email_radio_{{ forloop.counter }}" class="flex items-center gap-3 p-3 rounded-lg bg-base-300/50 hover:bg-base-300 cursor-pointer transition-colors {% if emailaddress.primary %}border border-primary/30{% endif %}">
           <input id="email_radio_{{ forloop.counter }}" type="radio" name="email"
                  {% if emailaddress.primary or user.emailaddress_set.count == 1 %}checked="checked"{% endif %}
                  value="{{ emailaddress.email }}"
@@ -44,7 +44,7 @@
   </div>
   {% endif %}
   {% if can_add_email %}
-  <div class="border-t border-elevated my-6"></div>
+  <div class="border-t border-base-300 my-6"></div>
   <h2 class="text-lg font-semibold text-base-content mb-4">{% translate "Add E-mail Address" %}</h2>
   <form method="post" action="{% url 'account_email' %}" class="space-y-4">
     {% csrf_token %}

@@ -1,15 +1,17 @@
 # Color Scheme Consolidation - Tasks
 
-**Last Updated:** 2025-12-20 (Session 3 - Phase 2 Complete)
+**Last Updated:** 2025-12-20 (Session 4 - All Phases Complete)
 
 ## Progress Overview
 
 - [x] Phase 0: Initial Setup (completed Session 1)
 - [x] Phase 1: Expand Semantic Classes (completed Session 2)
 - [x] Phase 2: Marketing Pages Refactor (completed Session 3)
-- [ ] Phase 3: App Pages Refactor
-- [ ] Phase 4: Onboarding & Error Pages
-- [ ] Phase 5: Validation & Cleanup
+- [x] Phase 3: App Pages Refactor (completed Session 4)
+- [x] Phase 4: Onboarding & Error Pages (completed Session 4)
+- [x] Phase 5: Validation & Cleanup (completed Session 4)
+
+**🎉 Color scheme consolidation complete!**
 
 ---
 
@@ -114,71 +116,73 @@
 
 ---
 
-## Phase 3: App Pages Refactor
+## Phase 3: App Pages Refactor [COMPLETED]
 
-### 3.1 Complete integrations page [M]
-- [ ] Finish semantic class migration
-- [ ] Remove all direct color classes
-- [ ] Test both themes
+### 3.1 Complete integrations page [M] [COMPLETED]
+- [x] Finish semantic class migration
+- [x] Remove all direct color classes (keep brand colors for logos)
+- [x] Test both themes
 
-### 3.2 Update metrics dashboard partials [M]
-- [ ] `copilot_members_table.html`
-- [ ] `leaderboard_table.html`
-- [ ] `recent_prs_table.html`
-- [ ] Other partials in `templates/metrics/partials/`
+### 3.2 Update metrics dashboard partials [M] [COMPLETED]
+- [x] Templates already using DaisyUI semantic classes
+- [x] Verified no hardcoded colors
 
-### 3.3 Update team management templates [S]
-- [ ] Review `templates/teams/` for hardcoded colors
-- [ ] Update to semantic classes
+### 3.3 Update team management templates [S] [COMPLETED]
+- [x] Review `templates/teams/` for hardcoded colors
+- [x] Only Pegasus framework classes (pg-*) found - these are OK
 
 ---
 
-## Phase 4: Onboarding & Error Pages
+## Phase 4: Onboarding & Error Pages [COMPLETED]
 
-### 4.1 Onboarding flow [M]
-- [ ] Update `start.html` (7 occurrences)
-- [ ] Update `complete.html` (7 occurrences)
-- [ ] Update `select_org.html` (7 occurrences)
-- [ ] Update `connect_jira.html` (3 occurrences)
-- [ ] Update `connect_slack.html` (3 occurrences)
-- [ ] Update `select_repos.html` (2 occurrences)
-- [ ] Update `base.html` (1 occurrence)
+### 4.1 Onboarding flow [M] [COMPLETED]
+- [x] Update `start.html` - stone-* → text-base-content variants
+- [x] Update `complete.html` - stone-* → text-base-content variants
+- [x] Update `select_org.html` - stone-* → text-base-content variants
+- [x] Update `connect_jira.html` - stone-* → text-base-content variants
+- [x] Update `connect_slack.html` - stone-* → text-base-content variants
+- [x] Update `select_repos.html` - stone-* → text-base-content variants
+- [x] Update `base.html` - stone-* → text-base-content variants
 
-### 4.2 Error pages [S]
-- [ ] Update `400.html`
-- [ ] Update `403.html`
-- [ ] Update `404.html`
-- [ ] Update `429.html`
-- [ ] Update `500.html`
+### 4.2 Error pages [S] [COMPLETED]
+- [x] Update `error_base.html` - rose-* → text-error semantic
+- [x] Update `400.html` (uses error_base.html)
+- [x] Update `403.html` (uses error_base.html)
+- [x] Update `404.html` (uses error_base.html)
+- [x] Update `429.html` (uses error_base.html)
+- [x] Update `500.html` (uses error_base.html)
 
-### 4.3 Account pages [M]
-- [ ] Update `email.html`
-- [ ] Update `password_reset.html`
-- [ ] Update other account templates
+### 4.3 Account pages [M] [COMPLETED]
+- [x] Update `email.html` - elevated/cyan → base-300/primary
+- [x] Update all 11 account templates
+- [x] All stone-* → text-base-content variants
 
 ---
 
-## Phase 5: Validation & Cleanup
+## Phase 5: Validation & Cleanup [COMPLETED]
 
-### 5.1 Run accessibility tests [S]
-- [ ] Run `npx playwright test accessibility.spec.ts`
-- [ ] All 9 tests must pass
-- [ ] Fix any contrast issues
+### 5.1 Run accessibility tests [S] [COMPLETED]
+- [x] Run `npx playwright test accessibility.spec.ts`
+- [x] All 9 tests passing
+- [x] Fix any contrast issues
 
-### 5.2 Create color linting rule [M]
-- [ ] Create script to detect hardcoded colors
-- [ ] Add `make lint-colors` command
-- [ ] Document in CLAUDE.md
+### 5.2 Create color linting rule [M] [COMPLETED]
+- [x] Create `scripts/lint_colors.py` script
+- [x] Add `make lint-colors` command
+- [x] Add `make lint-colors-fix` command with suggestions
+- [x] Update `make lint` to include color linting
+- [x] Document in CLAUDE.md
 
 ### 5.3 Update documentation [S] [COMPLETED]
 - [x] Update CLAUDE.md Design System section
 - [x] Add color usage examples
 - [x] Document semantic class reference
 
-### 5.4 Remove unused code [S]
-- [ ] Audit tailwind.config.js
-- [ ] Remove legacy color definitions
-- [ ] Clean up unused CSS
+### 5.4 Remove unused code [S] [COMPLETED]
+- [x] Audit tailwind.config.js
+- [x] Legacy colors kept for CSS utility classes (used internally)
+- [x] Removed 6 unused legacy marketing templates
+- [x] All templates now use DaisyUI semantic colors
 
 ---
 
@@ -188,10 +192,25 @@
 - [x] Sign-in button too close to window edge on main page
 - [x] Add proper spacing/margin from browser scrollbar (px-4 lg:px-6)
 
+### Remove unused legacy templates [S] [COMPLETED]
+- [x] Removed `cta.html` (unused)
+- [x] Removed `hero.html` (unused)
+- [x] Removed `landing_section1.html` (unused)
+- [x] Removed `landing_section2.html` (unused)
+- [x] Removed `feature_highlight.html` (unused)
+- [x] Removed `testimonials.html` (unused)
+
 ---
 
-## Notes
+## Summary
 
-- **Test after each file change** to catch regressions early
-- **Commit frequently** after completing each section
-- **Run accessibility tests** after completing each phase
+The color scheme consolidation is complete:
+
+1. **All templates migrated** to DaisyUI semantic colors (text-base-content, bg-base-*, text-success, text-error, etc.)
+2. **Color linter created** (`make lint-colors`) to prevent regression
+3. **Light/dark theme support** working correctly across all pages
+4. **Accessibility tests passing** (9/9)
+5. **Legacy templates removed** (6 unused files)
+6. **Brand colors preserved** for integration logos (Jira, Slack, Copilot)
+
+The codebase now uses a consistent semantic color system that automatically adapts to light/dark themes.
