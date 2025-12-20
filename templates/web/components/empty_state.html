@@ -45,13 +45,13 @@ Optional parameters:
   {% endif %}
 
   {% if title %}
-  <h3 class="{% if compact %}text-base{% else %}app-empty-state-title{% endif %} font-medium text-neutral-300 mb-2">
+  <h3 class="{% if compact %}text-base{% else %}app-empty-state-title{% endif %} font-medium text-base-content/70 mb-2">
     {{ title }}
   </h3>
   {% endif %}
 
   {% if description %}
-  <p class="{% if compact %}text-sm{% else %}app-empty-state-description{% endif %} text-neutral-400 max-w-sm mx-auto">
+  <p class="{% if compact %}text-sm{% else %}app-empty-state-description{% endif %} text-base-content/60 max-w-sm mx-auto">
     {{ description }}
   </p>
   {% endif %}
