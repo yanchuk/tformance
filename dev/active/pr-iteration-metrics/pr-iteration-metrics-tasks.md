@@ -177,12 +177,33 @@ Focus on syncing all data now, build analytics later.
 
 ---
 
-## Deferred: Future Analytics
+## Phase 7: Reviewer Correlations ✅ COMPLETE
 
-### Phase 7: Review Correlations
-- [ ] ReviewerCorrelation model
-- [ ] Correlation calculation service
-- [ ] Redundancy detection
+### 7.1 ReviewerCorrelation Model ✅
+- [x] Add model to `apps/metrics/models.py`
+- [x] Fields: reviewer_1, reviewer_2, prs_reviewed_together, agreements, disagreements
+- [x] Properties: agreement_rate, is_redundant
+- [x] Migration 0010_reviewercorrelation.py created and applied
+- [x] Admin registration with computed fields
+- [x] 8 model tests passing
+
+### 7.2 Correlation Calculation ✅
+- [x] Create `calculate_reviewer_correlations()` in github_sync.py
+- [x] Analyze PRReview records for reviewer pairs
+- [x] Count agreements (both approved or both changes_requested)
+- [x] Count disagreements (mixed states)
+- [x] Ignore "commented" reviews
+- [x] 5 calculation tests passing
+
+### 7.3 Redundancy Detection ✅
+- [x] `is_redundant` property on model
+- [x] Thresholds: 95% agreement on 10+ shared PRs
+- [x] Tests for high agreement detection
+- [x] Tests for low sample size handling
+
+---
+
+## Deferred: Future Analytics
 
 ### Phase 8: Dashboard
 - [ ] CI/CD dashboard section

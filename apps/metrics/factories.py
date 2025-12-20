@@ -38,6 +38,7 @@ from .models import (
     PRSurvey,
     PRSurveyReview,
     PullRequest,
+    ReviewerCorrelation,
     TeamMember,
     WeeklyMetrics,
 )
@@ -338,3 +339,17 @@ class WeeklyMetricsFactory(DjangoModelFactory):
     avg_quality_rating = factory.LazyFunction(lambda: Decimal(str(round(random.uniform(2.0, 3.0), 2))))
     surveys_completed = factory.LazyAttribute(lambda o: random.randint(0, o.prs_merged))
     guess_accuracy = factory.LazyFunction(lambda: Decimal(str(round(random.uniform(40, 80), 2))))
+
+
+class ReviewerCorrelationFactory(DjangoModelFactory):
+    """Factory for ReviewerCorrelation model."""
+
+    class Meta:
+        model = ReviewerCorrelation
+
+    team = factory.SubFactory(TeamFactory)
+    reviewer_1 = factory.SubFactory(TeamMemberFactory, team=factory.SelfAttribute("..team"))
+    reviewer_2 = factory.SubFactory(TeamMemberFactory, team=factory.SelfAttribute("..team"))
+    prs_reviewed_together = factory.LazyFunction(lambda: random.randint(5, 30))
+    agreements = factory.LazyAttribute(lambda o: int(o.prs_reviewed_together * random.uniform(0.6, 0.95)))
+    disagreements = factory.LazyAttribute(lambda o: o.prs_reviewed_together - o.agreements)
