@@ -260,20 +260,24 @@ class ScenarioDataGenerator:
         revert_rate = float(params["revert_rate"])
         is_revert = self._rng.should_happen(revert_rate)
 
-        pr = PullRequestFactory(
-            team=team,
-            author=member,
-            state=state,
-            pr_created_at=pr_created_at,
-            first_review_at=first_review_at,
-            merged_at=merged_at,
-            cycle_time_hours=Decimal(str(round(cycle_hours, 2))) if merged_at else None,
-            review_time_hours=Decimal(str(round(review_hours, 2))) if first_review_at else None,
-            title=github_pr.title if github_pr else PullRequestFactory._meta.model._meta.get_field("title").default,
-            additions=github_pr.additions if github_pr else self._rng.randint(10, 500),
-            deletions=github_pr.deletions if github_pr else self._rng.randint(5, 200),
-            is_revert=is_revert,
-        )
+        # Build PR kwargs - only include title if we have GitHub data
+        pr_kwargs = {
+            "team": team,
+            "author": member,
+            "state": state,
+            "pr_created_at": pr_created_at,
+            "first_review_at": first_review_at,
+            "merged_at": merged_at,
+            "cycle_time_hours": Decimal(str(round(cycle_hours, 2))) if merged_at else None,
+            "review_time_hours": Decimal(str(round(review_hours, 2))) if first_review_at else None,
+            "additions": github_pr.additions if github_pr else self._rng.randint(10, 500),
+            "deletions": github_pr.deletions if github_pr else self._rng.randint(5, 200),
+            "is_revert": is_revert,
+        }
+        if github_pr:
+            pr_kwargs["title"] = github_pr.title
+
+        pr = PullRequestFactory(**pr_kwargs)
         self._stats.prs_created += 1
 
         # Create reviews
