@@ -247,4 +247,76 @@ test.describe('Authentication Tests @auth', () => {
       }
     });
   });
+
+  test.describe('OAuth Social Login', () => {
+    test('GitHub OAuth button redirects without CSP error', async ({ page }) => {
+      // Collect console errors
+      const consoleErrors: string[] = [];
+      page.on('console', msg => {
+        if (msg.type() === 'error') {
+          consoleErrors.push(msg.text());
+        }
+      });
+
+      await page.goto('/accounts/signup/');
+
+      // Click GitHub OAuth button
+      const githubButton = page.getByRole('button', { name: /continue with github/i });
+      if (await githubButton.isVisible()) {
+        await githubButton.click();
+
+        // Wait for navigation
+        await page.waitForURL(/github\.com|accounts\/github/, { timeout: 10000 });
+
+        // Verify no CSP errors
+        const cspErrors = consoleErrors.filter(e => e.includes('Content Security Policy'));
+        expect(cspErrors).toHaveLength(0);
+
+        // Should redirect to GitHub OAuth
+        expect(page.url()).toContain('github.com');
+      }
+    });
+
+    test('Google OAuth button redirects without CSP error', async ({ page }) => {
+      // Collect console errors
+      const consoleErrors: string[] = [];
+      page.on('console', msg => {
+        if (msg.type() === 'error') {
+          consoleErrors.push(msg.text());
+        }
+      });
+
+      await page.goto('/accounts/signup/');
+
+      // Click Google OAuth button
+      const googleButton = page.getByRole('button', { name: /continue with google/i });
+      if (await googleButton.isVisible()) {
+        await googleButton.click();
+
+        // Wait for navigation
+        await page.waitForURL(/accounts\.google\.com|accounts\/google/, { timeout: 10000 });
+
+        // Verify no CSP errors
+        const cspErrors = consoleErrors.filter(e => e.includes('Content Security Policy'));
+        expect(cspErrors).toHaveLength(0);
+
+        // Should redirect to Google OAuth
+        expect(page.url()).toContain('accounts.google.com');
+      }
+    });
+
+    test('OAuth buttons visible on login page', async ({ page }) => {
+      await page.goto('/accounts/login/');
+
+      // Check OAuth buttons are present
+      const githubButton = page.getByRole('button', { name: /continue with github/i });
+      const googleButton = page.getByRole('button', { name: /continue with google/i });
+
+      const hasGithub = await githubButton.isVisible().catch(() => false);
+      const hasGoogle = await googleButton.isVisible().catch(() => false);
+
+      // At least one OAuth provider should be available
+      expect(hasGithub || hasGoogle).toBeTruthy();
+    });
+  });
 });

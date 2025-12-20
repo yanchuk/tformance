@@ -68,7 +68,7 @@ class SecurityHeadersMiddleware:
             "img-src 'self' data: https: blob:",
             connect_src.strip(),
             "frame-ancestors 'none'",
-            "form-action 'self'",
+            "form-action 'self' https://github.com https://accounts.google.com",
             "base-uri 'self'",
         ]
         response["Content-Security-Policy"] = "; ".join(csp_directives)
