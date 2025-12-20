@@ -3,8 +3,8 @@
 
 {% block onboarding_content %}
 <div class="text-center mb-8">
-  <h1 class="text-3xl font-bold text-stone-100 mb-2">{% translate "Select Your Organization" %}</h1>
-  <p class="text-stone-400">
+  <h1 class="text-3xl font-bold text-base-content mb-2">{% translate "Select Your Organization" %}</h1>
+  <p class="text-base-content/70">
     {% translate "Choose which GitHub organization you want to track metrics for." %}
   </p>
 </div>
@@ -19,17 +19,17 @@
       {% if org.avatar_url %}
       <img src="{{ org.avatar_url }}" alt="{{ org.login }}" class="w-12 h-12 rounded-lg">
       {% else %}
-      <div class="w-12 h-12 bg-elevated rounded-lg flex items-center justify-center">
-        <i class="fa-solid fa-building text-xl text-stone-400"></i>
+      <div class="w-12 h-12 bg-base-300 rounded-lg flex items-center justify-center">
+        <i class="fa-solid fa-building text-xl text-base-content/70"></i>
       </div>
       {% endif %}
       <div class="text-left flex-1">
-        <h3 class="font-semibold text-stone-200">{{ org.login }}</h3>
+        <h3 class="font-semibold text-base-content">{{ org.login }}</h3>
         {% if org.description %}
-        <p class="text-sm text-stone-400">{{ org.description }}</p>
+        <p class="text-sm text-base-content/70">{{ org.description }}</p>
         {% endif %}
       </div>
-      <i class="fa-solid fa-chevron-right text-stone-500"></i>
+      <i class="fa-solid fa-chevron-right text-base-content/60"></i>
     </div>
   </label>
   {% endfor %}
@@ -43,7 +43,7 @@
 </form>
 
 <div class="text-center mt-6">
-  <a href="{% url 'onboarding:start' %}" class="text-sm text-stone-400 hover:text-stone-300 transition-colors">
+  <a href="{% url 'onboarding:start' %}" class="text-sm text-base-content/70 hover:text-base-content transition-colors">
     <i class="fa-solid fa-arrow-left mr-1"></i>
     {% translate "Back to GitHub connection" %}
   </a>
