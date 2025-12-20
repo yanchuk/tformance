@@ -9,26 +9,59 @@
     <div class="terminal-window max-w-4xl mx-auto"
          x-data="{
            lines: [],
-           currentLine: 0,
-           allLines: [
-             { type: 'command', text: 'tformance analyze --team=engineering' },
-             { type: 'blank', text: '' },
-             { type: 'output', text: 'Analyzing 1,247 PRs from last quarter...' },
-             { type: 'output', text: 'AI-assisted PRs: 43% | Avg cycle time: -2.3 days' },
-             { type: 'output', text: 'Review burden: +18% | Quality score: unchanged' },
-             { type: 'blank', text: '' },
-             { type: 'result', text: 'Verdict: AI is shipping code faster, but reviews are bottlenecked.' }
+           currentScenario: 0,
+           scenarios: [
+             [
+               { type: 'command', text: 'tformance analyze --team=engineering' },
+               { type: 'blank', text: '' },
+               { type: 'output', text: 'Analyzing 1,247 PRs from last quarter...' },
+               { type: 'output', text: 'AI-assisted PRs: 43% | Avg cycle time: -2.3 days' },
+               { type: 'output', text: 'Review burden: +18% | Quality score: unchanged' },
+               { type: 'blank', text: '' },
+               { type: 'result', text: 'Verdict: AI is shipping code faster, but reviews are bottlenecked.' }
+             ],
+             [
+               { type: 'command', text: 'tformance compare --before=Q2 --after=Q3' },
+               { type: 'blank', text: '' },
+               { type: 'output', text: 'Comparing metrics before/after Copilot rollout...' },
+               { type: 'output', text: 'PR throughput: +34% | Time to first review: -1.8 days' },
+               { type: 'output', text: 'Bug rate: -12% | Test coverage: +8%' },
+               { type: 'blank', text: '' },
+               { type: 'result', text: 'Verdict: Clear productivity gains. ROI positive after 6 weeks.' }
+             ],
+             [
+               { type: 'command', text: 'tformance survey --sprint=current' },
+               { type: 'blank', text: '' },
+               { type: 'output', text: 'Collecting developer sentiment data...' },
+               { type: 'output', text: 'Survey responses: 23/28 (82%)' },
+               { type: 'output', text: 'AI helpfulness: 4.2/5 | Would recommend: 87%' },
+               { type: 'blank', text: '' },
+               { type: 'result', text: 'Verdict: Team loves it. Main request: better context awareness.' }
+             ],
+             [
+               { type: 'command', text: 'tformance insights --member=@sarah' },
+               { type: 'blank', text: '' },
+               { type: 'output', text: 'Analyzing individual contribution patterns...' },
+               { type: 'output', text: 'AI adoption: 78% of PRs | Completion rate: +25%' },
+               { type: 'output', text: 'Code review quality: excellent | Mentoring: 12 PRs' },
+               { type: 'blank', text: '' },
+               { type: 'result', text: 'Verdict: Power user. Consider for AI champion role.' }
+             ]
            ],
            showCursor: true,
            init() {
-             this.typeLines();
+             this.runScenario();
            },
-           async typeLines() {
-             for (let i = 0; i < this.allLines.length; i++) {
+           async runScenario() {
+             const scenario = this.scenarios[this.currentScenario];
+             this.lines = [];
+             for (let i = 0; i < scenario.length; i++) {
                await this.delay(i === 0 ? 500 : 300);
-               this.lines.push(this.allLines[i]);
-               this.currentLine = i;
+               this.lines.push(scenario[i]);
              }
+             await this.delay(4000);
+             this.currentScenario = (this.currentScenario + 1) % this.scenarios.length;
+             this.runScenario();
            },
            delay(ms) {
              return new Promise(resolve => setTimeout(resolve, ms));
@@ -63,7 +96,7 @@
             </template>
           </div>
         </template>
-        <span x-show="showCursor && lines.length < allLines.length" class="terminal-cursor"></span>
+        <span x-show="showCursor && lines.length < scenarios[currentScenario].length" class="terminal-cursor"></span>
       </div>
     </div>
 
