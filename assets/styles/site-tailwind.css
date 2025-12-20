@@ -63,6 +63,57 @@
 }
 
 /*
+  Custom tformance-light theme - "Sunset Light"
+  Warm, approachable light theme for internal dashboard
+  Inspired by Fizzy.do and classic Yandex design
+
+  Design principles:
+  - Warm off-white background (not pure white)
+  - Keep coral orange primary accent
+  - High contrast text for accessibility (WCAG AA)
+  - Colorful, friendly feel
+*/
+@plugin "daisyui/theme" {
+  name: "tformance-light";
+  color-scheme: light;
+
+  /* Base colors - warm light backgrounds */
+  --color-base-100: oklch(0.98 0.005 90);       /* #FAFAF8 - Warm off-white main bg */
+  --color-base-200: oklch(1 0 0);               /* #FFFFFF - Pure white cards */
+  --color-base-300: oklch(0.92 0.005 250);      /* #E5E7EB - Light gray borders */
+  --color-base-content: oklch(0.27 0.02 260);   /* #1F2937 - Dark gray text */
+
+  /* Primary - Coral orange (same as dark theme - brand consistency) */
+  --color-primary: oklch(0.70 0.18 45);         /* #F97316 - Coral orange */
+  --color-primary-content: oklch(1 0 0);        /* #FFFFFF - White text on primary */
+
+  /* Secondary - Warm rose (same as dark theme) */
+  --color-secondary: oklch(0.80 0.10 10);       /* #FDA4AF - Warm rose */
+  --color-secondary-content: oklch(0.20 0 0);   /* Dark text on secondary */
+
+  /* Accent - Emerald (adjusted for light backgrounds) */
+  --color-accent: oklch(0.70 0.17 160);         /* #10B981 - Emerald */
+  --color-accent-content: oklch(1 0 0);         /* White text on accent */
+
+  /* Neutral - Light warm gray */
+  --color-neutral: oklch(0.55 0.01 260);        /* #6B7280 - Medium gray */
+  --color-neutral-content: oklch(1 0 0);        /* White text */
+
+  /* Status colors - Slightly deeper for light bg contrast */
+  --color-info: oklch(0.60 0.18 250);           /* #3B82F6 - Blue */
+  --color-info-content: oklch(1 0 0);
+
+  --color-success: oklch(0.70 0.17 160);        /* #10B981 - Emerald */
+  --color-success-content: oklch(1 0 0);
+
+  --color-warning: oklch(0.75 0.18 75);         /* #F59E0B - Amber */
+  --color-warning-content: oklch(0.20 0 0);
+
+  --color-error: oklch(0.60 0.22 25);           /* #EF4444 - Red */
+  --color-error-content: oklch(1 0 0);
+}
+
+/*
   The default border color has changed to `currentColor` in Tailwind CSS v4,
   so we've added these compatibility styles to make sure everything still
   looks the same as it did with Tailwind CSS v3.

@@ -2,7 +2,7 @@
 {% load django_vite %}
 {% load meta_tags %}
 <!DOCTYPE html>
-<html lang="en" class="dark" data-theme="tformance">
+<html lang="en" class="{% block html_class %}dark{% endblock %}" data-theme="{% block data_theme %}tformance{% endblock %}">
 <head>
     <meta charset="utf-8">
     <!--IE compatibility-->
