@@ -8,9 +8,9 @@
       {% if previous_metrics.prs_merged %}
         {% widthratio metrics.prs_merged previous_metrics.prs_merged 100 as pct %}
         {% if metrics.prs_merged > previous_metrics.prs_merged %}
-          <span class="text-success">+{{ pct|add:"-100" }}%</span> {% trans "vs prev period" %}
+          <span class="text-accent-tertiary">+{{ pct|add:"-100" }}%</span> {% trans "vs prev period" %}
         {% elif metrics.prs_merged < previous_metrics.prs_merged %}
-          <span class="text-error">{{ pct|add:"-100" }}%</span> {% trans "vs prev period" %}
+          <span class="text-accent-error">{{ pct|add:"-100" }}%</span> {% trans "vs prev period" %}
         {% else %}
           {% trans "No change" %}
         {% endif %}

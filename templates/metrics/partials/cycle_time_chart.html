@@ -4,11 +4,13 @@
   <canvas id="cycle-time-chart" class="w-full h-64"></canvas>
   {{ chart_data|json_script:'cycle-time-data' }}
   {% else %}
-  <div class="flex flex-col items-center justify-center h-64 text-base-content/50">
-    <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-    </svg>
-    <p>{% trans "No cycle time data for this period" %}</p>
+  <div class="flex flex-col items-center justify-center h-64">
+    <div class="w-12 h-12 mb-3 rounded-full bg-accent-primary/10 flex items-center justify-center">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-accent-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    </div>
+    <p class="text-neutral-300 font-medium">{% trans "No cycle time data for this period" %}</p>
   </div>
   {% endif %}
 </div>
