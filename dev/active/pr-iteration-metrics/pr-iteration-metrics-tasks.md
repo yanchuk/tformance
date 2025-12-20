@@ -1,6 +1,6 @@
 # PR Iteration Metrics & GitHub Analytics - Task Checklist
 
-**Last Updated:** 2025-12-20 (Session 2)
+**Last Updated:** 2025-12-20 (Session 3)
 
 ## Priority: Data Collection First
 
@@ -151,12 +151,33 @@ Focus on syncing all data now, build analytics later.
 
 ---
 
-## Deferred: Analytics (After Data Collection)
+## Phase 3: Iteration Metrics ✅ COMPLETE
 
-### Phase 3: Iteration Metrics
-- [ ] Add iteration fields to PullRequest
-- [ ] Review round calculation
-- [ ] Fix response time calculation
+### 3.1 Add Iteration Fields to PullRequest ✅
+- [x] review_rounds (IntegerField) - cycles of changes_requested → commit
+- [x] avg_fix_response_hours (DecimalField) - average time to address reviews
+- [x] commits_after_first_review (IntegerField) - post-review commit count
+- [x] total_comments (IntegerField) - total PR comments
+- [x] Migration 0009_add_iteration_fields.py created and applied
+
+### 3.2 Iteration Field Tests ✅
+- [x] test_iteration_fields_null_by_default
+- [x] test_iteration_fields_can_be_set
+
+### 3.3 Iteration Metrics Calculation ✅
+- [x] Create `calculate_pr_iteration_metrics()` in github_sync.py
+- [x] Calculate total_comments from PRComment count
+- [x] Calculate commits_after_first_review from Commit queryset
+- [x] Calculate review_rounds from changes_requested → commit cycles
+- [x] Calculate avg_fix_response_hours from review-to-commit times
+- [x] 6 calculation tests passing
+
+### 3.4 Pipeline Integration ✅
+- [x] Call `calculate_pr_iteration_metrics()` from `_process_prs()`
+
+---
+
+## Deferred: Future Analytics
 
 ### Phase 7: Review Correlations
 - [ ] ReviewerCorrelation model
