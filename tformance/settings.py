@@ -587,7 +587,7 @@ WAFFLE_FLAG_MODEL = "teams.Flag"
 PROJECT_METADATA = {
     "NAME": gettext_lazy("tformance"),
     "URL": "http://localhost:8000",
-    "DESCRIPTION": gettext_lazy("The most amazing SaaS application the world has ever seen"),  # noqa: E501
+    "DESCRIPTION": gettext_lazy("AI Impact Analytics - measure how AI coding tools affect your team's performance"),  # noqa: E501
     "IMAGE": "https://upload.wikimedia.org/wikipedia/commons/2/20/PEO-pegasus_black.svg",
     "KEYWORDS": "SaaS, django",
     "CONTACT_EMAIL": "oleksii.ianchuk@gmail.com",

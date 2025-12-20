@@ -450,6 +450,98 @@ test.describe('Interactive Elements @interactive', () => {
     });
   });
 
+  test.describe('Theme Toggle', () => {
+    test('theme toggle dropdown opens on click', async ({ page }) => {
+      await page.goto('/app/');
+      await page.waitForLoadState('domcontentloaded');
+
+      // Find theme toggle button
+      const themeToggle = page.getByLabel('Toggle color theme');
+      await expect(themeToggle).toBeVisible();
+
+      // Click to open dropdown
+      await themeToggle.click();
+
+      // Should show Light, Dark, System options
+      const lightOption = page.getByRole('button', { name: 'Light' });
+      const darkOption = page.getByRole('button', { name: 'Dark' });
+      const systemOption = page.getByRole('button', { name: 'System' });
+
+      await expect(lightOption).toBeVisible();
+      await expect(darkOption).toBeVisible();
+      await expect(systemOption).toBeVisible();
+    });
+
+    test('can switch to light theme', async ({ page }) => {
+      await page.goto('/app/');
+      await page.waitForLoadState('domcontentloaded');
+
+      // Open theme dropdown
+      await page.getByLabel('Toggle color theme').click();
+
+      // Click Light
+      await page.getByRole('button', { name: 'Light' }).click();
+
+      // Page should have light theme applied (data-theme attribute)
+      const html = page.locator('html');
+      await expect(html).toHaveAttribute('data-theme', 'tformance-light');
+    });
+
+    test('can switch to dark theme', async ({ page }) => {
+      await page.goto('/app/');
+      await page.waitForLoadState('domcontentloaded');
+
+      // First switch to light theme
+      await page.getByLabel('Toggle color theme').click();
+      await page.getByRole('button', { name: 'Light' }).click();
+
+      // Now switch back to dark
+      await page.getByLabel('Toggle color theme').click();
+      await page.getByRole('button', { name: 'Dark' }).click();
+
+      // Page should have dark theme applied
+      const html = page.locator('html');
+      await expect(html).toHaveAttribute('data-theme', 'tformance');
+    });
+
+    test('theme preference persists on page refresh', async ({ page }) => {
+      await page.goto('/app/');
+      await page.waitForLoadState('domcontentloaded');
+
+      // Switch to light theme
+      await page.getByLabel('Toggle color theme').click();
+      await page.getByRole('button', { name: 'Light' }).click();
+
+      // Wait for localStorage to be updated
+      await page.waitForTimeout(200);
+
+      // Refresh the page
+      await page.reload();
+      await page.waitForLoadState('domcontentloaded');
+
+      // Theme should still be light
+      const html = page.locator('html');
+      await expect(html).toHaveAttribute('data-theme', 'tformance-light');
+    });
+
+    test('theme applies correctly across page navigation', async ({ page }) => {
+      await page.goto('/app/');
+      await page.waitForLoadState('domcontentloaded');
+
+      // Switch to light theme
+      await page.getByLabel('Toggle color theme').click();
+      await page.getByRole('button', { name: 'Light' }).click();
+
+      // Navigate to CTO dashboard
+      await page.goto('/app/metrics/dashboard/cto/');
+      await page.waitForLoadState('domcontentloaded');
+
+      // Theme should still be light
+      const html = page.locator('html');
+      await expect(html).toHaveAttribute('data-theme', 'tformance-light');
+    });
+  });
+
   test.describe('HTMX Content Loading', () => {
     test('HTMX partials load without duplication', async ({ page }) => {
       await page.goto('/app/metrics/dashboard/team/');
