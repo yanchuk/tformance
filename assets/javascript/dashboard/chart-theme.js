@@ -2,14 +2,75 @@
 
 /**
  * Tformance Chart.js Theme
- * "Sunset Dashboard" warm color palette
+ * "Sunset Dashboard" warm color palette with light/dark theme support
  *
  * This theme provides consistent styling for all Chart.js charts
  * in the application, using the warm coral/orange color scheme.
  */
 
+/**
+ * Detect if current page uses light theme
+ * @returns {boolean} true if light theme is active
+ */
+function isLightTheme() {
+  const htmlElement = document.documentElement;
+  const dataTheme = htmlElement.getAttribute('data-theme');
+  return dataTheme === 'tformance-light' || htmlElement.classList.contains('light');
+}
+
+// Dark theme colors
+const darkTheme = {
+  grid: {
+    color: 'rgba(163, 163, 163, 0.1)',
+    borderColor: '#404040',
+  },
+  axis: {
+    color: '#A3A3A3',
+    titleColor: '#D4D4D4',
+  },
+  tooltip: {
+    backgroundColor: '#262626',
+    borderColor: '#404040',
+    titleColor: '#FAFAFA',
+    bodyColor: '#D4D4D4',
+  },
+  legend: {
+    color: '#D4D4D4',
+  },
+  pointBorderColor: '#171717',
+};
+
+// Light theme colors
+const lightTheme = {
+  grid: {
+    color: 'rgba(0, 0, 0, 0.08)',
+    borderColor: '#E5E7EB',
+  },
+  axis: {
+    color: '#6B7280',
+    titleColor: '#374151',
+  },
+  tooltip: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#E5E7EB',
+    titleColor: '#1F2937',
+    bodyColor: '#4B5563',
+  },
+  legend: {
+    color: '#374151',
+  },
+  pointBorderColor: '#FFFFFF',
+};
+
+/**
+ * Get current theme colors based on active theme
+ */
+function getThemeColors() {
+  return isLightTheme() ? lightTheme : darkTheme;
+}
+
 export const TformanceChartTheme = {
-  // Chart colors - warm palette matching design-system.css
+  // Chart colors - warm palette matching design-system.css (same for both themes)
   colors: {
     primary: '#F97316',     // Coral orange - main data
     secondary: '#FDA4AF',   // Warm rose - secondary data
@@ -38,46 +99,47 @@ export const TformanceChartTheme = {
     hoverBackgroundColor: 'rgba(192, 132, 252, 0.9)',
   },
 
-  // Line chart dataset styling
-  line: {
-    backgroundColor: 'rgba(249, 115, 22, 0.1)',
-    borderColor: '#F97316',
-    borderWidth: 2,
-    tension: 0.3,
-    fill: true,
-    pointBackgroundColor: '#F97316',
-    pointBorderColor: '#171717',
-    pointBorderWidth: 2,
-    pointRadius: 4,
-    pointHoverRadius: 6,
+  // Line chart dataset styling - use getter to get dynamic pointBorderColor
+  get line() {
+    const themeColors = getThemeColors();
+    return {
+      backgroundColor: 'rgba(249, 115, 22, 0.1)',
+      borderColor: '#F97316',
+      borderWidth: 2,
+      tension: 0.3,
+      fill: true,
+      pointBackgroundColor: '#F97316',
+      pointBorderColor: themeColors.pointBorderColor,
+      pointBorderWidth: 2,
+      pointRadius: 4,
+      pointHoverRadius: 6,
+    };
   },
 
-  // Grid styling
-  grid: {
-    color: 'rgba(163, 163, 163, 0.1)',  // muted with low opacity
-    borderColor: '#404040',              // elevated
+  // Grid styling - dynamic based on theme
+  get grid() {
+    return getThemeColors().grid;
   },
 
-  // Axis labels
-  axis: {
-    color: '#A3A3A3',        // muted text
-    titleColor: '#D4D4D4',   // neutral-300
+  // Axis labels - dynamic based on theme
+  get axis() {
+    return getThemeColors().axis;
   },
 
-  // Tooltip styling
-  tooltip: {
-    backgroundColor: '#262626',  // surface
-    borderColor: '#404040',      // elevated
-    titleColor: '#FAFAFA',       // neutral-50
-    bodyColor: '#D4D4D4',        // neutral-300
-    borderWidth: 1,
-    cornerRadius: 8,
-    padding: 12,
+  // Tooltip styling - dynamic based on theme
+  get tooltip() {
+    const themeColors = getThemeColors();
+    return {
+      ...themeColors.tooltip,
+      borderWidth: 1,
+      cornerRadius: 8,
+      padding: 12,
+    };
   },
 
-  // Legend styling
-  legend: {
-    color: '#D4D4D4',  // neutral-300
+  // Legend styling - dynamic based on theme
+  get legend() {
+    return getThemeColors().legend;
   },
 };
 
