@@ -122,6 +122,22 @@
           </p>
         </div>
       </div>
+
+      <!-- FAQ 8 -->
+      <div class="app-card overflow-hidden">
+        <button @click="open = open === 8 ? null : 8"
+                class="w-full p-4 text-left flex items-center justify-between hover:bg-elevated/50 transition-colors">
+          <span class="font-semibold text-slate-200">Why does this site have colors? Most dev tools are black/white.</span>
+          <svg class="w-5 h-5 text-slate-400 transition-transform" :class="{ 'rotate-180': open === 8 }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+          </svg>
+        </button>
+        <div x-show="open === 8" x-transition class="px-4 pb-4">
+          <p class="text-slate-400 text-sm">
+            I like some warmth. Dashboards don't have to feel cold. Will work on proper branding later, but for now—this is how I see it.
+          </p>
+        </div>
+      </div>
     </div>
   </div>
 </section>
