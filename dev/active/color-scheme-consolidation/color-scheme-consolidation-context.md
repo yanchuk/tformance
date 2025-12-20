@@ -1,6 +1,6 @@
 # Color Scheme Consolidation - Context
 
-**Last Updated:** 2025-12-20
+**Last Updated:** 2025-12-20 (Session 2 - Phase 1 Complete)
 
 ## Key Files
 
@@ -183,3 +183,93 @@ open http://localhost:8000/
 - Design system: `dev/visual-improvement-plan.md`
 - Color tokens: `assets/styles/app/tailwind/design-system.css` (header comments)
 - CLAUDE.md Design System section
+
+---
+
+## Session 2 Progress (2025-12-20)
+
+### Completed This Session
+
+1. **Phase 1: Expand Semantic Classes** - COMPLETE
+   - Added marketing text classes: `app-text-hero`, `app-text-body`, `app-text-caption`, `app-text-subtle`
+   - Added marketing bg classes: `app-bg-section`, `app-bg-card-dark`, `app-bg-section-bordered`
+   - Added status classes: `app-status-warning`, `app-status-info`, pill variants
+   - Added accent classes: `app-accent-primary`, `app-accent-secondary`, `app-accent-tertiary`
+
+2. **Light Theme Accessibility Fixes**
+   - Table header contrast override in `site-tailwind.css`
+   - `text-secondary`, `text-success` darker colors for light mode
+   - `app-status-pill-connected` uses `emerald-700` in light mode
+   - All 9 accessibility tests now passing
+
+3. **Template Updates**
+   - Replaced `text-accent-tertiary` → `text-teal-400` in 7 marketing templates
+   - Fixed navbar padding (`px-4 lg:px-6`) for sign-in button spacing
+
+### Key Decisions This Session
+
+1. **Use `text-teal-400` in marketing templates instead of `text-accent-tertiary`**
+   - Reason: CSS specificity issues with theme overrides made `text-accent-tertiary` unreliable
+   - Marketing pages are always dark, so using a direct Tailwind color works reliably
+   - For app pages, use semantic classes (`app-accent-tertiary`)
+
+2. **Light theme overrides use `!important`**
+   - Required due to DaisyUI theme cascade
+   - Placed at end of `site-tailwind.css` after DaisyUI plugin definitions
+
+3. **Use `:is()` and `:where()` for specificity control**
+   - Attempted but not needed after switching to `text-teal-400`
+   - Keep in mind for future theme-aware overrides
+
+### Files Modified This Session
+
+| File | Changes |
+|------|---------|
+| `assets/styles/app/tailwind/design-system.css` | Added ~50 lines of new semantic classes |
+| `assets/styles/site-tailwind.css` | Added light theme accessibility overrides (lines 160-176) |
+| `templates/web/components/top_nav.html` | Added `px-4 lg:px-6` to navbar |
+| `templates/web/components/what_you_get.html` | Replaced `text-accent-tertiary` → `text-teal-400` |
+| `templates/web/components/hero_terminal.html` | Replaced `text-accent-tertiary` → `text-teal-400` |
+| `templates/web/components/how_it_works.html` | Replaced `text-accent-tertiary` → `text-teal-400` |
+| `templates/web/components/features_grid.html` | Replaced `text-accent-tertiary` → `text-teal-400` |
+| `templates/web/components/built_with_you.html` | Replaced `text-accent-tertiary` → `text-teal-400` |
+| `templates/web/components/data_transparency.html` | Replaced `text-accent-tertiary` → `text-teal-400` |
+| `templates/web/components/security.html` | Replaced `text-accent-tertiary` → `text-teal-400` |
+
+### Testing Commands
+
+```bash
+# Run accessibility tests
+npx playwright test accessibility.spec.ts
+
+# Run all tests
+make test
+
+# Check for CSS errors (start vite first)
+npm run dev
+```
+
+### Next Session: Phase 2
+
+**Goal:** Replace remaining hardcoded `stone-*` colors in marketing templates with semantic classes.
+
+**Files to update (priority order):**
+1. `faq.html` - 26 occurrences
+2. `what_you_get.html` - 24 occurrences
+3. `features_grid.html` - 20 occurrences
+4. `pricing_simple.html` - 17 occurrences
+5. `how_it_works.html` - 14 occurrences
+
+**Mapping to use:**
+```
+text-stone-100 → text-base-content (or app-text-hero)
+text-stone-200 → text-base-content
+text-stone-300 → text-base-content/90 (or app-text-body)
+text-stone-400 → text-base-content/80 (or app-text-caption)
+```
+
+### Commits This Session
+
+```
+18a871a Phase 1: Expand semantic color classes and fix accessibility
+```
