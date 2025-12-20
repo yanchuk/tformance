@@ -172,5 +172,35 @@
   color: oklch(0.45 0.15 155) !important; /* Darker emerald for contrast */
 }
 
+/* Accent-tertiary (teal) contrast fix for light theme */
+[data-theme="tformance-light"] .text-accent-tertiary {
+  color: oklch(0.45 0.15 175) !important; /* Darker teal for 4.5:1+ contrast */
+}
+
+/* Teal-400 contrast fix for light theme (used in marketing templates) */
+[data-theme="tformance-light"] .text-teal-400 {
+  color: oklch(0.45 0.15 175) !important; /* Darker teal for 4.5:1+ contrast */
+}
+
+/* Accent-primary (orange) text contrast fix for light theme */
+[data-theme="tformance-light"] .text-accent-primary {
+  color: oklch(0.50 0.18 40) !important; /* Darker orange for 4.5:1+ contrast */
+}
+
+/* Purple badge contrast fix for light theme */
+[data-theme="tformance-light"] .text-purple-300 {
+  color: oklch(0.40 0.15 290) !important; /* Darker purple for contrast */
+}
+
+/* Amber-400 contrast fix for light theme (used in status labels) */
+[data-theme="tformance-light"] .text-amber-400 {
+  color: oklch(0.55 0.15 80) !important; /* Darker amber for 4.5:1+ contrast */
+}
+
+/* Accent-error contrast fix for light theme */
+[data-theme="tformance-light"] .text-accent-error {
+  color: oklch(0.50 0.18 25) !important; /* Darker red for 4.5:1+ contrast */
+}
+
 /* Note: Marketing pages use text-teal-400 directly for reliable dark mode contrast.
    App pages should use semantic classes from design-system.css (app-accent-tertiary). */

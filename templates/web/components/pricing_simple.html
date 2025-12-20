@@ -1,20 +1,20 @@
 {% load static %}
-<section class="bg-surface py-20 md:py-28">
+<section class="bg-base-200 py-20 md:py-28">
   <div class="max-w-4xl mx-auto px-4">
     <!-- Section Header -->
     <div class="text-center mb-12">
       <span class="text-cyan font-mono text-sm tracking-wider uppercase">Beta Access</span>
-      <h2 class="mt-4 text-3xl md:text-4xl font-bold text-stone-100">
+      <h2 class="mt-4 text-3xl md:text-4xl font-bold text-base-content">
         Free During Beta
       </h2>
-      <p class="mt-4 text-stone-400 max-w-xl mx-auto">
+      <p class="mt-4 text-base-content/80 max-w-xl mx-auto">
         Get early access to all features. Help shape the product. No credit card required.
       </p>
     </div>
 
     <!-- Pricing Card -->
     <div class="max-w-lg mx-auto animate-fade-up">
-      <div class="bg-deep rounded-2xl border border-elevated p-8 md:p-10 relative overflow-hidden">
+      <div class="bg-base-100 rounded-2xl border border-base-300 p-8 md:p-10 relative overflow-hidden">
         <!-- Subtle gradient accent -->
         <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-cyan via-cyan-light to-cyan"></div>
 
@@ -29,9 +29,9 @@
         <!-- Price display -->
         <div class="mb-8">
           <div class="flex items-baseline gap-2">
-            <span class="text-5xl md:text-6xl font-bold text-stone-100 font-mono">Free</span>
+            <span class="text-5xl md:text-6xl font-bold text-base-content font-mono">Free</span>
           </div>
-          <p class="mt-2 text-stone-400 text-sm">
+          <p class="mt-2 text-base-content/80 text-sm">
             During beta. Paid plans coming later.
           </p>
         </div>
@@ -42,41 +42,41 @@
             <svg class="w-5 h-5 text-emerald-300 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
               <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
             </svg>
-            <span class="text-stone-300">GitHub, Jira, Slack integrations</span>
+            <span class="text-base-content/90">GitHub, Jira, Slack integrations</span>
           </li>
           <li class="flex items-start gap-3">
             <svg class="w-5 h-5 text-emerald-300 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
               <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
             </svg>
-            <span class="text-stone-300">AI correlation dashboard</span>
+            <span class="text-base-content/90">AI correlation dashboard</span>
           </li>
           <li class="flex items-start gap-3">
             <svg class="w-5 h-5 text-emerald-300 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
               <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
             </svg>
-            <span class="text-stone-300">Slack bot for PR surveys</span>
+            <span class="text-base-content/90">Slack bot for PR surveys</span>
           </li>
           <li class="flex items-start gap-3">
             <svg class="w-5 h-5 text-emerald-300 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
               <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
             </svg>
-            <span class="text-stone-300">Layered visibility controls</span>
+            <span class="text-base-content/90">Layered visibility controls</span>
           </li>
           <li class="flex items-start gap-3">
             <svg class="w-5 h-5 text-emerald-300 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
               <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
             </svg>
-            <span class="text-stone-300">Unlimited team members</span>
+            <span class="text-base-content/90">Unlimited team members</span>
           </li>
         </ul>
 
         <!-- CTA -->
         <a href="{% url 'account_signup' %}"
-           class="btn btn-lg w-full bg-cyan hover:bg-cyan-dark text-slate-900 font-semibold border-0">
+           class="btn btn-lg w-full bg-cyan hover:bg-cyan-dark text-base-100 font-semibold border-0">
           Join Waitlist
         </a>
 
-        <p class="mt-4 text-center text-sm text-stone-400">
+        <p class="mt-4 text-center text-sm text-base-content/80">
           No credit card required. Join the beta today.
         </p>
       </div>
@@ -84,7 +84,7 @@
 
     <!-- Beta note -->
     <div class="mt-12 text-center">
-      <p class="text-stone-400 text-sm">
+      <p class="text-base-content/80 text-sm">
         Help us build the best AI analytics tool for engineering teams. Your feedback shapes the product.
       </p>
     </div>

@@ -2,13 +2,29 @@
  * Terminal-meets-dashboard aesthetic for developer audience
  */
 
-/* Terminal window styling */
+/* Terminal window styling - always dark, regardless of theme */
 .terminal-window {
-  @apply bg-deep rounded-xl border border-elevated overflow-hidden shadow-2xl;
+  @apply rounded-xl overflow-hidden shadow-2xl;
+  background-color: #1e1e1e; /* Force dark background */
+  border: 1px solid #363636;
+  /* Force light text inside terminal regardless of theme */
+  color: #d4d0c8; /* Warm beige text from dark theme */
+}
+
+/* Override text-base-content inside terminal to always be light */
+.terminal-window .text-base-content {
+  color: #d4d0c8 !important;
+}
+
+.terminal-window .text-base-content\/80 {
+  color: rgba(212, 208, 200, 0.8) !important;
 }
 
 .terminal-header {
-  @apply bg-surface px-4 py-3 flex items-center gap-2 border-b border-elevated;
+  @apply px-4 py-3 flex items-center gap-2;
+  background-color: #282725; /* Force dark header */
+  border-bottom: 1px solid #363636;
+  color: rgba(212, 208, 200, 0.8); /* Light muted text */
 }
 
 .terminal-dot {
@@ -21,14 +37,23 @@
 
 .terminal-body {
   @apply p-6 font-mono text-sm md:text-base;
+  color: #d4d0c8; /* Explicit light text */
 }
 
 .terminal-prompt {
-  @apply text-accent-primary inline-block;
+  color: #F97316 !important; /* Coral orange - works on dark bg */
+  @apply inline-block;
+}
+
+/* Force accent-primary text in terminal to be warm orange (override light theme) */
+[data-theme] .terminal-window .text-accent-primary,
+.terminal-window .text-accent-primary {
+  color: #FB923C !important; /* Warm orange (orange-400) for verdict text */
 }
 
 .terminal-cursor {
-  @apply inline-block w-2 h-5 bg-accent-primary ml-1 animate-blink;
+  @apply inline-block w-2 h-5 ml-1 animate-blink;
+  background-color: #F97316; /* Coral orange */
 }
 
 /* Gradient text effect - warm coral to pink gradient */
@@ -36,9 +61,9 @@
   @apply bg-gradient-to-r from-accent-primary to-pink-500 bg-clip-text text-transparent;
 }
 
-/* Stat card styling */
+/* Stat card styling - always dark for marketing pages */
 .stat-card {
-  @apply bg-surface rounded-xl p-6 border border-elevated;
+  @apply bg-base-200 rounded-xl p-6 border border-base-300;
   @apply hover:border-accent-primary/50 transition-colors duration-300;
 }
 
@@ -47,7 +72,7 @@
 }
 
 .stat-positive {
-  @apply text-emerald-400;
+  @apply text-teal-400;
 }
 
 .stat-negative {
@@ -55,18 +80,18 @@
 }
 
 .stat-label {
-  @apply text-stone-400 mt-2 text-sm md:text-base;
+  @apply text-base-content/80 mt-2 text-sm md:text-base;
 }
 
-/* Feature card styling */
+/* Feature card styling - always dark for marketing pages */
 .feature-card {
-  @apply bg-surface rounded-xl p-6 border border-elevated;
-  @apply hover:border-accent-primary/30 hover:bg-surface/80 transition-all duration-300;
+  @apply bg-base-200 rounded-xl p-6 border border-base-300;
+  @apply hover:border-accent-primary/30 transition-all duration-300;
 }
 
-/* Integration logo styling */
+/* Integration logo styling - always dark for marketing pages */
 .integration-logo {
-  @apply w-16 h-16 md:w-20 md:h-20 p-4 bg-surface rounded-xl border border-elevated;
+  @apply w-16 h-16 md:w-20 md:h-20 p-4 bg-base-200 rounded-xl border border-base-300;
   @apply hover:border-accent-primary/50 hover:scale-105 transition-all duration-300;
 }
 
@@ -76,7 +101,7 @@
 }
 
 .landing-section-dark {
-  @apply bg-deep;
+  @apply bg-base-100;
 }
 
 .landing-section-alt {
