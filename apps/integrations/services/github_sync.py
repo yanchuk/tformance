@@ -18,6 +18,8 @@ __all__ = [
     "sync_pr_check_runs",
     "sync_pr_files",
     "sync_repository_deployments",
+    "sync_pr_issue_comments",
+    "sync_pr_review_comments",
 ]
 
 
@@ -512,13 +514,17 @@ def _process_prs(
         access_token: Decrypted GitHub access token
 
     Returns:
-        Dict with keys: prs_synced, reviews_synced, errors
+        Dict with sync stats for PRs, reviews, commits, check_runs, files, comments
     """
     from apps.metrics.models import PullRequest
     from apps.metrics.processors import _map_github_pr_to_fields
 
     prs_synced = 0
     reviews_synced = 0
+    commits_synced = 0
+    check_runs_synced = 0
+    files_synced = 0
+    comments_synced = 0
     errors = []
 
     for pr_data in prs_data:
@@ -549,6 +555,54 @@ def _process_prs(
                 errors=errors,
             )
 
+            # Sync commits for this PR
+            commits_synced += sync_pr_commits(
+                pr=pr,
+                pr_number=pr_number,
+                access_token=access_token,
+                repo_full_name=tracked_repo.full_name,
+                team=tracked_repo.team,
+                errors=errors,
+            )
+
+            # Sync check runs for this PR
+            check_runs_synced += sync_pr_check_runs(
+                pr=pr,
+                pr_number=pr_number,
+                access_token=access_token,
+                repo_full_name=tracked_repo.full_name,
+                team=tracked_repo.team,
+                errors=errors,
+            )
+
+            # Sync files for this PR
+            files_synced += sync_pr_files(
+                pr=pr,
+                pr_number=pr_number,
+                access_token=access_token,
+                repo_full_name=tracked_repo.full_name,
+                team=tracked_repo.team,
+                errors=errors,
+            )
+
+            # Sync comments for this PR (both issue and review comments)
+            comments_synced += sync_pr_issue_comments(
+                pr=pr,
+                pr_number=pr_number,
+                access_token=access_token,
+                repo_full_name=tracked_repo.full_name,
+                team=tracked_repo.team,
+                errors=errors,
+            )
+            comments_synced += sync_pr_review_comments(
+                pr=pr,
+                pr_number=pr_number,
+                access_token=access_token,
+                repo_full_name=tracked_repo.full_name,
+                team=tracked_repo.team,
+                errors=errors,
+            )
+
         except Exception as e:
             # Log the error but continue processing other PRs
             pr_number = pr_data.get("number", "unknown")
@@ -559,6 +613,10 @@ def _process_prs(
     return {
         "prs_synced": prs_synced,
         "reviews_synced": reviews_synced,
+        "commits_synced": commits_synced,
+        "check_runs_synced": check_runs_synced,
+        "files_synced": files_synced,
+        "comments_synced": comments_synced,
         "errors": errors,
     }
 
@@ -574,7 +632,7 @@ def sync_repository_history(
         days_back: Number of days of history to sync (default 90, not yet implemented)
 
     Returns:
-        Dict with keys: prs_synced, reviews_synced, errors
+        Dict with sync stats for PRs, reviews, commits, check_runs, files, comments, deployments
     """
     from django.utils import timezone
 
@@ -584,8 +642,16 @@ def sync_repository_history(
     # Fetch PRs from GitHub
     prs_data = get_repository_pull_requests(access_token, tracked_repo.full_name)
 
-    # Process PRs and sync reviews
+    # Process PRs and sync all related data
     result = _process_prs(prs_data, tracked_repo, access_token)
+
+    # Sync deployments for this repository
+    result["deployments_synced"] = sync_repository_deployments(
+        repo_full_name=tracked_repo.full_name,
+        access_token=access_token,
+        team=tracked_repo.team,
+        errors=result["errors"],
+    )
 
     # Update last_sync_at
     tracked_repo.last_sync_at = timezone.now()
@@ -602,7 +668,7 @@ def sync_repository_incremental(tracked_repo: "TrackedRepository") -> dict:  # n
         tracked_repo: TrackedRepository model instance
 
     Returns:
-        dict with keys: prs_synced, reviews_synced, errors
+        Dict with sync stats for PRs, reviews, commits, check_runs, files, comments, deployments
     """
     # If last_sync_at is None, fall back to full sync
     if tracked_repo.last_sync_at is None:
@@ -616,8 +682,16 @@ def sync_repository_incremental(tracked_repo: "TrackedRepository") -> dict:  # n
     # Fetch updated PRs from GitHub since last sync
     prs_data = get_updated_pull_requests(access_token, tracked_repo.full_name, tracked_repo.last_sync_at)
 
-    # Process PRs and sync reviews
+    # Process PRs and sync all related data
     result = _process_prs(prs_data, tracked_repo, access_token)
+
+    # Sync deployments for this repository
+    result["deployments_synced"] = sync_repository_deployments(
+        repo_full_name=tracked_repo.full_name,
+        access_token=access_token,
+        team=tracked_repo.team,
+        errors=result["errors"],
+    )
 
     # Update last_sync_at
     tracked_repo.last_sync_at = timezone.now()
@@ -700,3 +774,158 @@ def sync_repository_deployments(
         errors.append(error_msg)
 
     return deployments_synced
+
+
+def _sync_pr_comments(
+    pr: "PullRequest",  # noqa: F821
+    pr_number: int,
+    access_token: str,
+    repo_full_name: str,
+    team,
+    errors: list,
+    comment_type: str,
+    get_comments_method: str,
+) -> int:
+    """Generic helper to sync PR comments from GitHub.
+
+    Args:
+        pr: PullRequest instance to sync comments for
+        pr_number: GitHub PR number
+        access_token: GitHub access token
+        repo_full_name: Repository full name (owner/repo)
+        team: Team instance
+        errors: List to append error messages to
+        comment_type: Type of comment ("issue" or "review")
+        get_comments_method: PyGithub PR method name to call ("get_issue_comments" or "get_review_comments")
+
+    Returns:
+        Number of comments successfully synced
+    """
+    from apps.metrics.models import PRComment
+    from apps.metrics.processors import _get_team_member_by_github_id
+
+    comments_synced = 0
+
+    try:
+        # Create GitHub client and get PR
+        github = Github(access_token)
+        repo = github.get_repo(repo_full_name)
+        github_pr = repo.get_pull(pr_number)
+
+        # Fetch comments using the specified method
+        comments = getattr(github_pr, get_comments_method)()
+
+        # Iterate over comments
+        for comment in comments:
+            try:
+                # Map author to TeamMember
+                author = None
+                if comment.user:
+                    author = _get_team_member_by_github_id(team, str(comment.user.id))
+
+                # Build defaults dict with common fields
+                defaults = {
+                    "pull_request": pr,
+                    "author": author,
+                    "body": comment.body,
+                    "comment_type": comment_type,
+                    "comment_created_at": comment.created_at,
+                    "comment_updated_at": comment.updated_at,
+                }
+
+                # Add review-specific fields or set them to None for issue comments
+                if comment_type == "review":
+                    defaults["path"] = comment.path
+                    defaults["line"] = comment.line
+                    defaults["in_reply_to_id"] = comment.in_reply_to_id
+                else:
+                    defaults["path"] = None
+                    defaults["line"] = None
+                    defaults["in_reply_to_id"] = None
+
+                # Create or update comment record
+                PRComment.objects.update_or_create(
+                    team=team,
+                    github_comment_id=comment.id,
+                    defaults=defaults,
+                )
+                comments_synced += 1
+
+            except Exception as e:
+                # Log error but continue processing other comments
+                error_msg = f"Failed to sync {comment_type} comment {comment.id} for PR #{pr_number}: {str(e)}"
+                errors.append(error_msg)
+                continue
+
+    except Exception as e:
+        # Log error if we can't fetch comments at all
+        error_msg = f"Failed to fetch {comment_type} comments for PR #{pr_number}: {str(e)}"
+        errors.append(error_msg)
+
+    return comments_synced
+
+
+def sync_pr_issue_comments(
+    pr: "PullRequest",  # noqa: F821
+    pr_number: int,
+    access_token: str,
+    repo_full_name: str,
+    team,
+    errors: list,
+) -> int:
+    """Sync issue comments (general PR comments) from GitHub.
+
+    Args:
+        pr: PullRequest instance to sync comments for
+        pr_number: GitHub PR number
+        access_token: GitHub access token
+        repo_full_name: Repository full name (owner/repo)
+        team: Team instance
+        errors: List to append error messages to
+
+    Returns:
+        Number of issue comments successfully synced
+    """
+    return _sync_pr_comments(
+        pr=pr,
+        pr_number=pr_number,
+        access_token=access_token,
+        repo_full_name=repo_full_name,
+        team=team,
+        errors=errors,
+        comment_type="issue",
+        get_comments_method="get_issue_comments",
+    )
+
+
+def sync_pr_review_comments(
+    pr: "PullRequest",  # noqa: F821
+    pr_number: int,
+    access_token: str,
+    repo_full_name: str,
+    team,
+    errors: list,
+) -> int:
+    """Sync review comments (inline code comments) from GitHub.
+
+    Args:
+        pr: PullRequest instance to sync comments for
+        pr_number: GitHub PR number
+        access_token: GitHub access token
+        repo_full_name: Repository full name (owner/repo)
+        team: Team instance
+        errors: List to append error messages to
+
+    Returns:
+        Number of review comments successfully synced
+    """
+    return _sync_pr_comments(
+        pr=pr,
+        pr_number=pr_number,
+        access_token=access_token,
+        repo_full_name=repo_full_name,
+        team=team,
+        errors=errors,
+        comment_type="review",
+        get_comments_method="get_review_comments",
+    )

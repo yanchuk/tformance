@@ -177,6 +177,34 @@ class PullRequest(BaseTeamModel):
         help_text="Time from PR creation to first review",
     )
 
+    # Iteration metrics (calculated from synced data)
+    review_rounds = models.IntegerField(
+        null=True,
+        blank=True,
+        verbose_name="Review rounds",
+        help_text="Number of review cycles (changes_requested → commits → re-review)",
+    )
+    avg_fix_response_hours = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        verbose_name="Avg fix response (hours)",
+        help_text="Average time from review to next commit",
+    )
+    commits_after_first_review = models.IntegerField(
+        null=True,
+        blank=True,
+        verbose_name="Commits after first review",
+        help_text="Number of commits made after the first review",
+    )
+    total_comments = models.IntegerField(
+        null=True,
+        blank=True,
+        verbose_name="Total comments",
+        help_text="Total number of comments on this PR",
+    )
+
     # Code changes
     additions = models.IntegerField(
         default=0,
@@ -1079,6 +1107,103 @@ class WeeklyMetrics(BaseTeamModel):
 
     def __str__(self):
         return f"{self.member} - Week of {self.week_start}"
+
+
+class PRComment(BaseTeamModel):
+    """
+    A comment on a pull request.
+
+    Tracks both issue comments (general PR comments) and review comments
+    (inline code comments).
+    """
+
+    COMMENT_TYPE_CHOICES = [
+        ("issue", "Issue Comment"),
+        ("review", "Review Comment"),
+    ]
+
+    github_comment_id = models.BigIntegerField(
+        verbose_name="GitHub Comment ID",
+        help_text="The comment ID from GitHub",
+    )
+    pull_request = models.ForeignKey(
+        PullRequest,
+        on_delete=models.CASCADE,
+        related_name="comments",
+        verbose_name="Pull request",
+        help_text="The PR this comment belongs to",
+    )
+    author = models.ForeignKey(
+        TeamMember,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="pr_comments",
+        verbose_name="Author",
+        help_text="The team member who created the comment",
+    )
+    body = models.TextField(
+        verbose_name="Comment body",
+        help_text="The text content of the comment",
+    )
+    comment_type = models.CharField(
+        max_length=20,
+        choices=COMMENT_TYPE_CHOICES,
+        verbose_name="Comment type",
+        help_text="Whether this is an issue comment or review comment",
+    )
+
+    # Review comment specific fields
+    path = models.CharField(
+        max_length=500,
+        null=True,
+        blank=True,
+        verbose_name="File path",
+        help_text="File path for review comments",
+    )
+    line = models.IntegerField(
+        null=True,
+        blank=True,
+        verbose_name="Line number",
+        help_text="Line number for review comments",
+    )
+
+    # Threading
+    in_reply_to_id = models.BigIntegerField(
+        null=True,
+        blank=True,
+        verbose_name="In reply to",
+        help_text="GitHub comment ID this is replying to (for threaded comments)",
+    )
+
+    # Timestamps
+    comment_created_at = models.DateTimeField(
+        verbose_name="Comment created at",
+        help_text="When the comment was created on GitHub",
+    )
+    comment_updated_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Comment updated at",
+        help_text="When the comment was last updated on GitHub",
+    )
+
+    class Meta:
+        ordering = ["-comment_created_at"]
+        verbose_name = "PR Comment"
+        verbose_name_plural = "PR Comments"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["team", "github_comment_id"],
+                name="unique_team_pr_comment",
+            )
+        ]
+        indexes = [
+            models.Index(fields=["pull_request", "comment_created_at"], name="pr_comment_pr_created_idx"),
+            models.Index(fields=["author", "comment_type"], name="pr_comment_author_type_idx"),
+        ]
+
+    def __str__(self):
+        return f"Comment {self.github_comment_id} on PR #{self.pull_request.github_pr_id}"
 
 
 class Deployment(BaseTeamModel):

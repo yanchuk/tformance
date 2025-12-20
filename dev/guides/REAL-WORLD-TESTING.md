@@ -11,6 +11,8 @@ This guide walks you through setting up a tunnel (Cloudflare Tunnel recommended)
 | Tunnel | ✅ Verified | 2025-12-17 | Cloudflare Tunnel at `dev.ianchuk.com` |
 | GitHub OAuth | ✅ Verified | 2025-12-17 | OAuth flow, org selection, member sync working |
 | GitHub Copilot | ⏳ Pending | - | Requires org with 5+ Copilot licenses |
+| GitHub PR Sync | ⏳ Pending | - | Commits, check runs, files, comments |
+| GitHub Deployments | ⏳ Pending | - | Deployment tracking |
 | Jira OAuth | ⏳ Pending | - | - |
 | Slack OAuth | ⏳ Pending | - | - |
 
@@ -20,10 +22,11 @@ This guide walks you through setting up a tunnel (Cloudflare Tunnel recommended)
 2. [Phase 1: Tunnel Setup](#phase-1-tunnel-setup)
 3. [Phase 2: GitHub App Setup](#phase-2-github-app-setup)
 4. [Phase 2.5: GitHub Copilot Testing](#phase-25-github-copilot-testing)
-5. [Phase 3: Jira App Setup](#phase-3-jira-app-setup)
-6. [Phase 4: Slack App Setup](#phase-4-slack-app-setup)
-7. [Phase 5: Testing Checklist](#phase-5-testing-checklist)
-8. [Troubleshooting](#troubleshooting)
+5. [Phase 2.6: GitHub PR Sync Testing](#phase-26-github-pr-sync-testing)
+6. [Phase 3: Jira App Setup](#phase-3-jira-app-setup)
+7. [Phase 4: Slack App Setup](#phase-4-slack-app-setup)
+8. [Phase 5: Testing Checklist](#phase-5-testing-checklist)
+9. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -315,6 +318,264 @@ LIMIT 10;
 - Check network connectivity to GitHub API
 - Verify access token hasn't expired
 - Check GitHub API status page
+
+---
+
+## Phase 2.6: GitHub PR Sync Testing
+
+This phase verifies the extended GitHub sync features: commits, CI/CD check runs, files changed, comments, and deployments.
+
+### Prerequisites for PR Sync Testing
+
+- GitHub integration connected (Phase 2)
+- At least one tracked repository with PRs
+- PRs with reviews, comments, and CI/CD checks
+
+### 2.6.1 Verify Models Created
+
+Check that all sync models exist in the database:
+
+```bash
+make dbshell
+
+-- Count records in each sync table
+SELECT 'commits' as model, COUNT(*) as count FROM metrics_commit
+UNION ALL
+SELECT 'check_runs', COUNT(*) FROM metrics_prcheckrun
+UNION ALL
+SELECT 'files', COUNT(*) FROM metrics_prfile
+UNION ALL
+SELECT 'comments', COUNT(*) FROM metrics_prcomment
+UNION ALL
+SELECT 'deployments', COUNT(*) FROM metrics_deployment;
+```
+
+### 2.6.2 Test Commit Sync
+
+```bash
+# Via Django shell
+make shell
+
+from apps.integrations.services.github_sync import sync_pr_commits
+from apps.metrics.models import PullRequest, Commit
+from apps.teams.models import Team
+
+team = Team.objects.first()
+pr = PullRequest.for_team.filter(team=team).first()
+
+# Sync commits for a PR (requires access token and repo info)
+from apps.integrations.models import GitHubIntegration
+gh = GitHubIntegration.objects.filter(team=team).first()
+
+errors = []
+count = sync_pr_commits(
+    pr=pr,
+    pr_number=pr.github_pr_id,
+    access_token=gh.access_token,
+    repo_full_name=pr.github_repo,
+    team=team,
+    errors=errors
+)
+print(f"Synced {count} commits, errors: {errors}")
+
+# Verify in database
+Commit.for_team.filter(pull_request=pr).values('github_sha', 'message', 'author__display_name')
+```
+
+### 2.6.3 Test Check Run Sync
+
+```bash
+# Via Django shell
+make shell
+
+from apps.integrations.services.github_sync import sync_pr_check_runs
+from apps.metrics.models import PullRequest, PRCheckRun
+from apps.teams.models import Team
+from apps.integrations.models import GitHubIntegration
+
+team = Team.objects.first()
+pr = PullRequest.for_team.filter(team=team, state='merged').first()
+gh = GitHubIntegration.objects.filter(team=team).first()
+
+errors = []
+count = sync_pr_check_runs(
+    pr=pr,
+    pr_number=pr.github_pr_id,
+    access_token=gh.access_token,
+    repo_full_name=pr.github_repo,
+    team=team,
+    errors=errors
+)
+print(f"Synced {count} check runs, errors: {errors}")
+
+# Verify CI/CD data
+for check in PRCheckRun.for_team.filter(pull_request=pr):
+    print(f"  {check.name}: {check.conclusion} ({check.duration_seconds}s)")
+```
+
+### 2.6.4 Test File Sync
+
+```bash
+# Via Django shell
+make shell
+
+from apps.integrations.services.github_sync import sync_pr_files
+from apps.metrics.models import PullRequest, PRFile
+from apps.teams.models import Team
+from apps.integrations.models import GitHubIntegration
+
+team = Team.objects.first()
+pr = PullRequest.for_team.filter(team=team).first()
+gh = GitHubIntegration.objects.filter(team=team).first()
+
+errors = []
+count = sync_pr_files(
+    pr=pr,
+    pr_number=pr.github_pr_id,
+    access_token=gh.access_token,
+    repo_full_name=pr.github_repo,
+    team=team,
+    errors=errors
+)
+print(f"Synced {count} files, errors: {errors}")
+
+# Verify file categories
+for file in PRFile.for_team.filter(pull_request=pr):
+    print(f"  {file.filename}: {file.file_category} (+{file.additions}/-{file.deletions})")
+```
+
+### 2.6.5 Test Comment Sync
+
+```bash
+# Via Django shell
+make shell
+
+from apps.integrations.services.github_sync import sync_pr_issue_comments, sync_pr_review_comments
+from apps.metrics.models import PullRequest, PRComment
+from apps.teams.models import Team
+from apps.integrations.models import GitHubIntegration
+
+team = Team.objects.first()
+pr = PullRequest.for_team.filter(team=team).first()
+gh = GitHubIntegration.objects.filter(team=team).first()
+
+errors = []
+
+# Sync issue comments (general PR comments)
+issue_count = sync_pr_issue_comments(
+    pr=pr,
+    pr_number=pr.github_pr_id,
+    access_token=gh.access_token,
+    repo_full_name=pr.github_repo,
+    team=team,
+    errors=errors
+)
+
+# Sync review comments (inline code comments)
+review_count = sync_pr_review_comments(
+    pr=pr,
+    pr_number=pr.github_pr_id,
+    access_token=gh.access_token,
+    repo_full_name=pr.github_repo,
+    team=team,
+    errors=errors
+)
+
+print(f"Synced {issue_count} issue comments, {review_count} review comments")
+print(f"Errors: {errors}")
+
+# Verify comments
+for comment in PRComment.for_team.filter(pull_request=pr)[:5]:
+    print(f"  [{comment.comment_type}] {comment.author}: {comment.body[:50]}...")
+```
+
+### 2.6.6 Test Deployment Sync
+
+```bash
+# Via Django shell
+make shell
+
+from apps.integrations.services.github_sync import sync_repository_deployments
+from apps.metrics.models import Deployment
+from apps.teams.models import Team
+from apps.integrations.models import GitHubIntegration, TrackedRepository
+
+team = Team.objects.first()
+gh = GitHubIntegration.objects.filter(team=team).first()
+repo = TrackedRepository.objects.filter(team=team).first()
+
+errors = []
+count = sync_repository_deployments(
+    repo_full_name=repo.full_name,
+    access_token=gh.access_token,
+    team=team,
+    errors=errors
+)
+print(f"Synced {count} deployments, errors: {errors}")
+
+# Verify deployments
+for deploy in Deployment.for_team.filter(github_repo=repo.full_name)[:5]:
+    print(f"  {deploy.environment}: {deploy.status} at {deploy.deployed_at}")
+```
+
+### 2.6.7 Database Verification Queries
+
+```sql
+-- Via psql (make dbshell)
+
+-- Commits per PR
+SELECT pr.github_pr_id, pr.title, COUNT(c.id) as commit_count
+FROM metrics_pullrequest pr
+LEFT JOIN metrics_commit c ON c.pull_request_id = pr.id
+GROUP BY pr.id
+ORDER BY commit_count DESC
+LIMIT 10;
+
+-- Check runs by conclusion
+SELECT conclusion, COUNT(*) as count
+FROM metrics_prcheckrun
+GROUP BY conclusion
+ORDER BY count DESC;
+
+-- Files by category
+SELECT file_category, COUNT(*) as count, SUM(additions) as total_additions
+FROM metrics_prfile
+GROUP BY file_category
+ORDER BY count DESC;
+
+-- Comments by type
+SELECT comment_type, COUNT(*) as count
+FROM metrics_prcomment
+GROUP BY comment_type;
+
+-- Deployments by environment and status
+SELECT environment, status, COUNT(*) as count
+FROM metrics_deployment
+GROUP BY environment, status
+ORDER BY environment, status;
+```
+
+### PR Sync Troubleshooting
+
+**Problem:** "No commits synced"
+- PR may not have commits yet (just opened)
+- Check if PR exists and has `github_pr_id` set
+- Verify access token has `repo` scope
+
+**Problem:** "No check runs synced"
+- Repository may not have CI/CD configured
+- Check runs are tied to the head commit SHA
+- PR must have been pushed to trigger CI
+
+**Problem:** "Comments not appearing"
+- Issue comments and review comments are synced separately
+- Ensure both sync functions are called
+- Check if PR actually has comments
+
+**Problem:** "No deployments synced"
+- Repository may not use GitHub Deployments
+- Deployments are repo-level, not PR-level
+- Check GitHub repo > Deployments tab
 
 ---
 

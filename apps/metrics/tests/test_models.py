@@ -478,6 +478,57 @@ class TestPullRequestModel(TestCase):
         self.assertEqual(pr.jira_key, long_jira_key)
 
 
+class TestPullRequestIterationFields(TestCase):
+    """Tests for PullRequest iteration metric fields."""
+
+    def setUp(self):
+        """Set up test fixtures using factories."""
+        from apps.metrics.factories import TeamFactory, TeamMemberFactory
+
+        self.team = TeamFactory()
+        self.author = TeamMemberFactory(team=self.team)
+
+    def tearDown(self):
+        """Clean up team context."""
+        unset_current_team()
+
+    def test_pull_request_iteration_fields_exist(self):
+        """Test that all 4 new iteration metric fields exist and can be set."""
+        from apps.metrics.factories import PullRequestFactory
+
+        pr = PullRequestFactory(
+            team=self.team,
+            author=self.author,
+            review_rounds=3,
+            avg_fix_response_hours=Decimal("4.50"),
+            commits_after_first_review=5,
+            total_comments=12,
+        )
+
+        self.assertEqual(pr.review_rounds, 3)
+        self.assertEqual(pr.avg_fix_response_hours, Decimal("4.50"))
+        self.assertEqual(pr.commits_after_first_review, 5)
+        self.assertEqual(pr.total_comments, 12)
+
+    def test_pull_request_iteration_fields_nullable(self):
+        """Test that all iteration fields accept None values."""
+        from apps.metrics.factories import PullRequestFactory
+
+        pr = PullRequestFactory(
+            team=self.team,
+            author=self.author,
+            review_rounds=None,
+            avg_fix_response_hours=None,
+            commits_after_first_review=None,
+            total_comments=None,
+        )
+
+        self.assertIsNone(pr.review_rounds)
+        self.assertIsNone(pr.avg_fix_response_hours)
+        self.assertIsNone(pr.commits_after_first_review)
+        self.assertIsNone(pr.total_comments)
+
+
 class TestPRReviewModel(TestCase):
     """Tests for PRReview model."""
 

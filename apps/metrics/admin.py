@@ -6,6 +6,7 @@ from .models import (
     Deployment,
     JiraIssue,
     PRCheckRun,
+    PRComment,
     PRFile,
     PRReview,
     PRSurvey,
@@ -95,6 +96,29 @@ class PRReviewAdmin(admin.ModelAdmin):
     search_fields = ["pull_request__title", "reviewer__display_name"]
     ordering = ["-submitted_at"]
     raw_id_fields = ["pull_request", "reviewer"]
+
+
+@admin.register(PRComment)
+class PRCommentAdmin(admin.ModelAdmin):
+    """Admin for PRComment - GitHub PR comments."""
+
+    list_display = [
+        "github_comment_id",
+        "pull_request",
+        "author",
+        "comment_type",
+        "body_truncated",
+        "comment_created_at",
+        "team",
+    ]
+    list_filter = ["team", "comment_type"]
+    search_fields = ["body", "pull_request__title", "author__display_name"]
+    ordering = ["-comment_created_at"]
+    raw_id_fields = ["pull_request", "author"]
+
+    @admin.display(description="Body")
+    def body_truncated(self, obj):
+        return obj.body[:50] + "..." if obj.body and len(obj.body) > 50 else obj.body
 
 
 @admin.register(PRCheckRun)

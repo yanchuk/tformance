@@ -1,194 +1,241 @@
 # PR Iteration Metrics & GitHub Analytics - Context
 
-**Last Updated:** 2025-12-20 (Session 1)
+**Last Updated:** 2025-12-20 (Session 2 - PIPELINE INTEGRATED)
 
 ## Current Implementation State
 
-### Session Progress Summary
+### Session 2 Progress Summary
 
-This session focused on **data collection phases** - getting all GitHub data synced first, analytics later.
+**ALL DATA COLLECTION PHASES COMPLETE + PIPELINE INTEGRATED.** All sync functions are now called automatically during repository sync.
 
 | Phase | Status | Notes |
 |-------|--------|-------|
-| Phase 1: Commit Sync | ✅ **COMPLETE** | `sync_pr_commits()` implemented and tested |
-| Phase 4: CI/CD Model | ✅ **COMPLETE** | `PRCheckRun` model created with migration |
-| Phase 4: CI/CD Sync | 🔴 **RED PHASE** | Tests written, implementation pending |
-| Phase 5: Files | ⏳ Pending | - |
-| Phase 6: Deployments | ⏳ Pending | - |
-| Phase 2: Comments | ⏳ Pending | - |
+| Phase 1: Commit Sync | ✅ **COMPLETE** | `sync_pr_commits()` implemented (Session 1) |
+| Phase 4: CI/CD Check Runs | ✅ **COMPLETE** | `PRCheckRun` model + `sync_pr_check_runs()` |
+| Phase 5: PR Files | ✅ **COMPLETE** | `PRFile` model + `sync_pr_files()` |
+| Phase 6: Deployments | ✅ **COMPLETE** | `Deployment` model + `sync_repository_deployments()` |
+| Phase 2: PR Comments | ✅ **COMPLETE** | `PRComment` model + sync functions |
+| Phase 9: Testing Guide | ✅ **COMPLETE** | Added Phase 2.6 to REAL-WORLD-TESTING.md |
+| **Pipeline Integration** | ✅ **COMPLETE** | All syncs called from `_process_prs()` |
+
+### Deferred Phases (Analytics - Future)
+- Phase 3: Iteration Metrics calculation
+- Phase 7: Review Correlations
+- Phase 8: Dashboard Integration
 
 ---
 
 ## Key Decisions Made This Session
 
-### 1. Data First, Analytics Later
-**Decision:** Implement all data sync phases before building analytics/dashboards
-**Rationale:** Get data flowing into the database first, then analyze it
+### 1. Consistent Function Signatures
+**Decision:** All sync functions follow same pattern:
+```python
+def sync_X(pr, pr_number, access_token, repo_full_name, team, errors) -> int
+```
+**Rationale:** Consistency across codebase, each function creates own GitHub client
 
-### 2. Sync-Based Approach (Not Webhooks)
-**Decision:** Use daily sync for commits, check runs, files, deployments, comments
-**Rationale:** Simpler, captures historical data, daily frequency sufficient for analytics
+### 2. Comment Sync Refactoring
+**Decision:** Extract shared `_sync_pr_comments()` helper for issue/review comments
+**Rationale:** 90%+ code duplication between the two functions
 
-### 3. Error Handling Pattern
-**Decision:** Pass `errors` list to sync functions to accumulate errors
-**Rationale:** Matches existing `_sync_pr_reviews()` pattern, improves debuggability
+### 3. File Categorization Logic
+**Decision:** Test files checked BEFORE extension matching
+**Rationale:** `test_models.py` should be categorized as "test" not "backend"
+
+### 4. Deployment Status Extraction
+**Decision:** Use first status from `deploy.get_statuses()` as latest
+**Rationale:** GitHub returns statuses newest-first
 
 ---
 
 ## Files Modified This Session
 
-### Models
-| File | Changes |
-|------|---------|
-| `apps/metrics/models.py` | Added `PRCheckRun` model (lines 315-399) |
-| `apps/metrics/admin.py` | Added `PRCheckRunAdmin` registration |
-| `apps/metrics/factories.py` | Added `PRCheckRunFactory` |
+### Models (`apps/metrics/models.py`)
+| Model | Lines | Notes |
+|-------|-------|-------|
+| `PRCheckRun` | 315-400 | CI/CD check runs with STATUS/CONCLUSION choices |
+| `PRFile` | 403-505 | Files changed with `categorize_file()` static method |
+| `Deployment` | 1181-1270 | GitHub deployments with environment/status |
+| `PRComment` | 1084-1179 | Issue + review comments with threading |
 
-### Sync Services
-| File | Changes |
-|------|---------|
-| `apps/integrations/services/github_sync.py` | Added `sync_pr_commits()` function |
+### Sync Services (`apps/integrations/services/github_sync.py`)
+| Function | Purpose |
+|----------|---------|
+| `sync_pr_check_runs()` | Sync CI/CD check runs for a PR |
+| `sync_pr_files()` | Sync files changed in a PR |
+| `sync_repository_deployments()` | Sync deployments for a repo |
+| `sync_pr_issue_comments()` | Sync general PR comments |
+| `sync_pr_review_comments()` | Sync inline code review comments |
+| `_sync_pr_comments()` | Shared helper for comment sync |
+
+### Factories (`apps/metrics/factories.py`)
+- `PRCheckRunFactory`
+- `PRFileFactory` (in integrations/factories.py)
+- `DeploymentFactory`
+- `PRCommentFactory`
 
 ### Tests
-| File | Changes |
-|------|---------|
-| `apps/integrations/tests/test_github_sync.py` | Added `TestSyncPRCommits` (6 tests), `TestSyncPRCheckRuns` (4 tests) |
-| `apps/metrics/tests/test_models.py` | Added `TestPRCheckRunModel` (4 tests) |
+| File | Test Classes Added |
+|------|-------------------|
+| `apps/metrics/tests/test_models.py` | `TestPRCheckRunModel`, `TestPRFileModel`, `TestDeploymentModel`, `TestPRCommentModel` |
+| `apps/integrations/tests/test_github_sync.py` | `TestSyncPRCheckRuns`, `TestSyncPRFiles`, `TestSyncRepositoryDeployments`, `TestSyncPRIssueComments`, `TestSyncPRReviewComments` |
 
-### Migrations
-| File | Status |
-|------|--------|
-| `apps/metrics/migrations/0003_prcheckrun.py` | ✅ Created and applied |
-| `apps/metrics/migrations/0004_prcheckrun_check_run_started_at_idx.py` | ✅ Created and applied |
+### Migrations Created
+| Migration | Model |
+|-----------|-------|
+| `0003_prcheckrun.py` | PRCheckRun |
+| `0004_prcheckrun_check_run_started_at_idx.py` | PRCheckRun index |
+| `0005_prfile.py` | PRFile |
+| `0006_deployment.py` | Deployment |
+| `0007_deployment_deployment_pr_idx_and_more.py` | Deployment indexes |
+| `0008_prcomment.py` | PRComment |
 
----
-
-## Current Work State (RED PHASE)
-
-### What Was Being Worked On
-**Task:** Implementing `sync_pr_check_runs()` function
-**Phase:** TDD RED phase - tests written, waiting for GREEN phase implementation
-
-### Tests Written (Failing)
-File: `apps/integrations/tests/test_github_sync.py`
-Class: `TestSyncPRCheckRuns`
-- `test_sync_pr_check_runs_creates_records`
-- `test_sync_pr_check_runs_calculates_duration`
-- `test_sync_pr_check_runs_handles_pending_check`
-- `test_sync_pr_check_runs_updates_existing`
-
-### Expected Error
-```
-ImportError: cannot import name 'sync_pr_check_runs' from 'apps.integrations.services.github_sync'
-```
+### Documentation
+- `dev/guides/REAL-WORLD-TESTING.md` - Added Phase 2.6 for PR sync testing
 
 ---
 
-## Next Immediate Steps
+## Database Schema Summary
 
-### 1. Complete Phase 4: CI/CD Sync (GREEN Phase)
+### New Models with Indexes
+
+```
+PRCheckRun:
+  - Unique: (team, github_check_run_id)
+  - Index: (pull_request, name)
+  - Index: (started_at)
+
+PRFile:
+  - Unique: (team, pull_request, filename)
+  - Index: (pull_request, file_category)
+
+Deployment:
+  - Unique: (team, github_deployment_id)
+  - Index: (github_repo, environment)
+  - Index: (deployed_at)
+  - Index: (status)
+  - Index: (pull_request)
+  - Index: (creator, status)
+
+PRComment:
+  - Unique: (team, github_comment_id)
+  - Index: (pull_request, comment_created_at)
+  - Index: (author, comment_type)
+```
+
+---
+
+## Test Coverage
+
+| Area | Tests | Status |
+|------|-------|--------|
+| PRCheckRun model | 4 | ✅ Passing |
+| PRCheckRun sync | 4 | ✅ Passing |
+| PRFile model | 9 | ✅ Passing |
+| PRFile sync | 4 | ✅ Passing |
+| Deployment model | 6 | ✅ Passing |
+| Deployment sync | 6 | ✅ Passing |
+| PRComment model | 8 | ✅ Passing |
+| PRComment sync | 8 | ✅ Passing |
+| **Total new tests** | **49** | ✅ All passing |
+
+Full github_sync.py test file: **73 tests passing**
+
+---
+
+## TDD Workflow Used
+
+Every feature followed strict Red-Green-Refactor:
+
+1. **RED:** Write failing tests first (ImportError expected)
+2. **GREEN:** Implement minimal code to pass tests
+3. **REFACTOR:** Improve code while keeping tests green
+
+Example cycle for PRFile:
+- RED: 9 model tests failing with `ImportError`
+- GREEN: Implement model, migration, pass all tests
+- REFACTOR: No changes needed (clean implementation)
+- RED: 4 sync tests failing
+- GREEN: Implement `sync_pr_files()`
+- REFACTOR: Consistent signature with other sync functions
+
+---
+
+## Pipeline Integration (Completed)
+
+### `_process_prs()` Now Syncs All Data
+
+The `_process_prs()` function in `github_sync.py` now calls all sync functions for each PR:
+
+```python
+# For each PR, sync in order:
+1. PR record (update_or_create)
+2. Reviews (_sync_pr_reviews)
+3. Commits (sync_pr_commits)
+4. Check runs (sync_pr_check_runs)
+5. Files (sync_pr_files)
+6. Issue comments (sync_pr_issue_comments)
+7. Review comments (sync_pr_review_comments)
+```
+
+### Repository-Level Sync Includes Deployments
+
+Both `sync_repository_history()` and `sync_repository_incremental()` now:
+1. Process all PRs with full data sync
+2. Sync deployments for the repository
+3. Return comprehensive stats
+
+### Return Value Structure
+
+```python
+{
+    "prs_synced": int,
+    "reviews_synced": int,
+    "commits_synced": int,
+    "check_runs_synced": int,
+    "files_synced": int,
+    "comments_synced": int,
+    "deployments_synced": int,
+    "errors": list[str],
+}
+```
+
+---
+
+## Next Steps (Future Sessions)
+
+### Phase 3: Iteration Metrics
+Calculate derived metrics from synced data:
+- `review_rounds` - Count changes_requested → commits → re-review cycles
+- `avg_fix_response_hours` - Time from review to next commit
+- `commits_after_first_review` - Post-review iteration count
+
+### Phase 7: Review Correlations
+- `ReviewerCorrelation` model for agreement stats
+- Identify redundant reviewers (95%+ agreement rate)
+
+### Phase 8: Dashboard
+- CI pass rate cards
+- Deployment frequency (DORA metrics)
+- File category breakdown charts
+
+---
+
+## Verification Commands
+
 ```bash
-# Implement sync_pr_check_runs() in github_sync.py
-# Then run:
-make test ARGS='apps.integrations.tests.test_github_sync::TestSyncPRCheckRuns --keepdb'
-```
-
-### 2. Refactor Phase 4
-After tests pass, evaluate for refactoring
-
-### 3. Continue with remaining phases:
-- Phase 5: PRFile model + sync
-- Phase 6: Deployment model + sync
-- Phase 2: PRComment model + sync
-
----
-
-## Implementation Reference
-
-### sync_pr_check_runs() - To Be Implemented
-
-```python
-def sync_pr_check_runs(pr: "PullRequest", github_pr, repo, team, errors: list) -> int:
-    """Sync CI/CD check runs for a PR.
-
-    Args:
-        pr: PullRequest model instance
-        github_pr: PyGithub PullRequest object
-        repo: PyGithub Repository object
-        team: Team model instance
-        errors: List to accumulate error messages
-
-    Returns:
-        Number of check runs synced
-    """
-    # Get head commit SHA
-    head_sha = github_pr.head.sha
-
-    # Fetch check runs
-    commit = repo.get_commit(head_sha)
-    check_runs = commit.get_check_runs()
-
-    # For each check run, create/update PRCheckRun record
-    # Calculate duration_seconds if started_at and completed_at present
-```
-
-### GitHub API for Check Runs
-```python
-commit = repo.get_commit(sha)
-check_runs = commit.get_check_runs()
-
-for check in check_runs:
-    check.id              # github_check_run_id
-    check.name            # "pytest", "eslint"
-    check.status          # "queued", "in_progress", "completed"
-    check.conclusion      # "success", "failure", None
-    check.started_at      # datetime or None
-    check.completed_at    # datetime or None
-```
-
----
-
-## Models Reference
-
-### PRCheckRun (Created This Session)
-```python
-class PRCheckRun(BaseTeamModel):
-    github_check_run_id = BigIntegerField()
-    pull_request = ForeignKey(PullRequest, related_name='check_runs')
-    name = CharField(max_length=255)
-    status = CharField(max_length=20)  # queued, in_progress, completed
-    conclusion = CharField(max_length=20, null=True)  # success, failure, etc.
-    started_at = DateTimeField(null=True)
-    completed_at = DateTimeField(null=True)
-    duration_seconds = IntegerField(null=True)
-
-    # Unique constraint: (team, github_check_run_id)
-```
-
-### Models Still to Create
-- `PRFile` - Files changed in PRs
-- `Deployment` - GitHub deployments
-- `PRComment` - PR comments (issue + review)
-
----
-
-## Test Commands
-
-```bash
-# Run all github_sync tests
+# Verify all tests pass
 make test ARGS='apps.integrations.tests.test_github_sync --keepdb'
-
-# Run specific test class
-make test ARGS='apps.integrations.tests.test_github_sync::TestSyncPRCheckRuns --keepdb'
-
-# Run all metrics model tests
 make test ARGS='apps.metrics.tests.test_models --keepdb'
 
-# Check for missing migrations
-make migrations
+# Check no pending migrations
+make migrations  # Should show "No changes detected"
 
-# Verify migrations applied
-make migrate
+# Check migrations applied
+make migrate  # Should show "No migrations to apply"
+
+# Lint check
+make ruff
 ```
 
 ---
