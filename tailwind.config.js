@@ -16,18 +16,28 @@ module.exports = {
         mono: ['JetBrains Mono', 'monospace'],
       },
       colors: {
-        // Base background colors (dark slate)
-        deep: '#0f172a',      // Slate 900 - deepest background
-        surface: '#1e293b',   // Slate 800 - card backgrounds
-        elevated: '#334155',  // Slate 700 - elevated elements
-        muted: '#94a3b8',     // Slate 400 - muted text (lighter for better contrast)
-        // Primary accent - softer teal (was harsh cyan)
+        // Base background colors - warm neutrals (Sunset Dashboard)
+        deep: '#171717',      // neutral-900 - main background
+        surface: '#262626',   // neutral-800 - cards, panels
+        elevated: '#404040',  // neutral-700 - borders, dividers
+        muted: '#A3A3A3',     // neutral-400 - muted text
+
+        // New accent system - warm coral/orange palette
+        accent: {
+          primary: '#F97316',   // Coral orange - main brand, CTAs
+          secondary: '#FDA4AF', // Warm rose - highlights
+          tertiary: '#2DD4BF',  // Teal - success, positive metrics
+          warning: '#FBBF24',   // Amber - caution states
+          info: '#60A5FA',      // Soft blue - informational
+          error: '#F87171',     // Soft red - errors, negative metrics
+        },
+
+        // Legacy cyan - keep for backwards compatibility during migration
         cyan: {
           DEFAULT: '#5e9eb0',  // Muted teal - softer than #06b6d4
           light: '#7ab5c4',    // Light muted teal
           dark: '#4a8a9c',     // Dark muted teal
         },
-        // Keep reference to old cyan for migration
         'cyan-bright': '#06b6d4',
       },
       aspectRatio: {

@@ -76,6 +76,61 @@ We store: OAuth tokens (encrypted), accounts, billing, all metrics/surveys (team
 - Celery is used for background jobs and scheduled tasks.
 - Redis is used as the default cache, and the message broker for Celery (if enabled).
 
+## Design System
+
+The visual design follows the **"Sunset Dashboard"** direction - warm, approachable, and friendly while maintaining developer credibility.
+
+**Design Resources:**
+- Full implementation plan: `dev/visual-improvement-plan.md`
+- Design tokens & CSS classes: `assets/styles/app/tailwind/design-system.css`
+
+### Color Palette
+
+| Token | Hex | Usage |
+|-------|-----|-------|
+| `accent-primary` | `#F97316` | Coral orange - main brand, CTAs, active states |
+| `accent-secondary` | `#FDA4AF` | Warm rose - highlights, secondary actions |
+| `accent-tertiary` | `#2DD4BF` | Teal - success states, positive metrics |
+| `accent-warning` | `#FBBF24` | Amber - caution states |
+| `accent-error` | `#F87171` | Soft red - errors, negative metrics |
+| `accent-info` | `#60A5FA` | Soft blue - informational |
+| `deep` | `#171717` | Main background (neutral-900) |
+| `surface` | `#262626` | Cards, panels (neutral-800) |
+| `elevated` | `#404040` | Borders, dividers (neutral-700) |
+
+### Typography
+
+- **DM Sans** - UI text, headings
+- **JetBrains Mono** - Code, metrics, data values
+
+### Design Principles
+
+1. **Warm over cold** - Use coral/orange accents instead of typical blue/purple
+2. **WCAG AA compliant** - All color combinations meet 4.5:1+ contrast ratio
+3. **Semantic colors** - Teal for success/positive, soft red for errors/negative
+4. **Terminal aesthetic** - Monospace fonts for data, dark backgrounds
+
+### CSS Classes
+
+Use the `app-*` prefixed utility classes from `design-system.css`:
+
+```html
+<!-- Cards -->
+<div class="app-card">...</div>
+<div class="app-card-interactive">...</div>
+
+<!-- Buttons -->
+<button class="app-btn-primary">Primary</button>
+<button class="app-btn-secondary">Secondary</button>
+
+<!-- Stats -->
+<div class="app-stat-value app-stat-value-positive">+12%</div>
+<div class="app-stat-value app-stat-value-negative">-5%</div>
+
+<!-- Badges -->
+<span class="app-badge app-badge-success">Active</span>
+```
+
 ## Commands you can run
 
 The following commands can be used for various tools and workflows.

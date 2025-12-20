@@ -1,23 +1,45 @@
 /* =============================================================================
    TFORMANCE DESIGN SYSTEM
-   Terminal-Native Dashboard Aesthetic
+   "Sunset Dashboard" - Warm, Approachable Developer Analytics
    =============================================================================
 
-   Color Tokens (defined in tailwind.config.js):
-   - deep: #0f172a (slate-900) - deepest background
-   - surface: #1e293b (slate-800) - card backgrounds
-   - elevated: #334155 (slate-700) - borders, elevated elements
-   - muted: #94a3b8 (slate-400) - muted text (lighter for accessibility)
-   - cyan: #5e9eb0 - primary accent (muted teal, softer than old #06b6d4)
-   - cyan-light: #7ab5c4
-   - cyan-dark: #4a8a9c
+   Design Direction:
+   Warm, friendly colors while maintaining developer credibility. Coral/orange
+   primary accent stands out from typical blue/purple dev tools. WCAG AA compliant.
 
-   DaisyUI Semantic Colors (from custom "tformance" theme):
-   - primary: Muted teal (use text-primary, bg-primary)
-   - success: Soft green (use text-success, bg-success)
-   - warning: Soft amber (use text-warning, bg-warning)
-   - error: Soft red (use text-error, bg-error)
-   - info: Soft blue (use text-info, bg-info)
+   Full implementation plan: dev/visual-improvement-plan.md
+
+   Color Tokens (defined in tailwind.config.js):
+   ─────────────────────────────────────────────────────────────────────────────
+   Backgrounds (warm neutrals):
+   - deep: #171717 (neutral-900) - main background
+   - surface: #262626 (neutral-800) - cards, panels
+   - elevated: #404040 (neutral-700) - borders, dividers
+
+   Accent Colors:
+   - accent-primary: #F97316 - coral orange, main brand, CTAs
+   - accent-secondary: #FDA4AF - warm rose, highlights
+   - accent-tertiary: #2DD4BF - teal, success/positive metrics
+   - accent-warning: #FBBF24 - amber, caution states
+   - accent-error: #F87171 - soft red, errors/negative metrics
+   - accent-info: #60A5FA - soft blue, informational
+
+   Text Colors:
+   - text-primary: #FAFAFA (neutral-50) - main text
+   - text-secondary: #D4D4D4 (neutral-300) - supporting text
+   - muted: #A3A3A3 (neutral-400) - disabled, hints
+
+   AI-specific:
+   - #C084FC - soft purple for AI-related metrics
+
+   DaisyUI Theme ("tformance"):
+   - primary: #F97316 (coral orange)
+   - secondary: #FDA4AF (warm rose)
+   - accent: #2DD4BF (teal)
+   - success: #2DD4BF (teal)
+   - warning: #FBBF24 (amber)
+   - error: #F87171 (soft red)
+   - info: #60A5FA (soft blue)
 
    Typography:
    - font-sans: 'DM Sans' - UI text, headings
