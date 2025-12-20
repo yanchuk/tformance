@@ -66,7 +66,47 @@ make test  # All tests should pass
 
 ## Demo Data
 
-Seed realistic demo data for development and UI preview:
+Seed realistic demo data for development and UI preview.
+
+### Scenario-Based Seeding (Recommended)
+
+Use predefined scenarios that create coherent, story-driven data:
+
+```bash
+# List available scenarios
+python manage.py seed_demo_data --list-scenarios
+
+# Seed with a specific scenario (reproducible with --seed)
+python manage.py seed_demo_data --scenario ai-success --seed 42
+python manage.py seed_demo_data --scenario review-bottleneck --seed 123
+python manage.py seed_demo_data --scenario baseline
+python manage.py seed_demo_data --scenario detective-game
+
+# Scenario without GitHub API (offline mode)
+python manage.py seed_demo_data --scenario ai-success --no-github
+
+# Clear and reseed
+python manage.py seed_demo_data --clear --scenario ai-success
+```
+
+**Available Scenarios:**
+
+| Scenario | Description | Key Pattern |
+|----------|-------------|-------------|
+| `ai-success` | Progressive AI adoption success story | AI: 10%→75%, Cycle time: 72h→24h |
+| `review-bottleneck` | High AI output, bottlenecked reviews | 1 reviewer handles 60%, times worsen |
+| `baseline` | Steady-state for comparison | AI: 15%, stable metrics |
+| `detective-game` | Survey engagement focus | Varied guess accuracy 30-70% |
+
+**Scenario Features:**
+- **Deterministic**: Same `--seed` produces identical data
+- **Hybrid sourcing**: 25% real GitHub PR metadata + 75% factory data
+- **8 weeks of history**: Weekly progression matching scenario pattern
+- **Member archetypes**: Different team member behaviors (early adopters, skeptics, etc.)
+
+### Legacy Mode
+
+For simple data generation without scenarios:
 
 ```bash
 # Seed default demo data (1 team, 5 members, ~50 PRs, etc.)
@@ -82,7 +122,9 @@ python manage.py seed_demo_data --clear
 python manage.py seed_demo_data --team-slug my-team
 ```
 
-This creates:
+### Generated Data
+
+Both modes create:
 - Team members with GitHub/Jira/Slack identities
 - Pull requests with realistic cycle times
 - PR reviews (1-3 per PR)

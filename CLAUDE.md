@@ -303,9 +303,13 @@ make uv run 'pegasus startapp <app_name> <Model1> <Model2Name>'  # Start a new D
 python manage.py seed_demo_data              # Seed default demo data
 python manage.py seed_demo_data --clear      # Clear and reseed
 python manage.py seed_demo_data --prs 100    # Custom amounts
+
+# Scenario-based seeding (recommended for coherent demo data)
+python manage.py seed_demo_data --scenario ai-success --seed 42
+python manage.py seed_demo_data --list-scenarios  # Show all scenarios
 ```
 
-See `dev/DEV-ENVIRONMENT.md` for full options.
+See `dev/DEV-ENVIRONMENT.md` for full options including all 4 scenarios.
 
 ## Test-Driven Development (TDD)
 
