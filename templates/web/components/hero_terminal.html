@@ -2,7 +2,7 @@
 {% load static %}
 <section class="bg-deep min-h-[90vh] flex items-center relative overflow-hidden">
   <!-- Subtle grid background -->
-  <div class="absolute inset-0 bg-[linear-gradient(rgba(6,182,212,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(6,182,212,0.03)_1px,transparent_1px)] bg-[size:60px_60px]"></div>
+  <div class="absolute inset-0 bg-[linear-gradient(rgba(249,115,22,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(249,115,22,0.03)_1px,transparent_1px)] bg-[size:60px_60px]"></div>
 
   <div class="relative z-10 w-full max-w-6xl mx-auto px-4 py-16 md:py-24">
     <!-- Terminal Window -->
@@ -56,7 +56,7 @@
               <div class="text-slate-400 pl-4" x-text="line.text"></div>
             </template>
             <template x-if="line.type === 'result'">
-              <div class="text-cyan font-medium" x-text="line.text"></div>
+              <div class="text-accent-primary font-medium" x-text="line.text"></div>
             </template>
             <template x-if="line.type === 'blank'">
               <div class="h-4"></div>
@@ -72,7 +72,7 @@
       <h1 class="text-3xl md:text-5xl lg:text-6xl font-bold text-slate-100 leading-tight">
         Is AI making your team
         <span class="gradient-text">faster</span>—or just
-        <span class="text-rose-400">busier</span>?
+        <span class="text-accent-error">busier</span>?
       </h1>
       <p class="mt-6 text-lg md:text-xl text-slate-400 max-w-2xl mx-auto">
         Connect GitHub, Jira, and Slack to see if AI coding tools are actually improving delivery—or just creating more code to review.
@@ -81,7 +81,7 @@
       <!-- CTAs -->
       <div class="flex flex-col sm:flex-row justify-center gap-4 mt-10">
         <a href="{% url 'account_signup' %}"
-           class="btn btn-lg bg-cyan hover:bg-cyan-dark text-deep font-semibold px-8 border-0">
+           class="btn btn-lg bg-accent-primary hover:bg-orange-600 text-white font-semibold px-8 border-0">
           Join Waitlist
         </a>
         <a href="#features"

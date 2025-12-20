@@ -24,22 +24,22 @@
 }
 
 .terminal-prompt {
-  @apply text-cyan inline-block;
+  @apply text-accent-primary inline-block;
 }
 
 .terminal-cursor {
-  @apply inline-block w-2 h-5 bg-cyan ml-1 animate-blink;
+  @apply inline-block w-2 h-5 bg-accent-primary ml-1 animate-blink;
 }
 
-/* Gradient text effect - using brighter colors for accessibility */
+/* Gradient text effect - warm coral to pink gradient */
 .gradient-text {
-  @apply bg-gradient-to-r from-cyan-light to-slate-100 bg-clip-text text-transparent;
+  @apply bg-gradient-to-r from-accent-primary to-pink-500 bg-clip-text text-transparent;
 }
 
 /* Stat card styling */
 .stat-card {
   @apply bg-surface rounded-xl p-6 border border-elevated;
-  @apply hover:border-cyan/50 transition-colors duration-300;
+  @apply hover:border-accent-primary/50 transition-colors duration-300;
 }
 
 .stat-value {
@@ -61,13 +61,13 @@
 /* Feature card styling */
 .feature-card {
   @apply bg-surface rounded-xl p-6 border border-elevated;
-  @apply hover:border-cyan/30 hover:bg-surface/80 transition-all duration-300;
+  @apply hover:border-accent-primary/30 hover:bg-surface/80 transition-all duration-300;
 }
 
 /* Integration logo styling */
 .integration-logo {
   @apply w-16 h-16 md:w-20 md:h-20 p-4 bg-surface rounded-xl border border-elevated;
-  @apply hover:border-cyan/50 hover:scale-105 transition-all duration-300;
+  @apply hover:border-accent-primary/50 hover:scale-105 transition-all duration-300;
 }
 
 /* Section styling */
