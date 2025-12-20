@@ -603,6 +603,9 @@ def _process_prs(
                 errors=errors,
             )
 
+            # Calculate iteration metrics after all data is synced
+            calculate_pr_iteration_metrics(pr)
+
         except Exception as e:
             # Log the error but continue processing other PRs
             pr_number = pr_data.get("number", "unknown")
@@ -929,3 +932,86 @@ def sync_pr_review_comments(
         comment_type="review",
         get_comments_method="get_review_comments",
     )
+
+
+def calculate_pr_iteration_metrics(pr: "PullRequest") -> None:  # noqa: F821
+    """Calculate iteration metrics for a pull request from synced data.
+
+    Updates the following fields on the PullRequest:
+    - total_comments: Count of all comments on this PR
+    - commits_after_first_review: Commits made after the first review
+    - review_rounds: Number of changes_requested → commit cycles
+    - avg_fix_response_hours: Average time from changes_requested to next commit
+
+    Args:
+        pr: PullRequest instance to calculate metrics for
+    """
+    from decimal import Decimal
+
+    from apps.metrics.models import Commit, PRComment, PRReview
+
+    # Count total comments
+    pr.total_comments = PRComment.objects.filter(  # noqa: TEAM001 - filtering by PR which is team-scoped
+        pull_request=pr
+    ).count()
+
+    # Get first review timestamp
+    first_review = (
+        PRReview.objects.filter(pull_request=pr)  # noqa: TEAM001 - filtering by PR which is team-scoped
+        .order_by("submitted_at")
+        .first()
+    )
+
+    if first_review and first_review.submitted_at:
+        # Count commits after first review
+        pr.commits_after_first_review = Commit.objects.filter(  # noqa: TEAM001 - filtering by PR which is team-scoped
+            pull_request=pr, committed_at__gt=first_review.submitted_at
+        ).count()
+    else:
+        pr.commits_after_first_review = 0
+
+    # Get all changes_requested reviews and commits in chronological order
+    changes_requested_reviews = (
+        PRReview.objects.filter(  # noqa: TEAM001 - filtering by PR which is team-scoped
+            pull_request=pr, state="changes_requested"
+        )
+        .order_by("submitted_at")
+        .values_list("submitted_at", flat=True)
+    )
+
+    commits = (
+        Commit.objects.filter(pull_request=pr)  # noqa: TEAM001 - filtering by PR which is team-scoped
+        .exclude(committed_at__isnull=True)
+        .order_by("committed_at")
+        .values_list("committed_at", flat=True)
+    )
+    commits_list = list(commits)
+
+    # Calculate review rounds and fix response times
+    review_rounds = 0
+    fix_response_times = []
+
+    for review_time in changes_requested_reviews:
+        if review_time is None:
+            continue
+
+        # Find the first commit after this review
+        for commit_time in commits_list:
+            if commit_time > review_time:
+                # This is a review round
+                review_rounds += 1
+                # Calculate response time in hours
+                response_time = (commit_time - review_time).total_seconds() / 3600
+                fix_response_times.append(response_time)
+                break
+
+    pr.review_rounds = review_rounds
+
+    # Calculate average fix response time
+    if fix_response_times:
+        avg_hours = sum(fix_response_times) / len(fix_response_times)
+        pr.avg_fix_response_hours = Decimal(str(round(avg_hours, 2)))
+    else:
+        pr.avg_fix_response_hours = None
+
+    pr.save(update_fields=["total_comments", "commits_after_first_review", "review_rounds", "avg_fix_response_hours"])
