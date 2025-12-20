@@ -1,0 +1,71 @@
+{% load static %}
+<section class="bg-deep py-16 md:py-24">
+  <div class="max-w-5xl mx-auto px-4">
+    <div class="text-center mb-12">
+      <h2 class="text-2xl md:text-3xl font-bold text-slate-100">
+        What We See (And Don't See)
+      </h2>
+      <p class="mt-4 text-slate-400">
+        Transparency matters. Here's exactly what data we access.
+      </p>
+    </div>
+
+    <div class="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+      <!-- What we collect -->
+      <div class="app-card p-6">
+        <h3 class="flex items-center gap-2 text-lg font-semibold text-accent-tertiary mb-4">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+          </svg>
+          What We Collect
+        </h3>
+        <ul class="space-y-3 text-sm text-slate-300">
+          <li class="flex items-start gap-2">
+            <span class="text-accent-tertiary mt-0.5">+</span>
+            PR metadata (title, size, timestamps)
+          </li>
+          <li class="flex items-start gap-2">
+            <span class="text-accent-tertiary mt-0.5">+</span>
+            Review counts and cycle times
+          </li>
+          <li class="flex items-start gap-2">
+            <span class="text-accent-tertiary mt-0.5">+</span>
+            Jira ticket status and links
+          </li>
+          <li class="flex items-start gap-2">
+            <span class="text-accent-tertiary mt-0.5">+</span>
+            Survey responses (AI usage)
+          </li>
+        </ul>
+      </div>
+
+      <!-- What we DON'T collect -->
+      <div class="app-card p-6">
+        <h3 class="flex items-center gap-2 text-lg font-semibold text-accent-error mb-4">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+          What We Don't Touch
+        </h3>
+        <ul class="space-y-3 text-sm text-slate-300">
+          <li class="flex items-start gap-2">
+            <span class="text-accent-error mt-0.5">-</span>
+            NO code content or file diffs
+          </li>
+          <li class="flex items-start gap-2">
+            <span class="text-accent-error mt-0.5">-</span>
+            NO commit messages content
+          </li>
+          <li class="flex items-start gap-2">
+            <span class="text-accent-error mt-0.5">-</span>
+            NO private Slack messages
+          </li>
+          <li class="flex items-start gap-2">
+            <span class="text-accent-error mt-0.5">-</span>
+            NO individual performance tracking
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>

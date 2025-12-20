@@ -1,65 +1,123 @@
 {% load static %}
-<section class="bg-deep py-20 md:py-28">
+<section id="how-it-works" class="bg-surface py-16 md:py-24">
   <div class="max-w-5xl mx-auto px-4">
     <!-- Section Header -->
     <div class="text-center mb-16">
-      <span class="text-cyan font-mono text-sm tracking-wider uppercase">How It Works</span>
-      <h2 class="mt-4 text-3xl md:text-4xl font-bold text-slate-100">
-        Up and running in minutes
+      <h2 class="text-2xl md:text-3xl font-bold text-slate-100">
+        How It Works
       </h2>
+      <p class="mt-4 text-slate-400">
+        Three steps. Five minutes. No code changes.
+      </p>
     </div>
 
-    <!-- Steps -->
-    <div class="relative">
+    <!-- 3-Step Process -->
+    <div class="grid md:grid-cols-3 gap-8 md:gap-12">
 
-      <!-- Connecting line (desktop only) -->
-      <div class="hidden md:block absolute top-16 left-1/2 -translate-x-1/2 w-2/3 h-0.5 bg-gradient-to-r from-transparent via-elevated to-transparent"></div>
-
-      <div class="grid md:grid-cols-3 gap-8 md:gap-12">
-
-        <!-- Step 1: Connect -->
-        <div class="text-center animate-fade-up">
-          <div class="relative inline-flex items-center justify-center w-16 h-16 rounded-full bg-surface border-2 border-cyan mb-6">
-            <span class="text-2xl font-bold text-cyan font-mono">1</span>
+      <!-- Step 1: Connect -->
+      <div class="relative">
+        <div class="flex items-center gap-4 mb-6">
+          <div class="w-12 h-12 rounded-full bg-accent-primary flex items-center justify-center text-white font-bold text-xl">
+            1
           </div>
-          <h3 class="text-xl font-semibold text-slate-100 mb-3">Connect</h3>
-          <p class="text-slate-400">
-            Link GitHub, Jira, and Slack with OAuth. Quick setup, no complex configuration required.
-          </p>
+          <h3 class="text-xl font-semibold text-slate-100">Connect</h3>
         </div>
-
-        <!-- Step 2: Analyze -->
-        <div class="text-center animate-fade-up-delay-1">
-          <div class="relative inline-flex items-center justify-center w-16 h-16 rounded-full bg-surface border-2 border-cyan mb-6">
-            <span class="text-2xl font-bold text-cyan font-mono">2</span>
-          </div>
-          <h3 class="text-xl font-semibold text-slate-100 mb-3">Analyze</h3>
-          <p class="text-slate-400">
-            We sync your data daily and correlate AI tool usage with delivery metrics. Surveys capture what the data can't.
-          </p>
+        <div class="pl-16">
+          <p class="text-slate-400 mb-4">OAuth to your tools in one click:</p>
+          <ul class="space-y-2 text-sm text-slate-300">
+            <li class="flex items-center gap-2">
+              <svg class="w-4 h-4 text-accent-tertiary flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+              GitHub (repos, PRs)
+            </li>
+            <li class="flex items-center gap-2">
+              <svg class="w-4 h-4 text-accent-tertiary flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+              Jira (tickets, status)
+            </li>
+            <li class="flex items-center gap-2">
+              <svg class="w-4 h-4 text-accent-tertiary flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+              Slack (surveys)
+            </li>
+          </ul>
+          <p class="mt-4 text-xs text-slate-500">No agents. No code changes. Just OAuth.</p>
         </div>
-
-        <!-- Step 3: Improve -->
-        <div class="text-center animate-fade-up-delay-2">
-          <div class="relative inline-flex items-center justify-center w-16 h-16 rounded-full bg-surface border-2 border-cyan mb-6">
-            <span class="text-2xl font-bold text-cyan font-mono">3</span>
-          </div>
-          <h3 class="text-xl font-semibold text-slate-100 mb-3">Improve</h3>
-          <p class="text-slate-400">
-            See what's working. Identify bottlenecks. Make data-driven decisions about AI tool adoption.
-          </p>
-        </div>
-
+        <!-- Connector line (hidden on mobile) -->
+        <div class="hidden md:block absolute top-6 left-full w-full h-0.5 bg-gradient-to-r from-accent-primary/50 to-transparent -translate-x-4"></div>
       </div>
-    </div>
 
-    <!-- Bottom highlight -->
-    <div class="mt-16 text-center">
-      <div class="inline-flex items-center gap-3 px-6 py-3 bg-surface rounded-lg border border-elevated">
-        <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-        </svg>
-        <span class="text-slate-300 text-sm">Average setup time: <span class="font-semibold text-cyan">under 10 minutes</span></span>
+      <!-- Step 2: We Track -->
+      <div class="relative">
+        <div class="flex items-center gap-4 mb-6">
+          <div class="w-12 h-12 rounded-full bg-accent-tertiary flex items-center justify-center text-deep font-bold text-xl">
+            2
+          </div>
+          <h3 class="text-xl font-semibold text-slate-100">We Track</h3>
+        </div>
+        <div class="pl-16">
+          <p class="text-slate-400 mb-4">We collect metrics automatically:</p>
+          <ul class="space-y-2 text-sm text-slate-300">
+            <li class="flex items-center gap-2">
+              <svg class="w-4 h-4 text-accent-tertiary flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+              PR size, cycle time, reviews
+            </li>
+            <li class="flex items-center gap-2">
+              <svg class="w-4 h-4 text-accent-tertiary flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+              Jira ticket links
+            </li>
+            <li class="flex items-center gap-2">
+              <svg class="w-4 h-4 text-accent-tertiary flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+              AI usage via 1-click Slack polls
+            </li>
+          </ul>
+          <p class="mt-4 text-xs text-slate-500">Daily sync. No manual work.</p>
+        </div>
+        <!-- Connector line (hidden on mobile) -->
+        <div class="hidden md:block absolute top-6 left-full w-full h-0.5 bg-gradient-to-r from-accent-tertiary/50 to-transparent -translate-x-4"></div>
+      </div>
+
+      <!-- Step 3: You See -->
+      <div>
+        <div class="flex items-center gap-4 mb-6">
+          <div class="w-12 h-12 rounded-full bg-accent-secondary flex items-center justify-center text-deep font-bold text-xl">
+            3
+          </div>
+          <h3 class="text-xl font-semibold text-slate-100">You See</h3>
+        </div>
+        <div class="pl-16">
+          <p class="text-slate-400 mb-4">Dashboard with clear answers:</p>
+          <ul class="space-y-2 text-sm text-slate-300">
+            <li class="flex items-center gap-2">
+              <svg class="w-4 h-4 text-accent-tertiary flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+              AI PRs vs traditional PRs
+            </li>
+            <li class="flex items-center gap-2">
+              <svg class="w-4 h-4 text-accent-tertiary flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+              Cycle time & review trends
+            </li>
+            <li class="flex items-center gap-2">
+              <svg class="w-4 h-4 text-accent-tertiary flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+              Weekly Slack digest
+            </li>
+          </ul>
+          <p class="mt-4 text-xs text-slate-500">Finally: data, not guesses.</p>
+        </div>
       </div>
     </div>
   </div>
