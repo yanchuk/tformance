@@ -15,14 +15,14 @@
     <!-- GitHub Integration Card -->
     <div class="app-card">
       <div class="flex items-center gap-3 mb-4">
-        <div class="w-12 h-12 flex items-center justify-center rounded-lg bg-elevated">
-          <svg class="w-8 h-8 text-slate-300" viewBox="0 0 24 24" fill="currentColor">
+        <div class="w-12 h-12 flex items-center justify-center rounded-lg bg-base-300">
+          <svg class="w-8 h-8 text-base-content/80" viewBox="0 0 24 24" fill="currentColor">
             <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
           </svg>
         </div>
         <div>
-          <h2 class="font-semibold text-slate-100">GitHub</h2>
-          <p class="text-sm text-slate-400">{% translate "Pull requests, commits, and reviews" %}</p>
+          <h2 class="font-semibold text-base-content">GitHub</h2>
+          <p class="text-sm text-base-content/60">{% translate "Pull requests, commits, and reviews" %}</p>
         </div>
       </div>
 
@@ -37,13 +37,13 @@
         {% if github_integration %}
           <div class="space-y-2 mb-4">
             <div class="flex items-center gap-2 text-sm">
-              <span class="text-slate-500">{% translate "Organization:" %}</span>
-              <span class="font-medium text-slate-200">{{ github_integration.organization_slug }}</span>
+              <span class="text-base-content/50">{% translate "Organization:" %}</span>
+              <span class="font-medium text-base-content">{{ github_integration.organization_slug }}</span>
             </div>
             {% if github_integration.last_sync_at %}
               <div class="flex items-center gap-2 text-sm">
-                <span class="text-slate-500">{% translate "Last sync:" %}</span>
-                <span class="text-slate-300">{{ github_integration.last_sync_at|timesince }} {% translate "ago" %}</span>
+                <span class="text-base-content/50">{% translate "Last sync:" %}</span>
+                <span class="text-base-content/80">{{ github_integration.last_sync_at|timesince }} {% translate "ago" %}</span>
               </div>
             {% endif %}
           </div>
@@ -91,11 +91,11 @@
           </form>
         </div>
       {% else %}
-        <div class="flex items-center gap-2 mb-4 p-3 bg-elevated rounded-lg">
-          <svg class="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div class="flex items-center gap-2 mb-4 p-3 bg-base-300 rounded-lg">
+          <svg class="w-5 h-5 text-base-content/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
           </svg>
-          <span class="text-slate-500">{% translate "Not connected" %}</span>
+          <span class="text-base-content/50">{% translate "Not connected" %}</span>
         </div>
 
         <div class="flex justify-end">
@@ -110,14 +110,14 @@
     <!-- Jira Integration Card -->
     <div class="app-card">
       <div class="flex items-center gap-3 mb-4">
-        <div class="w-12 h-12 flex items-center justify-center rounded-lg bg-elevated">
-          <svg class="w-8 h-8 text-cyan" viewBox="0 0 24 24" fill="currentColor">
+        <div class="w-12 h-12 flex items-center justify-center rounded-lg bg-base-300">
+          <svg class="w-8 h-8 text-blue-500" viewBox="0 0 24 24" fill="currentColor">
             <path d="M11.571 11.513H0a5.218 5.218 0 0 0 5.232 5.215h2.13v2.057A5.215 5.215 0 0 0 12.575 24V12.518a1.005 1.005 0 0 0-1.005-1.005zm5.723-5.756H5.736a5.215 5.215 0 0 0 5.215 5.214h2.129v2.058a5.218 5.218 0 0 0 5.215 5.214V6.758a1.001 1.001 0 0 0-1.001-1.001zM23.013 0H11.455a5.215 5.215 0 0 0 5.215 5.215h2.129v2.057A5.215 5.215 0 0 0 24 12.483V1.005A1.001 1.001 0 0 0 23.013 0z"/>
           </svg>
         </div>
         <div>
-          <h2 class="font-semibold text-slate-100">Jira</h2>
-          <p class="text-sm text-slate-400">{% translate "Issues and sprint tracking" %}</p>
+          <h2 class="font-semibold text-base-content">Jira</h2>
+          <p class="text-sm text-base-content/60">{% translate "Issues and sprint tracking" %}</p>
         </div>
       </div>
 
@@ -132,13 +132,13 @@
         {% if jira_integration %}
           <div class="space-y-2 mb-4">
             <div class="flex items-center gap-2 text-sm">
-              <span class="text-slate-500">{% translate "Site:" %}</span>
-              <span class="font-medium text-slate-200">{{ jira_integration.site_name }}</span>
+              <span class="text-base-content/50">{% translate "Site:" %}</span>
+              <span class="font-medium text-base-content">{{ jira_integration.site_name }}</span>
             </div>
             {% if jira_integration.last_sync_at %}
               <div class="flex items-center gap-2 text-sm">
-                <span class="text-slate-500">{% translate "Last sync:" %}</span>
-                <span class="text-slate-300">{{ jira_integration.last_sync_at|timesince }} {% translate "ago" %}</span>
+                <span class="text-base-content/50">{% translate "Last sync:" %}</span>
+                <span class="text-base-content/80">{{ jira_integration.last_sync_at|timesince }} {% translate "ago" %}</span>
               </div>
             {% endif %}
           </div>
@@ -178,11 +178,11 @@
           </form>
         </div>
       {% else %}
-        <div class="flex items-center gap-2 mb-4 p-3 bg-elevated rounded-lg">
-          <svg class="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div class="flex items-center gap-2 mb-4 p-3 bg-base-300 rounded-lg">
+          <svg class="w-5 h-5 text-base-content/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
           </svg>
-          <span class="text-slate-500">{% translate "Not connected" %}</span>
+          <span class="text-base-content/50">{% translate "Not connected" %}</span>
         </div>
 
         <div class="flex justify-end">
@@ -197,14 +197,14 @@
     <!-- Slack Integration Card -->
     <div class="app-card">
       <div class="flex items-center gap-3 mb-4">
-        <div class="w-12 h-12 flex items-center justify-center rounded-lg bg-elevated">
-          <svg class="w-8 h-8 text-cyan" viewBox="0 0 24 24" fill="currentColor">
+        <div class="w-12 h-12 flex items-center justify-center rounded-lg bg-base-300">
+          <svg class="w-8 h-8" viewBox="0 0 24 24" fill="#E01E5A">
             <path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zM6.313 15.165a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zM8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zM8.834 6.313a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312zM18.956 8.834a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zM17.688 8.834a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1-2.52-2.521V2.522A2.527 2.527 0 0 1 15.165 0a2.528 2.528 0 0 1 2.523 2.522v6.312zM15.165 18.956a2.528 2.528 0 0 1 2.523 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zM15.165 17.688a2.527 2.527 0 0 1-2.52-2.523 2.526 2.526 0 0 1 2.52-2.52h6.313A2.527 2.527 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.523h-6.313z"/>
           </svg>
         </div>
         <div>
-          <h2 class="font-semibold text-slate-100">Slack</h2>
-          <p class="text-sm text-slate-400">{% translate "PR surveys and leaderboards" %}</p>
+          <h2 class="font-semibold text-base-content">Slack</h2>
+          <p class="text-sm text-base-content/60">{% translate "PR surveys and leaderboards" %}</p>
         </div>
       </div>
 
@@ -219,13 +219,13 @@
         {% if slack_integration %}
           <div class="space-y-2 mb-4">
             <div class="flex items-center gap-2 text-sm">
-              <span class="text-slate-500">{% translate "Workspace:" %}</span>
-              <span class="font-medium text-slate-200">{{ slack_integration.workspace_name }}</span>
+              <span class="text-base-content/50">{% translate "Workspace:" %}</span>
+              <span class="font-medium text-base-content">{{ slack_integration.workspace_name }}</span>
             </div>
             {% if slack_integration.last_sync_at %}
               <div class="flex items-center gap-2 text-sm">
-                <span class="text-slate-500">{% translate "Last sync:" %}</span>
-                <span class="text-slate-300">{{ slack_integration.last_sync_at|timesince }} {% translate "ago" %}</span>
+                <span class="text-base-content/50">{% translate "Last sync:" %}</span>
+                <span class="text-base-content/80">{{ slack_integration.last_sync_at|timesince }} {% translate "ago" %}</span>
               </div>
             {% endif %}
           </div>
@@ -265,11 +265,11 @@
           </form>
         </div>
       {% else %}
-        <div class="flex items-center gap-2 mb-4 p-3 bg-elevated rounded-lg">
-          <svg class="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div class="flex items-center gap-2 mb-4 p-3 bg-base-300 rounded-lg">
+          <svg class="w-5 h-5 text-base-content/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
           </svg>
-          <span class="text-slate-500">{% translate "Not connected" %}</span>
+          <span class="text-base-content/50">{% translate "Not connected" %}</span>
         </div>
 
         <div class="flex justify-end">
@@ -284,14 +284,14 @@
     <!-- GitHub Copilot Card -->
     <div class="app-card">
       <div class="flex items-center gap-3 mb-4">
-        <div class="w-12 h-12 flex items-center justify-center rounded-lg bg-elevated">
-          <svg class="w-8 h-8 text-violet-400" viewBox="0 0 24 24" fill="currentColor">
+        <div class="w-12 h-12 flex items-center justify-center rounded-lg bg-base-300">
+          <svg class="w-8 h-8 text-violet-500" viewBox="0 0 24 24" fill="currentColor">
             <path d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.009-.866-.013-1.7-2.782.603-3.369-1.342-3.369-1.342-.454-1.155-1.11-1.462-1.11-1.462-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.831.092-.646.35-1.086.636-1.336-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0112 6.836c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.163 22 16.418 22 12c0-5.523-4.477-10-10-10z"/>
           </svg>
         </div>
         <div>
-          <h2 class="font-semibold text-slate-100">GitHub Copilot</h2>
-          <p class="text-sm text-slate-400">{% translate "AI coding assistant metrics" %}</p>
+          <h2 class="font-semibold text-base-content">GitHub Copilot</h2>
+          <p class="text-sm text-base-content/60">{% translate "AI coding assistant metrics" %}</p>
         </div>
       </div>
 
@@ -305,18 +305,18 @@
 
         <div class="space-y-2 mb-4">
           <div class="flex items-center gap-2 text-sm">
-            <span class="text-slate-500">{% translate "Source:" %}</span>
-            <span class="font-medium text-slate-200">{% translate "GitHub Organization" %}</span>
+            <span class="text-base-content/50">{% translate "Source:" %}</span>
+            <span class="font-medium text-base-content">{% translate "GitHub Organization" %}</span>
           </div>
           {% if copilot_last_sync %}
             <div class="flex items-center gap-2 text-sm">
-              <span class="text-slate-500">{% translate "Last sync:" %}</span>
-              <span class="text-slate-300">{{ copilot_last_sync.created_at|timesince }} {% translate "ago" %}</span>
+              <span class="text-base-content/50">{% translate "Last sync:" %}</span>
+              <span class="text-base-content/80">{{ copilot_last_sync.created_at|timesince }} {% translate "ago" %}</span>
             </div>
           {% else %}
             <div class="flex items-center gap-2 text-sm">
-              <span class="text-slate-500">{% translate "Status:" %}</span>
-              <span class="text-slate-300">{% translate "No data synced yet" %}</span>
+              <span class="text-base-content/50">{% translate "Status:" %}</span>
+              <span class="text-base-content/80">{% translate "No data synced yet" %}</span>
             </div>
           {% endif %}
         </div>
@@ -333,14 +333,14 @@
           </form>
         </div>
       {% else %}
-        <div class="flex items-center gap-2 mb-4 p-3 bg-elevated rounded-lg">
-          <svg class="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div class="flex items-center gap-2 mb-4 p-3 bg-base-300 rounded-lg">
+          <svg class="w-5 h-5 text-base-content/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
           </svg>
-          <span class="text-slate-500">{% translate "Not available" %}</span>
+          <span class="text-base-content/50">{% translate "Not available" %}</span>
         </div>
 
-        <p class="text-sm text-slate-400 mb-4">
+        <p class="text-sm text-base-content/60 mb-4">
           {% translate "Connect GitHub first to access Copilot metrics. Requires an organization with 5+ Copilot licenses." %}
         </p>
       {% endif %}
