@@ -47,14 +47,14 @@
       <div class="app-card overflow-hidden">
         <button @click="open = open === 3 ? null : 3"
                 class="w-full p-4 text-left flex items-center justify-between hover:bg-elevated/50 transition-colors">
-          <span class="font-semibold text-slate-200">Why build it yourself? Why not outsource?</span>
+          <span class="font-semibold text-slate-200">Can I trust you with my data without SOC 2?</span>
           <svg class="w-5 h-5 text-slate-400 transition-transform" :class="{ 'rotate-180': open === 3 }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
           </svg>
         </button>
         <div x-show="open === 3" x-transition class="px-4 pb-4">
           <p class="text-slate-300">
-            Using <span class="text-slate-100">SaaS Pegasus</span> as foundation (thanks, Cory!). Need to move fast, stay close to customers. You're not a number here.
+            Infrastructure is SOC 2 certified (Render). Our cert planned for 2025. We don't touch your code, data encrypted, security reviewed.
           </p>
         </div>
       </div>
@@ -63,14 +63,14 @@
       <div class="app-card overflow-hidden">
         <button @click="open = open === 4 ? null : 4"
                 class="w-full p-4 text-left flex items-center justify-between hover:bg-elevated/50 transition-colors">
-          <span class="font-semibold text-slate-200">Can I trust you with my data without SOC 2?</span>
+          <span class="font-semibold text-slate-200">Will you disappear in 6 months?</span>
           <svg class="w-5 h-5 text-slate-400 transition-transform" :class="{ 'rotate-180': open === 4 }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
           </svg>
         </button>
         <div x-show="open === 4" x-transition class="px-4 pb-4">
           <p class="text-slate-300">
-            Infrastructure is SOC 2 certified (Render). Our cert planned for 2025. We don't touch your code, data encrypted, security reviewed.
+            I have a day job. Building this nights and weekends because I believe in it. Goal is sustainable growth, not VC burn.
           </p>
         </div>
       </div>
@@ -79,14 +79,14 @@
       <div class="app-card overflow-hidden">
         <button @click="open = open === 5 ? null : 5"
                 class="w-full p-4 text-left flex items-center justify-between hover:bg-elevated/50 transition-colors">
-          <span class="font-semibold text-slate-200">Will you disappear in 6 months?</span>
+          <span class="font-semibold text-slate-200">Why should I spend time on this vs competitors?</span>
           <svg class="w-5 h-5 text-slate-400 transition-transform" :class="{ 'rotate-180': open === 5 }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
           </svg>
         </button>
         <div x-show="open === 5" x-transition class="px-4 pb-4">
           <p class="text-slate-300">
-            I have a day job. Building this nights and weekends because I believe in it. Goal is sustainable growth, not VC burn.
+            Try both. Then tell me what I'm missing or need to add. Vote on features in GitHub Discussions. Your feedback shapes what I build next.
           </p>
         </div>
       </div>
@@ -95,14 +95,14 @@
       <div class="app-card overflow-hidden">
         <button @click="open = open === 6 ? null : 6"
                 class="w-full p-4 text-left flex items-center justify-between hover:bg-elevated/50 transition-colors">
-          <span class="font-semibold text-slate-200">Why should I spend time on this vs competitors?</span>
+          <span class="font-semibold text-slate-200">What do you actually want from early users?</span>
           <svg class="w-5 h-5 text-slate-400 transition-transform" :class="{ 'rotate-180': open === 6 }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
           </svg>
         </button>
         <div x-show="open === 6" x-transition class="px-4 pb-4">
           <p class="text-slate-300">
-            Try both. Then tell me what I'm missing or need to add. Vote on features in GitHub Discussions. Your feedback shapes what I build next.
+            Honest feedback. Tell me what sucks. Tell your CTO friends if it helps. Zero pressure until you decide it's worth it.
           </p>
         </div>
       </div>
@@ -111,28 +111,12 @@
       <div class="app-card overflow-hidden">
         <button @click="open = open === 7 ? null : 7"
                 class="w-full p-4 text-left flex items-center justify-between hover:bg-elevated/50 transition-colors">
-          <span class="font-semibold text-slate-200">What do you actually want from early users?</span>
+          <span class="font-semibold text-slate-200">Why does this site have colors? Most dev tools are black/white.</span>
           <svg class="w-5 h-5 text-slate-400 transition-transform" :class="{ 'rotate-180': open === 7 }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
           </svg>
         </button>
         <div x-show="open === 7" x-transition class="px-4 pb-4">
-          <p class="text-slate-300">
-            Honest feedback. Tell me what sucks. Tell your CTO friends if it helps. Zero pressure until you decide it's worth it.
-          </p>
-        </div>
-      </div>
-
-      <!-- FAQ 8 -->
-      <div class="app-card overflow-hidden">
-        <button @click="open = open === 8 ? null : 8"
-                class="w-full p-4 text-left flex items-center justify-between hover:bg-elevated/50 transition-colors">
-          <span class="font-semibold text-slate-200">Why does this site have colors? Most dev tools are black/white.</span>
-          <svg class="w-5 h-5 text-slate-400 transition-transform" :class="{ 'rotate-180': open === 8 }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-          </svg>
-        </button>
-        <div x-show="open === 8" x-transition class="px-4 pb-4">
           <p class="text-slate-300">
             I like some warmth. Dashboards don't have to feel cold. Will work on proper branding later, but for now—this is how I see it.
           </p>
