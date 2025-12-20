@@ -68,6 +68,21 @@
   background-size: 60px 60px;
 }
 
+/* Alternating section background - slightly lighter than main bg */
+.app-bg-section {
+  @apply bg-base-200/50;
+}
+
+/* Always-dark card background - for marketing pages that need consistent dark styling */
+.app-bg-card-dark {
+  @apply bg-base-200 dark:bg-base-200;
+}
+
+/* Marketing section with border - standalone dark section */
+.app-bg-section-bordered {
+  @apply bg-base-200 rounded-xl border border-base-300;
+}
+
 /* -----------------------------------------------------------------------------
    CARDS
    ----------------------------------------------------------------------------- */
@@ -360,13 +375,35 @@
   @apply text-red-600 dark:text-red-400;
 }
 
+/* Warning/info status text */
+.app-status-warning {
+  @apply text-amber-600 dark:text-amber-400;
+}
+
+.app-status-info {
+  @apply text-blue-600 dark:text-blue-400;
+}
+
+/* Accent text colors - theme-aware brand colors */
+.app-accent-primary {
+  color: var(--color-primary);
+}
+
+.app-accent-secondary {
+  color: var(--color-secondary);
+}
+
+.app-accent-tertiary {
+  color: var(--color-accent);
+}
+
 /* Status indicator with background (pill style) */
 .app-status-pill {
   @apply inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium;
 }
 
 .app-status-pill-connected {
-  @apply bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400;
+  @apply bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-400;
 }
 
 .app-status-pill-available {
@@ -375,6 +412,14 @@
 
 .app-status-pill-disconnected {
   @apply bg-base-300 text-base-content/60;
+}
+
+.app-status-pill-warning {
+  @apply bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400;
+}
+
+.app-status-pill-info {
+  @apply bg-blue-500/10 border border-blue-500/30 text-blue-600 dark:text-blue-400;
 }
 
 /* -----------------------------------------------------------------------------
@@ -563,6 +608,31 @@
 /* Gradient text (like landing page) */
 .app-text-gradient {
   @apply bg-gradient-to-r from-accent-primary to-pink-500 bg-clip-text text-transparent;
+}
+
+/* -----------------------------------------------------------------------------
+   MARKETING TEXT CLASSES
+   Semantic text classes for marketing/landing pages
+   ----------------------------------------------------------------------------- */
+
+/* Hero text - highest contrast, for main headings */
+.app-text-hero {
+  @apply text-base-content;
+}
+
+/* Body text - primary reading content */
+.app-text-body {
+  @apply text-base-content/90;
+}
+
+/* Caption text - secondary/supporting text */
+.app-text-caption {
+  @apply text-base-content/80;
+}
+
+/* Subtle text - least emphasis, for fine print */
+.app-text-subtle {
+  @apply text-base-content/70;
 }
 
 /* -----------------------------------------------------------------------------

@@ -156,3 +156,21 @@
 [data-theme="tformance-light"] .text-error {
   color: oklch(0.50 0.20 25); /* Darker red for light theme */
 }
+
+/* Table header contrast fix for light theme */
+[data-theme="tformance-light"] th,
+[data-theme="tformance-light"] .app-table th {
+  color: oklch(0.35 0.02 260) !important; /* ~#374151 - Gray-700 for 4.5:1+ contrast */
+}
+
+/* Semantic color contrast fixes for light theme */
+[data-theme="tformance-light"] .text-secondary {
+  color: oklch(0.50 0.15 10) !important; /* Darker rose for contrast */
+}
+
+[data-theme="tformance-light"] .text-success {
+  color: oklch(0.45 0.15 155) !important; /* Darker emerald for contrast */
+}
+
+/* Note: Marketing pages use text-teal-400 directly for reliable dark mode contrast.
+   App pages should use semantic classes from design-system.css (app-accent-tertiary). */

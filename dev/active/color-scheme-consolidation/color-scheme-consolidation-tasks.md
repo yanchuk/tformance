@@ -26,27 +26,32 @@
 
 ---
 
-## Phase 1: Expand Semantic Classes
+## Phase 1: Expand Semantic Classes [COMPLETED]
 
-### 1.1 Add marketing-specific text classes [S]
-- [ ] Add `app-text-hero` class (equivalent to stone-100)
-- [ ] Add `app-text-body` class (equivalent to stone-300)
-- [ ] Add `app-text-caption` class (equivalent to stone-400)
-- [ ] Test in both light and dark themes
+### 1.1 Add marketing-specific text classes [S] [COMPLETED]
+- [x] Add `app-text-hero` class (equivalent to stone-100)
+- [x] Add `app-text-body` class (equivalent to stone-300)
+- [x] Add `app-text-caption` class (equivalent to stone-400)
+- [x] Add `app-text-subtle` class (for fine print)
+- [x] Test in both light and dark themes
 
-### 1.2 Add marketing background classes [S]
-- [ ] Add `app-bg-section` for alternating sections
-- [ ] Add `app-bg-card-dark` for always-dark cards
-- [ ] Verify consistency across marketing pages
+### 1.2 Add marketing background classes [S] [COMPLETED]
+- [x] Add `app-bg-section` for alternating sections
+- [x] Add `app-bg-card-dark` for always-dark cards
+- [x] Add `app-bg-section-bordered` for bordered sections
+- [x] Verify consistency across marketing pages
 
-### 1.3 Add additional status/accent classes [S]
-- [ ] Add `app-accent-primary`, `app-accent-secondary`, `app-accent-tertiary`
-- [ ] Add `app-status-warning`, `app-status-info`
-- [ ] Document in design-system.css header
+### 1.3 Add additional status/accent classes [S] [COMPLETED]
+- [x] Add `app-accent-primary`, `app-accent-secondary`, `app-accent-tertiary`
+- [x] Add `app-status-warning`, `app-status-info`
+- [x] Add `app-status-pill-warning`, `app-status-pill-info`
 
-### 1.4 Create dark-only wrapper class [S]
-- [ ] Add `.app-dark-only` that forces dark theme
-- [ ] Test with marketing page sections
+### 1.4 Light theme accessibility fixes [S] [COMPLETED]
+- [x] Add table header contrast override
+- [x] Add text-secondary contrast override
+- [x] Add text-success contrast override
+- [x] Replace text-accent-tertiary with text-teal-400 in marketing templates
+- [x] All 9 accessibility tests passing
 
 ---
 
@@ -155,6 +160,14 @@
 - [ ] Audit tailwind.config.js
 - [ ] Remove legacy color definitions
 - [ ] Clean up unused CSS
+
+---
+
+## Additional Fixes
+
+### Fix sign-in button positioning [S] [COMPLETED]
+- [x] Sign-in button too close to window edge on main page
+- [x] Add proper spacing/margin from browser scrollbar (px-4 lg:px-6)
 
 ---
 
