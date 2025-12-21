@@ -1,12 +1,6 @@
 {% extends "web/base.html" %}
 {% load i18n %}
-{% load static %}
-{% load form_tags %}
-{% block page_head %}
-{% if turnstile_key %}
-  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
-{% endif %}
-{% endblock %}
+{% load social_tags %}
 {% block body %}
 <div class="min-h-screen flex items-center justify-center app-bg py-12 px-4">
   <div class="w-full max-w-md">
@@ -14,37 +8,29 @@
       <h2 class="text-center text-2xl font-bold text-base-content mb-6">
         {% translate "Sign Up" %}
       </h2>
-      <form class="space-y-4" method="post">
-        {% csrf_token %}
-        {{ form.non_field_errors }}
-        {% render_field form.email %}
-        {% render_field form.password1 %}
-        {% if form.password2 %}
-          {% render_field form.password2 %}
-        {% endif %}
-        {% if invitation %}
-          <input type="hidden" name="invitation_id" value="{{ invitation.id }}">
-          {{ form.invitation_id.errors }}
-        {% endif %}
-        {% render_field form.terms_agreement %}
-        <div class="relative overflow-hidden">
-          {% render_field form.phone_number_x %}
-        </div>
-        {% if turnstile_key %}
-        <div class="cf-turnstile" data-sitekey="{{ turnstile_key }}" data-response-field-name="turnstile_token"></div>
-        {{ form.turnstile_token.errors }}
-        {% endif %}
-        <div class="pt-2">
-          <button type="submit" class="app-btn-primary w-full">
-            {% translate "Sign Up" %}
-          </button>
-        </div>
-      </form>
-      {% include 'account/components/social/social_buttons.html' %}
-      <div class="text-sm text-base-content/70 mt-4 text-center">
-        {% translate "Already have account?" %}
-        <a href="{% url 'account_login' %}" class="font-medium text-cyan hover:text-cyan-light transition-colors">
-          {% translate "Go to sign in." %}
+      {% if invitation %}
+      <div class="bg-base-200 rounded-lg p-4 mb-6">
+        <p class="text-center text-base-content/80 text-sm">
+          {% blocktranslate with team_name=invitation.team.name %}You've been invited to join <strong>{{ team_name }}</strong>{% endblocktranslate %}
+        </p>
+        <p class="text-center text-base-content/60 text-sm mt-1">
+          {{ invitation.email }}
+        </p>
+      </div>
+      {% endif %}
+      <p class="text-center text-base-content/70 mb-6">
+        {% translate "Create your account using GitHub or Google" %}
+      </p>
+      {% get_socialapps as socialapps %}
+      <div class="space-y-3">
+        {% for provider in socialapps %}
+          {% include 'account/components/social/login_with_social_button.html' %}
+        {% endfor %}
+      </div>
+      <div class="text-sm text-base-content/70 mt-6 text-center">
+        {% translate "Already have an account?" %}
+        <a href="{% url 'account_login' %}" class="font-medium text-primary hover:text-primary/80 transition-colors">
+          {% translate "Sign in" %}
         </a>
       </div>
     </div>

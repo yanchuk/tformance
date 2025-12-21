@@ -1,7 +1,6 @@
 {% extends "web/base.html" %}
 {% load i18n %}
-{% load static %}
-{% load form_tags %}
+{% load social_tags %}
 {% block body %}
 <div class="min-h-screen flex items-center justify-center app-bg py-12 px-4">
   <div class="w-full max-w-md">
@@ -9,25 +8,21 @@
       <h2 class="text-center text-2xl font-bold text-base-content mb-6">
         {% translate "Sign In" %}
       </h2>
-      <form class="space-y-4" method="post">
-        {% csrf_token %}
-        {{ form.non_field_errors }}
-        {% render_field form.login %}
-        {% render_field form.password %}
-        <div class="pt-2">
-          <button type="submit" class="app-btn-primary w-full">
-            {% translate "Sign In" %}
-          </button>
-        </div>
-      </form>
-      {% include 'account/components/social/social_buttons.html' %}
-      {% if LOGIN_BY_CODE_ENABLED %}
-      <p class="text-center text-base-content/70 mt-4">
-        <a class="text-sm text-base-content/70 hover:text-primary transition-colors" href="{{ request_login_code_url }}">
-          {% translate "Mail me a sign-in code" %}
-        </a>
+      <p class="text-center text-base-content/70 mb-6">
+        {% translate "Sign in with your GitHub or Google account" %}
       </p>
-      {% endif %}
+      {% get_socialapps as socialapps %}
+      <div class="space-y-3">
+        {% for provider in socialapps %}
+          {% include 'account/components/social/login_with_social_button.html' %}
+        {% endfor %}
+      </div>
+      <div class="text-sm text-base-content/70 mt-6 text-center">
+        {% translate "Don't have an account?" %}
+        <a href="{% url 'account_signup' %}" class="font-medium text-primary hover:text-primary/80 transition-colors">
+          {% translate "Sign up" %}
+        </a>
+      </div>
     </div>
   </div>
 </div>

@@ -1,3 +1,5 @@
+from unittest import skip
+
 from django.conf import settings
 from django.test import TestCase, override_settings
 from django.urls import reverse
@@ -8,14 +10,16 @@ from apps.users.models import CustomUser
 
 @override_settings(ACCOUNT_ADAPTER="apps.teams.adapter.AcceptInvitationAdapter", TURNSTILE_SECRET=None)
 class TestSignupView(TestCase):
-    """Tests for the simplified signup flow.
+    """Tests for the signup flow.
 
-    In the new flow:
-    - Users sign up without creating a team
-    - Teams are created during onboarding when connecting GitHub
-    - Invitations still work - users join existing teams
+    NOTE: Email/password signup has been removed in favor of OAuth-only auth
+    (GitHub/Google). The tests below are skipped as they test the old email/password
+    flow. OAuth signup is tested via E2E tests.
+
+    Invitation handling for OAuth users is done in apps.teams.adapter.AcceptInvitationAdapter.
     """
 
+    @skip("Email/password signup removed - using OAuth only (GitHub/Google)")
     def test_signup_creates_user_without_team(self):
         """New users should be created without a team."""
         password = "Super Secret Pa$$word!"
@@ -43,6 +47,7 @@ class TestSignupView(TestCase):
         self.assertEqual(0, Team.objects.count())
         self.assertEqual(0, user.teams.count())
 
+    @skip("Email/password signup removed - using OAuth only (GitHub/Google)")
     def test_signup_with_invitation_joins_existing_team(self):
         """Users signing up with an invitation should join the existing team."""
         # Create admin user who sent the invitation
@@ -94,6 +99,7 @@ class TestSignupView(TestCase):
         invitation.refresh_from_db()
         self.assertTrue(invitation.is_accepted)
 
+    @skip("Email/password signup removed - using OAuth only (GitHub/Google)")
     def test_signup_with_invalid_invitation_shows_error(self):
         """Signing up with invalid invitation ID should show error."""
         password = "Super Secret Pa$$word!"
@@ -116,6 +122,7 @@ class TestSignupView(TestCase):
         self.assertContains(response, "could not be found")
         self.assertEqual(0, CustomUser.objects.count())
 
+    @skip("Email/password signup removed - using OAuth only (GitHub/Google)")
     def test_signup_with_wrong_email_for_invitation_shows_error(self):
         """Signing up with different email than invitation should show error."""
         # Create admin user who sent the invitation
