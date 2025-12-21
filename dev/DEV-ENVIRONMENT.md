@@ -124,26 +124,23 @@ python manage.py seed_demo_data --team-slug my-team
 
 ### Real Project Seeding
 
-Seed demo data from real open source GitHub projects (PostHog, Polar, FastAPI):
+Seed demo data from real open source GitHub projects (Gumroad, Polar, PostHog, FastAPI):
 
 ```bash
 # List available projects
 python manage.py seed_real_projects --list-projects
 
-# Seed a specific project
-python manage.py seed_real_projects --project posthog
+# Recommended: Use progress script with resume capability
+GITHUB_SEEDING_TOKEN="ghp_xxx" python scripts/seed_with_progress.py --project gumroad --clear
 
-# Seed all projects
-python manage.py seed_real_projects --project all
+# Seed all projects with progress
+GITHUB_SEEDING_TOKEN="ghp_xxx" python scripts/seed_with_progress.py --clear
 
-# Clear and reseed
-python manage.py seed_real_projects --project polar --clear
+# Resume from checkpoint if interrupted
+python scripts/seed_with_progress.py --resume
 
-# Custom options
+# Management command (alternative)
 python manage.py seed_real_projects --project posthog --max-prs 200 --days-back 60
-
-# Use specific seed for reproducibility
-python manage.py seed_real_projects --project posthog --seed 42
 ```
 
 **Requires GitHub PAT**: Set `GITHUB_SEEDING_TOKEN` environment variable.
@@ -151,15 +148,21 @@ Create token at https://github.com/settings/tokens with `public_repo` scope.
 
 **Available Projects:**
 
-| Project | Repository | Team Slug | Max PRs | Max Members |
-|---------|------------|-----------|---------|-------------|
-| `posthog` | posthog/posthog | posthog-demo | 500 | 15 |
-| `polar` | polarsource/polar | polar-demo | 300 | 10 |
-| `fastapi` | tiangolo/fastapi | fastapi-demo | 300 | 12 |
+| Project | Repository | Mode | Max PRs | Max Members | Notes |
+|---------|------------|------|---------|-------------|-------|
+| `gumroad` | antiwork/gumroad | Full | 1000 | 50 | Complete team picture |
+| `polar` | polarsource/polar | Full | 1000 | 50 | Complete team picture |
+| `posthog` | posthog/posthog | Sampled | 200 | 25 | Very active repo |
+| `fastapi` | tiangolo/fastapi | Sampled | 300 | 15 | Framework repo |
+
+**Rate Limit Handling:**
+- Processes PRs in batches of 10 with 1s delay between batches
+- Retry logic with exponential backoff for 403 errors (5s → 10s → 20s)
+- Uses 3 parallel workers to stay within GitHub's secondary rate limits
 
 **Features:**
 - Fetches real GitHub data: PRs, commits, reviews, files, check runs
-- Parallel fetching for performance (ThreadPoolExecutor)
+- Progress tracking script with resume capability
 - Simulates Jira issues from PR metadata (extracts keys or generates)
 - Simulates surveys with AI-assisted probability based on PR size
 - Generates AI usage records per team member

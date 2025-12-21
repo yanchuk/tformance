@@ -20,6 +20,7 @@ Environment:
 import logging
 import os
 import re
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
@@ -31,7 +32,20 @@ from github import Github, GithubException, RateLimitExceededException
 logger = logging.getLogger(__name__)
 
 # Number of parallel threads for fetching PR details
-MAX_WORKERS = 10
+# Keep low to avoid GitHub's secondary rate limits (abuse detection)
+MAX_WORKERS = 3
+
+# Delay between batches to avoid rate limiting (seconds)
+BATCH_DELAY = 1.0
+
+# Batch size for parallel fetching (process this many PRs then pause)
+BATCH_SIZE = 10
+
+# Max retries for 403 errors (secondary rate limit)
+MAX_RETRIES = 3
+
+# Initial backoff for retries (seconds, doubles each retry)
+INITIAL_BACKOFF = 5.0
 
 
 @dataclass
@@ -404,44 +418,100 @@ class GitHubAuthenticatedFetcher:
             return []
 
     def _fetch_prs_parallel(self, pr_objects: list, repo_name: str) -> list[FetchedPRFull]:
-        """Fetch PR details in parallel using ThreadPoolExecutor."""
+        """Fetch PR details in parallel using ThreadPoolExecutor with rate limit handling.
+
+        Processes PRs in batches with delays between batches to avoid GitHub's
+        secondary rate limits (abuse detection). Includes retry logic for 403 errors.
+        """
         fetched_prs: list[FetchedPRFull] = []
         total = len(pr_objects)
 
-        logger.info("Fetching %d PRs in parallel (workers: %d)", total, MAX_WORKERS)
+        logger.info(
+            "Fetching %d PRs in parallel (workers: %d, batch size: %d)",
+            total,
+            MAX_WORKERS,
+            BATCH_SIZE,
+        )
 
-        with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-            # Submit all fetch tasks
-            future_to_pr = {executor.submit(self._fetch_pr_details, pr, repo_name): pr for pr in pr_objects}
+        # Process in batches to avoid overwhelming GitHub
+        for batch_start in range(0, total, BATCH_SIZE):
+            batch_end = min(batch_start + BATCH_SIZE, total)
+            batch = pr_objects[batch_start:batch_end]
+            batch_num = batch_start // BATCH_SIZE + 1
+            total_batches = (total + BATCH_SIZE - 1) // BATCH_SIZE
 
-            # Process completed futures
-            completed = 0
-            for future in as_completed(future_to_pr):
-                pr = future_to_pr[future]
-                try:
-                    fetched_pr = future.result()
-                    fetched_prs.append(fetched_pr)
-                    completed += 1
+            logger.info(
+                "Processing batch %d/%d (PRs %d-%d)",
+                batch_num,
+                total_batches,
+                batch_start + 1,
+                batch_end,
+            )
 
-                    if completed % 50 == 0:
-                        remaining = self.get_rate_limit_remaining()
-                        logger.info(
-                            "Processed %d/%d PRs (rate limit: %d remaining)",
-                            completed,
-                            total,
-                            remaining,
-                        )
+            # Fetch batch with retry logic
+            batch_results = self._fetch_batch_with_retry(batch, repo_name)
+            fetched_prs.extend(batch_results)
 
-                except GithubException as e:
-                    logger.warning("Failed to fetch PR #%d: %s", pr.number, e)
-                except Exception as e:
-                    logger.warning("Unexpected error fetching PR #%d: %s", pr.number, e)
+            # Delay between batches to avoid secondary rate limits
+            if batch_end < total:
+                remaining = self.get_rate_limit_remaining()
+                logger.debug(
+                    "Batch complete. Rate limit: %d remaining. Waiting %.1fs...",
+                    remaining,
+                    BATCH_DELAY,
+                )
+                time.sleep(BATCH_DELAY)
 
         # Sort by created_at to maintain chronological order
         fetched_prs.sort(key=lambda x: x.created_at, reverse=True)
 
         logger.info("Fetched %d PRs from %s (parallel)", len(fetched_prs), repo_name)
         return fetched_prs
+
+    def _fetch_batch_with_retry(self, batch: list, repo_name: str) -> list[FetchedPRFull]:
+        """Fetch a batch of PRs with retry logic for 403 errors."""
+        results: list[FetchedPRFull] = []
+        retry_count = 0
+        backoff = INITIAL_BACKOFF
+
+        while retry_count <= MAX_RETRIES:
+            try:
+                with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+                    future_to_pr = {executor.submit(self._fetch_pr_details, pr, repo_name): pr for pr in batch}
+
+                    for future in as_completed(future_to_pr):
+                        pr = future_to_pr[future]
+                        try:
+                            fetched_pr = future.result()
+                            results.append(fetched_pr)
+                        except GithubException as e:
+                            if e.status == 403:
+                                # Re-raise to trigger batch retry
+                                raise
+                            logger.warning("Failed to fetch PR #%d: %s", pr.number, e)
+                        except Exception as e:
+                            logger.warning("Unexpected error fetching PR #%d: %s", pr.number, e)
+
+                # Success - return results
+                return results
+
+            except GithubException as e:
+                if e.status == 403 and retry_count < MAX_RETRIES:
+                    retry_count += 1
+                    logger.warning(
+                        "Rate limit hit (403). Retry %d/%d after %.1fs backoff...",
+                        retry_count,
+                        MAX_RETRIES,
+                        backoff,
+                    )
+                    time.sleep(backoff)
+                    backoff *= 2  # Exponential backoff
+                    results = []  # Clear partial results for retry
+                else:
+                    logger.error("Failed to fetch batch after %d retries: %s", retry_count, e)
+                    break
+
+        return results
 
     def _fetch_prs_sequential(self, pr_objects: list, repo_name: str) -> list[FetchedPRFull]:
         """Fetch PR details sequentially (fallback)."""

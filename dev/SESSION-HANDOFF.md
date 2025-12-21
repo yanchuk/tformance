@@ -1,39 +1,37 @@
-# Session Handoff - 2025-12-21 (Session 2)
+# Session Handoff - 2025-12-21 (Session 3)
 
 ## Current Session Summary
 
 ### Completed This Session
 
-1. **Real Project Seeding - BUG FIXES & TESTING** - ✅ COMPLETE
-   - Fixed 8 bugs using TDD approach
-   - Created 6 unit tests
-   - All tests passing
-   - End-to-end seeding verified working
-   - Created progress tracking script with resume capability
+1. **Real Project Seeding - GUMROAD & RATE LIMIT FIX** - ✅ COMPLETE
+   - Added Gumroad (antiwork/gumroad) with full parsing (1000 PRs, 50 members)
+   - Increased Polar limits to full parsing (1000 PRs, 50 members)
+   - Fixed GitHub 403 rate limit errors with batch processing + retry logic
+   - Updated dev documentation
 
 ---
 
-## Bugs Fixed
+## Rate Limit Fix Details
 
-| Bug | Fix | File |
-|-----|-----|------|
-| `FetchedFile.changes` | Compute from additions+deletions | `real_project_seeder.py` |
-| `FetchedCheckRun.github_id` missing | Added to dataclass | `github_authenticated_fetcher.py` |
-| `FetchedCheckRun.duration_seconds` | Compute from timestamps | `real_project_seeder.py` |
-| `timezone.utc` not in Django | Changed to `datetime.UTC` | `jira_simulator.py` |
-| JiraIssue field mismatches | `issue_key`→`jira_key`, etc. | `jira_simulator.py` |
-| `DeterministicRandom.random()` | Added method | `deterministic.py` |
-| `TeamMember.pr_reviews` | Changed to `reviews_given` | `real_project_seeder.py` |
-| `WeeklyMetrics.lines_deleted` | Changed to `lines_removed` | `real_project_seeding.py` |
+| Change | Value | Purpose |
+|--------|-------|---------|
+| `MAX_WORKERS` | 3 (was 10) | Reduce parallel requests |
+| `BATCH_SIZE` | 10 | Process PRs in batches |
+| `BATCH_DELAY` | 1.0s | Wait between batches |
+| `MAX_RETRIES` | 3 | Retry on 403 errors |
+| `INITIAL_BACKOFF` | 5.0s | Exponential backoff (5s → 10s → 20s) |
 
 ---
 
-## New Files Created
+## Project Configurations
 
-| File | Purpose |
-|------|---------|
-| `apps/metrics/tests/test_real_project_seeding.py` | TDD tests (6 tests) |
-| `scripts/seed_with_progress.py` | Progress script with resume |
+| Project | Repo | Mode | Max PRs | Max Members |
+|---------|------|------|---------|-------------|
+| **gumroad** | antiwork/gumroad | Full | 1000 | 50 |
+| **polar** | polarsource/polar | Full | 1000 | 50 |
+| **posthog** | posthog/posthog | Sampled | 200 | 25 |
+| **fastapi** | tiangolo/fastapi | Sampled | 300 | 15 |
 
 ---
 
@@ -42,11 +40,14 @@
 ### Run Seeding with Progress (in separate terminal)
 
 ```bash
-# Seed all 3 projects with progress display
-python scripts/seed_with_progress.py --clear
+# Seed Gumroad with progress display
+GITHUB_SEEDING_TOKEN="ghp_xxx" python scripts/seed_with_progress.py --project gumroad --clear
 
-# Or seed specific project
-python scripts/seed_with_progress.py --project posthog --max-prs 100 --clear
+# Or seed all projects
+GITHUB_SEEDING_TOKEN="ghp_xxx" python scripts/seed_with_progress.py --clear
+
+# Resume if interrupted
+python scripts/seed_with_progress.py --resume
 ```
 
 ### Verify Tests Pass
@@ -59,19 +60,14 @@ python scripts/seed_with_progress.py --project posthog --max-prs 100 --clear
 
 ```bash
 git add apps/metrics/seeding/
-git add apps/metrics/management/commands/seed_real_projects.py
-git add apps/metrics/tests/test_real_project_seeding.py
-git add scripts/seed_with_progress.py
 git add dev/
-git add .env.example
+git commit -m "Add Gumroad project and fix GitHub rate limit handling
 
-git commit -m "Add real project seeding with TDD tests
-
-- Fetch real PRs from PostHog, Polar, FastAPI repos
-- Simulate Jira issues, surveys, AI usage
-- 6 TDD tests for dataclass field mappings
-- Progress script with resume capability
-- Fixed 8 bugs found during testing"
+- Added antiwork/gumroad with full parsing (1000 PRs, 50 members)
+- Increased polar limits to full parsing
+- Fixed 403 rate limit errors with batch processing
+- Added retry logic with exponential backoff
+- Updated dev documentation"
 ```
 
 ---
@@ -80,11 +76,21 @@ git commit -m "Add real project seeding with TDD tests
 
 | Task | Status | Notes |
 |------|--------|-------|
-| real-project-seeding | ✅ COMPLETE | Ready to commit |
+| real-project-seeding | ✅ COMPLETE | Ready for seeding |
 | dashboard-ux-improvements | 🔶 PARTIAL | Bug fix done |
 | github-surveys-phase2 | NOT STARTED | Future |
 | insights-mcp-exploration | RESEARCH | Phase 3 |
 | skip-responded-reviewers | NOT STARTED | Future |
+
+---
+
+## Uncommitted Changes
+
+Files with uncommitted changes:
+- `apps/metrics/seeding/github_authenticated_fetcher.py` (rate limit handling)
+- `apps/metrics/seeding/real_projects.py` (added Gumroad, increased limits)
+- `dev/real-project-seeding/real-project-seeding-context.md` (updated docs)
+- `dev/DEV-ENVIRONMENT.md` (updated seeding docs)
 
 ---
 
