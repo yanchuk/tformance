@@ -124,6 +124,11 @@ class PullRequest(BaseTeamModel):
         verbose_name="PR title",
         help_text="The title of the pull request",
     )
+    body = models.TextField(
+        blank=True,
+        verbose_name="PR body",
+        help_text="The description/body of the pull request",
+    )
     author = models.ForeignKey(
         TeamMember,
         on_delete=models.SET_NULL,
@@ -229,6 +234,18 @@ class PullRequest(BaseTeamModel):
         help_text="Whether this is a hotfix PR",
     )
 
+    # AI tracking
+    is_ai_assisted = models.BooleanField(
+        default=False,
+        verbose_name="AI assisted",
+        help_text="Whether AI tools were detected in this PR",
+    )
+    ai_tools_detected = models.JSONField(
+        default=list,
+        verbose_name="AI tools detected",
+        help_text="List of AI tools detected (e.g., claude_code, copilot)",
+    )
+
     # Jira integration
     jira_key = models.CharField(
         max_length=50,
@@ -313,11 +330,29 @@ class PRReview(BaseTeamModel):
         verbose_name="State",
         help_text="The review state",
     )
+    body = models.TextField(
+        blank=True,
+        verbose_name="Review body",
+        help_text="The content of the review comment",
+    )
     submitted_at = models.DateTimeField(
         null=True,
         blank=True,
         verbose_name="Submitted at",
         help_text="When the review was submitted",
+    )
+
+    # AI tracking
+    is_ai_review = models.BooleanField(
+        default=False,
+        verbose_name="AI review",
+        help_text="Whether this review is from an AI bot",
+    )
+    ai_reviewer_type = models.CharField(
+        max_length=50,
+        blank=True,
+        verbose_name="AI reviewer type",
+        help_text="Type of AI reviewer (e.g., coderabbit, copilot)",
     )
 
     class Meta:
@@ -593,6 +628,18 @@ class Commit(BaseTeamModel):
         related_name="commits",
         verbose_name="Pull request",
         help_text="The PR this commit belongs to",
+    )
+
+    # AI tracking
+    is_ai_assisted = models.BooleanField(
+        default=False,
+        verbose_name="AI assisted",
+        help_text="Whether AI co-authors were detected in this commit",
+    )
+    ai_co_authors = models.JSONField(
+        default=list,
+        verbose_name="AI co-authors",
+        help_text="List of AI co-authors detected (e.g., claude, copilot)",
     )
 
     class Meta:

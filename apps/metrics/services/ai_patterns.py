@@ -1,0 +1,143 @@
+"""
+AI Detection Patterns Registry
+
+This file defines all patterns used to detect AI involvement in PRs, reviews, and commits.
+Patterns are easily extensible - just add new entries to the appropriate dictionary or list.
+
+To add a new AI reviewer bot:
+    AI_REVIEWER_BOTS["bot-username"] = "tool_name"
+
+To add a new text signature pattern:
+    AI_SIGNATURE_PATTERNS.append((r"pattern regex", "tool_name"))
+
+To add a new co-author pattern:
+    AI_CO_AUTHOR_PATTERNS.append((r"pattern regex", "tool_name"))
+
+All patterns are case-insensitive.
+
+VERSIONING:
+When adding new patterns, increment PATTERNS_VERSION to trigger reprocessing
+of historical data. The version is stored with each detection to allow
+selective reprocessing.
+"""
+
+# =============================================================================
+# Pattern Version - Increment when adding/changing patterns
+# =============================================================================
+# This version is stored with AI detections to support selective reprocessing.
+# Increment major version for breaking changes, minor for additions.
+PATTERNS_VERSION = "1.0.0"
+
+# =============================================================================
+# AI Reviewer Bots (username-based detection)
+# =============================================================================
+# Maps lowercase usernames to AI tool type identifier
+# Add new bot usernames here as they become common
+AI_REVIEWER_BOTS: dict[str, str] = {
+    # ----- CodeRabbit - AI code reviewer -----
+    "coderabbitai": "coderabbit",
+    "coderabbit[bot]": "coderabbit",
+    # ----- GitHub Copilot -----
+    "github-copilot[bot]": "copilot",
+    "copilot[bot]": "copilot",
+    # ----- Dependabot - dependency updates -----
+    "dependabot[bot]": "dependabot",
+    "dependabot-preview[bot]": "dependabot",
+    # ----- Renovate - dependency updates -----
+    "renovate[bot]": "renovate",
+    "renovate-bot": "renovate",
+    # ----- Snyk - security scanning -----
+    "snyk-bot": "snyk",
+    "snyk[bot]": "snyk",
+    # ----- SonarCloud/SonarQube - code quality -----
+    "sonarcloud[bot]": "sonarcloud",
+    "sonarqube[bot]": "sonarcloud",
+    # ----- Codecov - code coverage -----
+    "codecov[bot]": "codecov",
+    "codecov-io": "codecov",
+    # ----- Linear - issue tracking bot -----
+    "linear[bot]": "linear",
+    # ----- Vercel - deployment bot -----
+    "vercel[bot]": "vercel",
+    # ----- GitHub Apps/Actions -----
+    "github-actions[bot]": "github_actions",
+}
+
+# =============================================================================
+# AI Signature Patterns (regex detection in PR body/title)
+# =============================================================================
+# List of (regex_pattern, ai_tool_type) tuples
+# Patterns are matched case-insensitively
+AI_SIGNATURE_PATTERNS: list[tuple[str, str]] = [
+    # ----- Claude Code (Anthropic CLI) -----
+    (r"generated\s+with\s+\[?claude\s*code\]?", "claude_code"),
+    (r"🤖\s*generated\s+with\s+.*claude", "claude_code"),
+    (r"claude\.com/claude-code", "claude_code"),
+    # ----- GitHub Copilot -----
+    (r"generated\s+by\s+.*copilot", "copilot"),
+    (r"github\s+copilot", "copilot"),
+    (r"copilot\s+generated", "copilot"),
+    # ----- Cursor AI -----
+    (r"generated\s+by\s+cursor", "cursor"),
+    (r"cursor\s+ai", "cursor"),
+    (r"cursor\.sh", "cursor"),
+    # ----- Cody (Sourcegraph) -----
+    (r"generated\s+by\s+cody", "cody"),
+    (r"sourcegraph\s+cody", "cody"),
+    # ----- Windsurf -----
+    (r"generated\s+by\s+windsurf", "windsurf"),
+    (r"windsurf\s+ai", "windsurf"),
+    # ----- Tabnine -----
+    (r"generated\s+by\s+tabnine", "tabnine"),
+    (r"tabnine\s+ai", "tabnine"),
+    # ----- Amazon CodeWhisperer / Amazon Q -----
+    (r"codewhisperer", "codewhisperer"),
+    (r"amazon\s+q", "amazon_q"),
+    # ----- Aider -----
+    (r"generated\s+by\s+aider", "aider"),
+    (r"aider\.chat", "aider"),
+    # ----- Generic AI indicators -----
+    (r"ai[- ]?generated", "ai_generic"),
+    (r"ai[- ]?assisted", "ai_generic"),
+    (r"llm[- ]?generated", "ai_generic"),
+    (r"written\s+by\s+ai", "ai_generic"),
+]
+
+# =============================================================================
+# AI Co-Author Patterns (commit message detection)
+# =============================================================================
+# Regex patterns to detect AI co-authors in commit messages
+# Format: Co-Authored-By: Name <email>
+AI_CO_AUTHOR_PATTERNS: list[tuple[str, str]] = [
+    # ----- Claude (Anthropic) -----
+    (r"co-authored-by:\s*claude(?:\s+(?:opus|sonnet|haiku))?(?:\s+[\d.]+)?\s*<[^>]+>", "claude"),
+    (r"co-authored-by:[^<]*<noreply@anthropic\.com>", "claude"),
+    (r"co-authored-by:[^<]*<.*@anthropic\.com>", "claude"),
+    # ----- GitHub Copilot -----
+    (r"co-authored-by:\s*github\s*copilot\s*<[^>]+>", "copilot"),
+    (r"co-authored-by:[^<]*<copilot@github\.com>", "copilot"),
+    (r"co-authored-by:\s*copilot\s*<[^>]+>", "copilot"),
+    # ----- Cursor -----
+    (r"co-authored-by:\s*cursor\s*<[^>]+>", "cursor"),
+    (r"co-authored-by:[^<]*<[^>]*@cursor\.sh>", "cursor"),
+    (r"co-authored-by:[^<]*<[^>]*@cursor\.ai>", "cursor"),
+    # ----- Cody (Sourcegraph) -----
+    (r"co-authored-by:\s*cody\s*<[^>]+>", "cody"),
+    (r"co-authored-by:[^<]*<[^>]*@sourcegraph\.com>", "cody"),
+    # ----- Windsurf -----
+    (r"co-authored-by:\s*windsurf\s*<[^>]+>", "windsurf"),
+    # ----- Aider -----
+    (r"co-authored-by:\s*aider\s*<[^>]+>", "aider"),
+    (r"co-authored-by:[^<]*<aider@", "aider"),
+]
+
+
+# =============================================================================
+# Helper: Get all known AI tool types
+# =============================================================================
+def get_all_ai_tools() -> set[str]:
+    """Return a set of all known AI tool type identifiers."""
+    tools = set(AI_REVIEWER_BOTS.values())
+    tools.update(tool for _, tool in AI_SIGNATURE_PATTERNS)
+    tools.update(tool for _, tool in AI_CO_AUTHOR_PATTERNS)
+    return tools

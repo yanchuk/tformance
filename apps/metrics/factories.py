@@ -111,6 +111,11 @@ class PullRequestFactory(DjangoModelFactory):
     is_hotfix = factory.LazyFunction(lambda: random.random() < 0.1)  # 10% hotfixes
     jira_key = ""
 
+    # AI tracking fields
+    body = ""
+    is_ai_assisted = False
+    ai_tools_detected = factory.LazyFunction(list)
+
 
 class PRReviewFactory(DjangoModelFactory):
     """Factory for PRReview model."""
@@ -122,11 +127,16 @@ class PRReviewFactory(DjangoModelFactory):
     pull_request = factory.SubFactory(PullRequestFactory, team=factory.SelfAttribute("..team"))
     reviewer = factory.SubFactory(TeamMemberFactory, team=factory.SelfAttribute("..team"))
     state = factory.Iterator(["approved", "approved", "changes_requested", "commented"])
+    body = ""
     submitted_at = factory.LazyAttribute(
         lambda o: o.pull_request.pr_created_at + timedelta(hours=random.randint(1, 24))
         if o.pull_request.pr_created_at
         else timezone.now()
     )
+
+    # AI tracking fields
+    is_ai_review = False
+    ai_reviewer_type = ""
 
 
 class PRCommentFactory(DjangoModelFactory):
@@ -206,6 +216,10 @@ class CommitFactory(DjangoModelFactory):
     additions = factory.LazyFunction(lambda: random.randint(5, 200))
     deletions = factory.LazyFunction(lambda: random.randint(2, 100))
     pull_request = None  # Often standalone commits
+
+    # AI tracking fields
+    is_ai_assisted = False
+    ai_co_authors = factory.LazyFunction(list)
 
 
 class DeploymentFactory(DjangoModelFactory):
