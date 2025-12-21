@@ -1,6 +1,6 @@
 # AI Involvement Tracking - Tasks
 
-**Last Updated:** 2025-12-21 (Session 3)
+**Last Updated:** 2025-12-21 (Session 3 - Final)
 
 ## Progress Overview
 
@@ -47,34 +47,23 @@
 - [x] Write failing tests for `detect_ai_in_text(text)` - 11 tests
 - [x] Write failing tests for `parse_co_authors(message)` - 13 tests
 - [x] Create `apps/metrics/services/ai_detector.py`
-- [x] Implement `detect_ai_reviewer()` to pass tests
-- [x] Implement `detect_ai_in_text()` to pass tests
-- [x] Implement `parse_co_authors()` to pass tests
+- [x] Implement all detection functions
 
 ### 2.2 AI patterns registry ✅
 - [x] Create `apps/metrics/services/ai_patterns.py`
 - [x] Define AI_REVIEWER_BOTS dict (15+ bots)
 - [x] Define AI_SIGNATURE_PATTERNS list (20+ patterns)
 - [x] Define AI_CO_AUTHOR_PATTERNS list (12+ patterns)
-- [x] Add docstrings explaining each pattern
-- [x] Make patterns case-insensitive
 - [x] Add PATTERNS_VERSION for historical reprocessing
 
 ---
 
 ## Phase 3: GitHub Fetcher Updates ✅ VERIFIED
 
-### 3.1 Add PR comments fetching (DEFERRED)
-- [ ] Add `FetchedComment` dataclass
-- [ ] Add `_fetch_issue_comments()` method
-- [ ] Add `comments` to `FetchedPRFull`
-- [ ] Write tests for comment fetching
-- **Note:** Deferred - CodeRabbit detection can use reviewer username
-
 ### 3.2 Verify existing data capture ✅
-- [x] Confirm review body is captured (`FetchedReview.body`)
-- [x] Confirm commit message is captured (`FetchedCommit.message`)
-- [x] Confirm PR body is captured (`FetchedPRFull.body`)
+- [x] Confirm review body is captured
+- [x] Confirm commit message is captured
+- [x] Confirm PR body is captured
 - [x] **Result:** All data already captured, no changes needed
 
 ---
@@ -84,78 +73,42 @@
 ### 4.1 Store body fields in seeder ✅
 - [x] Store `pr_data.body` in PullRequest.body
 - [x] Store `review_data.body` in PRReview.body
-- [ ] Write integration test (deferred)
 
 ### 4.2 Run AI detection in seeder ✅
 - [x] Import ai_detector service
-- [x] Call `detect_ai_reviewer()` when creating reviews
-- [x] Call `detect_ai_in_text()` on PR body/title
-- [x] Call `parse_co_authors()` on commit messages
+- [x] Call detection functions when creating PRs/reviews/commits
 - [x] Store results in model fields
-- [x] Track AI detection statistics (ai_assisted_prs, ai_reviews, ai_commits)
-- [ ] Write integration test (deferred)
+- [x] Track AI detection statistics
 
 ---
 
 ## Phase 5: Dashboard Integration 🟡 IN PROGRESS
 
-### 5.1 Add AI metrics to CTO dashboard ✅ COMPLETE
+### 5.1 Add AI metrics to CTO dashboard ✅ COMPLETE (Committed: fac1868)
 - [x] Create `get_ai_detected_metrics()` service function
 - [x] Create `get_ai_tool_breakdown()` service function
 - [x] Create `get_ai_bot_review_stats()` service function
-- [x] Write tests for all 3 functions (16 tests in `test_dashboard_ai_detection.py`)
-- [x] Create chart views for AI detection metrics
-- [x] Add URL patterns for new endpoints
-- [x] Create template partials:
-  - [x] `ai_detected_metrics_card.html` - AI detection summary
-  - [x] `ai_tool_breakdown_chart.html` - Tool usage breakdown
-  - [x] `ai_bot_reviews_card.html` - Bot reviewer stats
+- [x] Write tests for all 3 functions (16 tests)
+- [x] Create chart views and URL patterns
+- [x] Create template partials
 - [x] Add AI Detection section to `cto_overview.html`
 
-### 5.2 Add AI indicators to PR views 🔲
-- [ ] Add AI badge component
-- [ ] Show badge on AI-assisted PRs in recent PRs table
-- [ ] Show AI reviewer indicator on reviews
-- [ ] Add filter for AI involvement
-- [ ] Write template tests
+### 5.2 Add AI indicators to PR views 🔲 NOT STARTED
+- [ ] Update `get_recent_prs()` to include AI detection data
+- [ ] Update `recent_prs_table.html` with detection indicators
+- [ ] Add tooltip showing detected tools
+- [ ] Optional: Create reusable AI badge component
 
 ---
 
 ## Verification Checklist
 
 Before marking complete:
-- [x] All tests pass: `make test ARGS='apps.metrics.tests.test_ai_detector apps.metrics.tests.test_ai_model_fields apps.metrics.tests.test_dashboard_ai_detection'`
-- [x] Migrations applied: `make migrate`
-- [x] Ruff passes: All checks passed
-- [ ] Demo seeding works with AI detection
+- [x] All tests pass: 70 AI-related tests passing
+- [x] Migrations applied
+- [x] Ruff passes
+- [ ] Demo seeding works with AI detection (need to test)
 - [ ] Dashboard shows AI metrics (need to seed data first)
-
----
-
-## Files Created/Modified This Session (Session 3)
-
-| File | Action | Purpose |
-|------|--------|---------|
-| `apps/metrics/services/dashboard_service.py` | Modified | Added 3 AI detection functions |
-| `apps/metrics/tests/test_dashboard_ai_detection.py` | Created | 16 TDD tests for dashboard functions |
-| `apps/metrics/views/chart_views.py` | Modified | Added 3 chart view functions |
-| `apps/metrics/views/__init__.py` | Modified | Exported new views |
-| `apps/metrics/urls.py` | Modified | Added 3 URL patterns |
-| `templates/metrics/partials/ai_detected_metrics_card.html` | Created | AI detection summary card |
-| `templates/metrics/partials/ai_tool_breakdown_chart.html` | Created | Tool breakdown visualization |
-| `templates/metrics/partials/ai_bot_reviews_card.html` | Created | Bot reviewer stats |
-| `templates/metrics/cto_overview.html` | Modified | Added AI Detection section |
-
----
-
-## Notes
-
-- Follow TDD: Write tests FIRST, then implementation ✅
-- Use `JSONField` for lists (ai_tools_detected, ai_co_authors) ✅
-- Make AI patterns case-insensitive ✅
-- Add pattern versioning for historical reprocessing ✅
-- Log AI detection for debugging (TODO in seeder)
-- Consider false positive mitigation (exact username matching prevents most)
 
 ---
 
@@ -163,7 +116,6 @@ Before marking complete:
 
 ### 2025-12-21 (Session 1 - Planning)
 - Created implementation plan
-- Identified gap: PR comments not captured (CodeRabbit)
 - Ready for Phase 1 implementation
 
 ### 2025-12-21 (Session 2 - Implementation)
@@ -177,9 +129,14 @@ Before marking complete:
 - ✅ Created chart views and URL patterns
 - ✅ Created template partials for AI detection section
 - ✅ Added AI Detection section to CTO overview
-- All 70 AI-related tests passing
+- ✅ Committed: `fac1868`
+- Started analysis for Phase 5.2
 
 ### Next Session Tasks
-1. Test dashboard with real seeded data
-2. Implement Phase 5.2: AI indicators on PR views
-3. Verify seeding works end-to-end
+1. **Update `get_recent_prs()`** (dashboard_service.py:392) to add:
+   - `is_ai_detected`: pr.is_ai_assisted
+   - `ai_tools`: pr.ai_tools_detected
+
+2. **Update `recent_prs_table.html`** to show:
+   - AI detection indicator alongside survey badge
+   - Tool names on hover

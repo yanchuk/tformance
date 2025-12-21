@@ -404,7 +404,9 @@ def get_recent_prs(team: Team, start_date: date, end_date: date, limit: int = 10
             - title (str): PR title
             - author (str): Author display name
             - merged_at (datetime): Merge timestamp
-            - ai_assisted (bool or None): Whether AI-assisted, None if no survey
+            - ai_assisted (bool or None): Whether AI-assisted (survey), None if no survey
+            - is_ai_detected (bool): Whether AI detected from PR content
+            - ai_tools (list): List of detected AI tools
             - avg_quality (float or None): Average quality rating, None if no reviews
             - url (str): PR URL
     """
@@ -440,6 +442,8 @@ def get_recent_prs(team: Team, start_date: date, end_date: date, limit: int = 10
                 "author": _get_author_name(pr),
                 "merged_at": pr.merged_at,
                 "ai_assisted": ai_assisted,
+                "is_ai_detected": pr.is_ai_assisted,
+                "ai_tools": pr.ai_tools_detected,
                 "avg_quality": avg_quality,
                 "url": _get_github_url(pr),
             }
