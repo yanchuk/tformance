@@ -1,6 +1,6 @@
 # AI Involvement Tracking - Tasks
 
-**Last Updated:** 2025-12-21 (Session 3 - Final)
+**Last Updated:** 2025-12-21 (Session 4 - Complete)
 
 ## Progress Overview
 
@@ -10,7 +10,7 @@
 | Phase 2: AI Detection Module | ✅ Complete | 2/2 |
 | Phase 3: GitHub Fetcher Updates | ✅ Verified | 1/1 |
 | Phase 4: Seeder Integration | ✅ Complete | 2/2 |
-| Phase 5: Dashboard Integration | 🟡 In Progress | 1/2 |
+| Phase 5: Dashboard Integration | ✅ Complete | 2/2 |
 
 ---
 
@@ -82,9 +82,9 @@
 
 ---
 
-## Phase 5: Dashboard Integration 🟡 IN PROGRESS
+## Phase 5: Dashboard Integration ✅ COMPLETE
 
-### 5.1 Add AI metrics to CTO dashboard ✅ COMPLETE (Committed: fac1868)
+### 5.1 Add AI metrics to CTO dashboard ✅ (Committed: fac1868)
 - [x] Create `get_ai_detected_metrics()` service function
 - [x] Create `get_ai_tool_breakdown()` service function
 - [x] Create `get_ai_bot_review_stats()` service function
@@ -93,21 +93,20 @@
 - [x] Create template partials
 - [x] Add AI Detection section to `cto_overview.html`
 
-### 5.2 Add AI indicators to PR views 🔲 NOT STARTED
-- [ ] Update `get_recent_prs()` to include AI detection data
-- [ ] Update `recent_prs_table.html` with detection indicators
-- [ ] Add tooltip showing detected tools
-- [ ] Optional: Create reusable AI badge component
+### 5.2 Add AI indicators to PR views ✅ (Committed: 8c369ec)
+- [x] Update `get_recent_prs()` to include AI detection data
+- [x] Update `recent_prs_table.html` with detection indicators
+- [x] Add tooltip showing detected tools
+- [x] Show tool names (Claude, Copilot, Cursor, Cody, AI)
 
 ---
 
 ## Verification Checklist
 
-Before marking complete:
-- [x] All tests pass: 70 AI-related tests passing
+- [x] All tests pass: 70+ AI-related tests passing
 - [x] Migrations applied
 - [x] Ruff passes
-- [ ] Demo seeding works with AI detection (need to test)
+- [ ] Demo seeding works with AI detection (need to test with real data)
 - [ ] Dashboard shows AI metrics (need to seed data first)
 
 ---
@@ -130,13 +129,19 @@ Before marking complete:
 - ✅ Created template partials for AI detection section
 - ✅ Added AI Detection section to CTO overview
 - ✅ Committed: `fac1868`
-- Started analysis for Phase 5.2
 
-### Next Session Tasks
-1. **Update `get_recent_prs()`** (dashboard_service.py:392) to add:
-   - `is_ai_detected`: pr.is_ai_assisted
-   - `ai_tools`: pr.ai_tools_detected
+### 2025-12-21 (Session 4 - Complete)
+- ✅ Completed Phase 5.2: AI indicators on PR views
+- ✅ Updated `get_recent_prs()` with `is_ai_detected` and `ai_tools` fields
+- ✅ Updated `recent_prs_table.html` with detection badges
+- ✅ Committed: `8c369ec`
+- ✅ All phases complete!
 
-2. **Update `recent_prs_table.html`** to show:
-   - AI detection indicator alongside survey badge
-   - Tool names on hover
+---
+
+## Future Enhancements (Optional)
+
+1. **Reusable AI badge component** - Extract to `templates/metrics/components/ai_badge.html`
+2. **AI trend over time** - Chart showing AI adoption trends
+3. **Per-author AI usage** - Track which team members use AI most
+4. **Tool preference analysis** - Which AI tools are most popular
