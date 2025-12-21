@@ -12,6 +12,8 @@ team_urlpatterns = (
         path("dashboard/", views.dashboard_redirect, name="dashboard_redirect"),
         path("dashboard/cto/", views.cto_overview, name="cto_overview"),
         path("dashboard/team/", views.team_dashboard, name="team_dashboard"),
+        # Insights
+        path("insights/<int:insight_id>/dismiss/", views.dismiss_insight, name="dismiss_insight"),
         # Chart partials
         path("charts/ai-adoption/", views.ai_adoption_chart, name="chart_ai_adoption"),
         path("charts/ai-quality/", views.ai_quality_chart, name="chart_ai_quality"),

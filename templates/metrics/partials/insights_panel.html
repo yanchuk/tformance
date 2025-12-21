@@ -1,0 +1,35 @@
+{% comment %}
+Insights Panel - Displays recent insights with dismiss functionality.
+Required context:
+  - insights: List of DailyInsight objects
+{% endcomment %}
+
+{% if insights %}
+<div class="mb-6">
+  <h2 class="text-lg font-semibold mb-3">Recent Insights</h2>
+  {% for insight in insights %}
+  <div class="alert shadow-md mb-3 {% if insight.priority == 'high' %}alert-warning{% elif insight.priority == 'medium' %}alert-info{% else %}alert-success{% endif %}">
+    <div class="flex-1">
+      <div class="flex items-start justify-between">
+        <div>
+          <h3 class="font-semibold">{{ insight.title }}</h3>
+          <p class="text-sm mt-1">{{ insight.description }}</p>
+          <div class="flex gap-2 mt-2">
+            <span class="badge badge-sm">{{ insight.category }}</span>
+            <span class="badge badge-sm">{{ insight.priority }}</span>
+          </div>
+        </div>
+        <button class="btn btn-sm btn-ghost"
+                hx-post="{% url 'metrics:dismiss_insight' insight.id %}"
+                hx-swap="outerHTML"
+                hx-target="closest .alert">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}

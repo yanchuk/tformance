@@ -549,6 +549,11 @@ SCHEDULED_TASKS = {
         "schedule": schedules.crontab(minute=0, hour=1, day_of_week=1),  # Monday 1 AM UTC
         "expire_seconds": 60 * 60 * 2,  # 2 hour expiry
     },
+    "compute-daily-insights": {
+        "task": "apps.metrics.tasks.compute_all_team_insights",
+        "schedule": schedules.crontab(minute=0, hour=6),  # 6 AM UTC (after data syncs)
+        "expire_seconds": 60 * 60,  # 1 hour expiry
+    },
 }
 
 # Channels / Daphne setup

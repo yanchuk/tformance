@@ -23,7 +23,7 @@ from apps.metrics.views.chart_views import (
     team_breakdown_table,
     unlinked_prs_table,
 )
-from apps.metrics.views.dashboard_views import cto_overview, dashboard_redirect, home, team_dashboard
+from apps.metrics.views.dashboard_views import cto_overview, dashboard_redirect, dismiss_insight, home, team_dashboard
 
 __all__ = [
     "ai_adoption_chart",
@@ -51,4 +51,5 @@ __all__ = [
     "dashboard_redirect",
     "cto_overview",
     "team_dashboard",
+    "dismiss_insight",
 ]

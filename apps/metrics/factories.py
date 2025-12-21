@@ -30,6 +30,7 @@ from apps.teams.models import Team
 from .models import (
     AIUsageDaily,
     Commit,
+    DailyInsight,
     Deployment,
     JiraIssue,
     PRCheckRun,
@@ -380,3 +381,28 @@ class ReviewerCorrelationFactory(DjangoModelFactory):
     prs_reviewed_together = factory.LazyFunction(lambda: random.randint(5, 30))
     agreements = factory.LazyAttribute(lambda o: int(o.prs_reviewed_together * random.uniform(0.6, 0.95)))
     disagreements = factory.LazyAttribute(lambda o: o.prs_reviewed_together - o.agreements)
+
+
+class DailyInsightFactory(DjangoModelFactory):
+    """Factory for DailyInsight model."""
+
+    class Meta:
+        model = DailyInsight
+
+    team = factory.SubFactory(TeamFactory)
+    date = factory.LazyFunction(lambda: (timezone.now() - timedelta(days=random.randint(0, 30))).date())
+    category = factory.Iterator(["trend", "anomaly", "comparison", "action"])
+    priority = factory.Iterator(["high", "medium", "low"])
+    title = factory.Faker("sentence", nb_words=6)
+    description = factory.Faker("paragraph", nb_sentences=2)
+    metric_type = factory.Iterator(["cycle_time", "review_time", "pr_size", "review_rounds"])
+    metric_value = factory.LazyFunction(
+        lambda: {
+            "current_value": round(random.uniform(10, 100), 2),
+            "previous_value": round(random.uniform(10, 100), 2),
+            "change_percent": round(random.uniform(-50, 50), 2),
+        }
+    )
+    comparison_period = factory.Iterator(["week_over_week", "month_over_month", ""])
+    is_dismissed = False
+    dismissed_at = None

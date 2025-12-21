@@ -13,6 +13,9 @@
       {% include "metrics/partials/filters.html" %}
     </div>
 
+    <!-- Insights Panel -->
+    {% include "metrics/partials/insights_panel.html" %}
+
     <!-- Key Metrics Cards -->
     <div id="key-metrics-container"
          hx-get="{% url 'metrics:cards_metrics' %}?days={{ days }}"

@@ -1,9 +1,13 @@
 from datetime import date
 
 from django.http import HttpRequest, HttpResponse
-from django.shortcuts import redirect
+from django.shortcuts import get_object_or_404, redirect
 from django.template.response import TemplateResponse
+from django.utils import timezone
+from django.views.decorators.http import require_POST
 
+from apps.metrics.models import DailyInsight
+from apps.metrics.services import insight_service
 from apps.metrics.view_utils import get_date_range_from_request
 from apps.teams.decorators import login_and_team_required, team_admin_required
 
@@ -48,6 +52,7 @@ def dashboard_redirect(request: HttpRequest) -> HttpResponse:
 def cto_overview(request: HttpRequest) -> HttpResponse:
     """CTO Overview Dashboard - Admin only."""
     context = _get_date_range_context(request)
+    context["insights"] = insight_service.get_recent_insights(request.team)
     # Return partial for HTMX requests (e.g., days filter changes)
     template = "metrics/cto_overview.html#page-content" if request.htmx else "metrics/cto_overview.html"
     return TemplateResponse(request, template, context)
@@ -60,3 +65,14 @@ def team_dashboard(request: HttpRequest) -> HttpResponse:
     # Return partial for HTMX requests (e.g., days filter changes)
     template = "metrics/team_dashboard.html#page-content" if request.htmx else "metrics/team_dashboard.html"
     return TemplateResponse(request, template, context)
+
+
+@require_POST
+@login_and_team_required
+def dismiss_insight(request: HttpRequest, insight_id: int) -> HttpResponse:
+    """Dismiss an insight (HTMX endpoint)."""
+    insight = get_object_or_404(DailyInsight, id=insight_id, team=request.team)
+    insight.is_dismissed = True
+    insight.dismissed_at = timezone.now()
+    insight.save()
+    return HttpResponse(status=200)
