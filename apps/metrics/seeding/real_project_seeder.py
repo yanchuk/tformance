@@ -122,6 +122,9 @@ class RealProjectSeeder:
     def seed(self, existing_team: Team | None = None) -> RealProjectStats:
         """Seed complete demo data for this project.
 
+        Each step commits independently so progress is saved incrementally.
+        Duplicate records are skipped gracefully.
+
         Args:
             existing_team: Optional existing team to seed into.
                           If None, creates a new team.
@@ -132,38 +135,42 @@ class RealProjectSeeder:
         logger.info(f"Starting seed for project: {self.config.team_name}")
         total_steps = 7
 
+        # Step 1: Get or create team (atomic)
+        self._report_progress("seed", 1, total_steps, "Creating team...")
         with transaction.atomic():
-            # Step 1: Get or create team
-            self._report_progress("seed", 1, total_steps, "Creating team...")
             team = self._get_or_create_team(existing_team)
 
-            # Step 2: Fetch contributors and create team members
-            self._report_progress("seed", 2, total_steps, "Fetching contributors...")
-            contributors = self._fetch_contributors()
+        # Step 2: Fetch contributors and create team members (atomic)
+        self._report_progress("seed", 2, total_steps, "Fetching contributors...")
+        contributors = self._fetch_contributors()
+        with transaction.atomic():
             self._create_team_members(team, contributors)
-            self._report_progress("seed", 2, total_steps, f"Created {len(contributors)} team members")
+        self._report_progress("seed", 2, total_steps, f"Created {len(contributors)} team members")
 
-            # Step 3: Fetch PRs with all details
-            self._report_progress("seed", 3, total_steps, "Fetching PRs from GitHub...")
-            prs_data = self._fetch_prs()
-            self._report_progress("seed", 3, total_steps, f"Fetched {len(prs_data)} PRs")
+        # Step 3: Fetch PRs with all details (no transaction - just API calls)
+        self._report_progress("seed", 3, total_steps, "Fetching PRs from GitHub...")
+        prs_data = self._fetch_prs()
+        self._report_progress("seed", 3, total_steps, f"Fetched {len(prs_data)} PRs")
 
-            # Step 4: Create PR records with related data
-            self._report_progress("seed", 4, total_steps, "Creating PR records...")
-            prs = self._create_prs(team, prs_data)
-            self._report_progress("seed", 4, total_steps, f"Created {len(prs)} PRs with reviews/commits")
+        # Step 4: Create PR records with related data (per-PR transactions)
+        self._report_progress("seed", 4, total_steps, "Creating PR records...")
+        prs = self._create_prs(team, prs_data)
+        self._report_progress("seed", 4, total_steps, f"Created {len(prs)} PRs with reviews/commits")
 
-            # Step 5: Simulate Jira issues
-            self._report_progress("seed", 5, total_steps, "Simulating Jira issues...")
+        # Step 5: Simulate Jira issues (atomic)
+        self._report_progress("seed", 5, total_steps, "Simulating Jira issues...")
+        with transaction.atomic():
             self._simulate_jira_issues(team, prs, prs_data)
 
-            # Step 6: Simulate surveys and AI usage
-            self._report_progress("seed", 6, total_steps, "Simulating surveys and AI usage...")
+        # Step 6: Simulate surveys and AI usage (atomic)
+        self._report_progress("seed", 6, total_steps, "Simulating surveys and AI usage...")
+        with transaction.atomic():
             self._simulate_surveys(team, prs, prs_data)
             self._generate_ai_usage(team)
 
-            # Step 7: Calculate weekly metrics
-            self._report_progress("seed", 7, total_steps, "Calculating weekly metrics...")
+        # Step 7: Calculate weekly metrics (atomic)
+        self._report_progress("seed", 7, total_steps, "Calculating weekly metrics...")
+        with transaction.atomic():
             self._calculate_weekly_metrics(team)
 
         self._report_progress("seed", total_steps, total_steps, "Complete!")
@@ -299,6 +306,9 @@ class RealProjectSeeder:
     def _create_prs(self, team: Team, prs_data: list[FetchedPRFull]) -> list[PullRequest]:
         """Create PullRequest records with all related data.
 
+        Each PR is created in its own transaction for incremental saving.
+        Skips PRs that already exist.
+
         Args:
             team: Team instance.
             prs_data: List of fetched PR data.
@@ -309,10 +319,30 @@ class RealProjectSeeder:
         logger.info(f"Creating {len(prs_data)} pull requests...")
         prs = []
 
-        for pr_data in prs_data:
-            pr = self._create_single_pr(team, pr_data)
-            if pr:
-                prs.append(pr)
+        for i, pr_data in enumerate(prs_data):
+            # Skip if PR already exists
+            existing_pr = PullRequest.objects.filter(
+                team=team,
+                github_pr_id=pr_data.number,
+                github_repo=self.config.repo_full_name,
+            ).first()
+            if existing_pr:
+                prs.append(existing_pr)
+                continue
+
+            # Create PR in its own transaction
+            try:
+                with transaction.atomic():
+                    pr = self._create_single_pr(team, pr_data)
+                    if pr:
+                        prs.append(pr)
+            except Exception as e:
+                logger.warning(f"Failed to create PR #{pr_data.number}: {e}")
+                continue
+
+            # Log progress every 50 PRs
+            if (i + 1) % 50 == 0:
+                logger.info(f"Created {i + 1}/{len(prs_data)} PRs...")
 
         logger.info(
             f"Created {self._stats.prs_created} PRs, "
