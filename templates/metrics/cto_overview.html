@@ -227,6 +227,66 @@
       </div>
     </div>
 
+    <!-- CI/CD Pass Rate and Deployments Row -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+      <!-- CI/CD Pass Rate -->
+      <div class="card bg-base-100 shadow-md">
+        <div class="card-body">
+          <h2 class="card-title text-base">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-accent-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            {% trans "CI/CD Pass Rate" %}
+          </h2>
+          <p class="text-sm text-base-content/80 mb-4">{% trans "Check run success metrics" %}</p>
+          <div id="cicd-pass-rate-container"
+               hx-get="{% url 'metrics:cards_cicd_pass_rate' %}?days={{ days }}"
+               hx-trigger="load"
+               hx-swap="innerHTML">
+            <div class="skeleton h-48 w-full rounded-lg"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Deployment Metrics (DORA) -->
+      <div class="card bg-base-100 shadow-md">
+        <div class="card-body">
+          <h2 class="card-title text-base">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-accent-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+            </svg>
+            {% trans "Deployment Frequency" %}
+          </h2>
+          <p class="text-sm text-base-content/80 mb-4">{% trans "DORA deployment metrics" %}</p>
+          <div id="deployments-container"
+               hx-get="{% url 'metrics:cards_deployments' %}?days={{ days }}"
+               hx-trigger="load"
+               hx-swap="innerHTML">
+            <div class="skeleton h-48 w-full rounded-lg"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- File Category Breakdown -->
+    <div class="card bg-base-100 shadow-md mb-6">
+      <div class="card-body">
+        <h2 class="card-title text-base">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-accent-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
+          </svg>
+          {% trans "File Category Breakdown" %}
+        </h2>
+        <p class="text-sm text-base-content/80 mb-4">{% trans "Where development effort is spent" %}</p>
+        <div id="file-categories-container"
+             hx-get="{% url 'metrics:cards_file_categories' %}?days={{ days }}"
+             hx-trigger="load"
+             hx-swap="innerHTML">
+          <div class="skeleton h-48 w-full rounded-lg"></div>
+        </div>
+      </div>
+    </div>
+
     <!-- Team Breakdown Table -->
     <div class="card bg-base-100 shadow-md mb-6">
       <div class="card-body">

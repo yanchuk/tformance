@@ -11,7 +11,17 @@ from decimal import Decimal
 from django.db.models import Avg, Case, CharField, Count, Q, QuerySet, Sum, Value, When
 from django.db.models.functions import TruncWeek
 
-from apps.metrics.models import AIUsageDaily, PRReview, PRSurvey, PRSurveyReview, PullRequest, TeamMember
+from apps.metrics.models import (
+    AIUsageDaily,
+    Deployment,
+    PRCheckRun,
+    PRFile,
+    PRReview,
+    PRSurvey,
+    PRSurveyReview,
+    PullRequest,
+    TeamMember,
+)
 from apps.teams.models import Team
 
 # PR Size Categories
@@ -850,3 +860,190 @@ def get_copilot_by_member(team: Team, start_date: date, end_date: date) -> list[
         )
 
     return result
+
+
+def get_cicd_pass_rate(team: Team, start_date: date, end_date: date) -> dict:
+    """Get CI/CD pass rate metrics for a team within a date range.
+
+    Aggregates check run results to show overall CI/CD health and
+    identifies the most problematic checks.
+
+    Args:
+        team: Team instance
+        start_date: Start date (inclusive)
+        end_date: End date (inclusive)
+
+    Returns:
+        dict with keys:
+            - total_runs (int): Total check runs
+            - pass_rate (Decimal): Percentage of successful runs (0.00 to 100.00)
+            - success_count (int): Number of successful runs
+            - failure_count (int): Number of failed runs
+            - top_failing_checks (list): Top 5 checks with highest failure rates
+    """
+    check_runs = PRCheckRun.objects.filter(
+        team=team,
+        pull_request__merged_at__gte=start_date,
+        pull_request__merged_at__lte=end_date,
+        status="completed",
+    )
+
+    total_runs = check_runs.count()
+    success_count = check_runs.filter(conclusion="success").count()
+    failure_count = check_runs.filter(conclusion="failure").count()
+
+    pass_rate = Decimal(str(round(success_count * 100.0 / total_runs, 2))) if total_runs > 0 else Decimal("0.00")
+
+    # Get top failing checks
+    check_stats = (
+        check_runs.values("name")
+        .annotate(
+            total=Count("id"),
+            failures=Count("id", filter=Q(conclusion="failure")),
+        )
+        .filter(failures__gt=0)
+        .order_by("-failures")[:5]
+    )
+
+    top_failing_checks = [
+        {
+            "name": stat["name"],
+            "total": stat["total"],
+            "failures": stat["failures"],
+            "failure_rate": Decimal(str(round(stat["failures"] * 100.0 / stat["total"], 2))),
+        }
+        for stat in check_stats
+    ]
+
+    return {
+        "total_runs": total_runs,
+        "pass_rate": pass_rate,
+        "success_count": success_count,
+        "failure_count": failure_count,
+        "top_failing_checks": top_failing_checks,
+    }
+
+
+def get_deployment_metrics(team: Team, start_date: date, end_date: date) -> dict:
+    """Get DORA-style deployment metrics for a team within a date range.
+
+    Calculates deployment frequency and success rate, key DevOps metrics.
+
+    Args:
+        team: Team instance
+        start_date: Start date (inclusive)
+        end_date: End date (inclusive)
+
+    Returns:
+        dict with keys:
+            - total_deployments (int): Total deployments
+            - production_deployments (int): Production deployments
+            - success_rate (Decimal): Percentage of successful deployments
+            - deployments_per_week (Decimal): Average deployments per week
+            - by_environment (list): Breakdown by environment
+    """
+    deployments = Deployment.objects.filter(
+        team=team,
+        deployed_at__gte=start_date,
+        deployed_at__lte=end_date,
+    )
+
+    total = deployments.count()
+    production = deployments.filter(environment="production").count()
+    successful = deployments.filter(status="success").count()
+
+    success_rate = Decimal(str(round(successful * 100.0 / total, 2))) if total > 0 else Decimal("0.00")
+
+    # Calculate deployments per week
+    days = (end_date - start_date).days or 1
+    weeks = max(days / 7, 1)
+    deployments_per_week = Decimal(str(round(total / weeks, 2)))
+
+    # Breakdown by environment
+    by_environment = (
+        deployments.values("environment")
+        .annotate(
+            total=Count("id"),
+            successful=Count("id", filter=Q(status="success")),
+        )
+        .order_by("-total")
+    )
+
+    env_breakdown = [
+        {
+            "environment": env["environment"],
+            "total": env["total"],
+            "successful": env["successful"],
+            "success_rate": Decimal(str(round(env["successful"] * 100.0 / env["total"], 2)))
+            if env["total"] > 0
+            else Decimal("0.00"),
+        }
+        for env in by_environment
+    ]
+
+    return {
+        "total_deployments": total,
+        "production_deployments": production,
+        "success_rate": success_rate,
+        "deployments_per_week": deployments_per_week,
+        "by_environment": env_breakdown,
+    }
+
+
+def get_file_category_breakdown(team: Team, start_date: date, end_date: date) -> dict:
+    """Get file change breakdown by category for a team within a date range.
+
+    Categorizes files changed in PRs to show where development effort
+    is being spent (frontend, backend, tests, etc.).
+
+    Args:
+        team: Team instance
+        start_date: Start date (inclusive)
+        end_date: End date (inclusive)
+
+    Returns:
+        dict with keys:
+            - total_files (int): Total files changed
+            - total_changes (int): Total lines changed (additions + deletions)
+            - by_category (list): Breakdown by file category
+    """
+    files = PRFile.objects.filter(
+        team=team,
+        pull_request__merged_at__gte=start_date,
+        pull_request__merged_at__lte=end_date,
+    )
+
+    total_files = files.count()
+    total_changes = files.aggregate(total=Sum("additions") + Sum("deletions"))["total"] or 0
+
+    # Breakdown by category
+    by_category = (
+        files.values("file_category")
+        .annotate(
+            file_count=Count("id"),
+            additions=Sum("additions"),
+            deletions=Sum("deletions"),
+        )
+        .order_by("-file_count")
+    )
+
+    category_breakdown = [
+        {
+            "category": cat["file_category"],
+            "category_display": dict(PRFile.CATEGORY_CHOICES).get(cat["file_category"], cat["file_category"]),
+            "file_count": cat["file_count"],
+            "additions": cat["additions"] or 0,
+            "deletions": cat["deletions"] or 0,
+            "total_changes": (cat["additions"] or 0) + (cat["deletions"] or 0),
+            "percentage": Decimal(str(round(cat["file_count"] * 100.0 / total_files, 1)))
+            if total_files > 0
+            else Decimal("0.0"),
+        }
+        for cat in by_category
+    ]
+
+    return {
+        "total_files": total_files,
+        "total_changes": total_changes,
+        "by_category": category_breakdown,
+    }

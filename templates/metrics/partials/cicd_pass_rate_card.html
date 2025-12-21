@@ -1,0 +1,78 @@
+{% load i18n %}
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+  <!-- Pass Rate Card -->
+  <div class="stat bg-base-200 rounded-lg p-4">
+    <div class="stat-title text-xs">{% trans "CI/CD Pass Rate" %}</div>
+    <div class="stat-value text-2xl font-mono">
+      {% if metrics.total_runs > 0 %}
+        {{ metrics.pass_rate|floatformat:1 }}%
+      {% else %}
+        —
+      {% endif %}
+    </div>
+    <div class="stat-desc">
+      {% if metrics.pass_rate >= 95 %}
+      <span class="badge badge-success badge-sm">{% trans "Excellent" %}</span>
+      {% elif metrics.pass_rate >= 80 %}
+      <span class="badge badge-info badge-sm">{% trans "Good" %}</span>
+      {% elif metrics.pass_rate >= 60 %}
+      <span class="badge badge-warning badge-sm">{% trans "Needs work" %}</span>
+      {% elif metrics.total_runs > 0 %}
+      <span class="badge badge-error badge-sm">{% trans "Poor" %}</span>
+      {% else %}
+      {% trans "No data" %}
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Total Runs Card -->
+  <div class="stat bg-base-200 rounded-lg p-4">
+    <div class="stat-title text-xs">{% trans "Total Check Runs" %}</div>
+    <div class="stat-value text-2xl font-mono">{{ metrics.total_runs }}</div>
+    <div class="stat-desc">{% trans "completed runs" %}</div>
+  </div>
+
+  <!-- Success Card -->
+  <div class="stat bg-base-200 rounded-lg p-4">
+    <div class="stat-title text-xs">{% trans "Successful" %}</div>
+    <div class="stat-value text-2xl font-mono text-success">{{ metrics.success_count }}</div>
+    <div class="stat-desc">{% trans "passed checks" %}</div>
+  </div>
+
+  <!-- Failures Card -->
+  <div class="stat bg-base-200 rounded-lg p-4">
+    <div class="stat-title text-xs">{% trans "Failed" %}</div>
+    <div class="stat-value text-2xl font-mono text-error">{{ metrics.failure_count }}</div>
+    <div class="stat-desc">{% trans "failed checks" %}</div>
+  </div>
+</div>
+
+{% if metrics.top_failing_checks %}
+<div class="mt-4">
+  <h4 class="text-sm font-medium text-base-content/80 mb-2">{% trans "Top Failing Checks" %}</h4>
+  <div class="overflow-x-auto">
+    <table class="table table-sm">
+      <thead>
+        <tr>
+          <th>{% trans "Check Name" %}</th>
+          <th class="text-right">{% trans "Failures" %}</th>
+          <th class="text-right">{% trans "Total" %}</th>
+          <th class="text-right">{% trans "Failure Rate" %}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for check in metrics.top_failing_checks %}
+        <tr>
+          <td class="font-mono text-sm">{{ check.name }}</td>
+          <td class="text-right text-error">{{ check.failures }}</td>
+          <td class="text-right">{{ check.total }}</td>
+          <td class="text-right">
+            <span class="badge badge-error badge-sm">{{ check.failure_rate }}%</span>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}

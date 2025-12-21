@@ -1,0 +1,77 @@
+{% load i18n %}
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+  <!-- Deployments Per Week -->
+  <div class="stat bg-base-200 rounded-lg p-4">
+    <div class="stat-title text-xs">{% trans "Deployments/Week" %}</div>
+    <div class="stat-value text-2xl font-mono">
+      {% if metrics.total_deployments > 0 %}
+        {{ metrics.deployments_per_week|floatformat:1 }}
+      {% else %}
+        —
+      {% endif %}
+    </div>
+    <div class="stat-desc">
+      {% if metrics.deployments_per_week >= 5 %}
+      <span class="badge badge-success badge-sm">{% trans "High frequency" %}</span>
+      {% elif metrics.deployments_per_week >= 1 %}
+      <span class="badge badge-info badge-sm">{% trans "Normal" %}</span>
+      {% elif metrics.total_deployments > 0 %}
+      <span class="badge badge-warning badge-sm">{% trans "Low frequency" %}</span>
+      {% else %}
+      {% trans "No data" %}
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Total Deployments -->
+  <div class="stat bg-base-200 rounded-lg p-4">
+    <div class="stat-title text-xs">{% trans "Total Deployments" %}</div>
+    <div class="stat-value text-2xl font-mono">{{ metrics.total_deployments }}</div>
+    <div class="stat-desc">{% trans "in period" %}</div>
+  </div>
+
+  <!-- Production Deployments -->
+  <div class="stat bg-base-200 rounded-lg p-4">
+    <div class="stat-title text-xs">{% trans "Production" %}</div>
+    <div class="stat-value text-2xl font-mono text-primary">{{ metrics.production_deployments }}</div>
+    <div class="stat-desc">{% trans "prod deployments" %}</div>
+  </div>
+
+  <!-- Success Rate -->
+  <div class="stat bg-base-200 rounded-lg p-4">
+    <div class="stat-title text-xs">{% trans "Success Rate" %}</div>
+    <div class="stat-value text-2xl font-mono">
+      {% if metrics.total_deployments > 0 %}
+        {{ metrics.success_rate|floatformat:1 }}%
+      {% else %}
+        —
+      {% endif %}
+    </div>
+    <div class="stat-desc">
+      {% if metrics.success_rate >= 95 %}
+      <span class="badge badge-success badge-sm">{% trans "Excellent" %}</span>
+      {% elif metrics.success_rate >= 80 %}
+      <span class="badge badge-info badge-sm">{% trans "Good" %}</span>
+      {% elif metrics.total_deployments > 0 %}
+      <span class="badge badge-warning badge-sm">{% trans "Needs work" %}</span>
+      {% else %}
+      {% trans "No data" %}
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+{% if metrics.by_environment %}
+<div class="mt-4">
+  <h4 class="text-sm font-medium text-base-content/80 mb-2">{% trans "By Environment" %}</h4>
+  <div class="flex flex-wrap gap-4">
+    {% for env in metrics.by_environment %}
+    <div class="badge badge-lg gap-2 p-3">
+      <span class="font-medium capitalize">{{ env.environment }}</span>
+      <span class="font-mono">{{ env.total }}</span>
+      <span class="text-xs text-base-content/70">({{ env.success_rate }}% success)</span>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}

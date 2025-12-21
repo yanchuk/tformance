@@ -33,6 +33,10 @@ team_urlpatterns = (
         path("tables/reviewer-workload/", views.reviewer_workload_table, name="table_reviewer_workload"),
         path("tables/copilot-members/", views.copilot_members_table, name="table_copilot_members"),
         path("tables/reviewer-correlations/", views.reviewer_correlations_table, name="table_reviewer_correlations"),
+        # New metrics sections
+        path("cards/cicd-pass-rate/", views.cicd_pass_rate_card, name="cards_cicd_pass_rate"),
+        path("cards/deployments/", views.deployment_metrics_card, name="cards_deployments"),
+        path("cards/file-categories/", views.file_category_card, name="cards_file_categories"),
     ],
     "metrics",
 )

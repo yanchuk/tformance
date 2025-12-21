@@ -279,3 +279,54 @@ def reviewer_correlations_table(request: HttpRequest) -> HttpResponse:
             "rows": rows,
         },
     )
+
+
+@login_and_team_required
+def cicd_pass_rate_card(request: HttpRequest) -> HttpResponse:
+    """CI/CD pass rate metrics card (all members).
+
+    Shows overall CI/CD health including pass rate and top failing checks.
+    """
+    start_date, end_date = get_date_range_from_request(request)
+    metrics = dashboard_service.get_cicd_pass_rate(request.team, start_date, end_date)
+    return TemplateResponse(
+        request,
+        "metrics/partials/cicd_pass_rate_card.html",
+        {
+            "metrics": metrics,
+        },
+    )
+
+
+@login_and_team_required
+def deployment_metrics_card(request: HttpRequest) -> HttpResponse:
+    """Deployment metrics card (all members).
+
+    Shows DORA-style deployment frequency and success metrics.
+    """
+    start_date, end_date = get_date_range_from_request(request)
+    metrics = dashboard_service.get_deployment_metrics(request.team, start_date, end_date)
+    return TemplateResponse(
+        request,
+        "metrics/partials/deployment_metrics_card.html",
+        {
+            "metrics": metrics,
+        },
+    )
+
+
+@login_and_team_required
+def file_category_card(request: HttpRequest) -> HttpResponse:
+    """File category breakdown card (all members).
+
+    Shows distribution of file changes by category (frontend, backend, etc).
+    """
+    start_date, end_date = get_date_range_from_request(request)
+    metrics = dashboard_service.get_file_category_breakdown(request.team, start_date, end_date)
+    return TemplateResponse(
+        request,
+        "metrics/partials/file_category_card.html",
+        {
+            "metrics": metrics,
+        },
+    )
