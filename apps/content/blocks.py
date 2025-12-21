@@ -1,11 +1,8 @@
-import bleach
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 from wagtail.blocks import TextBlock
 
-# Safe HTML tags and attributes for caption content
-ALLOWED_TAGS = ["a", "b", "i", "em", "strong", "br", "span"]
-ALLOWED_ATTRIBUTES = {"a": ["href", "title", "target", "rel"]}
+from apps.utils.sanitization import sanitize_html
 
 
 class CaptionBlock(TextBlock):
@@ -18,13 +15,7 @@ class CaptionBlock(TextBlock):
 
     def render_basic(self, value, context=None):
         if value:
-            # Sanitize HTML to prevent XSS while allowing safe tags
-            sanitized = bleach.clean(
-                value,
-                tags=ALLOWED_TAGS,
-                attributes=ALLOWED_ATTRIBUTES,
-                strip=True,
-            )
+            sanitized = sanitize_html(value)
             return format_html("<figcaption>{0}</figcaption>", mark_safe(sanitized))
         else:
             return ""
