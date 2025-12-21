@@ -1,6 +1,6 @@
 # Demo Data Seeding - Context
 
-**Last Updated:** 2025-12-20
+**Last Updated:** 2025-12-21
 
 ## Overview
 
@@ -251,3 +251,40 @@ python manage.py seed_demo_data --teams 2 --members 10 --prs 100
 - The `dashboard_url` property on Team model returns same URL for all teams
 - This is a pre-existing bug, not related to seeding work
 - Workaround: Manually update session team ID via Django shell
+
+### Session 2025-12-21 (PR Iteration Metrics Support)
+
+**Added support for new dashboard sections requiring seed data:**
+
+**Files Modified:**
+- `apps/metrics/factories.py` - Fixed PRFileFactory (removed class-level constants causing model errors)
+- `apps/metrics/seeding/data_generator.py` - Added new methods and stats tracking
+
+**New Methods in ScenarioDataGenerator:**
+- `_create_pr_files(team, pr, files_count)` - Creates 2-8 PRFile records per PR with category-based file patterns (backend 35%, frontend 25%, tests 20%, config 10%, docs 10%)
+- `_create_check_runs(team, pr, checks_count, pr_created_at)` - Creates 2-6 PRCheckRun records per PR with realistic CI check names (pytest, eslint, build, type-check, etc.) and 80% success rate
+- `_create_deployments(team, week_start, week_end, merged_prs)` - Creates 1-3 Deployment records per week with environment distribution (production 50%, staging 35%, development 15%)
+
+**GeneratorStats Updated:**
+- Added `pr_files_created: int = 0`
+- Added `check_runs_created: int = 0`
+- Added `deployments_created: int = 0`
+
+**Imports Added:**
+- `DeploymentFactory`, `PRCheckRunFactory`, `PRFileFactory` added to data_generator.py
+
+**Bug Fixes:**
+- Fixed PRFileFactory: Removed class-level constants (FRONTEND_FILES, BACKEND_FILES, etc.) that were being interpreted as factory fields
+- Fixed PRCheckRun field names: Changed `check_run_started_at` → `started_at`, `check_run_completed_at` → `completed_at`
+- Fixed PRFile unique constraint violation: Used index-based filenames to ensure uniqueness per PR
+
+**Unit Tests Added (18 new tests):**
+- `TestGetCicdPassRate` - 6 tests for CI/CD pass rate calculations
+- `TestGetDeploymentMetrics` - 6 tests for DORA-style deployment metrics
+- `TestGetFileCategoryBreakdown` - 6 tests for file change category analysis
+
+**Test Results:** 1620 tests passing (18 new tests added)
+
+**Commits:**
+- `472ac7a` - Add seed data generation for PRFile, PRCheckRun, and Deployment
+- `9874e96` - Complete security-audit and ui-review tasks

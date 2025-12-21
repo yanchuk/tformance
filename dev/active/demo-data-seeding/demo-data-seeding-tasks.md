@@ -1,6 +1,6 @@
 # Demo Data Seeding - Tasks
 
-**Last Updated:** 2025-12-20
+**Last Updated:** 2025-12-21
 
 ## Progress Summary
 
@@ -308,3 +308,31 @@ Files modified:
 ```bash
 .venv/bin/python manage.py test apps.metrics.tests.test_seeding --keepdb
 ```
+
+### Session 2025-12-21 (PR Iteration Metrics Support)
+
+**Added seeding for new dashboard models:**
+
+Files modified:
+- `apps/metrics/factories.py` - Fixed PRFileFactory
+- `apps/metrics/seeding/data_generator.py` - Added new methods
+- `apps/metrics/tests/test_dashboard_service.py` - Added 18 unit tests
+
+**New seeding methods:**
+- `_create_pr_files()` - 2-8 files per PR with category distribution
+- `_create_check_runs()` - 2-6 CI checks per PR with 80% pass rate
+- `_create_deployments()` - 1-3 deployments per week
+
+**GeneratorStats updated:**
+- `pr_files_created`, `check_runs_created`, `deployments_created`
+
+**Bug fixes:**
+- PRFileFactory class-level constants removed (caused model errors)
+- PRCheckRun field names corrected (started_at, completed_at)
+- PRFile unique constraint handled with index-based filenames
+
+**Commits:**
+- `472ac7a` - Add seed data generation for PRFile, PRCheckRun, and Deployment
+- `9874e96` - Complete security-audit and ui-review tasks
+
+**Total tests: 1620** (all passing)
