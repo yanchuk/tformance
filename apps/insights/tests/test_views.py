@@ -197,6 +197,88 @@ class TestSuggestedQuestionsView(InsightsViewTestCase):
         self.assertGreater(len(data["questions"]), 0)
 
 
+class TestHtmxResponses(InsightsViewTestCase):
+    """Tests for HTMX HTML partial responses."""
+
+    @patch("apps.insights.views.summarize_daily_insights")
+    def test_summary_returns_html_for_htmx(self, mock_summarize):
+        """Test summary returns HTML partial for HTMX requests."""
+        mock_summarize.return_value = "The team is doing great!"
+
+        response = self.client.get(
+            self.get_summary_url(),
+            HTTP_HX_REQUEST="true",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "The team is doing great!")
+        self.assertNotIn(b'"summary"', response.content)
+
+    @patch("apps.insights.views.summarize_daily_insights")
+    def test_summary_error_returns_html_for_htmx(self, mock_summarize):
+        """Test summary error returns HTML for HTMX requests."""
+        mock_summarize.side_effect = Exception("API Error")
+
+        response = self.client.get(
+            self.get_summary_url(),
+            HTTP_HX_REQUEST="true",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Failed to generate summary")
+
+    @patch("apps.insights.views.answer_question")
+    def test_ask_returns_html_for_htmx(self, mock_answer):
+        """Test ask returns HTML partial for HTMX requests."""
+        mock_answer.return_value = "The team merged 50 PRs."
+
+        response = self.client.post(
+            self.get_ask_url(),
+            data={"question": "How many PRs this month?"},
+            HTTP_HX_REQUEST="true",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "The team merged 50 PRs.")
+        self.assertNotIn(b'"answer"', response.content)
+
+    @patch("apps.insights.views.answer_question")
+    def test_ask_error_returns_html_for_htmx(self, mock_answer):
+        """Test ask error returns HTML for HTMX requests."""
+        mock_answer.side_effect = Exception("API Error")
+
+        response = self.client.post(
+            self.get_ask_url(),
+            data={"question": "How is the team?"},
+            HTTP_HX_REQUEST="true",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Failed to answer question")
+
+    def test_ask_validation_error_returns_html_for_htmx(self):
+        """Test ask validation error returns HTML for HTMX requests."""
+        response = self.client.post(
+            self.get_ask_url(),
+            data={"question": ""},
+            HTTP_HX_REQUEST="true",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Question is required")
+
+    def test_suggested_returns_html_for_htmx(self):
+        """Test suggested questions returns HTML for HTMX requests."""
+        response = self.client.get(
+            self.get_suggested_url(),
+            HTTP_HX_REQUEST="true",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "How is the team doing")
+        self.assertNotIn(b'"questions"', response.content)
+
+
 class TestTeamIsolation(InsightsViewTestCase):
     """Tests for team data isolation."""
 

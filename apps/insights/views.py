@@ -2,12 +2,14 @@
 Views for the insights API.
 
 Provides endpoints for LLM-powered insight summaries and Q&A.
+Supports both JSON API responses and HTMX HTML partials.
 """
 
 import json
 import logging
 
 from django.http import JsonResponse
+from django.shortcuts import render
 from django.views.decorators.http import require_GET, require_POST
 from django_ratelimit.decorators import ratelimit
 
@@ -16,6 +18,11 @@ from apps.insights.services.summarizer import summarize_daily_insights
 from apps.teams.decorators import login_and_team_required
 
 logger = logging.getLogger(__name__)
+
+
+def _is_htmx(request):
+    """Check if request is from HTMX."""
+    return request.headers.get("HX-Request") == "true"
 
 
 @login_and_team_required
@@ -31,7 +38,7 @@ def get_summary(request):
         request: The HTTP request.
 
     Returns:
-        JsonResponse with the summary text.
+        HTML partial for HTMX or JsonResponse for API.
     """
     skip_cache = request.GET.get("refresh") == "true"
 
@@ -40,13 +47,23 @@ def get_summary(request):
             team=request.team,
             skip_cache=skip_cache,
         )
+        if _is_htmx(request):
+            return render(
+                request,
+                "insights/partials/summary_response.html",
+                {"summary": summary},
+            )
         return JsonResponse({"summary": summary})
     except Exception as e:
         logger.error(f"Error getting summary: {e}")
-        return JsonResponse(
-            {"error": "Failed to generate summary. Please try again later."},
-            status=500,
-        )
+        error = "Failed to generate summary. Please try again later."
+        if _is_htmx(request):
+            return render(
+                request,
+                "insights/partials/summary_response.html",
+                {"error": error},
+            )
+        return JsonResponse({"error": error}, status=500)
 
 
 @login_and_team_required
@@ -59,25 +76,40 @@ def ask_question(request):
     team metrics and performance.
 
     Args:
-        request: The HTTP request with JSON body containing "question".
+        request: The HTTP request with form data or JSON body containing "question".
 
     Returns:
-        JsonResponse with the answer text.
+        HTML partial for HTMX or JsonResponse for API.
     """
-    try:
-        data = json.loads(request.body)
-        question = data.get("question", "").strip()
-    except (json.JSONDecodeError, AttributeError):
-        return JsonResponse({"error": "Invalid request body"}, status=400)
+    # Support both form data (HTMX) and JSON (API)
+    if _is_htmx(request):
+        question = request.POST.get("question", "").strip()
+    else:
+        try:
+            data = json.loads(request.body)
+            question = data.get("question", "").strip()
+        except (json.JSONDecodeError, AttributeError):
+            return JsonResponse({"error": "Invalid request body"}, status=400)
 
     if not question:
-        return JsonResponse({"error": "Question is required"}, status=400)
+        error = "Question is required"
+        if _is_htmx(request):
+            return render(
+                request,
+                "insights/partials/answer_response.html",
+                {"error": error},
+            )
+        return JsonResponse({"error": error}, status=400)
 
     if len(question) > 500:
-        return JsonResponse(
-            {"error": "Question is too long (max 500 characters)"},
-            status=400,
-        )
+        error = "Question is too long (max 500 characters)"
+        if _is_htmx(request):
+            return render(
+                request,
+                "insights/partials/answer_response.html",
+                {"error": error},
+            )
+        return JsonResponse({"error": error}, status=400)
 
     try:
         answer = answer_question(
@@ -85,13 +117,23 @@ def ask_question(request):
             question=question,
             user_id=str(request.user.id),
         )
+        if _is_htmx(request):
+            return render(
+                request,
+                "insights/partials/answer_response.html",
+                {"answer": answer},
+            )
         return JsonResponse({"answer": answer})
     except Exception as e:
         logger.error(f"Error answering question: {e}")
-        return JsonResponse(
-            {"error": "Failed to answer question. Please try again later."},
-            status=500,
-        )
+        error = "Failed to answer question. Please try again later."
+        if _is_htmx(request):
+            return render(
+                request,
+                "insights/partials/answer_response.html",
+                {"error": error},
+            )
+        return JsonResponse({"error": error}, status=500)
 
 
 @login_and_team_required
@@ -105,6 +147,13 @@ def suggested_questions(request):
         request: The HTTP request.
 
     Returns:
-        JsonResponse with a list of suggested questions.
+        HTML partial for HTMX or JsonResponse for API.
     """
-    return JsonResponse({"questions": get_suggested_questions()})
+    questions = get_suggested_questions()
+    if _is_htmx(request):
+        return render(
+            request,
+            "insights/partials/suggested_response.html",
+            {"questions": questions},
+        )
+    return JsonResponse({"questions": questions})

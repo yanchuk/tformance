@@ -1,0 +1,56 @@
+{% comment %}
+AI Q&A Form - Ask questions about team metrics.
+Uses HTMX to submit questions and display answers.
+{% endcomment %}
+{% load i18n %}
+
+<div id="ai-qa-card" class="card bg-base-100 shadow-md mb-6">
+  <div class="card-body">
+    <div class="flex items-center gap-2 mb-3">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+      </svg>
+      <h2 class="card-title text-base">{% trans "Ask About Your Metrics" %}</h2>
+    </div>
+
+    <!-- Question Form -->
+    <form id="qa-form"
+          hx-post="{% url 'insights:ask' %}"
+          hx-target="#qa-response"
+          hx-swap="innerHTML"
+          hx-indicator="#qa-loading"
+          class="mb-4">
+      {% csrf_token %}
+      <div class="flex gap-2">
+        <input type="text"
+               name="question"
+               id="qa-input"
+               class="input input-bordered flex-1"
+               placeholder="{% trans 'e.g., How is the team doing this month?' %}"
+               maxlength="500"
+               autocomplete="off"
+               required>
+        <button type="submit" class="btn btn-primary">
+          <span id="qa-loading" class="loading loading-spinner loading-sm htmx-indicator"></span>
+          <span class="htmx-hide-on-request">{% trans "Ask" %}</span>
+        </button>
+      </div>
+    </form>
+
+    <!-- Suggested Questions -->
+    <div id="suggested-questions"
+         hx-get="{% url 'insights:suggested' %}"
+         hx-trigger="load"
+         hx-swap="innerHTML">
+      <div class="flex flex-wrap gap-2">
+        <span class="text-sm text-base-content/60">{% trans "Try asking:" %}</span>
+        <span class="skeleton h-6 w-32"></span>
+        <span class="skeleton h-6 w-40"></span>
+        <span class="skeleton h-6 w-28"></span>
+      </div>
+    </div>
+
+    <!-- Response Area -->
+    <div id="qa-response" class="mt-4"></div>
+  </div>
+</div>

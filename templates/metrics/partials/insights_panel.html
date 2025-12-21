@@ -1,12 +1,20 @@
 {% comment %}
-Insights Panel - Displays recent insights with dismiss functionality.
+Insights Panel - Displays AI summary, Q&A, and recent insights.
 Required context:
-  - insights: List of DailyInsight objects
+  - insights: List of DailyInsight objects (optional)
 {% endcomment %}
+{% load i18n %}
 
+<!-- AI Summary Card -->
+{% include "insights/partials/ai_summary.html" %}
+
+<!-- AI Q&A Form -->
+{% include "insights/partials/ask_form.html" %}
+
+<!-- Recent Insights (rule-based) -->
 {% if insights %}
 <div class="mb-6">
-  <h2 class="text-lg font-semibold mb-3">Recent Insights</h2>
+  <h2 class="text-lg font-semibold mb-3">{% trans "Recent Insights" %}</h2>
   {% for insight in insights %}
   <div class="alert shadow-md mb-3 {% if insight.priority == 'high' %}alert-warning{% elif insight.priority == 'medium' %}alert-info{% else %}alert-success{% endif %}">
     <div class="flex-1">
