@@ -648,6 +648,23 @@ if SENTRY_DSN:
 
     sentry_sdk.init(dsn=SENTRY_DSN, integrations=[DjangoIntegration()])
 
+
+# PostHog Analytics
+# Used for product analytics, feature flags, and LLM observability
+POSTHOG_API_KEY = env("POSTHOG_API_KEY", default="")
+POSTHOG_HOST = env("POSTHOG_HOST", default="https://us.i.posthog.com")
+
+if POSTHOG_API_KEY:
+    import posthog
+
+    posthog.project_api_key = POSTHOG_API_KEY
+    posthog.host = POSTHOG_HOST
+
+
+# Google Gemini AI
+# Used for LLM-powered insights in Phase 2
+GOOGLE_AI_API_KEY = env("GOOGLE_AI_API_KEY", default="")
+
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,

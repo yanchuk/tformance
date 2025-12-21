@@ -72,6 +72,8 @@ dependencies = [
     "urllib3>=2.6.0",
     "bleach>=6.3.0",
     "filelock>=3.20.1",
+    "posthog>=7.4.0",
+    "google-genai>=1.56.0",
 ]
 
 [dependency-groups]
