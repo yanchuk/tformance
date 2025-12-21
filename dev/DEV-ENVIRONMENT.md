@@ -122,9 +122,52 @@ python manage.py seed_demo_data --clear
 python manage.py seed_demo_data --team-slug my-team
 ```
 
+### Real Project Seeding
+
+Seed demo data from real open source GitHub projects (PostHog, Polar, FastAPI):
+
+```bash
+# List available projects
+python manage.py seed_real_projects --list-projects
+
+# Seed a specific project
+python manage.py seed_real_projects --project posthog
+
+# Seed all projects
+python manage.py seed_real_projects --project all
+
+# Clear and reseed
+python manage.py seed_real_projects --project polar --clear
+
+# Custom options
+python manage.py seed_real_projects --project posthog --max-prs 200 --days-back 60
+
+# Use specific seed for reproducibility
+python manage.py seed_real_projects --project posthog --seed 42
+```
+
+**Requires GitHub PAT**: Set `GITHUB_SEEDING_TOKEN` environment variable.
+Create token at https://github.com/settings/tokens with `public_repo` scope.
+
+**Available Projects:**
+
+| Project | Repository | Team Slug | Max PRs | Max Members |
+|---------|------------|-----------|---------|-------------|
+| `posthog` | posthog/posthog | posthog-demo | 500 | 15 |
+| `polar` | polarsource/polar | polar-demo | 300 | 10 |
+| `fastapi` | tiangolo/fastapi | fastapi-demo | 300 | 12 |
+
+**Features:**
+- Fetches real GitHub data: PRs, commits, reviews, files, check runs
+- Parallel fetching for performance (ThreadPoolExecutor)
+- Simulates Jira issues from PR metadata (extracts keys or generates)
+- Simulates surveys with AI-assisted probability based on PR size
+- Generates AI usage records per team member
+- Calculates WeeklyMetrics aggregates
+
 ### Generated Data
 
-Both modes create:
+All seeding modes create:
 - Team members with GitHub/Jira/Slack identities
 - Pull requests with realistic cycle times
 - PR reviews (1-3 per PR)

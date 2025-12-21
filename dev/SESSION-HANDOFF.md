@@ -1,35 +1,77 @@
-# Session Handoff - 2025-12-21
+# Session Handoff - 2025-12-21 (Session 2)
 
-## Session Summary
+## Current Session Summary
 
 ### Completed This Session
 
-1. **Phase 11: AI Agent Feedback System** - ✅ COMPLETE
-   - Created `apps/feedback/` app with models, views, templates
-   - Integrated feedback button in PR detail view
-   - Added CTO dashboard summary card
-   - Created 16 E2E tests for feedback feature
-   - **Committed:** `cc340f9`
-
-2. **MVP E2E Testing Task** - ✅ COMPLETE
-   - Achieved 234 E2E tests (exceeded 200+ goal)
-   - All test suites: auth, dashboard, integrations, metrics, feedback, teams, insights
-   - **Committed:** `d5b2be3`
-
-3. **Dev Docs Cleanup** - ✅ COMPLETE
-   - Moved 10 completed tasks from `dev/active/` to `dev/completed/`
-   - Tasks moved: ai-feedback, ai-recommendations, copilot-integration, insights-llm-mvp, insights-rule-based, insights-ui, mvp-e2e-testing, oauth-only-auth, security-audit, ui-review
-   - **Committed:** `39b5e3d`
+1. **Real Project Seeding - BUG FIXES & TESTING** - ✅ COMPLETE
+   - Fixed 8 bugs using TDD approach
+   - Created 6 unit tests
+   - All tests passing
+   - End-to-end seeding verified working
+   - Created progress tracking script with resume capability
 
 ---
 
-## Test Coverage
+## Bugs Fixed
 
+| Bug | Fix | File |
+|-----|-----|------|
+| `FetchedFile.changes` | Compute from additions+deletions | `real_project_seeder.py` |
+| `FetchedCheckRun.github_id` missing | Added to dataclass | `github_authenticated_fetcher.py` |
+| `FetchedCheckRun.duration_seconds` | Compute from timestamps | `real_project_seeder.py` |
+| `timezone.utc` not in Django | Changed to `datetime.UTC` | `jira_simulator.py` |
+| JiraIssue field mismatches | `issue_key`→`jira_key`, etc. | `jira_simulator.py` |
+| `DeterministicRandom.random()` | Added method | `deterministic.py` |
+| `TeamMember.pr_reviews` | Changed to `reviews_given` | `real_project_seeder.py` |
+| `WeeklyMetrics.lines_deleted` | Changed to `lines_removed` | `real_project_seeding.py` |
+
+---
+
+## New Files Created
+
+| File | Purpose |
+|------|---------|
+| `apps/metrics/tests/test_real_project_seeding.py` | TDD tests (6 tests) |
+| `scripts/seed_with_progress.py` | Progress script with resume |
+
+---
+
+## Commands to Run
+
+### Run Seeding with Progress (in separate terminal)
+
+```bash
+# Seed all 3 projects with progress display
+python scripts/seed_with_progress.py --clear
+
+# Or seed specific project
+python scripts/seed_with_progress.py --project posthog --max-prs 100 --clear
 ```
-Unit tests:           1826 tests ✅
-E2E tests:             234 tests ✅
-─────────────────────────────────
-Total:                2060 tests
+
+### Verify Tests Pass
+
+```bash
+.venv/bin/python manage.py test apps.metrics.tests.test_real_project_seeding --keepdb
+```
+
+### Commit Changes
+
+```bash
+git add apps/metrics/seeding/
+git add apps/metrics/management/commands/seed_real_projects.py
+git add apps/metrics/tests/test_real_project_seeding.py
+git add scripts/seed_with_progress.py
+git add dev/
+git add .env.example
+
+git commit -m "Add real project seeding with TDD tests
+
+- Fetch real PRs from PostHog, Polar, FastAPI repos
+- Simulate Jira issues, surveys, AI usage
+- 6 TDD tests for dataclass field mappings
+- Progress script with resume capability
+- Fixed 8 bugs found during testing"
 ```
 
 ---
@@ -38,97 +80,17 @@ Total:                2060 tests
 
 | Task | Status | Notes |
 |------|--------|-------|
-| dashboard-ux-improvements | 🔶 PARTIAL | Bug fix done, UX work remaining |
-| github-surveys-phase2 | NOT STARTED | Future enhancement |
-| insights-mcp-exploration | RESEARCH | Phase 3 research |
-| skip-responded-reviewers | NOT STARTED | Future enhancement |
-
-**Moved to completed this session:** fix-code-style, mvp-review
-
----
-
-## Recent Commits
-
-```
-39b5e3d Move 10 completed tasks from active to completed
-d5b2be3 Mark MVP E2E testing task complete (234 tests)
-cc340f9 Add AI Feedback System (Phase 11)
-91ec725 Add E2E tests for AI insights UI
-a09aa63 Update insights LLM MVP docs - Phase 2 complete
-b23c767 Add LLM insights dashboard UI with HTMX integration
-e491a5e Add insights API views with rate limiting and team isolation
-0e19ec9 Add question answering service with Gemini function calling
-```
+| real-project-seeding | ✅ COMPLETE | Ready to commit |
+| dashboard-ux-improvements | 🔶 PARTIAL | Bug fix done |
+| github-surveys-phase2 | NOT STARTED | Future |
+| insights-mcp-exploration | RESEARCH | Phase 3 |
+| skip-responded-reviewers | NOT STARTED | Future |
 
 ---
 
-## Commands to Run After Context Reset
+## Environment
 
-```bash
-# Verify all tests pass
-make test ARGS='--keepdb'
-
-# Run E2E tests
-npx playwright test
-
-# Check linting
-make ruff
-
-# Apply any pending migrations
-make migrate
-
-# Start dev server
-make dev
-```
-
----
-
-## Key Files Reference
-
-### AI Feedback System (Phase 11)
-| File | Purpose |
-|------|---------|
-| `apps/feedback/models.py` | AIFeedback model |
-| `apps/feedback/views.py` | List, create, detail, CTO summary views |
-| `templates/feedback/` | Dashboard and modal templates |
-| `tests/e2e/feedback.spec.ts` | 16 E2E tests |
-
-### AI Insights System (Phases 1-2)
-| File | Purpose |
-|------|---------|
-| `apps/metrics/insights/` | Rule engine and rules |
-| `apps/insights/services/` | Gemini client, summarizer, Q&A |
-| `templates/insights/` | Dashboard UI with HTMX |
-
----
-
-## Environment Variables
-
-```bash
-# PostHog Analytics (optional)
-POSTHOG_API_KEY=""
-POSTHOG_HOST="https://us.i.posthog.com"
-
-# Google Gemini AI (for LLM insights)
-GOOGLE_AI_API_KEY=""
-```
-
-Get Gemini API key from: https://aistudio.google.com/apikey
-
----
-
-## Next Session Priorities
-
-1. **Complete fix-code-style** - Remaining 8 files need ruff fixes
-2. **Review mvp-review checklist** - Ensure all MVP items are done
-3. **Dashboard UX improvements** - Continue partial work
-
----
-
-## Notes
-
-- All 1826 unit tests passing
-- All 234 E2E tests passing
-- Linting clean (ruff)
-- No uncommitted changes
-- Branch: main
+- **Branch**: main
+- **No migrations needed**
+- **GitHub PAT configured in `.env`**
+- **All tests passing**

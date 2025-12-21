@@ -72,6 +72,14 @@ class DeterministicRandom:
         """
         return self.rng.sample(list(seq), k)
 
+    def random(self) -> float:
+        """Return a random float in the range [0.0, 1.0).
+
+        Returns:
+            A random float from 0.0 (inclusive) to 1.0 (exclusive).
+        """
+        return self.rng.random()
+
     def randint(self, a: int, b: int) -> int:
         """Return a random integer N such that a <= N <= b.
 
