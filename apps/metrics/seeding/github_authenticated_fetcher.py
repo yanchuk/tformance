@@ -195,11 +195,13 @@ class GitHubAuthenticatedFetcher:
 
     JIRA_KEY_PATTERN = re.compile(r"[A-Z][A-Z0-9]+-\d+")
 
-    def __init__(self, token: str | None = None):
+    def __init__(self, token: str | None = None, progress_callback: Any | None = None):
         """Initialize the fetcher with authenticated client.
 
         Args:
             token: GitHub PAT. If None, reads from GITHUB_SEEDING_TOKEN env var.
+            progress_callback: Optional callback for progress updates.
+                             Called as callback(step, current, total, message).
 
         Raises:
             ValueError: If no token is provided or found in environment.
@@ -214,9 +216,15 @@ class GitHubAuthenticatedFetcher:
         self._client = Github(self.token)
         self._cache: dict[str, Any] = {}
         self.api_calls_made = 0
+        self.progress_callback = progress_callback
 
         # Log rate limit status
         self._log_rate_limit()
+
+    def _report_progress(self, step: str, current: int, total: int, message: str):
+        """Report progress via callback if available."""
+        if self.progress_callback:
+            self.progress_callback(step, current, total, message)
 
     def _log_rate_limit(self):
         """Log current rate limit status."""
@@ -425,6 +433,7 @@ class GitHubAuthenticatedFetcher:
         """
         fetched_prs: list[FetchedPRFull] = []
         total = len(pr_objects)
+        total_batches = (total + BATCH_SIZE - 1) // BATCH_SIZE
 
         logger.info(
             "Fetching %d PRs in parallel (workers: %d, batch size: %d)",
@@ -433,12 +442,13 @@ class GitHubAuthenticatedFetcher:
             BATCH_SIZE,
         )
 
+        self._report_progress("fetch", 0, total, f"Starting to fetch {total} PRs...")
+
         # Process in batches to avoid overwhelming GitHub
         for batch_start in range(0, total, BATCH_SIZE):
             batch_end = min(batch_start + BATCH_SIZE, total)
             batch = pr_objects[batch_start:batch_end]
             batch_num = batch_start // BATCH_SIZE + 1
-            total_batches = (total + BATCH_SIZE - 1) // BATCH_SIZE
 
             logger.info(
                 "Processing batch %d/%d (PRs %d-%d)",
@@ -448,9 +458,25 @@ class GitHubAuthenticatedFetcher:
                 batch_end,
             )
 
+            # Report progress before fetching batch
+            self._report_progress(
+                "fetch",
+                batch_start,
+                total,
+                f"Fetching PRs {batch_start + 1}-{batch_end} of {total}...",
+            )
+
             # Fetch batch with retry logic
             batch_results = self._fetch_batch_with_retry(batch, repo_name)
             fetched_prs.extend(batch_results)
+
+            # Report progress after fetching batch
+            self._report_progress(
+                "fetch",
+                batch_end,
+                total,
+                f"Fetched {batch_end}/{total} PRs ({len(fetched_prs)} successful)",
+            )
 
             # Delay between batches to avoid secondary rate limits
             if batch_end < total:

@@ -100,6 +100,26 @@ def print_progress(step, total, message, start_time=None):
         print(f"{progress} {message}")
 
 
+def create_progress_callback(start_time):
+    """Create a progress callback function for the seeder."""
+    last_fetch_progress = [0]  # Use list to allow mutation in closure
+
+    def callback(step: str, current: int, total: int, message: str):
+        elapsed = time.time() - start_time
+
+        if step == "fetch":
+            # Show fetch progress every 10 PRs or at key milestones
+            if current == 0 or current == total or current - last_fetch_progress[0] >= 10:
+                last_fetch_progress[0] = current
+                pct = (current / total * 100) if total > 0 else 0
+                print(f"   📥 {message} [{pct:.0f}%] ({format_duration(elapsed)})")
+        elif step == "seed":
+            # Show main seeding steps
+            print(f"   [{current}/{total}] {message} ({format_duration(elapsed)})")
+
+    return callback
+
+
 def seed_project_with_progress(project_name, options, checkpoint=None):
     """Seed a single project with detailed progress tracking.
 
@@ -153,14 +173,17 @@ def seed_project_with_progress(project_name, options, checkpoint=None):
     print("\n📊 Starting seeding process...")
     print("-" * 40)
 
-    # Step 1: Initialize seeder
+    # Step 1: Initialize seeder with progress callback
     step_start = time.time()
     print_progress(1, 6, "Initializing seeder...")
+
+    progress_callback = create_progress_callback(start_time)
 
     seeder = RealProjectSeeder(
         config=config,
         random_seed=options.seed,
         github_token=token,
+        progress_callback=progress_callback,
     )
 
     print_progress(1, 6, "Seeder initialized", step_start)
@@ -180,14 +203,13 @@ def seed_project_with_progress(project_name, options, checkpoint=None):
         }
     )
 
-    # Step 2-6: Run seeding
+    # Run seeding (progress is reported via callback)
     try:
-        step_start = time.time()
-        print_progress(2, 6, "Fetching data from GitHub...")
-
+        print("\n🚀 Running seeding pipeline...")
         stats = seeder.seed()
 
-        print_progress(6, 6, "Seeding complete!", start_time)
+        elapsed = time.time() - start_time
+        print(f"\n✅ Seeding complete! ({format_duration(elapsed)})")
 
     except Exception as e:
         # Save error checkpoint

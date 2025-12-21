@@ -17,6 +17,7 @@ import logging
 from dataclasses import dataclass, field
 from datetime import timedelta
 from decimal import Decimal
+from typing import Any
 
 from django.db import transaction
 from django.db.models import Avg, Sum
@@ -64,6 +65,11 @@ class RealProjectStats:
     github_api_calls: int = 0
 
 
+# Type for progress callback: (step_name, current, total, message)
+# Using Any to avoid typing complexity with Callable
+ProgressCallback = Any  # Callable[[str, int, int, str], None]
+
+
 @dataclass
 class RealProjectSeeder:
     """Seeds demo data from real GitHub projects.
@@ -80,11 +86,13 @@ class RealProjectSeeder:
         config: Project configuration.
         random_seed: Random seed for reproducibility.
         github_token: Optional GitHub PAT (uses env var if not provided).
+        progress_callback: Optional callback for progress updates.
     """
 
     config: RealProjectConfig
     random_seed: int = 42
     github_token: str | None = None
+    progress_callback: ProgressCallback | None = None
 
     # Internal state
     _rng: DeterministicRandom = field(init=False)
@@ -98,10 +106,18 @@ class RealProjectSeeder:
     def __post_init__(self):
         """Initialize internal components."""
         self._rng = DeterministicRandom(self.random_seed)
-        self._fetcher = GitHubAuthenticatedFetcher(self.github_token)
+        self._fetcher = GitHubAuthenticatedFetcher(
+            self.github_token,
+            progress_callback=self.progress_callback,
+        )
         self._jira_simulator = JiraIssueSimulator(self.config.jira_project_key, self._rng)
         self._survey_simulator = SurveyAISimulator(self.config, self._rng)
         self._stats = RealProjectStats(project_name=self.config.team_name)
+
+    def _report_progress(self, step: str, current: int, total: int, message: str):
+        """Report progress via callback if available."""
+        if self.progress_callback:
+            self.progress_callback(step, current, total, message)
 
     def seed(self, existing_team: Team | None = None) -> RealProjectStats:
         """Seed complete demo data for this project.
@@ -114,31 +130,43 @@ class RealProjectSeeder:
             Statistics from the seeding run.
         """
         logger.info(f"Starting seed for project: {self.config.team_name}")
+        total_steps = 7
 
         with transaction.atomic():
             # Step 1: Get or create team
+            self._report_progress("seed", 1, total_steps, "Creating team...")
             team = self._get_or_create_team(existing_team)
 
             # Step 2: Fetch contributors and create team members
+            self._report_progress("seed", 2, total_steps, "Fetching contributors...")
             contributors = self._fetch_contributors()
             self._create_team_members(team, contributors)
+            self._report_progress("seed", 2, total_steps, f"Created {len(contributors)} team members")
 
             # Step 3: Fetch PRs with all details
+            self._report_progress("seed", 3, total_steps, "Fetching PRs from GitHub...")
             prs_data = self._fetch_prs()
+            self._report_progress("seed", 3, total_steps, f"Fetched {len(prs_data)} PRs")
 
             # Step 4: Create PR records with related data
+            self._report_progress("seed", 4, total_steps, "Creating PR records...")
             prs = self._create_prs(team, prs_data)
+            self._report_progress("seed", 4, total_steps, f"Created {len(prs)} PRs with reviews/commits")
 
             # Step 5: Simulate Jira issues
+            self._report_progress("seed", 5, total_steps, "Simulating Jira issues...")
             self._simulate_jira_issues(team, prs, prs_data)
 
             # Step 6: Simulate surveys and AI usage
+            self._report_progress("seed", 6, total_steps, "Simulating surveys and AI usage...")
             self._simulate_surveys(team, prs, prs_data)
             self._generate_ai_usage(team)
 
             # Step 7: Calculate weekly metrics
+            self._report_progress("seed", 7, total_steps, "Calculating weekly metrics...")
             self._calculate_weekly_metrics(team)
 
+        self._report_progress("seed", total_steps, total_steps, "Complete!")
         logger.info(f"Completed seeding for {self.config.team_name}")
         self._log_stats()
 
