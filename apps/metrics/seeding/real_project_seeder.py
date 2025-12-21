@@ -402,12 +402,20 @@ class RealProjectSeeder:
     def _create_pr_commits(self, team: Team, pr: PullRequest, pr_data: FetchedPRFull):
         """Create commit records for a PR.
 
+        Skips commits that already exist (same SHA can appear in multiple PRs).
+
         Args:
             team: Team instance.
             pr: PullRequest instance.
             pr_data: Fetched PR data.
         """
+        from apps.metrics.models import Commit
+
         for commit_data in pr_data.commits:
+            # Skip if commit already exists (same SHA can appear in multiple PRs)
+            if Commit.objects.filter(team=team, github_sha=commit_data.sha).exists():
+                continue
+
             author = self._find_member(commit_data.author_login, None)
             if not author:
                 author = pr.author  # Default to PR author
@@ -454,12 +462,20 @@ class RealProjectSeeder:
     def _create_pr_check_runs(self, team: Team, pr: PullRequest, pr_data: FetchedPRFull):
         """Create check run records for a PR.
 
+        Skips check runs that already exist (same check run can appear in multiple PRs).
+
         Args:
             team: Team instance.
             pr: PullRequest instance.
             pr_data: Fetched PR data.
         """
+        from apps.metrics.models import PRCheckRun
+
         for check_data in pr_data.check_runs:
+            # Skip if check run already exists (same check can appear in multiple PRs)
+            if PRCheckRun.objects.filter(team=team, github_check_run_id=check_data.github_id).exists():
+                continue
+
             # Compute duration from timestamps if available
             duration_seconds = None
             if check_data.started_at and check_data.completed_at:
