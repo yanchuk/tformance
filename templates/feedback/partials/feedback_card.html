@@ -1,0 +1,38 @@
+{% load i18n %}
+<div class="card bg-base-200 hover:bg-base-300 transition-colors" id="feedback-{{ feedback.pk }}">
+  <div class="card-body p-4">
+    <div class="flex justify-between items-start">
+      <div class="flex-1">
+        <div class="flex items-center gap-2">
+          <span class="badge {% if feedback.status == 'open' %}badge-warning{% elif feedback.status == 'resolved' %}badge-success{% else %}badge-info{% endif %}">
+            {{ feedback.get_status_display }}
+          </span>
+          <span class="font-medium text-base-content">{{ feedback.get_category_display }}</span>
+        </div>
+        {% if feedback.description %}
+        <p class="mt-2 text-sm text-base-content/80 line-clamp-2">{{ feedback.description }}</p>
+        {% endif %}
+        <div class="mt-2 text-xs text-base-content/60">
+          <span>{{ feedback.created_at|date:"M d, Y" }}</span>
+          {% if feedback.reported_by %}
+          <span class="mx-1">•</span>
+          <span>{{ feedback.reported_by.display_name }}</span>
+          {% endif %}
+        </div>
+      </div>
+      <div class="flex gap-2">
+        {% if feedback.status != 'resolved' %}
+        <button class="btn btn-ghost btn-xs"
+                hx-post="{% url 'feedback:resolve' pk=feedback.pk %}"
+                hx-target="#feedback-{{ feedback.pk }}"
+                hx-swap="outerHTML">
+          {% trans "Resolve" %}
+        </button>
+        {% endif %}
+        <a href="{% url 'feedback:detail' pk=feedback.pk %}" class="btn btn-ghost btn-xs">
+          {% trans "View" %}
+        </a>
+      </div>
+    </div>
+  </div>
+</div>

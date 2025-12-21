@@ -1,0 +1,38 @@
+{% load i18n %}
+<div class="grid grid-cols-2 gap-4">
+  <div class="stat bg-base-300 rounded-lg p-4">
+    <div class="stat-title text-sm">{% trans "Open Issues" %}</div>
+    <div class="stat-value text-2xl text-warning">{{ open_count }}</div>
+  </div>
+  <div class="stat bg-base-300 rounded-lg p-4">
+    <div class="stat-title text-sm">{% trans "Resolved" %}</div>
+    <div class="stat-value text-2xl text-success">{{ resolved_count }}</div>
+  </div>
+</div>
+{% if recent_feedback %}
+<div class="mt-4 space-y-2">
+  <h4 class="text-sm font-semibold text-base-content/80">{% trans "Recent Issues" %}</h4>
+  {% for feedback in recent_feedback %}
+  <div class="flex items-center justify-between text-sm bg-base-300 rounded-lg px-3 py-2">
+    <span class="flex items-center gap-2">
+      <span class="badge badge-sm {% if feedback.status == 'open' %}badge-warning{% else %}badge-success{% endif %}">
+        {{ feedback.get_category_display|truncatechars:20 }}
+      </span>
+    </span>
+    <span class="text-base-content/60">{{ feedback.created_at|timesince }} {% trans "ago" %}</span>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="mt-4 text-center py-4 text-base-content/60">
+  <p>{% trans "No recent feedback" %}</p>
+</div>
+{% endif %}
+<div class="mt-4">
+  <a href="{% url 'feedback:dashboard' %}" class="btn btn-ghost btn-sm w-full">
+    {% trans "View All Feedback" %}
+    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+    </svg>
+  </a>
+</div>

@@ -1,0 +1,79 @@
+{% extends "web/app/app_base.html" %}
+{% load static %}
+{% load i18n %}
+
+{% block app %}
+<div class="space-y-6">
+  <!-- Header -->
+  <div class="flex justify-between items-center">
+    <h1 class="text-2xl font-bold text-base-content">{% trans "AI Feedback" %}</h1>
+    <button class="btn btn-primary"
+            hx-get="{% url 'feedback:create' %}"
+            hx-target="#feedback-modal"
+            hx-swap="innerHTML">
+      {% trans "Report Issue" %}
+    </button>
+  </div>
+
+  <!-- Stats Cards -->
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div class="stat bg-base-200 rounded-lg">
+      <div class="stat-title">{% trans "Total Feedback" %}</div>
+      <div class="stat-value text-base-content">{{ total_count }}</div>
+    </div>
+    <div class="stat bg-base-200 rounded-lg">
+      <div class="stat-title">{% trans "Open Issues" %}</div>
+      <div class="stat-value text-warning">{{ open_count }}</div>
+    </div>
+    <div class="stat bg-base-200 rounded-lg">
+      <div class="stat-title">{% trans "Resolved" %}</div>
+      <div class="stat-value text-success">{{ resolved_count }}</div>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="flex gap-4">
+    <select class="select select-bordered select-sm"
+            hx-get="{% url 'feedback:dashboard' %}"
+            hx-target="#feedback-list"
+            hx-include="[name='status']"
+            name="category">
+      <option value="">{% trans "All Categories" %}</option>
+      <option value="wrong_code" {% if selected_category == 'wrong_code' %}selected{% endif %}>{% trans "Generated wrong code" %}</option>
+      <option value="missed_context" {% if selected_category == 'missed_context' %}selected{% endif %}>{% trans "Missed project context" %}</option>
+      <option value="style_issue" {% if selected_category == 'style_issue' %}selected{% endif %}>{% trans "Style/formatting issue" %}</option>
+      <option value="missing_tests" {% if selected_category == 'missing_tests' %}selected{% endif %}>{% trans "Forgot tests" %}</option>
+      <option value="security" {% if selected_category == 'security' %}selected{% endif %}>{% trans "Security concern" %}</option>
+      <option value="performance" {% if selected_category == 'performance' %}selected{% endif %}>{% trans "Performance issue" %}</option>
+      <option value="other" {% if selected_category == 'other' %}selected{% endif %}>{% trans "Other" %}</option>
+    </select>
+    <select class="select select-bordered select-sm"
+            hx-get="{% url 'feedback:dashboard' %}"
+            hx-target="#feedback-list"
+            hx-include="[name='category']"
+            name="status">
+      <option value="">{% trans "All Statuses" %}</option>
+      <option value="open" {% if selected_status == 'open' %}selected{% endif %}>{% trans "Open" %}</option>
+      <option value="acknowledged" {% if selected_status == 'acknowledged' %}selected{% endif %}>{% trans "Acknowledged" %}</option>
+      <option value="resolved" {% if selected_status == 'resolved' %}selected{% endif %}>{% trans "Resolved" %}</option>
+    </select>
+  </div>
+
+  <!-- Feedback List -->
+  <div id="feedback-list" class="space-y-4">
+    {% if feedback_list %}
+      {% for feedback in feedback_list %}
+        {% include "feedback/partials/feedback_card.html" with feedback=feedback %}
+      {% endfor %}
+    {% else %}
+      <div class="text-center py-12 text-base-content/70">
+        <p class="text-lg">{% trans "No feedback yet" %}</p>
+        <p class="text-sm mt-2">{% trans "Report issues when AI-generated code doesn't meet expectations." %}</p>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Modal container -->
+<div id="feedback-modal"></div>
+{% endblock %}

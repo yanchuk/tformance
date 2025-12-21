@@ -121,6 +121,7 @@ PROJECT_APPS = [
     "apps.metrics.apps.MetricsConfig",
     "apps.integrations.apps.IntegrationsConfig",
     "apps.onboarding.apps.OnboardingConfig",
+    "apps.feedback.apps.FeedbackConfig",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + PEGASUS_APPS + PROJECT_APPS + WAGTAIL_APPS

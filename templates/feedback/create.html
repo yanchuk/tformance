@@ -1,0 +1,68 @@
+{% extends "web/app/app_base.html" %}
+{% load static %}
+{% load i18n %}
+
+{% block app %}
+<div class="max-w-2xl mx-auto">
+  <div class="flex items-center gap-4 mb-6">
+    <a href="{% url 'feedback:dashboard' %}" class="btn btn-ghost btn-sm">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+      </svg>
+      {% trans "Back" %}
+    </a>
+    <h1 class="text-2xl font-bold text-base-content">{% trans "Report AI Issue" %}</h1>
+  </div>
+
+  <div class="card bg-base-200">
+    <div class="card-body">
+      <form method="post" action="{% url 'feedback:create' %}">
+        {% csrf_token %}
+
+        <div class="form-control mb-4">
+          <label class="label">
+            <span class="label-text">{% trans "Category" %} *</span>
+          </label>
+          {{ form.category }}
+          {% if form.category.errors %}
+          <label class="label">
+            <span class="label-text-alt text-error">{{ form.category.errors.0 }}</span>
+          </label>
+          {% endif %}
+        </div>
+
+        <div class="form-control mb-4">
+          <label class="label">
+            <span class="label-text">{% trans "Description" %}</span>
+          </label>
+          {{ form.description }}
+          {% if form.description.errors %}
+          <label class="label">
+            <span class="label-text-alt text-error">{{ form.description.errors.0 }}</span>
+          </label>
+          {% endif %}
+        </div>
+
+        <div class="form-control mb-4">
+          <label class="label">
+            <span class="label-text">{% trans "File Path" %}</span>
+          </label>
+          {{ form.file_path }}
+        </div>
+
+        <div class="form-control mb-4">
+          <label class="label">
+            <span class="label-text">{% trans "Language" %}</span>
+          </label>
+          {{ form.language }}
+        </div>
+
+        <div class="flex justify-end gap-2 mt-6">
+          <a href="{% url 'feedback:dashboard' %}" class="btn btn-ghost">{% trans "Cancel" %}</a>
+          <button type="submit" class="btn btn-primary">{% trans "Submit" %}</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

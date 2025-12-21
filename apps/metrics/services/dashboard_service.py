@@ -400,6 +400,7 @@ def get_recent_prs(team: Team, start_date: date, end_date: date, limit: int = 10
 
     Returns:
         list of dicts with keys:
+            - id (int): PR database ID
             - title (str): PR title
             - author (str): Author display name
             - merged_at (datetime): Merge timestamp
@@ -434,6 +435,7 @@ def get_recent_prs(team: Team, start_date: date, end_date: date, limit: int = 10
 
         result.append(
             {
+                "id": pr.id,
                 "title": pr.title,
                 "author": _get_author_name(pr),
                 "merged_at": pr.merged_at,
