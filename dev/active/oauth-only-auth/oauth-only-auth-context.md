@@ -1,6 +1,7 @@
 # OAuth-Only Auth - Context & Key Files
 
 **Last Updated: 2025-12-21**
+**Status: COMPLETE - Committed to main**
 
 ## Key Files
 
@@ -69,3 +70,38 @@ OAuth apps must be configured in Django admin at `/admin/socialaccount/socialapp
 2. **New user signup via Google** - Creates account, redirects to onboarding
 3. **Existing user login** - Matches by email, logs in
 4. **Team invitation flow** - User accepts invite, OAuth, joins team
+
+## Implementation Summary (Session 2025-12-21)
+
+### Completed
+- ✅ Replaced email/password forms with OAuth-only buttons
+- ✅ Updated signup.html, login.html, social_buttons.html
+- ✅ Disabled magic link login (ACCOUNT_LOGIN_BY_CODE_ENABLED=False)
+- ✅ Added invitation context display on signup page
+- ✅ Skipped 4 email/password tests (no longer applicable)
+- ✅ All 1602 tests pass
+- ✅ Committed: `41536bf Switch to OAuth-only authentication (GitHub/Google)`
+
+### Key Decisions
+1. **OAuth-only for MVP** - Target audience (dev teams) have GitHub accounts
+2. **Keep invitation flow** - OAuth adapter handles team joining via session
+3. **Skip tests vs delete** - Kept test code with @skip decorators for reference
+
+### Files Modified
+| File | Change |
+|------|--------|
+| `templates/account/signup.html` | OAuth buttons + invitation context |
+| `templates/account/login.html` | OAuth buttons only |
+| `templates/account/components/social/social_buttons.html` | Removed divider |
+| `tformance/settings.py:289` | `ACCOUNT_LOGIN_BY_CODE_ENABLED = False` |
+| `apps/teams/tests/test_signup.py` | Added @skip to 4 tests |
+
+### Remaining (Manual Testing)
+- [ ] Test OAuth signup with real GitHub/Google accounts
+- [ ] Test team invitation flow end-to-end
+- [ ] Push to origin when ready
+
+### Notes
+- No migrations needed (template/settings changes only)
+- Admin notification email still works (`apps/users/signals.py`)
+- Team adapter (`apps/teams/adapter.AcceptInvitationAdapter`) handles OAuth invitation flow
