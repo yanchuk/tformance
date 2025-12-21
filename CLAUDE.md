@@ -78,7 +78,9 @@ We store: OAuth tokens (encrypted), accounts, billing, all metrics/surveys (team
 
 ## Design System
 
-The visual design follows the **"Sunset Dashboard"** direction - warm, approachable, and friendly while maintaining developer credibility.
+The visual design follows the **"Easy Eyes Dashboard"** direction - inspired by the [Easy Eyes VS Code theme](https://github.com/vvhg1/easyeyes) for reduced eye strain.
+
+**⚠️ DO NOT CHANGE THEME COLORS WITHOUT EXPLICIT USER APPROVAL ⚠️**
 
 **Design Resources:**
 - Design tokens & CSS classes: `assets/styles/app/tailwind/design-system.css`
@@ -108,16 +110,17 @@ Colors are managed at three levels:
 | Warning | `text-warning` | `text-amber-*` |
 | Primary accent | `text-primary`, `bg-primary` | `text-orange-*`, `bg-accent-primary` |
 
-### DaisyUI Theme Tokens
+### DaisyUI Theme Tokens (Easy Eyes Inspired)
 
 | Token | Dark (`tformance`) | Light (`tformance-light`) |
 |-------|-------------------|--------------------------|
-| `base-100` | `#1e1e1e` | `#FAFAF8` |
-| `base-200` | `#282725` | `#FFFFFF` |
-| `base-300` | `#363636` | `#E5E7EB` |
-| `base-content` | `#d4d0c8` | `#1F2937` |
-| `primary` | `#F97316` | `#C2410C` |
-| `accent` | `#2DD4BF` | `#10B981` |
+| `base-100` | `#1e1e1e` (soft dark) | `#FAFAF8` |
+| `base-200` | `#2a2a28` (warm elevated) | `#FFFFFF` |
+| `base-300` | `#3c3c3a` (warm borders) | `#E5E7EB` |
+| `base-content` | `#ccc9c0` (Easy Eyes text) | `#1F2937` |
+| `primary` | `#F97316` (coral orange) | `#C2410C` |
+| `secondary` | `#ffe96e` (golden amber) | `#FDA4AF` |
+| `accent` | `#5a9997` (Easy Eyes teal) | `#10B981` |
 
 ### Typography
 
@@ -126,7 +129,8 @@ Colors are managed at three levels:
 
 ### Design Principles
 
-1. **Warm over cold** - Use coral/orange accents instead of typical blue/purple
+1. **Easy on the eyes** - Soft dark backgrounds, warm text colors (inspired by Easy Eyes VS Code theme)
+2. **Warm over cold** - Use coral/orange accents instead of typical blue/purple
 2. **WCAG AA compliant** - All color combinations meet 4.5:1+ contrast ratio
 3. **Semantic colors** - Use DaisyUI tokens that adapt to theme
 4. **Terminal aesthetic** - Monospace fonts for data, dark backgrounds
