@@ -28,8 +28,8 @@
 ## Phase 4: Verification
 
 - [x] **4.1** Run all tests - 59 team tests pass
-- [ ] **4.2** Manual E2E test (pending user verification)
-- [ ] **4.3** Clean up dev-docs
+- [x] **4.2** Manual E2E test - User confirmed "now it works"
+- [x] **4.3** Clean up dev-docs
 
 ## Summary
 
@@ -38,5 +38,10 @@
 | Phase 1: Red | 7 | Complete |
 | Phase 2: Green | 4 | Complete |
 | Phase 3: Dashboard URL | 3 | Complete |
-| Phase 4: Verification | 3 | In Progress |
-| **Total** | **17** | **15 Complete** |
+| Phase 4: Verification | 3 | Complete |
+| **Total** | **17** | **17 Complete** |
+
+## Commits
+
+1. `9cf184e` - Fix team switching and badge truncation
+2. `029c3b6` - Fix onboarding background and text-warning contrast for light theme
