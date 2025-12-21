@@ -1,8 +1,10 @@
 {% load i18n %}
 {% load social_tags %}
 {% get_socialapps as socialapps %}
-<div class="space-y-3">
-  {% for provider in socialapps %}
-    {% include 'account/components/social/login_with_social_button.html' %}
-  {% endfor %}
-</div>
+{% if socialapps %}
+<div class="app-divider my-4"></div>
+<p class="text-center text-base-content/70 text-sm mb-4">{% translate "or continue with" %}</p>
+{% endif %}
+{% for provider in socialapps %}
+  {% include 'account/components/social/login_with_social_button.html' with app=app %}
+{% endfor %}
