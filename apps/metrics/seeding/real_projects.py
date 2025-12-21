@@ -45,36 +45,50 @@ class RealProjectConfig:
 
 # Registry of available real projects
 REAL_PROJECTS: dict[str, RealProjectConfig] = {
-    "posthog": RealProjectConfig(
-        repo_full_name="posthog/posthog",
-        team_name="PostHog Analytics",
-        team_slug="posthog-demo",
-        max_prs=500,
-        max_members=15,
+    # Full parsing - smaller focused teams for complete picture
+    "gumroad": RealProjectConfig(
+        repo_full_name="antiwork/gumroad",
+        team_name="Gumroad",
+        team_slug="gumroad-demo",
+        max_prs=1000,  # Full parsing
+        max_members=50,  # All contributors
         days_back=90,
-        jira_project_key="POST",
-        ai_base_adoption_rate=0.40,
-        survey_response_rate=0.65,
-        description="Open-source product analytics platform",
+        jira_project_key="GUM",
+        ai_base_adoption_rate=0.50,
+        survey_response_rate=0.70,
+        description="E-commerce platform for creators (full team)",
     ),
     "polar": RealProjectConfig(
         repo_full_name="polarsource/polar",
         team_name="Polar.sh",
         team_slug="polar-demo",
-        max_prs=300,
-        max_members=10,
+        max_prs=1000,  # Full parsing
+        max_members=50,  # All contributors
         days_back=90,
         jira_project_key="POLAR",
         ai_base_adoption_rate=0.45,
         survey_response_rate=0.60,
-        description="Open-source funding platform for developers",
+        description="Open-source funding platform (full team)",
+    ),
+    # Sampled - large active repos
+    "posthog": RealProjectConfig(
+        repo_full_name="posthog/posthog",
+        team_name="PostHog Analytics",
+        team_slug="posthog-demo",
+        max_prs=200,  # Sampled - very active repo
+        max_members=25,
+        days_back=90,
+        jira_project_key="POST",
+        ai_base_adoption_rate=0.40,
+        survey_response_rate=0.65,
+        description="Open-source product analytics (sampled)",
     ),
     "fastapi": RealProjectConfig(
         repo_full_name="tiangolo/fastapi",
         team_name="FastAPI Team",
         team_slug="fastapi-demo",
         max_prs=300,
-        max_members=12,
+        max_members=15,
         days_back=90,
         jira_project_key="FAST",
         ai_base_adoption_rate=0.30,
