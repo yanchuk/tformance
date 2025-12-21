@@ -19,7 +19,6 @@ Environment:
 
 import contextlib
 import logging
-import os
 import re
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -230,15 +229,10 @@ class GitHubAuthenticatedFetcher:
             self._token_pool = GitHubTokenPool(tokens=[token])
             self._client = Github(self.token)
         else:
-            # Use environment variable (backward compatible)
-            self.token = os.environ.get("GITHUB_SEEDING_TOKEN")
-            if not self.token:
-                raise ValueError(
-                    "GitHub token required. Set GITHUB_SEEDING_TOKEN environment variable "
-                    "or pass token parameter. Generate at: https://github.com/settings/tokens"
-                )
-            self._token_pool = GitHubTokenPool(tokens=[self.token])
-            self._client = Github(self.token)
+            # Use environment variables - token pool handles both singular and plural
+            self._token_pool = GitHubTokenPool()  # Loads from env vars
+            self.token = self._token_pool._tokens[0].token  # Store first for backward compat
+            self._client = None  # Will be set lazily via _get_current_client()
 
         self._cache: dict[str, Any] = {}
         self.api_calls_made = 0
