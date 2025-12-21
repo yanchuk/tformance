@@ -438,3 +438,119 @@ class TestGitHubAuthenticatedFetcherTokenPoolIntegration(TestCase):
 
             # Should have used token pool
             self.assertGreater(mock_pool.get_best_client.call_count, 0)
+
+    @patch("apps.metrics.seeding.github_authenticated_fetcher.GitHubTokenPool")
+    @patch("apps.metrics.seeding.github_authenticated_fetcher.Github")
+    def test_get_top_contributors_uses_token_pool(self, mock_github_class, mock_pool_class):
+        """Test that get_top_contributors uses the token pool's client, not self._client directly."""
+        # Mock GitHub client
+        mock_client = Mock()
+        mock_github_class.return_value = mock_client
+
+        # Mock rate limit
+        mock_rate = Mock()
+        mock_rate.remaining = 5000
+        mock_rate.reset = datetime.now(UTC) + timedelta(hours=1)
+        mock_client.get_rate_limit.return_value.rate = mock_rate
+
+        # Mock repository
+        mock_repo = Mock()
+        mock_client.get_repo.return_value = mock_repo
+
+        # Mock PR with user
+        mock_user = Mock()
+        mock_user.id = 12345
+        mock_user.login = "testuser"
+        mock_user.name = "Test User"
+        mock_user.avatar_url = "https://example.com/avatar.jpg"
+
+        mock_pr = Mock()
+        mock_pr.user = mock_user
+        mock_pr.created_at = datetime.now(UTC) - timedelta(days=1)
+
+        mock_repo.get_pulls.return_value = [mock_pr]
+
+        # Mock token pool
+        mock_pool = Mock()
+        mock_pool.get_best_client.return_value = mock_client
+        mock_pool.total_remaining = 5000
+        mock_pool_class.return_value = mock_pool
+
+        tokens = ["ghp_token1", "ghp_token2"]
+        fetcher = GitHubAuthenticatedFetcher(tokens=tokens)
+
+        # Call get_top_contributors
+        contributors = fetcher.get_top_contributors("test/repo", max_count=10)
+
+        # Should have used _get_current_client() which uses the token pool
+        mock_pool.get_best_client.assert_called()
+        # Should have successfully retrieved contributors
+        self.assertEqual(len(contributors), 1)
+        self.assertEqual(contributors[0].github_login, "testuser")
+
+    @patch("apps.metrics.seeding.github_authenticated_fetcher.GitHubTokenPool")
+    @patch("apps.metrics.seeding.github_authenticated_fetcher.Github")
+    def test_get_top_contributors_works_with_multi_token_mode(self, mock_github_class, mock_pool_class):
+        """Test that get_top_contributors method works correctly when initialized with multiple tokens."""
+        # Mock GitHub client
+        mock_client = Mock()
+        mock_github_class.return_value = mock_client
+
+        # Mock rate limit
+        mock_rate = Mock()
+        mock_rate.remaining = 5000
+        mock_rate.reset = datetime.now(UTC) + timedelta(hours=1)
+        mock_client.get_rate_limit.return_value.rate = mock_rate
+
+        # Mock repository
+        mock_repo = Mock()
+        mock_client.get_repo.return_value = mock_repo
+
+        # Mock multiple PRs from different users
+        mock_users = []
+        mock_prs = []
+        for i in range(3):
+            mock_user = Mock()
+            mock_user.id = 12345 + i
+            mock_user.login = f"user{i}"
+            mock_user.name = f"User {i}"
+            mock_user.avatar_url = f"https://example.com/avatar{i}.jpg"
+            mock_users.append(mock_user)
+
+            mock_pr = Mock()
+            mock_pr.user = mock_user
+            mock_pr.created_at = datetime.now(UTC) - timedelta(days=i)
+            mock_prs.append(mock_pr)
+
+        # Add more PRs for user0 to test sorting
+        for _ in range(2):
+            mock_pr = Mock()
+            mock_pr.user = mock_users[0]
+            mock_pr.created_at = datetime.now(UTC) - timedelta(days=5)
+            mock_prs.append(mock_pr)
+
+        mock_repo.get_pulls.return_value = mock_prs
+
+        # Mock token pool
+        mock_pool = Mock()
+        mock_pool.get_best_client.return_value = mock_client
+        mock_pool.total_remaining = 12000  # Multiple tokens
+        mock_pool_class.return_value = mock_pool
+
+        tokens = ["ghp_token1", "ghp_token2", "ghp_token3"]
+        fetcher = GitHubAuthenticatedFetcher(tokens=tokens)
+
+        # Call get_top_contributors
+        contributors = fetcher.get_top_contributors("test/repo", max_count=10)
+
+        # Should have successfully retrieved and sorted contributors
+        self.assertEqual(len(contributors), 3)
+        # user0 should be first (3 PRs)
+        self.assertEqual(contributors[0].github_login, "user0")
+        self.assertEqual(contributors[0].pr_count, 3)
+        # user1 should be second (1 PR)
+        self.assertEqual(contributors[1].github_login, "user1")
+        self.assertEqual(contributors[1].pr_count, 1)
+        # user2 should be third (1 PR)
+        self.assertEqual(contributors[2].github_login, "user2")
+        self.assertEqual(contributors[2].pr_count, 1)

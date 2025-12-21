@@ -321,7 +321,8 @@ class GitHubAuthenticatedFetcher:
             return self._cache[cache_key][:max_count]
 
         try:
-            repo = self._client.get_repo(repo_name)
+            client = self._get_current_client()
+            repo = client.get_repo(repo_name)
 
             # Get PRs to count per author
             since = since or (timezone.now() - timedelta(days=90))
@@ -360,7 +361,7 @@ class GitHubAuthenticatedFetcher:
             for author in sorted_authors[:max_count]:
                 # Fetch full user details for name/email
                 try:
-                    user = self._client.get_user(author["github_login"])
+                    user = client.get_user(author["github_login"])
                     contributors.append(
                         ContributorInfo(
                             github_id=author["github_id"],
