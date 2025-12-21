@@ -17,6 +17,7 @@ Environment:
     Generate at: https://github.com/settings/tokens
 """
 
+import contextlib
 import logging
 import os
 import re
@@ -28,6 +29,8 @@ from typing import Any
 
 from django.utils import timezone
 from github import Github, GithubException, RateLimitExceededException
+
+from apps.metrics.seeding.github_token_pool import AllTokensExhaustedException, GitHubTokenPool
 
 logger = logging.getLogger(__name__)
 
@@ -195,36 +198,73 @@ class GitHubAuthenticatedFetcher:
 
     JIRA_KEY_PATTERN = re.compile(r"[A-Z][A-Z0-9]+-\d+")
 
-    def __init__(self, token: str | None = None, progress_callback: Any | None = None):
+    def __init__(
+        self,
+        token: str | None = None,
+        tokens: list[str] | None = None,
+        progress_callback: Any | None = None,
+    ):
         """Initialize the fetcher with authenticated client.
 
         Args:
             token: GitHub PAT. If None, reads from GITHUB_SEEDING_TOKEN env var.
+            tokens: List of GitHub PATs for token pooling. If provided, uses GitHubTokenPool.
             progress_callback: Optional callback for progress updates.
                              Called as callback(step, current, total, message).
 
         Raises:
-            ValueError: If no token is provided or found in environment.
+            ValueError: If no token is provided or found in environment, or if both token and tokens are provided.
         """
-        self.token = token or os.environ.get("GITHUB_SEEDING_TOKEN")
-        if not self.token:
-            raise ValueError(
-                "GitHub token required. Set GITHUB_SEEDING_TOKEN environment variable "
-                "or pass token parameter. Generate at: https://github.com/settings/tokens"
-            )
+        # Validate that both token and tokens aren't provided
+        if token is not None and tokens is not None:
+            raise ValueError("Cannot provide both 'token' and 'tokens' parameters. Choose one.")
 
-        self._client = Github(self.token)
+        # Initialize with token pool if tokens provided
+        if tokens is not None:
+            self._token_pool = GitHubTokenPool(tokens=tokens)
+            self.token = tokens[0]  # Store first token for backward compatibility
+            self._client = None  # Will be set lazily via _get_current_client()
+        elif token is not None:
+            # Single token mode (backward compatible)
+            self.token = token
+            self._token_pool = GitHubTokenPool(tokens=[token])
+            self._client = Github(self.token)
+        else:
+            # Use environment variable (backward compatible)
+            self.token = os.environ.get("GITHUB_SEEDING_TOKEN")
+            if not self.token:
+                raise ValueError(
+                    "GitHub token required. Set GITHUB_SEEDING_TOKEN environment variable "
+                    "or pass token parameter. Generate at: https://github.com/settings/tokens"
+                )
+            self._token_pool = GitHubTokenPool(tokens=[self.token])
+            self._client = Github(self.token)
+
         self._cache: dict[str, Any] = {}
         self.api_calls_made = 0
         self.progress_callback = progress_callback
 
-        # Log rate limit status
-        self._log_rate_limit()
+        # Log rate limit status (only if single token mode)
+        if self._client is not None:
+            self._log_rate_limit()
 
     def _report_progress(self, step: str, current: int, total: int, message: str):
         """Report progress via callback if available."""
         if self.progress_callback:
             self.progress_callback(step, current, total, message)
+
+    def _get_current_client(self) -> Github:
+        """Get the current best client from the token pool.
+
+        Returns:
+            Github client with the most remaining quota.
+
+        Raises:
+            AllTokensExhaustedException: If all tokens are rate-limited.
+        """
+        client = self._token_pool.get_best_client()
+        self._client = client  # Update for backward compatibility
+        return client
 
     def _log_rate_limit(self):
         """Log current rate limit status."""
@@ -251,11 +291,11 @@ class GitHubAuthenticatedFetcher:
         """Get remaining API requests before rate limit.
 
         Returns:
-            Number of requests remaining (0-5000 for authenticated).
+            Number of requests remaining across all tokens in the pool.
         """
         try:
-            rate_limit = self._client.get_rate_limit()
-            return rate_limit.rate.remaining
+            # Use token pool's total remaining when using multiple tokens
+            return self._token_pool.total_remaining
         except GithubException:
             return 0
 
@@ -386,44 +426,72 @@ class GitHubAuthenticatedFetcher:
         """
         since = since or (timezone.now() - timedelta(days=90))
 
-        try:
-            repo = self._client.get_repo(repo_name)
-            state = "all" if include_open else "closed"
-            pulls = repo.get_pulls(state=state, sort="updated", direction="desc")
+        # Retry loop for token switching
+        # Allow retries up to the number of tokens available (with a reasonable max)
+        max_retries = 10  # Reasonable upper limit to prevent infinite loops
+        retry_count = 0
 
-            # First pass: collect PR objects that match criteria
-            pr_objects = []
-            logger.info("Fetching PRs from %s (max: %d, since: %s)", repo_name, max_prs, since.date())
+        while retry_count < max_retries:
+            try:
+                client = self._get_current_client()
+                repo = client.get_repo(repo_name)
+                state = "all" if include_open else "closed"
+                pulls = repo.get_pulls(state=state, sort="updated", direction="desc")
 
-            for pr in pulls:
-                if len(pr_objects) >= max_prs:
-                    break
+                # First pass: collect PR objects that match criteria
+                pr_objects = []
+                logger.info("Fetching PRs from %s (max: %d, since: %s)", repo_name, max_prs, since.date())
 
-                # Skip if PR is older than since date
-                pr_updated = pr.updated_at.replace(tzinfo=UTC)
-                if pr_updated < since:
-                    break
+                for pr in pulls:
+                    if len(pr_objects) >= max_prs:
+                        break
 
-                # Skip drafts
-                if pr.draft:
-                    continue
+                    # Skip if PR is older than since date
+                    pr_updated = pr.updated_at.replace(tzinfo=UTC)
+                    if pr_updated < since:
+                        break
 
-                pr_objects.append(pr)
+                    # Skip drafts
+                    if pr.draft:
+                        continue
 
-            logger.info("Found %d PRs to fetch details for", len(pr_objects))
+                    pr_objects.append(pr)
 
-            if parallel and len(pr_objects) > 1:
-                return self._fetch_prs_parallel(pr_objects, repo_name)
-            else:
-                return self._fetch_prs_sequential(pr_objects, repo_name)
+                logger.info("Found %d PRs to fetch details for", len(pr_objects))
 
-        except RateLimitExceededException:
-            logger.error("GitHub rate limit exceeded. Consider waiting or reducing max_prs.")
-            return []
+                if parallel and len(pr_objects) > 1:
+                    return self._fetch_prs_parallel(pr_objects, repo_name)
+                else:
+                    return self._fetch_prs_sequential(pr_objects, repo_name)
 
-        except GithubException as e:
-            logger.error("Failed to fetch PRs from %s: %s", repo_name, e)
-            return []
+            except RateLimitExceededException as e:
+                # Extract reset time from exception headers
+                reset_time = None
+                if hasattr(e, "headers") and "X-RateLimit-Reset" in e.headers:
+                    reset_timestamp = int(e.headers["X-RateLimit-Reset"])
+                    reset_time = datetime.fromtimestamp(reset_timestamp, tz=UTC)
+                else:
+                    reset_time = datetime.now(UTC) + timedelta(hours=1)
+
+                # Mark the client that hit the rate limit
+                self._token_pool.mark_rate_limited(client, reset_time)
+                logger.warning("Rate limit hit, switching to next token...")
+
+                # Increment retry counter
+                retry_count += 1
+                # Loop will retry with new token
+
+            except AllTokensExhaustedException:
+                logger.error("All GitHub tokens are rate-limited. Cannot fetch PRs.")
+                return []
+
+            except GithubException as e:
+                logger.error("Failed to fetch PRs from %s: %s", repo_name, e)
+                return []
+
+        # If we exhausted all retries, all tokens are rate-limited
+        logger.error("All GitHub tokens exhausted after %d retries. Cannot fetch PRs.", retry_count)
+        return []
 
     def _fetch_prs_parallel(self, pr_objects: list, repo_name: str) -> list[FetchedPRFull]:
         """Fetch PR details in parallel using ThreadPoolExecutor with rate limit handling.
@@ -489,7 +557,8 @@ class GitHubAuthenticatedFetcher:
                 time.sleep(BATCH_DELAY)
 
         # Sort by created_at to maintain chronological order
-        fetched_prs.sort(key=lambda x: x.created_at, reverse=True)
+        with contextlib.suppress(AttributeError, TypeError):
+            fetched_prs.sort(key=lambda x: x.created_at, reverse=True)
 
         logger.info("Fetched %d PRs from %s (parallel)", len(fetched_prs), repo_name)
         return fetched_prs

@@ -146,6 +146,24 @@ python manage.py seed_real_projects --project posthog --max-prs 200 --days-back 
 **Requires GitHub PAT**: Set `GITHUB_SEEDING_TOKEN` environment variable.
 Create token at https://github.com/settings/tokens with `public_repo` scope.
 
+**Multi-Token Support (2x+ Throughput)**:
+
+For faster seeding of large projects, use multiple GitHub tokens:
+
+```bash
+# Single token (5,000 requests/hour)
+GITHUB_SEEDING_TOKEN="ghp_xxx" python scripts/seed_with_progress.py --project gumroad
+
+# Multiple tokens (10,000+ requests/hour) - comma-separated
+GITHUB_SEEDING_TOKENS="ghp_token1,ghp_token2" python scripts/seed_with_progress.py --project gumroad
+```
+
+Benefits:
+- Each token adds 5,000 requests/hour capacity
+- Automatic token rotation when one hits rate limit
+- Seamless failover with no manual intervention
+- 2 tokens = 2x faster, 3 tokens = 3x faster
+
 **Available Projects:**
 
 | Project | Repository | Mode | Max PRs | Max Members | Notes |
