@@ -38,13 +38,12 @@ Total:                2060 tests
 
 | Task | Status | Notes |
 |------|--------|-------|
-| fix-code-style | 🔶 PARTIAL | 4/12 files done |
+| dashboard-ux-improvements | 🔶 PARTIAL | Bug fix done, UX work remaining |
 | github-surveys-phase2 | NOT STARTED | Future enhancement |
 | insights-mcp-exploration | RESEARCH | Phase 3 research |
-| llm-insights-evaluation | NOT STARTED | Empty placeholder |
-| mvp-review | REFERENCE | Checklist document |
 | skip-responded-reviewers | NOT STARTED | Future enhancement |
-| dashboard-ux-improvements | 🔶 PARTIAL | Some improvements done |
+
+**Moved to completed this session:** fix-code-style, mvp-review
 
 ---
 
