@@ -330,3 +330,61 @@ def file_category_card(request: HttpRequest) -> HttpResponse:
             "metrics": metrics,
         },
     )
+
+
+# =============================================================================
+# AI Detection Metrics (from PR content analysis)
+# =============================================================================
+
+
+@team_admin_required
+def ai_detected_metrics_card(request: HttpRequest) -> HttpResponse:
+    """AI detection metrics card (admin only).
+
+    Shows AI-assisted PRs detected from content analysis (PR body, commit messages).
+    Distinct from survey-based AI tracking.
+    """
+    start_date, end_date = get_date_range_from_request(request)
+    metrics = dashboard_service.get_ai_detected_metrics(request.team, start_date, end_date)
+    return TemplateResponse(
+        request,
+        "metrics/partials/ai_detected_metrics_card.html",
+        {
+            "metrics": metrics,
+        },
+    )
+
+
+@team_admin_required
+def ai_tool_breakdown_chart(request: HttpRequest) -> HttpResponse:
+    """AI tool breakdown chart (admin only).
+
+    Shows which AI tools are being used (Claude, Copilot, Cursor, etc.)
+    based on detected signatures in PR content.
+    """
+    start_date, end_date = get_date_range_from_request(request)
+    chart_data = dashboard_service.get_ai_tool_breakdown(request.team, start_date, end_date)
+    return TemplateResponse(
+        request,
+        "metrics/partials/ai_tool_breakdown_chart.html",
+        {
+            "chart_data": chart_data,
+        },
+    )
+
+
+@team_admin_required
+def ai_bot_reviews_card(request: HttpRequest) -> HttpResponse:
+    """AI bot reviews card (admin only).
+
+    Shows statistics about AI bot reviewers (CodeRabbit, Copilot, etc.)
+    """
+    start_date, end_date = get_date_range_from_request(request)
+    metrics = dashboard_service.get_ai_bot_review_stats(request.team, start_date, end_date)
+    return TemplateResponse(
+        request,
+        "metrics/partials/ai_bot_reviews_card.html",
+        {
+            "metrics": metrics,
+        },
+    )

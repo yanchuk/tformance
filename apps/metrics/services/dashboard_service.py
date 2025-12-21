@@ -1049,3 +1049,127 @@ def get_file_category_breakdown(team: Team, start_date: date, end_date: date) ->
         "total_changes": total_changes,
         "by_category": category_breakdown,
     }
+
+
+# =============================================================================
+# AI Detection Metrics (from PR content analysis)
+# =============================================================================
+# These functions use the new is_ai_assisted, ai_tools_detected, is_ai_review,
+# and ai_reviewer_type fields populated by the ai_detector service during seeding.
+
+
+def get_ai_detected_metrics(team: Team, start_date: date, end_date: date) -> dict:
+    """Get AI detection metrics based on PR content analysis.
+
+    Unlike get_key_metrics which uses survey responses, this uses direct
+    detection from PR body, commit messages, and co-authors.
+
+    Args:
+        team: Team instance
+        start_date: Start date (inclusive)
+        end_date: End date (inclusive)
+
+    Returns:
+        dict with keys:
+            - total_prs (int): Total merged PRs
+            - ai_assisted_prs (int): PRs detected as AI-assisted
+            - ai_assisted_pct (Decimal): Percentage (0.00 to 100.00)
+    """
+    prs = _get_merged_prs_in_range(team, start_date, end_date)
+
+    stats = prs.aggregate(
+        total_prs=Count("id"),
+        ai_assisted_prs=Count("id", filter=Q(is_ai_assisted=True)),
+    )
+
+    total_prs = stats["total_prs"]
+    ai_assisted_prs = stats["ai_assisted_prs"]
+
+    ai_assisted_pct = Decimal(str(round(ai_assisted_prs * 100.0 / total_prs, 2))) if total_prs > 0 else Decimal("0.00")
+
+    return {
+        "total_prs": total_prs,
+        "ai_assisted_prs": ai_assisted_prs,
+        "ai_assisted_pct": ai_assisted_pct,
+    }
+
+
+def get_ai_tool_breakdown(team: Team, start_date: date, end_date: date) -> list[dict]:
+    """Get breakdown of AI tools detected in PRs.
+
+    Counts how many PRs used each AI tool (claude_code, copilot, cursor, etc.)
+    based on the ai_tools_detected JSONField.
+
+    Args:
+        team: Team instance
+        start_date: Start date (inclusive)
+        end_date: End date (inclusive)
+
+    Returns:
+        list of dicts with keys:
+            - tool (str): AI tool identifier
+            - count (int): Number of PRs using this tool
+        Sorted by count descending.
+    """
+    prs = _get_merged_prs_in_range(team, start_date, end_date).filter(is_ai_assisted=True)
+
+    # Count occurrences of each tool
+    tool_counts: dict[str, int] = {}
+    for pr in prs:
+        for tool in pr.ai_tools_detected:
+            tool_counts[tool] = tool_counts.get(tool, 0) + 1
+
+    # Convert to list sorted by count descending
+    result = [{"tool": tool, "count": count} for tool, count in tool_counts.items()]
+    result.sort(key=lambda x: x["count"], reverse=True)
+
+    return result
+
+
+def get_ai_bot_review_stats(team: Team, start_date: date, end_date: date) -> dict:
+    """Get statistics about AI bot reviews.
+
+    Uses the is_ai_review and ai_reviewer_type fields on PRReview model
+    to track reviews from CodeRabbit, Copilot, Dependabot, etc.
+
+    Args:
+        team: Team instance
+        start_date: Start date (inclusive)
+        end_date: End date (inclusive)
+
+    Returns:
+        dict with keys:
+            - total_reviews (int): Total reviews in date range
+            - ai_reviews (int): Reviews by AI bots
+            - ai_review_pct (Decimal): Percentage of AI reviews
+            - by_bot (list): Breakdown by bot type with count
+    """
+    reviews = PRReview.objects.filter(
+        team=team,
+        submitted_at__gte=start_date,
+        submitted_at__lte=end_date,
+    )
+
+    stats = reviews.aggregate(
+        total_reviews=Count("id"),
+        ai_reviews=Count("id", filter=Q(is_ai_review=True)),
+    )
+
+    total_reviews = stats["total_reviews"]
+    ai_reviews = stats["ai_reviews"]
+
+    ai_review_pct = Decimal(str(round(ai_reviews * 100.0 / total_reviews, 2))) if total_reviews > 0 else Decimal("0.00")
+
+    # Get breakdown by bot type
+    bot_breakdown = (
+        reviews.filter(is_ai_review=True).values("ai_reviewer_type").annotate(count=Count("id")).order_by("-count")
+    )
+
+    by_bot = [{"bot_type": b["ai_reviewer_type"], "count": b["count"]} for b in bot_breakdown]
+
+    return {
+        "total_reviews": total_reviews,
+        "ai_reviews": ai_reviews,
+        "ai_review_pct": ai_review_pct,
+        "by_bot": by_bot,
+    }

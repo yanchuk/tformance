@@ -1,0 +1,69 @@
+{% load i18n %}
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+  <!-- Total Reviews -->
+  <div class="stat bg-base-100 shadow rounded-lg">
+    <div class="stat-title">{% trans "Total Reviews" %}</div>
+    <div class="stat-value text-base-content">{{ metrics.total_reviews|default:0 }}</div>
+    <div class="stat-desc">{% trans "All reviews in period" %}</div>
+  </div>
+
+  <!-- AI Bot Reviews -->
+  <div class="stat bg-base-100 shadow rounded-lg">
+    <div class="stat-title">{% trans "AI Bot Reviews" %}</div>
+    <div class="stat-value text-secondary">{{ metrics.ai_reviews|default:0 }}</div>
+    <div class="stat-desc">{% trans "From automated reviewers" %}</div>
+  </div>
+
+  <!-- AI Review % -->
+  <div class="stat bg-base-100 shadow rounded-lg">
+    <div class="stat-title">{% trans "Bot Review Rate" %}</div>
+    <div class="stat-value text-accent">
+      {% if metrics.ai_review_pct %}{{ metrics.ai_review_pct|floatformat:1 }}%{% else %}0%{% endif %}
+    </div>
+    <div class="stat-desc">{% trans "Of all reviews" %}</div>
+  </div>
+</div>
+
+{% if metrics.by_bot %}
+<h4 class="text-sm font-semibold text-base-content/80 mb-2">{% trans "By Bot Type" %}</h4>
+<div class="space-y-2">
+  {% for bot in metrics.by_bot %}
+  <div class="flex items-center gap-3">
+    <div class="w-28 text-sm text-base-content/80 truncate" title="{{ bot.bot_type }}">
+      {% if bot.bot_type == "coderabbit" %}
+        CodeRabbit
+      {% elif bot.bot_type == "copilot" %}
+        Copilot
+      {% elif bot.bot_type == "dependabot" %}
+        Dependabot
+      {% elif bot.bot_type == "renovate" %}
+        Renovate
+      {% elif bot.bot_type == "snyk" %}
+        Snyk
+      {% elif bot.bot_type == "sonarcloud" %}
+        SonarCloud
+      {% elif bot.bot_type == "codecov" %}
+        Codecov
+      {% elif bot.bot_type == "vercel" %}
+        Vercel
+      {% elif bot.bot_type == "github_actions" %}
+        GitHub Actions
+      {% else %}
+        {{ bot.bot_type }}
+      {% endif %}
+    </div>
+    <div class="flex-1">
+      <progress class="progress progress-secondary w-full" value="{{ bot.count }}" max="{{ metrics.ai_reviews }}"></progress>
+    </div>
+    <div class="w-12 text-right text-sm font-mono text-base-content">
+      {{ bot.count }}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="text-center text-base-content/60 py-4">
+  <p class="text-sm">{% trans "No AI bot reviews detected" %}</p>
+  <p class="text-xs mt-1">{% trans "CodeRabbit, Copilot, Dependabot, and other bots are tracked automatically" %}</p>
+</div>
+{% endif %}

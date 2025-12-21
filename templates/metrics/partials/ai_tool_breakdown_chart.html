@@ -1,0 +1,49 @@
+{% load i18n %}
+
+{% if chart_data %}
+<div class="space-y-3">
+  {% for item in chart_data %}
+  <div class="flex items-center gap-3">
+    <div class="w-28 text-sm text-base-content/80 truncate" title="{{ item.tool }}">
+      {% if item.tool == "claude_code" %}
+        Claude Code
+      {% elif item.tool == "copilot" %}
+        GitHub Copilot
+      {% elif item.tool == "cursor" %}
+        Cursor
+      {% elif item.tool == "cody" %}
+        Sourcegraph Cody
+      {% elif item.tool == "windsurf" %}
+        Windsurf
+      {% elif item.tool == "aider" %}
+        Aider
+      {% elif item.tool == "tabnine" %}
+        Tabnine
+      {% elif item.tool == "codewhisperer" %}
+        CodeWhisperer
+      {% elif item.tool == "amazon_q" %}
+        Amazon Q
+      {% elif item.tool == "ai_generic" %}
+        Generic AI
+      {% else %}
+        {{ item.tool }}
+      {% endif %}
+    </div>
+    <div class="flex-1">
+      <progress class="progress progress-primary w-full" value="{{ item.count }}" max="{{ chart_data.0.count }}"></progress>
+    </div>
+    <div class="w-12 text-right text-sm font-mono text-base-content">
+      {{ item.count }}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="text-center text-base-content/60 py-8">
+  <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto mb-3 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+  </svg>
+  <p class="text-sm">{% trans "No AI tools detected in PRs yet" %}</p>
+  <p class="text-xs mt-1">{% trans "AI signatures are detected from PR descriptions and commit messages" %}</p>
+</div>
+{% endif %}

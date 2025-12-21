@@ -1,0 +1,29 @@
+{% load i18n %}
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+  <!-- Total PRs -->
+  <div class="stat bg-base-100 shadow rounded-lg">
+    <div class="stat-title">{% trans "Total PRs" %}</div>
+    <div class="stat-value text-base-content">{{ metrics.total_prs|default:0 }}</div>
+    <div class="stat-desc">{% trans "Merged in period" %}</div>
+  </div>
+
+  <!-- AI-Assisted PRs -->
+  <div class="stat bg-base-100 shadow rounded-lg">
+    <div class="stat-title">{% trans "AI-Assisted PRs" %}</div>
+    <div class="stat-value text-primary">{{ metrics.ai_assisted_prs|default:0 }}</div>
+    <div class="stat-desc">{% trans "Detected from content" %}</div>
+  </div>
+
+  <!-- AI Adoption % -->
+  <div class="stat bg-base-100 shadow rounded-lg">
+    <div class="stat-title">{% trans "AI Detection Rate" %}</div>
+    <div class="stat-value text-accent">
+      {% if metrics.ai_assisted_pct %}{{ metrics.ai_assisted_pct|floatformat:1 }}%{% else %}0%{% endif %}
+    </div>
+    <div class="stat-desc">{% trans "From PR body/commits" %}</div>
+  </div>
+</div>
+
+<div class="mt-2 text-xs text-base-content/60">
+  {% trans "Detected via AI tool signatures in PR descriptions and commit co-authors" %}
+</div>

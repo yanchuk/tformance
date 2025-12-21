@@ -2,7 +2,10 @@
 
 from apps.metrics.views.chart_views import (
     ai_adoption_chart,
+    ai_bot_reviews_card,
+    ai_detected_metrics_card,
     ai_quality_chart,
+    ai_tool_breakdown_chart,
     cicd_pass_rate_card,
     copilot_members_table,
     copilot_metrics_card,
@@ -27,7 +30,10 @@ from apps.metrics.views.dashboard_views import cto_overview, dashboard_redirect,
 
 __all__ = [
     "ai_adoption_chart",
+    "ai_bot_reviews_card",
+    "ai_detected_metrics_card",
     "ai_quality_chart",
+    "ai_tool_breakdown_chart",
     "cicd_pass_rate_card",
     "copilot_members_table",
     "copilot_metrics_card",

@@ -124,6 +124,69 @@
       </div>
     </div>
 
+    <!-- AI Detection Section (from content analysis) -->
+    <div class="divider text-lg font-semibold mt-2 mb-4">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-primary mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+      </svg>
+      {% trans "AI Detection (from PR Content)" %}
+    </div>
+
+    <!-- AI Detection Metrics -->
+    <div id="ai-detected-container"
+         hx-get="{% url 'metrics:cards_ai_detected' %}?days={{ days }}"
+         hx-trigger="load"
+         hx-swap="innerHTML">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        {% for i in "123" %}
+        <div class="skeleton h-24 w-full rounded-lg"></div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- AI Tools and Bot Reviews -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+      <!-- AI Tool Breakdown -->
+      <div class="card bg-base-100 shadow-md">
+        <div class="card-body">
+          <h2 class="card-title text-base">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+            {% trans "AI Tools Detected" %}
+          </h2>
+          <p class="text-sm text-base-content/80 mb-2">{% trans "Breakdown by tool (Claude, Copilot, Cursor, etc.)" %}</p>
+          <div id="ai-tools-container"
+               hx-get="{% url 'metrics:chart_ai_tools' %}?days={{ days }}"
+               hx-trigger="load"
+               hx-swap="innerHTML">
+            <div class="flex justify-center items-center h-48">
+              <span class="loading loading-spinner loading-lg"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- AI Bot Reviews -->
+      <div class="card bg-base-100 shadow-md">
+        <div class="card-body">
+          <h2 class="card-title text-base">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            {% trans "AI Bot Reviews" %}
+          </h2>
+          <p class="text-sm text-base-content/80 mb-2">{% trans "CodeRabbit, Dependabot, Renovate, etc." %}</p>
+          <div id="ai-bot-reviews-container"
+               hx-get="{% url 'metrics:cards_ai_bot_reviews' %}?days={{ days }}"
+               hx-trigger="load"
+               hx-swap="innerHTML">
+            <div class="skeleton h-48 w-full rounded-lg"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Cycle Time and Review Time Trends -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
       <!-- Cycle Time Trend -->

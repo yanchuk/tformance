@@ -39,6 +39,10 @@ team_urlpatterns = (
         path("cards/cicd-pass-rate/", views.cicd_pass_rate_card, name="cards_cicd_pass_rate"),
         path("cards/deployments/", views.deployment_metrics_card, name="cards_deployments"),
         path("cards/file-categories/", views.file_category_card, name="cards_file_categories"),
+        # AI Detection metrics (from content analysis)
+        path("cards/ai-detected/", views.ai_detected_metrics_card, name="cards_ai_detected"),
+        path("charts/ai-tools/", views.ai_tool_breakdown_chart, name="chart_ai_tools"),
+        path("cards/ai-bot-reviews/", views.ai_bot_reviews_card, name="cards_ai_bot_reviews"),
     ],
     "metrics",
 )

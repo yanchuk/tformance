@@ -1,119 +1,92 @@
 # AI Involvement Tracking - Context
 
-**Last Updated:** 2025-12-21 (Session 2)
+**Last Updated:** 2025-12-21 (Session 3 - End)
 
-## Status: PHASES 1-4 COMPLETE
+## Status: PHASES 1-5.1 COMPLETE
 
-Phase 1 (database schema), Phase 2 (AI detector), and Phase 4 (seeder integration) are complete.
-Only Phase 5 (dashboard integration) remains.
-
----
-
-## Implementation Progress
-
-### Completed This Session
-1. **AI Detector Service** - Created with TDD (38 tests passing)
-   - `apps/metrics/services/ai_detector.py` - Detection functions
-   - `apps/metrics/services/ai_patterns.py` - Configurable patterns registry
-   - `apps/metrics/tests/test_ai_detector.py` - Comprehensive tests
-
-2. **Model Fields Added** (migration applied)
-   - `PullRequest`: `body`, `is_ai_assisted`, `ai_tools_detected`
-   - `PRReview`: `body`, `is_ai_review`, `ai_reviewer_type`
-   - `Commit`: `is_ai_assisted`, `ai_co_authors`
-   - Migration: `apps/metrics/migrations/0012_add_ai_tracking_fields.py`
-
-3. **Factories Updated**
-   - `PullRequestFactory`: Added `body`, `is_ai_assisted`, `ai_tools_detected`
-   - `PRReviewFactory`: Added `body`, `is_ai_review`, `ai_reviewer_type`
-   - `CommitFactory`: Added `is_ai_assisted`, `ai_co_authors`
-
-4. **Seeder Integration** - AI detection integrated into real project seeder
-   - `apps/metrics/seeding/real_project_seeder.py` - Updated to detect AI
-   - PRs: `detect_ai_in_text()` on body/title
-   - Reviews: `detect_ai_reviewer()` on reviewer username
-   - Commits: `parse_co_authors()` on commit message
-   - Stats tracking: ai_assisted_prs, ai_reviews, ai_commits
-
-### Remaining
-- **Phase 5: Dashboard Integration** - Add AI metrics to CTO dashboard
+Phase 1 (database schema), Phase 2 (AI detector), Phase 4 (seeder integration), and Phase 5.1 (dashboard integration) are complete.
+Only Phase 5.2 (AI indicators on PR views) remains.
 
 ---
 
-## Key Files Created/Modified This Session
+## Current State Summary
+
+### What's Complete
+1. **Database Schema** - Migration `0012_add_ai_tracking_fields.py` applied
+   - PullRequest: `body`, `is_ai_assisted`, `ai_tools_detected`
+   - PRReview: `body`, `is_ai_review`, `ai_reviewer_type`
+   - Commit: `is_ai_assisted`, `ai_co_authors`
+
+2. **AI Detector Service** - 38 tests passing
+   - `detect_ai_reviewer(username)` - Bot detection
+   - `detect_ai_in_text(text)` - Text signature detection
+   - `parse_co_authors(message)` - Co-author parsing
+
+3. **Patterns Registry** - `ai_patterns.py` with versioning
+   - `PATTERNS_VERSION = "1.0.0"` for historical reprocessing
+   - 15+ bot usernames, 20+ text patterns, 12+ co-author patterns
+
+4. **Seeder Integration** - AI detection in `real_project_seeder.py`
+   - Detects AI in PR body/title, reviews, commits
+   - Tracks stats: `ai_assisted_prs`, `ai_reviews`, `ai_commits`
+
+5. **Dashboard Integration (Phase 5.1)** - 16 tests passing
+   - 3 service functions in `dashboard_service.py`
+   - 3 chart views with URL patterns
+   - 3 template partials
+   - CTO overview updated with AI Detection section
+
+### What's Remaining
+- **Phase 5.2: AI Indicators on PR Views** - Add AI badges to PR tables
+
+---
+
+## Files Created/Modified This Session
 
 | File | Action | Purpose |
 |------|--------|---------|
-| `apps/metrics/services/__init__.py` | Created | Service package |
-| `apps/metrics/services/ai_detector.py` | Created | AI detection functions |
-| `apps/metrics/services/ai_patterns.py` | Created | Extensible patterns registry with versioning |
-| `apps/metrics/tests/test_ai_detector.py` | Created | 38 TDD tests for detector |
-| `apps/metrics/tests/test_ai_model_fields.py` | Created | 16 tests for model fields |
-| `apps/metrics/models.py` | Modified | Added AI tracking fields |
-| `apps/metrics/factories.py` | Modified | Added factory defaults |
-| `apps/metrics/migrations/0012_add_ai_tracking_fields.py` | Created | Schema migration |
+| `apps/metrics/services/dashboard_service.py` | Modified | Added 3 AI detection functions (lines 1054-1175) |
+| `apps/metrics/tests/test_dashboard_ai_detection.py` | Created | 16 TDD tests for dashboard functions |
+| `apps/metrics/views/chart_views.py` | Modified | Added 3 chart view functions |
+| `apps/metrics/views/__init__.py` | Modified | Exported new views |
+| `apps/metrics/urls.py` | Modified | Added 3 URL patterns |
+| `templates/metrics/partials/ai_detected_metrics_card.html` | Created | AI detection summary card |
+| `templates/metrics/partials/ai_tool_breakdown_chart.html` | Created | Tool breakdown visualization |
+| `templates/metrics/partials/ai_bot_reviews_card.html` | Created | Bot reviewer stats |
+| `templates/metrics/cto_overview.html` | Modified | Added AI Detection section (lines 127-188) |
 
 ---
 
-## Key Decisions Made This Session
+## Key Code Locations
 
-### 1. Pattern Registry Architecture
-**Decision:** Separate `ai_patterns.py` file with versioning
-**Rationale:**
-- Easy to extend without touching detection logic
-- Version tracking enables selective historical reprocessing
-- Clear documentation for each pattern
+### Dashboard Service Functions
+```python
+# apps/metrics/services/dashboard_service.py
 
-### 2. Pattern Versioning
-**Decision:** Added `PATTERNS_VERSION = "1.0.0"` to track pattern changes
-**Rationale:**
-- User requested ability to reprocess historical data when patterns change
-- Version stored with detections allows selective reprocessing
+def get_ai_detected_metrics(team, start_date, end_date) -> dict:
+    """Line 1061 - Returns {total_prs, ai_assisted_prs, ai_assisted_pct}"""
 
-### 3. Extended Bot List
-**Decision:** Expanded AI reviewer bots to include:
-- CodeRabbit, Copilot, Dependabot, Renovate, Snyk, SonarCloud, Codecov, Linear, Vercel, GitHub Actions
-**Rationale:** Cover all common automation bots in modern dev workflows
+def get_ai_tool_breakdown(team, start_date, end_date) -> list[dict]:
+    """Line 1099 - Returns [{tool, count}, ...] sorted by count desc"""
 
----
-
-## AI Detection Patterns (Final Implementation)
-
-### Reviewer Bots
-Located in `apps/metrics/services/ai_patterns.py`:
-- 15+ bot usernames mapped to AI tool types
-- Case-insensitive matching
-
-### Text Signatures
-- Claude Code, Copilot, Cursor, Cody, Windsurf, Tabnine, CodeWhisperer, Amazon Q, Aider
-- Generic: "AI-generated", "AI-assisted", "LLM-generated"
-
-### Co-Author Patterns
-- Claude (all variants), Copilot, Cursor, Cody, Windsurf, Aider
-- Email domain matching (anthropic.com, github.com, cursor.sh, sourcegraph.com)
-
----
-
-## Data Flow (Updated)
-
+def get_ai_bot_review_stats(team, start_date, end_date) -> dict:
+    """Line 1131 - Returns {total_reviews, ai_reviews, ai_review_pct, by_bot}"""
 ```
-GitHub API
-    │
-    ▼
-GitHubAuthenticatedFetcher
-    │ (already captures body, author, message)
-    ▼
-RealProjectSeeder._create_single_pr()  ← NEXT TO UPDATE
-    │
-    ├─► ai_detector.detect_ai_reviewer(reviewer_login)
-    ├─► ai_detector.detect_ai_in_text(pr_body + pr_title)
-    └─► ai_detector.parse_co_authors(commit_message)
-    │
-    ▼
-Database (PullRequest.is_ai_assisted, PRReview.is_ai_review, etc.)
-    │
-    ▼
-Dashboard (Phase 5 - future)
+
+### Chart Views
+```python
+# apps/metrics/views/chart_views.py (lines 340-390)
+def ai_detected_metrics_card(request)   # cards_ai_detected
+def ai_tool_breakdown_chart(request)    # chart_ai_tools
+def ai_bot_reviews_card(request)        # cards_ai_bot_reviews
+```
+
+### URL Patterns
+```python
+# apps/metrics/urls.py (lines 42-45)
+path("cards/ai-detected/", views.ai_detected_metrics_card, name="cards_ai_detected"),
+path("charts/ai-tools/", views.ai_tool_breakdown_chart, name="chart_ai_tools"),
+path("cards/ai-bot-reviews/", views.ai_bot_reviews_card, name="cards_ai_bot_reviews"),
 ```
 
 ---
@@ -121,78 +94,90 @@ Dashboard (Phase 5 - future)
 ## Test Commands
 
 ```bash
-# Run all AI-related tests (54 tests)
-.venv/bin/python manage.py test apps.metrics.tests.test_ai_detector apps.metrics.tests.test_ai_model_fields --keepdb
+# Run all AI-related tests (70 tests)
+.venv/bin/python manage.py test apps.metrics.tests.test_ai_detector apps.metrics.tests.test_ai_model_fields apps.metrics.tests.test_dashboard_ai_detection --keepdb
 
-# Run just detector tests (38 tests)
-.venv/bin/python manage.py test apps.metrics.tests.test_ai_detector --keepdb
+# Run just dashboard tests (16 tests)
+.venv/bin/python manage.py test apps.metrics.tests.test_dashboard_ai_detection --keepdb
 
-# Run just model field tests (16 tests)
-.venv/bin/python manage.py test apps.metrics.tests.test_ai_model_fields --keepdb
+# Verify all tests pass
+make test
 
-# Apply migrations (already done)
-.venv/bin/python manage.py migrate metrics
-
-# Check for new migrations needed
-.venv/bin/python manage.py makemigrations --check
+# Check code style
+make ruff
 ```
 
 ---
 
-## Next Steps (Seeder Integration)
+## Uncommitted Changes
 
-### 1. Update `_create_single_pr()` in `real_project_seeder.py`
+Check with `git status`:
+- Dashboard service functions
+- Test file for AI dashboard
+- Chart views
+- Template partials
+- CTO overview template
 
-```python
-# Import at top of file
-from apps.metrics.services.ai_detector import detect_ai_in_text, detect_ai_reviewer, parse_co_authors
-
-# In _create_single_pr() - after creating PR factory:
-# Detect AI in PR body/title
-ai_text_result = detect_ai_in_text(f"{pr_data.title}\n{pr_data.body or ''}")
-pr.body = pr_data.body or ""
-pr.is_ai_assisted = ai_text_result["is_ai_assisted"]
-pr.ai_tools_detected = ai_text_result["ai_tools"]
-pr.save()
+**Commit message suggestion:**
 ```
+Add AI detection dashboard integration (Phase 5.1)
 
-### 2. Update review creation
-```python
-# When creating reviews
-ai_reviewer = detect_ai_reviewer(review_data.reviewer_login)
-PRReviewFactory(
-    ...
-    body=review_data.body or "",
-    is_ai_review=ai_reviewer["is_ai"],
-    ai_reviewer_type=ai_reviewer["ai_type"],
-)
-```
+- Add dashboard service functions for AI metrics
+- Create chart views and URL patterns
+- Add template partials for AI detection section
+- Update CTO overview with AI Detection section
+- 16 new tests for dashboard functions
 
-### 3. Update commit creation
-```python
-# When creating commits
-co_authors = parse_co_authors(commit_data.message)
-CommitFactory(
-    ...
-    is_ai_assisted=co_authors["has_ai_co_authors"],
-    ai_co_authors=co_authors["ai_co_authors"],
-)
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 ```
 
 ---
 
-## Session Notes
+## Next Session: Phase 5.2 Tasks
 
-### 2025-12-21 (Session 1 - Planning)
-- Researched current data capture in GitHub fetcher
-- Found that PR body and review body are captured but not stored
-- Designed AI detection approach with patterns
-- Created comprehensive implementation plan
+### 5.2 Add AI Indicators to PR Views
+1. **Update `recent_prs_table.html`** - Add AI badge column
+   - Show badge when `is_ai_assisted=True`
+   - Display tool icon (Claude, Copilot, etc.)
 
-### 2025-12-21 (Session 2 - Implementation)
-- Implemented Phase 2 (AI Detector) with TDD - 38 tests
-- Implemented Phase 1 (Model Fields) with TDD - 16 tests
-- Created configurable patterns registry with versioning
-- Applied migration 0012_add_ai_tracking_fields
-- Started Phase 4 (Seeder Integration) - IN PROGRESS
-- **Stopping point:** Reading `real_project_seeder.py:354` to update `_create_single_pr()`
+2. **Update `get_recent_prs()` service** - Include AI detection data
+   - Currently uses survey-based `ai_assisted`
+   - Add `is_ai_assisted` and `ai_tools_detected` from model
+
+3. **Create AI badge component** - Reusable badge template
+   - `templates/metrics/components/ai_badge.html`
+   - Show tool name on hover
+
+4. **Add AI filter** - Filter PRs by AI involvement
+   - Add query parameter support
+   - Update template with filter dropdown
+
+---
+
+## Architectural Decisions Made
+
+1. **Separate from Survey-Based AI Tracking**
+   - Existing dashboard uses `survey__author_ai_assisted` (user self-report)
+   - New detection uses `is_ai_assisted` (auto-detected from content)
+   - Both shown separately - survey in "AI Adoption", detection in new section
+
+2. **Bot Reviewer Detection via Username**
+   - Exact username matching prevents false positives
+   - No fuzzy matching or partial matches
+   - Easy to extend in `ai_patterns.py`
+
+3. **Pattern Versioning for Reprocessing**
+   - `PATTERNS_VERSION` tracks pattern changes
+   - Enables selective historical reprocessing when patterns updated
+
+---
+
+## Django-Specific Notes
+
+- **No new migrations needed** - Schema complete from Session 2
+- **Apps modified:** `apps.metrics` (service, views, tests)
+- **Templates modified:** `templates/metrics/` (partials, cto_overview)
+- **Celery tasks:** None added this session
+- **Test coverage:** 70 AI-related tests passing
