@@ -98,6 +98,7 @@ class RealProjectSeeder:
     random_seed: int = 42
     github_token: str | None = None
     progress_callback: ProgressCallback | None = None
+    checkpoint_file: str | None = None
 
     # Internal state
     _rng: DeterministicRandom = field(init=False)
@@ -117,11 +118,13 @@ class RealProjectSeeder:
             self._fetcher = GitHubAuthenticatedFetcher(
                 tokens=tokens,
                 progress_callback=self.progress_callback,
+                checkpoint_file=self.checkpoint_file,
             )
         else:
             self._fetcher = GitHubAuthenticatedFetcher(
                 self.github_token,
                 progress_callback=self.progress_callback,
+                checkpoint_file=self.checkpoint_file,
             )
         self._jira_simulator = JiraIssueSimulator(self.config.jira_project_key, self._rng)
         self._survey_simulator = SurveyAISimulator(self.config, self._rng)

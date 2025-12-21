@@ -78,6 +78,12 @@ class Command(BaseCommand):
             type=str,
             help="GitHub PAT (defaults to GITHUB_SEEDING_TOKEN env var)",
         )
+        parser.add_argument(
+            "--checkpoint-file",
+            type=str,
+            default=".seeding_checkpoint.json",
+            help="Checkpoint file for resuming after rate limits (default: .seeding_checkpoint.json)",
+        )
 
     def handle(self, *args, **options):
         # Handle --list-projects
@@ -153,11 +159,15 @@ class Command(BaseCommand):
 
         # Create seeder and run
         self.stdout.write("\nFetching data from GitHub...")
+        checkpoint_file = options.get("checkpoint_file")
+        if checkpoint_file:
+            self.stdout.write(f"  Checkpoint file: {checkpoint_file}")
         try:
             seeder = RealProjectSeeder(
                 config=config,
                 random_seed=options["seed"],
                 github_token=token,
+                checkpoint_file=checkpoint_file,
             )
             stats = seeder.seed()
 

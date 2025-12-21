@@ -29,9 +29,36 @@ from typing import Any
 from django.utils import timezone
 from github import Github, GithubException, RateLimitExceededException
 
+from apps.metrics.seeding.checkpoint import SeedingCheckpoint
 from apps.metrics.seeding.github_token_pool import AllTokensExhaustedException, GitHubTokenPool
 
 logger = logging.getLogger(__name__)
+
+
+def is_secondary_rate_limit(exception: GithubException) -> bool:
+    """Check if a GitHub exception is a secondary (abuse) rate limit.
+
+    GitHub has two types of rate limits:
+    1. Primary: Based on X-RateLimit-Remaining quota (5000/hour)
+       - Returns 403 when quota exhausted
+       - Has X-RateLimit-Remaining = 0
+
+    2. Secondary (abuse detection): Triggered by rapid requests
+       - Returns 403 even with quota remaining
+       - Includes Retry-After header
+
+    Args:
+        exception: A GithubException to check.
+
+    Returns:
+        True if this is a secondary rate limit (has Retry-After header).
+    """
+    if exception.status != 403:
+        return False
+
+    headers = getattr(exception, "headers", {}) or {}
+    return "Retry-After" in headers
+
 
 # Number of parallel threads for fetching PR details
 # Keep low to avoid GitHub's secondary rate limits (abuse detection)
@@ -202,6 +229,7 @@ class GitHubAuthenticatedFetcher:
         token: str | None = None,
         tokens: list[str] | None = None,
         progress_callback: Any | None = None,
+        checkpoint_file: str | None = None,
     ):
         """Initialize the fetcher with authenticated client.
 
@@ -210,6 +238,7 @@ class GitHubAuthenticatedFetcher:
             tokens: List of GitHub PATs for token pooling. If provided, uses GitHubTokenPool.
             progress_callback: Optional callback for progress updates.
                              Called as callback(step, current, total, message).
+            checkpoint_file: Optional path to checkpoint file for resume capability.
 
         Raises:
             ValueError: If no token is provided or found in environment, or if both token and tokens are provided.
@@ -237,6 +266,8 @@ class GitHubAuthenticatedFetcher:
         self._cache: dict[str, Any] = {}
         self.api_calls_made = 0
         self.progress_callback = progress_callback
+        self.checkpoint_file = checkpoint_file
+        self._checkpoint: SeedingCheckpoint | None = None
 
         # Log rate limit status (only if single token mode)
         if self._client is not None:
@@ -397,6 +428,26 @@ class GitHubAuthenticatedFetcher:
             logger.error("Failed to fetch contributors from %s: %s", repo_name, e)
             return []
 
+    def _load_checkpoint(self, repo_name: str) -> SeedingCheckpoint:
+        """Load checkpoint for the given repo.
+
+        Args:
+            repo_name: Repository in "owner/repo" format.
+
+        Returns:
+            Loaded checkpoint or new empty checkpoint.
+        """
+        if self.checkpoint_file:
+            self._checkpoint = SeedingCheckpoint.load(self.checkpoint_file, repo_name)
+        else:
+            self._checkpoint = SeedingCheckpoint(repo=repo_name)
+        return self._checkpoint
+
+    def _save_checkpoint(self) -> None:
+        """Save current checkpoint to file if configured."""
+        if self.checkpoint_file and self._checkpoint:
+            self._checkpoint.save(self.checkpoint_file)
+
     def fetch_prs_with_details(
         self,
         repo_name: str,
@@ -408,6 +459,7 @@ class GitHubAuthenticatedFetcher:
         """Fetch PRs with complete details (commits, reviews, files, checks).
 
         Uses parallel fetching by default for improved performance.
+        Supports checkpointing for resume after rate limiting.
 
         Args:
             repo_name: Repository in "owner/repo" format.
@@ -420,6 +472,9 @@ class GitHubAuthenticatedFetcher:
             List of FetchedPRFull with all related data.
         """
         since = since or (timezone.now() - timedelta(days=90))
+
+        # Load checkpoint for resume capability
+        checkpoint = self._load_checkpoint(repo_name)
 
         # Retry loop for token switching
         # Allow retries up to the number of tokens available (with a reasonable max)
@@ -435,6 +490,7 @@ class GitHubAuthenticatedFetcher:
 
                 # First pass: collect PR objects that match criteria
                 pr_objects = []
+                skipped_from_checkpoint = 0
                 logger.info("Fetching PRs from %s (max: %d, since: %s)", repo_name, max_prs, since.date())
 
                 for pr in pulls:
@@ -450,14 +506,35 @@ class GitHubAuthenticatedFetcher:
                     if pr.draft:
                         continue
 
+                    # Skip PRs already in checkpoint
+                    if checkpoint.is_fetched(pr.number):
+                        skipped_from_checkpoint += 1
+                        continue
+
                     pr_objects.append(pr)
 
-                logger.info("Found %d PRs to fetch details for", len(pr_objects))
+                if skipped_from_checkpoint > 0:
+                    logger.info(
+                        "Skipped %d PRs from checkpoint, %d new PRs to fetch",
+                        skipped_from_checkpoint,
+                        len(pr_objects),
+                    )
+                else:
+                    logger.info("Found %d PRs to fetch details for", len(pr_objects))
+
+                # Update checkpoint with total PRs found
+                checkpoint.total_prs_found = len(pr_objects) + skipped_from_checkpoint
 
                 if parallel and len(pr_objects) > 1:
-                    return self._fetch_prs_parallel(pr_objects, repo_name)
+                    result = self._fetch_prs_parallel(pr_objects, repo_name)
                 else:
-                    return self._fetch_prs_sequential(pr_objects, repo_name)
+                    result = self._fetch_prs_sequential(pr_objects, repo_name)
+
+                # Mark checkpoint as completed and save
+                if self.checkpoint_file and self._checkpoint:
+                    self._checkpoint.mark_completed(self.checkpoint_file)
+
+                return result
 
             except RateLimitExceededException as e:
                 # Extract reset time from exception headers
@@ -481,6 +558,18 @@ class GitHubAuthenticatedFetcher:
                 return []
 
             except GithubException as e:
+                # Check if this is a secondary (abuse) rate limit
+                if is_secondary_rate_limit(e):
+                    headers = getattr(e, "headers", {}) or {}
+                    retry_after = int(headers.get("Retry-After", 60))
+                    logger.warning(
+                        "Secondary rate limit (abuse detection) hit. Waiting %ds before retry...",
+                        retry_after,
+                    )
+                    time.sleep(retry_after)
+                    retry_count += 1
+                    continue
+
                 logger.error("Failed to fetch PRs from %s: %s", repo_name, e)
                 return []
 
@@ -532,6 +621,12 @@ class GitHubAuthenticatedFetcher:
             # Fetch batch with retry logic
             batch_results = self._fetch_batch_with_retry(batch, repo_name)
             fetched_prs.extend(batch_results)
+
+            # Update checkpoint with fetched PR numbers
+            if self._checkpoint:
+                for pr_result in batch_results:
+                    self._checkpoint.add_fetched_pr(pr_result.number)
+                self._save_checkpoint()
 
             # Report progress after fetching batch
             self._report_progress(

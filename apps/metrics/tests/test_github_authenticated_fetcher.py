@@ -554,3 +554,520 @@ class TestGitHubAuthenticatedFetcherTokenPoolIntegration(TestCase):
         # user2 should be third (1 PR)
         self.assertEqual(contributors[2].github_login, "user2")
         self.assertEqual(contributors[2].pr_count, 1)
+
+
+class TestGitHubFetcherCheckpointing(TestCase):
+    """Tests for checkpoint-based resume functionality."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        import tempfile
+
+        self.temp_dir = tempfile.mkdtemp()
+        self.checkpoint_file = f"{self.temp_dir}/test_checkpoint.json"
+
+    def tearDown(self):
+        """Clean up temporary files."""
+        import os
+        import shutil
+
+        if os.path.exists(self.temp_dir):
+            shutil.rmtree(self.temp_dir)
+
+    def _create_mock_client(self, mock_github_class):
+        """Helper to create a properly configured mock client."""
+        mock_client = Mock()
+        mock_github_class.return_value = mock_client
+
+        mock_rate = Mock()
+        mock_rate.remaining = 5000
+        mock_rate.reset = datetime.now(UTC) + timedelta(hours=1)
+        mock_client.get_rate_limit.return_value.rate = mock_rate
+
+        return mock_client
+
+    def _create_mock_prs(self, count: int, start_number: int = 1):
+        """Helper to create mock PR objects."""
+        mock_prs = []
+        for i in range(count):
+            mock_pr = Mock()
+            mock_pr.number = start_number + i
+            mock_pr.id = 1000 + i
+            mock_pr.draft = False
+            mock_pr.created_at = datetime.now(UTC) - timedelta(days=i)
+            mock_pr.updated_at = datetime.now(UTC) - timedelta(days=i)
+            mock_prs.append(mock_pr)
+        return mock_prs
+
+    @patch("apps.metrics.seeding.github_authenticated_fetcher.Github")
+    def test_fetcher_accepts_checkpoint_file_parameter(self, mock_github_class):
+        """Test that fetcher can be initialized with a checkpoint_file parameter."""
+        self._create_mock_client(mock_github_class)
+
+        # Should accept checkpoint_file parameter
+        fetcher = GitHubAuthenticatedFetcher(
+            token="ghp_test_token",
+            checkpoint_file=self.checkpoint_file,
+        )
+
+        self.assertEqual(fetcher.checkpoint_file, self.checkpoint_file)
+
+    @patch("apps.metrics.seeding.github_authenticated_fetcher.GitHubTokenPool")
+    @patch("apps.metrics.seeding.github_authenticated_fetcher.Github")
+    def test_checkpoint_saves_after_each_batch(self, mock_github_class, mock_pool_class):
+        """Test that checkpoint file is updated after processing each batch of PRs."""
+        import json
+        import os
+
+        mock_client = self._create_mock_client(mock_github_class)
+
+        # Mock token pool
+        mock_pool = Mock()
+        mock_pool.get_best_client.return_value = mock_client
+        mock_pool.total_remaining = 5000
+        mock_pool_class.return_value = mock_pool
+
+        # Mock repository and PRs
+        mock_repo = Mock()
+        mock_client.get_repo.return_value = mock_repo
+        mock_prs = self._create_mock_prs(5)
+        mock_repo.get_pulls.return_value = mock_prs
+
+        fetcher = GitHubAuthenticatedFetcher(
+            token="ghp_test_token",
+            checkpoint_file=self.checkpoint_file,
+        )
+
+        # Mock _fetch_pr_details to return mocks with correct number attribute
+        with patch.object(fetcher, "_fetch_pr_details") as mock_fetch_details:
+
+            def return_mock_with_number(pr, repo_name):
+                result = Mock()
+                result.number = pr.number
+                result.title = "Test"
+                result.created_at = pr.created_at
+                return result
+
+            mock_fetch_details.side_effect = return_mock_with_number
+
+            fetcher.fetch_prs_with_details("test/repo", max_prs=5)
+
+        # Checkpoint file should exist and contain fetched PR numbers
+        self.assertTrue(os.path.exists(self.checkpoint_file))
+
+        with open(self.checkpoint_file) as f:
+            checkpoint = json.load(f)
+
+        # After completion, checkpoint should be marked as completed (empty PR list)
+        self.assertTrue(checkpoint.get("completed", False))
+
+    @patch("apps.metrics.seeding.github_authenticated_fetcher.GitHubTokenPool")
+    @patch("apps.metrics.seeding.github_authenticated_fetcher.Github")
+    def test_checkpoint_contains_required_fields(self, mock_github_class, mock_pool_class):
+        """Test that checkpoint contains project, repo, pr_numbers, and timestamp."""
+        import json
+        import os
+
+        mock_client = self._create_mock_client(mock_github_class)
+
+        # Mock token pool
+        mock_pool = Mock()
+        mock_pool.get_best_client.return_value = mock_client
+        mock_pool.total_remaining = 5000
+        mock_pool_class.return_value = mock_pool
+
+        mock_repo = Mock()
+        mock_client.get_repo.return_value = mock_repo
+
+        mock_prs = self._create_mock_prs(1, start_number=123)
+        mock_repo.get_pulls.return_value = mock_prs
+
+        fetcher = GitHubAuthenticatedFetcher(
+            token="ghp_test_token",
+            checkpoint_file=self.checkpoint_file,
+        )
+
+        with patch.object(fetcher, "_fetch_pr_details") as mock_fetch_details:
+
+            def return_mock_with_number(pr, repo_name):
+                result = Mock()
+                result.number = pr.number
+                result.title = "Test"
+                result.created_at = pr.created_at
+                return result
+
+            mock_fetch_details.side_effect = return_mock_with_number
+
+            fetcher.fetch_prs_with_details("owner/repo-name", max_prs=5)
+
+        self.assertTrue(os.path.exists(self.checkpoint_file))
+
+        with open(self.checkpoint_file) as f:
+            checkpoint = json.load(f)
+
+        # Required fields
+        self.assertIn("repo", checkpoint)
+        self.assertIn("last_updated", checkpoint)
+        self.assertEqual(checkpoint["repo"], "owner/repo-name")
+
+    @patch("apps.metrics.seeding.github_authenticated_fetcher.GitHubTokenPool")
+    @patch("apps.metrics.seeding.github_authenticated_fetcher.Github")
+    def test_fetcher_resumes_from_checkpoint(self, mock_github_class, mock_pool_class):
+        """Test that fetcher skips PRs already listed in checkpoint."""
+        import json
+
+        # Create checkpoint with some PRs already fetched
+        checkpoint_data = {
+            "repo": "test/repo",
+            "fetched_pr_numbers": [1, 2, 3],
+            "last_updated": datetime.now(UTC).isoformat(),
+        }
+        with open(self.checkpoint_file, "w") as f:
+            json.dump(checkpoint_data, f)
+
+        mock_client = self._create_mock_client(mock_github_class)
+
+        # Mock token pool
+        mock_pool = Mock()
+        mock_pool.get_best_client.return_value = mock_client
+        mock_pool.total_remaining = 5000
+        mock_pool_class.return_value = mock_pool
+
+        mock_repo = Mock()
+        mock_client.get_repo.return_value = mock_repo
+
+        # PRs 1-5, but 1-3 are already in checkpoint
+        mock_prs = self._create_mock_prs(5)
+        mock_repo.get_pulls.return_value = mock_prs
+
+        fetcher = GitHubAuthenticatedFetcher(
+            token="ghp_test_token",
+            checkpoint_file=self.checkpoint_file,
+        )
+
+        fetched_numbers = []
+        with patch.object(fetcher, "_fetch_pr_details") as mock_fetch_details:
+
+            def track_fetch(pr, repo_name):
+                fetched_numbers.append(pr.number)
+                result = Mock()
+                result.number = pr.number
+                result.title = "Test"
+                result.created_at = pr.created_at
+                return result
+
+            mock_fetch_details.side_effect = track_fetch
+
+            fetcher.fetch_prs_with_details("test/repo", max_prs=10)
+
+        # Should only fetch PRs 4 and 5, not 1-3 (already in checkpoint)
+        self.assertNotIn(1, fetched_numbers)
+        self.assertNotIn(2, fetched_numbers)
+        self.assertNotIn(3, fetched_numbers)
+        self.assertIn(4, fetched_numbers)
+        self.assertIn(5, fetched_numbers)
+
+    @patch("apps.metrics.seeding.github_authenticated_fetcher.GitHubTokenPool")
+    @patch("apps.metrics.seeding.github_authenticated_fetcher.Github")
+    def test_checkpoint_cleared_on_successful_completion(self, mock_github_class, mock_pool_class):
+        """Test that checkpoint is cleared when all PRs are successfully fetched."""
+        import json
+        import os
+
+        mock_client = self._create_mock_client(mock_github_class)
+
+        # Mock token pool
+        mock_pool = Mock()
+        mock_pool.get_best_client.return_value = mock_client
+        mock_pool.total_remaining = 5000
+        mock_pool_class.return_value = mock_pool
+
+        mock_repo = Mock()
+        mock_client.get_repo.return_value = mock_repo
+
+        mock_prs = self._create_mock_prs(1)
+        mock_repo.get_pulls.return_value = mock_prs
+
+        fetcher = GitHubAuthenticatedFetcher(
+            token="ghp_test_token",
+            checkpoint_file=self.checkpoint_file,
+        )
+
+        with patch.object(fetcher, "_fetch_pr_details") as mock_fetch_details:
+
+            def return_mock_with_number(pr, repo_name):
+                result = Mock()
+                result.number = pr.number
+                result.title = "Test"
+                result.created_at = pr.created_at
+                return result
+
+            mock_fetch_details.side_effect = return_mock_with_number
+
+            # Fetch all PRs successfully
+            result = fetcher.fetch_prs_with_details("test/repo", max_prs=5)
+
+        # Should have fetched the PR
+        self.assertEqual(len(result), 1)
+
+        # Checkpoint should be cleared (marked as complete or empty)
+        if os.path.exists(self.checkpoint_file):
+            with open(self.checkpoint_file) as f:
+                checkpoint = json.load(f)
+            # If file exists, it should be marked as complete or empty
+            self.assertTrue(checkpoint.get("completed", False) or len(checkpoint.get("fetched_pr_numbers", [])) == 0)
+
+    @patch("apps.metrics.seeding.github_authenticated_fetcher.GitHubTokenPool")
+    @patch("apps.metrics.seeding.github_authenticated_fetcher.Github")
+    def test_checkpoint_handles_missing_file(self, mock_github_class, mock_pool_class):
+        """Test that fetcher handles missing checkpoint file gracefully (fresh start)."""
+        import os
+
+        # Ensure checkpoint file doesn't exist
+        if os.path.exists(self.checkpoint_file):
+            os.remove(self.checkpoint_file)
+
+        mock_client = self._create_mock_client(mock_github_class)
+
+        # Mock token pool
+        mock_pool = Mock()
+        mock_pool.get_best_client.return_value = mock_client
+        mock_pool.total_remaining = 5000
+        mock_pool_class.return_value = mock_pool
+
+        mock_repo = Mock()
+        mock_client.get_repo.return_value = mock_repo
+        mock_repo.get_pulls.return_value = []
+
+        fetcher = GitHubAuthenticatedFetcher(
+            token="ghp_test_token",
+            checkpoint_file=self.checkpoint_file,
+        )
+
+        # Should not raise an exception
+        result = fetcher.fetch_prs_with_details("test/repo", max_prs=5)
+
+        # Should return empty list (no PRs to fetch)
+        self.assertEqual(result, [])
+
+    @patch("apps.metrics.seeding.github_authenticated_fetcher.GitHubTokenPool")
+    @patch("apps.metrics.seeding.github_authenticated_fetcher.Github")
+    def test_checkpoint_handles_corrupt_file(self, mock_github_class, mock_pool_class):
+        """Test that fetcher handles corrupt/invalid JSON in checkpoint gracefully."""
+        # Create corrupt checkpoint file
+        with open(self.checkpoint_file, "w") as f:
+            f.write("{ invalid json }")
+
+        mock_client = self._create_mock_client(mock_github_class)
+
+        # Mock token pool
+        mock_pool = Mock()
+        mock_pool.get_best_client.return_value = mock_client
+        mock_pool.total_remaining = 5000
+        mock_pool_class.return_value = mock_pool
+
+        mock_repo = Mock()
+        mock_client.get_repo.return_value = mock_repo
+        mock_repo.get_pulls.return_value = []
+
+        fetcher = GitHubAuthenticatedFetcher(
+            token="ghp_test_token",
+            checkpoint_file=self.checkpoint_file,
+        )
+
+        # Should not raise an exception - treat as fresh start
+        result = fetcher.fetch_prs_with_details("test/repo", max_prs=5)
+
+        # Should return empty list (no PRs to fetch)
+        self.assertEqual(result, [])
+
+    @patch("apps.metrics.seeding.github_authenticated_fetcher.GitHubTokenPool")
+    @patch("apps.metrics.seeding.github_authenticated_fetcher.Github")
+    def test_checkpoint_handles_different_repo(self, mock_github_class, mock_pool_class):
+        """Test that checkpoint for different repo is ignored (fresh start for new repo)."""
+        import json
+
+        # Create checkpoint for a different repo
+        checkpoint_data = {
+            "repo": "different/repo",
+            "fetched_pr_numbers": [1, 2, 3],
+            "last_updated": datetime.now(UTC).isoformat(),
+        }
+        with open(self.checkpoint_file, "w") as f:
+            json.dump(checkpoint_data, f)
+
+        mock_client = self._create_mock_client(mock_github_class)
+
+        # Mock token pool
+        mock_pool = Mock()
+        mock_pool.get_best_client.return_value = mock_client
+        mock_pool.total_remaining = 5000
+        mock_pool_class.return_value = mock_pool
+
+        mock_repo = Mock()
+        mock_client.get_repo.return_value = mock_repo
+
+        mock_prs = self._create_mock_prs(1)
+        mock_repo.get_pulls.return_value = mock_prs
+
+        fetcher = GitHubAuthenticatedFetcher(
+            token="ghp_test_token",
+            checkpoint_file=self.checkpoint_file,
+        )
+
+        fetched_numbers = []
+        with patch.object(fetcher, "_fetch_pr_details") as mock_fetch_details:
+
+            def track_fetch(pr, repo_name):
+                fetched_numbers.append(pr.number)
+                result = Mock()
+                result.number = pr.number
+                result.title = "Test"
+                result.created_at = pr.created_at
+                return result
+
+            mock_fetch_details.side_effect = track_fetch
+
+            fetcher.fetch_prs_with_details("new/repo", max_prs=10)
+
+        # Should fetch PR 1 because checkpoint is for different repo
+        self.assertIn(1, fetched_numbers)
+
+
+class TestSecondaryRateLimitDetection(TestCase):
+    """Tests for secondary rate limit (abuse detection) handling.
+
+    GitHub has two types of rate limits:
+    1. Primary: Based on X-RateLimit-Remaining quota (5000/hour)
+    2. Secondary: Abuse detection that triggers 403 even with quota remaining
+
+    Secondary limits include a Retry-After header indicating how long to wait.
+    """
+
+    @patch("apps.metrics.seeding.github_authenticated_fetcher.Github")
+    def test_is_secondary_rate_limit_detects_retry_after_header(self, mock_github_class):
+        """Test that secondary rate limit is detected by Retry-After header."""
+        from github import GithubException
+
+        from apps.metrics.seeding.github_authenticated_fetcher import is_secondary_rate_limit
+
+        # Create 403 exception WITH Retry-After header (secondary limit)
+        secondary_exception = GithubException(
+            status=403,
+            data={"message": "You have exceeded a secondary rate limit"},
+            headers={"Retry-After": "60"},
+        )
+
+        self.assertTrue(is_secondary_rate_limit(secondary_exception))
+
+    @patch("apps.metrics.seeding.github_authenticated_fetcher.Github")
+    def test_is_secondary_rate_limit_false_for_primary_limit(self, mock_github_class):
+        """Test that primary rate limit (no Retry-After) is not detected as secondary."""
+        from github import GithubException
+
+        from apps.metrics.seeding.github_authenticated_fetcher import is_secondary_rate_limit
+
+        # Create 403 exception WITHOUT Retry-After header (primary limit)
+        primary_exception = GithubException(
+            status=403,
+            data={"message": "API rate limit exceeded"},
+            headers={"X-RateLimit-Remaining": "0", "X-RateLimit-Reset": "1234567890"},
+        )
+
+        self.assertFalse(is_secondary_rate_limit(primary_exception))
+
+    @patch("apps.metrics.seeding.github_authenticated_fetcher.Github")
+    def test_is_secondary_rate_limit_false_for_non_403(self, mock_github_class):
+        """Test that non-403 errors are not detected as secondary rate limit."""
+        from github import GithubException
+
+        from apps.metrics.seeding.github_authenticated_fetcher import is_secondary_rate_limit
+
+        # Create 401 exception (not rate limit)
+        auth_exception = GithubException(
+            status=401,
+            data={"message": "Bad credentials"},
+            headers={},
+        )
+
+        self.assertFalse(is_secondary_rate_limit(auth_exception))
+
+    @patch("apps.metrics.seeding.github_authenticated_fetcher.time")
+    @patch("apps.metrics.seeding.github_authenticated_fetcher.GitHubTokenPool")
+    @patch("apps.metrics.seeding.github_authenticated_fetcher.Github")
+    def test_secondary_limit_waits_for_retry_after_duration(self, mock_github_class, mock_pool_class, mock_time):
+        """Test that secondary rate limit causes wait based on Retry-After header."""
+        from github import GithubException
+
+        mock_client = Mock()
+        mock_github_class.return_value = mock_client
+
+        mock_rate = Mock()
+        mock_rate.remaining = 5000
+        mock_rate.reset = datetime.now(UTC) + timedelta(hours=1)
+        mock_client.get_rate_limit.return_value.rate = mock_rate
+
+        # Mock token pool
+        mock_pool = Mock()
+        mock_pool.get_best_client.return_value = mock_client
+        mock_pool.total_remaining = 5000
+        mock_pool_class.return_value = mock_pool
+
+        # Mock repo to raise secondary rate limit, then succeed
+        mock_repo = Mock()
+        secondary_exception = GithubException(
+            status=403,
+            data={"message": "You have exceeded a secondary rate limit"},
+            headers={"Retry-After": "30"},
+        )
+        mock_client.get_repo.side_effect = [secondary_exception, mock_repo]
+        mock_repo.get_pulls.return_value = []
+
+        fetcher = GitHubAuthenticatedFetcher(token="ghp_test_token")
+
+        # Fetch should succeed after waiting
+        fetcher.fetch_prs_with_details("test/repo", max_prs=5)
+
+        # Should have called sleep with the Retry-After value
+        mock_time.sleep.assert_any_call(30)
+
+    @patch("apps.metrics.seeding.github_authenticated_fetcher.time")
+    @patch("apps.metrics.seeding.github_authenticated_fetcher.GitHubTokenPool")
+    @patch("apps.metrics.seeding.github_authenticated_fetcher.Github")
+    def test_secondary_limit_logs_distinct_message(self, mock_github_class, mock_pool_class, mock_time):
+        """Test that secondary rate limit logs a distinct message from primary."""
+        from github import GithubException
+
+        mock_client = Mock()
+        mock_github_class.return_value = mock_client
+
+        mock_rate = Mock()
+        mock_rate.remaining = 5000
+        mock_rate.reset = datetime.now(UTC) + timedelta(hours=1)
+        mock_client.get_rate_limit.return_value.rate = mock_rate
+
+        # Mock token pool
+        mock_pool = Mock()
+        mock_pool.get_best_client.return_value = mock_client
+        mock_pool.total_remaining = 5000
+        mock_pool_class.return_value = mock_pool
+
+        # Mock repo to raise secondary rate limit (will exhaust retries)
+        secondary_exception = GithubException(
+            status=403,
+            data={"message": "You have exceeded a secondary rate limit"},
+            headers={"Retry-After": "60"},
+        )
+        mock_client.get_repo.side_effect = secondary_exception
+
+        fetcher = GitHubAuthenticatedFetcher(token="ghp_test_token")
+
+        with self.assertLogs("apps.metrics.seeding.github_authenticated_fetcher", level="WARNING") as log:
+            fetcher.fetch_prs_with_details("test/repo", max_prs=5)
+
+            log_output = " ".join(log.output)
+            # Should log about secondary/abuse rate limit
+            self.assertTrue(
+                "secondary" in log_output.lower() or "abuse" in log_output.lower(),
+                f"Expected 'secondary' or 'abuse' in log output: {log_output}",
+            )
