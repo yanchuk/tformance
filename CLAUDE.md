@@ -423,6 +423,12 @@ This project has Claude Code skills configured to enforce TDD. When you request 
 - Keep the codebase clean and organized.
 - Avoid writing scripts in files if possible, especially if the script is likely only to be run once.
 - Try to avoid having files over 200-300 lines of code. Refactor at that point.
+- **Large file splitting convention**: When a file exceeds limits, split into a directory with focused submodules:
+  - `models.py` (if >500 lines) → `models/` directory with domain files (e.g., `github.py`, `jira.py`)
+  - `views.py` (if >500 lines) → `views/` directory with feature files (e.g., `github.py`, `slack.py`)
+  - `test_*.py` (if >1000 lines) → `tests/<feature>/` subdirectory with focused test files
+  - Always include `__init__.py` with re-exports for backward compatibility
+  - Example: `from apps.metrics.models import PullRequest` continues to work after splitting
 - Don't ever add mock data to functions. Only add mocks to tests or utilities that are only used by tests.
 - Always think about what other areas of code might be affected by any changes made.
 - Never overwrite my .env file without first asking and confirming.

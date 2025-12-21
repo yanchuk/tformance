@@ -1,244 +1,163 @@
 # Codebase Improvements: Context
 
 **Last Updated:** 2025-12-21
+**Status:** ✅ ALL PHASES COMPLETE
 
-## Key Files
+## Implementation Summary
 
-### Files to Split
+All 5 file-splitting phases completed successfully. The codebase now has better organization for Claude Code context limits.
 
-| File | Lines | Action |
-|------|-------|--------|
-| `apps/metrics/models.py` | 1,518 | Split into `apps/metrics/models/` (8 files) |
-| `apps/integrations/views.py` | 1,321 | Split into `apps/integrations/views/` (5 files) |
-| `apps/integrations/tests/test_github_sync.py` | 4,391 | Split into `tests/github_sync/` (11 files) |
-| `apps/metrics/tests/test_dashboard_service.py` | 3,142 | Split into `tests/dashboard/` (12 files) |
-| `apps/metrics/tests/test_models.py` | 2,847 | Split into `tests/models/` (13 files) |
+### Completed Splits
 
-### Files to Update
+| Original File | Lines | Split Into | Tests Verified |
+|--------------|-------|------------|----------------|
+| `apps/metrics/models.py` | 1,518 | `apps/metrics/models/` (8 files) | 116+ tests |
+| `apps/integrations/views.py` | 1,321 | `apps/integrations/views/` (6 files) | 111 tests |
+| `apps/integrations/tests/test_github_sync.py` | 4,391 | `tests/github_sync/` (11 files) | 84 tests |
+| `apps/metrics/tests/test_dashboard_service.py` | 3,142 | `tests/dashboard/` (12 files) | 128 tests |
+| `apps/metrics/tests/test_models.py` | 2,847 | `tests/models/` (13 files) | 213 tests |
 
-| File | Update Required |
-|------|----------------|
-| `apps/metrics/admin.py` | May need import updates (verify after split) |
-| `apps/integrations/urls.py` | May need import updates (verify after split) |
-| `apps/metrics/factories.py` | Uses models - backward compatible |
-| `apps/metrics/processors.py` | Uses models - backward compatible |
-
-### Reference Files
-
-| File | Purpose |
-|------|---------|
-| `apps/teams/models.py` | BaseTeamModel definition |
-| `apps/utils/models.py` | BaseModel definition |
-| `CLAUDE.md` | Coding guidelines |
+**Full Test Suite:** 1,942 tests passing
 
 ---
 
-## Model Class Mapping
+## Final Directory Structure
 
-### models.py -> models/github.py
-```python
-# Line 97: class PullRequest(BaseTeamModel)
-# Line 288: class PRReview(BaseTeamModel)
-# Line 378: class PRCheckRun(BaseTeamModel)
-# Line 466: class PRFile(BaseTeamModel)
-# Line 570: class Commit(BaseTeamModel)
-# Line 1159: class PRComment(BaseTeamModel)
+### apps/metrics/models/
+```
+models/
+├── __init__.py          # Re-exports all models for backward compatibility
+├── base.py              # Shared imports (empty - imports in each file)
+├── team.py              # TeamMember
+├── github.py            # PullRequest, PRReview, PRCheckRun, PRFile, PRComment, Commit
+├── jira.py              # JiraIssue
+├── surveys.py           # PRSurvey, PRSurveyReview
+├── aggregations.py      # AIUsageDaily, WeeklyMetrics, ReviewerCorrelation
+├── insights.py          # DailyInsight
+└── deployments.py       # Deployment
 ```
 
-### models.py -> models/team.py
-```python
-# Line 6: class TeamMember(BaseTeamModel)
+### apps/integrations/views/
+```
+views/
+├── __init__.py          # Re-exports all views for backward compatibility
+├── helpers.py           # 6 helper functions (_create_repository_webhook, etc.)
+├── github.py            # 10 GitHub view functions
+├── jira.py              # 6 Jira view functions
+├── slack.py             # 4 Slack view functions
+└── status.py            # integrations_home, copilot_sync
 ```
 
-### models.py -> models/jira.py
-```python
-# Line 665: class JiraIssue(BaseTeamModel)
+### apps/integrations/tests/github_sync/
+```
+github_sync/
+├── __init__.py
+├── test_pr_fetch.py         # TestGetRepositoryPullRequests, TestGetUpdatedPullRequests
+├── test_reviews.py          # TestGetPullRequestReviews
+├── test_repository_sync.py  # TestSyncRepositoryHistory, TestSyncRepositoryIncremental
+├── test_jira_key.py         # TestJiraKeyExtraction
+├── test_commits.py          # TestSyncPRCommits
+├── test_check_runs.py       # TestSyncPRCheckRuns
+├── test_files.py            # TestSyncPRFiles
+├── test_deployments.py      # TestSyncRepositoryDeployments
+├── test_comments.py         # TestSyncPRIssueComments, TestSyncPRReviewComments
+├── test_iterations.py       # TestCalculatePRIterationMetrics
+└── test_correlations.py     # TestCalculateReviewerCorrelations
 ```
 
-### models.py -> models/surveys.py
-```python
-# Line 870: class PRSurvey(BaseTeamModel)
-# Line 958: class PRSurveyReview(BaseTeamModel)
+### apps/metrics/tests/dashboard/
+```
+dashboard/
+├── __init__.py
+├── test_key_metrics.py         # TestGetKeyMetrics
+├── test_ai_metrics.py          # TestGetAIAdoptionTrend, TestGetAIQualityComparison
+├── test_cycle_time.py          # TestGetCycleTimeTrend
+├── test_team_breakdown.py      # TestGetTeamBreakdown
+├── test_review_metrics.py      # TestGetReviewDistribution, TestGetReviewTimeTrend, TestGetReviewerWorkload
+├── test_pr_metrics.py          # TestGetRecentPrs, TestGetRevertHotfixStats, TestGetPrSizeDistribution, TestGetUnlinkedPrs
+├── test_copilot_metrics.py     # TestCopilotDashboardService
+├── test_iteration_metrics.py   # TestGetIterationMetrics
+├── test_reviewer_correlations.py  # TestGetReviewerCorrelations
+├── test_cicd_metrics.py        # TestGetCicdPassRate
+├── test_deployment_metrics.py  # TestGetDeploymentMetrics
+└── test_file_categories.py     # TestGetFileCategoryBreakdown
 ```
 
-### models.py -> models/aggregations.py
-```python
-# Line 791: class AIUsageDaily(BaseTeamModel)
-# Line 1027: class WeeklyMetrics(BaseTeamModel)
-# Line 1347: class ReviewerCorrelation(BaseTeamModel)
+### apps/metrics/tests/models/
 ```
-
-### models.py -> models/insights.py
-```python
-# Line 1432: class DailyInsight(BaseTeamModel)
-```
-
-### models.py -> models/deployments.py
-```python
-# Line 1256: class Deployment(BaseTeamModel)
-```
-
----
-
-## View Function Mapping
-
-### views.py -> views/helpers.py
-```python
-# Line 42: def _create_repository_webhook(...)
-# Line 69: def _delete_repository_webhook(...)
-# Line 90: def _create_integration_credential(...)
-# Line 111: def _validate_oauth_callback(...)
-# Line 158: def _create_github_integration(...)
-# Line 178: def _sync_github_members_after_connection(...)
-```
-
-### views.py -> views/github.py
-```python
-# Line 278: def github_connect(request)
-# Line 312: def github_callback(request)
-# Line 381: def github_disconnect(request)
-# Line 412: def github_select_org(request)
-# Line 465: def github_members(request)
-# Line 499: def github_members_sync(request)
-# Line 547: def github_member_toggle(request, member_id)
-# Line 591: def github_repos(request)
-# Line 646: def github_repo_toggle(request, repo_id)
-# Line 754: def github_repo_sync(request, repo_id)
-```
-
-### views.py -> views/jira.py
-```python
-# Line 788: def jira_connect(request)
-# Line 822: def jira_callback(request)
-# Line 894: def jira_disconnect(request)
-# Line 925: def jira_select_site(request)
-# Line 981: def jira_projects_list(request)
-# Line 1028: def jira_project_toggle(request)
-```
-
-### views.py -> views/slack.py
-```python
-# Line 1085: def slack_connect(request)
-# Line 1119: def slack_callback(request)
-# Line 1199: def slack_disconnect(request)
-# Line 1230: def slack_settings(request)
-```
-
-### views.py -> views/status.py
-```python
-# Line 202: def integrations_home(request)
-# Line 1293: def copilot_sync(request)
+models/
+├── __init__.py
+├── test_team_member.py         # TestTeamMemberModel
+├── test_pull_request.py        # TestPullRequestModel, TestPullRequestIterationFields, TestPullRequestFactory
+├── test_pr_review.py           # TestPRReviewModel
+├── test_commit.py              # TestCommitModel
+├── test_jira_issue.py          # TestJiraIssueModel, TestJiraIssuePRLinking
+├── test_ai_usage.py            # TestAIUsageDailyModel
+├── test_survey.py              # TestPRSurveyModel, TestPRSurveyReviewModel
+├── test_weekly_metrics.py      # TestWeeklyMetricsModel
+├── test_pr_check_run.py        # TestPRCheckRunModel
+├── test_pr_file.py             # TestPRFileModel
+├── test_deployment.py          # TestDeploymentModel
+├── test_pr_comment.py          # TestPRCommentModel
+└── test_reviewer_correlation.py  # TestReviewerCorrelationModel
 ```
 
 ---
 
-## Test Class Mapping
+## Key Decisions Made
 
-### test_github_sync.py -> github_sync/
+1. **Backward Compatibility**: All existing imports work via `__init__.py` re-exports
+   - `from apps.metrics.models import PullRequest` continues to work
+   - `from apps.integrations.views import github_connect` continues to work
 
-| File | Test Classes |
-|------|-------------|
-| `test_pr_sync.py` | TestGetRepositoryPullRequests, TestGetUpdatedPullRequests |
-| `test_review_sync.py` | TestGetPullRequestReviews |
-| `test_repository_sync.py` | TestSyncRepositoryHistory, TestSyncRepositoryIncremental |
-| `test_jira_key.py` | TestJiraKeyExtraction |
-| `test_commit_sync.py` | TestSyncPRCommits |
-| `test_check_runs.py` | TestSyncPRCheckRuns |
-| `test_files.py` | TestSyncPRFiles |
-| `test_deployments.py` | TestSyncRepositoryDeployments |
-| `test_issue_comments.py` | TestSyncPRIssueComments |
-| `test_review_comments.py` | TestSyncPRReviewComments |
-| `test_iterations.py` | TestCalculatePRIterationMetrics |
-| `test_correlations.py` | TestCalculateReviewerCorrelations |
+2. **No Migration Changes**: Model `app_label` remains `metrics`, no schema changes
 
-### test_dashboard_service.py -> dashboard/
+3. **Test Organization**: Use subdirectories to group related test classes
 
-| File | Test Classes |
-|------|-------------|
-| `test_key_metrics.py` | TestGetKeyMetrics |
-| `test_ai_metrics.py` | TestGetAIAdoptionTrend, TestGetAIQualityComparison |
-| `test_cycle_time.py` | TestGetCycleTimeTrend |
-| `test_team_breakdown.py` | TestGetTeamBreakdown |
-| `test_review_distribution.py` | TestGetReviewDistribution |
-| `test_review_time.py` | TestGetReviewTimeTrend |
-| `test_recent_prs.py` | TestGetRecentPrs |
-| `test_revert_hotfix.py` | TestGetRevertHotfixStats |
-| `test_pr_size.py` | TestGetPrSizeDistribution |
-| `test_unlinked_prs.py` | TestGetUnlinkedPrs |
-| `test_reviewer_workload.py` | TestGetReviewerWorkload |
-| `test_copilot.py` | TestCopilotDashboardService |
-| `test_iterations.py` | TestGetIterationMetrics |
-| `test_correlations.py` | TestGetReviewerCorrelations |
-| `test_cicd.py` | TestGetCicdPassRate |
-| `test_deployments.py` | TestGetDeploymentMetrics |
-| `test_file_categories.py` | TestGetFileCategoryBreakdown |
-
-### test_models.py -> models/
-
-| File | Test Classes |
-|------|-------------|
-| `test_team_member.py` | TestTeamMemberModel |
-| `test_pull_request.py` | TestPullRequestModel, TestPullRequestIterationFields, TestPullRequestFactory |
-| `test_pr_review.py` | TestPRReviewModel |
-| `test_commit.py` | TestCommitModel |
-| `test_jira.py` | TestJiraIssueModel, TestJiraIssuePRLinking |
-| `test_ai_usage.py` | TestAIUsageDailyModel |
-| `test_surveys.py` | TestPRSurveyModel, TestPRSurveyReviewModel |
-| `test_weekly_metrics.py` | TestWeeklyMetricsModel |
-| `test_pr_check_run.py` | TestPRCheckRunModel |
-| `test_pr_file.py` | TestPRFileModel |
-| `test_deployment.py` | TestDeploymentModel |
-| `test_pr_comment.py` | TestPRCommentModel |
-| `test_reviewer_correlation.py` | TestReviewerCorrelationModel |
-
----
-
-## Key Decisions
-
-1. **Backward Compatibility**: All existing imports continue to work via `__init__.py` re-exports
-2. **No Migration Changes**: Model app_label remains unchanged (metrics)
-3. **Test Organization**: Use subdirectories to group related tests
 4. **Naming Convention**: Match domain names (github, jira, slack, surveys, etc.)
 
----
-
-## Dependencies
-
-### Internal Dependencies
-- `apps/teams/models.py` - BaseTeamModel used by all models
-- `apps/utils/models.py` - BaseModel (extended by BaseTeamModel)
-
-### External Dependencies
-- Django ORM (no changes needed)
-- Factory Boy (backward compatible)
-
-### No Breaking Changes To
-- API endpoints
-- URL patterns
-- Database schema
-- Celery tasks
-- Admin registrations
+5. **Large File Prevention**: Added guidelines to `CLAUDE.md` (lines 425-431):
+   - Models >500 lines → split to `models/` directory
+   - Views >500 lines → split to `views/` directory
+   - Tests >1000 lines → split to `tests/<feature>/` subdirectory
 
 ---
 
 ## Verification Commands
 
 ```bash
-# Run all metrics tests
-make test ARGS='apps.metrics'
+# Verify all tests pass
+make test
 
-# Run all integration tests
-make test ARGS='apps.integrations'
-
-# Run specific test directory
+# Run specific split directories
+make test ARGS='apps.metrics.tests.models'
+make test ARGS='apps.metrics.tests.dashboard'
 make test ARGS='apps.integrations.tests.github_sync'
+make test ARGS='apps.integrations.tests.test_views'
 
-# Check for migration issues
+# Check for migration issues (should show no changes)
 python manage.py makemigrations --check --dry-run
 
 # Verify code quality
 make ruff
-
-# Full test suite
-make test
 ```
+
+---
+
+## Files Deleted (Replaced by Directories)
+
+- `apps/metrics/models.py` → `apps/metrics/models/`
+- `apps/integrations/views.py` → `apps/integrations/views/`
+- `apps/integrations/tests/test_github_sync.py` → `apps/integrations/tests/github_sync/`
+- `apps/metrics/tests/test_dashboard_service.py` → `apps/metrics/tests/dashboard/`
+- `apps/metrics/tests/test_models.py` → `apps/metrics/tests/models/`
+
+---
+
+## No Further Work Required
+
+This task is complete. All phases finished, all tests passing (1,942 tests).
+
+### Documentation Updated
+- `CLAUDE.md` - Added large file splitting guidelines
+- `dev/active/codebase-improvements/codebase-improvements-tasks.md` - All tasks marked complete
