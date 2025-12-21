@@ -152,11 +152,11 @@ def seed_project_with_progress(project_name, options, checkpoint=None):
             updates["days_back"] = options.days_back
         config = replace(config, **updates)
 
-    # Get GitHub token
-    token = options.github_token or os.environ.get("GITHUB_SEEDING_TOKEN")
+    # Get GitHub token(s) - check plural first, then singular
+    token = options.github_token or os.environ.get("GITHUB_SEEDING_TOKENS") or os.environ.get("GITHUB_SEEDING_TOKEN")
     if not token:
         print("\n❌ Error: GitHub token required")
-        print("   Set GITHUB_SEEDING_TOKEN environment variable or use --github-token")
+        print("   Set GITHUB_SEEDING_TOKENS (comma-separated) or GITHUB_SEEDING_TOKEN environment variable")
         sys.exit(1)
 
     # Clear if requested

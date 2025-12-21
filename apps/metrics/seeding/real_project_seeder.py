@@ -111,10 +111,18 @@ class RealProjectSeeder:
     def __post_init__(self):
         """Initialize internal components."""
         self._rng = DeterministicRandom(self.random_seed)
-        self._fetcher = GitHubAuthenticatedFetcher(
-            self.github_token,
-            progress_callback=self.progress_callback,
-        )
+        # Handle comma-separated tokens for multi-token mode
+        if self.github_token and "," in self.github_token:
+            tokens = [t.strip() for t in self.github_token.split(",") if t.strip()]
+            self._fetcher = GitHubAuthenticatedFetcher(
+                tokens=tokens,
+                progress_callback=self.progress_callback,
+            )
+        else:
+            self._fetcher = GitHubAuthenticatedFetcher(
+                self.github_token,
+                progress_callback=self.progress_callback,
+            )
         self._jira_simulator = JiraIssueSimulator(self.config.jira_project_key, self._rng)
         self._survey_simulator = SurveyAISimulator(self.config, self._rng)
         self._stats = RealProjectStats(project_name=self.config.team_name)
