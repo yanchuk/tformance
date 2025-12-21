@@ -2,6 +2,7 @@
 
 import base64
 import json
+import time
 from typing import Any
 from urllib.parse import urlencode
 
@@ -9,6 +10,9 @@ import requests
 from django.conf import settings
 from django.core.signing import BadSignature, Signer
 from github import Github, GithubException, UnknownObjectException
+
+# OAuth state validity period in seconds (10 minutes)
+OAUTH_STATE_MAX_AGE_SECONDS = 600
 
 # GitHub API constants
 GITHUB_OAUTH_AUTHORIZE_URL = "https://github.com/login/oauth/authorize"
@@ -38,16 +42,16 @@ class GitHubOAuthError(Exception):
 
 
 def create_oauth_state(team_id: int) -> str:
-    """Create a signed OAuth state parameter containing team_id.
+    """Create a signed OAuth state parameter containing team_id and timestamp.
 
     Args:
         team_id: The ID of the team to encode in the state
 
     Returns:
-        Signed state string containing the team_id
+        Signed state string containing the team_id and iat (issued at) timestamp
     """
-    # Create JSON payload
-    payload = json.dumps({"team_id": team_id})
+    # Create JSON payload with issued-at timestamp
+    payload = json.dumps({"team_id": team_id, "iat": int(time.time())})
 
     # Base64 encode
     encoded = base64.b64encode(payload.encode()).decode()
@@ -62,6 +66,10 @@ def create_oauth_state(team_id: int) -> str:
 def verify_oauth_state(state: str) -> dict[str, Any]:
     """Verify and decode OAuth state parameter.
 
+    Validates:
+    - Signature is valid (not tampered)
+    - Timestamp is present and not expired (max 10 minutes)
+
     Args:
         state: The signed state string to verify
 
@@ -69,7 +77,7 @@ def verify_oauth_state(state: str) -> dict[str, Any]:
         Dictionary containing team_id
 
     Raises:
-        GitHubOAuthError: If state is invalid or tampered with
+        GitHubOAuthError: If state is invalid, tampered with, or expired
     """
     try:
         # Unsign the state
@@ -81,6 +89,15 @@ def verify_oauth_state(state: str) -> dict[str, Any]:
 
         # Parse JSON
         payload = json.loads(decoded)
+
+        # Validate timestamp (if present - for backward compatibility)
+        iat = payload.get("iat")
+        if iat is not None:
+            age = int(time.time()) - iat
+            if age > OAUTH_STATE_MAX_AGE_SECONDS:
+                raise GitHubOAuthError(f"OAuth state expired (age: {age}s, max: {OAUTH_STATE_MAX_AGE_SECONDS}s)")
+            if age < 0:
+                raise GitHubOAuthError("OAuth state has future timestamp")
 
         return payload
     except (BadSignature, ValueError, KeyError) as e:

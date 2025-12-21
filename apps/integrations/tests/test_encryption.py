@@ -4,11 +4,19 @@ from cryptography.fernet import InvalidToken
 from django.conf import settings
 from django.test import TestCase, override_settings
 
-from apps.integrations.services.encryption import decrypt, encrypt
+from apps.integrations.services.encryption import _reset_fernet_cache, decrypt, encrypt
 
 
 class TestEncryptionService(TestCase):
     """Tests for encryption and decryption functionality."""
+
+    def setUp(self):
+        """Reset the cached Fernet instance before each test."""
+        _reset_fernet_cache()
+
+    def tearDown(self):
+        """Reset the cached Fernet instance after each test."""
+        _reset_fernet_cache()
 
     def test_encrypt_returns_different_value_than_plaintext(self):
         """Test that encrypted output is different from plaintext."""
@@ -125,7 +133,8 @@ class TestEncryptionService(TestCase):
         plaintext = "secret_data"
         ciphertext = encrypt(plaintext)
 
-        # Try to decrypt with a different key
+        # Reset cache and try to decrypt with a different key
+        _reset_fernet_cache()
         wrong_key = Fernet.generate_key().decode()
         with override_settings(INTEGRATION_ENCRYPTION_KEY=wrong_key), self.assertRaises(InvalidToken):
             decrypt(ciphertext)

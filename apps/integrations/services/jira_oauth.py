@@ -2,6 +2,7 @@
 
 import base64
 import json
+import time
 from datetime import timedelta
 from typing import Any
 from urllib.parse import urlencode
@@ -12,6 +13,9 @@ from django.core.signing import BadSignature, Signer
 from django.utils import timezone
 
 # Note: encrypt/decrypt no longer needed - EncryptedTextField handles this automatically
+
+# OAuth state validity period in seconds (10 minutes)
+OAUTH_STATE_MAX_AGE_SECONDS = 600
 
 # Jira OAuth constants
 JIRA_AUTH_URL = "https://auth.atlassian.com/authorize"
@@ -31,16 +35,16 @@ class JiraOAuthError(Exception):
 
 
 def create_oauth_state(team_id: int) -> str:
-    """Create a signed OAuth state parameter containing team_id.
+    """Create a signed OAuth state parameter containing team_id and timestamp.
 
     Args:
         team_id: The ID of the team to encode in the state
 
     Returns:
-        Signed state string containing the team_id
+        Signed state string containing the team_id and iat (issued at) timestamp
     """
-    # Create JSON payload
-    payload = json.dumps({"team_id": team_id})
+    # Create JSON payload with issued-at timestamp
+    payload = json.dumps({"team_id": team_id, "iat": int(time.time())})
 
     # Base64 encode
     encoded = base64.b64encode(payload.encode()).decode()
@@ -55,6 +59,10 @@ def create_oauth_state(team_id: int) -> str:
 def verify_oauth_state(state: str) -> dict[str, Any]:
     """Verify and decode OAuth state parameter.
 
+    Validates:
+    - Signature is valid (not tampered)
+    - Timestamp is present and not expired (max 10 minutes)
+
     Args:
         state: The signed state string to verify
 
@@ -62,7 +70,7 @@ def verify_oauth_state(state: str) -> dict[str, Any]:
         Dictionary containing team_id
 
     Raises:
-        JiraOAuthError: If state is invalid or tampered with
+        JiraOAuthError: If state is invalid, tampered with, or expired
     """
     try:
         # Unsign the state
@@ -74,6 +82,15 @@ def verify_oauth_state(state: str) -> dict[str, Any]:
 
         # Parse JSON
         payload = json.loads(decoded)
+
+        # Validate timestamp (if present - for backward compatibility)
+        iat = payload.get("iat")
+        if iat is not None:
+            age = int(time.time()) - iat
+            if age > OAUTH_STATE_MAX_AGE_SECONDS:
+                raise JiraOAuthError(f"OAuth state expired (age: {age}s, max: {OAUTH_STATE_MAX_AGE_SECONDS}s)")
+            if age < 0:
+                raise JiraOAuthError("OAuth state has future timestamp")
 
         return payload
     except (BadSignature, ValueError, KeyError) as e:
