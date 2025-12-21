@@ -24,6 +24,9 @@ from django.utils import timezone
 from apps.metrics.factories import (
     AIUsageDailyFactory,
     CommitFactory,
+    DeploymentFactory,
+    PRCheckRunFactory,
+    PRFileFactory,
     PRReviewFactory,
     PRSurveyFactory,
     PRSurveyReviewFactory,
@@ -53,6 +56,9 @@ class GeneratorStats:
     weekly_metrics_created: int = 0
     github_prs_used: int = 0
     factory_prs_used: int = 0
+    pr_files_created: int = 0
+    check_runs_created: int = 0
+    deployments_created: int = 0
 
 
 @dataclass
@@ -162,6 +168,8 @@ class ScenarioDataGenerator:
 
     def _generate_week(self, team: models.Model, week: int):
         """Generate all data for a specific week."""
+        from apps.metrics.models import PullRequest
+
         params = self.scenario.get_weekly_params(week)
         config = self.scenario.config
 
@@ -173,6 +181,17 @@ class ScenarioDataGenerator:
         # Generate PRs for each member
         for member_data in self._members:
             self._generate_member_week(team, member_data, week, params, week_start, week_end)
+
+        # Generate deployments for this week (based on merged PRs)
+        merged_prs = list(
+            PullRequest.objects.filter(
+                team=team,
+                state="merged",
+                merged_at__gte=week_start,
+                merged_at__lt=week_end,
+            )
+        )
+        self._create_deployments(team, week_start, week_end, merged_prs)
 
     def _generate_member_week(
         self,
@@ -300,6 +319,14 @@ class ScenarioDataGenerator:
         if state == "merged" and self._rng.should_happen(0.7):  # 70% survey response
             self._create_survey(team, pr, is_ai_assisted, week)
 
+        # Create PR files (2-8 files per PR)
+        files_count = self._rng.randint(2, 8)
+        self._create_pr_files(team, pr, files_count)
+
+        # Create CI/CD check runs (2-6 checks per PR)
+        checks_count = self._rng.randint(2, 6)
+        self._create_check_runs(team, pr, checks_count, pr_created_at)
+
     def _create_reviews(self, team: models.Model, pr, week: int, params: dict):
         """Create reviews for a PR based on scenario weights."""
         reviewer_weights = self.scenario.get_reviewer_selection_weights(week)
@@ -400,6 +427,180 @@ class ScenarioDataGenerator:
                 source=self._rng.choice(["copilot", "copilot", "cursor"]),
             )
             self._stats.ai_usage_records += 1
+
+    def _create_pr_files(self, team: models.Model, pr, files_count: int):
+        """Create file change records for a PR."""
+        # Common file patterns by category - ensure uniqueness with indices
+        file_patterns = {
+            "frontend": [
+                "src/components/Component{}.tsx",
+                "src/pages/Page{}.tsx",
+                "src/hooks/useHook{}.ts",
+                "assets/js/script{}.js",
+                "src/styles/style{}.css",
+            ],
+            "backend": [
+                "apps/module{}/views.py",
+                "apps/module{}/models.py",
+                "apps/module{}/serializers.py",
+                "apps/module{}/services.py",
+                "apps/module{}/tasks.py",
+            ],
+            "tests": [
+                "apps/module{}/tests/test_views.py",
+                "apps/module{}/tests/test_models.py",
+                "tests/e2e/test{}.spec.ts",
+                "tests/integration/test_integration{}.py",
+            ],
+            "config": [
+                "config/config{}.py",
+                "settings/settings{}.py",
+                ".github/workflows/workflow{}.yml",
+                "docker-compose{}.yml",
+            ],
+            "docs": [
+                "docs/doc{}.md",
+                "docs/guide{}.md",
+                "docs/api{}.md",
+            ],
+        }
+
+        used_filenames = set()
+
+        for i in range(files_count):
+            # Pick a random category and pattern
+            category = self._rng.weighted_choice(
+                {
+                    "backend": 0.35,
+                    "frontend": 0.25,
+                    "tests": 0.20,
+                    "config": 0.10,
+                    "docs": 0.10,
+                }
+            )
+            patterns = file_patterns[category]
+            pattern = self._rng.choice(patterns)
+
+            # Generate unique filename using index
+            filename = pattern.format(i)
+
+            # Skip if already used (shouldn't happen with index but safety check)
+            if filename in used_filenames:
+                continue
+            used_filenames.add(filename)
+
+            PRFileFactory(
+                team=team,
+                pull_request=pr,
+                filename=filename,
+                status=self._rng.weighted_choice(
+                    {
+                        "modified": 0.70,
+                        "added": 0.20,
+                        "removed": 0.10,
+                    }
+                ),
+                additions=self._rng.randint(5, 150),
+                deletions=self._rng.randint(0, 80),
+            )
+            self._stats.pr_files_created += 1
+
+    def _create_check_runs(self, team: models.Model, pr, checks_count: int, pr_created_at):
+        """Create CI/CD check run records for a PR."""
+        check_names = [
+            "pytest",
+            "eslint",
+            "build",
+            "type-check",
+            "ruff",
+            "integration-tests",
+            "e2e-tests",
+            "security-scan",
+            "deploy-preview",
+        ]
+
+        # Shuffle and pick unique check names
+        selected_checks = self._rng.sample(check_names, min(checks_count, len(check_names)))
+
+        for check_name in selected_checks:
+            # Most checks complete, some still in progress
+            status = self._rng.weighted_choice(
+                {
+                    "completed": 0.90,
+                    "in_progress": 0.05,
+                    "queued": 0.05,
+                }
+            )
+
+            # Conclusion only for completed checks
+            if status == "completed":
+                # Most checks pass, some fail
+                conclusion = self._rng.weighted_choice(
+                    {
+                        "success": 0.80,
+                        "failure": 0.15,
+                        "skipped": 0.05,
+                    }
+                )
+            else:
+                conclusion = None
+
+            # Check started shortly after PR creation
+            started_at = pr_created_at + timedelta(minutes=self._rng.randint(1, 10))
+            completed_at = started_at + timedelta(minutes=self._rng.randint(2, 15)) if status == "completed" else None
+
+            PRCheckRunFactory(
+                team=team,
+                pull_request=pr,
+                name=check_name,
+                status=status,
+                conclusion=conclusion,
+                started_at=started_at,
+                completed_at=completed_at,
+            )
+            self._stats.check_runs_created += 1
+
+    def _create_deployments(self, team: models.Model, week_start, week_end, merged_prs: list):
+        """Create deployment records for a week."""
+        repos = ["org/backend", "org/frontend", "org/api"]
+
+        # Create 1-3 deployments per week
+        deployment_count = self._rng.randint(1, 3)
+
+        for _ in range(deployment_count):
+            env = self._rng.weighted_choice(
+                {
+                    "production": 0.50,
+                    "staging": 0.35,
+                    "development": 0.15,
+                }
+            )
+
+            # Most deployments succeed
+            status = self._rng.weighted_choice(
+                {
+                    "success": 0.85,
+                    "failure": 0.10,
+                    "pending": 0.05,
+                }
+            )
+
+            # Pick a random merged PR to associate with (if available)
+            associated_pr = self._rng.choice(merged_prs) if merged_prs else None
+
+            # Pick a random member as creator
+            creator = self._rng.choice(self._members).member if self._members else None
+
+            DeploymentFactory(
+                team=team,
+                environment=env,
+                status=status,
+                github_repo=self._rng.choice(repos),
+                deployed_at=self._rng.datetime_in_range(week_start, week_end),
+                pull_request=associated_pr,
+                creator=creator,
+            )
+            self._stats.deployments_created += 1
 
     def _calculate_weekly_metrics(self, team: models.Model):
         """Calculate WeeklyMetrics from generated data.

@@ -11,6 +11,9 @@ from django.test import TestCase
 from django.utils import timezone
 
 from apps.metrics.factories import (
+    DeploymentFactory,
+    PRCheckRunFactory,
+    PRFileFactory,
     PRSurveyFactory,
     PRSurveyReviewFactory,
     PullRequestFactory,
@@ -2744,3 +2747,396 @@ class TestGetReviewerCorrelations(TestCase):
         self.assertEqual(len(result), 2)
         self.assertEqual(result[0]["prs_reviewed_together"], 15)  # Higher count first
         self.assertEqual(result[1]["prs_reviewed_together"], 5)
+
+
+class TestGetCicdPassRate(TestCase):
+    """Tests for get_cicd_pass_rate function."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.team = TeamFactory()
+        self.start_date = date(2024, 1, 1)
+        self.end_date = date(2024, 1, 31)
+
+    def test_get_cicd_pass_rate_returns_dict(self):
+        """Test that get_cicd_pass_rate returns a dict with required keys."""
+        result = dashboard_service.get_cicd_pass_rate(self.team, self.start_date, self.end_date)
+
+        self.assertIsInstance(result, dict)
+        self.assertIn("total_runs", result)
+        self.assertIn("pass_rate", result)
+        self.assertIn("success_count", result)
+        self.assertIn("failure_count", result)
+        self.assertIn("top_failing_checks", result)
+
+    def test_get_cicd_pass_rate_calculates_correctly(self):
+        """Test that get_cicd_pass_rate calculates pass rate correctly."""
+        member = TeamMemberFactory(team=self.team)
+        pr = PullRequestFactory(
+            team=self.team,
+            author=member,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 10, 12, 0)),
+        )
+
+        # Create 4 successful and 1 failed check run
+        for _ in range(4):
+            PRCheckRunFactory(team=self.team, pull_request=pr, status="completed", conclusion="success")
+        PRCheckRunFactory(team=self.team, pull_request=pr, status="completed", conclusion="failure")
+
+        result = dashboard_service.get_cicd_pass_rate(self.team, self.start_date, self.end_date)
+
+        self.assertEqual(result["total_runs"], 5)
+        self.assertEqual(result["success_count"], 4)
+        self.assertEqual(result["failure_count"], 1)
+        self.assertEqual(result["pass_rate"], Decimal("80.00"))
+
+    def test_get_cicd_pass_rate_returns_zero_when_no_data(self):
+        """Test that get_cicd_pass_rate returns zero values when no data exists."""
+        result = dashboard_service.get_cicd_pass_rate(self.team, self.start_date, self.end_date)
+
+        self.assertEqual(result["total_runs"], 0)
+        self.assertEqual(result["pass_rate"], Decimal("0.00"))
+
+    def test_get_cicd_pass_rate_excludes_in_progress_checks(self):
+        """Test that get_cicd_pass_rate excludes in-progress checks."""
+        member = TeamMemberFactory(team=self.team)
+        pr = PullRequestFactory(
+            team=self.team,
+            author=member,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 10, 12, 0)),
+        )
+
+        # 2 completed, 1 in progress
+        PRCheckRunFactory(team=self.team, pull_request=pr, status="completed", conclusion="success")
+        PRCheckRunFactory(team=self.team, pull_request=pr, status="completed", conclusion="failure")
+        PRCheckRunFactory(team=self.team, pull_request=pr, status="in_progress", conclusion=None)
+
+        result = dashboard_service.get_cicd_pass_rate(self.team, self.start_date, self.end_date)
+
+        self.assertEqual(result["total_runs"], 2)  # Only completed checks counted
+
+    def test_get_cicd_pass_rate_tracks_top_failing_checks(self):
+        """Test that get_cicd_pass_rate identifies top failing checks."""
+        member = TeamMemberFactory(team=self.team)
+        pr = PullRequestFactory(
+            team=self.team,
+            author=member,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 10, 12, 0)),
+        )
+
+        # Create multiple failures for different checks
+        for _ in range(3):
+            PRCheckRunFactory(team=self.team, pull_request=pr, name="pytest", status="completed", conclusion="failure")
+        for _ in range(2):
+            PRCheckRunFactory(team=self.team, pull_request=pr, name="eslint", status="completed", conclusion="failure")
+
+        result = dashboard_service.get_cicd_pass_rate(self.team, self.start_date, self.end_date)
+
+        self.assertEqual(len(result["top_failing_checks"]), 2)
+        # pytest should be first with more failures
+        self.assertEqual(result["top_failing_checks"][0]["name"], "pytest")
+        self.assertEqual(result["top_failing_checks"][0]["failures"], 3)
+
+    def test_get_cicd_pass_rate_filters_by_team(self):
+        """Test that get_cicd_pass_rate only includes data from the specified team."""
+        member = TeamMemberFactory(team=self.team)
+        pr = PullRequestFactory(
+            team=self.team,
+            author=member,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 10, 12, 0)),
+        )
+        PRCheckRunFactory(team=self.team, pull_request=pr, status="completed", conclusion="success")
+
+        # Create check run for other team
+        other_team = TeamFactory()
+        other_member = TeamMemberFactory(team=other_team)
+        other_pr = PullRequestFactory(
+            team=other_team,
+            author=other_member,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 10, 12, 0)),
+        )
+        PRCheckRunFactory(team=other_team, pull_request=other_pr, status="completed", conclusion="failure")
+
+        result = dashboard_service.get_cicd_pass_rate(self.team, self.start_date, self.end_date)
+
+        self.assertEqual(result["total_runs"], 1)
+        self.assertEqual(result["pass_rate"], Decimal("100.00"))
+
+
+class TestGetDeploymentMetrics(TestCase):
+    """Tests for get_deployment_metrics function."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.team = TeamFactory()
+        self.start_date = date(2024, 1, 1)
+        self.end_date = date(2024, 1, 31)
+
+    def test_get_deployment_metrics_returns_dict(self):
+        """Test that get_deployment_metrics returns a dict with required keys."""
+        result = dashboard_service.get_deployment_metrics(self.team, self.start_date, self.end_date)
+
+        self.assertIsInstance(result, dict)
+        self.assertIn("total_deployments", result)
+        self.assertIn("production_deployments", result)
+        self.assertIn("success_rate", result)
+        self.assertIn("deployments_per_week", result)
+        self.assertIn("by_environment", result)
+
+    def test_get_deployment_metrics_counts_correctly(self):
+        """Test that get_deployment_metrics counts deployments correctly."""
+        creator = TeamMemberFactory(team=self.team)
+
+        # Create 3 production deployments and 2 staging
+        for _ in range(3):
+            DeploymentFactory(
+                team=self.team,
+                environment="production",
+                status="success",
+                creator=creator,
+                deployed_at=timezone.make_aware(timezone.datetime(2024, 1, 10, 12, 0)),
+            )
+        for _ in range(2):
+            DeploymentFactory(
+                team=self.team,
+                environment="staging",
+                status="success",
+                creator=creator,
+                deployed_at=timezone.make_aware(timezone.datetime(2024, 1, 15, 12, 0)),
+            )
+
+        result = dashboard_service.get_deployment_metrics(self.team, self.start_date, self.end_date)
+
+        self.assertEqual(result["total_deployments"], 5)
+        self.assertEqual(result["production_deployments"], 3)
+
+    def test_get_deployment_metrics_calculates_success_rate(self):
+        """Test that get_deployment_metrics calculates success rate correctly."""
+        creator = TeamMemberFactory(team=self.team)
+
+        # Create 4 successful and 1 failed deployment
+        for _ in range(4):
+            DeploymentFactory(
+                team=self.team,
+                environment="production",
+                status="success",
+                creator=creator,
+                deployed_at=timezone.make_aware(timezone.datetime(2024, 1, 10, 12, 0)),
+            )
+        DeploymentFactory(
+            team=self.team,
+            environment="production",
+            status="failure",
+            creator=creator,
+            deployed_at=timezone.make_aware(timezone.datetime(2024, 1, 12, 12, 0)),
+        )
+
+        result = dashboard_service.get_deployment_metrics(self.team, self.start_date, self.end_date)
+
+        self.assertEqual(result["success_rate"], Decimal("80.00"))
+
+    def test_get_deployment_metrics_returns_zero_when_no_data(self):
+        """Test that get_deployment_metrics returns zero values when no data exists."""
+        result = dashboard_service.get_deployment_metrics(self.team, self.start_date, self.end_date)
+
+        self.assertEqual(result["total_deployments"], 0)
+        self.assertEqual(result["success_rate"], Decimal("0.00"))
+        self.assertEqual(result["deployments_per_week"], Decimal("0.00"))
+
+    def test_get_deployment_metrics_breaks_down_by_environment(self):
+        """Test that get_deployment_metrics breaks down by environment."""
+        creator = TeamMemberFactory(team=self.team)
+
+        DeploymentFactory(
+            team=self.team,
+            environment="production",
+            status="success",
+            creator=creator,
+            deployed_at=timezone.make_aware(timezone.datetime(2024, 1, 10, 12, 0)),
+        )
+        DeploymentFactory(
+            team=self.team,
+            environment="staging",
+            status="success",
+            creator=creator,
+            deployed_at=timezone.make_aware(timezone.datetime(2024, 1, 12, 12, 0)),
+        )
+        DeploymentFactory(
+            team=self.team,
+            environment="staging",
+            status="success",
+            creator=creator,
+            deployed_at=timezone.make_aware(timezone.datetime(2024, 1, 14, 12, 0)),
+        )
+
+        result = dashboard_service.get_deployment_metrics(self.team, self.start_date, self.end_date)
+
+        self.assertEqual(len(result["by_environment"]), 2)
+        env_counts = {e["environment"]: e["total"] for e in result["by_environment"]}
+        self.assertEqual(env_counts["production"], 1)
+        self.assertEqual(env_counts["staging"], 2)
+
+    def test_get_deployment_metrics_filters_by_team(self):
+        """Test that get_deployment_metrics only includes data from the specified team."""
+        creator = TeamMemberFactory(team=self.team)
+        DeploymentFactory(
+            team=self.team,
+            environment="production",
+            status="success",
+            creator=creator,
+            deployed_at=timezone.make_aware(timezone.datetime(2024, 1, 10, 12, 0)),
+        )
+
+        # Create deployment for other team
+        other_team = TeamFactory()
+        other_creator = TeamMemberFactory(team=other_team)
+        DeploymentFactory(
+            team=other_team,
+            environment="production",
+            status="success",
+            creator=other_creator,
+            deployed_at=timezone.make_aware(timezone.datetime(2024, 1, 10, 12, 0)),
+        )
+
+        result = dashboard_service.get_deployment_metrics(self.team, self.start_date, self.end_date)
+
+        self.assertEqual(result["total_deployments"], 1)
+
+
+class TestGetFileCategoryBreakdown(TestCase):
+    """Tests for get_file_category_breakdown function."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.team = TeamFactory()
+        self.start_date = date(2024, 1, 1)
+        self.end_date = date(2024, 1, 31)
+
+    def test_get_file_category_breakdown_returns_dict(self):
+        """Test that get_file_category_breakdown returns a dict with required keys."""
+        result = dashboard_service.get_file_category_breakdown(self.team, self.start_date, self.end_date)
+
+        self.assertIsInstance(result, dict)
+        self.assertIn("total_files", result)
+        self.assertIn("total_changes", result)
+        self.assertIn("by_category", result)
+
+    def test_get_file_category_breakdown_counts_files_correctly(self):
+        """Test that get_file_category_breakdown counts files correctly."""
+        member = TeamMemberFactory(team=self.team)
+        pr = PullRequestFactory(
+            team=self.team,
+            author=member,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 10, 12, 0)),
+        )
+
+        # Create 3 backend files
+        for i in range(3):
+            PRFileFactory(
+                team=self.team,
+                pull_request=pr,
+                filename=f"apps/module/views{i}.py",
+                additions=10,
+                deletions=5,
+            )
+
+        result = dashboard_service.get_file_category_breakdown(self.team, self.start_date, self.end_date)
+
+        self.assertEqual(result["total_files"], 3)
+        self.assertEqual(result["total_changes"], 45)  # 3 * (10 + 5)
+
+    def test_get_file_category_breakdown_groups_by_category(self):
+        """Test that get_file_category_breakdown groups files by category."""
+        member = TeamMemberFactory(team=self.team)
+        pr = PullRequestFactory(
+            team=self.team,
+            author=member,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 10, 12, 0)),
+        )
+
+        # Backend files
+        PRFileFactory(team=self.team, pull_request=pr, filename="apps/users/views.py", additions=50, deletions=10)
+        # Frontend files
+        PRFileFactory(team=self.team, pull_request=pr, filename="src/components/Button.tsx", additions=30, deletions=5)
+        PRFileFactory(team=self.team, pull_request=pr, filename="src/pages/Home.tsx", additions=40, deletions=15)
+
+        result = dashboard_service.get_file_category_breakdown(self.team, self.start_date, self.end_date)
+
+        self.assertEqual(result["total_files"], 3)
+        # Find categories
+        categories = {c["category"]: c for c in result["by_category"]}
+        self.assertIn("backend", categories)
+        self.assertIn("frontend", categories)
+        self.assertEqual(categories["backend"]["file_count"], 1)
+        self.assertEqual(categories["frontend"]["file_count"], 2)
+
+    def test_get_file_category_breakdown_returns_zero_when_no_data(self):
+        """Test that get_file_category_breakdown returns zero values when no data exists."""
+        result = dashboard_service.get_file_category_breakdown(self.team, self.start_date, self.end_date)
+
+        self.assertEqual(result["total_files"], 0)
+        self.assertEqual(result["total_changes"], 0)
+        self.assertEqual(result["by_category"], [])
+
+    def test_get_file_category_breakdown_filters_by_team(self):
+        """Test that get_file_category_breakdown only includes data from the specified team."""
+        member = TeamMemberFactory(team=self.team)
+        pr = PullRequestFactory(
+            team=self.team,
+            author=member,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 10, 12, 0)),
+        )
+        PRFileFactory(team=self.team, pull_request=pr, filename="apps/views.py", additions=10, deletions=5)
+
+        # Create file for other team
+        other_team = TeamFactory()
+        other_member = TeamMemberFactory(team=other_team)
+        other_pr = PullRequestFactory(
+            team=other_team,
+            author=other_member,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 10, 12, 0)),
+        )
+        PRFileFactory(team=other_team, pull_request=other_pr, filename="apps/models.py", additions=20, deletions=10)
+
+        result = dashboard_service.get_file_category_breakdown(self.team, self.start_date, self.end_date)
+
+        self.assertEqual(result["total_files"], 1)
+        self.assertEqual(result["total_changes"], 15)
+
+    def test_get_file_category_breakdown_filters_by_date_range(self):
+        """Test that get_file_category_breakdown filters by date range."""
+        member = TeamMemberFactory(team=self.team)
+
+        # PR within range
+        pr_in_range = PullRequestFactory(
+            team=self.team,
+            author=member,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 15, 12, 0)),
+        )
+        PRFileFactory(team=self.team, pull_request=pr_in_range, filename="apps/views.py", additions=10, deletions=5)
+
+        # PR outside range
+        pr_outside_range = PullRequestFactory(
+            team=self.team,
+            author=member,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 2, 15, 12, 0)),
+        )
+        PRFileFactory(
+            team=self.team, pull_request=pr_outside_range, filename="apps/models.py", additions=20, deletions=10
+        )
+
+        result = dashboard_service.get_file_category_breakdown(self.team, self.start_date, self.end_date)
+
+        self.assertEqual(result["total_files"], 1)
+        self.assertEqual(result["total_changes"], 15)

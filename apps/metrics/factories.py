@@ -34,6 +34,7 @@ from .models import (
     JiraIssue,
     PRCheckRun,
     PRComment,
+    PRFile,
     PRReview,
     PRSurvey,
     PRSurveyReview,
@@ -221,6 +222,32 @@ class DeploymentFactory(DjangoModelFactory):
     deployed_at = factory.LazyFunction(lambda: timezone.now() - timedelta(hours=random.randint(1, 168)))
     pull_request = None  # Optional FK
     sha = factory.LazyFunction(lambda: "".join(random.choices("0123456789abcdef", k=40)))
+
+
+class PRFileFactory(DjangoModelFactory):
+    """Factory for PRFile model - files changed in a pull request."""
+
+    class Meta:
+        model = PRFile
+
+    team = factory.SubFactory(TeamFactory)
+    pull_request = factory.SubFactory("apps.metrics.factories.PullRequestFactory", team=factory.SelfAttribute("..team"))
+    filename = factory.LazyFunction(
+        lambda: random.choice(
+            [
+                f"src/components/{random.choice(['Button', 'Modal', 'Form', 'Card'])}.tsx",
+                f"apps/{random.choice(['users', 'metrics', 'teams'])}/views.py",
+                f"apps/{random.choice(['users', 'metrics'])}/tests/test_views.py",
+                f"docs/{random.choice(['setup', 'api', 'deployment'])}.md",
+                ".github/workflows/ci.yml",
+            ]
+        )
+    )
+    status = factory.Iterator(["modified", "modified", "modified", "added", "removed"])  # Most files are modified
+    additions = factory.LazyFunction(lambda: random.randint(5, 200))
+    deletions = factory.LazyFunction(lambda: random.randint(0, 100))
+    changes = factory.LazyAttribute(lambda o: o.additions + o.deletions)
+    file_category = factory.LazyAttribute(lambda o: PRFile.categorize_file(o.filename))
 
 
 class JiraIssueFactory(DjangoModelFactory):
