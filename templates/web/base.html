@@ -44,8 +44,15 @@
     <script>
     (function(){
       var s=localStorage.getItem('theme')||'system';
-      var d=(s==='tformance')||(s==='system'&&matchMedia('(prefers-color-scheme:dark)').matches);
-      document.documentElement.setAttribute('data-theme',d?'tformance':'tformance-light');
+      var t,d;
+      if(s==='system'){
+        d=matchMedia('(prefers-color-scheme:dark)').matches;
+        t=d?'tformance':'tformance-light';
+      }else{
+        t=s;
+        d=(t==='tformance');
+      }
+      document.documentElement.setAttribute('data-theme',t);
       document.documentElement.className=d?'dark':'light';
     })();
     </script>

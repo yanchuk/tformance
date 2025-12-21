@@ -1,11 +1,11 @@
 /**
- * Theme management for dark/light mode toggle
- * Works with DaisyUI themes: 'tformance' (dark) and 'tformance-light' (light)
+ * Theme management for dark/light toggle
+ * Works with DaisyUI themes defined in site-tailwind.css
  *
- * IMPORTANT: Valid theme values are:
- *   - 'tformance' (dark theme)
+ * Valid theme values:
+ *   - 'tformance' (Easy Eyes dark theme - default)
  *   - 'tformance-light' (light theme)
- *   - 'system' (follows OS preference)
+ *   - 'system' (follows OS preference, uses dark/light)
  */
 
 // Theme name constants - must match CSS theme definitions in site-tailwind.css
