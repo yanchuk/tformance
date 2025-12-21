@@ -34,6 +34,7 @@ from apps.metrics.factories import (
     WeeklyMetricsFactory,
 )
 from apps.metrics.models import PullRequest, TeamMember, WeeklyMetrics
+from apps.metrics.services.ai_detector import detect_ai_in_text, detect_ai_reviewer, parse_co_authors
 from apps.teams.models import Team
 
 from .deterministic import DeterministicRandom
@@ -63,6 +64,10 @@ class RealProjectStats:
     ai_usage_records: int = 0
     weekly_metrics_created: int = 0
     github_api_calls: int = 0
+    # AI detection stats
+    ai_assisted_prs: int = 0
+    ai_reviews: int = 0
+    ai_commits: int = 0
 
 
 # Type for progress callback: (step_name, current, total, message)
@@ -379,12 +384,17 @@ class RealProjectSeeder:
         cycle_time = Decimal(str(round(pr_data.cycle_time_hours, 2))) if pr_data.cycle_time_hours else None
         review_time = Decimal(str(round(pr_data.review_time_hours, 2))) if pr_data.review_time_hours else None
 
+        # Detect AI involvement in PR body/title
+        pr_text = f"{pr_data.title}\n{pr_data.body or ''}"
+        ai_result = detect_ai_in_text(pr_text)
+
         # Create PR
         pr = PullRequestFactory(
             team=team,
             github_pr_id=pr_data.number,
             github_repo=self.config.repo_full_name,
             title=pr_data.title[:500],  # Limit title length
+            body=pr_data.body or "",
             author=author,
             state=state,
             pr_created_at=pr_data.created_at,
@@ -395,8 +405,12 @@ class RealProjectSeeder:
             additions=pr_data.additions,
             deletions=pr_data.deletions,
             jira_key=pr_data.jira_key_from_title or pr_data.jira_key_from_branch or "",
+            is_ai_assisted=ai_result["is_ai_assisted"],
+            ai_tools_detected=ai_result["ai_tools"],
         )
         self._stats.prs_created += 1
+        if ai_result["is_ai_assisted"]:
+            self._stats.ai_assisted_prs += 1
 
         # Create related records
         self._create_pr_reviews(team, pr, pr_data)
@@ -419,15 +433,23 @@ class RealProjectSeeder:
             if not reviewer or reviewer == pr.author:
                 continue
 
+            # Detect AI reviewer
+            ai_reviewer_result = detect_ai_reviewer(review_data.reviewer_login)
+
             PRReviewFactory(
                 team=team,
                 pull_request=pr,
                 github_review_id=review_data.github_review_id,
                 reviewer=reviewer,
                 state=review_data.state.lower(),
+                body=review_data.body or "",
                 submitted_at=review_data.submitted_at,
+                is_ai_review=ai_reviewer_result["is_ai"],
+                ai_reviewer_type=ai_reviewer_result["ai_type"],
             )
             self._stats.reviews_created += 1
+            if ai_reviewer_result["is_ai"]:
+                self._stats.ai_reviews += 1
 
     def _create_pr_commits(self, team: Team, pr: PullRequest, pr_data: FetchedPRFull):
         """Create commit records for a PR.
@@ -450,6 +472,9 @@ class RealProjectSeeder:
             if not author:
                 author = pr.author  # Default to PR author
 
+            # Detect AI co-authors in commit message
+            co_author_result = parse_co_authors(commit_data.message)
+
             CommitFactory(
                 team=team,
                 github_sha=commit_data.sha,
@@ -460,8 +485,12 @@ class RealProjectSeeder:
                 additions=commit_data.additions,
                 deletions=commit_data.deletions,
                 pull_request=pr,
+                is_ai_assisted=co_author_result["has_ai_co_authors"],
+                ai_co_authors=co_author_result["ai_co_authors"],
             )
             self._stats.commits_created += 1
+            if co_author_result["has_ai_co_authors"]:
+                self._stats.ai_commits += 1
 
     def _create_pr_files(self, team: Team, pr: PullRequest, pr_data: FetchedPRFull):
         """Create file records for a PR.
