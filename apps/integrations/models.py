@@ -203,6 +203,44 @@ class TrackedRepository(BaseTeamModel):
         help_text="Error message from the last failed sync attempt",
     )
 
+    # Rate limit tracking (Phase 1)
+    rate_limit_remaining = models.IntegerField(
+        null=True,
+        blank=True,
+        verbose_name="Rate limit remaining",
+        help_text="Remaining API requests for this sync",
+    )
+    rate_limit_reset_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Rate limit reset at",
+        help_text="When rate limit resets",
+    )
+
+    # Progress tracking (Phase 2)
+    sync_progress = models.IntegerField(
+        default=0,
+        verbose_name="Sync progress",
+        help_text="Sync progress percentage (0-100)",
+    )
+    sync_prs_total = models.IntegerField(
+        null=True,
+        blank=True,
+        verbose_name="Total PRs to sync",
+        help_text="Total PRs to sync",
+    )
+    sync_prs_completed = models.IntegerField(
+        default=0,
+        verbose_name="PRs synced",
+        help_text="PRs synced so far",
+    )
+    sync_started_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Sync started at",
+        help_text="When sync started",
+    )
+
     class Meta:
         ordering = ["full_name"]
         verbose_name = "Tracked Repository"

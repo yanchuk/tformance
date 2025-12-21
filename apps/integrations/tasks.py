@@ -110,6 +110,80 @@ def sync_repository_task(self, repo_id: int) -> dict:
             return {"error": str(exc)}
 
 
+@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+def sync_repository_initial_task(self, repo_id: int, days_back: int = 30) -> dict:
+    """Sync historical data for a newly tracked repository.
+
+    Args:
+        self: Celery task instance (bound task)
+        repo_id: ID of the TrackedRepository to sync
+        days_back: Number of days of history to sync (default 30)
+
+    Returns:
+        Dict with sync results or error status
+    """
+    from django.utils import timezone
+
+    # Get TrackedRepository by id
+    try:
+        tracked_repo = TrackedRepository.objects.get(id=repo_id)  # noqa: TEAM001 - ID from Celery task queue
+    except TrackedRepository.DoesNotExist:
+        logger.warning(f"TrackedRepository with id {repo_id} not found")
+        return {"error": f"TrackedRepository with id {repo_id} not found"}
+
+    # Set status to syncing and record start time
+    tracked_repo.sync_status = TrackedRepository.SYNC_STATUS_SYNCING
+    tracked_repo.sync_started_at = timezone.now()
+    tracked_repo.save(update_fields=["sync_status", "sync_started_at"])
+
+    # Sync repository history
+    logger.info(f"Starting initial sync for repository: {tracked_repo.full_name} (days_back={days_back})")
+    try:
+        from apps.integrations.services.github_sync import sync_repository_history
+
+        result = sync_repository_history(tracked_repo, days_back=days_back)
+        logger.info(f"Successfully synced repository history: {tracked_repo.full_name}")
+
+        # Set status to complete and clear error
+        tracked_repo.sync_status = TrackedRepository.SYNC_STATUS_COMPLETE
+        tracked_repo.last_sync_error = None
+        tracked_repo.save(update_fields=["sync_status", "last_sync_error"])
+
+        # Dispatch weekly metrics aggregation for the team
+        aggregate_team_weekly_metrics_task.delay(tracked_repo.team_id)
+
+        # Send email notification
+        from apps.integrations.services.sync_notifications import send_sync_complete_notification
+
+        send_sync_complete_notification(tracked_repo, result)
+
+        return result
+    except Exception as exc:
+        # Calculate exponential backoff
+        countdown = self.default_retry_delay * (2**self.request.retries)
+
+        try:
+            # Retry with exponential backoff
+            logger.warning(f"Initial sync failed for {tracked_repo.full_name}, retrying in {countdown}s: {exc}")
+            raise self.retry(exc=exc, countdown=countdown)
+        except Retry:
+            # Re-raise Retry exception to allow Celery to retry
+            raise
+        except Exception:
+            # Max retries exhausted or retry failed - log to Sentry and return error
+            from sentry_sdk import capture_exception
+
+            logger.error(f"Initial sync failed permanently for {tracked_repo.full_name}: {exc}")
+            capture_exception(exc)
+
+            # Set status to error and save error message
+            tracked_repo.sync_status = TrackedRepository.SYNC_STATUS_ERROR
+            tracked_repo.last_sync_error = str(exc)
+            tracked_repo.save(update_fields=["sync_status", "last_sync_error"])
+
+            return {"error": str(exc)}
+
+
 @shared_task
 def sync_all_repositories_task() -> dict:
     """Dispatch sync tasks for all active tracked repositories.

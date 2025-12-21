@@ -7,7 +7,12 @@
     <span class="text-sm text-slate-400">{{ repo.description|default:"" }}</span>
   </td>
   <td class="px-4 py-3 border-b border-elevated/50">
-    <div class="flex flex-wrap gap-1">
+    <div class="flex flex-wrap gap-1 items-center"
+         {% if repo.is_tracked and repo.sync_status == 'syncing' %}
+           hx-get="{% url 'integrations:github_repo_sync_progress' repo_id=repo.tracked_repo_id %}"
+           hx-trigger="every 5s"
+           hx-swap="innerHTML"
+         {% endif %}>
       {% if repo.is_tracked %}
         <span class="app-badge app-badge-success">{% translate "Tracked" %}</span>
         {% if repo.webhook_id %}
@@ -15,10 +20,20 @@
         {% else %}
           <span class="app-badge app-badge-warning">{% translate "Webhook pending" %}</span>
         {% endif %}
-        {% if repo.last_sync_at %}
+        {% if repo.sync_status == 'syncing' %}
+          <span class="app-badge app-badge-warning">{% translate "Syncing" %}</span>
+          {% if repo.sync_prs_total %}
+            <span class="text-sm text-base-content/70">{{ repo.sync_prs_completed }}/{{ repo.sync_prs_total }} PRs</span>
+          {% endif %}
+          {% if repo.sync_progress > 0 %}
+            <progress class="progress progress-primary w-16" value="{{ repo.sync_progress }}" max="100"></progress>
+          {% endif %}
+        {% elif repo.sync_status == 'complete' %}
           <span class="app-badge app-badge-primary" title="Last synced: {{ repo.last_sync_at }}">{% translate "Synced" %}</span>
+        {% elif repo.sync_status == 'error' %}
+          <span class="app-badge app-badge-error">{% translate "Sync Error" %}</span>
         {% else %}
-          <span class="app-badge app-badge-default">{% translate "Not synced" %}</span>
+          <span class="app-badge app-badge-default">{% translate "Pending" %}</span>
         {% endif %}
       {% else %}
         <span class="app-badge app-badge-default">{% translate "Not tracked" %}</span>
@@ -32,9 +47,18 @@
               action="{% url 'integrations:github_repo_toggle' repo_id=repo.id %}"
               hx-post="{% url 'integrations:github_repo_toggle' repo_id=repo.id %}"
               hx-target="#repo-row-{{ repo.id }}"
-              hx-swap="outerHTML">
+              hx-swap="outerHTML"
+              class="flex items-center gap-2">
           {% csrf_token %}
           <input type="hidden" name="full_name" value="{{ repo.full_name }}">
+          {% if not repo.is_tracked %}
+            <select name="days_back" class="select select-xs select-bordered bg-base-200 text-base-content w-24">
+              <option value="30" selected>30 days</option>
+              <option value="60">60 days</option>
+              <option value="90">90 days</option>
+              <option value="0">Full history</option>
+            </select>
+          {% endif %}
           <button type="submit" class="app-btn-ghost app-btn-sm">
             {% if repo.is_tracked %}
               {% translate "Untrack" %}

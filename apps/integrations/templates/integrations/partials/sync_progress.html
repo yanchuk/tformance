@@ -1,0 +1,20 @@
+{% load i18n %}
+<div class="flex items-center gap-2">
+  {% if repo.sync_status == 'syncing' %}
+    <span class="app-badge app-badge-warning">{% translate "Syncing" %}</span>
+    {% if repo.sync_prs_total %}
+      <span class="text-sm text-base-content/70">
+        {{ repo.sync_prs_completed }}/{{ repo.sync_prs_total }} PRs
+      </span>
+    {% endif %}
+    {% if repo.sync_progress > 0 %}
+      <progress class="progress progress-primary w-20" value="{{ repo.sync_progress }}" max="100"></progress>
+    {% endif %}
+  {% elif repo.sync_status == 'complete' %}
+    <span class="app-badge app-badge-success">{% translate "Complete" %}</span>
+  {% elif repo.sync_status == 'error' %}
+    <span class="app-badge app-badge-error">{% translate "Error" %}</span>
+  {% else %}
+    <span class="app-badge app-badge-default">{% translate "Pending" %}</span>
+  {% endif %}
+</div>

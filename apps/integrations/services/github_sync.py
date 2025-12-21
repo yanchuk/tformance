@@ -5,6 +5,7 @@ from datetime import datetime
 from github import Github, GithubException
 
 from apps.integrations.services.github_oauth import GitHubOAuthError
+from apps.integrations.services.github_rate_limit import should_pause_for_rate_limit
 from apps.integrations.services.jira_utils import extract_jira_key
 
 __all__ = [
@@ -514,10 +515,13 @@ def _process_prs(
         access_token: Decrypted GitHub access token
 
     Returns:
-        Dict with sync stats for PRs, reviews, commits, check_runs, files, comments
+        Dict with sync stats for PRs, reviews, commits, check_runs, files, comments, rate_limited
     """
     from apps.metrics.models import PullRequest
     from apps.metrics.processors import _map_github_pr_to_fields
+
+    # Create Github client for rate limit checks
+    github = Github(access_token)
 
     prs_synced = 0
     reviews_synced = 0
@@ -526,6 +530,7 @@ def _process_prs(
     files_synced = 0
     comments_synced = 0
     errors = []
+    rate_limited = False
 
     for pr_data in prs_data:
         try:
@@ -606,6 +611,18 @@ def _process_prs(
             # Calculate iteration metrics after all data is synced
             calculate_pr_iteration_metrics(pr)
 
+            # Check rate limit after processing this PR
+            rate_limit = github.get_rate_limit()
+            core = rate_limit.core
+            tracked_repo.rate_limit_remaining = core.remaining
+            tracked_repo.rate_limit_reset_at = core.reset
+            tracked_repo.save()
+
+            # Stop processing if rate limited
+            if should_pause_for_rate_limit(core.remaining):
+                rate_limited = True
+                break
+
         except Exception as e:
             # Log the error but continue processing other PRs
             pr_number = pr_data.get("number", "unknown")
@@ -621,6 +638,7 @@ def _process_prs(
         "files_synced": files_synced,
         "comments_synced": comments_synced,
         "errors": errors,
+        "rate_limited": rate_limited,
     }
 
 

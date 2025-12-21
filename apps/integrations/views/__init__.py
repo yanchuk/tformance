@@ -22,6 +22,7 @@ from .github import (
     github_members,
     github_members_sync,
     github_repo_sync,
+    github_repo_sync_progress,
     github_repo_toggle,
     github_repos,
     github_select_org,
@@ -61,6 +62,7 @@ __all__ = [
     "github_repos",
     "github_repo_toggle",
     "github_repo_sync",
+    "github_repo_sync_progress",
     # Jira
     "jira_connect",
     "jira_callback",

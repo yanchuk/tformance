@@ -377,13 +377,17 @@ def github_repos(request):
     tracked_repos = TrackedRepository.objects.filter(team=team)
     tracked_repo_map = {tr.github_repo_id: tr for tr in tracked_repos}
 
-    # Mark repos as tracked and include webhook_id, last_sync_at, and tracked_repo_id
+    # Mark repos as tracked and include webhook_id, last_sync_at, tracked_repo_id, and sync status
     for repo in repos:
         tracked = tracked_repo_map.get(repo["id"])
         repo["is_tracked"] = tracked is not None
         repo["webhook_id"] = tracked.webhook_id if tracked else None
         repo["last_sync_at"] = tracked.last_sync_at if tracked else None
         repo["tracked_repo_id"] = tracked.id if tracked else None
+        repo["sync_status"] = tracked.sync_status if tracked else None
+        repo["sync_progress"] = tracked.sync_progress if tracked else 0
+        repo["sync_prs_completed"] = tracked.sync_prs_completed if tracked else 0
+        repo["sync_prs_total"] = tracked.sync_prs_total if tracked else None
 
     context = {
         "repos": repos,
@@ -455,12 +459,21 @@ def github_repo_toggle(request, repo_id):
             )
             is_tracked = True
 
-            # Trigger historical sync after tracking
-            try:
-                github_sync.sync_repository_history(tracked_repo)
-            except Exception as e:
-                logger.error(f"Failed to sync historical data for {full_name}: {e}")
-                # Don't fail the toggle - repo is tracked, sync can happen later
+            # Parse days_back parameter
+            days_back_str = request.POST.get("days_back", "")
+            days_back = 30  # default
+            if days_back_str:
+                try:
+                    parsed = int(days_back_str)
+                    if parsed >= 0:
+                        days_back = parsed
+                except (ValueError, TypeError):
+                    pass  # keep default
+
+            # Queue background sync task (async, non-blocking)
+            from apps.integrations.tasks import sync_repository_initial_task
+
+            sync_repository_initial_task.delay(tracked_repo.id, days_back=days_back)
         else:
             is_tracked = False
 
@@ -533,3 +546,23 @@ def github_repo_sync(request, repo_id):
     except Exception as e:
         logger.error(f"Failed to sync repository {tracked_repo.full_name}: {e}", exc_info=True)
         return JsonResponse({"error": "Failed to sync repository. Please try again."}, status=500)
+
+
+@login_and_team_required
+def github_repo_sync_progress(request, repo_id):
+    """Return sync progress partial for HTMX polling.
+
+    Args:
+        request: The HTTP request object.
+        team_slug: The slug of the team.
+        repo_id: The ID of the tracked repository.
+
+    Returns:
+        HttpResponse with sync progress partial template.
+    """
+    from django.shortcuts import get_object_or_404
+
+    from apps.integrations.models import TrackedRepository
+
+    tracked_repo = get_object_or_404(TrackedRepository, id=repo_id, team=request.team)
+    return render(request, "integrations/partials/sync_progress.html", {"repo": tracked_repo})

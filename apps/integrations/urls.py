@@ -23,6 +23,7 @@ team_urlpatterns = (
         path("github/repos/", views.github_repos, name="github_repos"),
         path("github/repos/<int:repo_id>/toggle/", views.github_repo_toggle, name="github_repo_toggle"),
         path("github/repos/<int:repo_id>/sync/", views.github_repo_sync, name="github_repo_sync"),
+        path("github/repos/<int:repo_id>/progress/", views.github_repo_sync_progress, name="github_repo_sync_progress"),
         path("copilot/sync/", views.copilot_sync, name="copilot_sync"),
         path("jira/connect/", views.jira_connect, name="jira_connect"),
         path("jira/callback/", views.jira_callback, name="jira_callback"),
