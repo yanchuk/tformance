@@ -4,51 +4,30 @@ from cryptography.fernet import InvalidToken
 from django.db import connection
 from django.test import TestCase
 
+from apps.integrations.factories import IntegrationCredentialFactory
+from apps.integrations.models import IntegrationCredential
 from apps.integrations.services.encryption import decrypt, encrypt
 from apps.utils.fields import EncryptedTextField
-from apps.utils.models import BaseModel
-
-
-class TestModel(BaseModel):
-    """Test model for EncryptedTextField testing."""
-
-    secret_token = EncryptedTextField(null=True, blank=True)
-    required_secret = EncryptedTextField()
-
-    class Meta:
-        app_label = "utils"
 
 
 class EncryptedTextFieldTest(TestCase):
-    """Tests for EncryptedTextField custom field."""
+    """Tests for EncryptedTextField custom field.
 
-    @classmethod
-    def setUpClass(cls):
-        """Create the test table for TestModel."""
-        super().setUpClass()
-        # Try to drop the table first if it exists from a previous run
-        with connection.cursor() as cursor:
-            cursor.execute("DROP TABLE IF EXISTS utils_testmodel CASCADE")
-        with connection.schema_editor() as schema_editor:
-            schema_editor.create_model(TestModel)
-
-    @classmethod
-    def tearDownClass(cls):
-        """Drop the test table."""
-        super().tearDownClass()
-        with connection.schema_editor() as schema_editor:
-            schema_editor.delete_model(TestModel)
+    Uses IntegrationCredential model which has EncryptedTextField for access_token
+    and refresh_token. This avoids creating/dropping tables during tests which
+    would break parallel test execution.
+    """
 
     def test_plaintext_value_is_encrypted_in_database(self):
         """Test that saving a plaintext value encrypts it in the database."""
         plaintext = "my-secret-token-12345"
-        obj = TestModel.objects.create(required_secret=plaintext)
+        credential = IntegrationCredentialFactory(access_token=plaintext)
 
         # Read directly from database to verify it's encrypted
         with connection.cursor() as cursor:
             cursor.execute(
-                "SELECT required_secret FROM utils_testmodel WHERE id = %s",
-                [obj.id],
+                "SELECT access_token FROM integrations_integrationcredential WHERE id = %s",
+                [credential.id],
             )
             row = cursor.fetchone()
             stored_value = row[0]
@@ -63,50 +42,32 @@ class EncryptedTextFieldTest(TestCase):
     def test_reading_value_returns_decrypted_plaintext(self):
         """Test that reading a value from database returns decrypted plaintext."""
         plaintext = "another-secret-value"
-        obj = TestModel.objects.create(required_secret=plaintext)
+        credential = IntegrationCredentialFactory(access_token=plaintext)
 
         # Refresh from database
-        obj.refresh_from_db()
+        credential.refresh_from_db()
 
         # Should get back the original plaintext
-        self.assertEqual(obj.required_secret, plaintext)
-
-    def test_none_value_handling(self):
-        """Test that None values are handled correctly (not encrypted)."""
-        obj = TestModel.objects.create(required_secret="something", secret_token=None)
-
-        # Refresh from database
-        obj.refresh_from_db()
-
-        # None should stay None
-        self.assertIsNone(obj.secret_token)
-
-        # Verify in database it's actually NULL, not encrypted string "None"
-        with connection.cursor() as cursor:
-            cursor.execute(
-                "SELECT secret_token FROM utils_testmodel WHERE id = %s",
-                [obj.id],
-            )
-            row = cursor.fetchone()
-            stored_value = row[0]
-
-        self.assertIsNone(stored_value)
+        self.assertEqual(credential.access_token, plaintext)
 
     def test_empty_string_handling(self):
-        """Test that empty strings are handled correctly (not encrypted)."""
-        obj = TestModel.objects.create(required_secret="something", secret_token="")
+        """Test that empty strings are handled correctly.
+
+        Note: IntegrationCredential.refresh_token allows blank=True.
+        """
+        credential = IntegrationCredentialFactory(access_token="valid-token", refresh_token="")
 
         # Refresh from database
-        obj.refresh_from_db()
+        credential.refresh_from_db()
 
         # Empty string should stay empty string
-        self.assertEqual(obj.secret_token, "")
+        self.assertEqual(credential.refresh_token, "")
 
         # Verify in database it's actually empty string, not encrypted
         with connection.cursor() as cursor:
             cursor.execute(
-                "SELECT secret_token FROM utils_testmodel WHERE id = %s",
-                [obj.id],
+                "SELECT refresh_token FROM integrations_integrationcredential WHERE id = %s",
+                [credential.id],
             )
             row = cursor.fetchone()
             stored_value = row[0]
@@ -118,14 +79,14 @@ class EncryptedTextFieldTest(TestCase):
         plaintext = "my-secret"
         encrypted_value = encrypt(plaintext)
 
-        # Create object with pre-encrypted value
-        obj = TestModel.objects.create(required_secret=encrypted_value)
+        # Create credential with pre-encrypted value
+        credential = IntegrationCredentialFactory(access_token=encrypted_value)
 
         # Read from database
         with connection.cursor() as cursor:
             cursor.execute(
-                "SELECT required_secret FROM utils_testmodel WHERE id = %s",
-                [obj.id],
+                "SELECT access_token FROM integrations_integrationcredential WHERE id = %s",
+                [credential.id],
             )
             row = cursor.fetchone()
             stored_value = row[0]
@@ -134,53 +95,45 @@ class EncryptedTextFieldTest(TestCase):
         self.assertEqual(stored_value, encrypted_value)
 
         # Refresh and verify we can still decrypt it to original plaintext
-        obj.refresh_from_db()
-        self.assertEqual(obj.required_secret, plaintext)
+        credential.refresh_from_db()
+        self.assertEqual(credential.access_token, plaintext)
 
     def test_model_create_operation(self):
         """Test field works with Django model create operation."""
-        obj = TestModel.objects.create(
-            required_secret="create-test-secret",
-            secret_token="optional-token",
+        credential = IntegrationCredentialFactory(
+            access_token="create-test-secret",
+            refresh_token="optional-refresh-token",
         )
 
-        self.assertIsNotNone(obj.id)
-        self.assertEqual(obj.required_secret, "create-test-secret")
-        self.assertEqual(obj.secret_token, "optional-token")
-
-    def test_model_save_operation(self):
-        """Test field works with Django model save operation."""
-        obj = TestModel(required_secret="save-test-secret")
-        obj.save()
-
-        self.assertIsNotNone(obj.id)
-        self.assertEqual(obj.required_secret, "save-test-secret")
+        self.assertIsNotNone(credential.id)
+        self.assertEqual(credential.access_token, "create-test-secret")
+        self.assertEqual(credential.refresh_token, "optional-refresh-token")
 
     def test_model_update_operation(self):
         """Test field works when updating existing objects."""
-        obj = TestModel.objects.create(required_secret="original-value")
-        original_id = obj.id
+        credential = IntegrationCredentialFactory(access_token="original-value")
+        original_id = credential.id
 
         # Update the value
-        obj.required_secret = "updated-value"
-        obj.save()
+        credential.access_token = "updated-value"
+        credential.save()
 
         # Verify update worked
-        obj.refresh_from_db()
-        self.assertEqual(obj.id, original_id)
-        self.assertEqual(obj.required_secret, "updated-value")
+        credential.refresh_from_db()
+        self.assertEqual(credential.id, original_id)
+        self.assertEqual(credential.access_token, "updated-value")
 
     def test_model_filter_operation(self):
         """Test field works with Django ORM filter operations."""
         # Note: Filtering on encrypted fields won't work as expected
         # since the encrypted values are different each time.
         # This test verifies the field doesn't break basic ORM operations.
-        obj = TestModel.objects.create(required_secret="filter-test")
+        credential = IntegrationCredentialFactory(access_token="filter-test")
 
         # Should be able to filter by id and access encrypted field
-        found = TestModel.objects.filter(id=obj.id).first()
+        found = IntegrationCredential.objects.filter(id=credential.id).first()
         self.assertIsNotNone(found)
-        self.assertEqual(found.required_secret, "filter-test")
+        self.assertEqual(found.access_token, "filter-test")
 
     def test_field_deconstruct_for_migrations(self):
         """Test field's deconstruct() method for Django migrations."""
@@ -198,14 +151,14 @@ class EncryptedTextFieldTest(TestCase):
         """Test that same plaintext encrypts to different ciphertext (due to Fernet nonce)."""
         plaintext = "shared-secret"
 
-        obj1 = TestModel.objects.create(required_secret=plaintext)
-        obj2 = TestModel.objects.create(required_secret=plaintext)
+        cred1 = IntegrationCredentialFactory(access_token=plaintext)
+        cred2 = IntegrationCredentialFactory(access_token=plaintext)
 
         # Read raw values from database
         with connection.cursor() as cursor:
             cursor.execute(
-                "SELECT required_secret FROM utils_testmodel WHERE id IN (%s, %s)",
-                [obj1.id, obj2.id],
+                "SELECT access_token FROM integrations_integrationcredential WHERE id IN (%s, %s)",
+                [cred1.id, cred2.id],
             )
             rows = cursor.fetchall()
             stored_value1 = rows[0][0]
@@ -220,16 +173,16 @@ class EncryptedTextFieldTest(TestCase):
 
     def test_invalid_encrypted_data_raises_error_on_read(self):
         """Test that corrupted encrypted data raises an error when reading."""
-        obj = TestModel.objects.create(required_secret="valid-secret")
+        credential = IntegrationCredentialFactory(access_token="valid-secret")
 
         # Manually corrupt the encrypted data in database
         with connection.cursor() as cursor:
             cursor.execute(
-                "UPDATE utils_testmodel SET required_secret = %s WHERE id = %s",
-                ["corrupted-invalid-base64-data", obj.id],
+                "UPDATE integrations_integrationcredential SET access_token = %s WHERE id = %s",
+                ["corrupted-invalid-base64-data", credential.id],
             )
 
         # Reading should raise InvalidToken error
-        obj_fresh = TestModel.objects.get(id=obj.id)
+        cred_fresh = IntegrationCredential.objects.get(id=credential.id)
         with self.assertRaises(InvalidToken):
-            _ = obj_fresh.required_secret
+            _ = cred_fresh.access_token

@@ -1,39 +1,58 @@
 """Utility functions for migrations (prefixed with _ so Django ignores this file)."""
 
-from django.db import transaction
+import re
 
-from apps.integrations.services.jira_utils import extract_jira_key
-from apps.metrics.models import PullRequest
+from django.db import connection
 
 BATCH_SIZE = 500
 
+# Same regex as in apps.integrations.services.jira_utils
+JIRA_KEY_PATTERN = re.compile(r"[A-Z][A-Z0-9]+-\d+")
+
+
+def extract_jira_key(title: str) -> str | None:
+    """Extract JIRA key from PR title.
+
+    Duplicated from jira_utils to avoid model imports in migrations.
+    Uses re.search to find key anywhere in text (not just at start).
+    """
+    if not title:
+        return None
+    match = JIRA_KEY_PATTERN.search(title)
+    return match.group(0) if match else None
+
 
 def backfill_jira_key():
-    """Backfill jira_key for existing PullRequests using batch updates.
+    """Backfill jira_key for existing PullRequests using raw SQL.
+
+    Uses raw SQL to avoid model imports that cause column mismatch during migrations.
 
     Returns:
         int: Number of PullRequests updated
     """
     updated_count = 0
 
-    with transaction.atomic():
-        # Query PRs with empty jira_key in batches
-        prs_to_update = []
-        for pr in PullRequest.objects.filter(jira_key="").iterator(chunk_size=BATCH_SIZE):
-            jira_key = extract_jira_key(pr.title)
+    with connection.cursor() as cursor:
+        # Get PRs with empty jira_key - only select id and title to avoid column issues
+        cursor.execute("SELECT id, title FROM metrics_pullrequest WHERE jira_key = '' OR jira_key IS NULL")
+        rows = cursor.fetchall()
+
+        # Process in batches
+        updates = []
+        for pr_id, title in rows:
+            jira_key = extract_jira_key(title)
             if jira_key:
-                pr.jira_key = jira_key
-                prs_to_update.append(pr)
+                updates.append((jira_key, pr_id))
 
             # Batch update when we reach BATCH_SIZE
-            if len(prs_to_update) >= BATCH_SIZE:
-                PullRequest.objects.bulk_update(prs_to_update, ["jira_key"])
-                updated_count += len(prs_to_update)
-                prs_to_update = []
+            if len(updates) >= BATCH_SIZE:
+                cursor.executemany("UPDATE metrics_pullrequest SET jira_key = %s WHERE id = %s", updates)
+                updated_count += len(updates)
+                updates = []
 
         # Update any remaining PRs
-        if prs_to_update:
-            PullRequest.objects.bulk_update(prs_to_update, ["jira_key"])
-            updated_count += len(prs_to_update)
+        if updates:
+            cursor.executemany("UPDATE metrics_pullrequest SET jira_key = %s WHERE id = %s", updates)
+            updated_count += len(updates)
 
     return updated_count

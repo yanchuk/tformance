@@ -45,11 +45,14 @@ shell: ## Get a Django shell
 dbshell: ## Get a Database shell
 	@docker compose exec db psql -U postgres tformance
 
-test: ## Run Django tests
+test: ## Run Django tests (uses --keepdb for speed)
+	@uv run manage.py test --keepdb ${ARGS}
+
+test-fresh: ## Run Django tests with fresh database (slower, use when models change)
 	@uv run manage.py test ${ARGS}
 
-test-parallel: ## Run Django tests in parallel (faster but may have intermittent failures)
-	@uv run manage.py test --parallel ${ARGS}
+test-parallel: ## Run Django tests in parallel (requires tblib: uv add tblib)
+	@uv run manage.py test --parallel --keepdb ${ARGS}
 
 init: setup-env start-bg migrations migrate npm-install-all bootstrap_content install-hooks  ## Quickly get up and running (start containers and bootstrap DB)
 

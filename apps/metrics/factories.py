@@ -57,15 +57,20 @@ class TeamFactory(DjangoModelFactory):
 
 
 class TeamMemberFactory(DjangoModelFactory):
-    """Factory for TeamMember model."""
+    """Factory for TeamMember model.
+
+    Uses Sequence for display_name, email, and github_username to guarantee
+    uniqueness and avoid constraint violations in parallel tests.
+    """
 
     class Meta:
         model = TeamMember
 
     team = factory.SubFactory(TeamFactory)
-    display_name = factory.Faker("name")
-    email = factory.LazyAttribute(lambda o: f"{o.display_name.lower().replace(' ', '.')}@example.com")
-    github_username = factory.LazyAttribute(lambda o: o.display_name.lower().replace(" ", ""))
+    # Use Sequence instead of Faker to guarantee unique values across tests
+    display_name = factory.Sequence(lambda n: f"Developer {n}")
+    email = factory.Sequence(lambda n: f"developer{n}@example.com")
+    github_username = factory.Sequence(lambda n: f"developer{n}")
     github_id = factory.Sequence(lambda n: str(10000 + n))
     jira_account_id = factory.Sequence(lambda n: f"jira-{n}")
     slack_user_id = factory.Sequence(lambda n: f"U{n:08d}")

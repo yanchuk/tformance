@@ -1325,7 +1325,7 @@ class GitHubReposViewTest(TestCase):
         # Create GitHub integration
         integration = GitHubIntegrationFactory(team=self.team, organization_slug="acme-corp")
 
-        # Create a tracked repo with last_sync_at set
+        # Create a tracked repo with last_sync_at set and sync_status="complete"
         sync_time = timezone.now()
         TrackedRepositoryFactory(
             team=self.team,
@@ -1333,6 +1333,7 @@ class GitHubReposViewTest(TestCase):
             github_repo_id=12345,
             full_name="acme-corp/test-repo",
             last_sync_at=sync_time,
+            sync_status="complete",  # Must be "complete" for "Synced" badge to show
         )
 
         # Mock GitHub API response
@@ -1351,8 +1352,8 @@ class GitHubReposViewTest(TestCase):
         self.assertContains(response, "Synced")
 
     @patch("apps.integrations.services.github_oauth.get_organization_repositories")
-    def test_github_repos_shows_not_synced_for_unsynced_repos(self, mock_get_repos):
-        """Test that unsynced repos show 'Not synced' badge when last_sync_at is None."""
+    def test_github_repos_shows_pending_for_unsynced_repos(self, mock_get_repos):
+        """Test that unsynced repos show 'Pending' badge when sync hasn't completed."""
         from apps.integrations.factories import TrackedRepositoryFactory
 
         # Create GitHub integration
@@ -1379,8 +1380,8 @@ class GitHubReposViewTest(TestCase):
         # Should successfully render
         self.assertEqual(response.status_code, 200)
 
-        # Should contain "Not synced" badge
-        self.assertContains(response, "Not synced")
+        # Should contain "Pending" badge (default status before sync completes)
+        self.assertContains(response, "Pending")
 
     @patch("apps.integrations.services.github_oauth.get_organization_repositories")
     def test_github_repos_shows_sync_button_for_tracked_repos(self, mock_get_repos):
@@ -1680,17 +1681,19 @@ class GitHubRepoToggleWebhookIntegrationTest(TestCase):
         self.integration = GitHubIntegrationFactory(team=self.team, organization_slug="acme-corp")
         self.client = Client()
 
-    @patch("apps.integrations.services.github_sync.sync_repository_history")
+    @patch("apps.integrations.tasks.sync_repository_initial_task")
     @patch("apps.integrations.services.github_webhooks.create_repository_webhook")
-    def test_toggle_triggers_sync_on_track(self, mock_create_webhook, mock_sync):
-        """Test that toggling a repo to tracked automatically triggers historical sync."""
+    def test_toggle_triggers_sync_on_track(self, mock_create_webhook, mock_sync_task):
+        """Test that toggling a repo to tracked automatically queues background sync."""
+        from unittest.mock import MagicMock
+
         from apps.integrations.models import TrackedRepository
 
         # Mock webhook creation to return a webhook ID
         mock_create_webhook.return_value = 99887766
 
-        # Mock sync result
-        mock_sync.return_value = {"prs_synced": 10, "reviews_synced": 5, "errors": []}
+        # Mock the delay method
+        mock_sync_task.delay = MagicMock()
 
         self.client.force_login(self.admin)
 
@@ -1700,33 +1703,37 @@ class GitHubRepoToggleWebhookIntegrationTest(TestCase):
         # Track the repo
         self.client.post(reverse("integrations:github_repo_toggle", args=[repo_id]), {"full_name": full_name})
 
-        # Verify sync_repository_history was called after webhook registration
-        mock_sync.assert_called_once()
-        # Get the tracked_repo argument
-        call_args = mock_sync.call_args[0]
-        tracked_repo_arg = call_args[0]
-        self.assertIsInstance(tracked_repo_arg, TrackedRepository)
-        self.assertEqual(tracked_repo_arg.github_repo_id, repo_id)
-        self.assertEqual(tracked_repo_arg.full_name, full_name)
+        # Verify sync_repository_initial_task.delay was called after webhook registration
+        mock_sync_task.delay.assert_called_once()
+        # Get the tracked_repo.id argument
+        call_args = mock_sync_task.delay.call_args[0]
+        tracked_repo_id = call_args[0]
+        # Verify the TrackedRepository was created with this ID
+        tracked_repo = TrackedRepository.objects.get(id=tracked_repo_id)
+        self.assertEqual(tracked_repo.github_repo_id, repo_id)
+        self.assertEqual(tracked_repo.full_name, full_name)
 
-    @patch("apps.integrations.services.github_sync.sync_repository_history")
+    @patch("apps.integrations.tasks.sync_repository_initial_task")
     @patch("apps.integrations.services.github_webhooks.create_repository_webhook")
-    def test_toggle_sync_failure_does_not_block_tracking(self, mock_create_webhook, mock_sync):
-        """Test that repo tracking succeeds even if historical sync fails (graceful degradation)."""
+    def test_toggle_sync_failure_does_not_block_tracking(self, mock_create_webhook, mock_sync_task):
+        """Test that repo tracking succeeds (async sync happens in background, cannot fail view)."""
+        from unittest.mock import MagicMock
+
         from apps.integrations.models import TrackedRepository
 
         # Mock webhook creation
         mock_create_webhook.return_value = 99887766
 
-        # Mock sync failure
-        mock_sync.side_effect = Exception("GitHub API rate limit exceeded")
+        # Mock the delay method - even if this throws, it won't affect the view anymore
+        # (though in reality, .delay() just queues the task and doesn't raise)
+        mock_sync_task.delay = MagicMock()
 
         self.client.force_login(self.admin)
 
         repo_id = 12345
         full_name = "acme-corp/test-repo"
 
-        # Track the repo - should succeed despite sync failure
+        # Track the repo - always succeeds now because sync is async
         response = self.client.post(
             reverse("integrations:github_repo_toggle", args=[repo_id]), {"full_name": full_name}
         )
@@ -1734,8 +1741,11 @@ class GitHubRepoToggleWebhookIntegrationTest(TestCase):
         # Should redirect successfully
         self.assertEqual(response.status_code, 302)
 
-        # TrackedRepository should still be created
+        # TrackedRepository should be created
         self.assertTrue(TrackedRepository.objects.filter(team=self.team, github_repo_id=repo_id).exists())
+
+        # Verify async task was queued
+        mock_sync_task.delay.assert_called_once()
 
         # webhook_id should still be set (webhook creation happened before sync)
         tracked_repo = TrackedRepository.objects.get(team=self.team, github_repo_id=repo_id)

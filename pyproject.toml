@@ -82,6 +82,7 @@ dev = [
     "pre-commit",
     "ruff>=0.13.1",
     "pegasus-cli>=0.8",
+    "tblib>=3.0.0",  # Required for Django parallel test debugging
 ]
 prod = [
     "gunicorn",

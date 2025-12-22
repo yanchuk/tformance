@@ -227,10 +227,16 @@ make migrate          # Apply migrations
 ### Testing
 
 ```bash
-make test                              # Run all Django unit tests
+make test                                     # Run all tests (uses --keepdb by default)
+make test-parallel                            # Run tests in parallel (~60% faster)
 make test ARGS='apps.module.tests.test_file'  # Run specific test
-make test ARGS='path.to.test --keepdb'        # Run with options
+make test-fresh                               # Run with fresh database (when models change)
 ```
+
+**Speed Tips:**
+- `make test` uses `--keepdb` by default, reusing the test database for faster runs
+- `make test-parallel` runs tests across multiple CPU cores (~30s vs ~75s sequential)
+- Use `make test-fresh` after adding new migrations or changing model schemas
 
 ### E2E Testing (Playwright)
 
@@ -393,6 +399,11 @@ class TestFeatureName(TestCase):
 - Use `Factory.create()` or `Factory()` for integration tests (saves to DB)
 - Use `Factory.create_batch(n)` to create multiple instances
 - Override specific attributes: `TeamMemberFactory(role="lead", display_name="John")`
+- **Use `factory.Sequence`** for unique fields to avoid constraint violations:
+  ```python
+  email = factory.Sequence(lambda n: f"user{n}@example.com")
+  github_id = factory.Sequence(lambda n: str(10000 + n))
+  ```
 
 Available factories in `apps/metrics/factories.py`:
 - `TeamFactory`, `TeamMemberFactory`
