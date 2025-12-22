@@ -1010,15 +1010,38 @@ class TestSyncRepositoryIncremental(TestCase):
         # Verify get_updated_pull_requests was called with correct parameters
         mock_get_updated_prs.assert_called_once_with("encrypted_token_12345", "acme-corp/api-server", last_sync_time)
 
+    @patch("apps.integrations.services.github_sync.sync_repository_deployments")
+    @patch("apps.integrations.services.github_sync.sync_pr_review_comments")
+    @patch("apps.integrations.services.github_sync.sync_pr_issue_comments")
+    @patch("apps.integrations.services.github_sync.sync_pr_files")
+    @patch("apps.integrations.services.github_sync.sync_pr_check_runs")
+    @patch("apps.integrations.services.github_sync.sync_pr_commits")
+    @patch("apps.integrations.services.github_sync._sync_pr_reviews")
     @patch("apps.integrations.services.github_sync.get_updated_pull_requests")
-    # Note: EncryptedTextField handles decryption automatically
-    def test_sync_repository_incremental_creates_new_pull_requests(self, mock_get_updated_prs):
+    def test_sync_repository_incremental_creates_new_pull_requests(
+        self,
+        mock_get_updated_prs,
+        mock_reviews,
+        mock_commits,
+        mock_checks,
+        mock_files,
+        mock_issues,
+        mock_review_comments,
+        mock_deployments,
+    ):
         """Test that sync_repository_incremental creates new PullRequest records from updated PRs."""
-
         from apps.integrations.services.github_sync import sync_repository_incremental
         from apps.metrics.models import PullRequest
 
-        # EncryptedTextField auto-decrypts access_token
+        # Mock all sync functions to return 0
+        mock_reviews.return_value = 0
+        mock_commits.return_value = 0
+        mock_checks.return_value = 0
+        mock_files.return_value = 0
+        mock_issues.return_value = 0
+        mock_review_comments.return_value = 0
+        mock_deployments.return_value = 0
+
         mock_get_updated_prs.return_value = [
             {
                 "id": 123456789,
@@ -1052,14 +1075,38 @@ class TestSyncRepositoryIncremental(TestCase):
         # Verify result summary
         self.assertEqual(result["prs_synced"], 1)
 
+    @patch("apps.integrations.services.github_sync.sync_repository_deployments")
+    @patch("apps.integrations.services.github_sync.sync_pr_review_comments")
+    @patch("apps.integrations.services.github_sync.sync_pr_issue_comments")
+    @patch("apps.integrations.services.github_sync.sync_pr_files")
+    @patch("apps.integrations.services.github_sync.sync_pr_check_runs")
+    @patch("apps.integrations.services.github_sync.sync_pr_commits")
+    @patch("apps.integrations.services.github_sync._sync_pr_reviews")
     @patch("apps.integrations.services.github_sync.get_updated_pull_requests")
-    # Note: EncryptedTextField handles decryption automatically
-    def test_sync_repository_incremental_updates_existing_pull_requests(self, mock_get_updated_prs):
+    def test_sync_repository_incremental_updates_existing_pull_requests(
+        self,
+        mock_get_updated_prs,
+        mock_reviews,
+        mock_commits,
+        mock_checks,
+        mock_files,
+        mock_issues,
+        mock_review_comments,
+        mock_deployments,
+    ):
         """Test that sync_repository_incremental updates existing PRs (idempotent)."""
-
         from apps.integrations.services.github_sync import sync_repository_incremental
         from apps.metrics.factories import PullRequestFactory
         from apps.metrics.models import PullRequest
+
+        # Mock all sync functions to return 0
+        mock_reviews.return_value = 0
+        mock_commits.return_value = 0
+        mock_checks.return_value = 0
+        mock_files.return_value = 0
+        mock_issues.return_value = 0
+        mock_review_comments.return_value = 0
+        mock_deployments.return_value = 0
 
         # Create existing PR with old data
         existing_pr = PullRequestFactory(
@@ -1104,17 +1151,36 @@ class TestSyncRepositoryIncremental(TestCase):
         # Verify result summary
         self.assertEqual(result["prs_synced"], 1)
 
+    @patch("apps.integrations.services.github_sync.sync_repository_deployments")
+    @patch("apps.integrations.services.github_sync.sync_pr_review_comments")
+    @patch("apps.integrations.services.github_sync.sync_pr_issue_comments")
+    @patch("apps.integrations.services.github_sync.sync_pr_files")
+    @patch("apps.integrations.services.github_sync.sync_pr_check_runs")
+    @patch("apps.integrations.services.github_sync.sync_pr_commits")
     @patch("apps.integrations.services.github_sync.get_pull_request_reviews")
     @patch("apps.integrations.services.github_sync.get_updated_pull_requests")
-    # Note: EncryptedTextField handles decryption automatically
     def test_sync_repository_incremental_syncs_reviews_for_each_updated_pr(
-        self, mock_get_updated_prs, mock_get_reviews
+        self,
+        mock_get_updated_prs,
+        mock_get_reviews,
+        mock_commits,
+        mock_checks,
+        mock_files,
+        mock_issues,
+        mock_review_comments,
+        mock_deployments,
     ):
         """Test that sync_repository_incremental calls get_pull_request_reviews for each updated PR."""
-
         from apps.integrations.services.github_sync import sync_repository_incremental
 
-        # EncryptedTextField auto-decrypts access_token
+        # Mock all sync functions to return 0
+        mock_commits.return_value = 0
+        mock_checks.return_value = 0
+        mock_files.return_value = 0
+        mock_issues.return_value = 0
+        mock_review_comments.return_value = 0
+        mock_deployments.return_value = 0
+
         mock_get_updated_prs.return_value = [
             {
                 "id": 123456789,
@@ -1164,15 +1230,37 @@ class TestSyncRepositoryIncremental(TestCase):
         self.assertEqual(second_call[0][1], "acme-corp/api-server")
         self.assertEqual(second_call[0][2], 43)
 
+    @patch("apps.integrations.services.github_sync.sync_repository_deployments")
+    @patch("apps.integrations.services.github_sync.sync_pr_review_comments")
+    @patch("apps.integrations.services.github_sync.sync_pr_issue_comments")
+    @patch("apps.integrations.services.github_sync.sync_pr_files")
+    @patch("apps.integrations.services.github_sync.sync_pr_check_runs")
+    @patch("apps.integrations.services.github_sync.sync_pr_commits")
     @patch("apps.integrations.services.github_sync.get_pull_request_reviews")
     @patch("apps.integrations.services.github_sync.get_updated_pull_requests")
-    # Note: EncryptedTextField handles decryption automatically
-    def test_sync_repository_incremental_creates_review_records(self, mock_get_updated_prs, mock_get_reviews):
+    def test_sync_repository_incremental_creates_review_records(
+        self,
+        mock_get_updated_prs,
+        mock_get_reviews,
+        mock_commits,
+        mock_checks,
+        mock_files,
+        mock_issues,
+        mock_review_comments,
+        mock_deployments,
+    ):
         """Test that sync_repository_incremental creates PRReview records from API data."""
-
         from apps.integrations.services.github_sync import sync_repository_incremental
         from apps.metrics.factories import TeamMemberFactory
         from apps.metrics.models import PRReview
+
+        # Mock all sync functions to return 0
+        mock_commits.return_value = 0
+        mock_checks.return_value = 0
+        mock_files.return_value = 0
+        mock_issues.return_value = 0
+        mock_review_comments.return_value = 0
+        mock_deployments.return_value = 0
 
         # Create reviewer team member
         reviewer = TeamMemberFactory(
@@ -1181,7 +1269,6 @@ class TestSyncRepositoryIncremental(TestCase):
             display_name="Jane Reviewer",
         )
 
-        # EncryptedTextField auto-decrypts access_token
         mock_get_updated_prs.return_value = [
             {
                 "id": 123456789,
@@ -1250,14 +1337,37 @@ class TestSyncRepositoryIncremental(TestCase):
         self.assertGreaterEqual(self.tracked_repo.last_sync_at, before_sync)
         self.assertLessEqual(self.tracked_repo.last_sync_at, after_sync)
 
+    @patch("apps.integrations.services.github_sync.sync_repository_deployments")
+    @patch("apps.integrations.services.github_sync.sync_pr_review_comments")
+    @patch("apps.integrations.services.github_sync.sync_pr_issue_comments")
+    @patch("apps.integrations.services.github_sync.sync_pr_files")
+    @patch("apps.integrations.services.github_sync.sync_pr_check_runs")
+    @patch("apps.integrations.services.github_sync.sync_pr_commits")
+    @patch("apps.integrations.services.github_sync._sync_pr_reviews")
     @patch("apps.integrations.services.github_sync.get_updated_pull_requests")
-    # Note: EncryptedTextField handles decryption automatically
-    def test_sync_repository_incremental_returns_correct_summary_dict(self, mock_get_updated_prs):
+    def test_sync_repository_incremental_returns_correct_summary_dict(
+        self,
+        mock_get_updated_prs,
+        mock_reviews,
+        mock_commits,
+        mock_checks,
+        mock_files,
+        mock_issues,
+        mock_review_comments,
+        mock_deployments,
+    ):
         """Test that sync_repository_incremental returns dict with prs_synced, reviews_synced, errors."""
-
         from apps.integrations.services.github_sync import sync_repository_incremental
 
-        # EncryptedTextField auto-decrypts access_token
+        # Mock all sync functions to return 0
+        mock_reviews.return_value = 0
+        mock_commits.return_value = 0
+        mock_checks.return_value = 0
+        mock_files.return_value = 0
+        mock_issues.return_value = 0
+        mock_review_comments.return_value = 0
+        mock_deployments.return_value = 0
+
         mock_get_updated_prs.return_value = [
             {
                 "id": 1,
@@ -1302,15 +1412,38 @@ class TestSyncRepositoryIncremental(TestCase):
         self.assertEqual(result["prs_synced"], 2)
         self.assertIsInstance(result["errors"], list)
 
+    @patch("apps.integrations.services.github_sync.sync_repository_deployments")
+    @patch("apps.integrations.services.github_sync.sync_pr_review_comments")
+    @patch("apps.integrations.services.github_sync.sync_pr_issue_comments")
+    @patch("apps.integrations.services.github_sync.sync_pr_files")
+    @patch("apps.integrations.services.github_sync.sync_pr_check_runs")
+    @patch("apps.integrations.services.github_sync.sync_pr_commits")
+    @patch("apps.integrations.services.github_sync._sync_pr_reviews")
     @patch("apps.integrations.services.github_sync.get_updated_pull_requests")
-    # Note: EncryptedTextField handles decryption automatically
-    def test_sync_repository_incremental_handles_individual_pr_errors_gracefully(self, mock_get_updated_prs):
+    def test_sync_repository_incremental_handles_individual_pr_errors_gracefully(
+        self,
+        mock_get_updated_prs,
+        mock_reviews,
+        mock_commits,
+        mock_checks,
+        mock_files,
+        mock_issues,
+        mock_review_comments,
+        mock_deployments,
+    ):
         """Test that sync_repository_incremental continues processing even if one PR fails."""
-
         from apps.integrations.services.github_sync import sync_repository_incremental
         from apps.metrics.models import PullRequest
 
-        # EncryptedTextField auto-decrypts access_token
+        # Mock all sync functions to return 0
+        mock_reviews.return_value = 0
+        mock_commits.return_value = 0
+        mock_checks.return_value = 0
+        mock_files.return_value = 0
+        mock_issues.return_value = 0
+        mock_review_comments.return_value = 0
+        mock_deployments.return_value = 0
+
         # First PR has invalid data that will cause an error, second PR is valid
         mock_get_updated_prs.return_value = [
             {
