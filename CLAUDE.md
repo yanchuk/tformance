@@ -230,12 +230,12 @@ Tests run with **pytest** and **pytest-django**. The test suite has ~2000 tests.
 
 ```bash
 # Basic commands
-make test                                     # Run all tests (uses --reuse-db)
-make test-parallel                            # Run tests in parallel (~22% faster)
+make test                                     # Run all tests (parallel by default)
 make test ARGS='apps.module.tests.test_file'  # Run specific test module
 make test ARGS='-k test_name'                 # Run tests matching pattern
 
 # Advanced commands
+make test-serial                              # Run tests without parallelization
 make test-slow                                # Show 20 slowest tests (--durations)
 make test-coverage                            # Run with coverage report
 make test-fresh                               # Fresh database (when models change)
@@ -249,8 +249,8 @@ pytest -p randomly --randomly-seed=12345      # Reproducible random order
 ```
 
 **Speed Tips:**
-- `make test` uses `--reuse-db` by default (~120s for full suite)
-- `make test-parallel` runs tests across CPU cores (~94s)
+- `make test` runs in parallel by default with `--reuse-db` (~94s for full suite)
+- Use `make test-serial` to disable parallelization for debugging
 - Use `make test-slow` to identify optimization candidates
 - Use `make test-fresh` after adding new migrations
 
@@ -443,7 +443,7 @@ This project has Claude Code skills configured to enforce TDD. When you request 
 
 ## General Coding Preferences
 
-- **ALWAYS run tests before committing**: Run `make test ARGS='--keepdb'` before every commit to catch regressions early. A pre-push hook enforces this automatically (skip with `git push --no-verify` if needed).
+- **ALWAYS run tests before committing**: Run `make test` before every commit to catch regressions early. A pre-push hook enforces this automatically (skip with `git push --no-verify` if needed).
 - Always prefer simple solutions.
 - Avoid duplication of code whenever possible, which means checking for other areas of the codebase that might already have similar code and functionality.
 - You are careful to only make changes that are requested or you are confident are well understood and related to the change being requested.

@@ -105,6 +105,7 @@ addopts = [
     "--reuse-db",
     "--tb=short",
     "-ra",
+    "-n", "auto",
 ]
 filterwarnings = [
     "ignore::DeprecationWarning",

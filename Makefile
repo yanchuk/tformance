@@ -45,11 +45,11 @@ shell: ## Get a Django shell
 dbshell: ## Get a Database shell
 	@docker compose exec db psql -U postgres tformance
 
-test: ## Run tests with pytest (uses --reuse-db for speed)
+test: ## Run tests with pytest (parallel by default)
 	@pytest ${ARGS}
 
-test-parallel: ## Run tests in parallel with pytest-xdist
-	@pytest -n auto ${ARGS}
+test-serial: ## Run tests without parallelization
+	@pytest -n 0 ${ARGS}
 
 test-slow: ## Show slowest 20 tests
 	@pytest --durations=20 ${ARGS}

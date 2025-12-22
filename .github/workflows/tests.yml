@@ -55,4 +55,4 @@ jobs:
           DJANGO_DATABASE_USER: postgres
           DJANGO_DATABASE_PASSWORD: postgres_password
           CELERY_TASK_ALWAYS_EAGER: "true"
-        run: uv run manage.py test
+        run: uv run pytest
