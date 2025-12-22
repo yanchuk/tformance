@@ -352,3 +352,183 @@ class TestPRSurveyReviewModel(TestCase):
         """Test that PRSurveyReview inherits updated_at from BaseModel."""
         review = PRSurveyReview.objects.create(team=self.team1, survey=self.survey, reviewer=self.reviewer1)
         self.assertIsNotNone(review.updated_at)
+
+
+class TestSurveyResponseSourceFields(TestCase):
+    """Tests for response source tracking fields (Phase 2 - Survey Improvements)."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.team = Team.objects.create(name="Test Team", slug="test-team")
+        self.author = TeamMember.objects.create(team=self.team, display_name="Author", github_username="author")
+        self.reviewer = TeamMember.objects.create(team=self.team, display_name="Reviewer", github_username="reviewer")
+        self.pull_request = PullRequest.objects.create(
+            team=self.team, github_pr_id=100, github_repo="org/repo", state="merged"
+        )
+        self.survey = PRSurvey.objects.create(team=self.team, pull_request=self.pull_request, author=self.author)
+
+    def tearDown(self):
+        """Clean up team context."""
+        unset_current_team()
+
+    # --- Response Source Constants Tests ---
+
+    def test_response_source_choices_exists(self):
+        """Test that RESPONSE_SOURCE_CHOICES constant exists."""
+        from apps.metrics.models.surveys import RESPONSE_SOURCE_CHOICES
+
+        self.assertIsInstance(RESPONSE_SOURCE_CHOICES, list)
+        self.assertGreater(len(RESPONSE_SOURCE_CHOICES), 0)
+
+    def test_response_source_choices_contains_github(self):
+        """Test that RESPONSE_SOURCE_CHOICES contains 'github' option."""
+        from apps.metrics.models.surveys import RESPONSE_SOURCE_CHOICES
+
+        values = [choice[0] for choice in RESPONSE_SOURCE_CHOICES]
+        self.assertIn("github", values)
+
+    def test_response_source_choices_contains_slack(self):
+        """Test that RESPONSE_SOURCE_CHOICES contains 'slack' option."""
+        from apps.metrics.models.surveys import RESPONSE_SOURCE_CHOICES
+
+        values = [choice[0] for choice in RESPONSE_SOURCE_CHOICES]
+        self.assertIn("slack", values)
+
+    def test_response_source_choices_contains_web(self):
+        """Test that RESPONSE_SOURCE_CHOICES contains 'web' option."""
+        from apps.metrics.models.surveys import RESPONSE_SOURCE_CHOICES
+
+        values = [choice[0] for choice in RESPONSE_SOURCE_CHOICES]
+        self.assertIn("web", values)
+
+    def test_response_source_choices_contains_auto(self):
+        """Test that RESPONSE_SOURCE_CHOICES contains 'auto' option for AI auto-detection."""
+        from apps.metrics.models.surveys import RESPONSE_SOURCE_CHOICES
+
+        values = [choice[0] for choice in RESPONSE_SOURCE_CHOICES]
+        self.assertIn("auto", values)
+
+    # --- Modification Effort Constants Tests ---
+
+    def test_modification_effort_choices_exists(self):
+        """Test that MODIFICATION_EFFORT_CHOICES constant exists."""
+        from apps.metrics.models.surveys import MODIFICATION_EFFORT_CHOICES
+
+        self.assertIsInstance(MODIFICATION_EFFORT_CHOICES, list)
+        self.assertGreater(len(MODIFICATION_EFFORT_CHOICES), 0)
+
+    def test_modification_effort_choices_contains_expected_values(self):
+        """Test that MODIFICATION_EFFORT_CHOICES contains expected values."""
+        from apps.metrics.models.surveys import MODIFICATION_EFFORT_CHOICES
+
+        values = [choice[0] for choice in MODIFICATION_EFFORT_CHOICES]
+        self.assertIn("none", values)
+        self.assertIn("minor", values)
+        self.assertIn("moderate", values)
+        self.assertIn("major", values)
+        self.assertIn("na", values)
+
+    # --- PRSurvey.author_response_source Tests ---
+
+    def test_pr_survey_author_response_source_can_be_null(self):
+        """Test that PRSurvey.author_response_source can be null (default)."""
+        self.assertIsNone(self.survey.author_response_source)
+
+    def test_pr_survey_author_response_source_can_be_github(self):
+        """Test that PRSurvey.author_response_source can be 'github'."""
+        self.survey.author_response_source = "github"
+        self.survey.save()
+        self.survey.refresh_from_db()
+        self.assertEqual(self.survey.author_response_source, "github")
+
+    def test_pr_survey_author_response_source_can_be_slack(self):
+        """Test that PRSurvey.author_response_source can be 'slack'."""
+        self.survey.author_response_source = "slack"
+        self.survey.save()
+        self.survey.refresh_from_db()
+        self.assertEqual(self.survey.author_response_source, "slack")
+
+    def test_pr_survey_author_response_source_can_be_web(self):
+        """Test that PRSurvey.author_response_source can be 'web'."""
+        self.survey.author_response_source = "web"
+        self.survey.save()
+        self.survey.refresh_from_db()
+        self.assertEqual(self.survey.author_response_source, "web")
+
+    def test_pr_survey_author_response_source_can_be_auto(self):
+        """Test that PRSurvey.author_response_source can be 'auto' for AI auto-detection."""
+        self.survey.author_response_source = "auto"
+        self.survey.author_ai_assisted = True  # Set by auto-detection
+        self.survey.save()
+        self.survey.refresh_from_db()
+        self.assertEqual(self.survey.author_response_source, "auto")
+        self.assertTrue(self.survey.author_ai_assisted)
+
+    # --- PRSurvey.ai_modification_effort Tests ---
+
+    def test_pr_survey_ai_modification_effort_can_be_null(self):
+        """Test that PRSurvey.ai_modification_effort can be null (default)."""
+        self.assertIsNone(self.survey.ai_modification_effort)
+
+    def test_pr_survey_ai_modification_effort_can_be_none_value(self):
+        """Test that PRSurvey.ai_modification_effort can be 'none' (used as-is)."""
+        self.survey.ai_modification_effort = "none"
+        self.survey.save()
+        self.survey.refresh_from_db()
+        self.assertEqual(self.survey.ai_modification_effort, "none")
+
+    def test_pr_survey_ai_modification_effort_can_be_minor(self):
+        """Test that PRSurvey.ai_modification_effort can be 'minor'."""
+        self.survey.ai_modification_effort = "minor"
+        self.survey.save()
+        self.survey.refresh_from_db()
+        self.assertEqual(self.survey.ai_modification_effort, "minor")
+
+    def test_pr_survey_ai_modification_effort_can_be_moderate(self):
+        """Test that PRSurvey.ai_modification_effort can be 'moderate'."""
+        self.survey.ai_modification_effort = "moderate"
+        self.survey.save()
+        self.survey.refresh_from_db()
+        self.assertEqual(self.survey.ai_modification_effort, "moderate")
+
+    def test_pr_survey_ai_modification_effort_can_be_major(self):
+        """Test that PRSurvey.ai_modification_effort can be 'major'."""
+        self.survey.ai_modification_effort = "major"
+        self.survey.save()
+        self.survey.refresh_from_db()
+        self.assertEqual(self.survey.ai_modification_effort, "major")
+
+    def test_pr_survey_ai_modification_effort_can_be_na(self):
+        """Test that PRSurvey.ai_modification_effort can be 'na'."""
+        self.survey.ai_modification_effort = "na"
+        self.survey.save()
+        self.survey.refresh_from_db()
+        self.assertEqual(self.survey.ai_modification_effort, "na")
+
+    # --- PRSurveyReview.response_source Tests ---
+
+    def test_pr_survey_review_response_source_can_be_null(self):
+        """Test that PRSurveyReview.response_source can be null (default)."""
+        review = PRSurveyReview.objects.create(team=self.team, survey=self.survey, reviewer=self.reviewer)
+        self.assertIsNone(review.response_source)
+
+    def test_pr_survey_review_response_source_can_be_github(self):
+        """Test that PRSurveyReview.response_source can be 'github'."""
+        review = PRSurveyReview.objects.create(
+            team=self.team, survey=self.survey, reviewer=self.reviewer, response_source="github"
+        )
+        self.assertEqual(review.response_source, "github")
+
+    def test_pr_survey_review_response_source_can_be_slack(self):
+        """Test that PRSurveyReview.response_source can be 'slack'."""
+        review = PRSurveyReview.objects.create(
+            team=self.team, survey=self.survey, reviewer=self.reviewer, response_source="slack"
+        )
+        self.assertEqual(review.response_source, "slack")
+
+    def test_pr_survey_review_response_source_can_be_web(self):
+        """Test that PRSurveyReview.response_source can be 'web'."""
+        review = PRSurveyReview.objects.create(
+            team=self.team, survey=self.survey, reviewer=self.reviewer, response_source="web"
+        )
+        self.assertEqual(review.response_source, "web")

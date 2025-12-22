@@ -13,7 +13,7 @@ from apps.integrations.models import (
     TrackedJiraProject,
     TrackedRepository,
 )
-from apps.integrations.services import github_comments, github_sync
+from apps.integrations.services import github_comments, github_pr_description, github_sync
 from apps.integrations.services.copilot_metrics import (
     CopilotMetricsError,
     fetch_copilot_metrics,
@@ -481,9 +481,16 @@ def send_pr_surveys_task(pull_request_id: int) -> dict:
         logger.info(f"Surveys disabled for team {pr.team.name}")
         return {"skipped": True, "reason": "Surveys disabled"}
 
-    # Create PRSurvey
-    survey = create_pr_survey(pr)
-    logger.info(f"Created survey {survey.id} for PR {pr.github_pr_id}")
+    # Get existing survey or create new one
+    from apps.metrics.models import PRSurvey
+
+    existing_survey = PRSurvey.objects.filter(pull_request=pr).first()  # noqa: TEAM001 - filtering by team-scoped PR
+    if existing_survey:
+        survey = existing_survey
+        logger.info(f"Using existing survey {survey.id} for PR {pr.github_pr_id}")
+    else:
+        survey = create_pr_survey(pr)
+        logger.info(f"Created survey {survey.id} for PR {pr.github_pr_id}")
 
     # Get Slack client
     client = get_slack_client(slack_integration.credential)
@@ -1006,6 +1013,124 @@ def post_survey_comment_task(self, pull_request_id: int) -> dict:
             capture_exception(exc)
 
             return {"error": error_msg, "survey_id": survey.id}
+
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+def update_pr_description_survey_task(self, pull_request_id: int) -> dict:
+    """Update PR description with survey voting links.
+
+    Creates a PRSurvey and updates the PR description with survey links.
+    This is the preferred approach (vs comments) as it's more visible.
+    Retries up to 3 times with exponential backoff on transient errors.
+
+    Args:
+        self: Celery task instance (bound task)
+        pull_request_id: ID of the PullRequest to create survey for
+
+    Returns:
+        dict with survey_id on success
+        or dict with skipped/error status and reason
+    """
+    from django.conf import settings
+
+    # Get PR by ID
+    try:
+        pr = PullRequest.objects.get(id=pull_request_id)  # noqa: TEAM001 - ID from Celery task
+    except PullRequest.DoesNotExist:
+        logger.warning(f"PullRequest with id {pull_request_id} not found")
+        return {"error": "PR not found"}
+
+    # Skip non-merged PRs
+    if pr.state != "merged":
+        logger.info(f"Skipping PR description update for non-merged PR: {pr.github_pr_id}")
+        return {"skipped": True, "reason": "PR not merged"}
+
+    # Skip if survey already exists (idempotent)
+    from apps.metrics.models import PRSurvey
+
+    if PRSurvey.objects.filter(pull_request=pr).exists():  # noqa: TEAM001 - filtering by team-scoped PR
+        logger.info(f"Skipping PR description update - survey already exists for PR: {pr.github_pr_id}")
+        return {"skipped": True, "reason": "Survey already exists"}
+
+    # Check for GitHub integration
+    try:
+        github_integration = GitHubIntegration.objects.get(team=pr.team)
+    except GitHubIntegration.DoesNotExist:
+        logger.info(f"Skipping PR description update - no GitHub integration for team {pr.team.name}")
+        return {"skipped": True, "reason": "No GitHub integration"}
+
+    # Create survey (this includes AI auto-detection)
+    survey = create_pr_survey(pr)
+    logger.info(f"Created survey {survey.id} for PR {pr.github_pr_id}, AI detected: {survey.author_ai_assisted}")
+
+    # Get base URL from settings
+    base_url = getattr(settings, "SITE_URL", "https://app.tformance.com")
+
+    # Update PR description with survey links
+    try:
+        github_pr_description.update_pr_description_with_survey(
+            survey=survey,
+            access_token=github_integration.credential.access_token,
+            base_url=base_url,
+        )
+
+        logger.info(f"Successfully updated PR description with survey for PR {pr.github_pr_id}")
+
+        # Schedule Slack fallback survey (runs after 1 hour delay)
+        schedule_slack_survey_fallback_task.delay(pull_request_id)
+        logger.info(f"Scheduled Slack fallback survey for PR {pr.github_pr_id}")
+
+        return {"survey_id": survey.id, "success": True, "slack_fallback_scheduled": True}
+    except GithubException as exc:
+        # Calculate exponential backoff
+        countdown = self.default_retry_delay * (2**self.request.retries)
+
+        try:
+            # Retry with exponential backoff for transient errors
+            logger.warning(f"Failed to update PR description for PR {pr.github_pr_id}, retrying in {countdown}s: {exc}")
+            raise self.retry(exc=exc, countdown=countdown)
+        except Retry:
+            # Re-raise Retry exception to allow Celery to retry
+            raise
+        except Exception:
+            # Max retries exhausted - log to Sentry and return error
+            from sentry_sdk import capture_exception
+
+            error_msg = f"GitHub API error: {exc}"
+            logger.error(f"Failed permanently to update PR description for PR {pr.github_pr_id}: {error_msg}")
+            capture_exception(exc)
+
+            return {"error": error_msg, "survey_id": survey.id}
+
+
+@shared_task
+def schedule_slack_survey_fallback_task(pull_request_id: int) -> dict:
+    """Schedule Slack surveys as fallback for users who haven't responded via GitHub.
+
+    This task schedules send_pr_surveys_task with a 1-hour countdown, giving users
+    time to respond via GitHub one-click voting before receiving Slack messages.
+
+    Args:
+        pull_request_id: ID of the PullRequest to send surveys for
+
+    Returns:
+        Dict with keys: scheduled (bool), task_id (str), countdown (int)
+    """
+    # Schedule send_pr_surveys_task with 1-hour countdown
+    countdown = 3600  # 1 hour in seconds
+
+    async_result = send_pr_surveys_task.apply_async(
+        (pull_request_id,),
+        countdown=countdown,
+    )
+
+    logger.info(f"Scheduled Slack survey fallback for PR {pull_request_id} in {countdown} seconds")
+
+    return {
+        "scheduled": True,
+        "task_id": async_result.id,
+        "countdown": countdown,
+    }
 
 
 @shared_task

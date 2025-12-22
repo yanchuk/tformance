@@ -312,3 +312,178 @@ class TestSyncSlackUsersTask(TestCase):
         self.assertEqual(result["matched_count"], 5)
         self.assertEqual(result["unmatched_count"], 2)
         self.assertEqual(len(result["unmatched_users"]), 2)
+
+
+class TestSlackSurveyFallbackTask(TestCase):
+    """Tests for Slack survey fallback task scheduling."""
+
+    def setUp(self):
+        """Set up test fixtures using factories."""
+        from apps.integrations.factories import GitHubIntegrationFactory, IntegrationCredentialFactory
+
+        self.team = TeamFactory()
+        self.author = TeamMemberFactory(team=self.team, slack_user_id="U001")
+        self.pr = PullRequestFactory(team=self.team, author=self.author, state="merged")
+        # Create GitHub integration for update_pr_description_survey_task tests
+        self.credential = IntegrationCredentialFactory(team=self.team, provider="github")
+        self.github_integration = GitHubIntegrationFactory(team=self.team, credential=self.credential)
+
+    @patch("apps.integrations.tasks.send_pr_surveys_task.apply_async")
+    def test_schedule_slack_survey_fallback_schedules_with_countdown(self, mock_apply_async):
+        """Test that schedule_slack_survey_fallback_task schedules with 1-hour countdown."""
+        from apps.integrations.tasks import schedule_slack_survey_fallback_task
+
+        schedule_slack_survey_fallback_task(self.pr.id)
+
+        # Verify send_pr_surveys_task is scheduled with 1-hour countdown
+        mock_apply_async.assert_called_once()
+        call_kwargs = mock_apply_async.call_args[1]
+        self.assertEqual(call_kwargs.get("countdown"), 3600)  # 1 hour in seconds
+
+    @patch("apps.integrations.tasks.send_pr_surveys_task.apply_async")
+    def test_schedule_slack_survey_fallback_passes_pr_id(self, mock_apply_async):
+        """Test that schedule_slack_survey_fallback_task passes PR ID correctly."""
+        from apps.integrations.tasks import schedule_slack_survey_fallback_task
+
+        schedule_slack_survey_fallback_task(self.pr.id)
+
+        # Verify PR ID is passed to the scheduled task
+        mock_apply_async.assert_called_once()
+        call_args = mock_apply_async.call_args[0]
+        self.assertEqual(call_args, ((self.pr.id,),))
+
+    def test_schedule_slack_survey_fallback_returns_dict(self):
+        """Test that schedule_slack_survey_fallback_task returns status dict."""
+        from apps.integrations.tasks import schedule_slack_survey_fallback_task
+
+        with patch("apps.integrations.tasks.send_pr_surveys_task.apply_async") as mock_apply_async:
+            mock_apply_async.return_value = MagicMock(id="task-123")
+            result = schedule_slack_survey_fallback_task(self.pr.id)
+
+        # Verify result structure
+        self.assertIsInstance(result, dict)
+        self.assertIn("scheduled", result)
+        self.assertTrue(result["scheduled"])
+        self.assertIn("task_id", result)
+
+    @patch("apps.integrations.tasks.schedule_slack_survey_fallback_task.delay")
+    @patch("apps.integrations.tasks.github_pr_description.update_pr_description_with_survey")
+    def test_update_pr_description_task_schedules_slack_fallback(self, mock_update_description, mock_schedule_fallback):
+        """Test that update_pr_description_survey_task schedules Slack fallback on success."""
+        from apps.integrations.tasks import update_pr_description_survey_task
+
+        mock_update_description.return_value = None  # Success
+        mock_schedule_fallback.return_value = MagicMock(id="fallback-task-123")
+
+        result = update_pr_description_survey_task(self.pr.id)
+
+        # Verify Slack fallback was scheduled
+        mock_schedule_fallback.assert_called_once_with(self.pr.id)
+        self.assertTrue(result.get("success"))
+        self.assertIn("slack_fallback_scheduled", result)
+
+
+class TestSendPRSurveysTaskSkipLogic(TestCase):
+    """Tests for send_pr_surveys_task skip logic for already-responded users."""
+
+    def setUp(self):
+        """Set up test fixtures using factories."""
+        self.team = TeamFactory()
+        self.slack_integration = SlackIntegrationFactory(team=self.team, surveys_enabled=True)
+        self.author = TeamMemberFactory(team=self.team, slack_user_id="U001")
+        self.reviewer = TeamMemberFactory(team=self.team, slack_user_id="U002")
+        self.pr = PullRequestFactory(team=self.team, author=self.author, state="merged")
+        PRReviewFactory(team=self.team, pull_request=self.pr, reviewer=self.reviewer)
+
+    @patch("apps.integrations.tasks.send_dm")
+    @patch("apps.integrations.tasks.get_slack_client")
+    def test_skips_author_dm_when_already_responded_via_github(self, mock_get_client, mock_send_dm):
+        """Test that author DM is skipped if author already responded via GitHub."""
+        from apps.integrations.tasks import send_pr_surveys_task
+        from apps.metrics.models import PRSurvey
+
+        mock_client = MagicMock()
+        mock_get_client.return_value = mock_client
+        mock_send_dm.return_value = {"ok": True, "ts": "123.456", "channel": "D001"}
+
+        # Create survey where author has already responded (simulating GitHub one-click)
+        from django.utils import timezone
+
+        PRSurvey.objects.create(
+            team=self.team,
+            pull_request=self.pr,
+            author=self.author,
+            author_ai_assisted=True,  # Already responded
+            author_response_source="github",
+            author_responded_at=timezone.now(),
+        )
+
+        result = send_pr_surveys_task(self.pr.id)
+
+        # Should indicate author was skipped, not sent
+        self.assertFalse(result.get("author_sent", True))
+        self.assertTrue(result.get("author_skipped", False))
+
+    @patch("apps.integrations.tasks.send_dm")
+    @patch("apps.integrations.tasks.get_slack_client")
+    def test_skips_author_dm_when_auto_detected(self, mock_get_client, mock_send_dm):
+        """Test that author DM is skipped if AI was auto-detected."""
+        from apps.integrations.tasks import send_pr_surveys_task
+        from apps.metrics.models import PRSurvey
+
+        mock_client = MagicMock()
+        mock_get_client.return_value = mock_client
+        mock_send_dm.return_value = {"ok": True, "ts": "123.456", "channel": "D001"}
+
+        # Create survey where author response was auto-detected
+        from django.utils import timezone
+
+        PRSurvey.objects.create(
+            team=self.team,
+            pull_request=self.pr,
+            author=self.author,
+            author_ai_assisted=True,  # Auto-detected
+            author_response_source="auto",
+            author_responded_at=timezone.now(),
+        )
+
+        result = send_pr_surveys_task(self.pr.id)
+
+        # Should indicate author was skipped due to auto-detection
+        self.assertFalse(result.get("author_sent", True))
+        self.assertTrue(result.get("author_skipped", False))
+
+    @patch("apps.integrations.tasks.send_dm")
+    @patch("apps.integrations.tasks.get_slack_client")
+    @patch("apps.integrations.tasks.create_pr_survey")
+    def test_skips_reviewer_dm_when_already_responded_via_github(
+        self, mock_create_survey, mock_get_client, mock_send_dm
+    ):
+        """Test that reviewer DM is skipped if reviewer already responded via GitHub."""
+        from apps.integrations.tasks import send_pr_surveys_task
+        from apps.metrics.models import PRSurveyReview
+
+        mock_client = MagicMock()
+        mock_get_client.return_value = mock_client
+        mock_send_dm.return_value = {"ok": True, "ts": "123.456", "channel": "D001"}
+
+        # Create survey
+        survey = PRSurveyFactory(team=self.team, pull_request=self.pr, author=self.author)
+        mock_create_survey.return_value = survey
+
+        # Create reviewer survey with existing response (simulating GitHub one-click)
+        from django.utils import timezone
+
+        PRSurveyReview.objects.create(
+            team=self.team,
+            survey=survey,
+            reviewer=self.reviewer,
+            quality_rating=3,
+            response_source="github",
+            responded_at=timezone.now(),
+        )
+
+        result = send_pr_surveys_task(self.pr.id)
+
+        # Should indicate reviewer was skipped
+        self.assertEqual(result.get("reviewers_skipped", 0), 1)

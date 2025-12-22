@@ -685,3 +685,264 @@ class TestReviewerSurveySubmission(TestCase):
 
         expected_url = reverse("web:survey_complete", kwargs={"token": self.survey.token})
         self.assertRedirects(response, expected_url, fetch_redirect_response=False)
+
+
+class TestOneClickAuthorVoting(TestCase):
+    """Tests for one-click author voting via ?vote= query parameter.
+
+    One-click voting allows authors to vote directly from PR description links
+    by appending ?vote=yes or ?vote=no to the survey URL.
+    """
+
+    def setUp(self):
+        """Set up test fixtures using factories."""
+        from allauth.socialaccount.models import SocialAccount
+
+        self.author = TeamMemberFactory(github_id="12345")
+        self.survey = PRSurveyFactory(
+            team=self.author.team,
+            author=self.author,
+            token="oneclick-author-token",
+            token_expires_at=timezone.now() + timedelta(days=7),
+            author_ai_assisted=None,
+            author_responded_at=None,
+            author_response_source=None,
+        )
+        # Create user with matching GitHub ID
+        self.user = CustomUser.objects.create_user(username="testuser", password="testpass123")
+        SocialAccount.objects.create(
+            user=self.user,
+            provider="github",
+            uid="12345",
+        )
+
+    def test_author_oneclick_vote_yes_records_ai_assisted_true(self):
+        """Test that ?vote=yes records author_ai_assisted=True."""
+        self.client.force_login(self.user)
+        url = reverse("web:survey_author", kwargs={"token": self.survey.token}) + "?vote=yes"
+        self.client.get(url)
+
+        self.survey.refresh_from_db()
+        self.assertTrue(self.survey.author_ai_assisted)
+
+    def test_author_oneclick_vote_no_records_ai_assisted_false(self):
+        """Test that ?vote=no records author_ai_assisted=False."""
+        self.client.force_login(self.user)
+        url = reverse("web:survey_author", kwargs={"token": self.survey.token}) + "?vote=no"
+        self.client.get(url)
+
+        self.survey.refresh_from_db()
+        self.assertFalse(self.survey.author_ai_assisted)
+
+    def test_author_oneclick_vote_sets_response_source_github(self):
+        """Test that one-click vote sets response_source to 'github'."""
+        self.client.force_login(self.user)
+        url = reverse("web:survey_author", kwargs={"token": self.survey.token}) + "?vote=yes"
+        self.client.get(url)
+
+        self.survey.refresh_from_db()
+        self.assertEqual(self.survey.author_response_source, "github")
+
+    def test_author_oneclick_vote_sets_responded_at(self):
+        """Test that one-click vote sets author_responded_at timestamp."""
+        self.client.force_login(self.user)
+        before = timezone.now()
+        url = reverse("web:survey_author", kwargs={"token": self.survey.token}) + "?vote=yes"
+        self.client.get(url)
+        after = timezone.now()
+
+        self.survey.refresh_from_db()
+        self.assertIsNotNone(self.survey.author_responded_at)
+        self.assertGreaterEqual(self.survey.author_responded_at, before)
+        self.assertLessEqual(self.survey.author_responded_at, after)
+
+    def test_author_oneclick_vote_redirects_to_complete_page(self):
+        """Test that one-click vote redirects to complete page."""
+        self.client.force_login(self.user)
+        url = reverse("web:survey_author", kwargs={"token": self.survey.token}) + "?vote=yes"
+        response = self.client.get(url)
+
+        expected_url = reverse("web:survey_complete", kwargs={"token": self.survey.token})
+        self.assertRedirects(response, expected_url, fetch_redirect_response=False)
+
+    def test_author_oneclick_without_vote_param_shows_form(self):
+        """Test that without ?vote= param, the normal form is displayed."""
+        self.client.force_login(self.user)
+        url = reverse("web:survey_author", kwargs={"token": self.survey.token})
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "AI")
+
+    def test_author_oneclick_invalid_vote_value_shows_form(self):
+        """Test that invalid vote value shows the normal form."""
+        self.client.force_login(self.user)
+        url = reverse("web:survey_author", kwargs={"token": self.survey.token}) + "?vote=invalid"
+        response = self.client.get(url)
+
+        # Should show form, not record vote
+        self.assertEqual(response.status_code, 200)
+        self.survey.refresh_from_db()
+        self.assertIsNone(self.survey.author_ai_assisted)
+
+    def test_author_oneclick_already_responded_ignores_vote(self):
+        """Test that one-click vote is ignored if author already responded."""
+        original_time = timezone.now() - timedelta(hours=2)
+        self.survey.author_ai_assisted = True
+        self.survey.author_responded_at = original_time
+        self.survey.author_response_source = "slack"
+        self.survey.save()
+
+        self.client.force_login(self.user)
+        url = reverse("web:survey_author", kwargs={"token": self.survey.token}) + "?vote=no"
+        self.client.get(url)
+
+        self.survey.refresh_from_db()
+        # Should NOT have changed
+        self.assertTrue(self.survey.author_ai_assisted)
+        self.assertEqual(self.survey.author_response_source, "slack")
+
+
+class TestOneClickReviewerVoting(TestCase):
+    """Tests for one-click reviewer voting via ?vote= query parameter.
+
+    One-click voting allows reviewers to vote quality directly from PR description
+    links by appending ?vote=1, ?vote=2, or ?vote=3 to the survey URL.
+    """
+
+    def setUp(self):
+        """Set up test fixtures using factories."""
+        from allauth.socialaccount.models import SocialAccount
+
+        from apps.metrics.factories import PRReviewFactory, PullRequestFactory
+
+        self.author = TeamMemberFactory(github_id="10000")
+        self.reviewer = TeamMemberFactory(team=self.author.team, github_id="20001")
+
+        # Create PR and survey
+        self.pr = PullRequestFactory(team=self.author.team, author=self.author)
+        self.survey = PRSurveyFactory(
+            team=self.author.team,
+            pull_request=self.pr,
+            author=self.author,
+            token="oneclick-reviewer-token",
+            token_expires_at=timezone.now() + timedelta(days=7),
+        )
+
+        # Create PR review for the reviewer
+        PRReviewFactory(team=self.author.team, pull_request=self.pr, reviewer=self.reviewer)
+
+        # Create user with matching GitHub ID
+        self.user = CustomUser.objects.create_user(username="testuser", password="testpass123")
+        SocialAccount.objects.create(
+            user=self.user,
+            provider="github",
+            uid="20001",
+        )
+
+    def test_reviewer_oneclick_vote_1_records_quality_rating(self):
+        """Test that ?vote=1 records quality_rating=1."""
+        from apps.metrics.models import PRSurveyReview
+
+        self.client.force_login(self.user)
+        url = reverse("web:survey_reviewer", kwargs={"token": self.survey.token}) + "?vote=1"
+        self.client.get(url)
+
+        review = PRSurveyReview.objects.filter(survey=self.survey, reviewer=self.reviewer).first()
+        self.assertIsNotNone(review)
+        self.assertEqual(review.quality_rating, 1)
+
+    def test_reviewer_oneclick_vote_2_records_quality_rating(self):
+        """Test that ?vote=2 records quality_rating=2."""
+        from apps.metrics.models import PRSurveyReview
+
+        self.client.force_login(self.user)
+        url = reverse("web:survey_reviewer", kwargs={"token": self.survey.token}) + "?vote=2"
+        self.client.get(url)
+
+        review = PRSurveyReview.objects.filter(survey=self.survey, reviewer=self.reviewer).first()
+        self.assertIsNotNone(review)
+        self.assertEqual(review.quality_rating, 2)
+
+    def test_reviewer_oneclick_vote_3_records_quality_rating(self):
+        """Test that ?vote=3 records quality_rating=3."""
+        from apps.metrics.models import PRSurveyReview
+
+        self.client.force_login(self.user)
+        url = reverse("web:survey_reviewer", kwargs={"token": self.survey.token}) + "?vote=3"
+        self.client.get(url)
+
+        review = PRSurveyReview.objects.filter(survey=self.survey, reviewer=self.reviewer).first()
+        self.assertIsNotNone(review)
+        self.assertEqual(review.quality_rating, 3)
+
+    def test_reviewer_oneclick_vote_sets_response_source_github(self):
+        """Test that one-click vote sets response_source to 'github'."""
+        from apps.metrics.models import PRSurveyReview
+
+        self.client.force_login(self.user)
+        url = reverse("web:survey_reviewer", kwargs={"token": self.survey.token}) + "?vote=2"
+        self.client.get(url)
+
+        review = PRSurveyReview.objects.filter(survey=self.survey, reviewer=self.reviewer).first()
+        self.assertEqual(review.response_source, "github")
+
+    def test_reviewer_oneclick_vote_sets_responded_at(self):
+        """Test that one-click vote sets responded_at timestamp."""
+        from apps.metrics.models import PRSurveyReview
+
+        self.client.force_login(self.user)
+        before = timezone.now()
+        url = reverse("web:survey_reviewer", kwargs={"token": self.survey.token}) + "?vote=3"
+        self.client.get(url)
+        after = timezone.now()
+
+        review = PRSurveyReview.objects.filter(survey=self.survey, reviewer=self.reviewer).first()
+        self.assertIsNotNone(review.responded_at)
+        self.assertGreaterEqual(review.responded_at, before)
+        self.assertLessEqual(review.responded_at, after)
+
+    def test_reviewer_oneclick_vote_does_not_set_ai_guess(self):
+        """Test that one-click vote does NOT set ai_guess (quality only)."""
+        from apps.metrics.models import PRSurveyReview
+
+        self.client.force_login(self.user)
+        url = reverse("web:survey_reviewer", kwargs={"token": self.survey.token}) + "?vote=2"
+        self.client.get(url)
+
+        review = PRSurveyReview.objects.filter(survey=self.survey, reviewer=self.reviewer).first()
+        self.assertIsNone(review.ai_guess)
+
+    def test_reviewer_oneclick_vote_redirects_to_complete_page(self):
+        """Test that one-click vote redirects to complete page."""
+        self.client.force_login(self.user)
+        url = reverse("web:survey_reviewer", kwargs={"token": self.survey.token}) + "?vote=2"
+        response = self.client.get(url)
+
+        expected_url = reverse("web:survey_complete", kwargs={"token": self.survey.token})
+        self.assertRedirects(response, expected_url, fetch_redirect_response=False)
+
+    def test_reviewer_oneclick_without_vote_param_shows_form(self):
+        """Test that without ?vote= param, the normal form is displayed."""
+        self.client.force_login(self.user)
+        url = reverse("web:survey_reviewer", kwargs={"token": self.survey.token})
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "quality")
+
+    def test_reviewer_oneclick_invalid_vote_value_shows_form(self):
+        """Test that invalid vote value shows the normal form."""
+        self.client.force_login(self.user)
+        url = reverse("web:survey_reviewer", kwargs={"token": self.survey.token}) + "?vote=invalid"
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+
+    def test_reviewer_oneclick_vote_0_is_invalid_shows_form(self):
+        """Test that ?vote=0 is invalid and shows form."""
+        self.client.force_login(self.user)
+        url = reverse("web:survey_reviewer", kwargs={"token": self.survey.token}) + "?vote=0"
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)

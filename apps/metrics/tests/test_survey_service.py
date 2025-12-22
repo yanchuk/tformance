@@ -9,6 +9,7 @@ from django.utils import timezone
 
 from apps.integrations.factories import SlackIntegrationFactory
 from apps.metrics.factories import (
+    CommitFactory,
     PRSurveyFactory,
     PRSurveyReviewFactory,
     PullRequestFactory,
@@ -49,6 +50,111 @@ class TestCreatePRSurvey(TestCase):
         self.assertEqual(survey.author, author)
 
 
+class TestCreatePRSurveyAIAutoDetection(TestCase):
+    """Tests for AI auto-detection in create_pr_survey (Phase 0.3)."""
+
+    def test_create_pr_survey_detects_ai_from_commit_flag(self):
+        """Test that create_pr_survey auto-detects AI from commit is_ai_assisted flag."""
+        team = TeamFactory()
+        pr = PullRequestFactory(team=team)
+        # Create commit with is_ai_assisted=True (already flagged during sync)
+        CommitFactory(team=team, pull_request=pr, is_ai_assisted=True)
+
+        survey = survey_service.create_pr_survey(pr)
+
+        self.assertTrue(survey.author_ai_assisted)
+        self.assertEqual(survey.author_response_source, "auto")
+
+    def test_create_pr_survey_detects_ai_from_commit_message_copilot(self):
+        """Test that create_pr_survey detects AI from Copilot co-author in commit message."""
+        team = TeamFactory()
+        pr = PullRequestFactory(team=team)
+        CommitFactory(
+            team=team,
+            pull_request=pr,
+            is_ai_assisted=False,  # Not flagged yet
+            message="Add feature\n\nCo-Authored-By: GitHub Copilot <copilot@github.com>",
+        )
+
+        survey = survey_service.create_pr_survey(pr)
+
+        self.assertTrue(survey.author_ai_assisted)
+        self.assertEqual(survey.author_response_source, "auto")
+
+    def test_create_pr_survey_detects_ai_from_commit_message_claude(self):
+        """Test that create_pr_survey detects AI from Claude co-author in commit message."""
+        team = TeamFactory()
+        pr = PullRequestFactory(team=team)
+        CommitFactory(
+            team=team,
+            pull_request=pr,
+            is_ai_assisted=False,
+            message="Fix bug\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)",
+        )
+
+        survey = survey_service.create_pr_survey(pr)
+
+        self.assertTrue(survey.author_ai_assisted)
+        self.assertEqual(survey.author_response_source, "auto")
+
+    def test_create_pr_survey_no_auto_detection_for_normal_commits(self):
+        """Test that create_pr_survey does NOT auto-detect for normal commits."""
+        team = TeamFactory()
+        pr = PullRequestFactory(team=team)
+        CommitFactory(
+            team=team,
+            pull_request=pr,
+            is_ai_assisted=False,
+            message="Normal commit message without AI signatures",
+        )
+
+        survey = survey_service.create_pr_survey(pr)
+
+        self.assertIsNone(survey.author_ai_assisted)
+        self.assertIsNone(survey.author_response_source)
+
+    def test_create_pr_survey_no_auto_detection_for_pr_without_commits(self):
+        """Test that create_pr_survey works for PRs without commits."""
+        team = TeamFactory()
+        pr = PullRequestFactory(team=team)
+        # No commits created
+
+        survey = survey_service.create_pr_survey(pr)
+
+        self.assertIsNone(survey.author_ai_assisted)
+        self.assertIsNone(survey.author_response_source)
+
+    def test_create_pr_survey_detects_ai_from_any_commit(self):
+        """Test that create_pr_survey detects AI if ANY commit has AI signature."""
+        team = TeamFactory()
+        pr = PullRequestFactory(team=team)
+        # First commit: normal
+        CommitFactory(team=team, pull_request=pr, is_ai_assisted=False, message="Normal commit 1")
+        # Second commit: AI-assisted
+        CommitFactory(team=team, pull_request=pr, is_ai_assisted=True, message="AI commit")
+        # Third commit: normal
+        CommitFactory(team=team, pull_request=pr, is_ai_assisted=False, message="Normal commit 2")
+
+        survey = survey_service.create_pr_survey(pr)
+
+        self.assertTrue(survey.author_ai_assisted)
+        self.assertEqual(survey.author_response_source, "auto")
+
+    def test_create_pr_survey_sets_author_responded_at_for_auto_detection(self):
+        """Test that auto-detected surveys set author_responded_at timestamp."""
+        team = TeamFactory()
+        pr = PullRequestFactory(team=team)
+        CommitFactory(team=team, pull_request=pr, is_ai_assisted=True)
+
+        before = timezone.now()
+        survey = survey_service.create_pr_survey(pr)
+        after = timezone.now()
+
+        self.assertIsNotNone(survey.author_responded_at)
+        self.assertGreaterEqual(survey.author_responded_at, before)
+        self.assertLessEqual(survey.author_responded_at, after)
+
+
 class TestRecordAuthorResponse(TestCase):
     """Tests for record_author_response function."""
 
@@ -73,6 +179,33 @@ class TestRecordAuthorResponse(TestCase):
         self.assertIsNotNone(survey.author_responded_at)
         self.assertGreaterEqual(survey.author_responded_at, before)
         self.assertLessEqual(survey.author_responded_at, after)
+
+    def test_record_author_response_sets_response_source_github(self):
+        """Test that record_author_response sets response_source when provided."""
+        survey = PRSurveyFactory(author_ai_assisted=None, author_response_source=None)
+
+        survey_service.record_author_response(survey, ai_assisted=True, response_source="github")
+
+        survey.refresh_from_db()
+        self.assertEqual(survey.author_response_source, "github")
+
+    def test_record_author_response_sets_response_source_slack(self):
+        """Test that record_author_response sets response_source to slack."""
+        survey = PRSurveyFactory(author_ai_assisted=None, author_response_source=None)
+
+        survey_service.record_author_response(survey, ai_assisted=False, response_source="slack")
+
+        survey.refresh_from_db()
+        self.assertEqual(survey.author_response_source, "slack")
+
+    def test_record_author_response_defaults_to_web_source(self):
+        """Test that record_author_response defaults to 'web' when no source provided."""
+        survey = PRSurveyFactory(author_ai_assisted=None, author_response_source=None)
+
+        survey_service.record_author_response(survey, ai_assisted=True)
+
+        survey.refresh_from_db()
+        self.assertEqual(survey.author_response_source, "web")
 
 
 class TestCreateReviewerSurvey(TestCase):
@@ -132,6 +265,72 @@ class TestRecordReviewerResponse(TestCase):
 
         survey_review.refresh_from_db()
         self.assertIsNone(survey_review.guess_correct)
+
+    def test_record_reviewer_response_sets_response_source_github(self):
+        """Test that record_reviewer_response sets response_source when provided."""
+        survey_review = PRSurveyReviewFactory(quality_rating=None, response_source=None)
+
+        survey_service.record_reviewer_response(survey_review, quality=3, ai_guess=True, response_source="github")
+
+        survey_review.refresh_from_db()
+        self.assertEqual(survey_review.response_source, "github")
+
+    def test_record_reviewer_response_defaults_to_web_source(self):
+        """Test that record_reviewer_response defaults to 'web' when no source provided."""
+        survey_review = PRSurveyReviewFactory(quality_rating=None, response_source=None)
+
+        survey_service.record_reviewer_response(survey_review, quality=2, ai_guess=False)
+
+        survey_review.refresh_from_db()
+        self.assertEqual(survey_review.response_source, "web")
+
+
+class TestRecordReviewerQualityVote(TestCase):
+    """Tests for record_reviewer_quality_vote function (one-click voting).
+
+    One-click voting from PR description only captures quality rating,
+    not the AI guess. This function handles that case.
+    """
+
+    def test_record_reviewer_quality_vote_sets_quality_rating(self):
+        """Test that record_reviewer_quality_vote sets quality_rating."""
+        survey_review = PRSurveyReviewFactory(quality_rating=None)
+
+        survey_service.record_reviewer_quality_vote(survey_review, quality=3, response_source="github")
+
+        survey_review.refresh_from_db()
+        self.assertEqual(survey_review.quality_rating, 3)
+
+    def test_record_reviewer_quality_vote_sets_responded_at(self):
+        """Test that record_reviewer_quality_vote sets responded_at timestamp."""
+        survey_review = PRSurveyReviewFactory(quality_rating=None, responded_at=None)
+
+        before = timezone.now()
+        survey_service.record_reviewer_quality_vote(survey_review, quality=2, response_source="github")
+        after = timezone.now()
+
+        survey_review.refresh_from_db()
+        self.assertIsNotNone(survey_review.responded_at)
+        self.assertGreaterEqual(survey_review.responded_at, before)
+        self.assertLessEqual(survey_review.responded_at, after)
+
+    def test_record_reviewer_quality_vote_sets_response_source(self):
+        """Test that record_reviewer_quality_vote sets response_source."""
+        survey_review = PRSurveyReviewFactory(quality_rating=None, response_source=None)
+
+        survey_service.record_reviewer_quality_vote(survey_review, quality=1, response_source="github")
+
+        survey_review.refresh_from_db()
+        self.assertEqual(survey_review.response_source, "github")
+
+    def test_record_reviewer_quality_vote_does_not_set_ai_guess(self):
+        """Test that record_reviewer_quality_vote leaves ai_guess as None."""
+        survey_review = PRSurveyReviewFactory(quality_rating=None, ai_guess=None)
+
+        survey_service.record_reviewer_quality_vote(survey_review, quality=3, response_source="github")
+
+        survey_review.refresh_from_db()
+        self.assertIsNone(survey_review.ai_guess)
 
 
 class TestCheckAndSendReveal(TestCase):

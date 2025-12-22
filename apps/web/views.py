@@ -212,27 +212,66 @@ def survey_landing(request, token):
 @require_valid_survey_token()
 @require_survey_author_access
 def survey_author(request, token):
-    """Show author survey form (AI assistance question)."""
-    return render(request, "web/surveys/author.html", {"survey": request.survey, "token": token})
+    """Show author survey form (AI assistance question).
+
+    Supports one-click voting via ?vote=yes or ?vote=no query parameter.
+    If vote param is present and valid, records the vote and redirects to complete page.
+    """
+    survey = request.survey
+
+    # Check for one-click vote from PR description link
+    vote = request.GET.get("vote")
+    if vote in ("yes", "no"):
+        # Only process if author hasn't already responded
+        if survey.author_ai_assisted is None:
+            ai_assisted = vote == "yes"
+            record_author_response(survey, ai_assisted, response_source="github")
+            logger.info(f"One-click author vote recorded for survey {survey.id}: ai_assisted={ai_assisted}")
+        return HttpResponseRedirect(reverse("web:survey_complete", kwargs={"token": token}))
+
+    return render(request, "web/surveys/author.html", {"survey": survey, "token": token})
 
 
 @login_required
 @require_valid_survey_token()
 @require_survey_reviewer_access
 def survey_reviewer(request, token):
-    """Show reviewer survey form (quality + AI guess)."""
-    # Get the current user's TeamMember to pass reviewer_id to template
+    """Show reviewer survey form (quality + AI guess).
+
+    Supports one-click voting via ?vote=1, ?vote=2, or ?vote=3 query parameter.
+    If vote param is present and valid, records the quality vote and redirects to complete page.
+    """
+    from apps.metrics.services.survey_service import record_reviewer_quality_vote
     from apps.web.decorators import get_user_github_id
 
+    survey = request.survey
+
+    # Get the current user's TeamMember
     github_id = get_user_github_id(request.user)
     reviewer = None
     if github_id:
-        reviewer = TeamMember.objects.filter(team=request.survey.team, github_id=github_id).first()
+        reviewer = TeamMember.objects.filter(team=survey.team, github_id=github_id).first()
+
+    # Check for one-click vote from PR description link
+    vote = request.GET.get("vote")
+    if vote in ("1", "2", "3") and reviewer:
+        quality = int(vote)
+        # Get or create PRSurveyReview for this reviewer
+        survey_review, created = PRSurveyReview.objects.get_or_create(
+            survey=survey, reviewer=reviewer, defaults={"team": survey.team}
+        )
+        # Only process if reviewer hasn't already responded
+        if survey_review.responded_at is None:
+            record_reviewer_quality_vote(survey_review, quality, response_source="github")
+            logger.info(
+                f"One-click reviewer vote recorded for survey {survey.id}: reviewer={reviewer.id}, quality={quality}"
+            )
+        return HttpResponseRedirect(reverse("web:survey_complete", kwargs={"token": token}))
 
     return render(
         request,
         "web/surveys/reviewer.html",
-        {"survey": request.survey, "token": token, "reviewer": reviewer},
+        {"survey": survey, "token": token, "reviewer": reviewer},
     )
 
 

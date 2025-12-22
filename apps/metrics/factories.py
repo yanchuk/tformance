@@ -330,6 +330,12 @@ class PRSurveyFactory(DjangoModelFactory):
     author_responded_at = factory.LazyAttribute(
         lambda o: timezone.now() - timedelta(hours=random.randint(1, 48)) if o.author_ai_assisted is not None else None
     )
+    author_response_source = factory.LazyAttribute(
+        lambda o: random.choice(["github", "slack", "web"]) if o.author_ai_assisted is not None else None
+    )
+    ai_modification_effort = factory.LazyAttribute(
+        lambda o: random.choice(["none", "minor", "moderate", "major"]) if o.author_ai_assisted else None
+    )
     token_expires_at = factory.LazyFunction(lambda: timezone.now() + timedelta(days=7))
 
 
@@ -348,6 +354,7 @@ class PRSurveyReviewFactory(DjangoModelFactory):
         lambda o: o.ai_guess == o.survey.author_ai_assisted if o.survey.author_ai_assisted is not None else None
     )
     responded_at = factory.LazyFunction(lambda: timezone.now() - timedelta(hours=random.randint(1, 72)))
+    response_source = factory.LazyFunction(lambda: random.choice(["github", "slack", "web"]))
 
 
 class WeeklyMetricsFactory(DjangoModelFactory):

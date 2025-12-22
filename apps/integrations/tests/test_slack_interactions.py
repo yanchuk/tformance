@@ -404,3 +404,53 @@ class TestSlackInteractionsWebhook(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.content, b"")
+
+    @override_settings(SLACK_SIGNING_SECRET="test_signing_secret_12345")
+    @patch("apps.integrations.webhooks.slack_interactions.record_author_response")
+    def test_author_response_sets_response_source_slack(self, mock_record):
+        """Test that author response sets response_source='slack'."""
+        survey = PRSurveyFactory(team=self.team, author_ai_assisted=None)
+        payload = {
+            "type": "block_actions",
+            "actions": [
+                {
+                    "action_id": ACTION_AUTHOR_AI_YES,
+                    "value": str(survey.id),
+                }
+            ],
+        }
+
+        response, _, _ = self._make_request_with_signature(payload)
+
+        self.assertEqual(response.status_code, 200)
+        mock_record.assert_called_once()
+        # Verify response_source='slack' is passed
+        kwargs = mock_record.call_args[1]
+        self.assertEqual(kwargs.get("response_source"), "slack")
+
+    @override_settings(SLACK_SIGNING_SECRET="test_signing_secret_12345")
+    @patch("apps.integrations.webhooks.slack_interactions.record_reviewer_response")
+    def test_reviewer_response_sets_response_source_slack(self, mock_record):
+        """Test that reviewer response sets response_source='slack'."""
+        survey_review = PRSurveyReviewFactory(team=self.team, quality_rating=None)
+        payload = {
+            "type": "block_actions",
+            "actions": [
+                {
+                    "action_id": ACTION_QUALITY_2,
+                    "value": str(survey_review.id),
+                },
+                {
+                    "action_id": ACTION_AI_GUESS_YES,
+                    "value": str(survey_review.id),
+                },
+            ],
+        }
+
+        response, _, _ = self._make_request_with_signature(payload)
+
+        self.assertEqual(response.status_code, 200)
+        mock_record.assert_called_once()
+        # Verify response_source='slack' is passed
+        kwargs = mock_record.call_args[1]
+        self.assertEqual(kwargs.get("response_source"), "slack")

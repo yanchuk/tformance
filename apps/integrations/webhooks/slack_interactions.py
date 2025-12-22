@@ -99,8 +99,8 @@ def handle_author_response(survey_id: str, ai_assisted: bool) -> None:
             logger.info(f"Survey {survey_id} already has author response, ignoring")
             return
 
-        record_author_response(survey, ai_assisted)
-        logger.info(f"Recorded author response for survey {survey_id}: ai_assisted={ai_assisted}")
+        record_author_response(survey, ai_assisted, response_source="slack")
+        logger.info(f"Recorded author response for survey {survey_id}: ai_assisted={ai_assisted}, source=slack")
 
     except PRSurvey.DoesNotExist:
         logger.warning(f"Survey {survey_id} not found")
@@ -153,10 +153,10 @@ def handle_reviewer_response(payload: dict) -> None:
             logger.info(f"Survey review {survey_review_id} already has response, ignoring")
             return
 
-        record_reviewer_response(survey_review, quality_rating, ai_guess)
+        record_reviewer_response(survey_review, quality_rating, ai_guess, response_source="slack")
         logger.info(
             f"Recorded reviewer response for survey review {survey_review_id}: "
-            f"quality={quality_rating}, ai_guess={ai_guess}"
+            f"quality={quality_rating}, ai_guess={ai_guess}, source=slack"
         )
 
     except PRSurveyReview.DoesNotExist:

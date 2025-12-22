@@ -7,6 +7,24 @@ from apps.teams.models import BaseTeamModel
 from .github import PullRequest
 from .team import TeamMember
 
+# Response source choices - tracks which channel the survey response came from
+# "auto" is used when AI co-author is detected in commit messages
+RESPONSE_SOURCE_CHOICES = [
+    ("github", "GitHub"),
+    ("slack", "Slack"),
+    ("web", "Web"),
+    ("auto", "Auto-detected"),
+]
+
+# Modification effort choices - quantifies the "almost right" problem from SO 2025
+MODIFICATION_EFFORT_CHOICES = [
+    ("none", "Used as-is, no changes"),
+    ("minor", "Minor tweaks only"),
+    ("moderate", "Significant modifications"),
+    ("major", "Rewrote most of it"),
+    ("na", "Didn't use AI for code gen"),
+]
+
 
 class PRSurvey(BaseTeamModel):
     """Survey for a Pull Request - tracks author's AI disclosure."""
@@ -61,6 +79,22 @@ class PRSurvey(BaseTeamModel):
         blank=True,
         verbose_name="Author Responded At",
         help_text="When the author responded to the survey",
+    )
+    author_response_source = models.CharField(
+        max_length=10,
+        choices=RESPONSE_SOURCE_CHOICES,
+        null=True,
+        blank=True,
+        verbose_name="Author Response Source",
+        help_text="Channel through which the author responded (github, slack, web)",
+    )
+    ai_modification_effort = models.CharField(
+        max_length=20,
+        choices=MODIFICATION_EFFORT_CHOICES,
+        null=True,
+        blank=True,
+        verbose_name="AI Modification Effort",
+        help_text="How much the author modified AI-generated code (the 'almost right' problem)",
     )
 
     class Meta:
@@ -142,6 +176,14 @@ class PRSurveyReview(BaseTeamModel):
         blank=True,
         verbose_name="Responded At",
         help_text="When the reviewer responded",
+    )
+    response_source = models.CharField(
+        max_length=10,
+        choices=RESPONSE_SOURCE_CHOICES,
+        null=True,
+        blank=True,
+        verbose_name="Response Source",
+        help_text="Channel through which the reviewer responded (github, slack, web)",
     )
 
     class Meta:
