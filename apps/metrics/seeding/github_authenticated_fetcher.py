@@ -259,6 +259,7 @@ class GitHubAuthenticatedFetcher:
         self._cache: dict[str, Any] = {}
         self.api_calls_made = 0
         self.progress_callback = progress_callback
+        self._track_api_calls = True  # Enable API call tracking
         self.checkpoint_file = checkpoint_file
         self._checkpoint: SeedingCheckpoint | None = None
 
@@ -346,10 +347,12 @@ class GitHubAuthenticatedFetcher:
 
         try:
             client = self._get_current_client()
+            self.api_calls_made += 1
             repo = client.get_repo(repo_name)
 
             # Get PRs to count per author
             since = since or (timezone.now() - timedelta(days=90))
+            self.api_calls_made += 1
             pulls = repo.get_pulls(state="all", sort="updated", direction="desc")
 
             # Count PRs per author
@@ -396,6 +399,7 @@ class GitHubAuthenticatedFetcher:
             for author in sorted_authors[:max_count]:
                 # Fetch full user details for name/email
                 try:
+                    self.api_calls_made += 1
                     user = client.get_user(author["github_login"])
                     contributors.append(
                         ContributorInfo(
@@ -488,8 +492,10 @@ class GitHubAuthenticatedFetcher:
         while retry_count < max_retries:
             try:
                 client = self._get_current_client()
+                self.api_calls_made += 1
                 repo = client.get_repo(repo_name)
                 state = "all" if include_open else "closed"
+                self.api_calls_made += 1
                 pulls = repo.get_pulls(state=state, sort="updated", direction="desc")
 
                 # First pass: collect PR objects that match criteria
@@ -719,6 +725,7 @@ class GitHubAuthenticatedFetcher:
         """Fetch commits for a PR."""
         commits = []
         try:
+            self.api_calls_made += 1
             for commit in pr.get_commits():
                 author_login = commit.author.login if commit.author else None
                 author_name = commit.commit.author.name if commit.commit.author else None
@@ -744,6 +751,7 @@ class GitHubAuthenticatedFetcher:
         """Fetch reviews for a PR."""
         reviews = []
         try:
+            self.api_calls_made += 1
             for review in pr.get_reviews():
                 if not review.user:
                     continue
@@ -770,6 +778,7 @@ class GitHubAuthenticatedFetcher:
         """Fetch file changes for a PR."""
         files = []
         try:
+            self.api_calls_made += 1
             for file in pr.get_files():
                 files.append(
                     FetchedFile(
@@ -789,6 +798,7 @@ class GitHubAuthenticatedFetcher:
         check_runs = []
         try:
             # Get the head commit
+            self.api_calls_made += 1
             commits = list(pr.get_commits())
             if not commits:
                 return []
@@ -796,6 +806,7 @@ class GitHubAuthenticatedFetcher:
             head_commit = commits[-1]
 
             # Get check runs for the head commit
+            self.api_calls_made += 1
             for check_run in head_commit.get_check_runs():
                 started_at = check_run.started_at.replace(tzinfo=UTC) if check_run.started_at else None
                 completed_at = check_run.completed_at.replace(tzinfo=UTC) if check_run.completed_at else None

@@ -1071,3 +1071,152 @@ class TestSecondaryRateLimitDetection(TestCase):
                 "secondary" in log_output.lower() or "abuse" in log_output.lower(),
                 f"Expected 'secondary' or 'abuse' in log output: {log_output}",
             )
+
+
+class TestAPICallCounter(TestCase):
+    """Tests for API call counting functionality."""
+
+    @patch("apps.metrics.seeding.github_authenticated_fetcher.GitHubTokenPool")
+    @patch("apps.metrics.seeding.github_authenticated_fetcher.Github")
+    def test_api_calls_made_starts_at_zero(self, mock_github_class, mock_pool_class):
+        """Test that api_calls_made counter starts at zero."""
+        mock_client = Mock()
+        mock_github_class.return_value = mock_client
+
+        mock_rate = Mock()
+        mock_rate.remaining = 5000
+        mock_rate.reset = datetime.now(UTC) + timedelta(hours=1)
+        mock_client.get_rate_limit.return_value.rate = mock_rate
+
+        mock_pool = Mock()
+        mock_pool.get_best_client.return_value = mock_client
+        mock_pool_class.return_value = mock_pool
+
+        fetcher = GitHubAuthenticatedFetcher(tokens=["ghp_token1"])
+
+        self.assertEqual(fetcher.api_calls_made, 0)
+
+    @patch("apps.metrics.seeding.github_authenticated_fetcher.GitHubTokenPool")
+    @patch("apps.metrics.seeding.github_authenticated_fetcher.Github")
+    def test_api_calls_incremented_on_fetch_prs(self, mock_github_class, mock_pool_class):
+        """Test that api_calls_made is incremented when fetching PRs."""
+        mock_client = Mock()
+        mock_github_class.return_value = mock_client
+
+        mock_rate = Mock()
+        mock_rate.remaining = 5000
+        mock_rate.reset = datetime.now(UTC) + timedelta(hours=1)
+        mock_client.get_rate_limit.return_value.rate = mock_rate
+
+        mock_repo = Mock()
+        mock_client.get_repo.return_value = mock_repo
+        mock_repo.get_pulls.return_value = []
+
+        mock_pool = Mock()
+        mock_pool.get_best_client.return_value = mock_client
+        mock_pool.total_remaining = 5000
+        mock_pool_class.return_value = mock_pool
+
+        fetcher = GitHubAuthenticatedFetcher(tokens=["ghp_token1"])
+
+        # Initial count is 0
+        self.assertEqual(fetcher.api_calls_made, 0)
+
+        # Fetch PRs
+        fetcher.fetch_prs_with_details("test/repo", max_prs=10)
+
+        # Should have incremented (at least 2: get_repo + get_pulls)
+        self.assertGreaterEqual(fetcher.api_calls_made, 2)
+
+    @patch("apps.metrics.seeding.github_authenticated_fetcher.GitHubTokenPool")
+    @patch("apps.metrics.seeding.github_authenticated_fetcher.Github")
+    def test_api_calls_incremented_for_pr_details(self, mock_github_class, mock_pool_class):
+        """Test that api_calls_made tracks commits, reviews, files, check runs fetches."""
+        mock_client = Mock()
+        mock_github_class.return_value = mock_client
+
+        mock_rate = Mock()
+        mock_rate.remaining = 5000
+        mock_rate.reset = datetime.now(UTC) + timedelta(hours=1)
+        mock_client.get_rate_limit.return_value.rate = mock_rate
+
+        # Create mock PR
+        mock_pr = Mock()
+        mock_pr.number = 1
+        mock_pr.id = 123
+        mock_pr.draft = False
+        mock_pr.merged = True
+        mock_pr.state = "closed"
+        mock_pr.title = "Test PR"
+        mock_pr.body = "Description"
+        mock_pr.created_at = datetime.now(UTC) - timedelta(days=1)
+        mock_pr.updated_at = datetime.now(UTC)
+        mock_pr.merged_at = datetime.now(UTC)
+        mock_pr.closed_at = datetime.now(UTC)
+        mock_pr.additions = 10
+        mock_pr.deletions = 5
+        mock_pr.changed_files = 2
+        mock_pr.commits = 1
+        mock_pr.user = Mock(login="testuser", id=1, name="Test", avatar_url="http://test.com")
+        mock_pr.head = Mock(ref="feature-branch")
+        mock_pr.base = Mock(ref="main")
+        mock_pr.labels = []
+        mock_pr.get_commits.return_value = []
+        mock_pr.get_reviews.return_value = []
+        mock_pr.get_files.return_value = []
+
+        mock_repo = Mock()
+        mock_client.get_repo.return_value = mock_repo
+        mock_repo.get_pulls.return_value = [mock_pr]
+
+        mock_pool = Mock()
+        mock_pool.get_best_client.return_value = mock_client
+        mock_pool.total_remaining = 5000
+        mock_pool_class.return_value = mock_pool
+
+        fetcher = GitHubAuthenticatedFetcher(tokens=["ghp_token1"])
+
+        # Fetch PRs with details
+        fetcher.fetch_prs_with_details("test/repo", max_prs=10)
+
+        # Should have incremented for:
+        # 1. get_repo
+        # 2. get_pulls
+        # 3. get_commits (in _fetch_commits)
+        # 4. get_reviews (in _fetch_reviews)
+        # 5. get_files (in _fetch_files)
+        # 6-7. get_commits + get_check_runs (in _fetch_check_runs)
+        self.assertGreaterEqual(fetcher.api_calls_made, 6)
+
+    @patch("apps.metrics.seeding.github_authenticated_fetcher.GitHubTokenPool")
+    @patch("apps.metrics.seeding.github_authenticated_fetcher.Github")
+    def test_api_calls_incremented_for_contributors(self, mock_github_class, mock_pool_class):
+        """Test that api_calls_made is incremented when fetching contributors."""
+        mock_client = Mock()
+        mock_github_class.return_value = mock_client
+
+        mock_rate = Mock()
+        mock_rate.remaining = 5000
+        mock_rate.reset = datetime.now(UTC) + timedelta(hours=1)
+        mock_client.get_rate_limit.return_value.rate = mock_rate
+
+        # Mock repository
+        mock_repo = Mock()
+        mock_client.get_repo.return_value = mock_repo
+        mock_repo.get_pulls.return_value = []
+
+        mock_pool = Mock()
+        mock_pool.get_best_client.return_value = mock_client
+        mock_pool.total_remaining = 5000
+        mock_pool_class.return_value = mock_pool
+
+        fetcher = GitHubAuthenticatedFetcher(tokens=["ghp_token1"])
+
+        # Initial count
+        initial_count = fetcher.api_calls_made
+
+        # Fetch contributors
+        fetcher.get_top_contributors("test/repo", max_count=10)
+
+        # Should have incremented (at least 2: get_repo + get_pulls)
+        self.assertGreater(fetcher.api_calls_made, initial_count)
