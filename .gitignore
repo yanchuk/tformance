@@ -37,3 +37,5 @@ test-results/
 # Git worktrees (separate branches checked out in dev/active/)
 dev/active/security-fixes/
 dev/active/ui-review/
+seeding.log
+.seeding_checkpoint.json

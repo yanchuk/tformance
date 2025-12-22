@@ -91,15 +91,18 @@ class Command(BaseCommand):
             self.print_projects()
             return
 
-        # Check for GitHub token
-        token = options["github_token"] or os.environ.get("GITHUB_SEEDING_TOKEN")
+        # Check for GitHub token (supports both singular and plural env vars)
+        token = (
+            options["github_token"] or os.environ.get("GITHUB_SEEDING_TOKEN") or os.environ.get("GITHUB_SEEDING_TOKENS")
+        )
         if not token:
             self.stdout.write(
                 self.style.ERROR(
                     "\nGitHub token required. Either:\n"
-                    "  1. Set GITHUB_SEEDING_TOKEN environment variable\n"
+                    "  1. Set GITHUB_SEEDING_TOKEN or GITHUB_SEEDING_TOKENS env var\n"
                     "  2. Use --github-token argument\n"
-                    "\nCreate a token at: https://github.com/settings/tokens\n"
+                    "\nFor multiple tokens, use comma-separated values.\n"
+                    "Create tokens at: https://github.com/settings/tokens\n"
                     "Required scope: public_repo (read-only access)\n"
                 )
             )
