@@ -226,17 +226,33 @@ make migrate          # Apply migrations
 
 ### Testing
 
+Tests run with **pytest** and **pytest-django**. The test suite has ~2000 tests.
+
 ```bash
-make test                                     # Run all tests (uses --keepdb by default)
-make test-parallel                            # Run tests in parallel (~60% faster)
-make test ARGS='apps.module.tests.test_file'  # Run specific test
-make test-fresh                               # Run with fresh database (when models change)
+# Basic commands
+make test                                     # Run all tests (uses --reuse-db)
+make test-parallel                            # Run tests in parallel (~22% faster)
+make test ARGS='apps.module.tests.test_file'  # Run specific test module
+make test ARGS='-k test_name'                 # Run tests matching pattern
+
+# Advanced commands
+make test-slow                                # Show 20 slowest tests (--durations)
+make test-coverage                            # Run with coverage report
+make test-fresh                               # Fresh database (when models change)
+make test-django                              # Fallback to Django test runner
+
+# pytest-specific options
+pytest apps/metrics -v                        # Verbose output
+pytest --lf                                   # Run last failed tests only
+pytest -x                                     # Stop on first failure
+pytest -p randomly --randomly-seed=12345      # Reproducible random order
 ```
 
 **Speed Tips:**
-- `make test` uses `--keepdb` by default, reusing the test database for faster runs
-- `make test-parallel` runs tests across multiple CPU cores (~30s vs ~75s sequential)
-- Use `make test-fresh` after adding new migrations or changing model schemas
+- `make test` uses `--reuse-db` by default (~120s for full suite)
+- `make test-parallel` runs tests across CPU cores (~94s)
+- Use `make test-slow` to identify optimization candidates
+- Use `make test-fresh` after adding new migrations
 
 ### E2E Testing (Playwright)
 
@@ -356,10 +372,11 @@ When implementing new features, follow this strict cycle:
 # Test location pattern
 apps/<app_name>/tests/test_<feature>.py
 
-# Running specific tests
-make test ARGS='apps.myapp.tests.test_feature'
-make test ARGS='apps.myapp.tests.test_feature::TestClassName'
-make test ARGS='apps.myapp.tests.test_feature::TestClassName::test_method'
+# Running specific tests with pytest
+pytest apps/myapp/tests/test_feature.py                              # Run file
+pytest apps/myapp/tests/test_feature.py::TestClassName               # Run class
+pytest apps/myapp/tests/test_feature.py::TestClassName::test_method  # Run method
+pytest -k "test_feature and not slow"                                # Pattern match
 ```
 
 ### Test Structure (Django TestCase with Factories)

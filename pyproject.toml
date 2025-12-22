@@ -83,8 +83,29 @@ dev = [
     "ruff>=0.13.1",
     "pegasus-cli>=0.8",
     "tblib>=3.0.0",  # Required for Django parallel test debugging
+    # pytest ecosystem
+    "pytest>=8.0",
+    "pytest-django>=4.8",
+    "pytest-xdist>=3.5",
+    "pytest-randomly>=3.15",
+    "pytest-cov>=4.1",
 ]
 prod = [
     "gunicorn",
     "uvicorn[standard]",
+]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "tformance.settings"
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--reuse-db",
+    "--tb=short",
+    "-ra",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning",
 ]
