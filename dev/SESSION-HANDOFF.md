@@ -41,10 +41,10 @@
 
 ```bash
 # Seed Gumroad with progress display
-GITHUB_SEEDING_TOKEN="ghp_xxx" python scripts/seed_with_progress.py --project gumroad --clear
+GITHUB_SEEDING_TOKENS="ghp_xxx" python scripts/seed_with_progress.py --project gumroad --clear
 
-# Or seed all projects
-GITHUB_SEEDING_TOKEN="ghp_xxx" python scripts/seed_with_progress.py --clear
+# Or seed all projects (use comma-separated tokens for faster seeding)
+GITHUB_SEEDING_TOKENS="ghp_xxx,ghp_yyy" python scripts/seed_with_progress.py --clear
 
 # Resume if interrupted
 python scripts/seed_with_progress.py --resume

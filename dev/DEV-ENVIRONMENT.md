@@ -131,10 +131,10 @@ Seed demo data from real open source GitHub projects (Gumroad, Polar, PostHog, F
 python manage.py seed_real_projects --list-projects
 
 # Recommended: Use progress script with resume capability
-GITHUB_SEEDING_TOKEN="ghp_xxx" python scripts/seed_with_progress.py --project gumroad --clear
+GITHUB_SEEDING_TOKENS="ghp_xxx" python scripts/seed_with_progress.py --project gumroad --clear
 
 # Seed all projects with progress
-GITHUB_SEEDING_TOKEN="ghp_xxx" python scripts/seed_with_progress.py --clear
+GITHUB_SEEDING_TOKENS="ghp_xxx" python scripts/seed_with_progress.py --clear
 
 # Resume from checkpoint if interrupted
 python scripts/seed_with_progress.py --resume
@@ -143,16 +143,16 @@ python scripts/seed_with_progress.py --resume
 python manage.py seed_real_projects --project posthog --max-prs 200 --days-back 60
 ```
 
-**Requires GitHub PAT**: Set `GITHUB_SEEDING_TOKEN` environment variable.
-Create token at https://github.com/settings/tokens with `public_repo` scope.
+**Requires GitHub PAT(s)**: Set `GITHUB_SEEDING_TOKENS` environment variable.
+Create tokens at https://github.com/settings/tokens with `public_repo` scope.
 
 **Multi-Token Support (2x+ Throughput)**:
 
-For faster seeding of large projects, use multiple GitHub tokens:
+For faster seeding of large projects, use multiple GitHub tokens (comma-separated):
 
 ```bash
 # Single token (5,000 requests/hour)
-GITHUB_SEEDING_TOKEN="ghp_xxx" python scripts/seed_with_progress.py --project gumroad
+GITHUB_SEEDING_TOKENS="ghp_xxx" python scripts/seed_with_progress.py --project gumroad
 
 # Multiple tokens (10,000+ requests/hour) - comma-separated
 GITHUB_SEEDING_TOKENS="ghp_token1,ghp_token2" python scripts/seed_with_progress.py --project gumroad

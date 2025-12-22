@@ -8,12 +8,12 @@ and check runs for realistic demo data.
 Uses parallel fetching for PR details to improve performance.
 
 Usage:
-    fetcher = GitHubAuthenticatedFetcher()  # Uses GITHUB_SEEDING_TOKEN env var
+    fetcher = GitHubAuthenticatedFetcher()  # Uses GITHUB_SEEDING_TOKENS env var
     prs = fetcher.fetch_prs_with_details("posthog/posthog", max_prs=100)
     contributors = fetcher.get_top_contributors("posthog/posthog", max_count=15)
 
 Environment:
-    GITHUB_SEEDING_TOKEN: GitHub Personal Access Token with public_repo scope
+    GITHUB_SEEDING_TOKENS: Comma-separated list of GitHub PATs with public_repo scope
     Generate at: https://github.com/settings/tokens
 """
 
@@ -27,7 +27,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from django.utils import timezone
-from github import Github, GithubException, RateLimitExceededException
+from github import Auth, Github, GithubException, RateLimitExceededException
 
 from apps.metrics.seeding.checkpoint import SeedingCheckpoint
 from apps.metrics.seeding.github_token_pool import AllTokensExhaustedException, GitHubTokenPool
@@ -216,7 +216,7 @@ class GitHubAuthenticatedFetcher:
     """Fetches comprehensive PR data with authenticated GitHub access.
 
     Uses a Personal Access Token (PAT) for 5000 requests/hour rate limit.
-    Token is read from GITHUB_SEEDING_TOKEN environment variable.
+    Token is read from GITHUB_SEEDING_TOKENS environment variable (comma-separated).
 
     Attributes:
         JIRA_KEY_PATTERN: Regex pattern for extracting Jira issue keys.
@@ -234,7 +234,7 @@ class GitHubAuthenticatedFetcher:
         """Initialize the fetcher with authenticated client.
 
         Args:
-            token: GitHub PAT. If None, reads from GITHUB_SEEDING_TOKEN env var.
+            token: GitHub PAT. If None, reads from GITHUB_SEEDING_TOKENS env var.
             tokens: List of GitHub PATs for token pooling. If provided, uses GitHubTokenPool.
             progress_callback: Optional callback for progress updates.
                              Called as callback(step, current, total, message).
@@ -256,7 +256,7 @@ class GitHubAuthenticatedFetcher:
             # Single token mode (backward compatible)
             self.token = token
             self._token_pool = GitHubTokenPool(tokens=[token])
-            self._client = Github(self.token)
+            self._client = Github(auth=Auth.Token(self.token))
         else:
             # Use environment variables - token pool handles both singular and plural
             self._token_pool = GitHubTokenPool()  # Loads from env vars
@@ -371,11 +371,22 @@ class GitHubAuthenticatedFetcher:
                     continue
 
                 login = pr.user.login
+
+                # Skip bot users (they don't have user profiles)
+                if login.endswith("[bot]") or login in ("Copilot", "dependabot"):
+                    continue
+
                 if login not in author_prs:
+                    # Wrap in try/catch - accessing .name triggers API call that can 404
+                    try:
+                        display_name = pr.user.name
+                    except GithubException:
+                        display_name = None
+
                     author_prs[login] = {
                         "github_id": pr.user.id,
                         "github_login": login,
-                        "display_name": pr.user.name,
+                        "display_name": display_name,
                         "avatar_url": pr.user.avatar_url,
                         "pr_count": 0,
                     }

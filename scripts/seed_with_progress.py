@@ -37,6 +37,11 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
+# Load .env file if it exists
+from dotenv import load_dotenv  # noqa: E402
+
+load_dotenv(PROJECT_ROOT / ".env")
+
 # Django setup
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "tformance.settings")
 
@@ -152,11 +157,11 @@ def seed_project_with_progress(project_name, options, checkpoint=None):
             updates["days_back"] = options.days_back
         config = replace(config, **updates)
 
-    # Get GitHub token(s) - check plural first, then singular
-    token = options.github_token or os.environ.get("GITHUB_SEEDING_TOKENS") or os.environ.get("GITHUB_SEEDING_TOKEN")
+    # Get GitHub token(s)
+    token = options.github_token or os.environ.get("GITHUB_SEEDING_TOKENS")
     if not token:
         print("\n❌ Error: GitHub token required")
-        print("   Set GITHUB_SEEDING_TOKENS (comma-separated) or GITHUB_SEEDING_TOKEN environment variable")
+        print("   Set GITHUB_SEEDING_TOKENS environment variable (comma-separated for multiple tokens)")
         sys.exit(1)
 
     # Clear if requested
@@ -280,7 +285,7 @@ def main():
     )
     parser.add_argument(
         "--github-token",
-        help="GitHub PAT (defaults to GITHUB_SEEDING_TOKEN env var)",
+        help="GitHub PAT (defaults to GITHUB_SEEDING_TOKENS env var)",
     )
     parser.add_argument(
         "--clear",

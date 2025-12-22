@@ -63,6 +63,7 @@ class RealProjectStats:
     survey_reviews_created: int = 0
     ai_usage_records: int = 0
     weekly_metrics_created: int = 0
+    insights_generated: int = 0
     github_api_calls: int = 0
     # AI detection stats
     ai_assisted_prs: int = 0
@@ -149,7 +150,7 @@ class RealProjectSeeder:
             Statistics from the seeding run.
         """
         logger.info(f"Starting seed for project: {self.config.team_name}")
-        total_steps = 7
+        total_steps = 8
 
         # Step 1: Get or create team (atomic)
         self._report_progress("seed", 1, total_steps, "Creating team...")
@@ -188,6 +189,10 @@ class RealProjectSeeder:
         self._report_progress("seed", 7, total_steps, "Calculating weekly metrics...")
         with transaction.atomic():
             self._calculate_weekly_metrics(team)
+
+        # Step 8: Generate daily insights
+        self._report_progress("seed", 8, total_steps, "Generating insights...")
+        self._generate_insights(team)
 
         self._report_progress("seed", total_steps, total_steps, "Complete!")
         logger.info(f"Completed seeding for {self.config.team_name}")
@@ -773,6 +778,44 @@ class RealProjectSeeder:
 
             current_week_start += timedelta(days=7)
 
+    def _generate_insights(self, team: Team):
+        """Generate daily insights for the team.
+
+        Args:
+            team: Team instance.
+        """
+        from datetime import date
+
+        from apps.metrics.insights import engine
+        from apps.metrics.insights.rules import (
+            AIAdoptionTrendRule,
+            CIFailureRateRule,
+            CycleTimeTrendRule,
+            HotfixSpikeRule,
+            RedundantReviewerRule,
+            RevertSpikeRule,
+            UnlinkedPRsRule,
+        )
+
+        # Clear any existing rules and register all
+        engine.clear_rules()
+        for rule in [
+            AIAdoptionTrendRule,
+            CycleTimeTrendRule,
+            HotfixSpikeRule,
+            RevertSpikeRule,
+            CIFailureRateRule,
+            RedundantReviewerRule,
+            UnlinkedPRsRule,
+        ]:
+            engine.register_rule(rule)
+
+        # Generate insights for today
+        insights = engine.compute_insights(team, date.today())
+        self._stats.insights_generated = len(insights)
+
+        logger.info(f"Generated {len(insights)} insights")
+
     def _log_stats(self):
         """Log final statistics."""
         logger.info("=" * 50)
@@ -790,6 +833,7 @@ class RealProjectSeeder:
         logger.info(f"  Survey reviews: {self._stats.survey_reviews_created}")
         logger.info(f"  AI usage records: {self._stats.ai_usage_records}")
         logger.info(f"  Weekly metrics: {self._stats.weekly_metrics_created}")
+        logger.info(f"  Insights: {self._stats.insights_generated}")
         logger.info(f"  GitHub API calls: {self._stats.github_api_calls}")
         logger.info("=" * 50)
 

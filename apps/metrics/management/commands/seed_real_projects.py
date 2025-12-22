@@ -76,7 +76,7 @@ class Command(BaseCommand):
         parser.add_argument(
             "--github-token",
             type=str,
-            help="GitHub PAT (defaults to GITHUB_SEEDING_TOKEN env var)",
+            help="GitHub PAT (defaults to GITHUB_SEEDING_TOKENS env var)",
         )
         parser.add_argument(
             "--checkpoint-file",
@@ -91,18 +91,15 @@ class Command(BaseCommand):
             self.print_projects()
             return
 
-        # Check for GitHub token (supports both singular and plural env vars)
-        token = (
-            options["github_token"] or os.environ.get("GITHUB_SEEDING_TOKEN") or os.environ.get("GITHUB_SEEDING_TOKENS")
-        )
+        # Check for GitHub token
+        token = options["github_token"] or os.environ.get("GITHUB_SEEDING_TOKENS")
         if not token:
             self.stdout.write(
                 self.style.ERROR(
                     "\nGitHub token required. Either:\n"
-                    "  1. Set GITHUB_SEEDING_TOKEN or GITHUB_SEEDING_TOKENS env var\n"
+                    "  1. Set GITHUB_SEEDING_TOKENS env var (comma-separated for multiple tokens)\n"
                     "  2. Use --github-token argument\n"
-                    "\nFor multiple tokens, use comma-separated values.\n"
-                    "Create tokens at: https://github.com/settings/tokens\n"
+                    "\nCreate tokens at: https://github.com/settings/tokens\n"
                     "Required scope: public_repo (read-only access)\n"
                 )
             )
@@ -201,8 +198,8 @@ class Command(BaseCommand):
         self.stdout.write("\nUsage:")
         self.stdout.write("  python manage.py seed_real_projects --project <name>")
         self.stdout.write("  python manage.py seed_real_projects --project all")
-        self.stdout.write("\nNote: Requires GITHUB_SEEDING_TOKEN environment variable")
-        self.stdout.write("Create token at: https://github.com/settings/tokens\n")
+        self.stdout.write("\nNote: Requires GITHUB_SEEDING_TOKENS environment variable (comma-separated)")
+        self.stdout.write("Create tokens at: https://github.com/settings/tokens\n")
 
     def print_stats(self, stats):
         """Print seeding statistics.

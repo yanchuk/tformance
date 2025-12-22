@@ -121,7 +121,10 @@ class TestGitHubTokenPoolInitialization(TestCase):
         # Should have one token
         self.assertEqual(len(pool._tokens), 1)
         self.assertEqual(pool._tokens[0].token, "ghp_single_token")
-        mock_github_class.assert_called_once_with("ghp_single_token")
+        # Verify Github was called with auth parameter (new PyGithub API)
+        mock_github_class.assert_called_once()
+        call_kwargs = mock_github_class.call_args.kwargs
+        self.assertIn("auth", call_kwargs)
 
     @patch("apps.metrics.seeding.github_token_pool.Github")
     def test_multiple_token_initialization(self, mock_github_class):
@@ -201,47 +204,12 @@ class TestGitHubTokenPoolInitialization(TestCase):
         self.assertEqual(pool._tokens[1].token, "ghp_env2")
         self.assertEqual(pool._tokens[2].token, "ghp_env3")
 
-    @patch("apps.metrics.seeding.github_token_pool.Github")
-    def test_env_var_github_seeding_token_fallback(self, mock_github_class):
-        """Test that pool falls back to GITHUB_SEEDING_TOKEN (single) if GITHUB_SEEDING_TOKENS not set."""
-        mock_client = Mock()
-        mock_github_class.return_value = mock_client
+    def test_env_var_missing_raises_error(self):
+        """Test that pool raises ValueError if no tokens in environment."""
+        with patch.dict("os.environ", {}, clear=True), self.assertRaises(ValueError) as context:
+            GitHubTokenPool(tokens=None)
 
-        # Mock rate limit
-        mock_rate = Mock()
-        mock_rate.remaining = 5000
-        mock_rate.reset = datetime.now(UTC) + timedelta(hours=1)
-        mock_client.get_rate_limit.return_value.rate = mock_rate
-
-        with patch.dict("os.environ", {"GITHUB_SEEDING_TOKEN": "ghp_fallback_token"}, clear=True):
-            pool = GitHubTokenPool(tokens=None)
-
-        # Should use fallback single token
-        self.assertEqual(len(pool._tokens), 1)
-        self.assertEqual(pool._tokens[0].token, "ghp_fallback_token")
-
-    @patch("apps.metrics.seeding.github_token_pool.Github")
-    def test_env_var_github_seeding_tokens_takes_precedence(self, mock_github_class):
-        """Test that GITHUB_SEEDING_TOKENS takes precedence over GITHUB_SEEDING_TOKEN."""
-        mock_client = Mock()
-        mock_github_class.return_value = mock_client
-
-        # Mock rate limit
-        mock_rate = Mock()
-        mock_rate.remaining = 5000
-        mock_rate.reset = datetime.now(UTC) + timedelta(hours=1)
-        mock_client.get_rate_limit.return_value.rate = mock_rate
-
-        with patch.dict(
-            "os.environ",
-            {"GITHUB_SEEDING_TOKENS": "ghp_multi1,ghp_multi2", "GITHUB_SEEDING_TOKEN": "ghp_single"},
-        ):
-            pool = GitHubTokenPool(tokens=None)
-
-        # Should use GITHUB_SEEDING_TOKENS, not GITHUB_SEEDING_TOKEN
-        self.assertEqual(len(pool._tokens), 2)
-        self.assertEqual(pool._tokens[0].token, "ghp_multi1")
-        self.assertEqual(pool._tokens[1].token, "ghp_multi2")
+        self.assertIn("GITHUB_SEEDING_TOKENS", str(context.exception))
 
 
 class TestGitHubTokenPoolTokenSelection(TestCase):

@@ -74,6 +74,7 @@ dependencies = [
     "filelock>=3.20.1",
     "posthog>=7.4.0",
     "google-genai>=1.56.0",
+    "python-dotenv>=1.2.1",
 ]
 
 [dependency-groups]

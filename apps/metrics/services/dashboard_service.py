@@ -141,7 +141,7 @@ def get_ai_adoption_trend(team: Team, start_date: date, end_date: date) -> list[
 
     Returns:
         list of dicts with keys:
-            - week (date): Week start date
+            - week (str): Week start date in ISO format (YYYY-MM-DD)
             - value (float): AI adoption percentage for that week
     """
     # Get merged PRs in date range with surveys
@@ -161,7 +161,9 @@ def get_ai_adoption_trend(team: Team, start_date: date, end_date: date) -> list[
     result = []
     for entry in weekly_data:
         pct = round(entry["ai_count"] * 100.0 / entry["total"], 2) if entry["total"] > 0 else 0.0
-        result.append({"week": entry["week"], "value": pct})
+        # Convert datetime to ISO format string for JSON serialization
+        week_str = entry["week"].strftime("%Y-%m-%d") if entry["week"] else None
+        result.append({"week": week_str, "value": pct})
 
     return result
 
@@ -211,7 +213,7 @@ def _get_metric_trend(
 
     Returns:
         list of dicts with keys:
-            - week (date): Week start date
+            - week (str): Week start date in ISO format (YYYY-MM-DD)
             - value (float): Average metric value for that week (0.0 if None)
     """
     prs = _get_merged_prs_in_range(team, start_date, end_date)
@@ -226,10 +228,14 @@ def _get_metric_trend(
 
     result = []
     for entry in weekly_data:
+        # Convert datetime to ISO format string for JSON serialization
+        week_str = entry["week"].strftime("%Y-%m-%d") if entry["week"] else None
+        # Convert Decimal to float for JSON serialization
+        value = float(entry[result_key]) if entry[result_key] else 0.0
         result.append(
             {
-                "week": entry["week"],
-                "value": entry[result_key] if entry[result_key] else 0.0,
+                "week": week_str,
+                "value": value,
             }
         )
 
@@ -246,7 +252,7 @@ def get_cycle_time_trend(team: Team, start_date: date, end_date: date) -> list[d
 
     Returns:
         list of dicts with keys:
-            - week (date): Week start date
+            - week (str): Week start date in ISO format (YYYY-MM-DD)
             - value (float): Average cycle time in hours for that week
     """
     return _get_metric_trend(team, start_date, end_date, "cycle_time_hours", "avg_cycle_time")

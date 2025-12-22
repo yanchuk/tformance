@@ -9,7 +9,7 @@ Usage:
     # Initialize with tokens
     pool = GitHubTokenPool(tokens=["ghp_token1", "ghp_token2"])
 
-    # Or use environment variables (GITHUB_SEEDING_TOKENS or GITHUB_SEEDING_TOKEN)
+    # Or use GITHUB_SEEDING_TOKENS environment variable (comma-separated)
     pool = GitHubTokenPool()
 
     # Get the best client (highest quota)
@@ -24,7 +24,7 @@ import threading
 from dataclasses import dataclass
 from datetime import datetime
 
-from github import Github, GithubException
+from github import Auth, Github, GithubException
 
 
 class AllTokensExhaustedException(Exception):
@@ -81,9 +81,8 @@ class GitHubTokenPool:
         Initialize the token pool.
 
         Args:
-            tokens: List of GitHub tokens. If None, will check environment variables:
-                   - GITHUB_SEEDING_TOKENS (comma-separated)
-                   - GITHUB_SEEDING_TOKEN (single token fallback)
+            tokens: List of GitHub tokens. If None, will check GITHUB_SEEDING_TOKENS
+                   environment variable (comma-separated list of tokens).
 
         Raises:
             ValueError: If no tokens provided and none found in environment
@@ -95,26 +94,20 @@ class GitHubTokenPool:
         if tokens is not None:
             token_list = tokens
         else:
-            # Check environment variables
+            # Check environment variable (comma-separated tokens)
             env_tokens = os.environ.get("GITHUB_SEEDING_TOKENS")
-            if env_tokens:
-                # Comma-separated tokens
-                token_list = [t.strip() for t in env_tokens.split(",")]
-            else:
-                # Fallback to single token
-                single_token = os.environ.get("GITHUB_SEEDING_TOKEN")
-                token_list = [single_token] if single_token else []
+            token_list = [t.strip() for t in env_tokens.split(",")] if env_tokens else []
 
         # Validate we have tokens
         if not token_list:
             raise ValueError(
-                "No GitHub tokens provided. Set GITHUB_SEEDING_TOKENS or GITHUB_SEEDING_TOKEN "
-                "environment variable, or pass tokens to constructor."
+                "No GitHub tokens provided. Set GITHUB_SEEDING_TOKENS environment variable "
+                "(comma-separated), or pass tokens to constructor."
             )
 
         # Create TokenInfo for each token
         for token in token_list:
-            client = Github(token)
+            client = Github(auth=Auth.Token(token))
             token_info = TokenInfo(token=token, client=client)
             self._tokens.append(token_info)
 

@@ -6,6 +6,7 @@ Tests the following rules:
 - CycleTimeTrendRule: Detects improvements/regressions in cycle time
 """
 
+import json
 from datetime import date, timedelta
 from decimal import Decimal
 
@@ -1091,3 +1092,202 @@ class TestUnlinkedPRsRule(TestCase):
 
         self.assertEqual(len(insights), 1)
         self.assertEqual(insights[0].priority, "low")
+
+
+class TestInsightDatetimeSerialization(TestCase):
+    """Tests for datetime serialization in insight metric_value fields.
+
+    Ensures that trend data returned by dashboard service functions
+    is JSON serializable and can be saved to the database.
+    """
+
+    def setUp(self):
+        """Set up test fixtures using factories."""
+        self.team = TeamFactory()
+        self.member = TeamMemberFactory(team=self.team)
+        self.target_date = date(2024, 2, 1)
+
+    def test_ai_adoption_trend_data_is_json_serializable(self):
+        """Test that get_ai_adoption_trend returns JSON serializable data."""
+        # Create PRs over 4 weeks to generate trend data
+        for week_offset in range(4):
+            week_date = self.target_date - timedelta(weeks=week_offset)
+            pr = PullRequestFactory(
+                team=self.team,
+                author=self.member,
+                state="merged",
+                merged_at=timezone.make_aware(timezone.datetime.combine(week_date, timezone.datetime.min.time())),
+            )
+            PRSurveyFactory(
+                team=self.team,
+                pull_request=pr,
+                author=self.member,
+                author_ai_assisted=week_offset % 2 == 0,
+            )
+
+        from apps.metrics.services.dashboard_service import get_ai_adoption_trend
+
+        start_date = self.target_date - timedelta(weeks=4)
+        trend_data = get_ai_adoption_trend(self.team, start_date, self.target_date)
+
+        # Should have data
+        self.assertGreater(len(trend_data), 0)
+
+        # Each entry's "week" field should be a string (ISO format), not datetime
+        for entry in trend_data:
+            self.assertIsInstance(
+                entry["week"],
+                str,
+                f"Expected 'week' to be string, got {type(entry['week']).__name__}",
+            )
+
+        # The entire trend_data should be JSON serializable
+        try:
+            json.dumps(trend_data)
+        except TypeError as e:
+            self.fail(f"Trend data is not JSON serializable: {e}")
+
+    def test_cycle_time_trend_data_is_json_serializable(self):
+        """Test that get_cycle_time_trend returns JSON serializable data."""
+        # Create PRs over 4 weeks to generate trend data
+        for week_offset in range(4):
+            week_date = self.target_date - timedelta(weeks=week_offset)
+            PullRequestFactory(
+                team=self.team,
+                author=self.member,
+                state="merged",
+                merged_at=timezone.make_aware(timezone.datetime.combine(week_date, timezone.datetime.min.time())),
+                cycle_time_hours=Decimal("24.00"),
+            )
+
+        from apps.metrics.services.dashboard_service import get_cycle_time_trend
+
+        start_date = self.target_date - timedelta(weeks=4)
+        trend_data = get_cycle_time_trend(self.team, start_date, self.target_date)
+
+        # Should have data
+        self.assertGreater(len(trend_data), 0)
+
+        # Each entry's "week" field should be a string (ISO format), not datetime
+        for entry in trend_data:
+            self.assertIsInstance(
+                entry["week"],
+                str,
+                f"Expected 'week' to be string, got {type(entry['week']).__name__}",
+            )
+
+        # The entire trend_data should be JSON serializable
+        try:
+            json.dumps(trend_data)
+        except TypeError as e:
+            self.fail(f"Trend data is not JSON serializable: {e}")
+
+    def test_ai_adoption_insight_can_be_saved_to_database(self):
+        """Test that AIAdoptionTrendRule insights can be saved to database."""
+        # Create PRs over 4 weeks with increasing AI adoption to trigger insight
+        # Week 1: 2/10 AI-assisted = 20%
+        week1_start = self.target_date - timedelta(weeks=4)
+        for i in range(10):
+            pr = PullRequestFactory(
+                team=self.team,
+                author=self.member,
+                state="merged",
+                merged_at=timezone.make_aware(timezone.datetime.combine(week1_start, timezone.datetime.min.time())),
+            )
+            PRSurveyFactory(
+                team=self.team,
+                pull_request=pr,
+                author=self.member,
+                author_ai_assisted=i < 2,
+            )
+
+        # Week 4: 4/10 AI-assisted = 40% (20% increase triggers insight)
+        week4_start = self.target_date - timedelta(weeks=1)
+        for i in range(10):
+            pr = PullRequestFactory(
+                team=self.team,
+                author=self.member,
+                state="merged",
+                merged_at=timezone.make_aware(timezone.datetime.combine(week4_start, timezone.datetime.min.time())),
+            )
+            PRSurveyFactory(
+                team=self.team,
+                pull_request=pr,
+                author=self.member,
+                author_ai_assisted=i < 4,
+            )
+
+        from apps.metrics.insights import engine
+        from apps.metrics.insights.rules import AIAdoptionTrendRule
+        from apps.metrics.models import DailyInsight
+
+        # Clear any existing rules and register only AIAdoptionTrendRule
+        engine.clear_rules()
+        engine.register_rule(AIAdoptionTrendRule)
+
+        # This should not raise TypeError: Object of type datetime is not JSON serializable
+        try:
+            insights = engine.compute_insights(self.team, self.target_date)
+        except TypeError as e:
+            if "datetime" in str(e).lower() and "json" in str(e).lower():
+                self.fail(f"Failed to save insight due to datetime serialization: {e}")
+            raise
+
+        # Should have created insight in database
+        self.assertEqual(len(insights), 1)
+        self.assertEqual(DailyInsight.objects.filter(team=self.team).count(), 1)
+
+        # The saved insight should have valid metric_value
+        saved_insight = DailyInsight.objects.get(team=self.team)
+        self.assertIsNotNone(saved_insight.metric_value)
+        self.assertIn("trend", saved_insight.metric_value)
+
+    def test_cycle_time_insight_can_be_saved_to_database(self):
+        """Test that CycleTimeTrendRule insights can be saved to database."""
+        # Create PRs with decreasing cycle time to trigger improvement insight
+        # Week 1: avg 60 hours
+        week1_start = self.target_date - timedelta(weeks=4)
+        for _ in range(10):
+            PullRequestFactory(
+                team=self.team,
+                author=self.member,
+                state="merged",
+                merged_at=timezone.make_aware(timezone.datetime.combine(week1_start, timezone.datetime.min.time())),
+                cycle_time_hours=Decimal("60.00"),
+            )
+
+        # Week 4: avg 40 hours (33% improvement triggers insight)
+        week4_start = self.target_date - timedelta(weeks=1)
+        for _ in range(10):
+            PullRequestFactory(
+                team=self.team,
+                author=self.member,
+                state="merged",
+                merged_at=timezone.make_aware(timezone.datetime.combine(week4_start, timezone.datetime.min.time())),
+                cycle_time_hours=Decimal("40.00"),
+            )
+
+        from apps.metrics.insights import engine
+        from apps.metrics.insights.rules import CycleTimeTrendRule
+        from apps.metrics.models import DailyInsight
+
+        # Clear any existing rules and register only CycleTimeTrendRule
+        engine.clear_rules()
+        engine.register_rule(CycleTimeTrendRule)
+
+        # This should not raise TypeError: Object of type datetime is not JSON serializable
+        try:
+            insights = engine.compute_insights(self.team, self.target_date)
+        except TypeError as e:
+            if "datetime" in str(e).lower() and "json" in str(e).lower():
+                self.fail(f"Failed to save insight due to datetime serialization: {e}")
+            raise
+
+        # Should have created insight in database
+        self.assertEqual(len(insights), 1)
+        self.assertEqual(DailyInsight.objects.filter(team=self.team).count(), 1)
+
+        # The saved insight should have valid metric_value
+        saved_insight = DailyInsight.objects.get(team=self.team)
+        self.assertIsNotNone(saved_insight.metric_value)
+        self.assertIn("trend", saved_insight.metric_value)
