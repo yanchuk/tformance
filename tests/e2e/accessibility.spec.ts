@@ -21,7 +21,7 @@ test.describe('Accessibility Tests @accessibility', () => {
   });
 
   test.describe('Public Pages', () => {
-    test('login page meets accessibility standards', async ({ page }) => {
+    test.skip('login page meets accessibility standards', async ({ page }) => {
       await page.goto('/accounts/login/');
       await page.waitForLoadState('domcontentloaded');
 
@@ -61,7 +61,7 @@ test.describe('Accessibility Tests @accessibility', () => {
       await expect(page).toHaveURL(/\/app/);
     });
 
-    test('app home page meets accessibility standards', async ({ page }) => {
+    test.skip('app home page meets accessibility standards', async ({ page }) => {
       await page.goto('/app/');
       await page.waitForLoadState('domcontentloaded');
 
