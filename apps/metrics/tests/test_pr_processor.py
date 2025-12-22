@@ -409,6 +409,78 @@ class TestPullRequestEventHandler(TestCase):
             self.assertIsNotNone(result)
             self.assertEqual(result.state, "merged")
 
+    def test_dispatches_fetch_pr_complete_data_task_on_merge(self):
+        """Test that PR merge dispatches fetch_pr_complete_data_task to fetch files/commits."""
+        from unittest.mock import patch
+
+        from apps.metrics.processors import handle_pull_request_event
+
+        # Create a merged PR payload
+        payload = self._make_payload(
+            action="closed",
+            state="closed",
+            merged=True,
+            merged_at="2025-01-02T15:00:00Z",
+        )
+
+        # Mock the fetch_pr_complete_data_task
+        with patch("apps.integrations.tasks.fetch_pr_complete_data_task") as mock_fetch_task:
+            result = handle_pull_request_event(self.team, payload)
+
+            # Verify task was dispatched with correct PR ID
+            mock_fetch_task.delay.assert_called_once_with(result.id)
+
+    def test_fetch_pr_complete_data_task_not_dispatched_when_not_merged(self):
+        """Test that PR close without merge does NOT dispatch fetch_pr_complete_data_task."""
+        from unittest.mock import patch
+
+        from apps.metrics.processors import handle_pull_request_event
+
+        # Create a closed (not merged) PR payload
+        payload = self._make_payload(
+            action="closed",
+            state="closed",
+            merged=False,
+        )
+
+        # Mock the fetch_pr_complete_data_task
+        with patch("apps.integrations.tasks.fetch_pr_complete_data_task") as mock_fetch_task:
+            handle_pull_request_event(self.team, payload)
+
+            # Verify task was NOT dispatched
+            mock_fetch_task.delay.assert_not_called()
+
+    def test_fetch_pr_complete_data_task_independent_of_survey_tasks(self):
+        """Test that fetch task is dispatched even if survey tasks fail."""
+        from unittest.mock import patch
+
+        from apps.metrics.processors import handle_pull_request_event
+
+        # Create a merged PR payload
+        payload = self._make_payload(
+            action="closed",
+            state="closed",
+            merged=True,
+            merged_at="2025-01-02T15:00:00Z",
+        )
+
+        # Mock survey tasks to raise errors, fetch task to succeed
+        with (
+            patch("apps.integrations.tasks.send_pr_surveys_task") as mock_slack_task,
+            patch("apps.integrations.tasks.post_survey_comment_task") as mock_github_task,
+            patch("apps.integrations.tasks.fetch_pr_complete_data_task") as mock_fetch_task,
+        ):
+            mock_slack_task.delay.side_effect = Exception("Slack connection error")
+            mock_github_task.delay.side_effect = Exception("GitHub API error")
+
+            result = handle_pull_request_event(self.team, payload)
+
+            # Verify fetch task was still dispatched despite survey task failures
+            mock_fetch_task.delay.assert_called_once_with(result.id)
+            # Verify the webhook still returned successfully
+            self.assertIsNotNone(result)
+            self.assertEqual(result.state, "merged")
+
 
 class TestPullRequestReviewEventHandler(TestCase):
     """Tests for handle_pull_request_review_event webhook processor."""

@@ -13,7 +13,7 @@ from apps.integrations.models import (
     TrackedJiraProject,
     TrackedRepository,
 )
-from apps.integrations.services import github_comments
+from apps.integrations.services import github_comments, github_sync
 from apps.integrations.services.copilot_metrics import (
     CopilotMetricsError,
     fetch_copilot_metrics,
@@ -1074,3 +1074,72 @@ def aggregate_all_teams_weekly_metrics_task():
     logger.info(f"Finished dispatching weekly metrics aggregation tasks. Processed: {teams_processed}")
 
     return teams_processed
+
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+def fetch_pr_complete_data_task(self, pr_id: int) -> dict:
+    """Fetch complete PR data (commits, files, check runs, comments) after merge.
+
+    Args:
+        self: Celery task instance (bound task)
+        pr_id: ID of the PullRequest to fetch data for
+
+    Returns:
+        Dict with sync counts and errors list
+    """
+    # Get PullRequest by id
+    try:
+        pr = PullRequest.objects.get(id=pr_id)  # noqa: TEAM001 - ID from Celery task queue
+    except PullRequest.DoesNotExist:
+        logger.warning(f"PullRequest with id {pr_id} not found")
+        return {"error": f"PullRequest with id {pr_id} not found"}
+
+    # Find TrackedRepository matching team, repo, and is_active=True
+    try:
+        tracked_repo = TrackedRepository.objects.get(
+            team=pr.team,
+            full_name=pr.github_repo,
+            is_active=True,
+        )
+    except TrackedRepository.DoesNotExist:
+        logger.warning(f"TrackedRepository not found for team={pr.team.id}, repo={pr.github_repo}, is_active=True")
+        return {"error": f"TrackedRepository not found for team={pr.team.name}, repo={pr.github_repo}, is_active=True"}
+
+    # Get access token from integration credential
+    access_token = tracked_repo.integration.credential.access_token
+
+    # Initialize errors list
+    errors = []
+
+    # Sync all PR data
+    logger.info(f"Starting complete data fetch for PR {pr.github_pr_id}")
+
+    commits_synced = github_sync.sync_pr_commits(pr, pr.github_pr_id, access_token, pr.github_repo, pr.team, errors)
+
+    files_synced = github_sync.sync_pr_files(pr, pr.github_pr_id, access_token, pr.github_repo, pr.team, errors)
+
+    check_runs_synced = github_sync.sync_pr_check_runs(
+        pr, pr.github_pr_id, access_token, pr.github_repo, pr.team, errors
+    )
+
+    issue_comments_synced = github_sync.sync_pr_issue_comments(
+        pr, pr.github_pr_id, access_token, pr.github_repo, pr.team, errors
+    )
+
+    review_comments_synced = github_sync.sync_pr_review_comments(
+        pr, pr.github_pr_id, access_token, pr.github_repo, pr.team, errors
+    )
+
+    # Calculate iteration metrics after all data is synced
+    github_sync.calculate_pr_iteration_metrics(pr)
+
+    logger.info(f"Completed data fetch for PR {pr.github_pr_id}")
+
+    return {
+        "commits_synced": commits_synced,
+        "files_synced": files_synced,
+        "check_runs_synced": check_runs_synced,
+        "issue_comments_synced": issue_comments_synced,
+        "review_comments_synced": review_comments_synced,
+        "errors": errors,
+    }

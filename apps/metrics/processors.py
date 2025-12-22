@@ -165,9 +165,36 @@ def _map_github_pr_to_fields(team, pr_data: dict) -> dict:
     }
 
 
+def _dispatch_task_safely(task_path: str, pr_id: int) -> None:
+    """
+    Safely dispatch a Celery task, logging errors without raising exceptions.
+
+    Args:
+        task_path: Import path for the task (e.g., "apps.integrations.tasks.send_pr_surveys_task")
+        pr_id: PullRequest ID to pass to the task
+    """
+    try:
+        # Dynamic import of the task
+        module_path, task_name = task_path.rsplit(".", 1)
+        module = __import__(module_path, fromlist=[task_name])
+        task = getattr(module, task_name)
+
+        task.delay(pr_id)
+        logger.debug(f"Dispatched {task_name} for PR {pr_id}")
+    except Exception as e:
+        # Log error but don't break webhook response
+        task_name = task_path.split(".")[-1]
+        logger.error(f"Failed to dispatch {task_name} for PR {pr_id}: {e}")
+
+
 def _trigger_pr_surveys_if_merged(pr: PullRequest, action: str, is_merged: bool) -> None:
     """
-    Trigger PR survey tasks if the PR was just merged.
+    Trigger post-merge tasks when a PR is merged.
+
+    Dispatches independent tasks for surveys and data collection:
+    - Slack survey messages
+    - GitHub comment survey
+    - Complete PR data fetch (files, commits)
 
     Args:
         pr: PullRequest instance
@@ -175,25 +202,9 @@ def _trigger_pr_surveys_if_merged(pr: PullRequest, action: str, is_merged: bool)
         is_merged: Whether the PR was merged
     """
     if action == "closed" and is_merged:
-        # Trigger Slack surveys
-        try:
-            from apps.integrations.tasks import send_pr_surveys_task
-
-            send_pr_surveys_task.delay(pr.id)
-            logger.debug(f"Dispatched send_pr_surveys_task for PR {pr.id}")
-        except Exception as e:
-            # Log error but don't break webhook response
-            logger.error(f"Failed to dispatch send_pr_surveys_task for PR {pr.id}: {e}")
-
-        # Trigger GitHub comment survey (independent)
-        try:
-            from apps.integrations.tasks import post_survey_comment_task
-
-            post_survey_comment_task.delay(pr.id)
-            logger.debug(f"Dispatched post_survey_comment_task for PR {pr.id}")
-        except Exception as e:
-            # Log error but don't break webhook response
-            logger.error(f"Failed to dispatch post_survey_comment_task for PR {pr.id}: {e}")
+        _dispatch_task_safely("apps.integrations.tasks.send_pr_surveys_task", pr.id)
+        _dispatch_task_safely("apps.integrations.tasks.post_survey_comment_task", pr.id)
+        _dispatch_task_safely("apps.integrations.tasks.fetch_pr_complete_data_task", pr.id)
 
 
 def handle_pull_request_event(team, payload: dict) -> PullRequest | None:
