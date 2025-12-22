@@ -5,7 +5,8 @@ Fetches comprehensive PR data from public repositories using authenticated
 access (5000 requests/hour with PAT). Includes commits, reviews, files,
 and check runs for realistic demo data.
 
-Uses parallel fetching for PR details to improve performance.
+Uses serial fetching to comply with GitHub API best practices:
+https://docs.github.com/en/rest/using-the-rest-api/best-practices-for-using-the-rest-api
 
 Usage:
     fetcher = GitHubAuthenticatedFetcher()  # Uses GITHUB_SEEDING_TOKENS env var
@@ -21,7 +22,6 @@ import contextlib
 import logging
 import re
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -60,21 +60,14 @@ def is_secondary_rate_limit(exception: GithubException) -> bool:
     return "Retry-After" in headers
 
 
-# Number of parallel threads for fetching PR details
-# Keep low to avoid GitHub's secondary rate limits (abuse detection)
-MAX_WORKERS = 3
-
-# Delay between batches to avoid rate limiting (seconds)
-BATCH_DELAY = 1.0
-
-# Batch size for parallel fetching (process this many PRs then pause)
-BATCH_SIZE = 10
-
 # Max retries for 403 errors (secondary rate limit)
 MAX_RETRIES = 3
 
 # Initial backoff for retries (seconds, doubles each retry)
 INITIAL_BACKOFF = 5.0
+
+# Delay between requests for rate limit compliance (seconds)
+REQUEST_DELAY = 0.1
 
 
 @dataclass
@@ -465,11 +458,11 @@ class GitHubAuthenticatedFetcher:
         since: datetime | None = None,
         max_prs: int = 500,
         include_open: bool = False,
-        parallel: bool = True,
+        parallel: bool = True,  # Deprecated: kept for backward compatibility, always uses serial
     ) -> list[FetchedPRFull]:
         """Fetch PRs with complete details (commits, reviews, files, checks).
 
-        Uses parallel fetching by default for improved performance.
+        Uses serial fetching to comply with GitHub API best practices.
         Supports checkpointing for resume after rate limiting.
 
         Args:
@@ -477,7 +470,7 @@ class GitHubAuthenticatedFetcher:
             since: Only fetch PRs updated after this date.
             max_prs: Maximum PRs to fetch.
             include_open: Include open PRs (default: only closed/merged).
-            parallel: Use parallel fetching (default: True).
+            parallel: Deprecated, ignored. Always uses serial fetching.
 
         Returns:
             List of FetchedPRFull with all related data.
@@ -536,10 +529,8 @@ class GitHubAuthenticatedFetcher:
                 # Update checkpoint with total PRs found
                 checkpoint.total_prs_found = len(pr_objects) + skipped_from_checkpoint
 
-                if parallel and len(pr_objects) > 1:
-                    result = self._fetch_prs_parallel(pr_objects, repo_name)
-                else:
-                    result = self._fetch_prs_sequential(pr_objects, repo_name)
+                # Always use serial fetching per GitHub API best practices
+                result = self._fetch_prs(pr_objects, repo_name)
 
                 # Mark checkpoint as completed and save
                 if self.checkpoint_file and self._checkpoint:
@@ -588,157 +579,85 @@ class GitHubAuthenticatedFetcher:
         logger.error("All GitHub tokens exhausted after %d retries. Cannot fetch PRs.", retry_count)
         return []
 
-    def _fetch_prs_parallel(self, pr_objects: list, repo_name: str) -> list[FetchedPRFull]:
-        """Fetch PR details in parallel using ThreadPoolExecutor with rate limit handling.
+    def _fetch_prs(self, pr_objects: list, repo_name: str) -> list[FetchedPRFull]:
+        """Fetch PR details serially per GitHub API best practices.
 
-        Processes PRs in batches with delays between batches to avoid GitHub's
-        secondary rate limits (abuse detection). Includes retry logic for 403 errors.
+        Makes requests one at a time to avoid triggering GitHub's abuse detection.
+        Includes retry logic with exponential backoff for 403 errors.
         """
         fetched_prs: list[FetchedPRFull] = []
         total = len(pr_objects)
-        total_batches = (total + BATCH_SIZE - 1) // BATCH_SIZE
 
-        logger.info(
-            "Fetching %d PRs in parallel (workers: %d, batch size: %d)",
-            total,
-            MAX_WORKERS,
-            BATCH_SIZE,
-        )
-
+        logger.info("Fetching %d PRs serially (per GitHub API best practices)", total)
         self._report_progress("fetch", 0, total, f"Starting to fetch {total} PRs...")
 
-        # Process in batches to avoid overwhelming GitHub
-        for batch_start in range(0, total, BATCH_SIZE):
-            batch_end = min(batch_start + BATCH_SIZE, total)
-            batch = pr_objects[batch_start:batch_end]
-            batch_num = batch_start // BATCH_SIZE + 1
+        for i, pr in enumerate(pr_objects):
+            retry_count = 0
+            backoff = INITIAL_BACKOFF
 
-            logger.info(
-                "Processing batch %d/%d (PRs %d-%d)",
-                batch_num,
-                total_batches,
-                batch_start + 1,
-                batch_end,
-            )
+            while retry_count <= MAX_RETRIES:
+                try:
+                    fetched_pr = self._fetch_pr_details(pr, repo_name)
+                    fetched_prs.append(fetched_pr)
 
-            # Report progress before fetching batch
-            self._report_progress(
-                "fetch",
-                batch_start,
-                total,
-                f"Fetching PRs {batch_start + 1}-{batch_end} of {total}...",
-            )
+                    # Update checkpoint after each successful fetch
+                    if self._checkpoint:
+                        self._checkpoint.add_fetched_pr(fetched_pr.number)
+                        self._save_checkpoint()
 
-            # Fetch batch with retry logic
-            batch_results = self._fetch_batch_with_retry(batch, repo_name)
-            fetched_prs.extend(batch_results)
+                    # Report progress every 10 PRs
+                    if (i + 1) % 10 == 0 or i + 1 == total:
+                        self._report_progress(
+                            "fetch",
+                            i + 1,
+                            total,
+                            f"Fetched {i + 1}/{total} PRs ({len(fetched_prs)} successful)",
+                        )
 
-            # Update checkpoint with fetched PR numbers
-            if self._checkpoint:
-                for pr_result in batch_results:
-                    self._checkpoint.add_fetched_pr(pr_result.number)
-                self._save_checkpoint()
+                    # Log progress every 50 PRs
+                    if (i + 1) % 50 == 0:
+                        remaining = self.get_rate_limit_remaining()
+                        logger.info(
+                            "Processed %d/%d PRs (rate limit: %d remaining)",
+                            i + 1,
+                            total,
+                            remaining,
+                        )
 
-            # Report progress after fetching batch
-            self._report_progress(
-                "fetch",
-                batch_end,
-                total,
-                f"Fetched {batch_end}/{total} PRs ({len(fetched_prs)} successful)",
-            )
+                    # Small delay between requests for rate limit compliance
+                    time.sleep(REQUEST_DELAY)
+                    break  # Success, move to next PR
 
-            # Delay between batches to avoid secondary rate limits
-            if batch_end < total:
-                remaining = self.get_rate_limit_remaining()
-                logger.debug(
-                    "Batch complete. Rate limit: %d remaining. Waiting %.1fs...",
-                    remaining,
-                    BATCH_DELAY,
-                )
-                time.sleep(BATCH_DELAY)
+                except GithubException as e:
+                    if e.status == 403 and retry_count < MAX_RETRIES:
+                        # Check for retry-after header
+                        headers = getattr(e, "headers", {}) or {}
+                        retry_after = int(headers.get("Retry-After", backoff))
+                        retry_count += 1
+                        logger.warning(
+                            "Rate limit hit on PR #%d. Retry %d/%d after %ds...",
+                            pr.number,
+                            retry_count,
+                            MAX_RETRIES,
+                            retry_after,
+                        )
+                        time.sleep(retry_after)
+                        backoff *= 2  # Exponential backoff for next retry
+                    else:
+                        logger.warning("Failed to fetch PR #%d: %s", pr.number, e)
+                        break  # Give up on this PR
 
         # Sort by created_at to maintain chronological order
         with contextlib.suppress(AttributeError, TypeError):
             fetched_prs.sort(key=lambda x: x.created_at, reverse=True)
 
-        logger.info("Fetched %d PRs from %s (parallel)", len(fetched_prs), repo_name)
-        return fetched_prs
-
-    def _fetch_batch_with_retry(self, batch: list, repo_name: str) -> list[FetchedPRFull]:
-        """Fetch a batch of PRs with retry logic for 403 errors."""
-        results: list[FetchedPRFull] = []
-        retry_count = 0
-        backoff = INITIAL_BACKOFF
-
-        while retry_count <= MAX_RETRIES:
-            try:
-                with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-                    future_to_pr = {executor.submit(self._fetch_pr_details, pr, repo_name): pr for pr in batch}
-
-                    for future in as_completed(future_to_pr):
-                        pr = future_to_pr[future]
-                        try:
-                            fetched_pr = future.result()
-                            results.append(fetched_pr)
-                        except GithubException as e:
-                            if e.status == 403:
-                                # Re-raise to trigger batch retry
-                                raise
-                            logger.warning("Failed to fetch PR #%d: %s", pr.number, e)
-                        except Exception as e:
-                            logger.warning("Unexpected error fetching PR #%d: %s", pr.number, e)
-
-                # Success - return results
-                return results
-
-            except GithubException as e:
-                if e.status == 403 and retry_count < MAX_RETRIES:
-                    retry_count += 1
-                    logger.warning(
-                        "Rate limit hit (403). Retry %d/%d after %.1fs backoff...",
-                        retry_count,
-                        MAX_RETRIES,
-                        backoff,
-                    )
-                    time.sleep(backoff)
-                    backoff *= 2  # Exponential backoff
-                    results = []  # Clear partial results for retry
-                else:
-                    logger.error("Failed to fetch batch after %d retries: %s", retry_count, e)
-                    break
-
-        return results
-
-    def _fetch_prs_sequential(self, pr_objects: list, repo_name: str) -> list[FetchedPRFull]:
-        """Fetch PR details sequentially (fallback)."""
-        fetched_prs: list[FetchedPRFull] = []
-        total = len(pr_objects)
-
-        for i, pr in enumerate(pr_objects):
-            try:
-                fetched_pr = self._fetch_pr_details(pr, repo_name)
-                fetched_prs.append(fetched_pr)
-
-                if (i + 1) % 50 == 0:
-                    remaining = self.get_rate_limit_remaining()
-                    logger.info(
-                        "Processed %d/%d PRs (rate limit: %d remaining)",
-                        i + 1,
-                        total,
-                        remaining,
-                    )
-
-            except GithubException as e:
-                logger.warning("Failed to fetch PR #%d: %s", pr.number, e)
-                continue
-
-        logger.info("Fetched %d PRs from %s (sequential)", len(fetched_prs), repo_name)
+        logger.info("Fetched %d PRs from %s (serial)", len(fetched_prs), repo_name)
         return fetched_prs
 
     def _fetch_pr_details(self, pr, repo_name: str) -> FetchedPRFull:
         """Fetch all details for a single PR.
 
-        Uses parallel fetching for commits, reviews, files, and check runs.
+        Fetches commits, reviews, files, and check runs serially per GitHub API best practices.
         """
         # Determine state
         if pr.merged:
@@ -748,34 +667,11 @@ class GitHubAuthenticatedFetcher:
         else:
             state = "open"
 
-        # Fetch commits, reviews, files, check runs in parallel
-        commits = []
-        reviews = []
-        files = []
-        check_runs = []
-
-        with ThreadPoolExecutor(max_workers=4) as executor:
-            futures = {
-                executor.submit(self._fetch_commits, pr): "commits",
-                executor.submit(self._fetch_reviews, pr): "reviews",
-                executor.submit(self._fetch_files, pr): "files",
-                executor.submit(self._fetch_check_runs, pr): "check_runs",
-            }
-
-            for future in as_completed(futures):
-                data_type = futures[future]
-                try:
-                    result = future.result()
-                    if data_type == "commits":
-                        commits = result
-                    elif data_type == "reviews":
-                        reviews = result
-                    elif data_type == "files":
-                        files = result
-                    elif data_type == "check_runs":
-                        check_runs = result
-                except Exception as e:
-                    logger.debug("Failed to fetch %s for PR #%d: %s", data_type, pr.number, e)
+        # Fetch commits, reviews, files, check runs serially
+        commits = self._fetch_commits(pr)
+        reviews = self._fetch_reviews(pr)
+        files = self._fetch_files(pr)
+        check_runs = self._fetch_check_runs(pr)
 
         # Extract Jira keys
         jira_from_title = self._extract_jira_key(pr.title)
