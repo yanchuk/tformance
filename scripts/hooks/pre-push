@@ -4,8 +4,8 @@
 
 echo "Running tests before push..."
 
-# Run tests with keepdb for speed
-make test ARGS='--keepdb'
+# Run tests (pytest uses --reuse-db by default via pyproject.toml)
+make test
 TEST_EXIT_CODE=$?
 
 if [ $TEST_EXIT_CODE -ne 0 ]; then
