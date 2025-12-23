@@ -1,7 +1,9 @@
 {% load i18n %}
 <div>
   {% if chart_data %}
-  <canvas id="copilot-trend-chart" class="w-full h-56"></canvas>
+  <div class="relative h-56">
+    <canvas id="copilot-trend-chart"></canvas>
+  </div>
   {{ chart_data|json_script:'copilot-trend-data' }}
   {% else %}
   <div class="flex flex-col items-center justify-center h-56">

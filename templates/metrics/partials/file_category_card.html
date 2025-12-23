@@ -1,16 +1,16 @@
-{% load i18n %}
+{% load i18n number_filters %}
 <div class="grid grid-cols-2 gap-4 mb-4">
   <!-- Total Files -->
   <div class="stat bg-base-200 rounded-lg p-4">
     <div class="stat-title text-xs">{% trans "Files Changed" %}</div>
-    <div class="stat-value text-xl font-mono">{{ metrics.total_files }}</div>
+    <div class="stat-value !text-xl font-mono">{{ metrics.total_files|format_compact }}</div>
     <div class="stat-desc">{% trans "total files" %}</div>
   </div>
 
   <!-- Total Lines Changed -->
   <div class="stat bg-base-200 rounded-lg p-4">
     <div class="stat-title text-xs">{% trans "Lines Changed" %}</div>
-    <div class="stat-value text-xl font-mono">{{ metrics.total_changes }}</div>
+    <div class="stat-value !text-xl font-mono">{{ metrics.total_changes|format_compact }}</div>
     <div class="stat-desc">{% trans "additions + deletions" %}</div>
   </div>
 </div>
@@ -56,9 +56,9 @@
         <tr>
           <td>{{ cat.category_display }}</td>
           <td class="text-right font-mono">{{ cat.file_count }}</td>
-          <td class="text-right font-mono text-success">+{{ cat.additions }}</td>
-          <td class="text-right font-mono text-error">-{{ cat.deletions }}</td>
-          <td class="text-right font-mono">{{ cat.total_changes }}</td>
+          <td class="text-right font-mono text-success">+{{ cat.additions|format_compact }}</td>
+          <td class="text-right font-mono text-error">-{{ cat.deletions|format_compact }}</td>
+          <td class="text-right font-mono">{{ cat.total_changes|format_compact }}</td>
         </tr>
         {% endfor %}
       </tbody>
