@@ -290,8 +290,11 @@ ACCOUNT_LOGIN_ON_EMAIL_CONFIRMATION = True
 ACCOUNT_LOGIN_BY_CODE_ENABLED = False  # Disabled - using OAuth only (GitHub/Google)
 ACCOUNT_USER_DISPLAY = lambda user: user.get_display_name()  # noqa: E731
 
-# Disable rate limits in DEBUG mode for E2E testing (Playwright runs multiple workers)
-if DEBUG:
+# Disable rate limits in DEBUG mode and during tests
+# (E2E: Playwright runs multiple workers; unit tests: avoid flaky failures)
+
+TESTING = "pytest" in sys.modules or "test" in sys.argv
+if DEBUG or TESTING:
     ACCOUNT_RATE_LIMITS = False  # Disable allauth rate limits (must be False, not {})
     RATELIMIT_ENABLE = False  # Disable django-ratelimit
 
