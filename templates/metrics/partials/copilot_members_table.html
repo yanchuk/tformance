@@ -14,9 +14,13 @@
       <tr>
         <td>
           <div class="flex items-center gap-3">
-            <div class="avatar placeholder">
-              <div class="bg-neutral text-neutral-content rounded-full w-8">
-                <span class="text-xs">{{ row.member_name|slice:":2"|upper }}</span>
+            <div class="avatar{% if not row.avatar_url %} placeholder{% endif %}">
+              <div class="bg-neutral text-neutral-content rounded-full w-8 overflow-hidden">
+                {% if row.avatar_url %}
+                <img src="{{ row.avatar_url }}" alt="{{ row.member_name }}" class="w-full h-full object-cover">
+                {% else %}
+                <span class="text-xs">{{ row.initials }}</span>
+                {% endif %}
               </div>
             </div>
             <div>{{ row.member_name }}</div>

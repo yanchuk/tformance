@@ -22,9 +22,13 @@
         </td>
         <td>
           <div class="flex items-center gap-2">
-            <div class="avatar placeholder">
-              <div class="bg-neutral text-neutral-content rounded-full w-6">
-                <span class="text-xs">{{ row.author|slice:":2"|upper }}</span>
+            <div class="avatar{% if not row.author_avatar_url %} placeholder{% endif %}">
+              <div class="bg-neutral text-neutral-content rounded-full w-6 overflow-hidden">
+                {% if row.author_avatar_url %}
+                <img src="{{ row.author_avatar_url }}" alt="{{ row.author }}" class="w-full h-full object-cover">
+                {% else %}
+                <span class="text-xs">{{ row.author_initials }}</span>
+                {% endif %}
               </div>
             </div>
             <span class="text-sm">{{ row.author }}</span>

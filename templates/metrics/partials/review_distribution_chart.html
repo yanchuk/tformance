@@ -4,9 +4,13 @@
   <div class="space-y-3">
     {% for row in chart_data %}
     <div class="flex items-center gap-3">
-      <div class="avatar placeholder flex-shrink-0">
-        <div class="bg-neutral text-neutral-content rounded-full w-8">
-          <span class="text-xs">{{ row.reviewer_name|slice:":2"|upper }}</span>
+      <div class="avatar{% if not row.avatar_url %} placeholder{% endif %} flex-shrink-0">
+        <div class="bg-neutral text-neutral-content rounded-full w-8 overflow-hidden">
+          {% if row.avatar_url %}
+          <img src="{{ row.avatar_url }}" alt="{{ row.reviewer_name }}" class="w-full h-full object-cover">
+          {% else %}
+          <span class="text-xs">{{ row.initials }}</span>
+          {% endif %}
         </div>
       </div>
       <div class="flex-1 min-w-0">
