@@ -53,6 +53,10 @@ export default defineConfig({
   server: {
     port: 5173, // Default Vite dev server port, must match DJANGO_VITE settings
     strictPort: true, // Vite will exit if the port is already in use
+    cors: {
+      origin: ['http://localhost:8000', 'https://dev.ianchuk.com'],
+      credentials: true,
+    },
     hmr: {
       // host: 'localhost', // default of localhost is fine as long as Django is running there.
       // protocol: 'ws', // default of ws is fine. Change to 'wss' if Django (dev) server uses HTTPS.

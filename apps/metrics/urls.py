@@ -51,6 +51,12 @@ team_urlpatterns = (
         path("pull-requests/", views.pr_list, name="pr_list"),
         path("pull-requests/table/", views.pr_list_table, name="pr_list_table"),
         path("pull-requests/export/", views.pr_list_export, name="pr_list_export"),
+        # Analytics pages
+        path("analytics/", views.analytics_overview, name="analytics_overview"),
+        path("analytics/ai-adoption/", views.analytics_ai_adoption, name="analytics_ai_adoption"),
+        path("analytics/delivery/", views.analytics_delivery, name="analytics_delivery"),
+        path("analytics/quality/", views.analytics_quality, name="analytics_quality"),
+        path("analytics/team/", views.analytics_team, name="analytics_team"),
     ],
     "metrics",
 )

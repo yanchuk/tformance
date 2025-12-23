@@ -44,7 +44,7 @@ def dashboard_redirect(request: HttpRequest) -> HttpResponse:
     """Redirect to appropriate dashboard based on user role."""
     membership = request.team_membership
     if membership.role == "admin":
-        return redirect("metrics:cto_overview")
+        return redirect("metrics:analytics_overview")
     return redirect("metrics:team_dashboard")
 
 

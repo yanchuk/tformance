@@ -1,0 +1,164 @@
+{% extends "metrics/analytics/base_analytics.html" %}
+{% load static %}
+{% load i18n %}
+{% load partials %}
+
+{% block analytics_content %}
+{% partialdef page-content inline %}
+<div id="page-content">
+  <!-- Page Title -->
+  <h1 class="pg-title mb-4">{% trans "Quality Metrics" %}</h1>
+
+  <!-- Review Time & Distribution Row -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+    <!-- Review Time Trend -->
+    <div class="card bg-base-100 shadow-md">
+      <div class="card-body">
+        <h2 class="card-title text-base">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+          </svg>
+          {% trans "Review Time Trend" %}
+        </h2>
+        <p class="text-sm text-base-content/80 mb-2">{% trans "Time to first review" %}</p>
+        <div id="review-time-container"
+             hx-get="{% url 'metrics:chart_review_time' %}?days={{ days }}"
+             hx-trigger="load"
+             hx-swap="innerHTML">
+          <div class="flex justify-center items-center h-48">
+            <span class="loading loading-spinner loading-lg"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Review Distribution -->
+    <div class="card bg-base-100 shadow-md">
+      <div class="card-body">
+        <h2 class="card-title text-base">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          {% trans "Review Distribution" %}
+        </h2>
+        <p class="text-sm text-base-content/80 mb-2">{% trans "Reviews per team member" %}</p>
+        <div id="review-distribution-container"
+             hx-get="{% url 'metrics:chart_review_distribution' %}?days={{ days }}"
+             hx-trigger="load"
+             hx-swap="innerHTML">
+          <div class="skeleton h-48 w-full rounded-lg"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Workload & CI/CD Row -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+    <!-- Reviewer Workload -->
+    <div class="card bg-base-100 shadow-md">
+      <div class="card-body">
+        <h2 class="card-title text-base">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+          </svg>
+          {% trans "Reviewer Workload" %}
+        </h2>
+        <div id="reviewer-workload-container"
+             hx-get="{% url 'metrics:table_reviewer_workload' %}?days={{ days }}"
+             hx-trigger="load"
+             hx-swap="innerHTML">
+          <div class="skeleton h-48 w-full rounded-lg"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CI/CD Pass Rate -->
+    <div class="card bg-base-100 shadow-md">
+      <div class="card-body">
+        <h2 class="card-title text-base">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          {% trans "CI/CD Pass Rate" %}
+        </h2>
+        <div id="cicd-container"
+             hx-get="{% url 'metrics:cards_cicd_pass_rate' %}?days={{ days }}"
+             hx-trigger="load"
+             hx-swap="innerHTML">
+          <div class="skeleton h-32 w-full rounded-lg"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Iteration Metrics & Revert Rate Row -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+    <!-- Iteration Metrics -->
+    <div class="card bg-base-100 shadow-md">
+      <div class="card-body">
+        <h2 class="card-title text-base">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          {% trans "Iteration Metrics" %}
+        </h2>
+        <p class="text-sm text-base-content/80 mb-2">{% trans "Review rounds and changes requested" %}</p>
+        <div id="iteration-container"
+             hx-get="{% url 'metrics:cards_iteration_metrics' %}?days={{ days }}"
+             hx-trigger="load"
+             hx-swap="innerHTML">
+          <div class="skeleton h-32 w-full rounded-lg"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Revert Rate -->
+    <div class="card bg-base-100 shadow-md">
+      <div class="card-body">
+        <h2 class="card-title text-base">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-warning" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+          {% trans "Revert Rate" %}
+        </h2>
+        <p class="text-sm text-base-content/80 mb-2">{% trans "PRs that were reverted after merge" %}</p>
+        <div id="revert-rate-container"
+             hx-get="{% url 'metrics:cards_revert_rate' %}?days={{ days }}"
+             hx-trigger="load"
+             hx-swap="innerHTML">
+          <div class="skeleton h-32 w-full rounded-lg"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Links Section -->
+  <div class="card bg-base-100 shadow-md">
+    <div class="card-body">
+      <h2 class="card-title text-base mb-4">{% trans "Explore Quality Data" %}</h2>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <a href="{% url 'metrics:pr_list' %}" class="btn btn-outline btn-sm justify-start gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+          </svg>
+          {% trans "All Pull Requests" %}
+        </a>
+        <a href="{% url 'metrics:table_breakdown' %}" class="btn btn-outline btn-sm justify-start gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          {% trans "Team Breakdown" %}
+        </a>
+        <a href="{% url 'metrics:cto_overview' %}" class="btn btn-outline btn-sm justify-start gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+          </svg>
+          {% trans "Full Dashboard" %}
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endpartialdef page-content %}
+{% endblock %}

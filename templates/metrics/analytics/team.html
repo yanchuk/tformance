@@ -1,0 +1,139 @@
+{% extends "metrics/analytics/base_analytics.html" %}
+{% load static %}
+{% load i18n %}
+{% load partials %}
+
+{% block analytics_content %}
+{% partialdef page-content inline %}
+<div id="page-content">
+  <!-- Page Title -->
+  <h1 class="pg-title mb-4">{% trans "Team Performance" %}</h1>
+
+  <!-- Team Breakdown Table -->
+  <div class="card bg-base-100 shadow-md mb-6">
+    <div class="card-body">
+      <h2 class="card-title text-base">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+        </svg>
+        {% trans "Team Breakdown" %}
+      </h2>
+      <p class="text-sm text-base-content/80 mb-4">{% trans "Individual performance metrics by team member" %}</p>
+      <div id="team-breakdown-container"
+           hx-get="{% url 'metrics:table_breakdown' %}?days={{ days }}"
+           hx-trigger="load"
+           hx-swap="innerHTML">
+        <div class="skeleton h-64 w-full rounded-lg"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reviewer Metrics Row -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+    <!-- Reviewer Workload -->
+    <div class="card bg-base-100 shadow-md">
+      <div class="card-body">
+        <h2 class="card-title text-base">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+          </svg>
+          {% trans "Reviewer Workload" %}
+        </h2>
+        <p class="text-sm text-base-content/80 mb-2">{% trans "Reviews given per team member" %}</p>
+        <div id="reviewer-workload-container"
+             hx-get="{% url 'metrics:table_reviewer_workload' %}?days={{ days }}"
+             hx-trigger="load"
+             hx-swap="innerHTML">
+          <div class="skeleton h-48 w-full rounded-lg"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Review Distribution -->
+    <div class="card bg-base-100 shadow-md">
+      <div class="card-body">
+        <h2 class="card-title text-base">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
+          </svg>
+          {% trans "Review Distribution" %}
+        </h2>
+        <p class="text-sm text-base-content/80 mb-2">{% trans "How reviews are distributed across team" %}</p>
+        <div id="review-distribution-container"
+             hx-get="{% url 'metrics:chart_review_distribution' %}?days={{ days }}"
+             hx-trigger="load"
+             hx-swap="innerHTML">
+          <div class="skeleton h-48 w-full rounded-lg"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI Detective Leaderboard -->
+  <div class="card bg-base-100 shadow-md mb-6">
+    <div class="card-body">
+      <h2 class="card-title text-base">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-warning" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+        </svg>
+        {% trans "AI Detective Leaderboard" %}
+      </h2>
+      <p class="text-sm text-base-content/80 mb-4">{% trans "Who's best at spotting AI-assisted PRs?" %}</p>
+      <div id="leaderboard-container"
+           hx-get="{% url 'metrics:table_leaderboard' %}?days={{ days }}"
+           hx-trigger="load"
+           hx-swap="innerHTML">
+        <div class="skeleton h-48 w-full rounded-lg"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Copilot Members (if available) -->
+  <div class="card bg-base-100 shadow-md mb-6">
+    <div class="card-body">
+      <h2 class="card-title text-base">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" />
+        </svg>
+        {% trans "Copilot Usage by Member" %}
+      </h2>
+      <p class="text-sm text-base-content/80 mb-4">{% trans "Individual Copilot metrics (if connected)" %}</p>
+      <div id="copilot-members-container"
+           hx-get="{% url 'metrics:table_copilot_members' %}?days={{ days }}"
+           hx-trigger="load"
+           hx-swap="innerHTML">
+        <div class="skeleton h-48 w-full rounded-lg"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Links Section -->
+  <div class="card bg-base-100 shadow-md">
+    <div class="card-body">
+      <h2 class="card-title text-base mb-4">{% trans "Explore Team Data" %}</h2>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <a href="{% url 'metrics:pr_list' %}" class="btn btn-outline btn-sm justify-start gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+          </svg>
+          {% trans "All Pull Requests" %}
+        </a>
+        <a href="{% url 'metrics:analytics_quality' %}" class="btn btn-outline btn-sm justify-start gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          {% trans "Quality Metrics" %}
+        </a>
+        <a href="{% url 'metrics:cto_overview' %}" class="btn btn-outline btn-sm justify-start gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+          </svg>
+          {% trans "Full Dashboard" %}
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endpartialdef page-content %}
+{% endblock %}

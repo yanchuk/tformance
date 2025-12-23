@@ -45,14 +45,14 @@ class TestDashboardRedirect(TestCase):
 
         self.assertEqual(response.status_code, 404)
 
-    def test_dashboard_redirect_admin_goes_to_cto_overview(self):
-        """Test that admin users are redirected to cto_overview."""
+    def test_dashboard_redirect_admin_goes_to_analytics_overview(self):
+        """Test that admin users are redirected to analytics_overview."""
         self.client.force_login(self.admin_user)
 
         response = self.client.get(reverse("metrics:dashboard_redirect"))
 
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, reverse("metrics:cto_overview"))
+        self.assertEqual(response.url, reverse("metrics:analytics_overview"))
 
     def test_dashboard_redirect_member_goes_to_team_dashboard(self):
         """Test that non-admin users are redirected to team_dashboard."""

@@ -1,5 +1,12 @@
 """Metrics views package."""
 
+from apps.metrics.views.analytics_views import (
+    analytics_ai_adoption,
+    analytics_delivery,
+    analytics_overview,
+    analytics_quality,
+    analytics_team,
+)
 from apps.metrics.views.chart_views import (
     ai_adoption_chart,
     ai_bot_reviews_card,
@@ -68,4 +75,9 @@ __all__ = [
     "pr_list",
     "pr_list_table",
     "pr_list_export",
+    "analytics_overview",
+    "analytics_ai_adoption",
+    "analytics_delivery",
+    "analytics_quality",
+    "analytics_team",
 ]

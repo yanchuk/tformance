@@ -1,0 +1,107 @@
+{% extends "web/app/app_base.html" %}
+{% load static %}
+{% load i18n %}
+{% load partials %}
+{% load django_vite %}
+
+{% block app %}
+<div class="app-card">
+  <!-- Analytics Header with tabs and date filter -->
+  <div class="flex flex-col gap-4 mb-6">
+    <!-- Tab Navigation -->
+    <div class="flex flex-wrap justify-between items-center gap-4">
+      <div role="tablist" class="tabs tabs-boxed bg-base-200">
+        <a role="tab"
+           href="{% url 'metrics:analytics_overview' %}"
+           class="tab {% if active_page == 'overview' %}tab-active{% endif %}"
+           hx-get="{% url 'metrics:analytics_overview' %}?days={{ days }}"
+           hx-target="#page-content"
+           hx-swap="outerHTML"
+           hx-push-url="true">
+          {% trans "Overview" %}
+        </a>
+        <a role="tab"
+           href="{% url 'metrics:analytics_ai_adoption' %}"
+           class="tab {% if active_page == 'ai_adoption' %}tab-active{% endif %}"
+           hx-get="{% url 'metrics:analytics_ai_adoption' %}?days={{ days }}"
+           hx-target="#page-content"
+           hx-swap="outerHTML"
+           hx-push-url="true">
+          {% trans "AI Adoption" %}
+        </a>
+        <a role="tab"
+           href="{% url 'metrics:analytics_delivery' %}"
+           class="tab {% if active_page == 'delivery' %}tab-active{% endif %}"
+           hx-get="{% url 'metrics:analytics_delivery' %}?days={{ days }}"
+           hx-target="#page-content"
+           hx-swap="outerHTML"
+           hx-push-url="true">
+          {% trans "Delivery" %}
+        </a>
+        <a role="tab"
+           href="{% url 'metrics:analytics_quality' %}"
+           class="tab {% if active_page == 'quality' %}tab-active{% endif %}"
+           hx-get="{% url 'metrics:analytics_quality' %}?days={{ days }}"
+           hx-target="#page-content"
+           hx-swap="outerHTML"
+           hx-push-url="true">
+          {% trans "Quality" %}
+        </a>
+        <a role="tab"
+           href="{% url 'metrics:analytics_team' %}"
+           class="tab {% if active_page == 'team' %}tab-active{% endif %}"
+           hx-get="{% url 'metrics:analytics_team' %}?days={{ days }}"
+           hx-target="#page-content"
+           hx-swap="outerHTML"
+           hx-push-url="true">
+          {% trans "Team" %}
+        </a>
+        <a role="tab"
+           href="{% url 'metrics:pr_list' %}"
+           class="tab {% if active_page == 'pull_requests' %}tab-active{% endif %}">
+          {% trans "Pull Requests" %}
+        </a>
+      </div>
+
+      <!-- Date Range Filter -->
+      <div class="flex gap-2 items-center">
+        <span class="text-sm text-base-content/70">{% trans "Time range:" %}</span>
+        <div class="join">
+          <a href="?days=7"
+             class="join-item btn btn-sm {% if days == 7 %}btn-primary{% else %}btn-ghost{% endif %}"
+             hx-get="?days=7"
+             hx-target="#page-content"
+             hx-swap="outerHTML"
+             hx-push-url="true">
+            {% trans "7d" %}
+          </a>
+          <a href="?days=30"
+             class="join-item btn btn-sm {% if days == 30 %}btn-primary{% else %}btn-ghost{% endif %}"
+             hx-get="?days=30"
+             hx-target="#page-content"
+             hx-swap="outerHTML"
+             hx-push-url="true">
+            {% trans "30d" %}
+          </a>
+          <a href="?days=90"
+             class="join-item btn btn-sm {% if days == 90 %}btn-primary{% else %}btn-ghost{% endif %}"
+             hx-get="?days=90"
+             hx-target="#page-content"
+             hx-swap="outerHTML"
+             hx-push-url="true">
+            {% trans "90d" %}
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Page Content (for HTMX partial replacement) -->
+  {% block analytics_content %}
+  {% endblock %}
+</div>
+{% endblock %}
+
+{% block page_js %}
+{% vite_asset 'assets/javascript/app.js' %}
+{% endblock %}
