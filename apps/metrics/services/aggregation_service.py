@@ -150,11 +150,88 @@ def compute_member_weekly_metrics(team, member: TeamMember, week_start: date, we
     }
 
 
+def _batch_fetch_pr_metrics(team, member_ids: list[int], start_datetime, end_datetime) -> dict:
+    """Batch fetch PR metrics for all members in a single query."""
+    pr_aggregates = (
+        PullRequest.objects.filter(
+            team=team,
+            author_id__in=member_ids,
+            state="merged",
+            merged_at__gte=start_datetime,
+            merged_at__lte=end_datetime,
+        )
+        .values("author_id")
+        .annotate(
+            prs_merged=Count("id"),
+            avg_cycle_time_hours=Avg("cycle_time_hours"),
+            avg_review_time_hours=Avg("review_time_hours"),
+            lines_added=Sum("additions"),
+            lines_removed=Sum("deletions"),
+            revert_count=Count("id", filter=Q(is_revert=True)),
+            hotfix_count=Count("id", filter=Q(is_hotfix=True)),
+        )
+    )
+    return {row["author_id"]: row for row in pr_aggregates}
+
+
+def _batch_fetch_commit_counts(team, member_ids: list[int], start_datetime, end_datetime) -> dict:
+    """Batch fetch commit counts for all members in a single query."""
+    commit_counts = (
+        Commit.objects.filter(
+            team=team,
+            author_id__in=member_ids,
+            committed_at__gte=start_datetime,
+            committed_at__lte=end_datetime,
+        )
+        .values("author_id")
+        .annotate(count=Count("id"))
+    )
+    return {row["author_id"]: row["count"] for row in commit_counts}
+
+
+def _batch_fetch_survey_metrics(team, member_ids: list[int], start_datetime, end_datetime) -> dict:
+    """Batch fetch survey metrics (AI assisted, completed) for all members in a single query."""
+    survey_aggregates = (
+        PRSurvey.objects.filter(
+            team=team,
+            author_id__in=member_ids,
+            pull_request__merged_at__gte=start_datetime,
+            pull_request__merged_at__lte=end_datetime,
+        )
+        .values("author_id")
+        .annotate(
+            ai_assisted_prs=Count("id", filter=Q(author_ai_assisted=True)),
+            surveys_completed=Count("id", filter=Q(author_responded_at__isnull=False)),
+        )
+    )
+    return {row["author_id"]: row for row in survey_aggregates}
+
+
+def _batch_fetch_review_metrics(team, member_ids: list[int], start_datetime, end_datetime) -> dict:
+    """Batch fetch review metrics (quality rating, guess accuracy) for all members in a single query."""
+    review_aggregates = (
+        PRSurveyReview.objects.filter(
+            team=team,
+            survey__author_id__in=member_ids,
+            survey__pull_request__merged_at__gte=start_datetime,
+            survey__pull_request__merged_at__lte=end_datetime,
+        )
+        .values("survey__author_id")
+        .annotate(
+            avg_quality_rating=Avg("quality_rating"),
+            total_guesses=Count("id", filter=Q(ai_guess__isnull=False)),
+            correct_guesses=Count("id", filter=Q(guess_correct=True)),
+        )
+    )
+    return {row["survey__author_id"]: row for row in review_aggregates}
+
+
 def aggregate_team_weekly_metrics(team, week_start: date) -> list[WeeklyMetrics]:
     """
     Aggregate weekly metrics for all active team members.
 
     Creates or updates WeeklyMetrics records for each active member.
+    Optimized to use batch queries instead of N+1 per-member queries.
 
     Args:
         team: The team to aggregate metrics for
@@ -164,16 +241,53 @@ def aggregate_team_weekly_metrics(team, week_start: date) -> list[WeeklyMetrics]
         List of created/updated WeeklyMetrics records
     """
     week_start, week_end = get_week_boundaries(week_start)
+    start_datetime, end_datetime = _get_week_datetime_range(week_start, week_end)
 
     # Get all active team members
-    active_members = TeamMember.objects.filter(team=team, is_active=True)
+    active_members = list(TeamMember.objects.filter(team=team, is_active=True))
+    if not active_members:
+        return []
+
+    member_ids = [m.id for m in active_members]
+
+    # Batch fetch all metrics in 4 queries (instead of 5 queries per member)
+    pr_metrics = _batch_fetch_pr_metrics(team, member_ids, start_datetime, end_datetime)
+    commit_counts = _batch_fetch_commit_counts(team, member_ids, start_datetime, end_datetime)
+    survey_metrics = _batch_fetch_survey_metrics(team, member_ids, start_datetime, end_datetime)
+    review_metrics = _batch_fetch_review_metrics(team, member_ids, start_datetime, end_datetime)
 
     results = []
     for member in active_members:
-        # Compute metrics for this member
-        metrics = compute_member_weekly_metrics(team, member, week_start, week_end)
+        # Get metrics from batch-fetched data (O(1) dict lookups)
+        pr_data = pr_metrics.get(member.id, {})
+        commit_count = commit_counts.get(member.id, 0)
+        survey_data = survey_metrics.get(member.id, {})
+        review_data = review_metrics.get(member.id, {})
 
-        # Create or update WeeklyMetrics record (defaults maps directly to computed metrics)
+        # Calculate guess accuracy percentage
+        guess_accuracy = None
+        total_guesses = review_data.get("total_guesses", 0)
+        if total_guesses and total_guesses > 0:
+            correct_guesses = review_data.get("correct_guesses", 0)
+            guess_accuracy = Decimal((correct_guesses / total_guesses) * 100).quantize(Decimal("0.01"))
+
+        # Build metrics dict
+        metrics = {
+            "prs_merged": pr_data.get("prs_merged", 0) or 0,
+            "avg_cycle_time_hours": pr_data.get("avg_cycle_time_hours"),
+            "avg_review_time_hours": pr_data.get("avg_review_time_hours"),
+            "commits_count": commit_count,
+            "lines_added": pr_data.get("lines_added", 0) or 0,
+            "lines_removed": pr_data.get("lines_removed", 0) or 0,
+            "revert_count": pr_data.get("revert_count", 0) or 0,
+            "hotfix_count": pr_data.get("hotfix_count", 0) or 0,
+            "ai_assisted_prs": survey_data.get("ai_assisted_prs", 0) or 0,
+            "avg_quality_rating": review_data.get("avg_quality_rating"),
+            "surveys_completed": survey_data.get("surveys_completed", 0) or 0,
+            "guess_accuracy": guess_accuracy,
+        }
+
+        # Create or update WeeklyMetrics record
         weekly_metric, created = WeeklyMetrics.objects.update_or_create(
             team=team,
             member=member,

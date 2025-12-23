@@ -8,6 +8,7 @@ import statistics
 from datetime import date
 from decimal import Decimal
 
+from django.core.cache import cache
 from django.db.models import Avg, Case, CharField, Count, Q, QuerySet, Sum, Value, When
 from django.db.models.functions import TruncWeek
 
@@ -20,9 +21,11 @@ from apps.metrics.models import (
     PRSurvey,
     PRSurveyReview,
     PullRequest,
-    TeamMember,
 )
 from apps.teams.models import Team
+
+# Cache TTL for dashboard metrics (5 minutes)
+DASHBOARD_CACHE_TTL = 300
 
 # PR Size Categories
 # Categories based on total lines changed (additions + deletions)
@@ -124,8 +127,15 @@ def _avatar_url_from_github_id(github_id: str | None) -> str:
     return ""
 
 
+def _get_key_metrics_cache_key(team_id: int, start_date: date, end_date: date) -> str:
+    """Generate cache key for key metrics."""
+    return f"key_metrics:{team_id}:{start_date}:{end_date}"
+
+
 def get_key_metrics(team: Team, start_date: date, end_date: date) -> dict:
     """Get key metrics for a team within a date range.
+
+    Results are cached for 5 minutes to improve dashboard performance.
 
     Args:
         team: Team instance
@@ -139,6 +149,13 @@ def get_key_metrics(team: Team, start_date: date, end_date: date) -> dict:
             - avg_quality_rating (Decimal or None): Average quality rating
             - ai_assisted_pct (Decimal): Percentage of AI-assisted PRs (0.00 to 100.00)
     """
+    # Check cache first
+    cache_key = _get_key_metrics_cache_key(team.id, start_date, end_date)
+    cached_result = cache.get(cache_key)
+    if cached_result is not None:
+        return cached_result
+
+    # Compute metrics
     prs = _get_merged_prs_in_range(team, start_date, end_date)
 
     prs_merged = prs.count()
@@ -154,12 +171,17 @@ def get_key_metrics(team: Team, start_date: date, end_date: date) -> dict:
     surveys = PRSurvey.objects.filter(pull_request__in=prs)
     ai_assisted_pct = _calculate_ai_percentage(surveys)
 
-    return {
+    result = {
         "prs_merged": prs_merged,
         "avg_cycle_time": avg_cycle_time,
         "avg_quality_rating": avg_quality_rating,
         "ai_assisted_pct": ai_assisted_pct,
     }
+
+    # Cache for 5 minutes
+    cache.set(cache_key, result, DASHBOARD_CACHE_TTL)
+
+    return result
 
 
 def get_ai_adoption_trend(team: Team, start_date: date, end_date: date) -> list[dict]:
@@ -306,31 +328,65 @@ def get_team_breakdown(team: Team, start_date: date, end_date: date) -> list[dic
     """
     prs = _get_merged_prs_in_range(team, start_date, end_date)
 
-    # Get unique authors
-    member_ids = prs.values_list("author_id", flat=True).distinct()
-    members = TeamMember.objects.filter(id__in=member_ids)
+    # Single aggregated query for PR metrics per author (replaces N+1 loop)
+    pr_aggregates = list(
+        prs.exclude(author__isnull=True)
+        .values(
+            "author__id",
+            "author__display_name",
+            "author__github_id",
+        )
+        .annotate(
+            prs_merged=Count("id"),
+            avg_cycle_time=Avg("cycle_time_hours"),
+        )
+        .order_by("author__display_name")
+    )
 
+    # Get all author IDs for batch survey lookup
+    author_ids = [row["author__id"] for row in pr_aggregates]
+
+    # Single aggregated query for AI percentages per author (replaces N+1 loop)
+    survey_aggregates = (
+        PRSurvey.objects.filter(
+            team=team,
+            pull_request__in=prs,
+            pull_request__author_id__in=author_ids,
+        )
+        .values("pull_request__author_id")
+        .annotate(
+            total_surveys=Count("id"),
+            ai_assisted_count=Count("id", filter=Q(author_ai_assisted=True)),
+        )
+    )
+
+    # Build lookup dict for AI percentages
+    ai_pct_by_author = {}
+    for row in survey_aggregates:
+        author_id = row["pull_request__author_id"]
+        total = row["total_surveys"]
+        ai_count = row["ai_assisted_count"]
+        ai_pct_by_author[author_id] = round(ai_count * 100.0 / total, 2) if total > 0 else 0.0
+
+    # Build result list from aggregated data
     result = []
-    for member in members:
-        # Get PRs for this member
-        member_prs = prs.filter(author=member)
-        prs_merged = member_prs.count()
+    for row in pr_aggregates:
+        author_id = row["author__id"]
+        display_name = row["author__display_name"]
+        github_id = row["author__github_id"]
 
-        # Calculate average cycle time
-        avg_cycle_time = member_prs.aggregate(avg=Avg("cycle_time_hours"))["avg"]
-
-        # Calculate AI percentage
-        member_surveys = PRSurvey.objects.filter(pull_request__in=member_prs)
-        ai_pct = float(_calculate_ai_percentage(member_surveys))
+        # Compute avatar_url and initials from aggregated data
+        avatar_url = f"https://avatars.githubusercontent.com/u/{github_id}?s=80" if github_id else ""
+        initials = _compute_initials(display_name) if display_name else "??"
 
         result.append(
             {
-                "member_name": member.display_name,
-                "avatar_url": member.avatar_url,
-                "initials": member.initials,
-                "prs_merged": prs_merged,
-                "avg_cycle_time": avg_cycle_time if avg_cycle_time else Decimal("0.00"),
-                "ai_pct": ai_pct,
+                "member_name": display_name,
+                "avatar_url": avatar_url,
+                "initials": initials,
+                "prs_merged": row["prs_merged"],
+                "avg_cycle_time": row["avg_cycle_time"] if row["avg_cycle_time"] else Decimal("0.00"),
+                "ai_pct": ai_pct_by_author.get(author_id, 0.0),
             }
         )
 

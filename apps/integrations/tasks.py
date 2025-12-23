@@ -956,6 +956,20 @@ def sync_copilot_metrics_task(self, team_id: int) -> dict:
 
         metrics_synced = 0
 
+        # Batch fetch all TeamMembers for per-user data (fix N+1 query)
+        all_usernames = set()
+        for day_data in parsed_metrics:
+            if "per_user_data" in day_data:
+                for user_data in day_data["per_user_data"]:
+                    username = user_data.get("github_username")
+                    if username:
+                        all_usernames.add(username)
+
+        # Single query to fetch all team members by username
+        members_by_username = {
+            m.github_username: m for m in TeamMember.objects.filter(team=team, github_username__in=all_usernames)
+        }
+
         # Process each day's metrics
         for day_data in parsed_metrics:
             # Check if there's per-user data
@@ -966,10 +980,9 @@ def sync_copilot_metrics_task(self, team_id: int) -> dict:
                     if not github_username:
                         continue
 
-                    # Find matching TeamMember
-                    try:
-                        member = TeamMember.objects.get(team=team, github_username=github_username)
-                    except TeamMember.DoesNotExist:
+                    # Find matching TeamMember from pre-fetched dict (O(1) lookup)
+                    member = members_by_username.get(github_username)
+                    if not member:
                         logger.warning(
                             f"No TeamMember found with github_username={github_username} for team {team.name}"
                         )

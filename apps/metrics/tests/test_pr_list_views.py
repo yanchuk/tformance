@@ -282,3 +282,22 @@ class TestPrListExportView(TestCase):
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, 302)
+
+    def test_export_query_count_is_constant(self):
+        """Test that export uses select_related to avoid N+1 on author access."""
+        # Create 10 PRs with authors
+        for i in range(10):
+            member = TeamMemberFactory(team=self.team, display_name=f"Author{i}")
+            PullRequestFactory(team=self.team, author=member, title=f"PR {i}")
+
+        url = reverse("metrics:pr_list_export")
+
+        # Get the response and consume streaming content to trigger queries
+        # Expected: 8 queries (session, user, team, membership, session update, PR query)
+        # The PR query uses select_related for author - so NO N+1 (would be 18 with N+1)
+        with self.assertNumQueries(8):
+            response = self.client.get(url)
+            # Must consume streaming content to trigger actual DB queries
+            _ = b"".join(response.streaming_content)
+
+        self.assertEqual(response.status_code, 200)

@@ -7,7 +7,8 @@ into dashboard-friendly formats.
 from datetime import date
 from decimal import Decimal
 
-from django.test import TestCase
+from django.core.cache import cache
+from django.test import TestCase, override_settings
 from django.utils import timezone
 
 from apps.metrics.factories import (
@@ -168,3 +169,111 @@ class TestGetKeyMetrics(TestCase):
         result = dashboard_service.get_key_metrics(self.team, self.start_date, self.end_date)
 
         self.assertEqual(result["prs_merged"], 1)
+
+
+@override_settings(CACHES={"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}})
+class TestGetKeyMetricsCache(TestCase):
+    """Tests for get_key_metrics caching behavior."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.team = TeamFactory()
+        self.member = TeamMemberFactory(team=self.team)
+        self.start_date = date(2024, 1, 1)
+        self.end_date = date(2024, 1, 31)
+        # Clear cache before each test
+        cache.clear()
+
+    def tearDown(self):
+        """Clean up after tests."""
+        cache.clear()
+
+    def test_get_key_metrics_caches_result(self):
+        """Test that get_key_metrics caches the result."""
+        PullRequestFactory(
+            team=self.team,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 15, 12, 0)),
+        )
+
+        # First call - should compute and cache
+        result1 = dashboard_service.get_key_metrics(self.team, self.start_date, self.end_date)
+
+        # Verify cache is populated
+        cache_key = dashboard_service._get_key_metrics_cache_key(self.team.id, self.start_date, self.end_date)
+        cached_value = cache.get(cache_key)
+        self.assertIsNotNone(cached_value)
+        self.assertEqual(cached_value["prs_merged"], 1)
+
+        # Second call should return same result
+        result2 = dashboard_service.get_key_metrics(self.team, self.start_date, self.end_date)
+        self.assertEqual(result1, result2)
+
+    def test_get_key_metrics_cache_hit_uses_no_queries(self):
+        """Test that cache hit returns result without database queries."""
+        PullRequestFactory(
+            team=self.team,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 15, 12, 0)),
+        )
+
+        # First call - populates cache
+        dashboard_service.get_key_metrics(self.team, self.start_date, self.end_date)
+
+        # Second call - should hit cache with 0 queries
+        with self.assertNumQueries(0):
+            result = dashboard_service.get_key_metrics(self.team, self.start_date, self.end_date)
+
+        self.assertEqual(result["prs_merged"], 1)
+
+    def test_get_key_metrics_different_teams_have_separate_cache(self):
+        """Test that different teams have separate cache entries."""
+        team2 = TeamFactory()
+
+        PullRequestFactory(
+            team=self.team,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 15, 12, 0)),
+        )
+        PullRequestFactory(
+            team=team2,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 15, 12, 0)),
+        )
+        PullRequestFactory(
+            team=team2,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 16, 12, 0)),
+        )
+
+        result1 = dashboard_service.get_key_metrics(self.team, self.start_date, self.end_date)
+        result2 = dashboard_service.get_key_metrics(team2, self.start_date, self.end_date)
+
+        self.assertEqual(result1["prs_merged"], 1)
+        self.assertEqual(result2["prs_merged"], 2)
+
+    def test_get_key_metrics_different_dates_have_separate_cache(self):
+        """Test that different date ranges have separate cache entries."""
+        # PRs in January
+        PullRequestFactory(
+            team=self.team,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 15, 12, 0)),
+        )
+        # PRs in February
+        PullRequestFactory(
+            team=self.team,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 2, 15, 12, 0)),
+        )
+        PullRequestFactory(
+            team=self.team,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 2, 16, 12, 0)),
+        )
+
+        result_jan = dashboard_service.get_key_metrics(self.team, date(2024, 1, 1), date(2024, 1, 31))
+        result_feb = dashboard_service.get_key_metrics(self.team, date(2024, 2, 1), date(2024, 2, 29))
+
+        self.assertEqual(result_jan["prs_merged"], 1)
+        self.assertEqual(result_feb["prs_merged"], 2)

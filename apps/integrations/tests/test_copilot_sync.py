@@ -364,3 +364,75 @@ class TestSyncAllCopilotMetrics(TestCase):
         self.assertIsInstance(result, dict)
         self.assertIn("teams_dispatched", result)
         self.assertEqual(result["teams_dispatched"], 2)
+
+
+class TestSyncCopilotMetricsQueryCount(TestCase):
+    """Tests for query count optimization in sync_copilot_metrics_task."""
+
+    def setUp(self):
+        """Set up test fixtures using factories."""
+        self.team = TeamFactory()
+        self.credential = IntegrationCredentialFactory(
+            team=self.team,
+            provider="github",
+            access_token="gho_test_token_12345",
+        )
+        self.integration = GitHubIntegrationFactory(
+            team=self.team,
+            credential=self.credential,
+            organization_slug="test-org",
+        )
+        # Create 10 team members with GitHub usernames
+        self.members = []
+        for i in range(10):
+            member = TeamMemberFactory(
+                team=self.team,
+                github_username=f"user{i}",
+                display_name=f"User {i}",
+            )
+            self.members.append(member)
+
+    @patch("apps.integrations.tasks.map_copilot_to_ai_usage")
+    @patch("apps.integrations.tasks.parse_metrics_response")
+    @patch("apps.integrations.tasks.fetch_copilot_metrics")
+    def test_sync_copilot_metrics_query_count_is_constant(self, mock_fetch, mock_parse, mock_map):
+        """Test that TeamMember lookups use batch query (no N+1)."""
+        from apps.integrations.tasks import sync_copilot_metrics_task
+
+        # Arrange - Mock API response with 10 users
+        per_user_data = [
+            {
+                "github_username": f"user{i}",
+                "code_completions_total": 1000,
+                "code_completions_accepted": 600,
+            }
+            for i in range(10)
+        ]
+
+        mock_fetch.return_value = [{"date": "2025-12-17", "per_user_data": per_user_data}]
+        mock_parse.return_value = [{"date": "2025-12-17", "per_user_data": per_user_data}]
+
+        def map_side_effect(parsed_data, github_username=None):
+            return {
+                "date": "2025-12-17",
+                "source": "copilot",
+                "suggestions_shown": 1000,
+                "suggestions_accepted": 600,
+                "acceptance_rate": 60.0,
+            }
+
+        mock_map.side_effect = map_side_effect
+
+        # Act & Assert - Should use constant queries (not N+1)
+        # Expected breakdown:
+        # - Team lookup (1)
+        # - GitHub Integration lookup (1) + credential access (1)
+        # - Batch TeamMember lookup (1) - KEY: was N queries, now 1
+        # - 10 update_or_create operations (6 queries each due to savepoints)
+        # Total: ~64 queries
+        # Without fix: would be ~73 queries (10 extra member lookups)
+        # With fix: ~64 queries (member lookups batched into 1 query)
+        with self.assertNumQueries(64):
+            result = sync_copilot_metrics_task(self.team.id)
+
+        self.assertEqual(result["metrics_synced"], 10)

@@ -156,3 +156,22 @@ class TestGetTeamBreakdown(TestCase):
         names = [m["member_name"] for m in result]
         self.assertIn("Active", names)
         self.assertNotIn("Inactive", names)
+
+    def test_get_team_breakdown_query_count_is_constant(self):
+        """Test that query count is constant regardless of team size (no N+1)."""
+        # Create 10 members with PRs
+        for i in range(10):
+            member = TeamMemberFactory(team=self.team, display_name=f"Member{i}")
+            PullRequestFactory(
+                team=self.team,
+                author=member,
+                state="merged",
+                merged_at=timezone.make_aware(timezone.datetime(2024, 1, 10 + i, 12, 0)),
+            )
+
+        # Should use constant number of queries (not N+1)
+        # Expected: 2 queries (PR aggregates with JOIN, surveys aggregate)
+        with self.assertNumQueries(2):
+            result = dashboard_service.get_team_breakdown(self.team, self.start_date, self.end_date)
+
+        self.assertEqual(len(result), 10)

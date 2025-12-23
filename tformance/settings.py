@@ -522,8 +522,11 @@ REDIS_CACHE = {
     "BACKEND": "django.core.cache.backends.redis.RedisCache",
     "LOCATION": REDIS_URL,
 }
+# Allow enabling Redis cache in development for performance testing
+# Set USE_REDIS_CACHE=true in .env to enable caching in DEBUG mode
+USE_REDIS_CACHE = env.bool("USE_REDIS_CACHE", default=False)
 CACHES = {
-    "default": DUMMY_CACHE if DEBUG else REDIS_CACHE,
+    "default": REDIS_CACHE if (USE_REDIS_CACHE or not DEBUG) else DUMMY_CACHE,
 }
 
 CELERY_BROKER_URL = CELERY_RESULT_BACKEND = REDIS_URL

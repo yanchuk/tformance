@@ -368,3 +368,33 @@ class TestAggregateTeamWeeklyMetrics(TestCase):
         # Then no records should be created
         self.assertEqual(len(results), 0)
         self.assertEqual(WeeklyMetrics.for_team.count(), 0)
+
+    def test_aggregate_team_weekly_metrics_query_count_is_constant(self):
+        """Test that query count is constant regardless of team size (no N+1)."""
+        # Given 10 active team members with data
+        members = []
+        for i in range(10):
+            member = TeamMemberFactory(team=self.team, is_active=True, display_name=f"Member{i}")
+            members.append(member)
+            # Create a PR for each member
+            PullRequestFactory(
+                team=self.team,
+                author=member,
+                state="merged",
+                merged_at=timezone.make_aware(datetime(2025, 12, 16, 10 + i, 0)),
+            )
+
+        # Expected query breakdown for optimized implementation:
+        # 1. Active members lookup (1)
+        # 2. PR aggregates grouped by member (1)
+        # 3. Commits count grouped by member (1)
+        # 4. Survey aggregates grouped by member (1)
+        # 5. Review aggregates grouped by member (1)
+        # 6-15. update_or_create for 10 members (6 queries each due to savepoints = 60)
+        # Total: ~65 queries (constant, not 10 * 5-6 = 50-60 for data alone)
+        #
+        # Without fix: would be ~110 queries (5 data queries per member + 60 update_or_create)
+        with self.assertNumQueries(65):
+            results = aggregate_team_weekly_metrics(self.team, self.week_start)
+
+        self.assertEqual(len(results), 10)

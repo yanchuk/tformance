@@ -91,6 +91,11 @@ class TeamMember(BaseTeamModel):
                 name="unique_team_email",
             ),
         ]
+        indexes = [
+            # Composite indexes for sync operations (added for performance)
+            models.Index(fields=["team", "github_username"], name="member_team_gh_username_idx"),
+            models.Index(fields=["team", "is_active"], name="member_team_active_idx"),
+        ]
 
     def __str__(self):
         return self.display_name

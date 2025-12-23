@@ -191,6 +191,10 @@ class PullRequest(BaseTeamModel):
             models.Index(fields=["author", "state"], name="pr_author_state_idx"),
             models.Index(fields=["merged_at"], name="pr_merged_at_idx"),
             models.Index(fields=["pr_created_at"], name="pr_created_at_idx"),
+            # Composite indexes for dashboard queries (added for performance)
+            models.Index(fields=["team", "state", "merged_at"], name="pr_team_state_merged_idx"),
+            models.Index(fields=["team", "author", "merged_at"], name="pr_team_author_merged_idx"),
+            models.Index(fields=["team", "pr_created_at"], name="pr_team_created_idx"),
         ]
 
     def __str__(self):
