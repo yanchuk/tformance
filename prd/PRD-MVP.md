@@ -17,6 +17,7 @@
 | [SLACK-BOT.md](SLACK-BOT.md) | Slack bot specification, message templates |
 | [DASHBOARDS.md](DASHBOARDS.md) | Dashboard views (Chart.js) |
 | [ONBOARDING.md](ONBOARDING.md) | User onboarding flow |
+| [COMPETITOR-RESEARCH.md](COMPETITOR-RESEARCH.md) | Market intelligence, competitor analysis (Dec 2025) |
 
 ---
 
@@ -242,13 +243,31 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for full technical details.
 
 ## 13. Competitor Comparison
 
-| Feature | Our MVP | Jellyfish | LinearB | Swarmia |
-|---------|---------|-----------|---------|---------|
-| AI usage correlation | ✅ Core | ❌ | ❌ | ❌ |
-| PR quality surveys | ✅ Gamified | ❌ | ❌ | ❌ |
-| GitHub-first onboarding | ✅ | ❌ | ❌ | ❌ |
-| GitHub/Jira metrics | ✅ | ✅ | ✅ | ✅ |
-| Price | $10-25/seat | $50+/seat | $30-50/seat | $20-40/seat |
+> **Note:** See [COMPETITOR-RESEARCH.md](COMPETITOR-RESEARCH.md) for comprehensive analysis of 7 competitors.
+
+### Market Evolution (Dec 2025)
+All major competitors have now added AI measurement features. Our differentiation has shifted:
+
+| Feature | Our MVP | Jellyfish | LinearB | Swarmia | Span | Workweave |
+|---------|---------|-----------|---------|---------|------|-----------|
+| AI usage correlation | ✅ Core | ✅ New | ✅ New | ✅ New | ✅ Core | ✅ Core |
+| **Gamified surveys** | ✅ Unique | ❌ | ❌ | ❌ | ❌ | ❌ |
+| AI code detection | Survey | Yes | Partial | Partial | 95% ML | 94% ML |
+| GitHub-first onboarding | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| GitHub/Jira metrics | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Free tier | Trial | ❌ | 8 users | 9 devs | ❌ | 5 devs |
+| Price/seat | **$10-25** | ~$50+ | $35-46 | €22-42 | Custom | $50 |
+
+### Updated Differentiation Strategy
+
+1. **Gamified "AI Detective" game** - Only platform making data collection fun
+2. **Price accessibility** - 50-70% cheaper than all competitors
+3. **SMB focus** - 10-50 dev teams (competitors chasing enterprise)
+
+### Emerging Threats
+- **Span**: 95% AI code detection accuracy (technical approach vs our survey approach)
+- **Swarmia**: Similar free tier strategy, strong G2 reviews (4.4/5)
+- **Workweave**: $4.2M funding, aggressive AI positioning
 
 ---
 
@@ -258,6 +277,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for full technical details.
 - Gemini Market Research: SEI Market Analysis
 - ChatGPT Research: Engineering Performance Management SaaS
 - GitHub Copilot API Documentation
+- Competitor Research (Dec 2025) - See [COMPETITOR-RESEARCH.md](COMPETITOR-RESEARCH.md)
 
 ---
 
