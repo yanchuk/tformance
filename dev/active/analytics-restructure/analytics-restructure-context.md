@@ -1,8 +1,7 @@
 # Analytics Restructure - Context
 
-**Last Updated:** 2025-12-23 (Session 2 - Final)
-**Current Phase:** Phase 1 COMPLETE ✅, Ready for Phase 2
-**Last Commit:** `908cc28` - "Add Pull Requests data explorer page"
+**Last Updated:** 2025-12-23 (Session 3)
+**Current Phase:** Phase 2 COMPLETE ✅, Ready for Phase 3
 **Branch:** `github-graphql-api`
 
 ---
@@ -14,7 +13,7 @@
 **What was built:**
 1. **Service Layer** - `apps/metrics/services/pr_list_service.py`
    - `get_prs_queryset(team, filters)` - Full filtering with 10 filter options
-   - `get_pr_stats(queryset)` - Aggregate statistics (count, avg cycle/review time, additions/deletions, AI count)
+   - `get_pr_stats(queryset)` - Aggregate statistics
    - `get_filter_options(team)` - Dynamic dropdown values
    - PR_SIZE_BUCKETS constant
 
@@ -22,207 +21,124 @@
    - `pr_list()` - Main page with filters, stats, paginated table
    - `pr_list_table()` - HTMX partial for table updates
    - `pr_list_export()` - CSV streaming export
-   - Helper functions: `_get_pr_list_context()`, `_get_filters_from_request()`
 
 3. **Templates**
-   - `templates/metrics/pull_requests/list.html` - Full page with DaisyUI components
+   - `templates/metrics/pull_requests/list.html` - Full page
    - `templates/metrics/pull_requests/partials/table.html` - Table with pagination
 
-4. **URLs** - Added to `apps/metrics/urls.py`:
-   - `/pull-requests/` → `pr_list`
-   - `/pull-requests/table/` → `pr_list_table`
-   - `/pull-requests/export/` → `pr_list_export`
+4. **URLs**: `/pull-requests/`, `/pull-requests/table/`, `/pull-requests/export/`
 
-5. **Model Enhancement**
-   - Added `github_url` property to PullRequest model (`apps/metrics/models/github.py:200-203`)
+**Test Coverage:** 55 tests (36 service + 19 view)
 
-6. **Template Tags**
-   - Created `apps/metrics/templatetags/pr_list_tags.py` - pagination URL helper (from refactoring)
+### Phase 2: Analytics Overview Page - COMPLETE ✅
 
-**Test Coverage:**
-- 36 service tests in `apps/metrics/tests/test_pr_list_service.py`
-- 19 view tests in `apps/metrics/tests/test_pr_list_views.py`
-- All 55 tests passing
+**What was built:**
+1. **Views** - `apps/metrics/views/analytics_views.py`
+   - `analytics_overview()` - Team health dashboard (admin-only)
+   - `_get_analytics_context()` - Shared context helper
+
+2. **Templates**
+   - `templates/metrics/analytics/base_analytics.html` - Base with tab navigation
+   - `templates/metrics/analytics/overview.html` - Health overview page
+
+3. **URLs**: `/analytics/` → `analytics_overview`
+
+4. **Navigation Enhancement**
+   - Added quick nav buttons to `cto_overview.html` for discoverability
+
+**Test Coverage:** 14 tests in `apps/metrics/tests/test_analytics_views.py`
+
+**Features:**
+- Tab navigation: Overview ↔ Pull Requests
+- Date range filter (7d/30d/90d)
+- Insights panel with AI insights
+- Key metrics cards (HTMX loaded)
+- Charts: AI Adoption, Cycle Time, Quality by AI, PR Size
+- Quick links: All PRs, AI-Assisted PRs, Full Dashboard
 
 ---
 
 ## Key Files Reference
 
-### Created This Session
+### Phase 2 Files Created
 
 | File | Purpose | Tests |
 |------|---------|-------|
-| `apps/metrics/services/pr_list_service.py` | PR filtering, stats, options | 36 |
-| `apps/metrics/views/pr_list_views.py` | List, table partial, CSV export | 19 |
-| `apps/metrics/tests/test_pr_list_service.py` | Service unit tests | - |
-| `apps/metrics/tests/test_pr_list_views.py` | View integration tests | - |
-| `templates/metrics/pull_requests/list.html` | Main PR list page | - |
-| `templates/metrics/pull_requests/partials/table.html` | HTMX table partial | - |
-| `apps/metrics/templatetags/pr_list_tags.py` | Pagination URL helper | - |
+| `apps/metrics/views/analytics_views.py` | Overview view, context helper | 14 |
+| `apps/metrics/tests/test_analytics_views.py` | View tests | - |
+| `templates/metrics/analytics/base_analytics.html` | Base template with tabs | - |
+| `templates/metrics/analytics/overview.html` | Health overview page | - |
 
-### Modified This Session
+### Phase 2 Files Modified
 
 | File | Change |
 |------|--------|
-| `apps/metrics/urls.py` | Added 3 URL patterns (lines 51-53) |
-| `apps/metrics/views/__init__.py` | Added pr_list exports (line 33) |
-| `apps/metrics/models/github.py` | Added `github_url` property (lines 200-203) |
-
-### Existing Files (unchanged, for reference)
-
-| File | Purpose | Lines |
-|------|---------|-------|
-| `templates/metrics/cto_overview.html` | Main analytics page (monolithic) | 507 |
-| `apps/metrics/views/dashboard_views.py` | Dashboard page views | 79 |
-| `apps/metrics/views/chart_views.py` | HTMX chart endpoints | 447 |
-| `apps/metrics/services/dashboard_service.py` | Data aggregation logic | ~800 |
+| `apps/metrics/urls.py` | Added `/analytics/` URL pattern |
+| `apps/metrics/views/__init__.py` | Added `analytics_overview` export |
+| `templates/metrics/cto_overview.html` | Added nav buttons to new pages |
 
 ---
 
-## Key Decisions Made This Session
+## Key Decisions
 
-### D8: for_team Manager Not Used
-**Decision:** Use `PullRequest.objects.filter(team=team)` instead of `for_team` manager
-**Rationale:** The `for_team` manager requires global team context (`set_current_team()`) which isn't set in views. Direct filtering is simpler.
-**Impact:** Added `# noqa: TEAM001` comment to suppress linting
+### D12: Tab Navigation in Base Template
+**Decision:** Put tab navigation in `base_analytics.html` rather than individual pages
+**Rationale:** DRY - all analytics pages need the same tabs
+**Impact:** Each page extends `base_analytics.html` and fills `analytics_content` block
 
-### D9: F() Expressions for Size Filtering
-**Decision:** Use Django F() expressions instead of deprecated `.extra()` for size bucket filtering
-**Rationale:** `.extra()` is deprecated in Django 4.x
-**Code Pattern:**
-```python
-qs = qs.annotate(total_lines=F("additions") + F("deletions"))
-qs = qs.filter(total_lines__gte=min_lines)
-```
+### D13: Reuse Existing HTMX Partials
+**Decision:** Reuse existing chart partials (ai_adoption_chart, cycle_time_chart, etc.)
+**Rationale:** No need to duplicate chart logic - just call existing endpoints
+**Impact:** Overview page uses `hx-get` to load existing partials
 
-### D10: StreamingHttpResponse for CSV Export
-**Decision:** Use `StreamingHttpResponse` for CSV to handle large datasets efficiently
-**Rationale:** Avoids memory issues with 10,000+ PRs
-**Impact:** Tests must use `response.streaming_content` not `response.content`
-
-### D11: github_url as Model Property
-**Decision:** Add computed property to model instead of constructing URL in templates/views
-**Rationale:** DRY - URL construction in one place, used by template and CSV export
-**Code:** `return f"https://github.com/{self.github_repo}/pull/{self.github_pr_id}"`
+### D14: Admin-Only Analytics Overview
+**Decision:** Use `@team_admin_required` decorator (same as cto_overview)
+**Rationale:** Analytics pages show team-wide data, appropriate for admins
+**Impact:** Returns 404 for non-admin team members (consistent with existing behavior)
 
 ---
 
-## Technical Learnings
+## Navigation Flow
 
-### Test Setup Pattern
-```python
-# For team-scoped views, use this pattern:
-self.team = TeamFactory()
-self.user = UserFactory()
-self.team.members.add(self.user, through_defaults={"role": ROLE_ADMIN})
-self.member = TeamMemberFactory(team=self.team)
-self.client.force_login(self.user)
 ```
+Sidebar "Analytics"
+    └── dashboard_redirect
+        ├── (admin) → cto_overview
+        │               ├── [Health Overview] → analytics_overview
+        │               └── [Pull Requests] → pr_list
+        └── (member) → team_dashboard
 
-### URL Reverse Without team_slug
-```python
-# URLs in team_urlpatterns don't need team_slug kwarg
-url = reverse("metrics:pr_list")  # Correct
-# NOT: reverse("metrics:pr_list", kwargs={"team_slug": ...})
+New Analytics (via tabs):
+    analytics_overview ←→ pr_list
+         (Overview)        (Pull Requests)
 ```
-
-### Factories Available
-- `TeamFactory`, `UserFactory` (from `apps.integrations.factories`)
-- `TeamMemberFactory`, `PullRequestFactory`, `PRReviewFactory` (from `apps.metrics.factories`)
-
----
-
-## Models Reference
-
-### PullRequest Fields for Filtering
-```
-id, github_pr_id, github_repo, title, author_id,
-state, pr_created_at, merged_at, first_review_at,
-cycle_time_hours, review_time_hours, review_rounds,
-commits_after_first_review, total_comments,
-additions, deletions, is_revert, is_hotfix,
-is_ai_assisted, ai_tools_detected, jira_key
-```
-
-### PR Size Buckets (Implemented)
-```python
-PR_SIZE_BUCKETS = {
-    'XS': (0, 10),      # 0-10 lines
-    'S': (11, 50),      # 11-50 lines
-    'M': (51, 200),     # 51-200 lines
-    'L': (201, 500),    # 201-500 lines
-    'XL': (501, None),  # 500+ lines
-}
-```
-
-### Filter GET Params (Implemented)
-```
-?repo=owner/repo-name
-&author=uuid
-&reviewer=uuid
-&ai=yes|no|all
-&ai_tool=claude|copilot|cursor
-&size=XS|S|M|L|XL
-&state=open|merged|closed
-&has_jira=yes|no
-&date_from=2024-01-01
-&date_to=2024-12-31
-&page=1
-```
-
----
-
-## Dependencies (Phase 2+)
-
-### Internal Dependencies
-| Dependency | Required For | Status |
-|------------|--------------|--------|
-| `apps/metrics/services/dashboard_service.py` | All chart data | Exists |
-| `apps/teams/decorators.py` | `@login_and_team_required`, `@team_admin_required` | Exists |
-| `apps/metrics/view_utils.py` | `get_date_range_from_request()` | Exists |
-| Design system CSS | Color coding | Needs additions (Phase 4) |
-
-### New Files to Create (Phase 2+)
-
-| File | Type | Phase |
-|------|------|-------|
-| `apps/metrics/views/analytics_views.py` | View | Phase 2 |
-| `templates/metrics/analytics/base_analytics.html` | Template | Phase 2 |
-| `templates/metrics/analytics/overview.html` | Template | Phase 2 |
-| `templates/metrics/analytics/ai_adoption.html` | Template | Phase 3 |
-| `templates/metrics/analytics/delivery.html` | Template | Phase 4 |
-| `templates/metrics/analytics/quality.html` | Template | Phase 4 |
-| `templates/metrics/analytics/team.html` | Template | Phase 5 |
 
 ---
 
 ## Commands to Run on Restart
 
 ```bash
-# Verify tests pass
-.venv/bin/pytest apps/metrics/tests/test_pr_list_service.py apps/metrics/tests/test_pr_list_views.py -v
+# Verify Phase 2 tests pass
+.venv/bin/pytest apps/metrics/tests/test_analytics_views.py -v
 
 # Run full metrics test suite
 .venv/bin/pytest apps/metrics/tests/ -q
 
-# Start dev server to verify page works
+# Start dev server
 make dev
-# Then visit: http://localhost:8000/a/<team-slug>/metrics/pull-requests/
+# Visit: http://localhost:8000/app/metrics/analytics/
 ```
 
 ---
 
-## Next Steps (Phase 2: Overview Page)
+## Next Steps (Phase 3: AI Adoption Page)
 
-1. Create `apps/metrics/views/analytics_views.py` with `analytics_overview(request)` view
-2. Create `templates/metrics/analytics/base_analytics.html` with tab navigation
-3. Create `templates/metrics/analytics/overview.html` with key widgets:
-   - Key Metrics Cards (reuse existing partial)
-   - Insights Panel (reuse existing partial)
-   - PR Velocity Trend (weekly bar chart)
-   - Quick Links to other analytics pages
-4. Add URL patterns for all analytics pages
-5. Follow TDD workflow
+1. Add `analytics_ai_adoption()` view to `analytics_views.py`
+2. Create `templates/metrics/analytics/ai_adoption.html`
+3. Add new service function `get_ai_vs_non_ai_comparison(team, start, end)`
+4. Add URL pattern `/analytics/ai-adoption/`
+5. Update tabs in `base_analytics.html`
+6. Follow TDD workflow
 
 ---
 
@@ -230,6 +146,4 @@ make dev
 
 - `prd/DASHBOARDS.md` - Original dashboard spec
 - `prd/PRD-MVP.md` - ICP questions, pain points
-- `prd/DATA-MODEL.md` - Database schema
 - `CLAUDE.md` - Coding guidelines
-- `assets/styles/app/tailwind/design-system.css` - Design tokens
