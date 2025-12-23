@@ -400,7 +400,7 @@ def get_review_distribution(team: Team, start_date: date, end_date: date) -> lis
             responded_at__gte=start_date,
             responded_at__lte=end_date,
         )
-        .values("reviewer__display_name")
+        .values("reviewer__display_name", "reviewer__github_id")
         .annotate(count=Count("id"))
         .order_by("-count")
     )
@@ -408,6 +408,8 @@ def get_review_distribution(team: Team, start_date: date, end_date: date) -> lis
     return [
         {
             "reviewer_name": r["reviewer__display_name"],
+            "avatar_url": _avatar_url_from_github_id(r["reviewer__github_id"]),
+            "initials": _compute_initials(r["reviewer__display_name"]),
             "count": r["count"],
         }
         for r in reviews
@@ -884,7 +886,7 @@ def get_copilot_by_member(team: Team, start_date: date, end_date: date) -> list[
 
     # Group by member and calculate totals
     member_data = (
-        copilot_usage.values("member__display_name")
+        copilot_usage.values("member__display_name", "member__github_id")
         .annotate(
             suggestions=Sum("suggestions_shown"),
             accepted=Sum("suggestions_accepted"),
@@ -902,6 +904,8 @@ def get_copilot_by_member(team: Team, start_date: date, end_date: date) -> list[
         result.append(
             {
                 "member_name": entry["member__display_name"],
+                "avatar_url": _avatar_url_from_github_id(entry["member__github_id"]),
+                "initials": _compute_initials(entry["member__display_name"]),
                 "suggestions": suggestions,
                 "accepted": accepted,
                 "acceptance_rate": acceptance_rate,
