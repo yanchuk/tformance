@@ -1,0 +1,90 @@
+{% load i18n %}
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+  <!-- Author Response Times -->
+  <div>
+    <h3 class="text-sm font-medium text-base-content/80 mb-3">{% trans "Author Response Time" %}</h3>
+    <div class="stat bg-base-100 shadow rounded-lg p-3 mb-3">
+      <div class="stat-title text-xs">{% trans "Average" %}</div>
+      <div class="stat-value text-xl text-primary">
+        {% if metrics.author_avg_response_time %}{{ metrics.author_avg_response_time|floatformat:1 }}h{% else %}—{% endif %}
+      </div>
+      <div class="stat-desc text-xs">{% trans "From PR merge to response" %} ({{ metrics.total_author_responses }} {% trans "responses" %})</div>
+    </div>
+
+    <div class="space-y-2 text-sm">
+      <div class="flex items-center justify-between">
+        <span class="flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-primary"></span>
+          {% trans "GitHub" %}
+        </span>
+        <span class="font-mono">
+          {% if metrics.by_channel.author.github %}{{ metrics.by_channel.author.github|floatformat:1 }}h{% else %}—{% endif %}
+        </span>
+      </div>
+      <div class="flex items-center justify-between">
+        <span class="flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-secondary"></span>
+          {% trans "Slack" %}
+        </span>
+        <span class="font-mono">
+          {% if metrics.by_channel.author.slack %}{{ metrics.by_channel.author.slack|floatformat:1 }}h{% else %}—{% endif %}
+        </span>
+      </div>
+      <div class="flex items-center justify-between">
+        <span class="flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-accent"></span>
+          {% trans "Web" %}
+        </span>
+        <span class="font-mono">
+          {% if metrics.by_channel.author.web %}{{ metrics.by_channel.author.web|floatformat:1 }}h{% else %}—{% endif %}
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reviewer Response Times -->
+  <div>
+    <h3 class="text-sm font-medium text-base-content/80 mb-3">{% trans "Reviewer Response Time" %}</h3>
+    <div class="stat bg-base-100 shadow rounded-lg p-3 mb-3">
+      <div class="stat-title text-xs">{% trans "Average" %}</div>
+      <div class="stat-value text-xl text-secondary">
+        {% if metrics.reviewer_avg_response_time %}{{ metrics.reviewer_avg_response_time|floatformat:1 }}h{% else %}—{% endif %}
+      </div>
+      <div class="stat-desc text-xs">{% trans "From PR merge to response" %} ({{ metrics.total_reviewer_responses }} {% trans "responses" %})</div>
+    </div>
+
+    <div class="space-y-2 text-sm">
+      <div class="flex items-center justify-between">
+        <span class="flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-primary"></span>
+          {% trans "GitHub" %}
+        </span>
+        <span class="font-mono">
+          {% if metrics.by_channel.reviewer.github %}{{ metrics.by_channel.reviewer.github|floatformat:1 }}h{% else %}—{% endif %}
+        </span>
+      </div>
+      <div class="flex items-center justify-between">
+        <span class="flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-secondary"></span>
+          {% trans "Slack" %}
+        </span>
+        <span class="font-mono">
+          {% if metrics.by_channel.reviewer.slack %}{{ metrics.by_channel.reviewer.slack|floatformat:1 }}h{% else %}—{% endif %}
+        </span>
+      </div>
+      <div class="flex items-center justify-between">
+        <span class="flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-accent"></span>
+          {% trans "Web" %}
+        </span>
+        <span class="font-mono">
+          {% if metrics.by_channel.reviewer.web %}{{ metrics.by_channel.reviewer.web|floatformat:1 }}h{% else %}—{% endif %}
+        </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="mt-4 text-xs text-base-content/60">
+  {% trans "Response time measured from PR merge to survey completion. GitHub responses are typically fastest." %}
+</div>

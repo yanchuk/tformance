@@ -1183,3 +1183,287 @@ def get_ai_bot_review_stats(team: Team, start_date: date, end_date: date) -> dic
         "ai_review_pct": ai_review_pct,
         "by_bot": by_bot,
     }
+
+
+def _filter_by_date_range(
+    queryset: QuerySet, date_field: str, start_date: date = None, end_date: date = None
+) -> QuerySet:
+    """Filter queryset by date range if dates are provided.
+
+    Args:
+        queryset: Django QuerySet to filter
+        date_field: Name of the date field to filter on
+        start_date: Start date (inclusive), optional
+        end_date: End date (inclusive), optional
+
+    Returns:
+        Filtered QuerySet (unchanged if no dates provided)
+    """
+    if start_date and end_date:
+        return queryset.filter(**{f"{date_field}__gte": start_date, f"{date_field}__lte": end_date})
+    return queryset
+
+
+def _calculate_channel_percentages(stats: dict, channels: list[str]) -> dict:
+    """Calculate percentage distribution for response channels.
+
+    Args:
+        stats: Dict with channel counts (keys: channel names + 'total')
+        channels: List of channel names to calculate percentages for
+
+    Returns:
+        dict mapping channel names to percentage Decimals (0.00 to 100.00)
+    """
+    total = stats.get("total", 0)
+    if total > 0:
+        return {channel: Decimal(str(round(stats.get(channel, 0) * 100.0 / total, 2))) for channel in channels}
+    return {channel: Decimal("0.00") for channel in channels}
+
+
+def get_response_channel_distribution(team: Team, start_date: date = None, end_date: date = None) -> dict:
+    """Get survey response channel distribution for authors and reviewers.
+
+    Counts responses by channel (github, slack, web, auto) to show which
+    channels users are responding from.
+
+    Args:
+        team: Team instance
+        start_date: Start date (inclusive), optional
+        end_date: End date (inclusive), optional
+
+    Returns:
+        dict with keys:
+            - author_responses: dict with counts by channel (github, slack, web, auto, total)
+            - reviewer_responses: dict with counts by channel (github, slack, web, total)
+            - percentages: dict with author and reviewer percentage breakdowns
+    """
+    # Build base queryset for surveys filtered by date range
+    surveys_qs = PRSurvey.objects.filter(team=team)
+    surveys_qs = _filter_by_date_range(surveys_qs, "pull_request__merged_at", start_date, end_date)
+
+    # Count author responses by channel (only where author_responded_at is not null)
+    author_responses_qs = surveys_qs.filter(author_responded_at__isnull=False)
+    author_stats = author_responses_qs.aggregate(
+        github=Count("id", filter=Q(author_response_source="github")),
+        slack=Count("id", filter=Q(author_response_source="slack")),
+        web=Count("id", filter=Q(author_response_source="web")),
+        auto=Count("id", filter=Q(author_response_source="auto")),
+        total=Count("id"),
+    )
+
+    # Build base queryset for reviewer responses filtered by date range
+    reviews_qs = PRSurveyReview.objects.filter(team=team)
+    reviews_qs = _filter_by_date_range(reviews_qs, "survey__pull_request__merged_at", start_date, end_date)
+
+    # Count reviewer responses by channel (only where responded_at is not null)
+    reviewer_responses_qs = reviews_qs.filter(responded_at__isnull=False)
+    reviewer_stats = reviewer_responses_qs.aggregate(
+        github=Count("id", filter=Q(response_source="github")),
+        slack=Count("id", filter=Q(response_source="slack")),
+        web=Count("id", filter=Q(response_source="web")),
+        total=Count("id"),
+    )
+
+    # Calculate percentages using helper function
+    author_percentages = _calculate_channel_percentages(author_stats, ["github", "slack", "web", "auto"])
+    reviewer_percentages = _calculate_channel_percentages(reviewer_stats, ["github", "slack", "web"])
+
+    return {
+        "author_responses": {
+            "github": author_stats["github"],
+            "slack": author_stats["slack"],
+            "web": author_stats["web"],
+            "auto": author_stats["auto"],
+            "total": author_stats["total"],
+        },
+        "reviewer_responses": {
+            "github": reviewer_stats["github"],
+            "slack": reviewer_stats["slack"],
+            "web": reviewer_stats["web"],
+            "total": reviewer_stats["total"],
+        },
+        "percentages": {
+            "author": author_percentages,
+            "reviewer": reviewer_percentages,
+        },
+    }
+
+
+def get_ai_detection_metrics(team: Team, start_date: date = None, end_date: date = None) -> dict:
+    """Get AI auto-detection metrics for dashboard analytics.
+
+    Analyzes survey responses to show how well AI auto-detection performs
+    compared to self-reported AI usage. Used to track AI detection coverage.
+
+    Args:
+        team: Team instance
+        start_date: Start date (inclusive), optional
+        end_date: End date (inclusive), optional
+
+    Returns:
+        dict with keys:
+            - auto_detected_count (int): PRs where AI was auto-detected
+            - self_reported_count (int): PRs where author self-reported AI
+            - not_ai_count (int): PRs where author reported no AI usage
+            - no_response_count (int): Surveys without author response
+            - total_surveys (int): Total surveys in date range
+            - auto_detection_rate (Decimal): % of AI PRs that were auto-detected
+            - ai_usage_rate (Decimal): % of all surveys that used AI
+    """
+    # Build base queryset for surveys filtered by date range
+    surveys_qs = PRSurvey.objects.filter(team=team)
+    surveys_qs = _filter_by_date_range(surveys_qs, "pull_request__merged_at", start_date, end_date)
+
+    # Aggregate counts using conditional aggregation
+    stats = surveys_qs.aggregate(
+        auto_detected_count=Count("id", filter=Q(author_response_source="auto", author_ai_assisted=True)),
+        self_reported_count=Count(
+            "id",
+            filter=Q(author_ai_assisted=True, author_response_source__in=["github", "slack", "web"]),
+        ),
+        not_ai_count=Count("id", filter=Q(author_ai_assisted=False, author_responded_at__isnull=False)),
+        no_response_count=Count("id", filter=Q(author_responded_at__isnull=True)),
+        total_surveys=Count("id"),
+    )
+
+    auto_detected_count = stats["auto_detected_count"]
+    self_reported_count = stats["self_reported_count"]
+    total_ai_count = auto_detected_count + self_reported_count
+    total_surveys = stats["total_surveys"]
+
+    # Calculate auto-detection rate (what % of AI PRs were auto-detected)
+    if total_ai_count > 0:
+        auto_detection_rate = Decimal(str(round(auto_detected_count * 100.0 / total_ai_count, 2)))
+    else:
+        auto_detection_rate = Decimal("0.00")
+
+    # Calculate AI usage rate (what % of all surveys used AI)
+    if total_surveys > 0:
+        ai_usage_rate = Decimal(str(round(total_ai_count * 100.0 / total_surveys, 2)))
+    else:
+        ai_usage_rate = Decimal("0.00")
+
+    return {
+        "auto_detected_count": auto_detected_count,
+        "self_reported_count": self_reported_count,
+        "not_ai_count": stats["not_ai_count"],
+        "no_response_count": stats["no_response_count"],
+        "total_surveys": total_surveys,
+        "auto_detection_rate": auto_detection_rate,
+        "ai_usage_rate": ai_usage_rate,
+    }
+
+
+def _calculate_average_response_times(response_times: list[Decimal], by_channel: dict[str, list[Decimal]]) -> tuple:
+    """Calculate overall and per-channel average response times.
+
+    Helper function to calculate average response times from a list of time values
+    and a breakdown by channel.
+
+    Args:
+        response_times: List of response times in hours
+        by_channel: Dict mapping channel names to lists of response times
+
+    Returns:
+        Tuple of (overall_avg, channel_avgs) where:
+            - overall_avg (Decimal): Overall average response time
+            - channel_avgs (dict): Dict mapping channel names to average times
+    """
+    # Calculate overall average
+    overall_avg = (
+        Decimal(str(round(sum(response_times) / len(response_times), 2))) if response_times else Decimal("0.00")
+    )
+
+    # Calculate per-channel averages
+    channel_avgs = {}
+    for channel in ["github", "slack", "web"]:
+        times = by_channel[channel]
+        channel_avgs[channel] = Decimal(str(round(sum(times) / len(times), 2))) if times else Decimal("0.00")
+
+    return overall_avg, channel_avgs
+
+
+def get_response_time_metrics(team: Team, start_date: date = None, end_date: date = None) -> dict:
+    """Get survey response time metrics for authors and reviewers.
+
+    Calculates average response times from PR merge to survey response,
+    broken down by channel (github, slack, web). Excludes auto-detected
+    author responses as they don't represent real response times.
+
+    Args:
+        team: Team instance
+        start_date: Start date (inclusive), optional
+        end_date: End date (inclusive), optional
+
+    Returns:
+        dict with keys:
+            - author_avg_response_time (Decimal): Average author response time in hours
+            - reviewer_avg_response_time (Decimal): Average reviewer response time in hours
+            - by_channel (dict): Response times by channel for authors and reviewers
+            - total_author_responses (int): Count of author responses (excluding auto)
+            - total_reviewer_responses (int): Count of reviewer responses
+    """
+    # Build base queryset for surveys filtered by date range
+    surveys_qs = PRSurvey.objects.filter(team=team)
+    surveys_qs = _filter_by_date_range(surveys_qs, "pull_request__merged_at", start_date, end_date)
+
+    # Get author responses (excluding auto-detected, only real responses from github/slack/web)
+    author_responses = surveys_qs.filter(
+        author_responded_at__isnull=False, author_response_source__in=["github", "slack", "web"]
+    ).select_related("pull_request")
+
+    # Calculate author response times
+    author_times = []
+    author_times_by_channel = {"github": [], "slack": [], "web": []}
+
+    for survey in author_responses:
+        if survey.pull_request.merged_at and survey.author_responded_at:
+            time_diff = survey.author_responded_at - survey.pull_request.merged_at
+            hours = Decimal(str(round(time_diff.total_seconds() / 3600, 2)))
+            author_times.append(hours)
+
+            channel = survey.author_response_source
+            if channel in author_times_by_channel:
+                author_times_by_channel[channel].append(hours)
+
+    # Calculate author averages using helper function
+    author_avg_response_time, author_channel_avgs = _calculate_average_response_times(
+        author_times, author_times_by_channel
+    )
+
+    # Build base queryset for reviewer responses filtered by date range
+    reviews_qs = PRSurveyReview.objects.filter(team=team)
+    reviews_qs = _filter_by_date_range(reviews_qs, "survey__pull_request__merged_at", start_date, end_date)
+
+    # Get reviewer responses
+    reviewer_responses = reviews_qs.filter(responded_at__isnull=False).select_related("survey__pull_request")
+
+    # Calculate reviewer response times
+    reviewer_times = []
+    reviewer_times_by_channel = {"github": [], "slack": [], "web": []}
+
+    for review in reviewer_responses:
+        if review.survey.pull_request.merged_at and review.responded_at:
+            time_diff = review.responded_at - review.survey.pull_request.merged_at
+            hours = Decimal(str(round(time_diff.total_seconds() / 3600, 2)))
+            reviewer_times.append(hours)
+
+            channel = review.response_source
+            if channel in reviewer_times_by_channel:
+                reviewer_times_by_channel[channel].append(hours)
+
+    # Calculate reviewer averages using helper function
+    reviewer_avg_response_time, reviewer_channel_avgs = _calculate_average_response_times(
+        reviewer_times, reviewer_times_by_channel
+    )
+
+    return {
+        "author_avg_response_time": author_avg_response_time,
+        "reviewer_avg_response_time": reviewer_avg_response_time,
+        "by_channel": {
+            "author": author_channel_avgs,
+            "reviewer": reviewer_channel_avgs,
+        },
+        "total_author_responses": len(author_times),
+        "total_reviewer_responses": len(reviewer_times),
+    }

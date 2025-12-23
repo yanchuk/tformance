@@ -1,0 +1,73 @@
+{% load i18n %}
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+  <!-- Author Responses by Channel -->
+  <div>
+    <h3 class="text-sm font-medium text-base-content/80 mb-3">{% trans "Author Responses" %}</h3>
+    <div class="space-y-2">
+      {% with author=metrics.author_responses %}
+      <div class="flex items-center justify-between">
+        <span class="flex items-center gap-2">
+          <span class="w-3 h-3 rounded-full bg-primary"></span>
+          <span class="text-sm">{% trans "GitHub" %}</span>
+        </span>
+        <span class="font-mono text-sm">{{ author.github }} <span class="text-base-content/60">({{ metrics.author_percentages.github|floatformat:1 }}%)</span></span>
+      </div>
+      <div class="flex items-center justify-between">
+        <span class="flex items-center gap-2">
+          <span class="w-3 h-3 rounded-full bg-secondary"></span>
+          <span class="text-sm">{% trans "Slack" %}</span>
+        </span>
+        <span class="font-mono text-sm">{{ author.slack }} <span class="text-base-content/60">({{ metrics.author_percentages.slack|floatformat:1 }}%)</span></span>
+      </div>
+      <div class="flex items-center justify-between">
+        <span class="flex items-center gap-2">
+          <span class="w-3 h-3 rounded-full bg-accent"></span>
+          <span class="text-sm">{% trans "Web" %}</span>
+        </span>
+        <span class="font-mono text-sm">{{ author.web }} <span class="text-base-content/60">({{ metrics.author_percentages.web|floatformat:1 }}%)</span></span>
+      </div>
+      <div class="flex items-center justify-between">
+        <span class="flex items-center gap-2">
+          <span class="w-3 h-3 rounded-full bg-info"></span>
+          <span class="text-sm">{% trans "Auto-detected" %}</span>
+        </span>
+        <span class="font-mono text-sm">{{ author.auto }} <span class="text-base-content/60">({{ metrics.author_percentages.auto|floatformat:1 }}%)</span></span>
+      </div>
+      {% endwith %}
+    </div>
+  </div>
+
+  <!-- Reviewer Responses by Channel -->
+  <div>
+    <h3 class="text-sm font-medium text-base-content/80 mb-3">{% trans "Reviewer Responses" %}</h3>
+    <div class="space-y-2">
+      {% with reviewer=metrics.reviewer_responses %}
+      <div class="flex items-center justify-between">
+        <span class="flex items-center gap-2">
+          <span class="w-3 h-3 rounded-full bg-primary"></span>
+          <span class="text-sm">{% trans "GitHub" %}</span>
+        </span>
+        <span class="font-mono text-sm">{{ reviewer.github }} <span class="text-base-content/60">({{ metrics.reviewer_percentages.github|floatformat:1 }}%)</span></span>
+      </div>
+      <div class="flex items-center justify-between">
+        <span class="flex items-center gap-2">
+          <span class="w-3 h-3 rounded-full bg-secondary"></span>
+          <span class="text-sm">{% trans "Slack" %}</span>
+        </span>
+        <span class="font-mono text-sm">{{ reviewer.slack }} <span class="text-base-content/60">({{ metrics.reviewer_percentages.slack|floatformat:1 }}%)</span></span>
+      </div>
+      <div class="flex items-center justify-between">
+        <span class="flex items-center gap-2">
+          <span class="w-3 h-3 rounded-full bg-accent"></span>
+          <span class="text-sm">{% trans "Web" %}</span>
+        </span>
+        <span class="font-mono text-sm">{{ reviewer.web }} <span class="text-base-content/60">({{ metrics.reviewer_percentages.web|floatformat:1 }}%)</span></span>
+      </div>
+      {% endwith %}
+    </div>
+  </div>
+</div>
+
+<div class="mt-4 text-xs text-base-content/60">
+  {% trans "Survey responses from PR descriptions (GitHub), Slack DMs, and web links" %}
+</div>

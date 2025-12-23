@@ -9,7 +9,7 @@
   <div id="page-content" class="app-card">
     <!-- Header with title and filters -->
     <div class="flex justify-between items-center mb-6">
-      <h1 class="pg-title">{% trans "CTO Overview" %}</h1>
+      <h1 class="pg-title">{% trans "Analytics Overview" %}</h1>
       {% include "metrics/partials/filters.html" %}
     </div>
 
@@ -63,9 +63,6 @@
 
     <!-- GitHub Copilot Metrics Section -->
     <div class="divider text-lg font-semibold mt-2 mb-4">
-      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-accent-primary mr-2" viewBox="0 0 24 24" fill="currentColor">
-        <path d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.009-.866-.013-1.7-2.782.603-3.369-1.342-3.369-1.342-.454-1.155-1.11-1.462-1.11-1.462-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.831.092-.646.35-1.086.636-1.336-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0112 6.836c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.163 22 16.418 22 12c0-5.523-4.477-10-10-10z"/>
-      </svg>
       {% trans "GitHub Copilot" %}
     </div>
 
@@ -126,9 +123,6 @@
 
     <!-- AI Detection Section (from content analysis) -->
     <div class="divider text-lg font-semibold mt-2 mb-4">
-      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-primary mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-      </svg>
       {% trans "AI Detection (from PR Content)" %}
     </div>
 
@@ -183,6 +177,72 @@
                hx-swap="innerHTML">
             <div class="skeleton h-48 w-full rounded-lg"></div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Survey Channel Metrics Section -->
+    <div class="divider text-lg font-semibold mt-2 mb-4">
+      {% trans "Survey Analytics" %}
+    </div>
+
+    <!-- Survey Channel Distribution and AI Detection -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+      <!-- Survey Channel Distribution -->
+      <div class="card bg-base-100 shadow-md">
+        <div class="card-body">
+          <h2 class="card-title text-base">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
+            </svg>
+            {% trans "Response Channels" %}
+          </h2>
+          <p class="text-sm text-base-content/80 mb-2">{% trans "Survey responses by channel" %}</p>
+          <div id="survey-channels-container"
+               hx-get="{% url 'metrics:cards_survey_channels' %}?days={{ days }}"
+               hx-trigger="load"
+               hx-swap="innerHTML">
+            <div class="skeleton h-48 w-full rounded-lg"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Survey AI Detection -->
+      <div class="card bg-base-100 shadow-md">
+        <div class="card-body">
+          <h2 class="card-title text-base">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-info" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+            </svg>
+            {% trans "AI Detection vs Self-Reported" %}
+          </h2>
+          <p class="text-sm text-base-content/80 mb-2">{% trans "Auto-detected vs author-reported AI usage" %}</p>
+          <div id="survey-ai-detection-container"
+               hx-get="{% url 'metrics:cards_survey_ai_detection' %}?days={{ days }}"
+               hx-trigger="load"
+               hx-swap="innerHTML">
+            <div class="skeleton h-48 w-full rounded-lg"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Survey Response Times -->
+    <div class="card bg-base-100 shadow-md mb-6">
+      <div class="card-body">
+        <h2 class="card-title text-base">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          {% trans "Survey Response Times" %}
+        </h2>
+        <p class="text-sm text-base-content/80 mb-4">{% trans "Time from PR merge to survey response by channel" %}</p>
+        <div id="survey-response-time-container"
+             hx-get="{% url 'metrics:cards_survey_response_time' %}?days={{ days }}"
+             hx-trigger="load"
+             hx-swap="innerHTML">
+          <div class="skeleton h-48 w-full rounded-lg"></div>
         </div>
       </div>
     </div>

@@ -388,3 +388,59 @@ def ai_bot_reviews_card(request: HttpRequest) -> HttpResponse:
             "metrics": metrics,
         },
     )
+
+
+# =============================================================================
+# Survey Channel Metrics (from PR survey system)
+# =============================================================================
+
+
+@team_admin_required
+def survey_channel_distribution_card(request: HttpRequest) -> HttpResponse:
+    """Survey response channel distribution card (admin only).
+
+    Shows breakdown of survey responses by channel (GitHub, Slack, Web, Auto-detected).
+    """
+    start_date, end_date = get_date_range_from_request(request)
+    metrics = dashboard_service.get_response_channel_distribution(request.team, start_date, end_date)
+    return TemplateResponse(
+        request,
+        "metrics/partials/survey_channel_distribution_card.html",
+        {
+            "metrics": metrics,
+        },
+    )
+
+
+@team_admin_required
+def survey_ai_detection_card(request: HttpRequest) -> HttpResponse:
+    """Survey AI detection metrics card (admin only).
+
+    Shows auto-detected vs self-reported AI usage stats from surveys.
+    """
+    start_date, end_date = get_date_range_from_request(request)
+    metrics = dashboard_service.get_ai_detection_metrics(request.team, start_date, end_date)
+    return TemplateResponse(
+        request,
+        "metrics/partials/survey_ai_detection_card.html",
+        {
+            "metrics": metrics,
+        },
+    )
+
+
+@team_admin_required
+def survey_response_time_card(request: HttpRequest) -> HttpResponse:
+    """Survey response time metrics card (admin only).
+
+    Shows average survey response times by channel.
+    """
+    start_date, end_date = get_date_range_from_request(request)
+    metrics = dashboard_service.get_response_time_metrics(request.team, start_date, end_date)
+    return TemplateResponse(
+        request,
+        "metrics/partials/survey_response_time_card.html",
+        {
+            "metrics": metrics,
+        },
+    )

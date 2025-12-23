@@ -10,7 +10,7 @@ team_urlpatterns = (
     [
         path("", views.home, name="metrics_home"),
         path("dashboard/", views.dashboard_redirect, name="dashboard_redirect"),
-        path("dashboard/cto/", views.cto_overview, name="cto_overview"),
+        path("overview/", views.cto_overview, name="cto_overview"),
         path("dashboard/team/", views.team_dashboard, name="team_dashboard"),
         # Insights
         path("insights/<int:insight_id>/dismiss/", views.dismiss_insight, name="dismiss_insight"),
@@ -43,6 +43,10 @@ team_urlpatterns = (
         path("cards/ai-detected/", views.ai_detected_metrics_card, name="cards_ai_detected"),
         path("charts/ai-tools/", views.ai_tool_breakdown_chart, name="chart_ai_tools"),
         path("cards/ai-bot-reviews/", views.ai_bot_reviews_card, name="cards_ai_bot_reviews"),
+        # Survey channel metrics
+        path("cards/survey-channels/", views.survey_channel_distribution_card, name="cards_survey_channels"),
+        path("cards/survey-ai-detection/", views.survey_ai_detection_card, name="cards_survey_ai_detection"),
+        path("cards/survey-response-time/", views.survey_response_time_card, name="cards_survey_response_time"),
     ],
     "metrics",
 )

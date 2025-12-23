@@ -1,0 +1,54 @@
+{% load i18n %}
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+  <!-- Auto-Detected -->
+  <div class="stat bg-base-100 shadow rounded-lg p-3">
+    <div class="stat-title text-xs">{% trans "Auto-Detected" %}</div>
+    <div class="stat-value text-lg text-info">{{ metrics.auto_detected_count|default:0 }}</div>
+    <div class="stat-desc text-xs">{% trans "From commit signatures" %}</div>
+  </div>
+
+  <!-- Self-Reported -->
+  <div class="stat bg-base-100 shadow rounded-lg p-3">
+    <div class="stat-title text-xs">{% trans "Self-Reported" %}</div>
+    <div class="stat-value text-lg text-primary">{{ metrics.self_reported_count|default:0 }}</div>
+    <div class="stat-desc text-xs">{% trans "Via survey" %}</div>
+  </div>
+
+  <!-- Not AI -->
+  <div class="stat bg-base-100 shadow rounded-lg p-3">
+    <div class="stat-title text-xs">{% trans "Not AI-Assisted" %}</div>
+    <div class="stat-value text-lg text-base-content">{{ metrics.not_ai_count|default:0 }}</div>
+    <div class="stat-desc text-xs">{% trans "Human-only" %}</div>
+  </div>
+
+  <!-- No Response -->
+  <div class="stat bg-base-100 shadow rounded-lg p-3">
+    <div class="stat-title text-xs">{% trans "No Response" %}</div>
+    <div class="stat-value text-lg text-base-content/60">{{ metrics.no_response_count|default:0 }}</div>
+    <div class="stat-desc text-xs">{% trans "Pending" %}</div>
+  </div>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+  <!-- Auto-Detection Rate -->
+  <div class="stat bg-base-200 rounded-lg p-3">
+    <div class="stat-title text-xs">{% trans "Auto-Detection Rate" %}</div>
+    <div class="stat-value text-xl text-info">
+      {% if metrics.auto_detection_rate %}{{ metrics.auto_detection_rate|floatformat:1 }}%{% else %}0%{% endif %}
+    </div>
+    <div class="stat-desc text-xs">{% trans "Of AI PRs detected automatically" %}</div>
+  </div>
+
+  <!-- AI Usage Rate -->
+  <div class="stat bg-base-200 rounded-lg p-3">
+    <div class="stat-title text-xs">{% trans "AI Usage Rate" %}</div>
+    <div class="stat-value text-xl text-primary">
+      {% if metrics.ai_usage_rate %}{{ metrics.ai_usage_rate|floatformat:1 }}%{% else %}0%{% endif %}
+    </div>
+    <div class="stat-desc text-xs">{% trans "Of all surveyed PRs" %}</div>
+  </div>
+</div>
+
+<div class="mt-3 text-xs text-base-content/60">
+  {% trans "Auto-detection uses AI tool signatures in commit messages (Claude, Copilot, Cursor, etc.)" %}
+</div>
