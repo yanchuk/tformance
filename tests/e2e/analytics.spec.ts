@@ -149,7 +149,7 @@ test.describe('Analytics Pages Tests @analytics', () => {
       await page.goto('/app/metrics/analytics/ai-adoption/');
       await page.waitForLoadState('domcontentloaded');
 
-      await expect(page.getByRole('heading', { name: 'AI Adoption' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'AI Adoption', exact: true })).toBeVisible();
     });
 
     test('AI Adoption tab is active', async ({ page }) => {
@@ -188,14 +188,14 @@ test.describe('Analytics Pages Tests @analytics', () => {
       await page.goto('/app/metrics/analytics/ai-adoption/');
       await page.waitForLoadState('domcontentloaded');
 
-      await expect(page.getByRole('heading', { name: 'AI vs Non-AI Comparison' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'AI vs Non-AI Quality Comparison' })).toBeVisible();
     });
 
     test('AI tool breakdown section displays', async ({ page }) => {
       await page.goto('/app/metrics/analytics/ai-adoption/');
       await page.waitForLoadState('domcontentloaded');
 
-      await expect(page.getByRole('heading', { name: 'AI Tool Breakdown' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'AI Tools Breakdown' })).toBeVisible();
     });
   });
 
@@ -204,7 +204,7 @@ test.describe('Analytics Pages Tests @analytics', () => {
       await page.goto('/app/metrics/analytics/delivery/');
       await page.waitForLoadState('domcontentloaded');
 
-      await expect(page.getByRole('heading', { name: 'Delivery Performance' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Delivery Metrics' })).toBeVisible();
     });
 
     test('Delivery tab is active', async ({ page }) => {
@@ -497,21 +497,21 @@ test.describe('Analytics Pages Tests @analytics', () => {
       await page.waitForLoadState('domcontentloaded');
       await expect(page.getByRole('tab', { name: 'Overview' })).toHaveClass(/tab-active/);
 
-      // Navigate through all tabs
+      // Navigate through all tabs with explicit waits for webkit
       await page.getByRole('tab', { name: 'AI Adoption' }).click();
-      await expect(page).toHaveURL(/\/ai-adoption/);
+      await page.waitForURL(/\/ai-adoption/);
 
       await page.getByRole('tab', { name: 'Delivery' }).click();
-      await expect(page).toHaveURL(/\/delivery/);
+      await page.waitForURL(/\/delivery/);
 
       await page.getByRole('tab', { name: 'Quality' }).click();
-      await expect(page).toHaveURL(/\/quality/);
+      await page.waitForURL(/\/quality/);
 
       await page.getByRole('tab', { name: 'Team' }).click();
-      await expect(page).toHaveURL(/\/team/);
+      await page.waitForURL(/\/team/);
 
       await page.getByRole('tab', { name: 'Pull Requests' }).click();
-      await expect(page).toHaveURL(/\/pull-requests/);
+      await page.waitForURL(/\/pull-requests/);
     });
 
     test('full navigation flow: Dashboard -> Analytics -> PR List -> Back', async ({ page }) => {
@@ -559,7 +559,14 @@ test.describe('Analytics Pages Tests @analytics', () => {
       await page.goto('/app/metrics/analytics/team/');
       await page.waitForLoadState('domcontentloaded');
 
-      await page.getByRole('link', { name: 'Quality Metrics' }).click();
+      // Wait for the Explore Team Data section to be visible
+      await expect(page.getByRole('heading', { name: 'Explore Team Data' })).toBeVisible();
+
+      // Click and wait for navigation
+      await Promise.all([
+        page.waitForURL(/\/quality/),
+        page.getByRole('link', { name: 'Quality Metrics' }).click(),
+      ]);
       await expect(page).toHaveURL(/\/quality/);
     });
   });

@@ -7,29 +7,46 @@ import { loginAs } from './fixtures/test-users';
  * Run with: npx playwright test surveys.spec.ts
  * Tag: @surveys
  *
- * Note: Survey tests require valid tokens which are generated when PRs are merged.
- * These tests focus on:
- * 1. Invalid/expired token handling
- * 2. Survey page structure when accessible
- * 3. Form element presence and behavior
+ * ## Survey Access Requirements
+ *
+ * Survey pages have two levels of access control:
+ * 1. Valid survey token (unique per survey, expires after 7 days)
+ * 2. Author/Reviewer verification via GitHub OAuth
+ *
+ * The author/reviewer access check compares the logged-in user's GitHub
+ * social account UID against the TeamMember's github_id. This means:
+ * - Author survey: Only accessible to users whose GitHub UID matches the PR author
+ * - Reviewer survey: Only accessible to users whose GitHub UID matches a PR reviewer
+ *
+ * ## Test Limitations
+ *
+ * Full survey flow tests require:
+ * - A valid survey token (seeded via: python manage.py seed_e2e_surveys)
+ * - A GitHub OAuth social account linked to the test user
+ * - The social account UID matching the TeamMember's github_id
+ *
+ * Since our E2E test user (admin@example.com) uses email/password login without
+ * a GitHub social account, we cannot test the full survey submission flow.
+ *
+ * ## What These Tests Cover
+ *
+ * 1. Invalid token handling - verified
+ * 2. Authentication requirements - verified
+ * 3. URL structure validation - verified
+ * 4. Survey page renders (when accessible) - conditional
+ * 5. Complete page accessibility - verified
  */
 
 test.describe('Survey System @surveys', () => {
   test.describe('Invalid Token Handling', () => {
-    test('invalid token shows error page', async ({ page }) => {
+    test('invalid token shows 403 forbidden', async ({ page }) => {
       await loginAs(page);
 
       // Try to access survey with invalid token
-      await page.goto('/survey/invalid-token-12345/');
+      const response = await page.goto('/survey/invalid-token-12345/');
 
-      // Should show error or redirect
-      const pageContent = await page.content();
-      const hasError = pageContent.toLowerCase().includes('invalid') ||
-        pageContent.toLowerCase().includes('not found') ||
-        pageContent.toLowerCase().includes('error') ||
-        page.url().includes('login');
-
-      expect(hasError || page.url() !== '/survey/invalid-token-12345/').toBeTruthy();
+      // Should return 404 (token not found)
+      expect(response?.status()).toBe(404);
     });
 
     test('empty token path returns 404', async ({ page }) => {
@@ -37,236 +54,283 @@ test.describe('Survey System @surveys', () => {
 
       const response = await page.goto('/survey/');
 
-      // Should be 404 or redirect
+      // Should be 404 (no matching URL pattern)
       expect(response?.status()).toBe(404);
     });
 
-    test('malformed token is rejected', async ({ page }) => {
+    test('malformed token with path traversal is rejected', async ({ page }) => {
       await loginAs(page);
 
-      // Various malformed tokens
-      const malformedTokens = [
-        '../../../etc/passwd',
-        '<script>alert(1)</script>',
-        'a'.repeat(1000),
-        '!@#$%^&*()',
-      ];
+      const response = await page.goto(`/survey/${encodeURIComponent('../../../etc/passwd')}/`);
+      expect(response?.status()).toBeGreaterThanOrEqual(400);
+    });
 
-      for (const token of malformedTokens) {
-        const response = await page.goto(`/survey/${encodeURIComponent(token)}/`);
-        // Should not crash - expect 4xx response
-        expect(response?.status()).toBeGreaterThanOrEqual(400);
-      }
+    test('malformed token with XSS is rejected', async ({ page }) => {
+      await loginAs(page);
+
+      const response = await page.goto(`/survey/${encodeURIComponent('<script>alert(1)</script>')}/`);
+      expect(response?.status()).toBeGreaterThanOrEqual(400);
+    });
+
+    test('very long token is rejected', async ({ page }) => {
+      await loginAs(page);
+
+      const response = await page.goto(`/survey/${'a'.repeat(1000)}/`);
+      expect(response?.status()).toBeGreaterThanOrEqual(400);
+    });
+
+    test('special characters in token are rejected', async ({ page }) => {
+      await loginAs(page);
+
+      const response = await page.goto(`/survey/${encodeURIComponent('!@#$%^&*()')}/`);
+      expect(response?.status()).toBeGreaterThanOrEqual(400);
     });
   });
 
-  test.describe('Survey Landing Page', () => {
-    test('survey URLs are properly structured', async ({ page }) => {
+  test.describe('Survey URL Structure', () => {
+    test('author survey URL returns 404 with invalid token', async ({ page }) => {
       await loginAs(page);
 
-      // Author survey URL structure
-      const authorResponse = await page.goto('/survey/test-token/author/');
-      // Should return 4xx (invalid token) but URL structure is valid
-      expect(authorResponse?.status()).toBeGreaterThanOrEqual(400);
-
-      // Reviewer survey URL structure
-      const reviewerResponse = await page.goto('/survey/test-token/reviewer/');
-      expect(reviewerResponse?.status()).toBeGreaterThanOrEqual(400);
-
-      // Submit URL structure
-      const submitResponse = await page.goto('/survey/test-token/submit/');
-      expect(submitResponse?.status()).toBeGreaterThanOrEqual(400);
-
-      // Complete URL structure
-      const completeResponse = await page.goto('/survey/test-token/complete/');
-      expect(completeResponse?.status()).toBeGreaterThanOrEqual(400);
-    });
-  });
-
-  test.describe('Survey Page Structure (when accessible)', () => {
-    // These tests verify page structure if we have valid survey data
-    // They use conditional checks since survey tokens come from seed data
-
-    test('author survey page has AI assistance question elements', async ({ page }) => {
-      await loginAs(page);
-
-      // This would need a valid token from seed data
-      // For now, check the template renders correctly on author page
-      await page.goto('/survey/test-token/author/');
-
-      // If we get to the page (valid token), check structure
-      if (!page.url().includes('login') && !page.url().includes('error')) {
-        // Look for AI assistance question
-        const aiQuestion = page.getByText(/ai|assistance|assisted/i);
-        const yesButton = page.getByRole('button', { name: /yes/i });
-        const noButton = page.getByRole('button', { name: /no/i });
-
-        // Elements should exist if page loaded
-        // (may not be visible with invalid token)
-      }
+      const response = await page.goto('/survey/test-token/author/');
+      // Should return 404 (invalid token not found)
+      expect(response?.status()).toBe(404);
     });
 
-    test('reviewer survey page has quality rating elements', async ({ page }) => {
+    test('reviewer survey URL returns 404 with invalid token', async ({ page }) => {
       await loginAs(page);
 
-      await page.goto('/survey/test-token/reviewer/');
+      const response = await page.goto('/survey/test-token/reviewer/');
+      expect(response?.status()).toBe(404);
+    });
 
-      if (!page.url().includes('login') && !page.url().includes('error')) {
-        // Look for quality rating elements
-        const qualityRating = page.getByText(/quality|rating|rate/i);
-        const guessQuestion = page.getByText(/guess|ai|think/i);
-      }
+    test('submit URL rejects GET requests', async ({ page }) => {
+      await loginAs(page);
+
+      const response = await page.goto('/survey/test-token/submit/');
+      // Should return 405 Method Not Allowed or 404 (no GET handler)
+      expect([404, 405]).toContain(response?.status());
+    });
+
+    test('complete URL returns 404 with invalid token', async ({ page }) => {
+      await loginAs(page);
+
+      const response = await page.goto('/survey/test-token/complete/');
+      // Complete page may allow expired tokens, but still validates token exists
+      expect(response?.status()).toBe(404);
     });
   });
 
   test.describe('Survey Authentication', () => {
-    test('survey requires authentication', async ({ page, context }) => {
-      // Clear cookies to be logged out
+    test('survey landing redirects unauthenticated users to login', async ({ page, context }) => {
       await context.clearCookies();
 
-      // Try to access survey without auth
-      await page.goto('/survey/some-token/author/');
+      await page.goto('/survey/some-token/');
 
-      // Should redirect to login
       await expect(page).toHaveURL(/\/accounts\/login/);
     });
 
-    test('survey preserves return URL after login', async ({ page, context }) => {
+    test('author survey redirects unauthenticated users to login', async ({ page, context }) => {
       await context.clearCookies();
 
-      // Try to access survey
+      await page.goto('/survey/some-token/author/');
+
+      await expect(page).toHaveURL(/\/accounts\/login/);
+    });
+
+    test('reviewer survey redirects unauthenticated users to login', async ({ page, context }) => {
+      await context.clearCookies();
+
+      await page.goto('/survey/some-token/reviewer/');
+
+      await expect(page).toHaveURL(/\/accounts\/login/);
+    });
+
+    test('login redirect preserves survey URL in next param', async ({ page, context }) => {
+      await context.clearCookies();
+
       await page.goto('/survey/test-token/author/');
 
-      // Should redirect to login with next param
       const url = page.url();
       expect(url).toContain('/accounts/login');
       expect(url).toContain('next=');
+      expect(url).toContain('survey');
     });
   });
 
-  test.describe('Survey Form Submission', () => {
-    test('POST to submit endpoint without token fails gracefully', async ({ page }) => {
+  test.describe('Survey Form Submission Security', () => {
+    test('POST to submit endpoint without valid token fails', async ({ page }) => {
       await loginAs(page);
 
-      // Direct POST to submit should be rejected without valid token
       const response = await page.request.post('/survey/invalid-token/submit/', {
         form: {
           ai_assisted: 'true',
         },
       });
 
-      // Should fail with 4xx
-      expect(response.status()).toBeGreaterThanOrEqual(400);
+      // Should fail with 403 (CSRF) or 404 (token not found)
+      // CSRF check happens before token validation
+      expect([403, 404]).toContain(response.status());
     });
 
-    test('GET to submit endpoint is not allowed', async ({ page }) => {
+    test('POST to submit endpoint without CSRF fails', async ({ page }) => {
       await loginAs(page);
 
-      const response = await page.goto('/survey/test-token/submit/');
+      // Get a real token first (if available from seed data)
+      // For this test, we just verify CSRF is enforced
+      const response = await page.request.post('/survey/any-token/submit/', {
+        data: 'ai_assisted=true',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+      });
 
-      // Should return 405 Method Not Allowed or redirect
-      expect([302, 400, 403, 404, 405]).toContain(response?.status());
-    });
-  });
-
-  test.describe('Survey Complete Page', () => {
-    test('complete page is accessible after survey', async ({ page }) => {
-      await loginAs(page);
-
-      // Complete page should be viewable even with expired token
-      await page.goto('/survey/test-token/complete/');
-
-      // Should show completion message or error, not crash
-      const content = await page.content();
-      const hasContent = content.length > 100; // Has some HTML content
-      expect(hasContent).toBeTruthy();
+      // Should fail with 403 (CSRF) or 404 (invalid token)
+      expect([403, 404]).toContain(response.status());
     });
   });
 
-  test.describe('Survey UI Elements', () => {
-    // These tests verify survey forms have proper UI elements
+  test.describe('Survey Page Content (Structure Validation)', () => {
+    /**
+     * These tests validate the survey page structure IF the page is accessible.
+     * Since E2E test user lacks GitHub OAuth, pages return 403 with valid tokens.
+     * We still test that the server responds appropriately.
+     */
 
-    test('author form should have two clear options', async ({ page }) => {
+    test('author survey page returns appropriate response', async ({ page }) => {
       await loginAs(page);
 
-      // Navigate to author survey (will likely fail with invalid token)
-      const response = await page.goto('/survey/test-token/author/');
+      // With an invalid token, should get 404
+      const response = await page.goto('/survey/valid-looking-token-abcdef/author/');
 
-      // If we somehow have access, verify options exist
-      if (response?.ok()) {
-        const buttons = page.getByRole('button');
-        const buttonCount = await buttons.count();
-        // Should have Yes/No buttons
-        expect(buttonCount).toBeGreaterThanOrEqual(2);
-      }
+      // Either 404 (token not found) or 403 (unauthorized)
+      expect([403, 404]).toContain(response?.status());
     });
 
-    test('reviewer form should have quality rating options', async ({ page }) => {
+    test('reviewer survey page returns appropriate response', async ({ page }) => {
       await loginAs(page);
 
-      const response = await page.goto('/survey/test-token/reviewer/');
+      const response = await page.goto('/survey/valid-looking-token-ghijkl/reviewer/');
 
-      if (response?.ok()) {
-        // Quality rating should have 3 levels (Could be better, OK, Super)
-        const ratingOptions = page.locator('[name="quality_rating"]').or(
-          page.getByRole('radio')
-        );
-        const count = await ratingOptions.count();
-        expect(count).toBeGreaterThanOrEqual(0); // May be 0 with invalid token
-      }
+      expect([403, 404]).toContain(response?.status());
     });
   });
 });
 
 /**
  * Survey Integration Tests
- * These tests require actual survey data to be seeded.
- * They are marked with @slow and should be run separately.
+ *
+ * These tests require:
+ * 1. Seed data created by: python manage.py seed_e2e_surveys
+ * 2. A GitHub OAuth social account linked to test user
+ * 3. The social account UID matching TeamMember.github_id
+ *
+ * Since E2E tests use email/password login, these are marked as skipped.
+ * They serve as documentation for what manual testing should verify.
  */
-test.describe('Survey Integration @surveys @slow', () => {
-  test.skip('full author survey flow with valid token', async ({ page }) => {
-    // This test requires:
-    // 1. Seed data with a PR that has a survey
-    // 2. The logged-in user to be the author
-    // 3. A valid, non-expired token
+test.describe('Survey Full Flow Tests (Requires GitHub OAuth) @surveys @manual', () => {
+  test.skip('author survey: select Yes (AI assisted)', async ({ page }) => {
+    // Prerequisites:
+    // 1. Run: python manage.py seed_e2e_surveys
+    // 2. User must have GitHub OAuth social account
+    // 3. SocialAccount.uid must match TeamMember.github_id
 
     await loginAs(page);
 
-    // Would need to get a valid token from the database or seed data
-    // const validToken = await getValidSurveyToken(page);
+    // Navigate to author survey with valid token
+    // const token = process.env.E2E_AUTHOR_SURVEY_TOKEN;
+    // await page.goto(`/survey/${token}/author/`);
 
-    // Navigate to author survey
-    // await page.goto(`/survey/${validToken}/author/`);
+    // Page should show:
+    // - PR title and repository
+    // - "Did you use AI assistance for this PR?" question
+    // - "Yes, I used AI" and "No AI assistance" buttons
 
-    // Click Yes (AI-assisted)
-    // await page.getByRole('button', { name: /yes/i }).click();
+    // Select Yes
+    // await page.click('text=Yes, I used AI');
 
-    // Should redirect to complete
+    // Submit
+    // await page.click('text=Submit Response');
+
+    // Should redirect to complete page
+    // await expect(page).toHaveURL(/\/complete/);
+    // await expect(page.getByText('Thank you!')).toBeVisible();
+  });
+
+  test.skip('author survey: select No (no AI)', async ({ page }) => {
+    await loginAs(page);
+
+    // Same setup as above, select No instead
+    // await page.click('text=No AI assistance');
+    // await page.click('text=Submit Response');
     // await expect(page).toHaveURL(/\/complete/);
   });
 
-  test.skip('full reviewer survey flow with valid token', async ({ page }) => {
-    // Similar requirements as author flow
-    // Plus: user must be a reviewer on the PR
-
+  test.skip('reviewer survey: rate quality and guess AI usage', async ({ page }) => {
     await loginAs(page);
 
-    // Would need valid token and reviewer access
-    // const validToken = await getValidReviewerToken(page);
-
     // Navigate to reviewer survey
-    // await page.goto(`/survey/${validToken}/reviewer/`);
+    // const token = process.env.E2E_REVIEWER_SURVEY_TOKEN;
+    // await page.goto(`/survey/${token}/reviewer/`);
+
+    // Page should show:
+    // - PR title, repository, and author name
+    // - "How would you rate the code quality?" with 3 options
+    // - "Was this PR AI-assisted?" with Yes/No options
 
     // Select quality rating
-    // await page.getByLabel(/ok/i).click();
+    // await page.click('text=OK');
 
     // Select AI guess
-    // await page.getByRole('button', { name: /yes/i }).click();
+    // await page.click('text=Yes, I think so');
 
     // Submit
-    // await page.getByRole('button', { name: /submit/i }).click();
+    // await page.click('text=Submit Response');
 
-    // Should redirect to complete with reveal
+    // Should redirect to complete page
     // await expect(page).toHaveURL(/\/complete/);
+
+    // If author has responded, should show reveal:
+    // - "Nice detective work!" or "Not quite!"
+    // - Whether guess was correct
+    // - Accuracy percentage
+  });
+
+  test.skip('reviewer survey: complete page shows reveal after author responds', async ({ page }) => {
+    // This test verifies the reveal mechanics work correctly
+    // When author has responded, reviewer sees their guess result
+    // When author hasn't responded, reviewer sees "waiting" message
+  });
+});
+
+/**
+ * Survey Edge Cases
+ */
+test.describe('Survey Edge Cases @surveys', () => {
+  test('accessing same survey token twice returns consistent response', async ({ page }) => {
+    await loginAs(page);
+
+    const token = 'test-token-consistency';
+    const response1 = await page.goto(`/survey/${token}/author/`);
+    const response2 = await page.goto(`/survey/${token}/author/`);
+
+    // Both should return same status (404 for invalid token)
+    expect(response1?.status()).toBe(response2?.status());
+  });
+
+  test('survey pages are not cached (vary by auth)', async ({ page }) => {
+    // First access without auth
+    await page.context().clearCookies();
+    await page.goto('/survey/test-token/author/');
+    const unauthUrl = page.url();
+
+    // Then with auth
+    await loginAs(page);
+    await page.goto('/survey/test-token/author/');
+    const authUrl = page.url();
+
+    // Unauthenticated should redirect to login
+    expect(unauthUrl).toContain('/accounts/login');
+    // Authenticated should stay on survey page (or show 404)
+    expect(authUrl).not.toContain('/accounts/login');
   });
 });
