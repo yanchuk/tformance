@@ -51,6 +51,18 @@ document.addEventListener('htmx:afterSwap', function(event) {
     }
   }
 
+  // Review Time Chart - uses weekly aggregated data
+  const reviewTimeData = document.getElementById('review-time-data');
+  const reviewTimeChart = document.getElementById('review-time-chart');
+  if (reviewTimeData && reviewTimeChart) {
+    destroyChartIfExists(reviewTimeChart);
+    const data = JSON.parse(reviewTimeData.textContent);
+    if (data && data.length > 0) {
+      const ctx = reviewTimeChart.getContext('2d');
+      AppDashboardCharts.weeklyBarChart(ctx, data, "Avg Review Time (hours)");
+    }
+  }
+
   // Copilot Trend Chart - uses weekly aggregated data
   // Uses AI purple color to differentiate from standard metrics
   const copilotTrendData = document.getElementById('copilot-trend-data');
