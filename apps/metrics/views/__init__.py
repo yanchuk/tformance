@@ -30,6 +30,7 @@ from apps.metrics.views.chart_views import (
     unlinked_prs_table,
 )
 from apps.metrics.views.dashboard_views import cto_overview, dashboard_redirect, dismiss_insight, home, team_dashboard
+from apps.metrics.views.pr_list_views import pr_list, pr_list_export, pr_list_table
 
 __all__ = [
     "ai_adoption_chart",
@@ -64,4 +65,7 @@ __all__ = [
     "cto_overview",
     "team_dashboard",
     "dismiss_insight",
+    "pr_list",
+    "pr_list_table",
+    "pr_list_export",
 ]

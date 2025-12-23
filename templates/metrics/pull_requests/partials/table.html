@@ -1,0 +1,127 @@
+{% load i18n %}
+{% load pr_list_tags %}
+
+<div class="overflow-x-auto">
+  <table class="table table-zebra w-full">
+    <thead>
+      <tr>
+        <th>{% trans "Title" %}</th>
+        <th>{% trans "Repository" %}</th>
+        <th>{% trans "Author" %}</th>
+        <th>{% trans "State" %}</th>
+        <th class="text-right">{% trans "Cycle Time" %}</th>
+        <th class="text-right">{% trans "Review Time" %}</th>
+        <th class="text-right">{% trans "Lines" %}</th>
+        <th class="text-center">{% trans "AI" %}</th>
+        <th>{% trans "Merged" %}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for pr in prs %}
+      <tr>
+        <td class="max-w-xs truncate">
+          <a href="{{ pr.github_url }}" target="_blank" rel="noopener"
+             class="link link-hover text-primary">
+            {{ pr.title }}
+          </a>
+          {% if pr.jira_key %}
+          <span class="badge badge-ghost badge-sm ml-1">{{ pr.jira_key }}</span>
+          {% endif %}
+        </td>
+        <td class="text-sm text-base-content/70">{{ pr.github_repo }}</td>
+        <td>
+          {% if pr.author %}
+            {{ pr.author.display_name }}
+          {% else %}
+            <span class="text-base-content/50">-</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if pr.state == 'merged' %}
+            <span class="badge badge-success badge-sm">{% trans "merged" %}</span>
+          {% elif pr.state == 'open' %}
+            <span class="badge badge-info badge-sm">{% trans "open" %}</span>
+          {% else %}
+            <span class="badge badge-ghost badge-sm">{{ pr.state }}</span>
+          {% endif %}
+        </td>
+        <td class="text-right font-mono text-sm">
+          {% if pr.cycle_time_hours %}
+            {{ pr.cycle_time_hours|floatformat:1 }}h
+          {% else %}
+            -
+          {% endif %}
+        </td>
+        <td class="text-right font-mono text-sm">
+          {% if pr.review_time_hours %}
+            {{ pr.review_time_hours|floatformat:1 }}h
+          {% else %}
+            -
+          {% endif %}
+        </td>
+        <td class="text-right font-mono text-sm">
+          <span class="text-success">+{{ pr.additions }}</span>
+          <span class="text-error">-{{ pr.deletions }}</span>
+        </td>
+        <td class="text-center">
+          {% if pr.is_ai_assisted %}
+            <span class="badge badge-primary badge-sm" title="{{ pr.ai_tools_detected|join:', ' }}">
+              {% trans "Yes" %}
+            </span>
+          {% else %}
+            <span class="text-base-content/50">-</span>
+          {% endif %}
+        </td>
+        <td class="text-sm text-base-content/70">
+          {% if pr.merged_at %}
+            {{ pr.merged_at|date:"M d, Y" }}
+          {% else %}
+            -
+          {% endif %}
+        </td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="9" class="text-center py-8 text-base-content/50">
+          {% trans "No pull requests found." %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Pagination -->
+{% if page_obj.has_other_pages %}
+<div class="flex justify-center mt-6">
+  <div class="join">
+    {% if page_obj.has_previous %}
+    {% pagination_url page_obj.previous_page_number as prev_url %}
+    <a href="{{ prev_url }}"
+       class="join-item btn btn-sm"
+       hx-get="{% url 'metrics:pr_list_table' %}{{ prev_url }}"
+       hx-target="#pr-table-container"
+       hx-swap="innerHTML">
+      &laquo;
+    </a>
+    {% endif %}
+
+    <span class="join-item btn btn-sm btn-disabled">
+      {% blocktrans with current=page_obj.number total=page_obj.paginator.num_pages %}
+        Page {{ current }} of {{ total }}
+      {% endblocktrans %}
+    </span>
+
+    {% if page_obj.has_next %}
+    {% pagination_url page_obj.next_page_number as next_url %}
+    <a href="{{ next_url }}"
+       class="join-item btn btn-sm"
+       hx-get="{% url 'metrics:pr_list_table' %}{{ next_url }}"
+       hx-target="#pr-table-container"
+       hx-swap="innerHTML">
+      &raquo;
+    </a>
+    {% endif %}
+  </div>
+</div>
+{% endif %}

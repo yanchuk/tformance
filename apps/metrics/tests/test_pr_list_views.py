@@ -1,0 +1,284 @@
+"""Tests for PR list views - Pull Requests data explorer page."""
+
+from datetime import timedelta
+
+from django.test import Client, TestCase
+from django.urls import reverse
+from django.utils import timezone
+
+from apps.integrations.factories import UserFactory
+from apps.metrics.factories import PullRequestFactory, TeamFactory, TeamMemberFactory
+from apps.teams.roles import ROLE_ADMIN
+
+
+class TestPrListView(TestCase):
+    """Tests for the main PR list view."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.team = TeamFactory()
+        self.user = UserFactory()
+        self.team.members.add(self.user, through_defaults={"role": ROLE_ADMIN})
+        self.member = TeamMemberFactory(team=self.team, display_name="Alice")
+        self.client = Client()
+        self.client.force_login(self.user)
+
+    def test_pr_list_requires_login(self):
+        """Test that PR list page requires authentication."""
+        self.client.logout()
+        url = reverse("metrics:pr_list")
+
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/accounts/login/", response.url)
+
+    def test_pr_list_renders_successfully(self):
+        """Test that PR list page renders with 200 status."""
+        url = reverse("metrics:pr_list")
+
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "metrics/pull_requests/list.html")
+
+    def test_pr_list_shows_prs(self):
+        """Test that PR list page shows PRs for the team."""
+        PullRequestFactory(
+            team=self.team,
+            author=self.member,
+            title="Test PR",
+            github_repo="org/repo",
+        )
+        url = reverse("metrics:pr_list")
+
+        response = self.client.get(url)
+
+        self.assertContains(response, "Test PR")
+        self.assertContains(response, "org/repo")
+
+    def test_pr_list_filter_options_in_context(self):
+        """Test that filter options are passed to template context."""
+        PullRequestFactory(team=self.team, github_repo="org/repo-a")
+        url = reverse("metrics:pr_list")
+
+        response = self.client.get(url)
+
+        self.assertIn("filter_options", response.context)
+        self.assertIn("repos", response.context["filter_options"])
+
+    def test_pr_list_applies_repo_filter(self):
+        """Test that repo filter is applied from GET params."""
+        PullRequestFactory(team=self.team, github_repo="org/repo-a", title="PR A")
+        PullRequestFactory(team=self.team, github_repo="org/repo-b", title="PR B")
+        url = reverse("metrics:pr_list")
+
+        response = self.client.get(url, {"repo": "org/repo-a"})
+
+        self.assertContains(response, "PR A")
+        self.assertNotContains(response, "PR B")
+
+    def test_pr_list_applies_ai_filter_yes(self):
+        """Test that AI filter is applied from GET params."""
+        PullRequestFactory(team=self.team, is_ai_assisted=True, title="AI PR")
+        PullRequestFactory(team=self.team, is_ai_assisted=False, title="Normal PR")
+        url = reverse("metrics:pr_list")
+
+        response = self.client.get(url, {"ai": "yes"})
+
+        self.assertContains(response, "AI PR")
+        self.assertNotContains(response, "Normal PR")
+
+    def test_pr_list_applies_state_filter(self):
+        """Test that state filter is applied from GET params."""
+        PullRequestFactory(team=self.team, state="merged", title="Merged PR")
+        PullRequestFactory(team=self.team, state="open", title="Open PR")
+        url = reverse("metrics:pr_list")
+
+        response = self.client.get(url, {"state": "merged"})
+
+        self.assertContains(response, "Merged PR")
+        self.assertNotContains(response, "Open PR")
+
+    def test_pr_list_applies_date_range_filter(self):
+        """Test that date range filters are applied."""
+        today = timezone.now()
+        PullRequestFactory(
+            team=self.team,
+            merged_at=today - timedelta(days=3),
+            state="merged",
+            title="Recent PR",
+        )
+        PullRequestFactory(
+            team=self.team,
+            merged_at=today - timedelta(days=30),
+            state="merged",
+            title="Old PR",
+        )
+        url = reverse("metrics:pr_list")
+        week_ago = (today - timedelta(days=7)).date().isoformat()
+        today_str = today.date().isoformat()
+
+        response = self.client.get(url, {"date_from": week_ago, "date_to": today_str})
+
+        self.assertContains(response, "Recent PR")
+        self.assertNotContains(response, "Old PR")
+
+    def test_pr_list_shows_stats(self):
+        """Test that aggregate stats are shown."""
+        PullRequestFactory(team=self.team, cycle_time_hours=10)
+        PullRequestFactory(team=self.team, cycle_time_hours=20)
+        url = reverse("metrics:pr_list")
+
+        response = self.client.get(url)
+
+        self.assertIn("stats", response.context)
+        self.assertEqual(response.context["stats"]["total_count"], 2)
+
+    def test_pr_list_htmx_returns_partial(self):
+        """Test that HTMX request returns partial template."""
+        PullRequestFactory(team=self.team, title="Test PR")
+        url = reverse("metrics:pr_list")
+
+        response = self.client.get(url, HTTP_HX_REQUEST="true")
+
+        self.assertEqual(response.status_code, 200)
+        # Should return partial, not full page (no <html> tag)
+        self.assertNotContains(response, "<html")
+
+    def test_pr_list_pagination(self):
+        """Test that PR list is paginated."""
+        # Create more PRs than fit on one page
+        for i in range(60):
+            PullRequestFactory(team=self.team, title=f"PR {i}")
+        url = reverse("metrics:pr_list")
+
+        response = self.client.get(url)
+
+        self.assertIn("page_obj", response.context)
+        # Default page size should be 50
+        self.assertEqual(len(response.context["page_obj"]), 50)
+
+    def test_pr_list_page_param(self):
+        """Test that page parameter works."""
+        for i in range(60):
+            PullRequestFactory(team=self.team, title=f"PR {i}")
+        url = reverse("metrics:pr_list")
+
+        response = self.client.get(url, {"page": "2"})
+
+        self.assertEqual(response.status_code, 200)
+        # Second page should have remaining PRs
+        self.assertEqual(len(response.context["page_obj"]), 10)
+
+
+class TestPrListTableView(TestCase):
+    """Tests for the PR list table HTMX partial view."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.team = TeamFactory()
+        self.user = UserFactory()
+        self.team.members.add(self.user, through_defaults={"role": ROLE_ADMIN})
+        self.member = TeamMemberFactory(team=self.team)
+        self.client = Client()
+        self.client.force_login(self.user)
+
+    def test_pr_table_returns_partial(self):
+        """Test that table endpoint returns partial template."""
+        PullRequestFactory(team=self.team, title="Test PR")
+        url = reverse("metrics:pr_list_table")
+
+        response = self.client.get(url, HTTP_HX_REQUEST="true")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "metrics/pull_requests/partials/table.html")
+
+    def test_pr_table_applies_filters(self):
+        """Test that table partial applies filters from GET params."""
+        PullRequestFactory(team=self.team, github_repo="org/repo-a", title="PR A")
+        PullRequestFactory(team=self.team, github_repo="org/repo-b", title="PR B")
+        url = reverse("metrics:pr_list_table")
+
+        response = self.client.get(url, {"repo": "org/repo-a"}, HTTP_HX_REQUEST="true")
+
+        self.assertContains(response, "PR A")
+        self.assertNotContains(response, "PR B")
+
+
+class TestPrListExportView(TestCase):
+    """Tests for the PR list CSV export view."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.team = TeamFactory()
+        self.user = UserFactory()
+        self.team.members.add(self.user, through_defaults={"role": ROLE_ADMIN})
+        self.member = TeamMemberFactory(team=self.team, display_name="Alice")
+        self.client = Client()
+        self.client.force_login(self.user)
+
+    def test_export_returns_csv(self):
+        """Test that export returns CSV file."""
+        PullRequestFactory(team=self.team, author=self.member, title="Test PR")
+        url = reverse("metrics:pr_list_export")
+
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "text/csv")
+        self.assertIn("attachment", response["Content-Disposition"])
+
+    def test_export_includes_pr_data(self):
+        """Test that CSV includes PR data."""
+        PullRequestFactory(
+            team=self.team,
+            author=self.member,
+            title="Test PR Title",
+            github_repo="org/repo",
+        )
+        url = reverse("metrics:pr_list_export")
+
+        response = self.client.get(url)
+
+        # StreamingHttpResponse uses streaming_content
+        content = b"".join(response.streaming_content).decode("utf-8")
+        self.assertIn("Test PR Title", content)
+        self.assertIn("org/repo", content)
+
+    def test_export_applies_filters(self):
+        """Test that export applies filters from GET params."""
+        PullRequestFactory(team=self.team, github_repo="org/repo-a", title="PR A")
+        PullRequestFactory(team=self.team, github_repo="org/repo-b", title="PR B")
+        url = reverse("metrics:pr_list_export")
+
+        response = self.client.get(url, {"repo": "org/repo-a"})
+
+        # StreamingHttpResponse uses streaming_content
+        content = b"".join(response.streaming_content).decode("utf-8")
+        self.assertIn("PR A", content)
+        self.assertNotIn("PR B", content)
+
+    def test_export_has_headers(self):
+        """Test that CSV has proper column headers."""
+        PullRequestFactory(team=self.team)
+        url = reverse("metrics:pr_list_export")
+
+        response = self.client.get(url)
+
+        # StreamingHttpResponse uses streaming_content
+        content = b"".join(response.streaming_content).decode("utf-8")
+        # Check for expected headers
+        self.assertIn("Title", content)
+        self.assertIn("Repository", content)
+        self.assertIn("Author", content)
+        self.assertIn("Cycle Time", content)
+
+    def test_export_requires_login(self):
+        """Test that export requires authentication."""
+        self.client.logout()
+        url = reverse("metrics:pr_list_export")
+
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 302)

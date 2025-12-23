@@ -197,6 +197,11 @@ class PullRequest(BaseTeamModel):
         title_part = f" {self.title[:50]}" if self.title else ""
         return f"{self.github_repo}#{self.github_pr_id}{title_part}"
 
+    @property
+    def github_url(self):
+        """Construct GitHub URL for this PR."""
+        return f"https://github.com/{self.github_repo}/pull/{self.github_pr_id}"
+
 
 class PRReview(BaseTeamModel):
     """

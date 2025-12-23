@@ -47,6 +47,10 @@ team_urlpatterns = (
         path("cards/survey-channels/", views.survey_channel_distribution_card, name="cards_survey_channels"),
         path("cards/survey-ai-detection/", views.survey_ai_detection_card, name="cards_survey_ai_detection"),
         path("cards/survey-response-time/", views.survey_response_time_card, name="cards_survey_response_time"),
+        # Pull Requests data explorer
+        path("pull-requests/", views.pr_list, name="pr_list"),
+        path("pull-requests/table/", views.pr_list_table, name="pr_list_table"),
+        path("pull-requests/export/", views.pr_list_export, name="pr_list_export"),
     ],
     "metrics",
 )
