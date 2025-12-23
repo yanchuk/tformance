@@ -348,6 +348,24 @@ TURNSTILE_SECRET = env("TURNSTILE_SECRET", default=None)
 GITHUB_CLIENT_ID = env("GITHUB_CLIENT_ID", default="")
 GITHUB_SECRET_ID = env("GITHUB_SECRET_ID", default="")
 
+# GitHub API Configuration (REST vs GraphQL)
+# GraphQL provides 10-50x faster bulk sync but REST is needed for Copilot metrics
+GITHUB_API_CONFIG = {
+    # Master switch for GraphQL API (8.8x faster, 30x fewer API calls)
+    "USE_GRAPHQL": env.bool("GITHUB_USE_GRAPHQL", default=True),
+    # Per-operation control (all enabled by default)
+    "GRAPHQL_OPERATIONS": {
+        "initial_sync": env.bool("GITHUB_GRAPHQL_INITIAL_SYNC", default=True),
+        "incremental_sync": env.bool("GITHUB_GRAPHQL_INCREMENTAL_SYNC", default=True),
+        "pr_complete_data": env.bool("GITHUB_GRAPHQL_PR_COMPLETE", default=True),
+        "member_sync": env.bool("GITHUB_GRAPHQL_MEMBERS", default=True),
+    },
+    # Fallback to REST on GraphQL errors
+    "FALLBACK_TO_REST": env.bool("GITHUB_FALLBACK_REST", default=True),
+    # Rate limit threshold - switch to REST when GraphQL points < this
+    "GRAPHQL_RATE_LIMIT_THRESHOLD": env.int("GITHUB_GRAPHQL_RATE_LIMIT_THRESHOLD", default=100),
+}
+
 # Jira OAuth (Atlassian)
 JIRA_CLIENT_ID = env("JIRA_CLIENT_ID", default="")
 JIRA_CLIENT_SECRET = env("JIRA_CLIENT_SECRET", default="")

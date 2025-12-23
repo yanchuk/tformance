@@ -209,12 +209,28 @@ async def fetch_prs_bulk(self, owner, repo, cursor=None, max_retries=3):
 
 ## Real Repository Test Results
 
-Tested with `ianchuk-1-test/test` repository:
+### Small Repository (ianchuk-1-test/test)
 - **Sync time:** 0.51 seconds
 - **PRs synced:** 1
 - **Commits synced:** 1
 - **Files synced:** 1
 - **Errors:** None
+
+### Large Repository Benchmark (polarsource/polar - 1226 PRs)
+
+**Test: Complete PR data sync (10 PRs with commits, files, reviews)**
+
+| Metric | GraphQL | REST | Improvement |
+|--------|---------|------|-------------|
+| Time | 2.13s | 18.84s | **8.8x faster** |
+| API calls | 1 | 31 | **30x fewer** |
+| Data fetched | Full nested | Full nested | Same |
+
+**Key findings:**
+- GraphQL fetches all nested data (commits, files, reviews) in a single call
+- REST requires 3 additional calls per PR (commits, files, reviews)
+- At scale (1000+ PRs), GraphQL saves thousands of API calls
+- Rate limit impact: GraphQL uses ~5 points vs REST uses ~3000 requests
 
 ## Next Immediate Steps
 

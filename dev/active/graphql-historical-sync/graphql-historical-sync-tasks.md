@@ -79,7 +79,7 @@
 ## Phase 6: Testing & Validation (IN PROGRESS)
 
 - [x] **Test with real repository** - synced `ianchuk-1-test/test` in 0.51s
-- [ ] Benchmark performance with larger repository (before/after)
+- [x] **Benchmark performance** - polarsource/polar (1226 PRs): GraphQL 8.8x faster, 30x fewer API calls
 - [ ] Validate data consistency (GraphQL vs REST)
 - [ ] Test rate limit handling
 - [ ] Test fallback behavior
