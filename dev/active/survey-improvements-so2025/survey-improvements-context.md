@@ -1,14 +1,14 @@
 # Survey Improvements - Context Document
 
-**Last Updated: 2025-12-22 (Session 4 - Phase 3 Complete)**
+**Last Updated: 2025-12-23 (Session 5 - ALL PHASES COMPLETE)**
 
 ## Project Context
 
-This feature enhances the PR survey system with **PR description-based voting** (not comments), **one-click voting**, **AI auto-detection**, and **Slack fallback**, informed by the Stack Overflow 2025 Developer Survey AI section. The goal is to capture more nuanced data about AI tool usage while maximizing response rates through frictionless voting directly from GitHub.
+This feature enhances the PR survey system with **PR description-based voting** (not comments), **one-click voting**, **AI auto-detection**, **Slack fallback**, and **dashboard analytics**, informed by the Stack Overflow 2025 Developer Survey AI section. The goal is to capture more nuanced data about AI tool usage while maximizing response rates through frictionless voting directly from GitHub.
 
 ---
 
-## Implementation Status
+## Implementation Status: ✅ ALL PHASES COMPLETE
 
 ### ✅ COMPLETED: Model Changes
 
@@ -58,17 +58,6 @@ This feature enhances the PR survey system with **PR description-based voting** 
 - One-click votes redirect to existing `complete.html` thank you page
 - Added 18 unit tests for one-click voting views
 
-**How One-Click Voting Works:**
-1. PR description contains links like `/survey/TOKEN/author/?vote=yes`
-2. User clicks link → GitHub OAuth authenticates user
-3. View checks `?vote=` parameter → Records vote with `response_source='github'`
-4. Redirects to thank you page
-
-**Visual Testing:**
-- Tested complete page on mobile (375x667), tablet (768x1024), desktop (1920x1080)
-- Design follows Easy Eyes Dashboard color scheme
-- Responsive layout works across all device sizes
-
 ### ✅ COMPLETED: Phase 3 - Slack Fallback Integration
 
 **Changes Made:**
@@ -76,50 +65,56 @@ This feature enhances the PR survey system with **PR description-based voting** 
 - Updated `update_pr_description_survey_task` to schedule Slack fallback on success
 - Updated `send_pr_surveys_task` to use existing surveys (get_or_create pattern)
 - Updated Slack interaction handler to set `response_source='slack'`
-- Skip logic verified: authors with auto-detected AI or GitHub responses are skipped
-- Skip logic verified: reviewers who responded via GitHub are skipped
+- Skip logic: authors with auto-detected AI or GitHub responses are skipped
+- Skip logic: reviewers who responded via GitHub are skipped
 - Added 10 new tests for fallback task and skip logic
 
-**How Slack Fallback Works:**
-1. PR merges → `update_pr_description_survey_task` runs
-2. PR description updated with survey links
-3. `schedule_slack_survey_fallback_task` scheduled with 1-hour countdown
-4. After 1 hour → `send_pr_surveys_task` runs
-5. Task checks for existing responses (GitHub one-click or auto-detected)
-6. Skips users who already responded, sends Slack DM to others
+### ✅ COMPLETED: Phase 4 - Dashboard Metrics
+
+**Changes Made (this session):**
+- Added `get_response_channel_distribution()` - survey responses by channel with counts/percentages
+- Added `get_ai_detection_metrics()` - auto-detected vs self-reported AI usage stats
+- Added `get_response_time_metrics()` - average response times by channel (hours from PR merge)
+- Extracted `_filter_by_date_range()` helper function (reusable across all metrics)
+- Extracted `_calculate_average_response_times()` helper function
+- Added 3 new HTMX card views: `survey_channel_distribution_card`, `survey_ai_detection_card`, `survey_response_time_card`
+- Added 3 new URL routes for HTMX endpoints
+- Created 3 new template partials in `templates/metrics/partials/`
+- Added "Survey Analytics" section to CTO Overview dashboard
+- **53 new tests** for dashboard channel metrics (TDD)
 
 ---
 
-## Key Files Created/Modified This Session
+## Key Files Created/Modified This Session (Phase 4)
 
-### AI Detection Service
+### Dashboard Service
+| File | Change |
+|------|--------|
+| `apps/metrics/services/dashboard_service.py` | Added 3 new functions + 2 helper functions |
+
+### Views
+| File | Change |
+|------|--------|
+| `apps/metrics/views/chart_views.py` | Added 3 new card views |
+| `apps/metrics/views/__init__.py` | Exported new views |
+
+### URLs
+| File | Change |
+|------|--------|
+| `apps/metrics/urls.py` | Added 3 new URL routes |
+
+### Templates
 | File | Purpose |
 |------|---------|
-| `apps/integrations/services/ai_detection.py` | Centralized AI co-author detection patterns |
-| `apps/integrations/tests/test_ai_detection.py` | 44 unit tests for detection |
+| `templates/metrics/partials/survey_channel_distribution_card.html` | Response channel breakdown |
+| `templates/metrics/partials/survey_ai_detection_card.html` | AI detection vs self-reported stats |
+| `templates/metrics/partials/survey_response_time_card.html` | Response times by channel |
+| `templates/metrics/cto_overview.html` | Added "Survey Analytics" section |
 
-### PR Description Service
-| File | Purpose |
-|------|---------|
-| `apps/integrations/services/github_pr_description.py` | PR description update with survey links |
-| `apps/integrations/tests/test_github_pr_description.py` | 21 unit tests for PR descriptions |
-
-### Survey Service
-| File | Change |
-|------|--------|
-| `apps/metrics/services/survey_service.py` | Added `_detect_ai_in_pr_commits()` integration |
-| `apps/metrics/tests/test_survey_service.py` | Added 7 AI auto-detection tests |
-
-### Celery Tasks
-| File | Change |
-|------|--------|
-| `apps/integrations/tasks.py` | Added `update_pr_description_survey_task` |
-
-### Models
-| File | Change |
-|------|--------|
-| `apps/metrics/models/surveys.py` | Added "auto" to `RESPONSE_SOURCE_CHOICES` |
-| `apps/metrics/migrations/0014_add_auto_response_source.py` | Migration for "auto" choice |
+### Tests
+| File | Tests | Purpose |
+|------|-------|---------|
+| `apps/metrics/tests/dashboard/test_channel_metrics.py` | 53 | Response channel, AI detection, response time metrics |
 
 ---
 
@@ -134,12 +129,13 @@ This feature enhances the PR survey system with **PR description-based voting** 
 | `apps/web/tests/test_survey_views.py` | 61 | ✅ Passing |
 | `apps/integrations/tests/test_slack_tasks.py` | 22 | ✅ Passing |
 | `apps/integrations/tests/test_slack_interactions.py` | 20 | ✅ Passing |
-| **Total** | **245** | ✅ Passing |
+| `apps/metrics/tests/dashboard/test_channel_metrics.py` | 53 | ✅ Passing |
+| **Total Survey-Related** | **~300** | ✅ Passing |
 
 ### Verify All Tests Command
 
 ```bash
-.venv/bin/pytest apps/integrations/tests/test_ai_detection.py apps/metrics/tests/models/test_survey.py apps/metrics/tests/test_survey_service.py apps/integrations/tests/test_github_pr_description.py apps/web/tests/test_survey_views.py apps/integrations/tests/test_slack_tasks.py apps/integrations/tests/test_slack_interactions.py -v
+.venv/bin/pytest apps/metrics/tests/dashboard/test_channel_metrics.py apps/integrations/tests/test_ai_detection.py apps/metrics/tests/models/test_survey.py apps/metrics/tests/test_survey_service.py apps/integrations/tests/test_github_pr_description.py apps/web/tests/test_survey_views.py apps/integrations/tests/test_slack_tasks.py apps/integrations/tests/test_slack_interactions.py -v
 ```
 
 ---
@@ -148,8 +144,8 @@ This feature enhances the PR survey system with **PR description-based voting** 
 
 | Migration | App | Status |
 |-----------|-----|--------|
-| `0013_add_survey_response_source_fields.py` | metrics | Created |
-| `0014_add_auto_response_source.py` | metrics | Created |
+| `0013_add_survey_response_source_fields.py` | metrics | ✅ Created (needs apply) |
+| `0014_add_auto_response_source.py` | metrics | ✅ Created (needs apply) |
 
 ### Apply Migrations
 
@@ -159,39 +155,49 @@ make migrate
 
 ---
 
-## PR Description Survey Format
+## Dashboard Metrics API
 
-### Normal PR (Author + Reviewers)
+### get_response_channel_distribution(team, start_date, end_date)
 
-```markdown
-<!-- tformance-survey-start -->
-
----
-
-### tformance Survey
-
-**@author** - Was this PR AI-assisted?
-> [Yes](https://app.example.com/survey/TOKEN/author?vote=yes) | [No](https://app.example.com/survey/TOKEN/author?vote=no)
-
-**Reviewers** - Rate this code:
-> [Could be better](https://app.example.com/survey/TOKEN/review?vote=1) | [OK](https://app.example.com/survey/TOKEN/review?vote=2) | [Super](https://app.example.com/survey/TOKEN/review?vote=3)
-<!-- tformance-survey-end -->
+Returns survey response counts by channel:
+```python
+{
+    "author_responses": {"github": 10, "slack": 5, "web": 2, "auto": 8},
+    "reviewer_responses": {"github": 15, "slack": 8, "web": 3},
+    "author_percentages": {"github": Decimal("40.00"), ...},
+    "reviewer_percentages": {"github": Decimal("57.69"), ...}
+}
 ```
 
-### AI-Detected PR (Reviewers Only)
+### get_ai_detection_metrics(team, start_date, end_date)
 
-```markdown
-<!-- tformance-survey-start -->
+Returns AI detection stats:
+```python
+{
+    "auto_detected_count": 8,
+    "self_reported_count": 12,
+    "not_ai_count": 15,
+    "no_response_count": 5,
+    "total_surveys": 40,
+    "auto_detection_rate": Decimal("40.00"),  # % of AI PRs auto-detected
+    "ai_usage_rate": Decimal("50.00")  # % of all PRs that used AI
+}
+```
 
----
+### get_response_time_metrics(team, start_date, end_date)
 
-### tformance Survey
-
-**AI-assisted PR detected**
-
-**Reviewers** - Rate this code:
-> [Could be better](https://app.example.com/survey/TOKEN/review?vote=1) | [OK](https://app.example.com/survey/TOKEN/review?vote=2) | [Super](https://app.example.com/survey/TOKEN/review?vote=3)
-<!-- tformance-survey-end -->
+Returns response times in hours:
+```python
+{
+    "author_avg_response_time": Decimal("4.50"),
+    "reviewer_avg_response_time": Decimal("3.25"),
+    "by_channel": {
+        "author": {"github": Decimal("2.00"), "slack": Decimal("6.00"), "web": Decimal("8.00")},
+        "reviewer": {"github": Decimal("1.50"), "slack": Decimal("5.00"), "web": Decimal("7.50")}
+    },
+    "total_author_responses": 25,
+    "total_reviewer_responses": 38
+}
 ```
 
 ---
@@ -203,49 +209,47 @@ make migrate
 3. **Centralized Pattern List** - Easy to add new AI tools in one place
 4. **HTML Comment Markers** - Invisible to users, identifies section for updates
 5. **"auto" Response Source** - Track auto-detection rate separately
+6. **1-Hour Slack Delay** - Gives users time to respond via GitHub first
+7. **TDD for Phase 4** - 53 tests written before implementation
+8. **Decimal for Percentages** - Consistent with existing dashboard code
 
 ---
 
-## Next Steps (Handoff Notes)
+## Commits Made This Session
 
-### Immediate Next Task: Phase 4 - Dashboard Metrics
-
-1. Add `get_response_channel_distribution()` to dashboard_service
-2. Track percentage of PRs with AI auto-detected
-3. Compare auto-detected vs self-reported AI usage
-4. Calculate response time by channel (GitHub vs Slack)
-5. Create dashboard visualizations for survey metrics
+1. `59fc6a9` - Add Phase 4 dashboard metrics for survey improvements
+   - 53 new tests (TDD)
+   - 3 new service functions
+   - 3 new views + URLs
+   - 3 new templates
+   - CTO Overview dashboard updated
 
 ---
 
-## Uncommitted Changes
+## Remaining Work
 
-### New Files
-- `apps/integrations/services/ai_detection.py`
-- `apps/integrations/tests/test_ai_detection.py`
-- `apps/integrations/services/github_pr_description.py`
-- `apps/integrations/tests/test_github_pr_description.py`
-- `apps/metrics/migrations/0013_add_survey_response_source_fields.py`
-- `apps/metrics/migrations/0014_add_auto_response_source.py`
+### Manual Testing Checklist (from tasks.md)
+- [ ] PR merge triggers description update
+- [ ] AI co-authored commit auto-detected
+- [ ] Click vote link → OAuth → Thank you page
+- [ ] Verify Slack not sent if already responded
+- [ ] Test vote change functionality
+- [ ] Test mobile responsiveness
 
-### Modified Files
-- `apps/metrics/models/surveys.py` (added "auto" choice, response source fields)
-- `apps/metrics/tests/models/test_survey.py` (added response source tests)
-- `apps/metrics/services/survey_service.py` (added AI detection, response_source params)
-- `apps/metrics/tests/test_survey_service.py` (added 9 tests for response_source)
-- `apps/integrations/tasks.py` (added `schedule_slack_survey_fallback_task`, integrated with PR description task)
-- `apps/integrations/webhooks/slack_interactions.py` (added `response_source='slack'`)
-- `apps/integrations/tests/test_slack_tasks.py` (added 10 tests for fallback + skip logic)
-- `apps/integrations/tests/test_slack_interactions.py` (added 2 tests for response_source)
-- `apps/web/views.py` (added one-click voting to survey_author and survey_reviewer)
-- `apps/web/tests/test_survey_views.py` (added 18 one-click voting tests)
-- `dev/active/survey-improvements-so2025/survey-improvements-context.md`
-- `dev/active/survey-improvements-so2025/survey-improvements-tasks.md`
+### Definition of Done
+- [x] All tests passing
+- [ ] Code reviewed
+- [ ] Migration tested on staging
+- [ ] Documentation updated
+- [ ] Survey response rate measured (baseline + after)
+- [ ] PR description update works in real repo
 
-### Verify Before Commit
+---
+
+## Verify Before Next Session
 
 ```bash
-make test                    # All tests pass
+make test                    # All tests pass (~2000 tests)
 make ruff                    # Code formatted
 make migrations              # No missing migrations
 ```
