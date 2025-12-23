@@ -862,13 +862,14 @@ def get_reviewer_correlations(team: Team) -> list[dict]:
     ]
 
 
-def get_copilot_by_member(team: Team, start_date: date, end_date: date) -> list[dict]:
+def get_copilot_by_member(team: Team, start_date: date, end_date: date, limit: int = 5) -> list[dict]:
     """Get Copilot metrics breakdown by member.
 
     Args:
         team: Team instance
         start_date: Start date (inclusive)
         end_date: End date (inclusive)
+        limit: Maximum number of members to return (default 5)
 
     Returns:
         list of dicts with keys:
@@ -912,7 +913,7 @@ def get_copilot_by_member(team: Team, start_date: date, end_date: date) -> list[
             }
         )
 
-    return result
+    return result[:limit] if limit else result
 
 
 def get_cicd_pass_rate(team: Team, start_date: date, end_date: date) -> dict:

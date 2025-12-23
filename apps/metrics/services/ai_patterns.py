@@ -26,7 +26,7 @@ selective reprocessing.
 # =============================================================================
 # This version is stored with AI detections to support selective reprocessing.
 # Increment major version for breaking changes, minor for additions.
-PATTERNS_VERSION = "1.0.0"
+PATTERNS_VERSION = "1.1.0"
 
 # =============================================================================
 # AI Reviewer Bots (username-based detection)
@@ -61,6 +61,12 @@ AI_REVIEWER_BOTS: dict[str, str] = {
     "vercel[bot]": "vercel",
     # ----- GitHub Apps/Actions -----
     "github-actions[bot]": "github_actions",
+    # ----- Devin AI - autonomous coding agent -----
+    "devin-ai-integration[bot]": "devin",
+    "devin[bot]": "devin",
+    "devin-ai[bot]": "devin",
+    # ----- Autofix CI -----
+    "autofix-ci[bot]": "autofix",
 }
 
 # =============================================================================
@@ -96,6 +102,11 @@ AI_SIGNATURE_PATTERNS: list[tuple[str, str]] = [
     # ----- Aider -----
     (r"generated\s+by\s+aider", "aider"),
     (r"aider\.chat", "aider"),
+    # ----- Devin AI -----
+    (r"generated\s+by\s+devin", "devin"),
+    (r"created\s+by\s+devin", "devin"),
+    (r"devin\.ai", "devin"),
+    (r"devin\s+ai", "devin"),
     # ----- Generic AI indicators -----
     (r"ai[- ]?generated", "ai_generic"),
     (r"ai[- ]?assisted", "ai_generic"),
@@ -129,6 +140,11 @@ AI_CO_AUTHOR_PATTERNS: list[tuple[str, str]] = [
     # ----- Aider -----
     (r"co-authored-by:\s*aider\s*<[^>]+>", "aider"),
     (r"co-authored-by:[^<]*<aider@", "aider"),
+    # ----- Devin AI -----
+    (r"co-authored-by:\s*devin\s*<[^>]+>", "devin"),
+    (r"co-authored-by:[^<]*<[^>]*@devin\.ai>", "devin"),
+    # ----- Autofix CI bot -----
+    (r"co-authored-by:\s*autofix-ci\[bot\]\s*<[^>]+>", "autofix"),
 ]
 
 
