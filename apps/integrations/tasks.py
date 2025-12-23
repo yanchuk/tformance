@@ -75,7 +75,7 @@ def sync_repository_task(self, repo_id: int) -> dict:
     # Sync the repository
     logger.info(f"Starting sync for repository: {tracked_repo.full_name}")
     try:
-        result = sync_repository_incremental(tracked_repo)
+        result = _sync_incremental_with_graphql_or_rest(tracked_repo)
         logger.info(f"Successfully synced repository: {tracked_repo.full_name}")
 
         # Set status to complete and clear error
@@ -110,6 +110,110 @@ def sync_repository_task(self, repo_id: int) -> dict:
             return {"error": str(exc)}
 
 
+def _sync_with_graphql_or_rest(tracked_repo, days_back: int) -> dict:
+    """Sync repository using GraphQL or REST API based on feature flags.
+
+    Uses GraphQL API if enabled for initial_sync operation, falling back to REST
+    if GraphQL fails and fallback is enabled.
+
+    Args:
+        tracked_repo: TrackedRepository instance to sync
+        days_back: Number of days of history to sync
+
+    Returns:
+        Dict with sync results (prs_synced, reviews_synced, etc.)
+    """
+    import asyncio
+
+    from django.conf import settings
+
+    github_config = getattr(settings, "GITHUB_API_CONFIG", {})
+    use_graphql = github_config.get("USE_GRAPHQL", False)
+    graphql_ops = github_config.get("GRAPHQL_OPERATIONS", {})
+    initial_sync_enabled = graphql_ops.get("initial_sync", True)
+    fallback_to_rest = github_config.get("FALLBACK_TO_REST", True)
+
+    if use_graphql and initial_sync_enabled:
+        logger.info(f"Using GraphQL API for sync: {tracked_repo.full_name}")
+        try:
+            from apps.integrations.services.github_graphql_sync import sync_repository_history_graphql
+
+            # Run async function in sync context
+            result = asyncio.run(sync_repository_history_graphql(tracked_repo, days_back=days_back))
+
+            # Check if GraphQL sync had errors
+            if result.get("errors") and fallback_to_rest:
+                logger.warning(
+                    f"GraphQL sync had errors for {tracked_repo.full_name}: {result['errors']}, falling back to REST"
+                )
+                raise Exception(f"GraphQL sync errors: {result['errors']}")
+
+            return result
+        except Exception as e:
+            if fallback_to_rest:
+                logger.warning(f"GraphQL sync failed for {tracked_repo.full_name}: {e}, falling back to REST")
+            else:
+                raise
+
+    # Use REST API (default or fallback)
+    logger.info(f"Using REST API for sync: {tracked_repo.full_name}")
+    from apps.integrations.services.github_sync import sync_repository_history
+
+    return sync_repository_history(tracked_repo, days_back=days_back)
+
+
+def _sync_incremental_with_graphql_or_rest(tracked_repo) -> dict:
+    """Sync repository incrementally using GraphQL or REST API based on feature flags.
+
+    Uses GraphQL API if enabled for incremental_sync operation, falling back to REST
+    if GraphQL fails and fallback is enabled.
+
+    Args:
+        tracked_repo: TrackedRepository instance to sync
+
+    Returns:
+        Dict with sync results (prs_synced, reviews_synced, etc.)
+    """
+    import asyncio
+
+    from django.conf import settings
+
+    github_config = getattr(settings, "GITHUB_API_CONFIG", {})
+    use_graphql = github_config.get("USE_GRAPHQL", False)
+    graphql_ops = github_config.get("GRAPHQL_OPERATIONS", {})
+    incremental_sync_enabled = graphql_ops.get("incremental_sync", True)
+    fallback_to_rest = github_config.get("FALLBACK_TO_REST", True)
+
+    if use_graphql and incremental_sync_enabled:
+        logger.info(f"Using GraphQL API for incremental sync: {tracked_repo.full_name}")
+        try:
+            from apps.integrations.services.github_graphql_sync import sync_repository_incremental_graphql
+
+            # Run async function in sync context
+            result = asyncio.run(sync_repository_incremental_graphql(tracked_repo))
+
+            # Check if GraphQL sync had errors
+            if result.get("errors") and fallback_to_rest:
+                logger.warning(
+                    f"GraphQL incremental sync had errors for {tracked_repo.full_name}: {result['errors']}, "
+                    "falling back to REST"
+                )
+                raise Exception(f"GraphQL sync errors: {result['errors']}")
+
+            return result
+        except Exception as e:
+            if fallback_to_rest:
+                logger.warning(
+                    f"GraphQL incremental sync failed for {tracked_repo.full_name}: {e}, falling back to REST"
+                )
+            else:
+                raise
+
+    # Use REST API (default or fallback)
+    logger.info(f"Using REST API for incremental sync: {tracked_repo.full_name}")
+    return sync_repository_incremental(tracked_repo)
+
+
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
 def sync_repository_initial_task(self, repo_id: int, days_back: int = 30) -> dict:
     """Sync historical data for a newly tracked repository.
@@ -139,9 +243,7 @@ def sync_repository_initial_task(self, repo_id: int, days_back: int = 30) -> dic
     # Sync repository history
     logger.info(f"Starting initial sync for repository: {tracked_repo.full_name} (days_back={days_back})")
     try:
-        from apps.integrations.services.github_sync import sync_repository_history
-
-        result = sync_repository_history(tracked_repo, days_back=days_back)
+        result = _sync_with_graphql_or_rest(tracked_repo, days_back=days_back)
         logger.info(f"Successfully synced repository history: {tracked_repo.full_name}")
 
         # Set status to complete and clear error
@@ -217,6 +319,60 @@ def sync_all_repositories_task() -> dict:
     }
 
 
+def _sync_members_with_graphql_or_rest(integration, org_slug: str) -> dict:
+    """Sync organization members using GraphQL or REST API based on feature flags.
+
+    Args:
+        integration: GitHubIntegration instance with team and credential
+        org_slug: GitHub organization slug
+
+    Returns:
+        dict: Sync results with created, updated, unchanged counts
+    """
+    import asyncio
+
+    from django.conf import settings
+
+    github_config = getattr(settings, "GITHUB_API_CONFIG", {})
+    use_graphql = github_config.get("USE_GRAPHQL", False)
+    graphql_ops = github_config.get("GRAPHQL_OPERATIONS", {})
+    member_sync_enabled = graphql_ops.get("member_sync", False)
+    fallback_to_rest = github_config.get("FALLBACK_TO_REST", True)
+
+    if use_graphql and member_sync_enabled:
+        try:
+            from apps.integrations.services.github_graphql_sync import sync_github_members_graphql
+
+            logger.info(f"Using GraphQL for member sync: {org_slug}")
+            result = asyncio.run(sync_github_members_graphql(integration, org_name=org_slug))
+
+            # If GraphQL has errors and fallback is enabled, fall back to REST
+            if result.get("errors") and fallback_to_rest:
+                logger.warning(f"GraphQL member sync had errors, falling back to REST: {result['errors']}")
+                raise Exception(f"GraphQL errors: {result['errors']}")
+
+            # Map GraphQL result keys to REST-style result keys for compatibility
+            return {
+                "created": result.get("members_created", 0),
+                "updated": result.get("members_updated", 0),
+                "unchanged": 0,  # GraphQL doesn't track unchanged separately
+                "failed": 0 if not result.get("errors") else len(result.get("errors", [])),
+            }
+        except Exception as e:
+            if fallback_to_rest:
+                logger.warning(f"GraphQL member sync failed for {org_slug}, falling back to REST: {e}")
+            else:
+                raise
+
+    # Use REST API (default or fallback)
+    logger.info(f"Using REST for member sync: {org_slug}")
+    return sync_github_members(
+        team=integration.team,
+        access_token=integration.credential.access_token,
+        org_slug=org_slug,
+    )
+
+
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
 def sync_github_members_task(self, integration_id: int) -> dict:
     """Sync GitHub organization members for a team.
@@ -245,11 +401,7 @@ def sync_github_members_task(self, integration_id: int) -> dict:
     # Sync members
     logger.info(f"Starting GitHub member sync for team: {integration.team.name} (org: {integration.organization_slug})")
     try:
-        result = sync_github_members(
-            team=integration.team,
-            access_token=integration.credential.access_token,
-            org_slug=integration.organization_slug,
-        )
+        result = _sync_members_with_graphql_or_rest(integration, integration.organization_slug)
         logger.info(
             f"Successfully synced GitHub members for team {integration.team.name}: "
             f"created={result['created']}, updated={result['updated']}, unchanged={result['unchanged']}"
@@ -1201,6 +1353,73 @@ def aggregate_all_teams_weekly_metrics_task():
     return teams_processed
 
 
+def _fetch_pr_core_data_with_graphql_or_rest(pr, tracked_repo, access_token, errors: list) -> dict:
+    """Fetch PR commits, files, and reviews using GraphQL or REST.
+
+    Uses GraphQL API if enabled for pr_complete_data operation, falling back to REST
+    if GraphQL fails and fallback is enabled. Check runs and comments always use REST.
+
+    Args:
+        pr: PullRequest model instance
+        tracked_repo: TrackedRepository model instance
+        access_token: GitHub access token
+        errors: List to append errors to
+
+    Returns:
+        dict with commits_synced, files_synced, reviews_synced counts
+    """
+    import asyncio
+
+    from django.conf import settings
+
+    github_config = getattr(settings, "GITHUB_API_CONFIG", {})
+    use_graphql = github_config.get("USE_GRAPHQL", False)
+    graphql_ops = github_config.get("GRAPHQL_OPERATIONS", {})
+    pr_complete_enabled = graphql_ops.get("pr_complete_data", True)
+    fallback_to_rest = github_config.get("FALLBACK_TO_REST", True)
+
+    if use_graphql and pr_complete_enabled:
+        logger.info(f"Using GraphQL API for PR complete data: {pr.github_repo}#{pr.github_pr_id}")
+        try:
+            from apps.integrations.services.github_graphql_sync import fetch_pr_complete_data_graphql
+
+            # Run async function in sync context
+            result = asyncio.run(fetch_pr_complete_data_graphql(pr, tracked_repo))
+
+            # Check if GraphQL sync had errors
+            if result.get("errors") and fallback_to_rest:
+                logger.warning(
+                    f"GraphQL PR data fetch had errors for {pr.github_repo}#{pr.github_pr_id}: {result['errors']}, "
+                    "falling back to REST"
+                )
+                raise Exception(f"GraphQL errors: {result['errors']}")
+
+            return {
+                "commits_synced": result.get("commits_synced", 0),
+                "files_synced": result.get("files_synced", 0),
+                "reviews_synced": result.get("reviews_synced", 0),
+            }
+        except Exception as e:
+            if fallback_to_rest:
+                logger.warning(
+                    f"GraphQL PR data fetch failed for {pr.github_repo}#{pr.github_pr_id}: {e}, falling back to REST"
+                )
+            else:
+                raise
+
+    # Use REST API (default or fallback)
+    logger.info(f"Using REST API for PR complete data: {pr.github_repo}#{pr.github_pr_id}")
+    commits_synced = github_sync.sync_pr_commits(pr, pr.github_pr_id, access_token, pr.github_repo, pr.team, errors)
+    files_synced = github_sync.sync_pr_files(pr, pr.github_pr_id, access_token, pr.github_repo, pr.team, errors)
+    # Note: REST doesn't have a separate reviews sync here - reviews are typically synced during PR sync
+
+    return {
+        "commits_synced": commits_synced,
+        "files_synced": files_synced,
+        "reviews_synced": 0,  # REST path doesn't sync reviews in this task
+    }
+
+
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
 def fetch_pr_complete_data_task(self, pr_id: int) -> dict:
     """Fetch complete PR data (commits, files, check runs, comments) after merge.
@@ -1239,10 +1458,12 @@ def fetch_pr_complete_data_task(self, pr_id: int) -> dict:
     # Sync all PR data
     logger.info(f"Starting complete data fetch for PR {pr.github_pr_id}")
 
-    commits_synced = github_sync.sync_pr_commits(pr, pr.github_pr_id, access_token, pr.github_repo, pr.team, errors)
+    # Fetch commits, files (and reviews if using GraphQL) - uses GraphQL or REST based on config
+    core_data = _fetch_pr_core_data_with_graphql_or_rest(pr, tracked_repo, access_token, errors)
+    commits_synced = core_data["commits_synced"]
+    files_synced = core_data["files_synced"]
 
-    files_synced = github_sync.sync_pr_files(pr, pr.github_pr_id, access_token, pr.github_repo, pr.team, errors)
-
+    # These always use REST (not supported by our GraphQL queries yet)
     check_runs_synced = github_sync.sync_pr_check_runs(
         pr, pr.github_pr_id, access_token, pr.github_repo, pr.team, errors
     )

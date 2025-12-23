@@ -244,3 +244,42 @@ Installed packages:
 ## No Migrations Needed
 
 This feature adds new service files only - no model changes.
+
+## Session Handoff Notes (2025-12-23)
+
+### What Was Completed This Session
+
+**Phase 5 (Member Sync Migration) - COMPLETE:**
+- Updated `FETCH_ORG_MEMBERS_QUERY` to include `databaseId` field for GitHub user ID matching
+- Implemented `sync_github_members_graphql()` async function with TDD (8 tests)
+- Added `_sync_members_with_graphql_or_rest()` helper in tasks.py
+- Updated `sync_github_members_task` to use GraphQL with REST fallback
+- All 88 GraphQL tests passing
+
+### All GraphQL Migration Phases Complete
+
+| Phase | Status | Tests |
+|-------|--------|-------|
+| 1. Client Infrastructure | ✅ | 22 tests |
+| 1.5. Timeout Handling | ✅ | 12 tests |
+| 2. Initial Sync | ✅ | 21 tests |
+| 3. Incremental Sync | ✅ | 17 tests |
+| 4. PR Complete Data | ✅ | 8 tests |
+| 5. Member Sync | ✅ | 8 tests |
+| **Total** | | **88 tests** |
+
+### Verify Commands
+
+```bash
+# All GraphQL tests
+.venv/bin/pytest apps/integrations/tests/test_github_graphql.py apps/integrations/tests/test_github_graphql_sync.py -v
+
+# Lint
+.venv/bin/ruff check apps/integrations/services/github_graphql*.py apps/integrations/tests/test_github_graphql*.py apps/integrations/tasks.py
+```
+
+### Next Steps (Future Sessions)
+
+1. **Benchmark with larger repository** - test with 400+ PRs to measure performance improvement
+2. **Production rollout** - enable `GITHUB_USE_GRAPHQL=true` progressively
+3. **Monitor rate limits** - validate GraphQL point-based limits vs REST request limits
