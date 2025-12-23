@@ -26,6 +26,27 @@
       </div>
     {% endif %}
   </form>
+  {% if not create %}
+  <div class="mt-4 pt-4 border-t border-base-300">
+    <div class="flex flex-wrap gap-6">
+      <div class="form-control">
+        <label class="label">
+          <span class="label-text font-medium">{% translate "Account ID" %}</span>
+        </label>
+        <code class="px-3 py-2 bg-base-200 rounded-lg text-sm font-mono text-base-content/80">{{ team.id }}</code>
+      </div>
+      <div class="form-control">
+        <label class="label">
+          <span class="label-text font-medium">{% translate "Account Slug" %}</span>
+        </label>
+        <div class="flex items-center gap-2">
+          <code class="px-3 py-2 bg-base-200 rounded-lg text-sm font-mono text-base-content/80">{{ team.slug }}</code>
+          <span class="text-xs text-base-content/60">{% translate "Used in URLs" %}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
 </section>
 {% if not create %}
 <section class="app-card">

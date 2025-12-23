@@ -2,8 +2,12 @@
 <tr id="member-row-{{ member.id }}" class="hover:bg-deep/50 transition-colors">
   <td class="px-4 py-3 border-b border-elevated/50">
     <div class="flex items-center gap-3">
-      <div class="w-10 h-10 rounded-full bg-elevated flex items-center justify-center">
-        <span class="text-sm font-medium text-slate-300">{{ member.display_name|slice:":2"|upper }}</span>
+      <div class="w-10 h-10 rounded-full bg-elevated flex items-center justify-center overflow-hidden">
+        {% if member.avatar_url %}
+          <img src="{{ member.avatar_url }}" alt="{{ member.display_name }}" class="w-full h-full object-cover">
+        {% else %}
+          <span class="text-sm font-medium text-slate-300">{{ member.initials }}</span>
+        {% endif %}
       </div>
       <div class="font-medium text-slate-200">{{ member.display_name }}</div>
     </div>

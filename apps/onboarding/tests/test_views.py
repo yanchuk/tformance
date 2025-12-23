@@ -109,3 +109,72 @@ class SelectOrganizationViewTests(TestCase):
 
         # Should redirect to web:home (which is /)
         self.assertRedirects(response, reverse("web:home"), fetch_redirect_response=False)
+
+
+class SkipOnboardingViewTests(TestCase):
+    """Tests for skip_onboarding view."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.user = CustomUser.objects.create_user(
+            username="skip_test@example.com",
+            email="skip_test@example.com",
+            password="testpassword123",
+        )
+
+    def test_redirect_to_login_when_not_authenticated(self):
+        """Test that unauthenticated users are redirected to login."""
+        response = self.client.get(reverse("onboarding:skip"))
+        self.assertRedirects(
+            response,
+            f"{reverse('account_login')}?next={reverse('onboarding:skip')}",
+        )
+
+    def test_redirect_to_app_when_user_already_has_team(self):
+        """Test that users with teams are redirected to app without creating new team."""
+        self.client.login(username="skip_test@example.com", password="testpassword123")
+
+        # Create a team and add user as member
+        team = TeamFactory()
+        team.members.add(self.user)
+
+        initial_team_count = self.user.teams.count()
+
+        response = self.client.get(reverse("onboarding:skip"))
+
+        # Should redirect to web:home
+        self.assertRedirects(response, reverse("web:home"), fetch_redirect_response=False)
+        # Should not create a new team
+        self.assertEqual(self.user.teams.count(), initial_team_count)
+
+    def test_creates_team_and_redirects_for_user_without_team(self):
+        """Test that skip creates a team for users without one."""
+        self.client.login(username="skip_test@example.com", password="testpassword123")
+
+        # Verify user has no teams
+        self.assertEqual(self.user.teams.count(), 0)
+
+        response = self.client.get(reverse("onboarding:skip"))
+
+        # Should redirect to web:home
+        self.assertRedirects(response, reverse("web:home"), fetch_redirect_response=False)
+
+        # Should have created a team
+        self.assertEqual(self.user.teams.count(), 1)
+
+        # Team name should be based on email prefix
+        team = self.user.teams.first()
+        self.assertEqual(team.name, "skip_test's Team")
+
+    def test_user_is_team_admin_after_skip(self):
+        """Test that user becomes admin of the created team."""
+        from apps.teams.models import Membership
+        from apps.teams.roles import ROLE_ADMIN
+
+        self.client.login(username="skip_test@example.com", password="testpassword123")
+
+        self.client.get(reverse("onboarding:skip"))
+
+        team = self.user.teams.first()
+        membership = Membership.objects.get(team=team, user=self.user)
+        self.assertEqual(membership.role, ROLE_ADMIN)

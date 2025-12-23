@@ -375,6 +375,39 @@ def connect_slack(request):
 
 
 @login_required
+def skip_onboarding(request):
+    """Allow users to skip GitHub connection and create a basic team.
+
+    Creates a team using the user's email prefix as the team name.
+    The user can connect GitHub later from the integrations settings.
+    """
+    # If user already has a team, redirect to dashboard
+    if request.user.teams.exists():
+        return redirect("web:home")
+
+    # Create team from user's email prefix
+    email_prefix = request.user.email.split("@")[0]
+    team_name = f"{email_prefix}'s Team"
+    team_slug = get_next_unique_team_slug(team_name)
+
+    team = Team.objects.create(name=team_name, slug=team_slug)
+
+    # Add user as admin
+    Membership.objects.create(team=team, user=request.user, role=ROLE_ADMIN)
+
+    # Clear any onboarding session data
+    request.session.pop(ONBOARDING_TOKEN_KEY, None)
+    request.session.pop(ONBOARDING_ORGS_KEY, None)
+    request.session.pop(ONBOARDING_SELECTED_ORG_KEY, None)
+
+    messages.success(
+        request,
+        _("Team '{}' created! Connect GitHub from Integrations to unlock all features.").format(team_name),
+    )
+    return redirect("web:home")
+
+
+@login_required
 def onboarding_complete(request):
     """Final step showing sync status and dashboard link."""
     if not request.user.teams.exists():

@@ -3,20 +3,42 @@
 
 {% block onboarding_content %}
 <div class="text-center mb-8">
+  <div class="w-20 h-20 bg-accent/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-accent/30">
+    <i class="fa-solid fa-code-branch text-4xl text-accent"></i>
+  </div>
   <h1 class="text-3xl font-bold text-base-content mb-2">{% translate "Select Repositories" %}</h1>
-  <p class="text-base-content/70">
-    {% translate "Choose which repositories to track. You can change this later in settings." %}
+  <p class="text-base-content/70 max-w-md mx-auto">
+    {% translate "Choose which repositories to analyze for PR metrics and AI impact insights." %}
   </p>
 </div>
 
-<form method="post">
-  {% csrf_token %}
+<div class="app-card max-w-md mx-auto mb-6">
+  <h2 class="app-card-title text-center mb-4">{% translate "Why select repositories?" %}</h2>
+  <ul class="text-left space-y-3 mb-6">
+    <li class="flex items-start gap-3">
+      <i class="fa-solid fa-bullseye text-accent mt-1"></i>
+      <div>
+        <span class="text-base-content font-medium">{% translate "Focus on what matters" %}</span>
+        <p class="text-xs text-base-content/60 mt-0.5">{% translate "Track repos where your team actively creates PRs" %}</p>
+      </div>
+    </li>
+    <li class="flex items-start gap-3">
+      <i class="fa-solid fa-filter text-accent mt-1"></i>
+      <div>
+        <span class="text-base-content font-medium">{% translate "Reduce noise" %}</span>
+        <p class="text-xs text-base-content/60 mt-0.5">{% translate "Exclude docs, infrastructure, and archived repos" %}</p>
+      </div>
+    </li>
+  </ul>
 
-  <div class="app-alert app-alert-info mb-6">
+  <div class="app-alert app-alert-info">
     <i class="fa-solid fa-info-circle"></i>
-    <span>{% translate "Repository selection will be available in the next version. For now, continue to finish setup." %}</span>
+    <span>{% translate "Repository selection coming soon. For now, we'll sync all organization repos." %}</span>
   </div>
+</div>
 
+<form method="post" class="max-w-md mx-auto">
+  {% csrf_token %}
   <div class="flex gap-4">
     <a href="{% url 'onboarding:select_org' %}" class="app-btn-ghost flex-1">
       <i class="fa-solid fa-arrow-left mr-2"></i>

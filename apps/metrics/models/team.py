@@ -94,3 +94,24 @@ class TeamMember(BaseTeamModel):
 
     def __str__(self):
         return self.display_name
+
+    @property
+    def avatar_url(self) -> str:
+        """Return GitHub avatar URL for this member.
+
+        Uses GitHub's avatar service which returns profile pictures based on user ID.
+        Returns empty string if no GitHub ID is available.
+        """
+        if self.github_id:
+            return f"https://avatars.githubusercontent.com/u/{self.github_id}?s=80"
+        return ""
+
+    @property
+    def initials(self) -> str:
+        """Return initials for fallback avatar display."""
+        if self.display_name:
+            parts = self.display_name.split()
+            if len(parts) >= 2:
+                return f"{parts[0][0]}{parts[1][0]}".upper()
+            return self.display_name[:2].upper()
+        return "??"

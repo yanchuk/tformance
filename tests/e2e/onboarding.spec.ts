@@ -40,6 +40,84 @@ test.describe('Onboarding Flow @onboarding', () => {
     });
   });
 
+  test.describe('Onboarding Page Controls', () => {
+    test('logout button is visible on onboarding pages', async ({ page }) => {
+      // Login first
+      await page.goto('/accounts/login/');
+      await page.getByRole('textbox', { name: 'Email' }).fill('admin@example.com');
+      await page.getByRole('textbox', { name: 'Password' }).fill('admin123');
+      await page.getByRole('button', { name: 'Sign In' }).click();
+      await expect(page).toHaveURL(/\/app/);
+
+      // Navigate to onboarding complete page (user with team can access this)
+      await page.goto('/onboarding/complete/');
+
+      // Logout button should be visible in the nav
+      const logoutButton = page.getByRole('link', { name: /log out/i });
+      await expect(logoutButton).toBeVisible();
+    });
+
+    test('logout button logs user out', async ({ page }) => {
+      // Login first
+      await page.goto('/accounts/login/');
+      await page.getByRole('textbox', { name: 'Email' }).fill('admin@example.com');
+      await page.getByRole('textbox', { name: 'Password' }).fill('admin123');
+      await page.getByRole('button', { name: 'Sign In' }).click();
+      await expect(page).toHaveURL(/\/app/);
+
+      // Navigate to onboarding complete page
+      await page.goto('/onboarding/complete/');
+
+      // Click logout
+      const logoutButton = page.getByRole('link', { name: /log out/i });
+      await logoutButton.click();
+
+      // Should be logged out - trying to access protected page should redirect to login
+      await page.goto('/onboarding/');
+      await expect(page).toHaveURL(/\/accounts\/login/);
+    });
+
+    test('logout link has correct href', async ({ page }) => {
+      // Login and navigate to onboarding complete page
+      await page.goto('/accounts/login/');
+      await page.getByRole('textbox', { name: 'Email' }).fill('admin@example.com');
+      await page.getByRole('textbox', { name: 'Password' }).fill('admin123');
+      await page.getByRole('button', { name: 'Sign In' }).click();
+      await expect(page).toHaveURL(/\/app/);
+
+      await page.goto('/onboarding/complete/');
+
+      // Verify logout link points to logout URL
+      const logoutLink = page.getByRole('link', { name: /log out/i });
+      const href = await logoutLink.getAttribute('href');
+      expect(href).toContain('logout');
+    });
+
+    test('skip endpoint redirects user with team to app', async ({ page }) => {
+      // Login as user with team
+      await page.goto('/accounts/login/');
+      await page.getByRole('textbox', { name: 'Email' }).fill('admin@example.com');
+      await page.getByRole('textbox', { name: 'Password' }).fill('admin123');
+      await page.getByRole('button', { name: 'Sign In' }).click();
+      await expect(page).toHaveURL(/\/app/);
+
+      // Try to access skip endpoint - should redirect to app since user has team
+      await page.goto('/onboarding/skip/');
+      await expect(page).toHaveURL(/\/app/);
+    });
+
+    test('skip endpoint requires authentication', async ({ page }) => {
+      // Clear cookies to ensure logged out
+      await page.context().clearCookies();
+
+      // Try to access skip endpoint without auth
+      await page.goto('/onboarding/skip/');
+
+      // Should redirect to login
+      await expect(page).toHaveURL(/\/accounts\/login.*next=.*onboarding.*skip/);
+    });
+  });
+
   test.describe('GitHub Connection (Pre-OAuth)', () => {
     test('github connect endpoint redirects appropriately', async ({ page }) => {
       // This test verifies the endpoint works

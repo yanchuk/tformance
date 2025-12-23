@@ -93,6 +93,37 @@ def _get_author_name(pr: PullRequest) -> str:
     return pr.author.display_name if pr.author else "Unknown"
 
 
+def _compute_initials(name: str) -> str:
+    """Compute 2-letter initials from a display name.
+
+    Args:
+        name: Display name string
+
+    Returns:
+        str: 2-letter uppercase initials
+    """
+    if not name:
+        return "??"
+    parts = name.split()
+    if len(parts) >= 2:
+        return f"{parts[0][0]}{parts[1][0]}".upper()
+    return name[:2].upper()
+
+
+def _avatar_url_from_github_id(github_id: str | None) -> str:
+    """Construct GitHub avatar URL from user ID.
+
+    Args:
+        github_id: GitHub user ID or None
+
+    Returns:
+        str: Avatar URL or empty string if no ID
+    """
+    if github_id:
+        return f"https://avatars.githubusercontent.com/u/{github_id}?s=80"
+    return ""
+
+
 def get_key_metrics(team: Team, start_date: date, end_date: date) -> dict:
     """Get key metrics for a team within a date range.
 
@@ -295,6 +326,8 @@ def get_team_breakdown(team: Team, start_date: date, end_date: date) -> list[dic
         result.append(
             {
                 "member_name": member.display_name,
+                "avatar_url": member.avatar_url,
+                "initials": member.initials,
                 "prs_merged": prs_merged,
                 "avg_cycle_time": avg_cycle_time if avg_cycle_time else Decimal("0.00"),
                 "ai_pct": ai_pct,
@@ -327,7 +360,7 @@ def get_ai_detective_leaderboard(team: Team, start_date: date, end_date: date) -
             responded_at__lte=end_date,
             guess_correct__isnull=False,
         )
-        .values("reviewer__display_name")
+        .values("reviewer__display_name", "reviewer__github_id")
         .annotate(
             total=Count("id"),
             correct=Count("id", filter=Q(guess_correct=True)),
@@ -338,6 +371,8 @@ def get_ai_detective_leaderboard(team: Team, start_date: date, end_date: date) -
     return [
         {
             "member_name": r["reviewer__display_name"],
+            "avatar_url": _avatar_url_from_github_id(r["reviewer__github_id"]),
+            "initials": _compute_initials(r["reviewer__display_name"]),
             "correct": r["correct"],
             "total": r["total"],
             "percentage": round((r["correct"] / r["total"]) * 100, 1) if r["total"] > 0 else 0.0,
@@ -446,6 +481,8 @@ def get_recent_prs(team: Team, start_date: date, end_date: date, limit: int = 10
                 "id": pr.id,
                 "title": pr.title,
                 "author": _get_author_name(pr),
+                "author_avatar_url": pr.author.avatar_url if pr.author else "",
+                "author_initials": pr.author.initials if pr.author else "??",
                 "merged_at": pr.merged_at,
                 "ai_assisted": ai_assisted,
                 "is_ai_detected": pr.is_ai_assisted,

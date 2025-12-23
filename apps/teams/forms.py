@@ -6,7 +6,6 @@ from django.utils.translation import gettext_lazy as _
 
 from apps.users.forms import TurnstileSignupForm
 
-from .helpers import get_next_unique_team_slug
 from .models import Invitation, Membership, Team
 
 
@@ -79,27 +78,15 @@ class TeamSignupForm(TurnstileSignupForm):
 
 
 class TeamChangeForm(forms.ModelForm):
-    slug = forms.SlugField(
-        required=False,
-        label=_("Team ID"),
-        help_text=_("A unique ID for your team. No spaces are allowed!"),
-    )
-
     class Meta:
         model = Team
-        fields = ("name", "slug")
+        fields = ("name",)
         labels = {
             "name": _("Team Name"),
         }
         help_texts = {
             "name": _("Your team name."),
         }
-
-    def clean_slug(self):
-        slug = self.cleaned_data["slug"]
-        if not slug or slug.strip() == "":
-            slug = get_next_unique_team_slug(self.cleaned_data["name"])
-        return slug
 
 
 class InvitationForm(forms.ModelForm):

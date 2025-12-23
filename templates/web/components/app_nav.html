@@ -1,15 +1,17 @@
 <div class="flex flex-col">
-  <div class="dropdown py-2 pl-6">
-    <div tabindex="0" role="button" class="cursor-pointer flex items-center gap-1 hover:text-primary transition-colors">
-      <svg xmlns="http://www.w3.org/2000/svg" class="inline h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="24" height="24">
+  <div class="dropdown py-2 px-4">
+    <div tabindex="0" role="button" class="cursor-pointer flex items-center gap-2 hover:text-primary transition-colors">
+      <svg xmlns="http://www.w3.org/2000/svg" class="inline h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="24" height="24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4h16M4 10h8M4 16h16"/>
       </svg>
-      {% if team %}
-      {{ team.name }}
-      {% else %}
-      {{ request.user.get_display_name }}
-      {% endif %}
-      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <span class="text-sm font-medium truncate">
+        {% if team %}
+        {{ team.name }}
+        {% else %}
+        {{ request.user.get_display_name }}
+        {% endif %}
+      </span>
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 opacity-60 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
       </svg>
     </div>

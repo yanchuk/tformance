@@ -85,7 +85,7 @@
   /* Base colors - warm light backgrounds */
   --color-base-100: oklch(0.98 0.005 90);       /* #FAFAF8 - Warm off-white main bg */
   --color-base-200: oklch(1 0 0);               /* #FFFFFF - Pure white cards */
-  --color-base-300: oklch(0.92 0.005 250);      /* #E5E7EB - Light gray borders */
+  --color-base-300: oklch(0.82 0.01 250);       /* #C5C8CE - Darker gray borders for visibility */
   --color-base-content: oklch(0.27 0.02 260);   /* #1F2937 - Dark gray text */
 
   /* Primary - Coral orange (same as dark theme for consistency) */

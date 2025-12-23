@@ -389,6 +389,7 @@ class PRFile(BaseTeamModel):
     CATEGORY_CHOICES = [
         ("frontend", "Frontend"),
         ("backend", "Backend"),
+        ("javascript", "JavaScript/TypeScript"),  # Ambiguous - could be frontend or backend
         ("test", "Test"),
         ("docs", "Documentation"),
         ("config", "Configuration"),
@@ -449,29 +450,453 @@ class PRFile(BaseTeamModel):
             models.Index(fields=["pull_request", "file_category"], name="pr_file_category_idx"),
         ]
 
+    # File extension mappings for categorization
+    # Coverage based on Stack Overflow 2025 Developer Survey
+    FRONTEND_EXTENSIONS = (
+        # JavaScript/TypeScript (when in frontend paths)
+        ".jsx",
+        ".tsx",
+        # Vue, Svelte, Angular
+        ".vue",
+        ".svelte",
+        ".angular",
+        # Dart/Flutter (5.9% usage) - mobile/web frontend
+        ".dart",
+        # Astro (~2% usage) - static site generator
+        ".astro",
+        # Blazor/Razor (~2% usage) - C# frontend
+        ".razor",
+        # MDX - React components in Markdown
+        ".mdx",
+        # Styles
+        ".css",
+        ".scss",
+        ".sass",
+        ".less",
+        ".styl",
+        ".stylus",
+        # Templates
+        ".html",
+        ".htm",
+        ".ejs",
+        ".hbs",
+        ".handlebars",
+        ".pug",
+        ".jade",
+    )
+
+    BACKEND_EXTENSIONS = (
+        # Python
+        ".py",
+        ".pyw",
+        ".pyx",
+        # PHP
+        ".php",
+        ".phtml",
+        ".php3",
+        ".php4",
+        ".php5",
+        ".phps",
+        # Ruby
+        ".rb",
+        ".erb",
+        ".rake",
+        # Java/JVM
+        ".java",
+        ".kt",
+        ".kts",
+        ".scala",
+        ".groovy",
+        ".clj",
+        ".cljs",
+        # .NET
+        ".cs",
+        ".fs",
+        ".fsi",  # F# signature files
+        ".vb",
+        # Go
+        ".go",
+        # Rust
+        ".rs",
+        # C/C++
+        ".c",
+        ".h",
+        ".cpp",
+        ".hpp",
+        ".cc",
+        ".hh",
+        ".cxx",
+        ".hxx",
+        # Node.js/Server JS (when not in frontend paths)
+        ".mjs",
+        ".cjs",
+        # Elixir/Erlang
+        ".ex",
+        ".exs",
+        ".erl",
+        ".hrl",
+        # Swift/Objective-C
+        ".swift",
+        ".m",  # Note: Also MATLAB, but context determines
+        ".mm",
+        # Perl
+        ".pl",
+        ".pm",
+        # Lua
+        ".lua",
+        # R
+        ".r",
+        ".R",
+        # Shell/Scripts
+        ".sh",
+        ".bash",
+        ".zsh",
+        ".fish",
+        # SQL
+        ".sql",
+        # ======================================================================
+        # Additional languages from SO 2025 Survey
+        # ======================================================================
+        # Assembly (7.1% usage) - systems programming
+        ".asm",
+        ".s",
+        ".S",  # GNU assembler (case matters on Unix)
+        # VBA (4.2% usage) - Office macros/automation
+        ".vba",
+        ".bas",  # Visual Basic module
+        # Zig (2.1% usage) - systems programming
+        ".zig",
+        # Delphi/Pascal (2.5% usage)
+        ".pas",
+        ".dpr",  # Delphi project file
+        ".dpk",  # Delphi package
+        # Lisp (2.4% usage)
+        ".lisp",
+        ".cl",  # Common Lisp
+        ".lsp",  # Alternative extension
+        # Fortran (1.4% usage) - scientific computing
+        ".f",
+        ".f90",
+        ".f95",
+        ".f03",
+        ".f08",
+        ".for",
+        # Ada (1.4% usage)
+        ".ada",
+        ".adb",  # Ada body
+        ".ads",  # Ada spec
+        # OCaml (1.2% usage)
+        ".ml",
+        ".mli",  # OCaml interface
+        # Gleam (1.1% usage) - BEAM VM
+        ".gleam",
+        # Haskell
+        ".hs",
+        ".lhs",  # Literate Haskell
+        # Nim
+        ".nim",
+        # Crystal
+        ".cr",
+        # Julia
+        ".jl",
+        # D language
+        ".d",
+        # V language
+        ".v",
+        # Zig
+        ".zig",
+        # Cobol (still used in enterprise)
+        ".cob",
+        ".cbl",
+    )
+
+    CONFIG_EXTENSIONS = (
+        # Data formats
+        ".json",
+        ".yaml",
+        ".yml",
+        ".toml",
+        ".ini",
+        ".xml",
+        # Environment/Config
+        ".env",
+        ".conf",
+        ".cfg",
+        ".config",
+        ".properties",
+        # Lock files
+        ".lock",
+        # Docker
+        ".dockerfile",
+        # Misc config
+        ".editorconfig",
+        ".prettierrc",
+        ".eslintrc",
+        ".babelrc",
+    )
+
+    DOCS_EXTENSIONS = (
+        ".md",
+        ".markdown",
+        ".rst",
+        ".txt",
+        ".adoc",
+        ".asciidoc",
+        ".wiki",
+        ".rdoc",
+        ".org",
+        ".tex",
+    )
+
+    # ==========================================================================
+    # Path-based JS/TS Categorization (Tiered Priority System)
+    # ==========================================================================
+    # Uses full file path from GitHub API to determine frontend vs backend.
+    # More specific patterns are checked first (TIER 1) before generic ones.
+    # Future: Allow per-repo custom path configuration.
+
+    # TIER 1: Backend exceptions within frontend directories (check FIRST)
+    # These override frontend patterns when matched
+    BACKEND_EXCEPTION_PATTERNS = (
+        "/pages/api/",  # Next.js Pages Router API routes
+        "/app/api/",  # Next.js App Router API routes
+        "/src/pages/api/",  # Next.js in src/
+        "/src/app/api/",  # Next.js in src/
+    )
+
+    # TIER 2: Unambiguous frontend patterns (high confidence)
+    FRONTEND_PATH_PATTERNS = (
+        # React/Vue/Angular component directories
+        "/components/",
+        "/hooks/",
+        "/contexts/",
+        "/composables/",  # Vue 3 composables
+        # State management
+        "/store/",
+        "/stores/",
+        "/redux/",
+        "/pinia/",
+        "/vuex/",
+        # UI structure
+        "/pages/",  # General pages (but /pages/api/ is excluded above)
+        "/views/",
+        "/layouts/",
+        "/screens/",  # React Native
+        "/templates/",
+        # Angular-specific patterns (SO 2025: ~11% usage)
+        # Note: These patterns are more specific to avoid conflicts with NestJS
+        "/app/guards/",  # Angular route guards
+        "/app/pipes/",  # Angular pipes
+        "/app/directives/",  # Angular custom directives
+        # Explicit frontend directories
+        "/frontend/",
+        "/client/",
+        "/web/",
+        "/ui/",
+        # Monorepo frontend apps
+        "/apps/web/",
+        "/apps/dashboard/",
+        "/apps/admin/",
+        "/packages/ui/",
+        "/packages/web/",
+        "/packages/frontend/",
+    )
+
+    # TIER 3: Unambiguous backend patterns (high confidence)
+    BACKEND_PATH_PATTERNS = (
+        # API layer
+        "/api/",
+        "/apis/",
+        "/endpoints/",
+        "/routes/",  # Express/Fastify routes
+        "/routers/",
+        # Service layer
+        "/controllers/",
+        "/services/",
+        "/handlers/",
+        "/resolvers/",  # GraphQL
+        # Middleware
+        "/middleware/",
+        "/middlewares/",
+        # Data layer
+        "/models/",
+        "/repositories/",
+        "/database/",
+        "/db/",
+        "/migrations/",
+        "/seeds/",
+        "/prisma/",
+        # NestJS-specific patterns (SO 2025: ~6% usage)
+        "/modules/",  # NestJS modules
+        "/guards/",  # NestJS guards (Angular guards use /app/guards/ above)
+        "/interceptors/",  # NestJS interceptors
+        "/decorators/",  # NestJS custom decorators
+        # FastAPI-specific patterns (SO 2025: ~15% usage, +5pp growth)
+        "/schemas/",  # Pydantic schemas
+        "/crud/",  # CRUD operations
+        "/dependencies/",  # FastAPI dependencies
+        "/deps/",  # FastAPI deps (short form)
+        # Django-specific patterns (SO 2025: ~12% usage)
+        "/forms/",  # Django forms
+        "/serializers/",  # DRF serializers
+        "/management/",  # Django management commands
+        # Spring Boot-specific patterns (SO 2025: ~9% usage)
+        "/controller/",  # Spring controllers (singular)
+        "/repository/",  # Spring Data (singular)
+        "/entity/",  # JPA entities
+        # ASP.NET-specific patterns (SO 2025: ~14% usage)
+        "/Controllers/",  # PascalCase for .NET
+        "/ViewModels/",  # MVC ViewModels
+        "/Data/",  # EF Core
+        # Laravel-specific patterns (SO 2025: ~7% usage)
+        "/app/Http/",  # Laravel HTTP layer
+        "/app/Models/",  # Eloquent models
+        "/app/Jobs/",  # Queue jobs
+        "/database/factories/",  # Laravel factories
+        # Phoenix/Elixir-specific patterns (SO 2025: ~3% usage)
+        "/lib/web/",  # Phoenix web
+        "/live/",  # Phoenix LiveView
+        "/channels/",  # Phoenix channels
+        "/plugs/",  # Elixir plugs
+        # Rails-specific patterns (SO 2025: ~3% usage)
+        "/app/controllers/",  # Rails controllers
+        "/app/models/",  # Rails models
+        "/app/jobs/",  # ActiveJob
+        "/app/mailers/",  # ActionMailer
+        # Explicit backend directories
+        "/backend/",
+        "/server/",
+        # Monorepo backend apps
+        "/apps/api/",
+        "/apps/server/",
+        "/apps/backend/",
+        "/packages/api/",
+        "/packages/server/",
+        "/packages/backend/",
+        # Build/tooling (typically backend context)
+        "/scripts/",
+        "/bin/",
+        "/cmd/",  # Go convention
+    )
+
+    # Common config filenames (without extensions)
+    CONFIG_FILENAMES = (
+        "dockerfile",
+        "makefile",
+        "gemfile",
+        "rakefile",
+        "procfile",
+        "vagrantfile",
+        "brewfile",
+        "jenkinsfile",
+        "cakefile",
+        ".gitignore",
+        ".dockerignore",
+        ".npmrc",
+        ".nvmrc",
+        ".ruby-version",
+        ".python-version",
+        ".node-version",
+        ".tool-versions",
+    )
+
     @staticmethod
     def categorize_file(filename: str) -> str:
-        """Categorize file based on extension and path."""
-        filename_lower = filename.lower()
+        """Categorize file based on extension and path.
 
-        # Test files (check first - may have .py extension)
-        if "test" in filename_lower or "spec" in filename_lower:
+        Uses a tiered priority system:
+        1. Test files (highest priority - any extension)
+        2. Backend exceptions (e.g., /pages/api/ in Next.js)
+        3. Unambiguous frontend patterns (/components/, /hooks/, etc.)
+        4. Unambiguous backend patterns (/controllers/, /services/, etc.)
+        5. Fallback to "javascript" for ambiguous JS/TS files
+
+        Args:
+            filename: Full file path from GitHub API (e.g., "src/api/users.ts")
+
+        Returns:
+            Category string: frontend, backend, javascript, test, docs, config, or other
+        """
+        filename_lower = filename.lower()
+        # Get the base filename for test detection
+        base_name = filename_lower.split("/")[-1]
+
+        # TIER 0: Test files (highest priority - check first)
+        # Check for test patterns, but avoid false positives like "latest.f08" or "spec.ads"
+        # We check for:
+        # - Files starting with "test" or "test_" (e.g., test_utils.py, tests.py)
+        # - Files containing "_test." or "_test_" (e.g., app_test.py, app_test_helper.py)
+        # - Files containing ".test." or ".spec." (e.g., app.test.js, button.spec.tsx)
+        # - Files ending with "_test" before extension (e.g., utils_test.go)
+        # - Directories containing "test" or "tests" or "__tests__"
+        is_test_file = (
+            # Directory patterns
+            "/tests/" in filename_lower
+            or "/test/" in filename_lower
+            or "/__tests__/" in filename_lower
+            # File prefix patterns
+            or base_name.startswith("test_")
+            or base_name.startswith("test.")
+            or base_name == "tests.py"
+            # File suffix patterns (before extension)
+            or "_test." in base_name
+            or ".test." in base_name
+            or ".spec." in base_name
+            or "_spec." in base_name
+            # Go convention: file_test.go
+            or base_name.endswith("_test.go")
+            or base_name.endswith("_test.py")
+            or base_name.endswith("_test.rb")
+            or base_name.endswith("_test.rs")
+            or base_name.endswith("_test.ts")
+            or base_name.endswith("_test.js")
+        )
+        if is_test_file:
             return "test"
 
-        # Frontend
-        if filename_lower.endswith((".tsx", ".jsx", ".vue", ".css", ".scss", ".html")):
+        # JavaScript/TypeScript - use tiered path pattern system
+        if filename_lower.endswith((".js", ".ts", ".mjs", ".cjs")):
+            # Normalize path for matching (ensure leading slash)
+            path = "/" + filename_lower.lstrip("/")
+
+            # TIER 1: Backend exceptions (check FIRST - most specific)
+            # These are backend routes inside typically frontend directories
+            for pattern in PRFile.BACKEND_EXCEPTION_PATTERNS:
+                if pattern in path:
+                    return "backend"
+
+            # TIER 2: Unambiguous frontend patterns
+            for pattern in PRFile.FRONTEND_PATH_PATTERNS:
+                if pattern in path:
+                    return "frontend"
+
+            # TIER 3: Unambiguous backend patterns
+            for pattern in PRFile.BACKEND_PATH_PATTERNS:
+                if pattern in path:
+                    return "backend"
+
+            # TIER 4: Fallback - path doesn't match known patterns
+            return "javascript"
+
+        # Frontend (unambiguous: JSX/TSX, styles, templates)
+        if filename_lower.endswith(PRFile.FRONTEND_EXTENSIONS):
             return "frontend"
 
-        # Backend
-        if filename_lower.endswith((".py", ".go", ".java", ".rb", ".rs")):
+        # Backend (unambiguous server-side languages)
+        if filename_lower.endswith(PRFile.BACKEND_EXTENSIONS):
             return "backend"
 
-        # Docs
-        if filename_lower.endswith((".md", ".rst", ".txt")):
+        # Documentation
+        if filename_lower.endswith(PRFile.DOCS_EXTENSIONS):
             return "docs"
 
-        # Config
-        if filename_lower.endswith((".json", ".yaml", ".yml", ".toml", ".ini", ".env")):
+        # Configuration - check extensions
+        if filename_lower.endswith(PRFile.CONFIG_EXTENSIONS):
+            return "config"
+
+        # Configuration - check common filenames without extensions
+        # Note: base_name was computed at the start of the function
+        if base_name in PRFile.CONFIG_FILENAMES or base_name.startswith("."):
             return "config"
 
         return "other"

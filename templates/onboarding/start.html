@@ -14,19 +14,28 @@
   </div>
 
   <div class="app-card max-w-md mx-auto">
-    <h2 class="app-card-title text-center mb-4">{% translate "What we'll access:" %}</h2>
-    <ul class="text-left space-y-3">
-      <li class="flex items-center gap-3">
-        <i class="fa-solid fa-users text-cyan"></i>
-        <span class="text-base-content/90">{% translate "Organization members" %}</span>
+    <h2 class="app-card-title text-center mb-4">{% translate "What we'll access and why:" %}</h2>
+    <ul class="text-left space-y-4">
+      <li class="flex items-start gap-3">
+        <i class="fa-solid fa-users text-accent mt-1"></i>
+        <div>
+          <span class="text-base-content font-medium">{% translate "Organization members" %}</span>
+          <p class="text-xs text-base-content/60 mt-0.5">{% translate "Auto-discover your team — no manual setup required" %}</p>
+        </div>
       </li>
-      <li class="flex items-center gap-3">
-        <i class="fa-solid fa-code-branch text-cyan"></i>
-        <span class="text-base-content/90">{% translate "Repository pull requests" %}</span>
+      <li class="flex items-start gap-3">
+        <i class="fa-solid fa-code-pull-request text-accent mt-1"></i>
+        <div>
+          <span class="text-base-content font-medium">{% translate "Pull requests & reviews" %}</span>
+          <p class="text-xs text-base-content/60 mt-0.5">{% translate "Track cycle time, review time, and throughput metrics" %}</p>
+        </div>
       </li>
-      <li class="flex items-center gap-3">
-        <i class="fa-solid fa-code-commit text-cyan"></i>
-        <span class="text-base-content/90">{% translate "Commit history and reviews" %}</span>
+      <li class="flex items-start gap-3">
+        <i class="fa-solid fa-robot text-accent mt-1"></i>
+        <div>
+          <span class="text-base-content font-medium">{% translate "Copilot usage metrics" %}</span>
+          <p class="text-xs text-base-content/60 mt-0.5">{% translate "Correlate AI tool usage with delivery outcomes" %}</p>
+        </div>
       </li>
     </ul>
 
@@ -37,8 +46,21 @@
       </a>
     </div>
 
-    <p class="text-xs text-base-content/70 mt-4 text-center">
-      {% translate "We request read-only access to your organization data. Your code stays on GitHub." %}
+    <div class="mt-6 pt-4 border-t border-base-300 text-center">
+      <p class="text-xs text-base-content/60">
+        <i class="fa-solid fa-shield-halved text-accent mr-1.5"></i>
+        {% translate "We never see your code — only PR metadata like titles, timestamps, and review counts." %}
+      </p>
+    </div>
+  </div>
+
+  {# Skip option for users who want to explore first #}
+  <div class="mt-8 text-center">
+    <a href="{% url 'onboarding:skip' %}" class="text-sm text-base-content/60 hover:text-base-content underline transition-colors">
+      {% translate "Skip for now" %}
+    </a>
+    <p class="text-xs text-base-content/50 mt-1">
+      {% translate "Create a team without GitHub — you can connect later from Integrations" %}
     </p>
   </div>
 </div>

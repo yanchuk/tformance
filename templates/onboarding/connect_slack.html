@@ -3,26 +3,50 @@
 
 {% block onboarding_content %}
 <div class="text-center mb-8">
-  <div class="w-20 h-20 bg-cyan/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-cyan/30">
-    <i class="fa-brands fa-slack text-4xl text-cyan"></i>
+  <div class="w-20 h-20 bg-accent/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-accent/30">
+    <i class="fa-brands fa-slack text-4xl text-accent"></i>
   </div>
   <h1 class="text-3xl font-bold text-base-content mb-2">{% translate "Connect Slack" %}</h1>
   <p class="text-base-content/70 max-w-md mx-auto">
-    {% translate "Enable PR surveys and weekly leaderboards directly in your Slack workspace." %}
+    {% translate "Capture AI usage data and engage your team where they already work." %}
   </p>
 </div>
 
 <div class="app-card max-w-md mx-auto mb-6">
-  <div class="text-center">
-    <p class="text-base-content/70 mb-4">
-      {% translate "Slack integration is optional. You can set this up later from your team settings." %}
-    </p>
+  <h2 class="app-card-title text-center mb-4">{% translate "What you'll get:" %}</h2>
+  <ul class="text-left space-y-3 mb-6">
+    <li class="flex items-start gap-3">
+      <i class="fa-solid fa-clipboard-question text-accent mt-1"></i>
+      <div>
+        <span class="text-base-content font-medium">{% translate "PR surveys via DM" %}</span>
+        <p class="text-xs text-base-content/60 mt-0.5">{% translate "Quick 1-click surveys to capture AI-assisted PRs" %}</p>
+      </div>
+    </li>
+    <li class="flex items-start gap-3">
+      <i class="fa-solid fa-trophy text-accent mt-1"></i>
+      <div>
+        <span class="text-base-content font-medium">{% translate "Weekly leaderboards" %}</span>
+        <p class="text-xs text-base-content/60 mt-0.5">{% translate "Gamified AI Detective rankings to drive engagement" %}</p>
+      </div>
+    </li>
+    <li class="flex items-start gap-3">
+      <i class="fa-solid fa-bolt text-accent mt-1"></i>
+      <div>
+        <span class="text-base-content font-medium">{% translate "Higher response rates" %}</span>
+        <p class="text-xs text-base-content/60 mt-0.5">{% translate "Meet developers in their workflow, not email" %}</p>
+      </div>
+    </li>
+  </ul>
 
+  <div class="text-center">
     <button class="app-btn-secondary gap-2 mb-2 opacity-60 cursor-not-allowed" disabled>
       <i class="fa-brands fa-slack"></i>
       {% translate "Add to Slack" %}
       <span class="app-badge app-badge-primary">{% translate "Coming Soon" %}</span>
     </button>
+    <p class="text-xs text-base-content/50 mt-2">
+      {% translate "This is optional. You can connect Slack later from settings." %}
+    </p>
   </div>
 </div>
 
