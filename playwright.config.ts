@@ -24,7 +24,8 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
 
   // Opt out of parallel tests on CI (to avoid database conflicts)
-  workers: process.env.CI ? 1 : undefined,
+  // Locally: 8 workers is optimal for M3 MacBook Air (337 tests in 1m 44s)
+  workers: process.env.CI ? 1 : 8,
 
   // Reporter to use
   reporter: [
@@ -63,12 +64,23 @@ export default defineConfig({
     timeout: 5000,
   },
 
-  // Configure projects for major browsers
+  // Configure projects for browsers
+  // By default, only run Chromium for faster local development (1m 44s vs 7m 37s)
+  // To run all browsers: npx playwright test --project=chromium --project=firefox --project=webkit
   projects: [
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },
+    // Uncomment to enable cross-browser testing:
+    // {
+    //   name: 'firefox',
+    //   use: { ...devices['Desktop Firefox'] },
+    // },
+    // {
+    //   name: 'webkit',
+    //   use: { ...devices['Desktop Safari'] },
+    // },
   ],
 
   // Output directory for test artifacts
