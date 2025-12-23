@@ -290,6 +290,11 @@ ACCOUNT_LOGIN_ON_EMAIL_CONFIRMATION = True
 ACCOUNT_LOGIN_BY_CODE_ENABLED = False  # Disabled - using OAuth only (GitHub/Google)
 ACCOUNT_USER_DISPLAY = lambda user: user.get_display_name()  # noqa: E731
 
+# Disable rate limits in DEBUG mode for E2E testing (Playwright runs multiple workers)
+if DEBUG:
+    ACCOUNT_RATE_LIMITS = False  # Disable allauth rate limits (must be False, not {})
+    RATELIMIT_ENABLE = False  # Disable django-ratelimit
+
 ACCOUNT_FORMS = {
     "signup": "apps.teams.forms.TeamSignupForm",
 }
