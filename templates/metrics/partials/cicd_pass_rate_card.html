@@ -3,7 +3,7 @@
   <!-- Pass Rate Card -->
   <div class="stat bg-base-200 rounded-lg p-4">
     <div class="stat-title text-xs">{% trans "CI/CD Pass Rate" %}</div>
-    <div class="stat-value text-2xl font-mono">
+    <div class="stat-value text-xl font-mono">
       {% if metrics.total_runs > 0 %}
         {{ metrics.pass_rate|floatformat:1 }}%
       {% else %}
@@ -28,7 +28,7 @@
   <!-- Total Runs Card -->
   <div class="stat bg-base-200 rounded-lg p-4">
     <div class="stat-title text-xs">{% trans "Total Check Runs" %}</div>
-    <div class="stat-value text-2xl font-mono">{{ metrics.total_runs }}</div>
+    <div class="stat-value text-xl font-mono">{{ metrics.total_runs }}</div>
     <div class="stat-desc">{% trans "completed runs" %}</div>
   </div>
 

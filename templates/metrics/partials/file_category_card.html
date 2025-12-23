@@ -3,14 +3,14 @@
   <!-- Total Files -->
   <div class="stat bg-base-200 rounded-lg p-4">
     <div class="stat-title text-xs">{% trans "Files Changed" %}</div>
-    <div class="stat-value text-2xl font-mono">{{ metrics.total_files }}</div>
+    <div class="stat-value text-xl font-mono">{{ metrics.total_files }}</div>
     <div class="stat-desc">{% trans "total files" %}</div>
   </div>
 
   <!-- Total Lines Changed -->
   <div class="stat bg-base-200 rounded-lg p-4">
     <div class="stat-title text-xs">{% trans "Lines Changed" %}</div>
-    <div class="stat-value text-2xl font-mono">{{ metrics.total_changes }}</div>
+    <div class="stat-value text-xl font-mono">{{ metrics.total_changes }}</div>
     <div class="stat-desc">{% trans "additions + deletions" %}</div>
   </div>
 </div>
@@ -20,8 +20,8 @@
   <h4 class="text-sm font-medium text-base-content/80 mb-3">{% trans "By Category" %}</h4>
   <div class="space-y-2">
     {% for cat in metrics.by_category %}
-    <div class="flex items-center gap-3">
-      <div class="w-24 text-sm font-medium">{{ cat.category_display }}</div>
+    <div class="flex items-center gap-4">
+      <div class="w-28 text-sm font-medium">{{ cat.category_display }}</div>
       <div class="flex-1">
         <div class="h-4 bg-base-300 rounded-full overflow-hidden">
           <div class="h-full rounded-full transition-all

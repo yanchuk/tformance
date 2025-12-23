@@ -4,14 +4,14 @@
   <div class="stat bg-base-100 shadow rounded-lg">
     <div class="stat-title">{% trans "Total Reviews" %}</div>
     <div class="stat-value text-base-content">{{ metrics.total_reviews|default:0 }}</div>
-    <div class="stat-desc">{% trans "All reviews in period" %}</div>
+    <div class="stat-desc truncate">{% trans "All reviews in period" %}</div>
   </div>
 
   <!-- AI Bot Reviews -->
   <div class="stat bg-base-100 shadow rounded-lg">
     <div class="stat-title">{% trans "AI Bot Reviews" %}</div>
     <div class="stat-value text-secondary">{{ metrics.ai_reviews|default:0 }}</div>
-    <div class="stat-desc">{% trans "From automated reviewers" %}</div>
+    <div class="stat-desc truncate">{% trans "From automated reviewers" %}</div>
   </div>
 
   <!-- AI Review % -->
@@ -20,7 +20,7 @@
     <div class="stat-value text-accent">
       {% if metrics.ai_review_pct %}{{ metrics.ai_review_pct|floatformat:1 }}%{% else %}0%{% endif %}
     </div>
-    <div class="stat-desc">{% trans "Of all reviews" %}</div>
+    <div class="stat-desc truncate">{% trans "Of all reviews" %}</div>
   </div>
 </div>
 

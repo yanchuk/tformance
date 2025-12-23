@@ -1,10 +1,10 @@
 {% load i18n %}
 <div>
   {% if chart_data %}
-  <canvas id="cycle-time-chart" class="w-full h-64"></canvas>
+  <canvas id="cycle-time-chart" class="w-full h-56"></canvas>
   {{ chart_data|json_script:'cycle-time-data' }}
   {% else %}
-  <div class="flex flex-col items-center justify-center h-64">
+  <div class="flex flex-col items-center justify-center h-56">
     <div class="w-12 h-12 mb-3 rounded-full bg-accent-primary/10 flex items-center justify-center">
       <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-accent-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
