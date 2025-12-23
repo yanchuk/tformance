@@ -48,7 +48,7 @@ const barChartWithDates = (ctx, start, end, data, label) => {
       }]
     },
     options: {
-      aspectRatio: 3,
+      maintainAspectRatio: false,
       responsive: true,
       plugins: {
         legend: {
@@ -119,7 +119,7 @@ const cumulativeChartWithDates = (ctx, start, end, data, label, startValue) => {
       }]
     },
     options: {
-      aspectRatio: 3,
+      maintainAspectRatio: false,
       responsive: true,
       plugins: {
         legend: {
@@ -192,7 +192,7 @@ const weeklyBarChart = (ctx, data, label, options = {}) => {
       }]
     },
     options: {
-      aspectRatio: 3,
+      maintainAspectRatio: false,
       responsive: true,
       plugins: {
         legend: {

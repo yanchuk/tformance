@@ -389,7 +389,7 @@ class PRFile(BaseTeamModel):
     CATEGORY_CHOICES = [
         ("frontend", "Frontend"),
         ("backend", "Backend"),
-        ("javascript", "JavaScript/TypeScript"),  # Ambiguous - could be frontend or backend
+        ("javascript", "JS/TypeScript"),  # Ambiguous - could be frontend or backend
         ("test", "Test"),
         ("docs", "Documentation"),
         ("config", "Configuration"),
