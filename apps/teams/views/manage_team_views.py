@@ -9,7 +9,7 @@ from django.views.decorators.http import require_POST
 
 from apps.teams.decorators import login_and_team_required, team_admin_required
 from apps.teams.forms import InvitationForm, TeamChangeForm
-from apps.teams.helpers import get_open_invitations_for_user
+from apps.teams.helpers import get_next_unique_team_slug, get_open_invitations_for_user
 from apps.teams.invitations import send_invitation
 from apps.teams.models import Invitation
 from apps.teams.roles import is_admin
@@ -66,9 +66,10 @@ def create_team(request):
     if request.method == "POST":
         form = TeamChangeForm(request.POST)
         if form.is_valid():
-            team = form.save()
-            team.members.add(request.user, through_defaults={"role": "admin"})
+            team = form.save(commit=False)
+            team.slug = get_next_unique_team_slug(team.name)
             team.save()
+            team.members.add(request.user, through_defaults={"role": "admin"})
             return HttpResponseRedirect(reverse("teams:manage_teams"))
     else:
         form = TeamChangeForm()
