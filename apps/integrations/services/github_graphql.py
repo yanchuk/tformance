@@ -2,6 +2,7 @@
 
 import logging
 
+import aiohttp
 from gql import Client, gql
 from gql.transport.aiohttp import AIOHTTPTransport
 
@@ -10,13 +11,18 @@ logger = logging.getLogger(__name__)
 # GraphQL query templates
 # Cost estimation: ~1 point per query (GitHub GraphQL has 5000 point/hour limit)
 
-# Query cost: ~1 point + (50 PRs * 0.1) = ~6 points per page
-# Fetches 50 PRs with up to 50 reviews, 100 commits, 100 files each
+# GitHub GraphQL best practices:
+# - Use first: 10-25 for queries with nested connections
+# - Reduce nested limits for complex queries
+# - See: https://docs.github.com/en/graphql/overview/rate-limits-and-node-limits-for-the-graphql-api
+#
+# Query cost: ~1 point + (25 PRs * 0.1) = ~3.5 points per page
+# Fetches 25 PRs with up to 25 reviews, 50 commits, 50 files each
 FETCH_PRS_BULK_QUERY = gql(
     """
     query($owner: String!, $repo: String!, $cursor: String) {
       repository(owner: $owner, name: $repo) {
-        pullRequests(first: 50, after: $cursor, orderBy: {field: CREATED_AT, direction: DESC}) {
+        pullRequests(first: 25, after: $cursor, orderBy: {field: CREATED_AT, direction: DESC}) {
           nodes {
             number
             title
@@ -29,7 +35,7 @@ FETCH_PRS_BULK_QUERY = gql(
             author {
               login
             }
-            reviews(first: 50) {
+            reviews(first: 25) {
               nodes {
                 databaseId
                 state
@@ -40,7 +46,7 @@ FETCH_PRS_BULK_QUERY = gql(
                 }
               }
             }
-            commits(first: 100) {
+            commits(first: 50) {
               nodes {
                 commit {
                   oid
@@ -56,7 +62,7 @@ FETCH_PRS_BULK_QUERY = gql(
                 }
               }
             }
-            files(first: 100) {
+            files(first: 50) {
               nodes {
                 path
                 additions
@@ -79,13 +85,14 @@ FETCH_PRS_BULK_QUERY = gql(
     """
 )
 
-# Query cost: ~1 point + (50 PRs * 0.1) = ~6 points per page
-# Fetches 50 PRs ordered by UPDATED_AT for incremental sync
+# Query cost: ~1 point + (25 PRs * 0.1) = ~3.5 points per page
+# Fetches 25 PRs ordered by UPDATED_AT for incremental sync
+# Uses same reduced limits as bulk query for consistency
 FETCH_PRS_UPDATED_QUERY = gql(
     """
     query($owner: String!, $repo: String!, $cursor: String) {
       repository(owner: $owner, name: $repo) {
-        pullRequests(first: 50, after: $cursor, orderBy: {field: UPDATED_AT, direction: DESC}) {
+        pullRequests(first: 25, after: $cursor, orderBy: {field: UPDATED_AT, direction: DESC}) {
           nodes {
             number
             title
@@ -99,7 +106,7 @@ FETCH_PRS_UPDATED_QUERY = gql(
             author {
               login
             }
-            reviews(first: 50) {
+            reviews(first: 25) {
               nodes {
                 databaseId
                 state
@@ -110,7 +117,7 @@ FETCH_PRS_UPDATED_QUERY = gql(
                 }
               }
             }
-            commits(first: 100) {
+            commits(first: 50) {
               nodes {
                 commit {
                   oid
@@ -126,7 +133,7 @@ FETCH_PRS_UPDATED_QUERY = gql(
                 }
               }
             }
-            files(first: 100) {
+            files(first: 50) {
               nodes {
                 path
                 additions
@@ -268,17 +275,22 @@ class GitHubGraphQLClient:
     when remaining points drop below threshold to prevent hitting hard limit.
     """
 
-    def __init__(self, access_token: str) -> None:
+    def __init__(self, access_token: str, timeout: int = 60) -> None:
         """Initialize GitHub GraphQL client with access token.
 
         Args:
             access_token: GitHub personal access token or OAuth token
+            timeout: HTTP request timeout in seconds (default: 60)
         """
+        # Set 60-second timeout for complex queries with nested data
+        client_timeout = aiohttp.ClientTimeout(total=timeout)
         self.transport = AIOHTTPTransport(
             url="https://api.github.com/graphql",
             headers={"Authorization": f"Bearer {access_token}"},
+            timeout=timeout,
+            client_session_args={"timeout": client_timeout},
         )
-        logger.debug("Initialized GitHubGraphQLClient")
+        logger.debug(f"Initialized GitHubGraphQLClient with {timeout}s timeout")
 
     async def _execute(self, query, variable_values: dict) -> dict:
         """Execute a GraphQL query using async context manager.
@@ -360,6 +372,7 @@ class GitHubGraphQLClient:
                 last_error = e
                 if attempt < max_retries - 1:
                     wait_time = 2**attempt  # Exponential backoff: 1s, 2s, 4s
+                    print(f"⏳ Timeout, retrying in {wait_time}s (attempt {attempt + 1}/{max_retries})...", flush=True)
                     logger.warning(
                         f"Timeout fetching PRs for {owner}/{repo}, attempt {attempt + 1}/{max_retries}. "
                         f"Retrying in {wait_time}s..."

@@ -38,3 +38,6 @@ seeding.log
 .seeding_checkpoint.json
 .seeding_checkpoint_polar.json
 .seeding_checkpoint_gumroad.json
+
+# Seeding cache
+.seeding_cache/

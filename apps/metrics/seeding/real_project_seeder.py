@@ -39,6 +39,7 @@ from apps.teams.models import Team
 
 from .deterministic import DeterministicRandom
 from .github_authenticated_fetcher import ContributorInfo, FetchedPRFull, GitHubAuthenticatedFetcher
+from .github_graphql_fetcher import GitHubGraphQLFetcher
 from .jira_simulator import JiraIssueSimulator
 from .real_projects import RealProjectConfig
 from .survey_ai_simulator import SurveyAISimulator
@@ -100,10 +101,12 @@ class RealProjectSeeder:
     github_token: str | None = None
     progress_callback: ProgressCallback | None = None
     checkpoint_file: str | None = None
+    use_graphql: bool = True  # Use GraphQL by default (10x faster)
+    use_cache: bool = True  # Use local cache for fetched PR data
 
     # Internal state
     _rng: DeterministicRandom = field(init=False)
-    _fetcher: GitHubAuthenticatedFetcher = field(init=False)
+    _fetcher: GitHubAuthenticatedFetcher | GitHubGraphQLFetcher = field(init=False)
     _jira_simulator: JiraIssueSimulator = field(init=False)
     _survey_simulator: SurveyAISimulator = field(init=False)
     _stats: RealProjectStats = field(init=False)
@@ -113,20 +116,29 @@ class RealProjectSeeder:
     def __post_init__(self):
         """Initialize internal components."""
         self._rng = DeterministicRandom(self.random_seed)
-        # Handle comma-separated tokens for multi-token mode
-        if self.github_token and "," in self.github_token:
-            tokens = [t.strip() for t in self.github_token.split(",") if t.strip()]
-            self._fetcher = GitHubAuthenticatedFetcher(
-                tokens=tokens,
-                progress_callback=self.progress_callback,
-                checkpoint_file=self.checkpoint_file,
-            )
+
+        # Use GraphQL fetcher by default (10x faster than REST)
+        if self.use_graphql:
+            cache_status = "enabled" if self.use_cache else "disabled"
+            logger.info(f"Using GraphQL API for seeding (10x faster, cache: {cache_status})")
+            self._fetcher = GitHubGraphQLFetcher(token=self.github_token, use_cache=self.use_cache)
         else:
-            self._fetcher = GitHubAuthenticatedFetcher(
-                self.github_token,
-                progress_callback=self.progress_callback,
-                checkpoint_file=self.checkpoint_file,
-            )
+            # Fallback to REST API
+            logger.info("Using REST API for seeding (slower, use --use-graphql for faster)")
+            if self.github_token and "," in self.github_token:
+                tokens = [t.strip() for t in self.github_token.split(",") if t.strip()]
+                self._fetcher = GitHubAuthenticatedFetcher(
+                    tokens=tokens,
+                    progress_callback=self.progress_callback,
+                    checkpoint_file=self.checkpoint_file,
+                )
+            else:
+                self._fetcher = GitHubAuthenticatedFetcher(
+                    self.github_token,
+                    progress_callback=self.progress_callback,
+                    checkpoint_file=self.checkpoint_file,
+                )
+
         self._jira_simulator = JiraIssueSimulator(self.config.jira_project_key, self._rng)
         self._survey_simulator = SurveyAISimulator(self.config, self._rng)
         self._stats = RealProjectStats(project_name=self.config.team_name)
@@ -231,22 +243,40 @@ class RealProjectSeeder:
         return team
 
     def _fetch_contributors(self) -> list[ContributorInfo]:
-        """Fetch top contributors from GitHub.
+        """Fetch top contributors from all repos.
+
+        Collects contributors from each repo and deduplicates by GitHub ID.
 
         Returns:
-            List of contributor info.
+            List of unique contributor info.
         """
-        logger.info(f"Fetching top {self.config.max_members} contributors...")
+        logger.info(f"Fetching top {self.config.max_members} contributors from {len(self.config.repos)} repos...")
 
         days_ago = timezone.now() - timedelta(days=self.config.days_back)
-        contributors = self._fetcher.get_top_contributors(
-            self.config.repo_full_name,
-            max_count=self.config.max_members,
-            since=days_ago,
-        )
+        contributors_by_id: dict[int, ContributorInfo] = {}
 
-        logger.info(f"Found {len(contributors)} contributors")
-        return contributors
+        for repo in self.config.repos:
+            logger.info(f"  Fetching contributors from {repo}...")
+            repo_contributors = self._fetcher.get_top_contributors(
+                repo,
+                max_count=self.config.max_members,
+                since=days_ago,
+            )
+            # Dedupe by GitHub ID, keeping highest PR count
+            for contributor in repo_contributors:
+                existing = contributors_by_id.get(contributor.github_id)
+                if not existing or contributor.pr_count > existing.pr_count:
+                    contributors_by_id[contributor.github_id] = contributor
+
+        # Sort by PR count and take top max_members
+        all_contributors = sorted(
+            contributors_by_id.values(),
+            key=lambda c: c.pr_count,
+            reverse=True,
+        )[: self.config.max_members]
+
+        logger.info(f"Found {len(all_contributors)} unique contributors across all repos")
+        return all_contributors
 
     def _create_team_members(self, team: Team, contributors: list[ContributorInfo]):
         """Create TeamMember records from contributors.
@@ -290,23 +320,32 @@ class RealProjectSeeder:
         logger.info(f"Created {self._stats.team_members_created} new team members")
 
     def _fetch_prs(self) -> list[FetchedPRFull]:
-        """Fetch PRs with all details from GitHub.
+        """Fetch PRs with all details from all repos.
 
         Returns:
-            List of PR data.
+            List of PR data from all repos.
         """
-        logger.info(f"Fetching up to {self.config.max_prs} PRs from last {self.config.days_back} days...")
-
-        since = timezone.now() - timedelta(days=self.config.days_back)
-        prs_data = self._fetcher.fetch_prs_with_details(
-            self.config.repo_full_name,
-            since=since,
-            max_prs=self.config.max_prs,
+        logger.info(
+            f"Fetching up to {self.config.max_prs} PRs per repo from {len(self.config.repos)} repos "
+            f"(last {self.config.days_back} days)..."
         )
 
+        since = timezone.now() - timedelta(days=self.config.days_back)
+        all_prs: list[FetchedPRFull] = []
+
+        for repo in self.config.repos:
+            logger.info(f"  Fetching PRs from {repo}...")
+            repo_prs = self._fetcher.fetch_prs_with_details(
+                repo,
+                since=since,
+                max_prs=self.config.max_prs,
+            )
+            all_prs.extend(repo_prs)
+            logger.info(f"  Fetched {len(repo_prs)} PRs from {repo}")
+
         self._stats.github_api_calls = self._fetcher.api_calls_made
-        logger.info(f"Fetched {len(prs_data)} PRs (API calls: {self._stats.github_api_calls})")
-        return prs_data
+        logger.info(f"Fetched {len(all_prs)} total PRs (API calls: {self._stats.github_api_calls})")
+        return all_prs
 
     def _find_member(self, login: str | None, github_id: int | None) -> TeamMember | None:
         """Find team member by GitHub username or ID.
@@ -323,6 +362,54 @@ class RealProjectSeeder:
         if login and login.lower() in self._members_by_username:
             return self._members_by_username[login.lower()]
         return None
+
+    def _create_member_from_pr_author(self, team: Team, pr_data: FetchedPRFull) -> TeamMember | None:
+        """Create a team member from PR author data.
+
+        Creates team member on-the-fly when PR author isn't in the initial
+        contributors list. This ensures all PRs can be imported regardless
+        of max_members limit.
+
+        Args:
+            team: Team instance.
+            pr_data: PR data containing author info.
+
+        Returns:
+            Created TeamMember or None if author info is missing.
+        """
+        if not pr_data.author_login:
+            return None
+
+        # Check if already exists in DB (might have been created by another PR)
+        existing = TeamMember.objects.filter(
+            team=team,
+            github_username__iexact=pr_data.author_login,
+        ).first()
+        if existing:
+            # Cache for future lookups
+            self._members_by_username[pr_data.author_login.lower()] = existing
+            if pr_data.author_id:
+                self._members_by_github_id[str(pr_data.author_id)] = existing
+            return existing
+
+        # Create new member
+        member = TeamMemberFactory(
+            team=team,
+            github_id=str(pr_data.author_id) if pr_data.author_id else "",
+            github_username=pr_data.author_login,
+            display_name=pr_data.author_login,  # Use login as display name
+            role=self._rng.choice(["engineer", "senior_engineer"]),
+            is_active=True,
+        )
+
+        # Cache for future lookups
+        self._members_by_username[pr_data.author_login.lower()] = member
+        if pr_data.author_id:
+            self._members_by_github_id[str(pr_data.author_id)] = member
+
+        self._stats.team_members_created += 1
+        logger.debug(f"Created team member on-the-fly: {pr_data.author_login}")
+        return member
 
     def _create_prs(self, team: Team, prs_data: list[FetchedPRFull]) -> list[PullRequest]:
         """Create PullRequest records with all related data.
@@ -345,7 +432,7 @@ class RealProjectSeeder:
             existing_pr = PullRequest.objects.filter(
                 team=team,
                 github_pr_id=pr_data.number,
-                github_repo=self.config.repo_full_name,
+                github_repo=pr_data.github_repo,
             ).first()
             if existing_pr:
                 prs.append(existing_pr)
@@ -380,13 +467,16 @@ class RealProjectSeeder:
             pr_data: Fetched PR data.
 
         Returns:
-            Created PullRequest or None if author not found.
+            Created PullRequest or None if author info missing.
         """
-        # Find author
+        # Find or create author as team member
         author = self._find_member(pr_data.author_login, pr_data.author_id)
         if not author:
-            # Skip PRs from non-team members
-            return None
+            # Create team member on-the-fly for PR author
+            author = self._create_member_from_pr_author(team, pr_data)
+            if not author:
+                # Skip if we can't identify the author at all
+                return None
 
         # Determine state
         if pr_data.is_merged:
@@ -408,7 +498,7 @@ class RealProjectSeeder:
         pr = PullRequestFactory(
             team=team,
             github_pr_id=pr_data.number,
-            github_repo=self.config.repo_full_name,
+            github_repo=pr_data.github_repo,
             title=pr_data.title[:500],  # Limit title length
             body=pr_data.body or "",
             author=author,
@@ -494,7 +584,7 @@ class RealProjectSeeder:
             CommitFactory(
                 team=team,
                 github_sha=commit_data.sha,
-                github_repo=self.config.repo_full_name,
+                github_repo=pr.github_repo,
                 author=author,
                 message=commit_data.message[:500],  # Limit message length
                 committed_at=commit_data.committed_at,

@@ -84,6 +84,21 @@ class Command(BaseCommand):
             default=".seeding_checkpoint.json",
             help="Checkpoint file for resuming after rate limits (default: .seeding_checkpoint.json)",
         )
+        parser.add_argument(
+            "--no-graphql",
+            action="store_true",
+            help="Use REST API instead of GraphQL (slower but more reliable)",
+        )
+        parser.add_argument(
+            "--refresh",
+            action="store_true",
+            help="Force re-fetch from GitHub, ignoring local cache",
+        )
+        parser.add_argument(
+            "--no-cache",
+            action="store_true",
+            help="Disable local caching entirely (no read/write)",
+        )
 
     def handle(self, *args, **options):
         # Handle --list-projects
@@ -133,7 +148,9 @@ class Command(BaseCommand):
 
         self.stdout.write("\n" + "=" * 60)
         self.stdout.write(f"Project: {config.team_name}")
-        self.stdout.write(f"Repository: {config.repo_full_name}")
+        self.stdout.write(f"Repositories ({len(config.repos)}):")
+        for repo in config.repos:
+            self.stdout.write(f"  - {repo}")
         self.stdout.write("=" * 60)
 
         # Apply overrides
@@ -157,10 +174,19 @@ class Command(BaseCommand):
             else:
                 self.stdout.write(self.style.WARNING("  No existing data to clear"))
 
+        # Handle cache options
+        use_cache = not options.get("no_cache", False)
+        if options.get("refresh") and use_cache:
+            self.stdout.write("\nRefreshing cache (deleting cached data)...")
+            self._clear_cache_for_project(config)
+
         # Create seeder and run
-        self.stdout.write("\nFetching data from GitHub...")
+        use_graphql = not options.get("no_graphql", False)
+        api_type = "GraphQL (fast)" if use_graphql else "REST (slow)"
+        cache_status = "enabled" if use_cache else "disabled"
+        self.stdout.write(f"\nFetching data from GitHub using {api_type} (cache: {cache_status})...")
         checkpoint_file = options.get("checkpoint_file")
-        if checkpoint_file:
+        if checkpoint_file and not use_graphql:
             self.stdout.write(f"  Checkpoint file: {checkpoint_file}")
         try:
             seeder = RealProjectSeeder(
@@ -168,6 +194,8 @@ class Command(BaseCommand):
                 random_seed=options["seed"],
                 github_token=token,
                 checkpoint_file=checkpoint_file,
+                use_graphql=use_graphql,
+                use_cache=use_cache,
             )
             stats = seeder.seed()
 
@@ -185,9 +213,11 @@ class Command(BaseCommand):
 
         for name, config in REAL_PROJECTS.items():
             self.stdout.write(f"\n  {name}")
-            self.stdout.write(f"    Repository: {config.repo_full_name}")
+            self.stdout.write(f"    Repositories ({len(config.repos)}):")
+            for repo in config.repos:
+                self.stdout.write(f"      - {repo}")
             self.stdout.write(f"    Team: {config.team_name} ({config.team_slug})")
-            self.stdout.write(f"    Max PRs: {config.max_prs}")
+            self.stdout.write(f"    Max PRs per repo: {config.max_prs}")
             self.stdout.write(f"    Max members: {config.max_members}")
             self.stdout.write(f"    Days back: {config.days_back}")
             self.stdout.write(f"    AI adoption rate: {config.ai_base_adoption_rate:.0%}")
@@ -223,3 +253,22 @@ class Command(BaseCommand):
         self.stdout.write(f"  Weekly metrics: {stats.weekly_metrics_created}")
         self.stdout.write(f"  GitHub API calls: {stats.github_api_calls}")
         self.stdout.write("  " + "-" * 40)
+
+    def _clear_cache_for_project(self, config):
+        """Clear cached PR data for all repos in a project.
+
+        Args:
+            config: RealProjectConfig instance.
+        """
+        from pathlib import Path
+
+        from apps.metrics.seeding.pr_cache import PRCache
+
+        cache_dir = Path(".seeding_cache")
+        for repo in config.repos:
+            cache_path = PRCache.get_cache_path(repo, cache_dir)
+            if cache_path.exists():
+                cache_path.unlink()
+                self.stdout.write(f"  Deleted cache: {cache_path}")
+            else:
+                self.stdout.write(f"  No cache found: {cache_path}")
