@@ -65,7 +65,7 @@
           <span class="badge badge-ghost badge-sm ml-1">{{ pr.jira_key }}</span>
           {% endif %}
         </td>
-        <td class="text-sm text-base-content/70">{{ pr.github_repo }}</td>
+        <td class="text-sm text-base-content/70">{{ pr.github_repo|repo_name }}</td>
         <td class="max-w-[100px]">
           {% if pr.author %}
             <div class="flex items-center gap-1">
@@ -86,7 +86,7 @@
         </td>
         <td>
           {% if pr.state == 'merged' %}
-            <span class="badge badge-success badge-sm">{% trans "merged" %}</span>
+            <span class="text-sm text-base-content/70">{% trans "merged" %}</span>
           {% elif pr.state == 'open' %}
             <span class="badge badge-info badge-sm">{% trans "open" %}</span>
           {% else %}

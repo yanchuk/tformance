@@ -160,6 +160,25 @@ def tech_display_name(category: str) -> str:
 
 
 @register.filter
+def repo_name(full_repo: str | None) -> str:
+    """Extract repository name from 'owner/repo' format.
+
+    Args:
+        full_repo: Full repository path (e.g., 'antiwork/gumroad')
+
+    Returns:
+        Repository name only (e.g., 'gumroad')
+        Returns empty string for None or empty input
+
+    Usage:
+        {{ pr.github_repo|repo_name }}
+    """
+    if not full_repo:
+        return ""
+    return full_repo.split("/")[-1] if "/" in full_repo else full_repo
+
+
+@register.filter
 def pr_size_bucket(additions: int | None, deletions: int | None) -> str:
     """Calculate PR size bucket based on total lines changed.
 

@@ -4,6 +4,7 @@ from django.test import TestCase
 
 from apps.metrics.templatetags.pr_list_tags import (
     pr_size_bucket,
+    repo_name,
     tech_abbrev,
     tech_badge_class,
     tech_display_name,
@@ -221,3 +222,39 @@ class TestPrSizeBucketFilter(TestCase):
     def test_negative_deletions_returns_empty(self):
         """Test negative deletions returns empty string."""
         self.assertEqual(pr_size_bucket(10, -5), "")
+
+
+class TestRepoNameFilter(TestCase):
+    """Tests for repo_name template filter."""
+
+    def test_extracts_repo_from_owner_repo_format(self):
+        """Test extracting repo name from 'owner/repo' format."""
+        self.assertEqual(repo_name("antiwork/gumroad"), "gumroad")
+
+    def test_extracts_repo_from_different_owner(self):
+        """Test extracting repo name from different organization."""
+        self.assertEqual(repo_name("facebook/react"), "react")
+
+    def test_handles_repo_with_hyphens(self):
+        """Test repo names with hyphens."""
+        self.assertEqual(repo_name("vercel/next.js"), "next.js")
+
+    def test_handles_repo_with_dots(self):
+        """Test repo names with dots."""
+        self.assertEqual(repo_name("org/my-project.v2"), "my-project.v2")
+
+    def test_empty_string_returns_empty(self):
+        """Test empty string returns empty."""
+        self.assertEqual(repo_name(""), "")
+
+    def test_none_returns_empty(self):
+        """Test None value returns empty."""
+        self.assertEqual(repo_name(None), "")
+
+    def test_no_slash_returns_original(self):
+        """Test string without slash returns as-is."""
+        self.assertEqual(repo_name("just-repo-name"), "just-repo-name")
+
+    def test_multiple_slashes_returns_last_segment(self):
+        """Test multiple slashes returns last segment only."""
+        self.assertEqual(repo_name("org/sub/repo"), "repo")

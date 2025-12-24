@@ -2,6 +2,7 @@
 {% load static %}
 {% load i18n %}
 {% load partials %}
+{% load pr_list_tags %}
 
 {% block analytics_content %}
   {% partialdef page-content inline %}
@@ -34,7 +35,7 @@
           <select name="repo" class="select select-bordered select-sm w-full">
             <option value="">{% trans "All Repositories" %}</option>
             {% for repo in filter_options.repos %}
-            <option value="{{ repo }}" {% if filters.repo == repo %}selected{% endif %}>{{ repo }}</option>
+            <option value="{{ repo }}" {% if filters.repo == repo %}selected{% endif %}>{{ repo|repo_name }}</option>
             {% endfor %}
           </select>
         </div>
