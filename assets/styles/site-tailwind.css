@@ -90,7 +90,7 @@
 
   /* Primary - Coral orange (same as dark theme for consistency) */
   --color-primary: oklch(0.70 0.18 45);         /* #F97316 - Coral orange */
-  --color-primary-content: oklch(0.15 0 0);     /* Dark text on primary for contrast */
+  --color-primary-content: oklch(1 0 0);        /* White text on primary - APCA research shows better readability */
 
   /* Secondary - Warm rose (same as dark theme) */
   --color-secondary: oklch(0.80 0.10 10);       /* #FDA4AF - Warm rose */

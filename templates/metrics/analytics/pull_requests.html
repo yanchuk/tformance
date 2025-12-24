@@ -20,7 +20,52 @@
     </div>
 
     <!-- Filters Panel -->
-    <div class="bg-base-200 rounded-lg p-4 mb-6 min-w-0">
+    <div class="bg-base-200 rounded-lg p-4 mb-6 min-w-0"
+         x-data="{
+           initial: {
+             repo: '{{ filters.repo|default:"" }}',
+             author: '{{ filters.author|default:"" }}',
+             reviewer: '{{ filters.reviewer|default:"" }}',
+             ai: '{{ filters.ai|default:"" }}',
+             ai_tool: '{{ filters.ai_tool|default:"" }}',
+             state: '{{ filters.state|default:"" }}',
+             size: '{{ filters.size|default:"" }}',
+             has_jira: '{{ filters.has_jira|default:"" }}',
+             date_from: '{{ filters.date_from|default:"" }}',
+             date_to: '{{ filters.date_to|default:"" }}'
+           },
+           current: {
+             repo: '{{ filters.repo|default:"" }}',
+             author: '{{ filters.author|default:"" }}',
+             reviewer: '{{ filters.reviewer|default:"" }}',
+             ai: '{{ filters.ai|default:"" }}',
+             ai_tool: '{{ filters.ai_tool|default:"" }}',
+             state: '{{ filters.state|default:"" }}',
+             size: '{{ filters.size|default:"" }}',
+             has_jira: '{{ filters.has_jira|default:"" }}',
+             date_from: '{{ filters.date_from|default:"" }}',
+             date_to: '{{ filters.date_to|default:"" }}'
+           },
+           techChanged: false,
+           get isDirty() {
+             return this.current.repo !== this.initial.repo ||
+                    this.current.author !== this.initial.author ||
+                    this.current.reviewer !== this.initial.reviewer ||
+                    this.current.ai !== this.initial.ai ||
+                    this.current.ai_tool !== this.initial.ai_tool ||
+                    this.current.state !== this.initial.state ||
+                    this.current.size !== this.initial.size ||
+                    this.current.has_jira !== this.initial.has_jira ||
+                    this.current.date_from !== this.initial.date_from ||
+                    this.current.date_to !== this.initial.date_to ||
+                    this.techChanged;
+           },
+           resetDirty() {
+             this.initial = { ...this.current };
+             this.techChanged = false;
+           }
+         }"
+         @htmx:after-request.window="resetDirty()">
       <form hx-get="{% url 'metrics:pr_list' %}"
             hx-target="#page-content"
             hx-swap="outerHTML"
@@ -32,7 +77,8 @@
           <label class="label">
             <span class="label-text text-base-content/80">{% trans "Repository" %}</span>
           </label>
-          <select name="repo" class="select select-bordered select-sm w-full">
+          <select name="repo" class="select select-bordered select-sm w-full"
+                  x-model="current.repo">
             <option value="">{% trans "All Repositories" %}</option>
             {% for repo in filter_options.repos %}
             <option value="{{ repo }}" {% if filters.repo == repo %}selected{% endif %}>{{ repo|repo_name }}</option>
@@ -45,7 +91,8 @@
           <label class="label">
             <span class="label-text text-base-content/80">{% trans "Author" %}</span>
           </label>
-          <select name="author" class="select select-bordered select-sm w-full">
+          <select name="author" class="select select-bordered select-sm w-full"
+                  x-model="current.author">
             <option value="">{% trans "All Authors" %}</option>
             {% for author in filter_options.authors %}
             <option value="{{ author.id }}" {% if filters.author == author.id %}selected{% endif %}>{{ author.name }}</option>
@@ -58,7 +105,8 @@
           <label class="label">
             <span class="label-text text-base-content/80">{% trans "Reviewer" %}</span>
           </label>
-          <select name="reviewer" class="select select-bordered select-sm w-full">
+          <select name="reviewer" class="select select-bordered select-sm w-full"
+                  x-model="current.reviewer">
             <option value="">{% trans "All Reviewers" %}</option>
             {% for reviewer in filter_options.reviewers %}
             <option value="{{ reviewer.id }}" {% if filters.reviewer == reviewer.id %}selected{% endif %}>{{ reviewer.name }}</option>
@@ -71,7 +119,8 @@
           <label class="label">
             <span class="label-text text-base-content/80">{% trans "AI Assisted" %}</span>
           </label>
-          <select name="ai" class="select select-bordered select-sm w-full">
+          <select name="ai" class="select select-bordered select-sm w-full"
+                  x-model="current.ai">
             <option value="">{% trans "All" %}</option>
             <option value="yes" {% if filters.ai == 'yes' %}selected{% endif %}>{% trans "Yes" %}</option>
             <option value="no" {% if filters.ai == 'no' %}selected{% endif %}>{% trans "No" %}</option>
@@ -84,7 +133,8 @@
           <label class="label">
             <span class="label-text text-base-content/80">{% trans "AI Tool" %}</span>
           </label>
-          <select name="ai_tool" class="select select-bordered select-sm w-full">
+          <select name="ai_tool" class="select select-bordered select-sm w-full"
+                  x-model="current.ai_tool">
             <option value="">{% trans "All Tools" %}</option>
             {% for tool in filter_options.ai_tools %}
             <option value="{{ tool }}" {% if filters.ai_tool == tool %}selected{% endif %}>{{ tool }}</option>
@@ -98,7 +148,8 @@
           <label class="label">
             <span class="label-text text-base-content/80">{% trans "State" %}</span>
           </label>
-          <select name="state" class="select select-bordered select-sm w-full">
+          <select name="state" class="select select-bordered select-sm w-full"
+                  x-model="current.state">
             <option value="">{% trans "All States" %}</option>
             {% for state in filter_options.states %}
             <option value="{{ state }}" {% if filters.state == state %}selected{% endif %}>{{ state|title }}</option>
@@ -111,7 +162,8 @@
           <label class="label">
             <span class="label-text text-base-content/80">{% trans "PR Size" %}</span>
           </label>
-          <select name="size" class="select select-bordered select-sm w-full">
+          <select name="size" class="select select-bordered select-sm w-full"
+                  x-model="current.size">
             <option value="">{% trans "All Sizes" %}</option>
             <option value="XS" {% if filters.size == 'XS' %}selected{% endif %}>XS (0-10 lines)</option>
             <option value="S" {% if filters.size == 'S' %}selected{% endif %}>S (11-50 lines)</option>
@@ -130,6 +182,7 @@
                  const idx = this.selected.indexOf(val);
                  if (idx > -1) { this.selected.splice(idx, 1); }
                  else { this.selected.push(val); }
+                 techChanged = true;
                }
              }">
           <label class="label">
@@ -165,7 +218,8 @@
           <label class="label">
             <span class="label-text text-base-content/80">{% trans "Jira Link" %}</span>
           </label>
-          <select name="has_jira" class="select select-bordered select-sm w-full">
+          <select name="has_jira" class="select select-bordered select-sm w-full"
+                  x-model="current.has_jira">
             <option value="">{% trans "All" %}</option>
             <option value="yes" {% if filters.has_jira == 'yes' %}selected{% endif %}>{% trans "Has Jira" %}</option>
             <option value="no" {% if filters.has_jira == 'no' %}selected{% endif %}>{% trans "No Jira" %}</option>
@@ -178,7 +232,8 @@
             <span class="label-text text-base-content/80">{% trans "Date From" %}</span>
           </label>
           <input type="date" name="date_from" value="{{ filters.date_from|default:'' }}"
-                 class="input input-bordered input-sm w-full">
+                 class="input input-bordered input-sm w-full"
+                 x-model="current.date_from">
         </div>
 
         <!-- Date To -->
@@ -187,13 +242,17 @@
             <span class="label-text text-base-content/80">{% trans "Date To" %}</span>
           </label>
           <input type="date" name="date_to" value="{{ filters.date_to|default:'' }}"
-                 class="input input-bordered input-sm w-full">
+                 class="input input-bordered input-sm w-full"
+                 x-model="current.date_to">
         </div>
 
         <!-- Actions -->
         <div class="form-control lg:col-span-2 flex flex-row items-end gap-2">
-          <button type="submit" class="btn btn-primary btn-sm">
-            {% trans "Apply Filters" %}
+          <button type="submit"
+                  class="btn btn-primary btn-sm transition-all duration-200"
+                  :class="{ 'ring-2 ring-warning/60 ring-offset-2 ring-offset-base-200': isDirty }">
+            <span x-show="!isDirty">{% trans "Apply Filters" %}</span>
+            <span x-show="isDirty" x-cloak>{% trans "Apply Changes" %}</span>
           </button>
           <a href="{% url 'metrics:pr_list' %}" class="btn btn-ghost btn-sm">
             {% trans "Clear" %}
