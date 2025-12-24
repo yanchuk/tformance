@@ -325,3 +325,134 @@ class TestPRCacheGetCachePath(TestCase):
 
         # Path should contain .seeding_cache as a component
         self.assertIn(".seeding_cache", str(path))
+
+
+class TestPRCacheRepoPushedAt(TestCase):
+    """Tests for PRCache.repo_pushed_at field - detects if repo has changed.
+
+    GitHub API best practices recommend checking if data has changed before
+    re-fetching. This field stores when the repo was last pushed to, allowing
+    us to skip fetching if nothing has changed.
+    See: https://docs.github.com/en/rest/using-the-rest-api/best-practices-for-using-the-rest-api
+    """
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.temp_dir = tempfile.mkdtemp()
+        self.cache_dir = Path(self.temp_dir) / ".seeding_cache"
+
+    def test_cache_stores_repo_pushed_at(self):
+        """Test that PRCache can store repo_pushed_at timestamp."""
+        pushed_at = datetime(2025, 12, 20, 10, 30, 0, tzinfo=UTC)
+        cache = PRCache(
+            repo="octocat/hello-world",
+            fetched_at=datetime(2025, 12, 24, 12, 0, 0, tzinfo=UTC),
+            since_date=date(2025, 1, 1),
+            prs=[],
+            repo_pushed_at=pushed_at,
+        )
+
+        self.assertEqual(cache.repo_pushed_at, pushed_at)
+
+    def test_cache_saves_repo_pushed_at_to_json(self):
+        """Test that repo_pushed_at is serialized to JSON."""
+        pushed_at = datetime(2025, 12, 20, 10, 30, 0, tzinfo=UTC)
+        cache = PRCache(
+            repo="octocat/hello-world",
+            fetched_at=datetime(2025, 12, 24, 12, 0, 0, tzinfo=UTC),
+            since_date=date(2025, 1, 1),
+            prs=[],
+            repo_pushed_at=pushed_at,
+        )
+
+        cache_path = self.cache_dir / "octocat" / "hello-world.json"
+        with patch.object(PRCache, "get_cache_path", return_value=cache_path):
+            cache.save()
+
+        with open(cache_path) as f:
+            data = json.load(f)
+
+        self.assertEqual(data["repo_pushed_at"], "2025-12-20T10:30:00+00:00")
+
+    def test_cache_loads_repo_pushed_at_from_json(self):
+        """Test that repo_pushed_at is deserialized from JSON."""
+        cache_path = self.cache_dir / "octocat" / "hello-world.json"
+        cache_path.parent.mkdir(parents=True)
+
+        cache_data = {
+            "repo": "octocat/hello-world",
+            "fetched_at": "2025-12-24T12:00:00+00:00",
+            "since_date": "2025-01-01",
+            "prs": [],
+            "repo_pushed_at": "2025-12-20T10:30:00+00:00",
+        }
+        with open(cache_path, "w") as f:
+            json.dump(cache_data, f)
+
+        with patch.object(PRCache, "get_cache_path", return_value=cache_path):
+            cache = PRCache.load("octocat/hello-world")
+
+        self.assertEqual(cache.repo_pushed_at, datetime(2025, 12, 20, 10, 30, 0, tzinfo=UTC))
+
+    def test_cache_handles_missing_repo_pushed_at(self):
+        """Test that old cache files without repo_pushed_at field still load."""
+        cache_path = self.cache_dir / "octocat" / "hello-world.json"
+        cache_path.parent.mkdir(parents=True)
+
+        # Old cache format without repo_pushed_at
+        cache_data = {
+            "repo": "octocat/hello-world",
+            "fetched_at": "2025-12-24T12:00:00+00:00",
+            "since_date": "2025-01-01",
+            "prs": [],
+        }
+        with open(cache_path, "w") as f:
+            json.dump(cache_data, f)
+
+        with patch.object(PRCache, "get_cache_path", return_value=cache_path):
+            cache = PRCache.load("octocat/hello-world")
+
+        # Should load successfully with None for repo_pushed_at
+        self.assertIsNotNone(cache)
+        self.assertIsNone(cache.repo_pushed_at)
+
+    def test_is_valid_with_unchanged_repo(self):
+        """Test that cache is valid when repo hasn't been pushed to since fetch."""
+        cache = PRCache(
+            repo="octocat/hello-world",
+            fetched_at=datetime(2025, 12, 24, 12, 0, 0, tzinfo=UTC),
+            since_date=date(2025, 1, 1),
+            prs=[],
+            repo_pushed_at=datetime(2025, 12, 20, 10, 0, 0, tzinfo=UTC),
+        )
+
+        # Repo hasn't changed (same pushed_at timestamp)
+        current_pushed_at = datetime(2025, 12, 20, 10, 0, 0, tzinfo=UTC)
+        self.assertTrue(cache.is_valid(since_date=date(2025, 1, 1), repo_pushed_at=current_pushed_at))
+
+    def test_is_valid_with_changed_repo(self):
+        """Test that cache is invalid when repo has been pushed to since fetch."""
+        cache = PRCache(
+            repo="octocat/hello-world",
+            fetched_at=datetime(2025, 12, 24, 12, 0, 0, tzinfo=UTC),
+            since_date=date(2025, 1, 1),
+            prs=[],
+            repo_pushed_at=datetime(2025, 12, 20, 10, 0, 0, tzinfo=UTC),
+        )
+
+        # Repo has been pushed to since cache was created
+        current_pushed_at = datetime(2025, 12, 25, 15, 0, 0, tzinfo=UTC)
+        self.assertFalse(cache.is_valid(since_date=date(2025, 1, 1), repo_pushed_at=current_pushed_at))
+
+    def test_is_valid_without_repo_pushed_at_param_falls_back(self):
+        """Test that is_valid works when repo_pushed_at is not provided (backward compat)."""
+        cache = PRCache(
+            repo="octocat/hello-world",
+            fetched_at=datetime(2025, 12, 24, 12, 0, 0, tzinfo=UTC),
+            since_date=date(2025, 1, 1),
+            prs=[],
+            repo_pushed_at=datetime(2025, 12, 20, 10, 0, 0, tzinfo=UTC),
+        )
+
+        # When repo_pushed_at is not provided, should fall back to since_date check only
+        self.assertTrue(cache.is_valid(since_date=date(2025, 1, 1)))

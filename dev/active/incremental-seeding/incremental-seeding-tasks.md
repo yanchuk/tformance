@@ -1,6 +1,6 @@
 # Incremental Seeding Tasks
 
-**Last Updated:** 2025-12-24 (Session End)
+**Last Updated:** 2025-12-24 (Phase 3 in Progress)
 
 ## Phase 1: Stability ✅ COMPLETE (Commit: a1bff2d)
 
@@ -39,11 +39,39 @@
 
 - [x] **2.7** Commit changes
 
-## Phase 3: Speed (PLANNED)
+## Phase 3: GitHub API Best Practices (IN PROGRESS)
 
-- [ ] **3.1** Parallel repo fetching
-- [ ] **3.2** Skip unchanged repos (compare updated_at)
-- [ ] **3.3** Incremental PR fetching (only new PRs since last sync)
+### 3.0 Fix Parallel Check Runs ✅ COMPLETE
+- [x] Remove `ThreadPoolExecutor` from `_add_check_runs_to_prs()`
+- [x] Make requests sequential per GitHub guidelines
+- [x] Add docstring reference to GitHub best practices URL
+- [x] Update test names to reflect sequential behavior
+- [x] Add test for sequential execution order
+
+### 3.1 Repository Change Detection ✅ COMPLETE
+- [x] Add `FETCH_REPO_METADATA_QUERY` to `github_graphql.py`
+- [x] Add `fetch_repo_metadata()` method to `GitHubGraphQLClient`
+- [x] Add `repo_pushed_at` field to `PRCache` dataclass
+- [x] Update `PRCache.is_valid()` to accept `repo_pushed_at` parameter
+- [x] Update `PRCache.save()/load()` for new field with backward compat
+- [x] Add `_fetch_repo_pushed_at()` helper to `GitHubGraphQLFetcher`
+- [x] Integrate repo change detection into `fetch_prs_with_details()`
+- [x] Add 7 TDD tests for repo_pushed_at functionality
+
+### 3.2 Rate Limit Monitoring (PLANNED)
+- [ ] Track `x-ratelimit-remaining` header value
+- [ ] Log warning when remaining points drop below threshold
+- [ ] Add `--pause-on-limit` flag for automatic waiting
+
+### 3.3 Incremental PR Sync (PLANNED)
+- [ ] Use `FETCH_PRS_UPDATED_QUERY` for incremental fetches
+- [ ] Merge new/updated PRs with cached PRs
+- [ ] Track PR `updated_at` for merge logic
+
+### 3.4 Exponential Backoff with Jitter (PLANNED)
+- [ ] Add random jitter to retry delays
+- [ ] Implement configurable max retry attempts
+- [ ] Add retry logging
 
 ## Phase 4: Production Alignment (PLANNED)
 
@@ -73,15 +101,19 @@
 - [x] Linked issues stored in PullRequest model
 - [x] 43 tests passing (32 Phase 1 + 11 Phase 2)
 
-### Phase 3 (Pending)
-- [ ] Parallel repo fetch reduces total time
-- [ ] Unchanged repos skip API calls
-- [ ] Incremental sync only fetches new PRs
+### Phase 3 (In Progress)
+- [x] Check runs fetched sequentially (not parallel)
+- [x] Repo metadata query costs ~1 point
+- [x] Cache uses `repo_pushed_at` for change detection
+- [x] Old cache files without `repo_pushed_at` still load
+- [x] 51 tests passing (25 PRCache + 26 GitHubGraphQLFetcher)
+- [ ] Rate limit warnings logged when low
+- [ ] Incremental sync only fetches updated PRs
 
 ## Test Commands
 
 ```bash
-# Run Phase 1 + Phase 2 tests
+# Run Phase 1-3 tests
 .venv/bin/pytest apps/metrics/tests/test_pr_cache.py apps/metrics/tests/test_github_graphql_fetcher.py -v
 
 # Check for missing migrations

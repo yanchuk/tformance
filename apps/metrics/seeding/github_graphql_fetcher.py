@@ -374,17 +374,16 @@ class GitHubGraphQLFetcher:
         return prs
 
     def _add_check_runs_to_prs(self, prs: list[FetchedPRFull], repo_full_name: str):
-        """Add check runs to PRs using REST API fallback with parallel fetching.
+        """Add check runs to PRs using REST API fallback with sequential fetching.
 
         Uses commit SHA from GraphQL data - just 1 API call per PR instead of 3.
-        Uses ThreadPoolExecutor for parallel API calls (4 workers to respect rate limits).
+        Fetches sequentially per GitHub API best practices to avoid secondary rate limits.
+        See: https://docs.github.com/en/rest/using-the-rest-api/best-practices-for-using-the-rest-api
 
         Args:
             prs: List of FetchedPRFull objects to update
             repo_full_name: Repository in "owner/repo" format
         """
-        from concurrent.futures import ThreadPoolExecutor, as_completed
-
         # Filter PRs that have commits (need head commit SHA for check runs)
         prs_with_commits = [(pr, pr.commits[-1].sha) for pr in prs if pr.commits]
         if not prs_with_commits:
@@ -394,31 +393,17 @@ class GitHubGraphQLFetcher:
         print(f"  🔄 Fetching check runs for {len(prs_with_commits)} PRs (REST API)...", end=" ", flush=True)
         logger.info(f"REST: Fetching check runs for {len(prs_with_commits)} PRs from {repo_full_name} (1 call/PR)")
 
-        # Pre-cache the repo object before parallel execution
+        # Pre-cache the repo object before sequential execution
         self._get_cached_repo(repo_full_name)
 
-        # Fetch check runs in parallel (4 workers to respect rate limits)
-        pr_to_check_runs: dict[int, list[FetchedCheckRun]] = {}
-
-        with ThreadPoolExecutor(max_workers=4) as executor:
-            future_to_pr = {
-                executor.submit(self._fetch_check_runs_for_commit, repo_full_name, sha): pr
-                for pr, sha in prs_with_commits
-            }
-
-            for future in as_completed(future_to_pr):
-                pr = future_to_pr[future]
-                try:
-                    check_runs = future.result()
-                    pr_to_check_runs[pr.number] = check_runs
-                except Exception as e:
-                    logger.debug(f"Failed to fetch check runs for PR #{pr.number}: {e}")
-                    pr_to_check_runs[pr.number] = []
-
-        # Apply check runs to PRs
-        for pr in prs:
-            check_runs = pr_to_check_runs.get(pr.number, [])
-            pr.check_runs.extend(check_runs)
+        # Fetch check runs sequentially per GitHub API best practices
+        # "Make requests serially instead of concurrently" to avoid secondary rate limits
+        for pr, sha in prs_with_commits:
+            try:
+                check_runs = self._fetch_check_runs_for_commit(repo_full_name, sha)
+                pr.check_runs.extend(check_runs)
+            except Exception as e:
+                logger.debug(f"Failed to fetch check runs for PR #{pr.number}: {e}")
 
         total_check_runs = sum(len(pr.check_runs) for pr in prs)
         print(f"done ({total_check_runs} check runs)")
@@ -445,33 +430,67 @@ class GitHubGraphQLFetcher:
         """
         since_date = since.date() if since else None
 
-        # Try to load from cache
+        # Fetch repo metadata to check if repo has changed (cheap ~1 point query)
+        repo_pushed_at = None
+        if self.use_cache:
+            repo_pushed_at = asyncio.run(self._fetch_repo_pushed_at(repo_full_name))
+
+        # Try to load from cache (with repo change detection)
         if self.use_cache:
             cache = PRCache.load(repo_full_name, self.cache_dir)
-            if cache and cache.is_valid(since_date):
+            if cache and cache.is_valid(since_date, repo_pushed_at=repo_pushed_at):
                 prs = self._deserialize_prs(cache.prs)
                 # Limit to max_prs
                 prs = prs[:max_prs]
-                print(f"  📦 Loaded {len(prs)} PRs from cache ({cache.fetched_at.date()})")
-                logger.info(f"Loaded {len(prs)} PRs from cache for {repo_full_name}")
+                print(f"  📦 Loaded {len(prs)} PRs from cache (unchanged since {cache.fetched_at.date()})")
+                logger.info(f"Loaded {len(prs)} PRs from cache for {repo_full_name} (repo unchanged)")
                 return prs
+            elif cache:
+                print("  🔄 Repo has changed since cache, re-fetching...")
+                logger.info(f"Cache invalidated for {repo_full_name} - repo was pushed to")
 
         # Fetch from GitHub
         prs = asyncio.run(self._fetch_prs_async(repo_full_name, since, max_prs))
 
-        # Save to cache
+        # Save to cache (with repo_pushed_at for future validation)
         if self.use_cache and prs:
             cache = PRCache(
                 repo=repo_full_name,
                 fetched_at=datetime.now(UTC),
                 since_date=since_date,
                 prs=self._serialize_prs(prs),
+                repo_pushed_at=repo_pushed_at,
             )
             cache.save(self.cache_dir)
             print(f"  💾 Saved {len(prs)} PRs to cache")
             logger.info(f"Saved {len(prs)} PRs to cache for {repo_full_name}")
 
         return prs
+
+    async def _fetch_repo_pushed_at(self, repo_full_name: str) -> datetime | None:
+        """Fetch repository's pushedAt timestamp for cache validation.
+
+        Lightweight query (~1 point) to check if repository has changed.
+        Follows GitHub API best practices for conditional requests.
+
+        Args:
+            repo_full_name: Repository in "owner/repo" format
+
+        Returns:
+            datetime when repo was last pushed to, or None on error
+        """
+        owner, repo = repo_full_name.split("/")
+        try:
+            result = await self._client.fetch_repo_metadata(owner, repo)
+            self.api_calls_made += 1
+
+            pushed_at_str = result.get("repository", {}).get("pushedAt")
+            if pushed_at_str:
+                return self._parse_datetime(pushed_at_str)
+            return None
+        except Exception as e:
+            logger.debug(f"Failed to fetch repo metadata for {repo_full_name}: {e}")
+            return None
 
     def _serialize_prs(self, prs: list[FetchedPRFull]) -> list[dict]:
         """Serialize FetchedPRFull objects to dicts for caching."""

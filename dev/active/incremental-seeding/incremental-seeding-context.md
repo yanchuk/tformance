@@ -1,15 +1,21 @@
 # Incremental Seeding Context
 
-**Last Updated:** 2025-12-24 (Session End)
+**Last Updated:** 2025-12-24 (Phase 3 in Progress)
 
 ## Strategic Vision
 
-**Goal**: Maximize real data collection from public GitHub repos. Store ALL data GitHub provides within our OAuth scope.
+**Goal**: Maximize real data collection from public GitHub repos while following GitHub API best practices.
 
-### Data Collection Philosophy
-- **Store everything** - Labels, milestones, assignees, linked issues
-- **Real users use OAuth** (single token) - improvements must work for production
-- **Core patterns** (retry, batching, caching) live in shared services
+### Key Principles (from GitHub API Best Practices)
+
+1. **Sequential requests** - "Make requests serially instead of concurrently" to avoid secondary rate limits
+2. **Conditional requests** - Check if data changed before re-fetching
+3. **Rate limit awareness** - Monitor `x-ratelimit-remaining`, pause if low
+4. **Exponential backoff** - With jitter on retries
+
+Sources:
+- [GitHub REST API Best Practices](https://docs.github.com/en/rest/using-the-rest-api/best-practices-for-using-the-rest-api)
+- [GitHub GraphQL Rate Limits](https://docs.github.com/en/graphql/overview/rate-limits-and-node-limits-for-the-graphql-api)
 
 ### Architecture
 ```
@@ -39,80 +45,91 @@
 
 ### ✅ Phase 2: Complete Data Collection (COMPLETE) - Commit `c93c575`
 
-**This Session's Work:**
-
 1. **GraphQL Query Updates** (`apps/integrations/services/github_graphql.py`)
    - All 3 queries updated: FETCH_PRS_BULK_QUERY, FETCH_PRS_UPDATED_QUERY, FETCH_SINGLE_PR_QUERY
    - New fields: `isDraft`, `labels`, `milestone`, `assignees`, `closingIssuesReferences`
 
-2. **Model Changes** (`apps/metrics/models/github.py:149-180`)
+2. **Model Changes** (`apps/metrics/models/github.py`)
    - Migration: `0017_add_pr_github_metadata.py` (APPLIED)
    - Fields: `is_draft`, `labels`, `milestone_title`, `assignees`, `linked_issues`
 
-3. **FetchedPRFull Dataclass** (`apps/metrics/seeding/github_authenticated_fetcher.py:171-174`)
+3. **FetchedPRFull Dataclass** (`apps/metrics/seeding/github_authenticated_fetcher.py`)
    - Added: `milestone_title`, `assignees`, `linked_issues`
 
-4. **Mapping Logic** (`apps/metrics/seeding/github_graphql_fetcher.py:181-201`)
+4. **Mapping Logic** (`apps/metrics/seeding/github_graphql_fetcher.py`)
    - `_map_pr()` extracts all Phase 2 fields from GraphQL response
 
-5. **Seeding** (`apps/metrics/seeding/real_project_seeder.py:516-521`)
+5. **Seeding** (`apps/metrics/seeding/real_project_seeder.py`)
    - `_create_single_pr()` passes all new fields to factory
 
-6. **TDD Tests** (`apps/metrics/tests/test_github_graphql_fetcher.py:668-965`)
+6. **TDD Tests** (`apps/metrics/tests/test_github_graphql_fetcher.py`)
    - 11 new tests in `TestGitHubGraphQLFetcherMapPR`
-   - All 43 seeding tests passing
+
+### 🔄 Phase 3: GitHub API Best Practices (IN PROGRESS)
+
+**This Session's Work:**
+
+#### 3.0 Fix Parallel Check Runs ✅
+- Removed `ThreadPoolExecutor` from `_add_check_runs_to_prs()`
+- Requests now made sequentially per GitHub guidelines
+- Added docstring with reference to GitHub best practices
+- Files changed:
+  - `apps/metrics/seeding/github_graphql_fetcher.py` (lines 376-410)
+  - `apps/metrics/tests/test_github_graphql_fetcher.py` (test updates)
+
+#### 3.1 Repository Change Detection ✅
+- Added lightweight `FETCH_REPO_METADATA_QUERY` (~1 point)
+- Added `fetch_repo_metadata()` method to `GitHubGraphQLClient`
+- Extended `PRCache` with `repo_pushed_at` field
+- Updated `is_valid()` to check if repo has changed
+- Cache now skipped if repo was pushed to since last fetch
+- Files changed:
+  - `apps/integrations/services/github_graphql.py` (lines 315-330, 663-702)
+  - `apps/metrics/seeding/pr_cache.py` (lines 35, 56-58, 84-95, 97-121)
+  - `apps/metrics/seeding/github_graphql_fetcher.py` (lines 433-466, 470-493)
+  - `apps/metrics/tests/test_pr_cache.py` (lines 330-462, 7 new tests)
 
 ## Key Files Modified This Session
 
 | File | Lines | Changes |
 |------|-------|---------|
-| `apps/integrations/services/github_graphql.py` | 17-288 | Added Phase 2 fields to 3 GraphQL queries |
-| `apps/metrics/models/github.py` | 149-180 | Added 5 new fields to PullRequest model |
-| `apps/metrics/seeding/github_authenticated_fetcher.py` | 171-174 | Added fields to FetchedPRFull dataclass |
-| `apps/metrics/seeding/github_graphql_fetcher.py` | 181-201 | Updated _map_pr() for Phase 2 fields |
-| `apps/metrics/seeding/real_project_seeder.py` | 516-521 | Updated _create_single_pr() |
-| `apps/metrics/tests/test_github_graphql_fetcher.py` | 668-965 | Added 11 TDD tests |
-| `apps/metrics/migrations/0017_add_pr_github_metadata.py` | NEW | Phase 2 migration |
+| `apps/integrations/services/github_graphql.py` | 315-330, 663-702 | Added FETCH_REPO_METADATA_QUERY and fetch_repo_metadata() |
+| `apps/metrics/seeding/pr_cache.py` | 35, 56-58, 84-95, 97-121 | Added repo_pushed_at field, updated is_valid() |
+| `apps/metrics/seeding/github_graphql_fetcher.py` | 376-410, 433-493 | Sequential check runs, repo change detection |
+| `apps/metrics/tests/test_pr_cache.py` | 330-462 | 7 new tests for repo_pushed_at |
+| `apps/metrics/tests/test_github_graphql_fetcher.py` | 451, 525, 666-744 | Updated tests for sequential behavior |
 
 ## Decisions Made This Session
 
-1. **JSONField over M2M** - Chose JSONField for labels/assignees/linked_issues for simplicity
-2. **Store label names only** - Not storing color (can fetch if needed later)
-3. **linked_issues as list of ints** - Just issue numbers, not full Issue model
+1. **Sequential over parallel** - GitHub explicitly says "make requests serially" for REST
+2. **repo_pushed_at for change detection** - Cheaper than ETags, works with GraphQL
+3. **Backward compatible cache** - Old cache files without repo_pushed_at still load
 
 ## Commands for Next Session
 
 ```bash
-# Verify Phase 2 commit
-git log -1 --oneline  # Should show c93c575
-
-# Run all seeding tests
+# Verify tests pass
 .venv/bin/pytest apps/metrics/tests/test_pr_cache.py apps/metrics/tests/test_github_graphql_fetcher.py -v
 
-# Test seeding with new fields (requires GITHUB_SEEDING_TOKENS)
-python manage.py seed_real_projects --project antiwork --refresh --max-prs 10
+# Test seeding with repo change detection
+python manage.py seed_real_projects --project antiwork --max-prs 10
+# (first run fetches, second run should use cache if repo unchanged)
+
+# Check uncommitted changes
+git status --short
 ```
 
 ## Test Count
 
-- PRCache: 18 tests
-- GitHubGraphQLFetcher: 25 tests (14 existing + 11 Phase 2)
-- **Total: 43 tests passing**
+- PRCache: 25 tests (18 existing + 7 new)
+- GitHubGraphQLFetcher: 26 tests
+- **Total: 51 tests passing**
 
-## Uncommitted Changes
+## Next Steps (Remaining Phase 3)
 
-Check with: `git status --short`
-
-May include:
-- `apps/metrics/seeding/real_projects.py` - Unrelated changes
-- `apps/metrics/services/ai_detector.py` - Unrelated AI detection work
-- `dev/active/ai-detection-pr-descriptions/` - Different feature
-
-## Next Steps (Phase 3+)
-
-1. **Speed** - Parallel repo fetching, skip unchanged repos
-2. **Production Alignment** - Apply improvements to Celery sync tasks
-3. **Analytics** - Filter PRs by label, milestone tracking, assignee workload
+1. **Rate Limit Monitoring** - Log warnings when remaining points low
+2. **Incremental PR Sync** - Fetch only updated PRs using FETCH_PRS_UPDATED_QUERY
+3. **Exponential Backoff with Jitter** - Add random jitter to retry delays
 
 ## Blockers / Issues
 

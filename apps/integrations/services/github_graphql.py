@@ -312,6 +312,23 @@ FETCH_ORG_MEMBERS_QUERY = gql(
     """
 )
 
+# Query cost: ~1 point (lightweight query for cache validation)
+# Fetches repository metadata to check if repo has changed since last sync
+FETCH_REPO_METADATA_QUERY = gql(
+    """
+    query($owner: String!, $repo: String!) {
+      repository(owner: $owner, name: $repo) {
+        pushedAt
+        updatedAt
+      }
+      rateLimit {
+        remaining
+        resetAt
+      }
+    }
+    """
+)
+
 # Rate limit threshold - raise error if remaining points drop below this
 RATE_LIMIT_THRESHOLD = 100
 
@@ -642,3 +659,42 @@ class GitHubGraphQLClient:
         raise GitHubGraphQLTimeoutError(
             f"GraphQL request timed out for {owner}/{repo} after {max_retries} attempts"
         ) from last_error
+
+    async def fetch_repo_metadata(self, owner: str, repo: str) -> dict:
+        """Fetch repository metadata for cache validation.
+
+        Lightweight query (~1 point) to check if repository has changed since last sync.
+        Used to implement conditional requests per GitHub API best practices.
+
+        Args:
+            owner: Repository owner (organization or user)
+            repo: Repository name
+
+        Returns:
+            dict: GraphQL response containing:
+                - repository.pushedAt: When the repo was last pushed to
+                - repository.updatedAt: When the repo was last updated
+                - rateLimit: Current rate limit status
+
+        Raises:
+            GitHubGraphQLRateLimitError: When rate limit remaining < 100 points
+            GitHubGraphQLError: On any other GraphQL query errors
+        """
+        logger.debug(f"Fetching repo metadata for {owner}/{repo}")
+
+        try:
+            result = await self._execute(FETCH_REPO_METADATA_QUERY, variable_values={"owner": owner, "repo": repo})
+
+            self._check_rate_limit(result, f"fetch_repo_metadata({owner}/{repo})")
+
+            pushed_at = result.get("repository", {}).get("pushedAt")
+            logger.info(f"Repo {owner}/{repo} last pushed at: {pushed_at}")
+
+            return result
+
+        except GitHubGraphQLRateLimitError:
+            raise
+        except Exception as e:
+            error_msg = f"GraphQL query failed for {owner}/{repo} metadata: {type(e).__name__}: {str(e)}"
+            logger.error(error_msg)
+            raise GitHubGraphQLError(error_msg) from e

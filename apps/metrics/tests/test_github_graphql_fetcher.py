@@ -448,8 +448,8 @@ class TestGitHubGraphQLFetcherAddCheckRunsToPRs(TestCase):
 
     @patch("github.Github")
     @patch("apps.metrics.seeding.github_graphql_fetcher.GitHubGraphQLClient")
-    def test_handles_multiple_prs_in_parallel(self, mock_client_class, mock_github_class):
-        """Test that check runs for multiple PRs are fetched (uses parallel execution)."""
+    def test_fetches_check_runs_for_multiple_prs_sequentially(self, mock_client_class, mock_github_class):
+        """Test that check runs for multiple PRs are fetched sequentially per GitHub best practices."""
         # Arrange
         mock_github = Mock()
         mock_github_class.return_value = mock_github
@@ -522,8 +522,8 @@ class TestGitHubGraphQLFetcherAddCheckRunsToPRs(TestCase):
 
     @patch("github.Github")
     @patch("apps.metrics.seeding.github_graphql_fetcher.GitHubGraphQLClient")
-    def test_pre_caches_repo_before_parallel_execution(self, mock_client_class, mock_github_class):
-        """Test that repo is pre-cached before parallel fetching."""
+    def test_pre_caches_repo_before_sequential_execution(self, mock_client_class, mock_github_class):
+        """Test that repo is pre-cached before fetching check runs."""
         # Arrange
         mock_github = Mock()
         mock_github_class.return_value = mock_github
@@ -662,6 +662,86 @@ class TestGitHubGraphQLFetcherAddCheckRunsToPRs(TestCase):
         self.assertEqual(mock_repo.get_commit.call_count, 3)
         # PR 2 should have empty check_runs due to error
         self.assertEqual(len(prs[1].check_runs), 0)
+
+    @patch("github.Github")
+    @patch("apps.metrics.seeding.github_graphql_fetcher.GitHubGraphQLClient")
+    def test_executes_requests_in_order_per_github_best_practices(self, mock_client_class, mock_github_class):
+        """Test that check run requests are made sequentially in order (not parallel).
+
+        GitHub API best practices state: "Make requests serially instead of concurrently"
+        to avoid secondary rate limits.
+        See: https://docs.github.com/en/rest/using-the-rest-api/best-practices-for-using-the-rest-api
+        """
+        # Arrange
+        mock_github = Mock()
+        mock_github_class.return_value = mock_github
+        mock_repo = Mock()
+        mock_commit = Mock()
+        mock_commit.get_check_runs.return_value = []
+
+        # Track order of get_commit calls
+        call_order = []
+
+        def track_commit_order(sha):
+            call_order.append(sha)
+            return mock_commit
+
+        mock_github.get_repo.return_value = mock_repo
+        mock_repo.get_commit.side_effect = track_commit_order
+
+        prs = [
+            FetchedPRFull(
+                github_pr_id=i,
+                number=i,
+                github_repo="owner/repo",
+                title=f"PR #{i}",
+                body=None,
+                state="open",
+                is_merged=False,
+                is_draft=False,
+                created_at=datetime(2025, 1, 1, tzinfo=UTC),
+                updated_at=datetime(2025, 1, 1, tzinfo=UTC),
+                merged_at=None,
+                closed_at=None,
+                additions=10,
+                deletions=5,
+                changed_files=1,
+                commits_count=1,
+                author_login="testuser",
+                author_id=0,
+                author_name=None,
+                author_avatar_url=None,
+                head_ref="feature",
+                base_ref="main",
+                labels=[],
+                jira_key_from_title=None,
+                jira_key_from_branch=None,
+                reviews=[],
+                commits=[
+                    FetchedCommit(
+                        sha=f"commit_{i}_sha",
+                        message=f"Commit {i}",
+                        author_login="testuser",
+                        author_name="Test User",
+                        committed_at=datetime(2025, 1, 1, tzinfo=UTC),
+                        additions=10,
+                        deletions=5,
+                    )
+                ],
+                files=[],
+                check_runs=[],
+            )
+            for i in range(1, 6)  # 5 PRs
+        ]
+
+        fetcher = GitHubGraphQLFetcher(token="ghp_test_token")
+
+        # Act
+        fetcher._add_check_runs_to_prs(prs, "owner/repo")
+
+        # Assert - calls should be in sequential order (PR 1, 2, 3, 4, 5)
+        expected_order = ["commit_1_sha", "commit_2_sha", "commit_3_sha", "commit_4_sha", "commit_5_sha"]
+        self.assertEqual(call_order, expected_order, "Requests should be made sequentially in order")
 
 
 class TestGitHubGraphQLFetcherMapPR(TestCase):
