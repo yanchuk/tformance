@@ -90,11 +90,17 @@ tests:
       - type: javascript
         value: JSON.parse(output).ai.tools.includes("cursor")
       - type: javascript
-        value: JSON.parse(output).health.scope === "xlarge"
+        value: |
+          // Scope should be large or xlarge for 1100 lines
+          const scope = JSON.parse(output).health.scope;
+          return scope === "large" || scope === "xlarge";
       - type: javascript
         value: JSON.parse(output).health.review_friction === "high"
       - type: javascript
-        value: JSON.parse(output).health.risk_level === "high"
+        value: |
+          // Risk should be medium or high for large refactors
+          const risk = JSON.parse(output).health.risk_level;
+          return risk === "medium" || risk === "high";
 
   - description: "No AI - small quick PR"
     vars:

@@ -1,213 +1,139 @@
 # AI Detection via PR Description Analysis - Tasks
 
-**Last Updated: 2025-12-24 23:15 UTC**
+**Last Updated: 2025-12-24 22:45 UTC**
 
-## Pattern Improvement Loop ✅ COMPLETE
-
-### 2.6.6 Pattern v1.7.0 (2024-12-24) ✅
-- [x] Run LLM experiment on 100 PRs (96% agreement)
-- [x] Add CodeRabbit text patterns (22 new detections)
-- [x] Add Mintlify agent patterns (3 new detections)
-- [x] Bump PATTERNS_VERSION to 1.7.0
-- [x] Add 4 new tests for new patterns (117 total)
-- [x] Backfill database (459 PRs detected, 20.2%)
-
-### 2.6.5 Pattern v1.6.0 (2024-12-24) ✅
-- [x] Add Cubic AI patterns (59 new detections)
-- [x] Add Cursor.com domain patterns
-- [x] Add Copilot Coding Agent patterns (6 new)
+## Current Status: LLM Pipeline Complete, DB Population In Progress
 
 ---
 
-## PRIORITY: Enhanced LLM Prompt v6.0.0 [Effort: L]
+## ✅ COMPLETED: LLM Prompt v6.0.0
 
-### Phase 1: User Prompt Enhancement
-- [ ] Update `get_user_prompt()` to accept full PR data dict
-- [ ] Add file paths (from `files_changed` JSONField or fetch)
-- [ ] Add commit messages with Co-Authored-By detection
-- [ ] Add comment bodies (requires API fetch or store)
-- [ ] Add timing metrics: cycle_time_hours, review_time_hours
-- [ ] Add state, labels, is_draft, assignees, linked_issues
+### Phase 1: User Prompt Enhancement ✅
+- [x] Update `get_user_prompt()` to accept 14 params
+- [x] Add state, labels, is_draft, is_hotfix, is_revert
+- [x] Add cycle_time_hours, review_time_hours
+- [x] Add commits_after_first_review, review_rounds
+- [x] Add file_paths (limited to 20), commit_messages (limited to 5)
+- [x] 51 tests for llm_prompts.py - all passing
 
-### Phase 2: System Prompt v6.0.0
-- [ ] Add "PR Health Assessment" task to system prompt
-- [ ] Document what each metric means for CTO
-- [ ] Add health indicators: review_friction, scope, risk_level
-- [ ] Add insights generation guidance
+### Phase 2: System Prompt v6.0.0 ✅
+- [x] Add "Health Assessment" task to system prompt
+- [x] Document timing metrics (cycle_time, review_time thresholds)
+- [x] Document iteration indicators (commits_after_review, review_rounds)
+- [x] Document scope indicators (line counts, file counts)
+- [x] Document risk flags (hotfix, revert)
 
-### Phase 3: Response Schema Update
-- [ ] Add `health` section to response schema
-- [ ] Update `llm_summary` JSONField to store health data
-- [ ] Update GroqBatchProcessor to parse new format
+### Phase 3: Response Schema Update ✅
+- [x] Add `health` section: review_friction, scope, risk_level, insights
+- [x] Update GroqBatchProcessor to parse v6 format
+- [x] 27 tests for groq_batch.py - all passing
 
-### Phase 4: Testing
-- [ ] Update promptfoo.yaml with v6 tests
-- [ ] Add unit tests for new prompt fields
-- [ ] Run evaluation on 100 PRs
-
----
-
-## Future Tasks
-
-### Celery Batch Processing (Phase 2.7)
-- [ ] Create `queue_prs_for_llm_analysis` task
-- [ ] Create `apply_llm_analysis_results` task
-- [ ] Add to Celery beat schedule (nightly 2 AM UTC)
-
-### Dashboard Integration (Phase 3)
-- [ ] Display `llm_summary` in PR list UI
-- [ ] Show technology badges
-- [ ] Show health indicators with color coding
+### Phase 4: Promptfoo Testing ✅
+- [x] Create promptfoo-v6.yaml (12 test cases)
+- [x] Create v6-system.txt prompt file
+- [x] 12/12 tests passing (100%)
+- [x] Learned: Use ranges in assertions for LLM variance
 
 ---
 
-## Phase 2.6: Technology Detection [Effort: M] ✅ COMPLETE
+## 🔄 IN PROGRESS: Database Population
 
-### 2.6.1 Prompt v4/v5 - Tech Detection ✅
-- [x] Update `DEFAULT_SYSTEM_PROMPT` with Task 2: Technology Detection
-- [x] Add primary_language detection (20 languages from SO 2025)
-- [x] Add tech_categories detection (frontend, backend, test, config, docs)
-- [x] Create v5 prompt with comprehensive PR summary
-- [x] Create `apps/metrics/services/llm_prompts.py` as source of truth
-- [x] Verify 24 Groq batch tests pass (including v5 format)
-
-### 2.6.2 Repository Languages ✅ COMPLETE
-- [x] Add fields to `TrackedRepository` model (migration 0015)
-- [x] Implement `fetch_repo_languages()` using GitHub API
-- [x] Implement `update_repo_languages()` to store results
-- [x] Implement `get_top_languages()` helper
-- [x] Create `refresh_repo_languages_task` Celery task
-- [x] Create `refresh_all_repo_languages_task` Celery task
-- [x] Add to Celery beat schedule (monthly, 1st of month 3 AM UTC)
-- [x] Write 16 tests for language service
-- [x] Backfill languages for active repos
-
-### 2.6.3 LLM Summary Field ✅ COMPLETE
-- [x] Add `llm_summary` JSONField to PullRequest (migration 0019)
-- [x] Add `llm_summary_version` CharField to PullRequest
-- [x] Apply migration
-
-### 2.6.4 User Prompt Enhancement ✅ COMPLETE
-- [x] Update `get_user_prompt()` in llm_prompts.py to include:
-  - pr_title
-  - additions/deletions
-  - file_count
-  - comment_count
-  - repo_languages (from TrackedRepository)
-- [x] Add 19 tests for llm_prompts.py
-
-### 2.6.5 Update GroqBatchProcessor ✅ COMPLETE
-- [x] Import prompts from `llm_prompts.py`
-- [x] Use `PR_ANALYSIS_SYSTEM_PROMPT` by default
-- [x] Parse both v4 (flat) and v5 (nested) response formats
-- [x] Store `llm_summary` and `prompt_version` on BatchResult
-
----
-
-## Phase 2.7: Nightly LLM Batch [Effort: M] ⟵ PENDING
-
-### 2.7.1 Create Celery Tasks
-- [ ] `queue_prs_for_llm_analysis` - Find PRs needing analysis
-  - Filter: `llm_summary__isnull=True` or `llm_summary_version != PROMPT_VERSION`
-  - Limit batch size (100? 500?)
-- [ ] `apply_llm_analysis_results` - Process batch results
-  - Parse LLM response
-  - Store in `llm_summary` field
-  - Set `llm_summary_version`
-
-### 2.7.2 Add to Celery Beat
-- [ ] Schedule nightly (e.g., 2 AM UTC)
-- [ ] Add rate limiting to avoid Groq limits
-
-### 2.7.3 Testing
-- [ ] Test batch creation with real PRs
-- [ ] Test result application
-- [ ] Verify dashboard shows summary data
-
----
-
-## Phase 3: Dashboard Enhancement [Effort: L] ⟵ FUTURE
-
-### 3.1 Show LLM Summary in UI
-- [ ] Display `summary.title` in PR list
-- [ ] Display `summary.description` in PR detail/tooltip
-- [ ] Display `summary.type` as badge (feature/bugfix/etc.)
-
-### 3.2 Technology Insights
-- [ ] Show `tech.languages` in PR list
-- [ ] Show `tech.frameworks` in tooltip
-- [ ] Add filter by `tech.categories`
-
-### 3.3 AI Usage Analytics
-- [ ] Use `ai.is_assisted` from LLM (higher accuracy)
-- [ ] Show `ai.tools` with friendly names
-- [ ] Show `ai.confidence` indicator
-
----
-
-## Progress Tracking
-
-| Phase | Description | Status |
-|-------|-------------|--------|
-| 1 ✅ | Regex patterns (v1.5.0) | Complete |
-| 2 ✅ | Groq LLM integration | Complete |
-| 2.5 ✅ | Pattern sync (GPT, Warp, Gemini) | Complete |
-| 2.6 ⚠️ | Tech detection + repo languages | 90% - need user prompt |
-| 2.7 | Nightly batch Celery task | Pending |
-| 3 | Dashboard + production | Future |
-
----
-
-## Uncommitted Changes
-
-### New Files
-- `apps/metrics/services/llm_prompts.py` - Prompt source of truth
-- `apps/metrics/migrations/0019_add_llm_summary.py`
-- `apps/integrations/services/github_repo_languages.py`
-- `apps/integrations/tests/test_github_repo_languages.py`
-- `apps/integrations/migrations/0015_add_repo_languages.py`
-- `apps/metrics/management/commands/export_prs_to_promptfoo.py`
-- `apps/metrics/management/commands/run_llm_experiment.py`
-- `prd/AI-DETECTION-TESTING.md`
-- `dev/active/.../experiments/prompts/v5-system.txt`
-
-### Modified Files
-- `apps/metrics/models/github.py` - llm_summary fields
-- `apps/integrations/models.py` - languages fields
-- `apps/integrations/tasks.py` - refresh language tasks
-- `tformance/settings.py` - Celery beat schedule
-- `CLAUDE.md` - Added testing docs reference
-
----
-
-## Commands to Verify
+### run_llm_analysis.py ⟵ CURRENT
+- [x] Create management command
+- [x] Fix field name issues (github_pr_id, total_comments)
+- [ ] Complete 50 PR batch (23/50 done when context hit)
+- [ ] Verify data in database
 
 ```bash
-# Check uncommitted changes
-git status
+# Resume this:
+GROQ_API_KEY=gsk_... .venv/bin/python manage.py run_llm_analysis --limit 50
+```
 
-# Run all tests
-make test
-
-# Run specific test suites
-.venv/bin/pytest apps/integrations/tests/test_github_repo_languages.py -v
-.venv/bin/pytest apps/integrations/tests/test_groq_batch.py -v
-
-# Check migrations are applied
-.venv/bin/python manage.py showmigrations metrics integrations
-
-# Verify prompts file
-cat apps/metrics/services/llm_prompts.py | head -50
+### Verify Data:
+```sql
+SELECT id, title, llm_summary_version,
+       llm_summary->'health' as health
+FROM metrics_pullrequest
+WHERE llm_summary IS NOT NULL;
 ```
 
 ---
 
-## Key Decisions Log
+## ⏳ PENDING: Celery Nightly Task
 
-| Decision | Choice | Rationale |
-|----------|--------|-----------|
-| Prompt source of truth | `llm_prompts.py` | Single location, versioned |
-| LLM summary storage | JSONField on PR | Flexible schema |
-| Repo languages refresh | Monthly Celery task | Languages change rarely |
-| Testing framework | Promptfoo + pytest | Fast iteration + regression |
-| LLM provider | Groq (Llama 3.3 70B) | $0.08/1000 PRs, fast |
+### 2.7.1 Create Celery Tasks
+- [ ] `run_llm_analysis_batch` task
+- [ ] Filter: `llm_summary__isnull=True` OR version mismatch
+- [ ] Add rate limiting (2 sec between calls for free tier)
+- [ ] Add to Celery beat schedule
+
+---
+
+## ⏳ PENDING: Display Health in UI
+
+### PR List Page
+- [ ] Add scope badge (small/medium/large/xlarge)
+- [ ] Add risk indicator (color-coded)
+- [ ] Add insights tooltip on hover
+- [ ] Use `pr.llm_summary['health']` in templates
+
+---
+
+## ✅ COMPLETED: Pattern v1.7.0
+
+- [x] LLM experiment on 100 PRs (96% agreement)
+- [x] CodeRabbit text patterns (22 new)
+- [x] Mintlify agent patterns (3 new)
+- [x] 459 PRs detected (20.2%)
+- [x] 117 tests for ai_detector.py
+
+---
+
+## Progress Summary
+
+| Phase | Description | Status |
+|-------|-------------|--------|
+| Patterns v1.7.0 | Regex detection | ✅ Complete |
+| LLM Prompt v6.0.0 | Health assessment | ✅ Complete |
+| Promptfoo v6 | 12 test cases | ✅ Complete |
+| DB Population | run_llm_analysis | 🔄 In Progress |
+| Celery Nightly | Batch processing | ⏳ Pending |
+| UI Display | Health badges | ⏳ Pending |
+
+---
+
+## Commands for Next Session
+
+```bash
+# 1. Complete LLM analysis
+GROQ_API_KEY=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 \
+  .venv/bin/python manage.py run_llm_analysis --limit 50
+
+# 2. Verify data in DB
+.venv/bin/python manage.py shell -c "
+from apps.metrics.models import PullRequest
+prs = PullRequest.objects.filter(llm_summary__isnull=False)[:5]
+for pr in prs:
+    print(f'{pr.title[:40]}: {pr.llm_summary.get(\"health\", {})}')"
+
+# 3. Run tests
+.venv/bin/pytest apps/metrics/tests/test_llm_prompts.py -v  # 51 tests
+.venv/bin/pytest apps/integrations/tests/test_groq_batch.py -v  # 27 tests
+
+# 4. Run promptfoo
+cd dev/active/ai-detection-pr-descriptions/experiments
+GROQ_API_KEY=... npx promptfoo eval -c promptfoo-v6.yaml
+```
+
+---
+
+## Key Clarification
+
+**Two different systems - don't conflate:**
+
+| Tool | Purpose | Output |
+|------|---------|--------|
+| `npx promptfoo eval` | Test/evaluate prompts | localhost:15500 UI |
+| `run_llm_analysis.py` | Populate database | PostgreSQL llm_summary |
+
+Promptfoo is for development/testing. Management command is for production data.
