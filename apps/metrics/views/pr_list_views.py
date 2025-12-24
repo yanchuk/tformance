@@ -1,6 +1,7 @@
 """PR list views - Pull Requests data explorer page."""
 
 import csv
+from datetime import date, timedelta
 
 from django.core.paginator import Paginator
 from django.http import HttpRequest, HttpResponse, StreamingHttpResponse
@@ -41,7 +42,22 @@ def _get_filters_from_request(request: HttpRequest) -> dict:
     ]
 
     # Extract only filters that are present in GET params
-    return {key: request.GET[key] for key in filter_keys if request.GET.get(key)}
+    filters = {key: request.GET[key] for key in filter_keys if request.GET.get(key)}
+
+    # Handle 'days' parameter - convert to date_from/date_to
+    # This allows linking from analytics tabs with ?days=7 or ?days=30
+    days_param = request.GET.get("days")
+    if days_param and not filters.get("date_from"):
+        try:
+            days = int(days_param)
+            if days > 0:
+                today = date.today()
+                filters["date_from"] = (today - timedelta(days=days)).isoformat()
+                filters["date_to"] = today.isoformat()
+        except (ValueError, TypeError):
+            pass
+
+    return filters
 
 
 def _get_pr_list_context(team, filters: dict, page_number: int = 1) -> dict:
@@ -85,8 +101,17 @@ def pr_list(request: HttpRequest) -> HttpResponse:
 
     # Add page-specific context
     context["active_page"] = "pull_requests"  # For tab highlighting
-    context["days"] = 30  # Default for date filter in tabs
     context["filter_options"] = get_filter_options(team)
+
+    # Determine days for tab highlighting - check URL param or calculate from date range
+    days_param = request.GET.get("days")
+    if days_param:
+        try:
+            context["days"] = int(days_param)
+        except (ValueError, TypeError):
+            context["days"] = 30
+    else:
+        context["days"] = 30  # Default
 
     # Return partial for HTMX requests
     if request.headers.get("HX-Request"):

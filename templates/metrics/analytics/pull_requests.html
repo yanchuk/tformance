@@ -45,6 +45,19 @@
           </select>
         </div>
 
+        <!-- Reviewer Filter -->
+        <div class="form-control">
+          <label class="label">
+            <span class="label-text text-base-content/80">{% trans "Reviewer" %}</span>
+          </label>
+          <select name="reviewer" class="select select-bordered select-sm w-full">
+            <option value="">{% trans "All Reviewers" %}</option>
+            {% for reviewer in filter_options.reviewers %}
+            <option value="{{ reviewer.id }}" {% if filters.reviewer == reviewer.id %}selected{% endif %}>{{ reviewer.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
         <!-- AI Assisted Filter -->
         <div class="form-control">
           <label class="label">
@@ -57,6 +70,21 @@
           </select>
         </div>
 
+        <!-- AI Tool Filter -->
+        {% if filter_options.ai_tools %}
+        <div class="form-control">
+          <label class="label">
+            <span class="label-text text-base-content/80">{% trans "AI Tool" %}</span>
+          </label>
+          <select name="ai_tool" class="select select-bordered select-sm w-full">
+            <option value="">{% trans "All Tools" %}</option>
+            {% for tool in filter_options.ai_tools %}
+            <option value="{{ tool }}" {% if filters.ai_tool == tool %}selected{% endif %}>{{ tool }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        {% endif %}
+
         <!-- State Filter -->
         <div class="form-control">
           <label class="label">
@@ -67,6 +95,33 @@
             {% for state in filter_options.states %}
             <option value="{{ state }}" {% if filters.state == state %}selected{% endif %}>{{ state|title }}</option>
             {% endfor %}
+          </select>
+        </div>
+
+        <!-- PR Size Filter -->
+        <div class="form-control">
+          <label class="label">
+            <span class="label-text text-base-content/80">{% trans "PR Size" %}</span>
+          </label>
+          <select name="size" class="select select-bordered select-sm w-full">
+            <option value="">{% trans "All Sizes" %}</option>
+            <option value="XS" {% if filters.size == 'XS' %}selected{% endif %}>XS (0-10 lines)</option>
+            <option value="S" {% if filters.size == 'S' %}selected{% endif %}>S (11-50 lines)</option>
+            <option value="M" {% if filters.size == 'M' %}selected{% endif %}>M (51-200 lines)</option>
+            <option value="L" {% if filters.size == 'L' %}selected{% endif %}>L (201-500 lines)</option>
+            <option value="XL" {% if filters.size == 'XL' %}selected{% endif %}>XL (501+ lines)</option>
+          </select>
+        </div>
+
+        <!-- Has Jira Link Filter -->
+        <div class="form-control">
+          <label class="label">
+            <span class="label-text text-base-content/80">{% trans "Jira Link" %}</span>
+          </label>
+          <select name="has_jira" class="select select-bordered select-sm w-full">
+            <option value="">{% trans "All" %}</option>
+            <option value="yes" {% if filters.has_jira == 'yes' %}selected{% endif %}>{% trans "Has Jira" %}</option>
+            <option value="no" {% if filters.has_jira == 'no' %}selected{% endif %}>{% trans "No Jira" %}</option>
           </select>
         </div>
 
