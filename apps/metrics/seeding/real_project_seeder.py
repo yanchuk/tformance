@@ -103,6 +103,7 @@ class RealProjectSeeder:
     checkpoint_file: str | None = None
     use_graphql: bool = True  # Use GraphQL by default (10x faster)
     use_cache: bool = True  # Use local cache for fetched PR data
+    skip_check_runs: bool = False  # Skip fetching check runs (faster)
 
     # Internal state
     _rng: DeterministicRandom = field(init=False)
@@ -121,7 +122,11 @@ class RealProjectSeeder:
         if self.use_graphql:
             cache_status = "enabled" if self.use_cache else "disabled"
             logger.info(f"Using GraphQL API for seeding (10x faster, cache: {cache_status})")
-            self._fetcher = GitHubGraphQLFetcher(token=self.github_token, use_cache=self.use_cache)
+            self._fetcher = GitHubGraphQLFetcher(
+                token=self.github_token,
+                use_cache=self.use_cache,
+                fetch_check_runs=not self.skip_check_runs,
+            )
         else:
             # Fallback to REST API
             logger.info("Using REST API for seeding (slower, use --use-graphql for faster)")
@@ -240,6 +245,10 @@ class RealProjectSeeder:
         )
         self._stats.team_created = True
         logger.info(f"Created new team: {team.name}")
+
+        # Add admin user as team admin (for dev/demo access)
+        self._add_admin_to_team(team)
+
         return team
 
     def _fetch_contributors(self) -> list[ContributorInfo]:
@@ -277,6 +286,27 @@ class RealProjectSeeder:
 
         logger.info(f"Found {len(all_contributors)} unique contributors across all repos")
         return all_contributors
+
+    def _add_admin_to_team(self, team: Team):
+        """Add admin@example.com user as team admin for dev access.
+
+        Args:
+            team: Team instance.
+        """
+        from apps.teams.models import Membership
+        from apps.users.models import CustomUser
+
+        try:
+            admin_user = CustomUser.objects.get(email="admin@example.com")
+            _, created = Membership.objects.get_or_create(
+                user=admin_user,
+                team=team,
+                defaults={"role": "admin"},
+            )
+            if created:
+                logger.info("Added admin@example.com as team admin")
+        except CustomUser.DoesNotExist:
+            pass  # No admin user in this environment
 
     def _create_team_members(self, team: Team, contributors: list[ContributorInfo]):
         """Create TeamMember records from contributors.
