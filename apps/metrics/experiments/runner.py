@@ -12,6 +12,7 @@ Example:
 from __future__ import annotations
 
 import json
+import os
 import re
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -23,6 +24,12 @@ import yaml
 
 from apps.metrics.models import PullRequest
 from apps.metrics.services.ai_detector import detect_ai_in_text
+
+# Configure LiteLLM callbacks for PostHog analytics
+# This automatically logs all LLM calls as $ai_generation events
+if os.environ.get("POSTHOG_API_KEY"):
+    litellm.success_callback = ["posthog"]
+    litellm.failure_callback = ["posthog"]
 
 
 @dataclass
@@ -333,6 +340,7 @@ def detect_ai_with_litellm(
     system_prompt: str,
     temperature: float = 0,
     max_tokens: int = 500,
+    metadata: dict | None = None,
 ) -> AIDetectionResult:
     """Detect AI usage using LiteLLM.
 
@@ -342,10 +350,17 @@ def detect_ai_with_litellm(
         system_prompt: The system prompt for detection
         temperature: Model temperature (0 for deterministic)
         max_tokens: Maximum tokens in response
+        metadata: Optional metadata for PostHog tracking (pr_id, experiment_name, etc.)
 
     Returns:
         AIDetectionResult with detection outcome
     """
+    # Build metadata for PostHog tracking
+    posthog_metadata = {
+        "detection_type": "ai_pr_detection",
+        **(metadata or {}),
+    }
+
     response = litellm.completion(
         model=model,
         messages=[
@@ -355,6 +370,7 @@ def detect_ai_with_litellm(
         temperature=temperature,
         max_tokens=max_tokens,
         response_format={"type": "json_object"},
+        metadata=posthog_metadata,  # Sent to PostHog
     )
 
     content = response.choices[0].message.content
@@ -470,6 +486,12 @@ class ExperimentRunner:
                 system_prompt=self.system_prompt,
                 temperature=self.config.temperature,
                 max_tokens=self.config.max_tokens,
+                metadata={
+                    "experiment_name": self.config.experiment_name,
+                    "pr_id": pr.id,
+                    "pr_number": pr.github_pr_id,
+                    "repo": pr.github_repo,
+                },
             )
             latency_ms = (time.time() - start_time) * 1000
 
