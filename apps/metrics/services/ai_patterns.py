@@ -26,7 +26,7 @@ selective reprocessing.
 # =============================================================================
 # This version is stored with AI detections to support selective reprocessing.
 # Increment major version for breaking changes, minor for additions.
-PATTERNS_VERSION = "1.1.0"
+PATTERNS_VERSION = "1.4.0"
 
 # =============================================================================
 # AI Reviewer Bots (username-based detection)
@@ -79,14 +79,56 @@ AI_SIGNATURE_PATTERNS: list[tuple[str, str]] = [
     (r"generated\s+with\s+\[?claude\s*code\]?", "claude_code"),
     (r"🤖\s*generated\s+with\s+.*claude", "claude_code"),
     (r"claude\.com/claude-code", "claude_code"),
+    # Hyphenated "claude-code" variation
+    (r"\bclaude-code\b", "claude_code"),
+    # "claude code" without hyphen
+    (r"\bclaude\s+code\b", "claude_code"),
+    # ----- Claude Model Names (Opus, Sonnet, Haiku) -----
+    # "Claude Sonnet", "Claude Opus", "Claude Haiku"
+    (r"\bclaude\s+(?:opus|sonnet|haiku)\b", "claude"),
+    # "Claude 4.5 Sonnet", "Claude 4 Opus" with version numbers
+    (r"\bclaude\s*\(?\s*\d+(?:\.\d+)?\s*\)?\s*(?:opus|sonnet|haiku)", "claude"),
+    (r"\bclaude\s+\d+(?:\.\d+)?\s+(?:opus|sonnet|haiku)", "claude"),
+    # "Claude(Sonnet 4.5)" parenthesis format
+    (r"\bclaude\s*\(\s*(?:opus|sonnet|haiku)", "claude"),
+    # "Sonnet 4.5", "Opus 4" with version (requires digit to avoid poetry false positive)
+    (r"\b(?:sonnet|opus)\s+\d+(?:\.\d+)?", "claude"),
+    # "with Claude", "and Claude" in context of AI assistance
+    (r"\b(?:with|and)\s+claude\b", "claude"),
+    # "Claude 4", "claude-4", "Claude-4.5" with version number (without model name)
+    (r"\bclaude[- ]?\d+(?:\.\d+)?\b", "claude"),
     # ----- GitHub Copilot -----
     (r"generated\s+by\s+.*copilot", "copilot"),
     (r"github\s+copilot", "copilot"),
     (r"copilot\s+generated", "copilot"),
+    # "Copilot used to...", "Copilot used for..."
+    (r"\bcopilot\s+used\b", "copilot"),
     # ----- Cursor AI -----
     (r"generated\s+by\s+cursor", "cursor"),
     (r"cursor\s+ai", "cursor"),
     (r"cursor\.sh", "cursor"),
+    # Cursor with parenthesis - "Cursor (Claude 4.5)", "Cursor(auto-mode)"
+    (r"\bcursor\s*\(", "cursor"),
+    # Cursor IDE explicit mention
+    (r"\bcursor\s+ide\b", "cursor"),
+    # Cursor auto mode variations
+    (r"\bcursor\s+auto[- ]?mode", "cursor"),
+    # "used Cursor", "using Cursor", "with Cursor" for something
+    (r"\bused\s+cursor\b", "cursor"),
+    (r"\busing\s+cursor\b", "cursor"),
+    (r"\bwith\s+cursor\b", "cursor"),
+    # "cursor in auto mode" - matches "cursor in" followed by mode context
+    (r"\bcursor\s+in\s+auto", "cursor"),
+    # "Cursor used for", "Cursor was used"
+    (r"\bcursor\s+(?:was\s+)?used\s+(?:for|to)", "cursor"),
+    # Structured format: "IDE: Cursor"
+    (r"\bide:\s*cursor\b", "cursor"),
+    # "cursor for understanding", "cursor for ..."
+    (r"\bcursor\s+for\b", "cursor"),
+    # "cursor autocompletions", "cursor autocomplete"
+    (r"\bcursor\s+autocompletions?\b", "cursor"),
+    # "written by Cursor"
+    (r"\bwritten\s+by\s+cursor\b", "cursor"),
     # ----- Cody (Sourcegraph) -----
     (r"generated\s+by\s+cody", "cody"),
     (r"sourcegraph\s+cody", "cody"),
@@ -99,6 +141,8 @@ AI_SIGNATURE_PATTERNS: list[tuple[str, str]] = [
     # ----- Amazon CodeWhisperer / Amazon Q -----
     (r"codewhisperer", "codewhisperer"),
     (r"amazon\s+q", "amazon_q"),
+    # ----- Google Gemini -----
+    (r"\bgemini\b", "gemini"),
     # ----- Aider -----
     (r"generated\s+by\s+aider", "aider"),
     (r"aider\.chat", "aider"),
@@ -112,6 +156,15 @@ AI_SIGNATURE_PATTERNS: list[tuple[str, str]] = [
     (r"ai[- ]?assisted", "ai_generic"),
     (r"llm[- ]?generated", "ai_generic"),
     (r"written\s+by\s+ai", "ai_generic"),
+    # ----- Indirect AI Usage Patterns -----
+    # "AI was used to...", "AI was used for..." - require continuation to avoid "No AI was used"
+    (r"\bai\s+was\s+used\s+(?:to|for)\b", "ai_generic"),
+    # "used AI for...", "used AI to..."
+    (r"\bused\s+ai\s+(?:for|to)\b", "ai_generic"),
+    # "with AI assistance"
+    (r"\bwith\s+ai\s+assistance\b", "ai_generic"),
+    # "AI helped with...", "AI helped to..."
+    (r"\bai\s+helped?\s+(?:with|to)\b", "ai_generic"),
 ]
 
 # =============================================================================
@@ -173,6 +226,7 @@ AI_TOOL_DISPLAY_NAMES: dict[str, str] = {
     "tabnine": "Tabnine",
     "codewhisperer": "CodeWhisperer",
     "amazon_q": "Amazon Q",
+    "gemini": "Gemini",
     "aider": "Aider",
     "ai_generic": "AI",
 }

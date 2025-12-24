@@ -383,3 +383,370 @@ class TestParseCoAuthors(TestCase):
         result = parse_co_authors(message)
         self.assertTrue(result["has_ai_co_authors"])
         self.assertIn("claude", result["ai_co_authors"])
+
+
+class TestCursorPatterns(TestCase):
+    """Tests for Cursor IDE detection patterns."""
+
+    def test_cursor_with_parenthesis(self):
+        """'Cursor (' pattern should detect Cursor."""
+        text = "Cursor (Claude 4.5 Sonnet) used for questions"
+        result = detect_ai_in_text(text)
+        self.assertTrue(result["is_ai_assisted"])
+        self.assertIn("cursor", result["ai_tools"])
+
+    def test_cursor_parenthesis_no_space(self):
+        """'Cursor(' without space should detect Cursor."""
+        text = "Use Cursor(auto-mode) for the initial setup"
+        result = detect_ai_in_text(text)
+        self.assertTrue(result["is_ai_assisted"])
+        self.assertIn("cursor", result["ai_tools"])
+
+    def test_cursor_ide_explicit(self):
+        """'Cursor IDE' should detect Cursor."""
+        text = "Model: Claude(Sonnet 4.5) via Cursor IDE"
+        result = detect_ai_in_text(text)
+        self.assertTrue(result["is_ai_assisted"])
+        self.assertIn("cursor", result["ai_tools"])
+
+    def test_cursor_auto_mode(self):
+        """'Cursor auto mode' should detect Cursor."""
+        text = "Used cursor auto mode for doing similar pattern changes"
+        result = detect_ai_in_text(text)
+        self.assertTrue(result["is_ai_assisted"])
+        self.assertIn("cursor", result["ai_tools"])
+
+    def test_cursor_auto_mode_hyphen(self):
+        """'Cursor auto-mode' with hyphen should detect Cursor."""
+        text = "Cursor auto-mode was helpful"
+        result = detect_ai_in_text(text)
+        self.assertTrue(result["is_ai_assisted"])
+        self.assertIn("cursor", result["ai_tools"])
+
+    def test_used_cursor(self):
+        """'Used Cursor' should detect Cursor."""
+        text = "Used Cursor for codebase queries"
+        result = detect_ai_in_text(text)
+        self.assertTrue(result["is_ai_assisted"])
+        self.assertIn("cursor", result["ai_tools"])
+
+    def test_using_cursor(self):
+        """'Using Cursor' should detect Cursor."""
+        text = "Using Cursor to refactor this code"
+        result = detect_ai_in_text(text)
+        self.assertTrue(result["is_ai_assisted"])
+        self.assertIn("cursor", result["ai_tools"])
+
+    def test_cursor_used_for(self):
+        """'Cursor used for' should detect Cursor."""
+        text = "Cursor used for: Hints and advice"
+        result = detect_ai_in_text(text)
+        self.assertTrue(result["is_ai_assisted"])
+        self.assertIn("cursor", result["ai_tools"])
+
+    def test_ide_cursor_structured(self):
+        """Structured 'IDE: Cursor' format should detect Cursor."""
+        text = "IDE: Cursor\nModel: Auto"
+        result = detect_ai_in_text(text)
+        self.assertTrue(result["is_ai_assisted"])
+        self.assertIn("cursor", result["ai_tools"])
+
+    # False positive prevention tests
+    def test_mouse_cursor_not_detected(self):
+        """'move cursor' (mouse) should NOT detect Cursor IDE."""
+        text = "Move cursor to the submit button and click"
+        result = detect_ai_in_text(text)
+        self.assertNotIn("cursor", result.get("ai_tools", []))
+
+    def test_database_cursor_not_detected(self):
+        """'database cursor' should NOT detect Cursor IDE."""
+        text = "Use a database cursor to iterate over results"
+        result = detect_ai_in_text(text)
+        self.assertNotIn("cursor", result.get("ai_tools", []))
+
+    def test_cursor_position_not_detected(self):
+        """'cursor position' should NOT detect Cursor IDE."""
+        text = "Get the cursor position in the text field"
+        result = detect_ai_in_text(text)
+        self.assertNotIn("cursor", result.get("ai_tools", []))
+
+
+class TestClaudeModelPatterns(TestCase):
+    """Tests for Claude model name detection patterns."""
+
+    def test_claude_sonnet(self):
+        """'Claude Sonnet' should detect Claude."""
+        text = "AI prompt was generated with Claude Sonnet"
+        result = detect_ai_in_text(text)
+        self.assertTrue(result["is_ai_assisted"])
+        self.assertIn("claude", result["ai_tools"])
+
+    def test_claude_opus(self):
+        """'Claude Opus' should detect Claude."""
+        text = "Generated using Claude Opus"
+        result = detect_ai_in_text(text)
+        self.assertTrue(result["is_ai_assisted"])
+        self.assertIn("claude", result["ai_tools"])
+
+    def test_claude_haiku(self):
+        """'Claude Haiku' should detect Claude."""
+        text = "Quick check with Claude Haiku"
+        result = detect_ai_in_text(text)
+        self.assertTrue(result["is_ai_assisted"])
+        self.assertIn("claude", result["ai_tools"])
+
+    def test_claude_version_sonnet(self):
+        """'Claude 4.5 Sonnet' with version should detect Claude."""
+        text = "Cursor (Claude 4.5 Sonnet) used for questions"
+        result = detect_ai_in_text(text)
+        self.assertTrue(result["is_ai_assisted"])
+        self.assertIn("claude", result["ai_tools"])
+
+    def test_claude_version_opus(self):
+        """'Claude 4 Opus' with version should detect Claude."""
+        text = "Model: Claude 4 Opus"
+        result = detect_ai_in_text(text)
+        self.assertTrue(result["is_ai_assisted"])
+        self.assertIn("claude", result["ai_tools"])
+
+    def test_sonnet_with_version(self):
+        """'Sonnet 4.5' should detect Claude."""
+        text = "Used Sonnet 4.5 for this task"
+        result = detect_ai_in_text(text)
+        self.assertTrue(result["is_ai_assisted"])
+        self.assertIn("claude", result["ai_tools"])
+
+    def test_claude_parenthesis_format(self):
+        """'Claude(Sonnet 4.5)' should detect Claude."""
+        text = "Model: Claude(Sonnet 4.5) via Cursor IDE"
+        result = detect_ai_in_text(text)
+        self.assertTrue(result["is_ai_assisted"])
+        self.assertIn("claude", result["ai_tools"])
+
+    # False positive prevention
+    def test_claude_api_not_ai_authoring(self):
+        """'Integrate Claude API' is product integration, not AI authoring."""
+        text = "This PR integrates Claude API for customer chat"
+        result = detect_ai_in_text(text)
+        # Should NOT detect as AI-authored (it's about using Claude as a product)
+        self.assertNotIn("claude", result.get("ai_tools", []))
+
+    def test_sonnet_music_not_detected(self):
+        """Generic 'sonnet' (poetry) should NOT detect Claude."""
+        text = "Like a sonnet in the wind"
+        result = detect_ai_in_text(text)
+        self.assertNotIn("claude", result.get("ai_tools", []))
+
+    def test_claude_code_hyphenated(self):
+        """'claude-code' (hyphenated) should detect Claude Code."""
+        text = "claude-code used with Sonnet-4.5 to implement test"
+        result = detect_ai_in_text(text)
+        self.assertTrue(result["is_ai_assisted"])
+        self.assertIn("claude_code", result["ai_tools"])
+
+    def test_with_claude(self):
+        """'with Claude' should detect Claude."""
+        text = "Assisted coding with Cursor and Claude"
+        result = detect_ai_in_text(text)
+        self.assertTrue(result["is_ai_assisted"])
+        self.assertIn("claude", result["ai_tools"])
+
+    def test_and_claude(self):
+        """'and Claude' should detect Claude."""
+        text = "Used Cursor and Claude for this PR"
+        result = detect_ai_in_text(text)
+        self.assertTrue(result["is_ai_assisted"])
+        self.assertIn("claude", result["ai_tools"])
+
+
+class TestAdditionalCursorPatterns(TestCase):
+    """Tests for additional Cursor patterns found in validation."""
+
+    def test_with_cursor(self):
+        """'with Cursor' should detect Cursor."""
+        text = "Assisted coding with Cursor and Claude"
+        result = detect_ai_in_text(text)
+        self.assertTrue(result["is_ai_assisted"])
+        self.assertIn("cursor", result["ai_tools"])
+
+    def test_cursor_in_auto_mode(self):
+        """'cursor in auto mode' should detect Cursor."""
+        text = "Gemini, cursor in auto mode, and claude-4.5 sonnet used"
+        result = detect_ai_in_text(text)
+        self.assertTrue(result["is_ai_assisted"])
+        self.assertIn("cursor", result["ai_tools"])
+
+
+class TestCopilotPatterns(TestCase):
+    """Tests for Copilot detection patterns."""
+
+    def test_copilot_used(self):
+        """'Copilot used to...' should detect Copilot."""
+        text = "Copilot used to format PR"
+        result = detect_ai_in_text(text)
+        self.assertTrue(result["is_ai_assisted"])
+        self.assertIn("copilot", result["ai_tools"])
+
+
+class TestGeminiPatterns(TestCase):
+    """Tests for Google Gemini detection patterns."""
+
+    def test_gemini_basic(self):
+        """'Gemini' should detect Gemini."""
+        text = "Gemini, cursor in auto mode, and claude-4.5 sonnet used"
+        result = detect_ai_in_text(text)
+        self.assertTrue(result["is_ai_assisted"])
+        self.assertIn("gemini", result["ai_tools"])
+
+    def test_used_gemini(self):
+        """'used Gemini' should detect Gemini."""
+        text = "used Gemini to research about ISBN format"
+        result = detect_ai_in_text(text)
+        self.assertTrue(result["is_ai_assisted"])
+        self.assertIn("gemini", result["ai_tools"])
+
+
+class TestClaudeVersionPatterns(TestCase):
+    """Tests for Claude with version number patterns."""
+
+    def test_claude_4_used(self):
+        """'claude 4 used' should detect Claude."""
+        text = "- claude 4 used"
+        result = detect_ai_in_text(text)
+        self.assertTrue(result["is_ai_assisted"])
+        self.assertIn("claude", result["ai_tools"])
+
+    def test_claude_hyphen_4(self):
+        """'claude-4' hyphenated should detect Claude."""
+        text = "- claude-4 used"
+        result = detect_ai_in_text(text)
+        self.assertTrue(result["is_ai_assisted"])
+        self.assertIn("claude", result["ai_tools"])
+
+    def test_used_claude_4(self):
+        """'used claude-4' should detect Claude."""
+        text = "- used claude-4 to understand test suite"
+        result = detect_ai_in_text(text)
+        self.assertTrue(result["is_ai_assisted"])
+        self.assertIn("claude", result["ai_tools"])
+
+    def test_claude_code_without_hyphen(self):
+        """'claude code' (without hyphen) should detect Claude Code."""
+        text = "cursor & claude code used to find relevant files"
+        result = detect_ai_in_text(text)
+        self.assertTrue(result["is_ai_assisted"])
+        self.assertIn("claude_code", result["ai_tools"])
+
+
+class TestCursorContextPatterns(TestCase):
+    """Tests for Cursor with context patterns."""
+
+    def test_cursor_for(self):
+        """'cursor for' should detect Cursor."""
+        text = "- cursor for understanding the code"
+        result = detect_ai_in_text(text)
+        self.assertTrue(result["is_ai_assisted"])
+        self.assertIn("cursor", result["ai_tools"])
+
+    def test_cursor_autocompletions(self):
+        """'cursor autocompletions' should detect Cursor."""
+        text = "- cursor autocompletions"
+        result = detect_ai_in_text(text)
+        self.assertTrue(result["is_ai_assisted"])
+        self.assertIn("cursor", result["ai_tools"])
+
+    def test_cursor_autocomplete(self):
+        """'cursor autocomplete' should detect Cursor."""
+        text = "Used cursor autocomplete for boilerplate"
+        result = detect_ai_in_text(text)
+        self.assertTrue(result["is_ai_assisted"])
+        self.assertIn("cursor", result["ai_tools"])
+
+    def test_written_by_cursor(self):
+        """'written by Cursor' should detect Cursor."""
+        text = "Parts of the code are written by Cursor, which are reviewed"
+        result = detect_ai_in_text(text)
+        self.assertTrue(result["is_ai_assisted"])
+        self.assertIn("cursor", result["ai_tools"])
+
+
+class TestIndirectAIUsagePatterns(TestCase):
+    """Tests for indirect AI usage patterns."""
+
+    def test_ai_was_used(self):
+        """'AI was used' should detect AI usage."""
+        text = "AI was used to extract related code from the PR"
+        result = detect_ai_in_text(text)
+        self.assertTrue(result["is_ai_assisted"])
+        self.assertIn("ai_generic", result["ai_tools"])
+
+    def test_used_ai_for(self):
+        """'used AI for' should detect AI usage."""
+        text = "I used AI for refactoring this module"
+        result = detect_ai_in_text(text)
+        self.assertTrue(result["is_ai_assisted"])
+        self.assertIn("ai_generic", result["ai_tools"])
+
+    def test_used_ai_to(self):
+        """'used AI to' should detect AI usage."""
+        text = "We used AI to generate test cases"
+        result = detect_ai_in_text(text)
+        self.assertTrue(result["is_ai_assisted"])
+        self.assertIn("ai_generic", result["ai_tools"])
+
+    def test_with_ai_assistance(self):
+        """'with AI assistance' should detect AI usage."""
+        text = "This code was written with AI assistance"
+        result = detect_ai_in_text(text)
+        self.assertTrue(result["is_ai_assisted"])
+        self.assertIn("ai_generic", result["ai_tools"])
+
+    def test_ai_helped_with(self):
+        """'AI helped with' should detect AI usage."""
+        text = "AI helped with writing the tests"
+        result = detect_ai_in_text(text)
+        self.assertTrue(result["is_ai_assisted"])
+        self.assertIn("ai_generic", result["ai_tools"])
+
+    def test_ai_helped_to(self):
+        """'AI helped to' should detect AI usage."""
+        text = "AI helped to identify the bug"
+        result = detect_ai_in_text(text)
+        self.assertTrue(result["is_ai_assisted"])
+        self.assertIn("ai_generic", result["ai_tools"])
+
+    def test_no_ai_was_used_not_detected(self):
+        """'No AI was used' should NOT detect AI usage (negative disclosure)."""
+        text = "No AI was used for any part of this contribution."
+        result = detect_ai_in_text(text)
+        self.assertFalse(result["is_ai_assisted"])
+
+    def test_no_ai_used_not_detected(self):
+        """'No AI used' should NOT detect AI usage."""
+        text = "AI Disclosure: No AI used"
+        result = detect_ai_in_text(text)
+        self.assertFalse(result["is_ai_assisted"])
+
+
+class TestFalsePositivePrevention(TestCase):
+    """Tests to ensure we don't have false positives."""
+
+    def test_devin_reference_not_authoring(self):
+        """Referencing Devin's past work should NOT detect as AI-authored."""
+        text = "Devin added unnecessary tags in this PR, we need to fix them"
+        result = detect_ai_in_text(text)
+        # This is fixing Devin's mistake, not AI-authored by Devin
+        self.assertFalse(result["is_ai_assisted"])
+
+    def test_ai_product_not_authoring(self):
+        """Building AI features is not the same as AI-authored code."""
+        text = "Add AI-powered search to the dashboard"
+        result = detect_ai_in_text(text)
+        # This is about AI as a product feature, not AI authoring
+        self.assertFalse(result["is_ai_assisted"])
+
+    def test_ai_in_url_not_detected(self):
+        """AI in URLs should not trigger detection."""
+        text = "See https://example.com/ai-docs for more info"
+        result = detect_ai_in_text(text)
+        self.assertFalse(result["is_ai_assisted"])

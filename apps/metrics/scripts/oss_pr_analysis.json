@@ -1,0 +1,2026 @@
+[
+  {
+    "repo": "vercel/ai",
+    "number": 11426,
+    "title": "docs: add jsonrepair cookbook",
+    "author": "nicoalbanese",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "Helpful recipe for repairing structured outputs with repairjson and experimental_repairText. "
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11424,
+    "title": "Bugfix/add image propers to generate call",
+    "author": "mclenhard",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": " ## Background  The gateway image model class was missing images and masks from the actual request, but these are necessary for image editing.   ## Summary  Updated doGenerate method to pass in"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11422,
+    "title": "fix(ai): implement elementStream for streamText with Output.array()",
+    "author": "shiroyasha9",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "## Background  The [AI SDK v6 documentation](https://ai-sdk.dev/docs/ai-sdk-core/generating-structured-data#outputarray) states that `elementStream` is available when using `streamText` with `Output"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11419,
+    "title": "Version Packages",
+    "author": "app/vercel-ai-sdk",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "This PR was opened by the [Changesets release](https://github.com/changesets/action) GitHub action. When you're ready to do a release, you can merge this and the packages will be published to npm auto"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11417,
+    "title": "fix(langchain): do not re-emit executed tool calls",
+    "author": "christian-bromann",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "## Background  When using `@ai-sdk/langchain` with LangGraph agents that have tools, multi-turn conversations fail with:  ``` 400 An assistant message with 'tool_calls' must be followed by tool m"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11416,
+    "title": "feat(google): add per-part mediaResolution support for file parts",
+    "author": "timothyasp",
+    "has_ai_disclosure": false,
+    "regex_detected": true,
+    "regex_tools": [
+      "gemini"
+    ],
+    "body_excerpt": "## Background  Add support for setting mediaResolution on individual file parts via providerOptions, enabling fine-grained control over token usage for media inputs.  This is a Gemini 3 exclusive "
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11414,
+    "title": "Backport: Fix bedrock ConverseStream undocumented `/delta/stop_sequence`",
+    "author": "app/vercel-ai-sdk",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": " This is an automated backport of #11410 to the release-v5.0 branch. FYI @gaspar09 This backport has conflicts that need to be resolved manually.  ### `git cherry-pick` output  ``` Auto-merging packag"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11412,
+    "title": "feat(provider/prodia): Create Prodia provider package",
+    "author": "R-Taneja",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "<!-- Welcome to contributing to AI SDK! We're excited to see your changes.  We suggest you read the following contributing guide we've created before submitting:  https://github.com/vercel/ai/blo"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11411,
+    "title": "Version Packages",
+    "author": "app/vercel-ai-sdk",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "This PR was opened by the [Changesets release](https://github.com/changesets/action) GitHub action. When you're ready to do a release, you can merge this and the packages will be published to npm auto"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11410,
+    "title": "Fix bedrock ConverseStream undocumented `/delta/stop_sequence`",
+    "author": "gaspar09",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "## background  PR #11286 attempted to expose the stop sequence from Bedrock's Converse API, but had a bug: it was reading from the wrong response path. The AWS Bedrock API actually returns the stop se"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11407,
+    "title": "fix(ai): preserve rawInput in safeValidateUIMessages for output-error\u2026",
+    "author": "muniter",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "<!-- Welcome to contributing to AI SDK! We're excited to see your changes.  We suggest you read the following contributing guide we've created before submitting:  https://github.com/vercel/ai/blo"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11405,
+    "title": "fix(anthropic): support deferred results for web search/fetch tool",
+    "author": "aayush-kapoor",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "## Background  Anthropic provider defined tools sometimes don't send the tool results in the same pass. This leads to an error as observed in #11397   ## Summary  Add support for deferred result"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11404,
+    "title": "Version Packages",
+    "author": "app/vercel-ai-sdk",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "This PR was opened by the [Changesets release](https://github.com/changesets/action) GitHub action. When you're ready to do a release, you can merge this and the packages will be published to npm auto"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11403,
+    "title": "docs: remove beta install commands",
+    "author": "nicoalbanese",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": ""
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11402,
+    "title": "feat(google): add Gemini File API support",
+    "author": "shockz09",
+    "has_ai_disclosure": false,
+    "regex_detected": true,
+    "regex_tools": [
+      "gemini"
+    ],
+    "body_excerpt": "## Summary  Adds support for Google's Gemini File API to the `@ai-sdk/google` package, enabling users to upload and use large media files (up to 2GB) that exceed the 20MB inline request limit.  ### Ne"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11400,
+    "title": "docs: recommend v6 codemod command for v5 to v6 migration",
+    "author": "dancer",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "<!-- Welcome to contributing to AI SDK! We're excited to see your changes.  We suggest you read the following contributing guide we've created before submitting:  https://github.com/vercel/ai/blo"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11399,
+    "title": "Version Packages",
+    "author": "app/vercel-ai-sdk",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "This PR was opened by the [Changesets release](https://github.com/changesets/action) GitHub action. When you're ready to do a release, you can merge this and the packages will be published to npm auto"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11395,
+    "title": "feat(gateway,cerebras,baseten): add zai/glm-4.7 model support",
+    "author": "olyaiy",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "## Summary  Adds the new zai/glm-4.7 model that was released today. https://z.ai/blog/glm-4.7"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11394,
+    "title": "refactor: fix date mutation and improve fetch validation",
+    "author": "HamzLDN",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "Refactor date calculations to use a formatDate function for better readability and maintainability.  <!-- Welcome to contributing to AI SDK! We're excited to see your changes.  We suggest you rea"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11393,
+    "title": "fix(ai): skip tool input validation when output-error has undefined input",
+    "author": "muniter",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "## Background  if tool call input is invalid, ai sdk avoids setting `input` field and sets `rawInput` field instead, problem is, the validation logic still checks for `input` and expects it to be de"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11391,
+    "title": "feat: Add voyage embed + rerank",
+    "author": "viktorlarsson",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "## Background  We are currently using Voyage as our primary embedding and reranker tool, since the release of ai-sdk@6, I would like to reuse the reranker pattern you have.  ## Summary Add [Voyag"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11390,
+    "title": "fix(core): validateUIMessages throws on output-error tool parts with undefined i",
+    "author": "obadakhalili",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "if tool call input is invalid, ai sdk avoids setting `input` field and sets `rawInput` field instead, problem is, the validation logic still checks for `input` and expects it to be defined, even thoug"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11389,
+    "title": "Version Packages",
+    "author": "app/vercel-ai-sdk",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "This PR was opened by the [Changesets release](https://github.com/changesets/action) GitHub action. When you're ready to do a release, you can merge this and the packages will be published to npm auto"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11388,
+    "title": "feat: Anthropic's advanced tools made model agnostic. ",
+    "author": "hetpatel-11",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "Add cookbook example showing how to use llm-advanced-tools with AI SDK to: - Reduce context waste (85%+ token savings) - Enable dynamic tool discovery via tool search - Defer tool loading until nee"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11387,
+    "title": "fix(amazon-bedrock): handle `stop_sequence: null`",
+    "author": "gr2m",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "## Background  When the model responds with stopReason: \"tool_use\", Bedrock returns stop_sequence: null. This results in an error due to a response schema for `stop_sequence` introduced in https://g"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11386,
+    "title": "docs: `generateImage` graduated from experimental",
+    "author": "gr2m",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": ""
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11383,
+    "title": "Version Packages",
+    "author": "app/vercel-ai-sdk",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "This PR was opened by the [Changesets release](https://github.com/changesets/action) GitHub action. When you're ready to do a release, you can merge this and the packages will be published to npm auto"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11382,
+    "title": "fix(gateway): major version bump for AI SDK v6",
+    "author": "gr2m",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": ""
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11381,
+    "title": "docs(changelog): remove duplicated lines for updated dependencies",
+    "author": "gr2m",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "This pull request updates `CHANGELOG.md` files. It removes all 2+ consecutive lines that look like  ``` - Updated dependencies [d9209ca] - Updated dependencies [0ff02bb] ```  with just   ```"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11380,
+    "title": "docs: remove ai sdk 6 beta announcement page",
+    "author": "jeremyphilemon",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "## Background  This pull request removes the ai sdk 6 beta announcement page from docs, since it is now out of beta."
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11379,
+    "title": "v6 release",
+    "author": "gr2m",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "following instructions at https://github.com/changesets/changesets/blob/3cb9982b96aef8e2b46860258d56dbd7a2a02953/docs/prereleases.md"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11378,
+    "title": "test: google vertex thoughtsignature",
+    "author": "gr2m",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": ""
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11377,
+    "title": "Version Packages (beta)",
+    "author": "app/vercel-ai-sdk",
+    "has_ai_disclosure": false,
+    "regex_detected": true,
+    "regex_tools": [
+      "gemini"
+    ],
+    "body_excerpt": "This PR was opened by the [Changesets release](https://github.com/changesets/action) GitHub action. When you're ready to do a release, you can merge this and the packages will be published to npm auto"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11376,
+    "title": "fix(google-vertex): content block is missing a `thought_signature`",
+    "author": "gr2m",
+    "has_ai_disclosure": false,
+    "regex_detected": true,
+    "regex_tools": [
+      "gemini"
+    ],
+    "body_excerpt": "## Background  `part.thoughtSignature` is stored on `providerMetadata.google`, but attempted to be retrieved from `providerMetadata.vertex`  ## Summary  Pass `providerOptionsName` to `convertToG"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11375,
+    "title": "Version Packages (beta)",
+    "author": "app/vercel-ai-sdk",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "This PR was opened by the [Changesets release](https://github.com/changesets/action) GitHub action. When you're ready to do a release, you can merge this and the packages will be published to npm auto"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11374,
+    "title": "example: add shared type definition example",
+    "author": "lgrammel",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "## Background  There was no example on how to put tool types in a shared package.  ## Summary  Add example outline.  ## Future Work  - create cookbook example  ## Related Issues  Fixes #"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11373,
+    "title": "fix(ai): add v5 subdomain to error link",
+    "author": "gr2m",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "backport of https://github.com/vercel/ai/pull/11372"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11372,
+    "title": "remove subdomain for v6 error url",
+    "author": "gr2m",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "backport: https://github.com/vercel/ai/pull/11373"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11370,
+    "title": "chore: fix unclosed type in generate text docs",
+    "author": "nicoalbanese",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "Submodule action broken due to unclosed string from #11338."
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11368,
+    "title": "Version Packages (beta)",
+    "author": "app/vercel-ai-sdk",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "This PR was opened by the [Changesets release](https://github.com/changesets/action) GitHub action. When you're ready to do a release, you can merge this and the packages will be published to npm auto"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11367,
+    "title": "Fix OpenRouter docs' `streamText` example provided",
+    "author": "bittere",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "`streamText` returns an object with a property `textStream`, which is the required iterable; the object itself is not iterable.  <!-- Welcome to contributing to AI SDK! We're excited to see your ch"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11366,
+    "title": "Version Packages (beta)",
+    "author": "app/vercel-ai-sdk",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "This PR was opened by the [Changesets release](https://github.com/changesets/action) GitHub action. When you're ready to do a release, you can merge this and the packages will be published to npm auto"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11365,
+    "title": "Backport: docs: add tanstack start quickstart guide",
+    "author": "app/vercel-ai-sdk",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "This is an automated backport of #11362 to the release-v5.0 branch. FYI @nicoalbanese"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11364,
+    "title": "Version Packages (beta)",
+    "author": "app/vercel-ai-sdk",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "This PR was opened by the [Changesets release](https://github.com/changesets/action) GitHub action. When you're ready to do a release, you can merge this and the packages will be published to npm auto"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11362,
+    "title": "docs: add tanstack start quickstart guide",
+    "author": "nicoalbanese",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": ""
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11361,
+    "title": "Version Packages (beta)",
+    "author": "app/vercel-ai-sdk",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "This PR was opened by the [Changesets release](https://github.com/changesets/action) GitHub action. When you're ready to do a release, you can merge this and the packages will be published to npm auto"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11360,
+    "title": "chore(specification): rename EmbeddingModelCallOptions",
+    "author": "lgrammel",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "## Background  The name `EmbeddingModelCallOptions` does not include `V3`.  ## Summary  * Rename `EmbeddingModelCallOptions` to `EmbeddingModelV3CallOptions` * Extract ``EmbeddingModelV3Result`"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11358,
+    "title": "feat (provider/gateway): update route path version and embed format",
+    "author": "shaper",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "## Background  AI Gateway is moving to a separate route for AI SDK v6. The embed call options have also changed since v5.  ## Summary  Updated base url for new route path, and embed params to reflect "
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11357,
+    "title": "feat: extend experimental download to support remove and text replacement",
+    "author": "viktorlarsson",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "## Background  when `experimental_download` encounters a 404 or invalid URL, there's no way to handle it gracefully. you either throw (which aborts the whole request) or return downloaded content yo"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11356,
+    "title": "feat: Add language detection to Deepgram",
+    "author": "viktorlarsson",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "## Background  This pull request adds support for automatic language detection to the Deepgram transcription integration. <!-- Why was this change necessary? -->  ## Summary  Added a new provid"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11354,
+    "title": "fix(amazon-bedrock): support Nova embedding models",
+    "author": "turisanapo",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "## Background  Nova embedding models on Amazon Bedrock use a different API schema than Titan models. Nova requires a `SINGLE_EMBEDDING` taskType with `singleEmbeddingParams`, while Titan uses `input"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11351,
+    "title": "feat (validation, schematics) Add TypeDriver Validator",
+    "author": "sinclairzx81",
+    "has_ai_disclosure": false,
+    "regex_detected": true,
+    "regex_tools": [
+      "claude"
+    ],
+    "body_excerpt": "## Checklist  <!-- Do not edit this list. Leave items unchecked that don't apply. If you need to track subtasks, create a new \"## Tasks\" section  Please check if the PR fulfills the following req"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11350,
+    "title": "fix(provider/anthropic): handling of errors in anthropic web fetch tool",
+    "author": "AVtheking",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": " ## Background  1. Set up an Anthropic agent with web fetch enabled 2. Send a message like \"fetch this webpage for me https://httpbin.org/status/500\" 3. That will return an error message in the c"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11347,
+    "title": "[feat] update gateway base url",
+    "author": "mclenhard",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": " ## Background  In order to accommodate schema schema changes in aisdk v6 we need to update the base url of the ai gateway to v2  ## Summary  replaced v1 with v2 in  `gateway-provider.ts` base "
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11346,
+    "title": "Version Packages (beta)",
+    "author": "app/vercel-ai-sdk",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "This PR was opened by the [Changesets release](https://github.com/changesets/action) GitHub action. When you're ready to do a release, you can merge this and the packages will be published to npm auto"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11345,
+    "title": "fix(ai): update structured output example in README",
+    "author": "lgrammel",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "## Background  `generateObject` has been deprecated in #10754  ## Summary  Use `generateText` in README structured outputs example.  ## Related Issues  Follow up from #10754 "
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11344,
+    "title": "Version Packages (beta)",
+    "author": "app/vercel-ai-sdk",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "This PR was opened by the [Changesets release](https://github.com/changesets/action) GitHub action. When you're ready to do a release, you can merge this and the packages will be published to npm auto"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11343,
+    "title": "Version Packages (beta)",
+    "author": "app/vercel-ai-sdk",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "This PR was opened by the [Changesets release](https://github.com/changesets/action) GitHub action. When you're ready to do a release, you can merge this and the packages will be published to npm auto"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11341,
+    "title": "feat(openai): minimal spec changes for mcp approval",
+    "author": "aayush-kapoor",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "## Background  Before v6 is released, we need to make the spec changes that will allow us to conitnue working on adding tool approvals for mcp (and provider executed) tools  ## Summary  updated "
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11340,
+    "title": "Version Packages (beta)",
+    "author": "app/vercel-ai-sdk",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "This PR was opened by the [Changesets release](https://github.com/changesets/action) GitHub action. When you're ready to do a release, you can merge this and the packages will be published to npm auto"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11339,
+    "title": "chore(tools): update analysis script",
+    "author": "lgrammel",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": ""
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11338,
+    "title": "feat: expose raw finish reason",
+    "author": "lgrammel",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "## Background  When providers add new finish reasons to their API that we do not know about, they get exposed as 'unknown' / 'other'. To enable users to add custom handling until we update the provi"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11337,
+    "title": "docs: update v6 migration guide to have agent and codemod instructions",
+    "author": "nicoalbanese",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "Updates to migration guide - add Experimental_Agent to ToolLoopAgent (plus system -> instructions and new stopWhen default) - add codemod upgrade command"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11336,
+    "title": "feat(vectorstores): add tool to query vector databases using vectorstores.org",
+    "author": "marcusschiesser",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "## Background  [vectorstores](https://vectorstores.org) is a lightweight TypeScript library that provides a unified interface for connecting vector databases to AI applications - supporting ingestio"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11335,
+    "title": "Version Packages (beta)",
+    "author": "app/vercel-ai-sdk",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "This PR was opened by the [Changesets release](https://github.com/changesets/action) GitHub action. When you're ready to do a release, you can merge this and the packages will be published to npm auto"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11334,
+    "title": "chore(specification): extract types",
+    "author": "lgrammel",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "## Background  We use a lot of typescript utilities for type extraction from the specification. This complicates our code and makes it harder to develop providers.  ## Summary  * extract `Langua"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11333,
+    "title": "Version Packages (beta)",
+    "author": "app/vercel-ai-sdk",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "This PR was opened by the [Changesets release](https://github.com/changesets/action) GitHub action. When you're ready to do a release, you can merge this and the packages will be published to npm auto"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11332,
+    "title": "Version Packages",
+    "author": "app/vercel-ai-sdk",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "This PR was opened by the [Changesets release](https://github.com/changesets/action) GitHub action. When you're ready to do a release, you can merge this and the packages will be published to npm auto"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11331,
+    "title": "Version Packages (beta)",
+    "author": "app/vercel-ai-sdk",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "This PR was opened by the [Changesets release](https://github.com/changesets/action) GitHub action. When you're ready to do a release, you can merge this and the packages will be published to npm auto"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11330,
+    "title": "Backport: feat (provider/gateway): add zero data retention provider option",
+    "author": "app/vercel-ai-sdk",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "This is an automated backport of #11315 to the release-v5.0 branch. FYI @shaper"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11329,
+    "title": "Version Packages",
+    "author": "app/vercel-ai-sdk",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "This PR was opened by the [Changesets release](https://github.com/changesets/action) GitHub action. When you're ready to do a release, you can merge this and the packages will be published to npm auto"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11328,
+    "title": "Version Packages (beta)",
+    "author": "app/vercel-ai-sdk",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "This PR was opened by the [Changesets release](https://github.com/changesets/action) GitHub action. When you're ready to do a release, you can merge this and the packages will be published to npm auto"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11327,
+    "title": "Backport: fix(provider/google): preserve nested empty object schemas and descrip",
+    "author": "app/vercel-ai-sdk",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "This is an automated backport of #11326 to the release-v5.0 branch. FYI @dancer"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11326,
+    "title": "fix(provider/google): preserve nested empty object schemas and descriptions in t",
+    "author": "dancer",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "forward of #11319"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11325,
+    "title": "Version Packages",
+    "author": "app/vercel-ai-sdk",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "This PR was opened by the [Changesets release](https://github.com/changesets/action) GitHub action. When you're ready to do a release, you can merge this and the packages will be published to npm auto"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11324,
+    "title": "Version Packages (beta)",
+    "author": "app/vercel-ai-sdk",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "This PR was opened by the [Changesets release](https://github.com/changesets/action) GitHub action. When you're ready to do a release, you can merge this and the packages will be published to npm auto"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11323,
+    "title": "Backport: fix(provider/google): Fix Google model tool schema error",
+    "author": "app/vercel-ai-sdk",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "This is an automated backport of #11319 to the release-v5.0 branch. FYI @R-Taneja"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11322,
+    "title": "Version Packages",
+    "author": "app/vercel-ai-sdk",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "This PR was opened by the [Changesets release](https://github.com/changesets/action) GitHub action. When you're ready to do a release, you can merge this and the packages will be published to npm auto"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11321,
+    "title": "Version Packages (beta)",
+    "author": "app/vercel-ai-sdk",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "This PR was opened by the [Changesets release](https://github.com/changesets/action) GitHub action. When you're ready to do a release, you can merge this and the packages will be published to npm auto"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11320,
+    "title": "Backport: docs(provider/xai): clarify sources format in searchParameters",
+    "author": "app/vercel-ai-sdk",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "This is an automated backport of #11318 to the release-v5.0 branch. FYI @dancer"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11319,
+    "title": "fix(provider/google): Fix Google model tool schema error",
+    "author": "R-Taneja",
+    "has_ai_disclosure": false,
+    "regex_detected": true,
+    "regex_tools": [
+      "gemini"
+    ],
+    "body_excerpt": "<!-- Welcome to contributing to AI SDK! We're excited to see your changes.  We suggest you read the following contributing guide we've created before submitting:  https://github.com/vercel/ai/blo"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11318,
+    "title": "docs(provider/xai): clarify sources format in searchParameters",
+    "author": "dancer",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "#11316"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11317,
+    "title": "docs: add arize integration docs",
+    "author": "seldo",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "## Background  Add documentation for sending OpenInference spans generated from the AI SDK to Arize AX.  This supersedes https://github.com/vercel/ai/pull/9690  ## Summary  Added documentation"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11315,
+    "title": "feat (provider/gateway): add zero data retention provider option",
+    "author": "shaper",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "## Background  Vercel AI Gateway is adding support to constrain AI queries to only execute on providers with zero data retention policies.  ## Summary  Updated version of https://github.com/vercel/ai/"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11314,
+    "title": "Version Packages (beta)",
+    "author": "app/vercel-ai-sdk",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "This PR was opened by the [Changesets release](https://github.com/changesets/action) GitHub action. When you're ready to do a release, you can merge this and the packages will be published to npm auto"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11313,
+    "title": "docs: changeset",
+    "author": "gr2m",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": ""
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11311,
+    "title": "Version Packages (beta)",
+    "author": "app/vercel-ai-sdk",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "This PR was opened by the [Changesets release](https://github.com/changesets/action) GitHub action. When you're ready to do a release, you can merge this and the packages will be published to npm auto"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11310,
+    "title": "fix(anthropic): ignore vertex <> anthropic proxy events",
+    "author": "audibleblink",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "<!-- Welcome to contributing to AI SDK! We're excited to see your changes.  We suggest you read the following contributing guide we've created before submitting:  https://github.com/vercel/ai/blo"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11307,
+    "title": "chore(deps): update dependency @smithy/util-utf8 to v4.2.0",
+    "author": "app/renovate",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "This PR contains the following updates:  | Package | Change | [Age](https://docs.renovatebot.com/merge-confidence/) | [Confidence](https://docs.renovatebot.com/merge-confidence/) | |---|---|---|---| |"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11306,
+    "title": "chore(deps): update dependency @smithy/eventstream-codec to v4.2.7",
+    "author": "app/renovate",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "This PR contains the following updates:  | Package | Change | [Age](https://docs.renovatebot.com/merge-confidence/) | [Confidence](https://docs.renovatebot.com/merge-confidence/) | |---|---|---|---| |"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11305,
+    "title": "fix(ai): add module field to main export for Bun compatibility",
+    "author": "app/copilot-swe-agent",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "## Background  Importing `simulateReadableStream` from `ai` fails on GitHub Actions (Ubuntu) with Bun 1.3.3, while working locally on macOS:  ``` SyntaxError: Export named 'simulateReadableStream' not"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11304,
+    "title": "Add maxAttributeValueLength option to TelemetrySettings",
+    "author": "app/copilot-swe-agent",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "## Reverted Changes  The previous implementation added a `maxAttributeValueLength` option that introduces truncation on the AI SDK side. This doesn't address the actual issue - the truncation users ar"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11303,
+    "title": "fix(anthropic): use explicit type for webSearch_20250305 args to fix TypeScript ",
+    "author": "app/copilot-swe-agent",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "## Background  Users with strict ESLint typescript-eslint rules (`@typescript-eslint/no-unsafe-assignment`, `@typescript-eslint/no-unsafe-call`) see \"error typed value\" warnings when using `anthropic."
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11302,
+    "title": "Add type tests for McpToolSet and ToolSet compatibility",
+    "author": "app/copilot-swe-agent",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "## Background  Issue #6739 reported a type mismatch between `McpToolSet` (from `@ai-sdk/mcp`) and `ToolSet` (from `ai`), preventing users from passing MCP tools directly to `streamText`/`generateText`"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11301,
+    "title": "programmatic tool calling improvements",
+    "author": "lgrammel",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "## Summary  Improvements for #11262  ## Tasks  - [x] introduce `forwardAnthropicContainerIdFromLastStep` - [x] use `mergeObjects` for merging provider options - [ ] add multi turn example"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11299,
+    "title": "Version Packages (beta)",
+    "author": "app/vercel-ai-sdk",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "This PR was opened by the [Changesets release](https://github.com/changesets/action) GitHub action. When you're ready to do a release, you can merge this and the packages will be published to npm auto"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11298,
+    "title": "docs(google): Document `minimal` and `medium` thinkingLevel support for Gemini 3",
+    "author": "app/copilot-swe-agent",
+    "has_ai_disclosure": false,
+    "regex_detected": true,
+    "regex_tools": [
+      "gemini"
+    ],
+    "body_excerpt": "## Background  Gemini 3 Flash supports four thinking levels (`minimal`, `low`, `medium`, `high`), while Gemini 3 Pro supports two (`low`, `high`). The schema already included all four values from the "
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11297,
+    "title": "chore(cohere): Correct Cohere embedding type comment to clarify AI SDK limitatio",
+    "author": "app/copilot-swe-agent",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "## Background  The comment in `cohere-embedding-model.ts` incorrectly stated that Cohere API only supports 'float' embeddings for all models. This is factually incorrect\u2014Cohere's API supports multiple"
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11296,
+    "title": "feat(replicate): add configurable maxWaitTimeInSeconds option for image generati",
+    "author": "app/copilot-swe-agent",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "## Background  The Replicate provider hardcodes `prefer: 'wait'` header, capping predictions at 60 seconds. Predictions exceeding this time fail silently. This affects popular models like nano banana "
+  },
+  {
+    "repo": "vercel/ai",
+    "number": 11293,
+    "title": "fix(examples): resolve method for improved path handling",
+    "author": "HamzLDN",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "Your original check is unsafe because it uses a string comparison which is \"startsWith\" to decide filesystem safety.  <!-- Welcome to contributing to AI SDK! We're excited to see your changes.  W"
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34476,
+    "title": "style(core): add ruff rules TC",
+    "author": "cbornet",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "* Fixed a few TC * Added a few Pydantic classes to `flake8-type-checking.runtime-evaluated-base-classes` (not as much as I would have imagined) * Added a few `noqa: TC` * Activated TC rules"
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34475,
+    "title": "style(langchain): fix some PLC0415 rules",
+    "author": "cbornet",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "The remaining ones are solved in https://github.com/langchain-ai/langchain/pull/32813"
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34473,
+    "title": "fix(langchain): allow Gemini 3 models to use native structured output\u2026",
+    "author": "RohithCherukuri816",
+    "has_ai_disclosure": false,
+    "regex_detected": true,
+    "regex_tools": [
+      "gemini"
+    ],
+    "body_excerpt": "Problem: Models in  create_agent  are checked for provider-native structured output support via  _supports_provider_strategy . Previously, this function was hard-coded to return False for all Gemi"
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34472,
+    "title": "feat: add AND/OR trigger logic to summarization middleware",
+    "author": "osasisorae",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "I added TriggerConfig support to SummarizationMiddleware so Python can mirror LangChain.js semantics: tuples still work, dicts require AND across metrics (e.g. {\"tokens\": 4000, \"messages\": 10}), and l"
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34470,
+    "title": "fix(mistralai): ensure JSON serialization for ToolMessage content",
+    "author": "VictorBravo9er",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "---  ## **Fix: Serialize ToolMessage content for Mistral chat completions**  ### **Problem**  When using `langchain-mistralai` with MCP tools, tool outputs are propagated as `ToolMessage.content`. For"
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34468,
+    "title": "test(langchain): enforce STTI-001 argument provenance invariant",
+    "author": "joshuavetos",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "This PR adds a small integration test that exposes a gap in how tool calls are validated today.  Right now, tool arguments are checked for schema correctness only. That means a model can pass a valu"
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34467,
+    "title": "release(langchain-classic): 1.0.1",
+    "author": "ccurme",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": ""
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34466,
+    "title": "fix(core): URL-encode bgColor parameter in mermaid.ink API calls",
+    "author": "Mr-Neutr0n",
+    "has_ai_disclosure": false,
+    "regex_detected": true,
+    "regex_tools": [
+      "ai_generic"
+    ],
+    "body_excerpt": "## Problem  The `draw_mermaid_png()` function fails with HTTP 400 when using named background colors like `white`. This is because named colors get prefixed with `!` (e.g., `!white`) but this special "
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34465,
+    "title": "fix(core): Implement ChatPromptTemplate.save method (#32637)",
+    "author": "pallaprolus",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "## Description Implements the `save` method for `ChatPromptTemplate` which previously raised `NotImplementedError`.  This fixes issue #32637.  ## Implementation Details - Implemented `save` in `libs/c"
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34464,
+    "title": "fix(langchain): allow Gemini 3 models to use ProviderStrategy with tools",
+    "author": "thdesc",
+    "has_ai_disclosure": false,
+    "regex_detected": true,
+    "regex_tools": [
+      "gemini"
+    ],
+    "body_excerpt": "### Summary  Passing a raw Pydantic model to `create_agent(..., response_format=MyModel)` defaults to `AutoStrategy`, which checks `_supports_provider_strategy` before deciding between `ProviderStra"
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34461,
+    "title": "fix(core): URL-encode bgColor in mermaid API calls",
+    "author": "nathannewyen",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "URL-encode the bgColor parameter to fix 400 errors from mermaid.ink API.  The `!` character in `!white` was not encoded, causing API failures.  Fixes #34444"
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34460,
+    "title": "fix(core): URL-encode bgColor in mermaid API calls",
+    "author": "nathannewyen",
+    "has_ai_disclosure": false,
+    "regex_detected": true,
+    "regex_tools": [
+      "ai_generic"
+    ],
+    "body_excerpt": "URL-encode the bgColor parameter to fix 400 errors from mermaid.ink API.  The `!` character in `!white` was not encoded, causing API failures.  Fixes #34444  --- *This PR was created with AI assistanc"
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34459,
+    "title": "release(core): 0.3.81",
+    "author": "mdrxy",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": ""
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34458,
+    "title": "fix(core): serialization patch",
+    "author": "mdrxy",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "Backport of https://github.com/langchain-ai/langchain/pull/34455"
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34457,
+    "title": "docs(core): update to indicate betas",
+    "author": "mdrxy",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": ""
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34456,
+    "title": "release(core): 1.2.5",
+    "author": "mdrxy",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": ""
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34455,
+    "title": "fix(core): serialization patch",
+    "author": "ccurme",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "- `allowed_objects` kwarg in `load` - escape lc-ser formatted dicts on `dump` - fix for jinja2"
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34454,
+    "title": "feat: implements a multi-agent swarm architecture using **LangGraph**",
+    "author": "Menslanista",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "This PR adds a new multi-agent swarm project that demonstrates coordinated agent workflows using LangChain primitives. The change includes example code, a README with run instructions, and supporting "
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34453,
+    "title": "Create pr-lint.yml",
+    "author": "Menslanista",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "(Replace this entire block of text)  Read the full contributing guidelines: https://docs.langchain.com/oss/python/contributing/overview  Thank you for contributing to LangChain! Follow these steps"
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34452,
+    "title": "feat/swarm-project",
+    "author": "Menslanista",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "This PR adds a new multi-agent swarm project that demonstrates coordinated agent workflows using LangChain primitives. The change includes example code, a README with run instructions, and supporting "
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34451,
+    "title": "feat(providers): add explicit DeepSeek-V3 profile and docs",
+    "author": "kelvinvelasquez-SDE",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "## Description  Explicitly adds support for **DeepSeek-V3** by adding a `deepseek-v3` model profile alias to `langchain-deepseek`. Also updates documentation to clarify support for V3 and Reasoner mod"
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34449,
+    "title": "docs: Add comprehensive init_chat_model usage guide",
+    "author": "Vishwajeet-Kumar-Patel",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "## Description  This PR adds comprehensive documentation for `init_chat_model`, making it easy to understand, hard to misuse, and well-documented for real-world usage.  ### \ud83c\udfaf What This PR Delivers"
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34448,
+    "title": "fix(openai): cache httpx clients in AzureChatOpenAI",
+    "author": "madanlalit",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "## Description  Fixes #32489  [AzureChatOpenAI](cci:2://file:///Users/black/Documents/repo/langchain/libs/partners/openai/langchain_openai/chat_models/azure.py:33:0-1163:9) was creating new `httpx"
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34447,
+    "title": "fix langchain fireworks integration",
+    "author": "benjibc",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "(Replace this entire block of text)  Read the full contributing guidelines: https://docs.langchain.com/oss/python/contributing/overview  Thank you for contributing to LangChain! Follow these steps to "
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34445,
+    "title": "Fix empty AIMessage when Anthropic astream receives pre-completed content",
+    "author": "TheAryan77",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "Fixes #34406  ## \ud83d\udc1b Fix empty AIMessage in Anthropic streaming with tool execution  ### Summary Fixes a bug where `astream()` can return an empty `AIMessage` when using Anthropic programmatic too"
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34443,
+    "title": "refactor(langchain): refactor test_create_agent_tool_validation",
+    "author": "cbornet",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "Simplify test for `create_agent` errors. * Remove duplicate tests * Test sync and async with common logic "
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34440,
+    "title": "feat(langchain): Builtin Tool Middleware",
+    "author": "keenborder786",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "This PR builds the `BuiltinToolsMiddleware` where: 1. **Standard TypedDict schemas** for builtin tools are defined in `langchain-core` 2. **Provider-specific conversion utilities** are implemented i"
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34438,
+    "title": "fix(deepseek): preserve reasoning_content for AIMessages with tool_calls",
+    "author": "hak2979",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "Fixes #34436  Fixed the issue where DeepSeek API was returning 400 error: Missing reasoning_content field in the assistant message when using agents with tool calls.  **Root Cause**: When _get_re"
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34437,
+    "title": "style(core): fix some noqa: ARG rules",
+    "author": "cbornet",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": ""
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34435,
+    "title": "style(langchain): add ruff rules ARG",
+    "author": "cbornet",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "In this order: * used `@override` when overriding a parent method. * prefixed param with `_` when the param could be renamed. * used `*_args, **_kwargs` when it was not possible to rename (eg: prot"
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34434,
+    "title": "style(langchain): add ruff rules PT",
+    "author": "cbornet",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": ""
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34433,
+    "title": "feat: add embeddings rate limiter support",
+    "author": "majiayu000",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "- add rate_limiter to OpenAIEmbeddings - apply limiter in sync/async paths - add unit coverage  Tests: pytest libs/partners/openai/tests/unit_tests/embeddings/test_base.py"
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34432,
+    "title": "fix(openai): handle missing function field in streaming tool_calls",
+    "author": "LAMZANJYU",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "Fixes a `KeyError` that occurs when processing streaming tool_calls from OpenAI-compatible clients that return non-standard formats (where the `function` field may be missing or `None`). Uses safe dic"
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34431,
+    "title": "fix(core): ensure `tool_call_count` is never null",
+    "author": "mdrxy",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "add truthiness check to guard against `None`"
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34430,
+    "title": "chore(infra): remove jupyter recommended extensions",
+    "author": "mdrxy",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": ""
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34429,
+    "title": "release(core): 1.2.4",
+    "author": "mdrxy",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": ""
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34428,
+    "title": "revert(infra): temp disable lockfile CI check",
+    "author": "mdrxy",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "#34397"
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34427,
+    "title": "fix: typing fixes for custom middleware",
+    "author": "sydney-runkle",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "* Make `ModelRequest` generic on `ContextT` so that types can flow through appropriately * Proper typing for coroutines used w/ our middleware shortcut decorators * Public input + output state  TO"
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34426,
+    "title": "chore(core): fix some docstrings",
+    "author": "cbornet",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": ""
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34425,
+    "title": "chore(core): fix some ruff preview rules",
+    "author": "cbornet",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": ""
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34424,
+    "title": "docs: Fix typo in Zapier NLA API description",
+    "author": "Sai-Srikar-Boddupalli",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "I noticed a double word typo ('the the') in the Zapier NLA API description JSON. I removed the duplicate word to improve readability."
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34421,
+    "title": "release(core): 1.2.3",
+    "author": "ccurme",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": ""
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34420,
+    "title": "fix(core): allow unknown blocks in convert_to_openai_messages",
+    "author": "ccurme",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "We already do this for `thinking` and `reasoning` blocks.  Here we add a flag to allow this generally. We default to permitting unknown blocks.  We also add parsing for Responses API function call"
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34419,
+    "title": "release(openai): 1.1.6: update max input tokens for gpt-5 series",
+    "author": "ccurme",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "Tested empirically. TODOs: - Update handling of `context` field from models.dev + verify across providers. - Push this `limit.input` to models.dev."
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34418,
+    "title": "feat(langchain): add SummarizeToolUsesEdit context editing strategy",
+    "author": "ThomasSaulou",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "Add a new context editing strategy that summarizes older tool outputs using an LLM instead of clearing them entirely. This preserves essential information while reducing context size.  Features: - "
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34416,
+    "title": "fix(core): defer persisting traces for iterator inputs",
+    "author": "hntrl",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "ref https://github.com/langchain-ai/langchainjs/pull/9665  Fixes trace persistence for iterator/generator inputs (like `RunnableGenerator`) where the full input isn't available at chain start. Inste"
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34415,
+    "title": "fix(core)!: flatten generations for `LangChainTracer`",
+    "author": "hntrl",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "(breaking - do not merge)  ref https://github.com/langchain-ai/langchainjs/pull/9688  - Extracts and aggregates `usage_metadata` from generations, storing it in `run.extra[\"metadata\"]` - Flattens"
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34414,
+    "title": "feat(core): add `usage_metadata` to metadata in `LangChainTracer`",
+    "author": "hntrl",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "Adds `usage_metadata` (token counts, etc.) to the run metadata in `LangChainTracer`.  When an LLM run ends, usage metadata is extracted from all generations and aggregated using the existing `add_us"
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34412,
+    "title": "feat(perplexity): overhaul integration with official SDK and Search API",
+    "author": "kesku",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "Updates `langchain-perplexity` to use the official `perplexityai` SDK and adds support for the [Search API](https://docs.perplexity.ai/guides/search-quickstart), [Pro Search](https://docs.perplexity.a"
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34411,
+    "title": "fix(docs): add redirects",
+    "author": "lnhsingh",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": ""
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34410,
+    "title": "fix: update typing for async decorators",
+    "author": "sydney-runkle",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": ""
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34409,
+    "title": "release(openai): 1.1.5",
+    "author": "ccurme",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": ""
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34408,
+    "title": "fix(anthropic): handle pre-completed content in message_start events",
+    "author": "majiayu000",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "## Summary - Fixes #34406 - Modifies `_make_message_chunk_from_anthropic_event()` to check for and process pre-completed content blocks in `message_start` events - Extracts `tool_use` blocks into `too"
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34407,
+    "title": "fix(langchain): improve error message for unawaited coroutine in middleware",
+    "author": "majiayu000",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "## Summary - Fixes #34234 - Adds `_normalize_to_model_response_async()` to detect when async middleware returns a coroutine instead of ModelResponse/AIMessage - Auto-awaits the coroutine with a helpfu"
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34405,
+    "title": "feat: Add middleware for Agentic Context Engineering (ACE)",
+    "author": "dkondoetsy",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "Adds ACE (Agentic Context Engineering) middleware that enables agents to self-improve through an evolving playbook.  Implementation was Claude assisted.  ### Features: - Reflector analyzes agent"
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34404,
+    "title": "fix(openai): rely on langchain-core for setting chunk_position",
+    "author": "ccurme",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "Better to rely on core for this (core emits a final chunk with `chunk_position=\"last\"` if it's missing) - When `stream_usage` is enabled, we are currently setting `chunk_position=\"last\"` on the wrong"
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34403,
+    "title": "fix(langchain): add reducer to PlanningState.todos for concurrent updates",
+    "author": "riccardo-algorime",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "## Summary  The `todos` field in `PlanningState` was missing a reducer, causing `INVALID_CONCURRENT_GRAPH_UPDATE` errors when multiple nodes attempt to update the state simultaneously during parallel "
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34402,
+    "title": "fix(core): Add config isolation utilities to prevent middleware streaming leaks",
+    "author": "lwtaiyty",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "## Description  This PR adds `isolate_config()` and `aisolate_config()` context managers to prevent model calls in middleware from unexpectedly inheriting parent streaming callbacks.  ### Problem"
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34401,
+    "title": "feat(langchain): Added BuiltinToolsMiddleware",
+    "author": "keenborder786",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "- Added `BuiltinToolsMiddleware` which allows to add builtin tools depending on the provider and tool selected. - #34398   "
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34399,
+    "title": "fix(core): populate default args from tool's `args_schema`",
+    "author": "nathannewyen",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "## Summary - Fixes issue where Pydantic default values from `args_schema` were not passed to tool functions when the caller omits optional arguments - Modified `_parse_input()` in `libs/core/langchain"
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34397,
+    "title": "feat(infra): add CI check for out of date lockfiles",
+    "author": "mdrxy",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": ""
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34396,
+    "title": "fix(openai): filter function_call blocks in token counting",
+    "author": "sujalmh",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "The Responses API returns messages with `function_call`  content blocks which cause `get_num_tokens_from_messages` to raise a `ValueError: Unrecognized content block type.` This occurs because the tok"
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34395,
+    "title": "release(openai): 1.1.4",
+    "author": "mdrxy",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": ""
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34394,
+    "title": "revert(openai): switch model from nano to mini when using flex",
+    "author": "mdrxy",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "Reverts langchain-ai/langchain#34336"
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34393,
+    "title": "release(standard-tests): 1.1.1",
+    "author": "mdrxy",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": ""
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34392,
+    "title": "chore(core): bump lockfile",
+    "author": "mdrxy",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": ""
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34391,
+    "title": "release(core): 1.2.2",
+    "author": "mdrxy",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": ""
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34390,
+    "title": "fix(core): use `get_type_hints` for Python 3.14 `TypedDict` compatibility",
+    "author": "mdrxy",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "Replace direct `__annotations__` access with `get_type_hints()` in `_convert_any_typed_dicts_to_pydantic` to handle [PEP 649](https://peps.python.org/pep-0649/) deferred annotations in Python 3.14:  >"
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34389,
+    "title": "docs(standard-tests): throw more descriptive errors for some streaming cases",
+    "author": "mdrxy",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": ""
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34388,
+    "title": "feat(langchain): Add support to `google_genai` provider in `init_embeddings`",
+    "author": "Christophe-Lamarche-Cossette",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "The Google Generative AI provider is not supported in `init_embeddings` in comparison to `init_chat_models`.  Fixes #34386  ## Changes:  - Add google_genai as a supported provider - Add link to "
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34385,
+    "title": "fix(openai): Correct hyperlinks in documentation of function with_structured_out",
+    "author": "tom1299",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "Just a small fix of some broken hyperlinks in the documentation of the function `langchain_openai/chat_models/base.py#with_structured_output` and a rephrase of the reference to supported models. "
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34381,
+    "title": "refactor(langchain): use factory function for write_todos tool creation",
+    "author": "LJlkdskdjflsa",
+    "has_ai_disclosure": false,
+    "regex_detected": true,
+    "regex_tools": [
+      "claude_code"
+    ],
+    "body_excerpt": "## Summary  - Consolidate duplicate `write_todos` tool definitions into a single factory function `_create_write_todos_tool()` - Eliminate code duplication between the module-level tool and the one cr"
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34379,
+    "title": "fix(openai): handle function_call content in token counting",
+    "author": "CyberNinjaSaurav",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": ""
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34377,
+    "title": "fix(core): add `return_exceptions` type hinting",
+    "author": "zmievsa",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": " Adds `@overload` type hints to `batch` and `abatch` methods so that type checkers correctly infer `list[Output]` when `return_exceptions=False` (default) and `list[Output | Exception]` when `return_"
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34376,
+    "title": "fix(core): improve error message for non-JSON-serializable tool schemas",
+    "author": "thromel",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "## Summary  When a Pydantic model with `arbitrary_types_allowed=True` contains custom Python classes that cannot be converted to JSON schema, users previously received a cryptic `PydanticInvalidForJ"
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34375,
+    "title": "fix(langchain): handle malformed LLM response in LLMToolSelectorMiddleware",
+    "author": "thromel",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "## Summary  - Add validation in `_process_selection_response` to check that the LLM response contains a valid `tools` list before processing - Raise a clear `ValueError` with actionable guidance in"
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34374,
+    "title": "fix(core)!: serialization fixes (WIP)",
+    "author": "mdrxy",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": ""
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34373,
+    "title": "release(langchain): 1.2",
+    "author": "ccurme",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": ""
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34372,
+    "title": "chore(infra): add openai back to core release test matrix",
+    "author": "ccurme",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "Reverts langchain-ai/langchain#34020"
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34370,
+    "title": "release(core): 1.2.1",
+    "author": "ccurme",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": ""
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34369,
+    "title": "fix: handle missing 'tools' key in LLMToolSelectorMiddleware response",
+    "author": "riunyfir",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "Description: This PR fixes a `KeyError: 'tools'` that occurs in `LLMToolSelectorMiddleware` when the LLM returns a response missing the expected `'tools'` key. The middleware now gracefully handles m"
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34368,
+    "title": "feat: llm tool selector keyerror ",
+    "author": "riunyfir",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "Description:  `LLMToolSelectorMiddleware` raises `KeyError: 'tools'` when the model response is missing the expected `'tools'` key. This occurs when the LLM doesn't follow the structured output schem"
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34367,
+    "title": "feat: Add support for context_schema and context parameters in create_agent for ",
+    "author": "riunyfir",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "Description: Problem Currently, create_agent() accepts a context_schema parameter, but the returned agent's invoke(), stream(), ainvoke(), and astream() methods do not support a context parameter. Th"
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34366,
+    "title": "feat: Add support for context_schema and context parameters in create_agent for ",
+    "author": "riunyfir",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "Description: Problem Currently, create_agent() accepts a context_schema parameter, but the returned agent's invoke(), stream(), ainvoke(), and astream() methods do not support a context parameter. Th"
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34365,
+    "title": "fix: Secure API key representation in __repr__ method to prevent cred\u2026",
+    "author": "liu-jin-yi",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "\u2026ential leakage  - Added custom __repr__ methods to ChatOpenAI, BaseOpenAI, and OpenAIEmbeddings classes - API keys are now redacted showing only first 3 and last 4 characters (e.g., 'sk-...wxyz')"
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34362,
+    "title": "fix(openai): Add OpenAI-compatible reasoning_content support for streaming respo",
+    "author": "congwa",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "# Fixes #34153   ## Summary  This enhancement adds support for the `reasoning_content` field in OpenAI-compatible streaming chat completions, enabling LangChain to work seamlessly with reasoning-"
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34361,
+    "title": "chore(deps): bump actions/download-artifact from 6 to 7",
+    "author": "app/dependabot",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "Bumps [actions/download-artifact](https://github.com/actions/download-artifact) from 6 to 7. <details> <summary>Release notes</summary> <p><em>Sourced from <a href=\"https://github.com/actions/download"
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34360,
+    "title": "chore(deps): bump actions/upload-artifact from 5 to 6",
+    "author": "app/dependabot",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "Bumps [actions/upload-artifact](https://github.com/actions/upload-artifact) from 5 to 6. <details> <summary>Release notes</summary> <p><em>Sourced from <a href=\"https://github.com/actions/upload-artif"
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34359,
+    "title": "fix(openai): Add OpenAI-compatible reasoning_content support for streaming respo",
+    "author": "congwa",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "Fixes #34153   ## Summary  This enhancement adds support for the `reasoning_content` field in OpenAI-compatible streaming chat completions, enabling LangChain to work seamlessly with reasoning-en"
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34357,
+    "title": "fix: mask API keys in ChatOpenAI __repr__ to prevent secret leakage",
+    "author": "MrEchoFi",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "**Description** This PR addresses a security concern where API keys are exposed in plaintext in the __repr__ of ChatOpenAI (and potentially other clients). When developers log or print these objects,"
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34355,
+    "title": "fix(core): use tool_calls instead of deprecated function_call in get_buffer_stri",
+    "author": "edlsh",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "## Summary  Fixes #33970  `get_buffer_string` was only checking for the deprecated `function_call` field in `additional_kwargs`, which modern LLM providers no longer return. This fix updates the funct"
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34354,
+    "title": "fix(core): preserve `Field(description=...)` in `@tool` decorator",
+    "author": "edlsh",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "## Summary  Fixes #34247  When using `Annotated[type, Field(description=\"...\")]` syntax with the `@tool` decorator, field descriptions were being lost during schema generation. The `_get_annotation_de"
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34353,
+    "title": "docs(langchain): Docstring improved to show `Streaming custom events`",
+    "author": "keenborder786",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "- Simple PR to improve the Docstring to show `Streaming custom events` - PR #34352 "
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34351,
+    "title": "fix: Issue #34139 - Explicitly disable callbacks in LLMToolSelectorMiddleware",
+    "author": "Manju080",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "Fixes #34139  When using `LLMToolSelectorMiddleware` with stream_mode=\"messages\", the internal tool selection tokens (the JSON output) are leaked into the final user stream. This happens because the"
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34350,
+    "title": "feat: add langchain-maritaca integration for Brazilian Portuguese LLMs",
+    "author": "anderson-ufrj",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "## Summary  This PR adds **langchain-maritaca**, a new integration package for [Maritaca AI](https://www.maritaca.ai/) - a Brazilian company providing state-of-the-art Portuguese language models.  ###"
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34349,
+    "title": "fix(core): `NotRequired` in TypedDict causes TypeError when converting to OpenAI",
+    "author": "Abhinavexists",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "## Description  Fixed a bug where `NotRequired` fields in `TypedDict` caused a `TypeError` when converting to OpenAI function schema. The fix properly handles `NotRequired` and `Required` type annot"
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34348,
+    "title": "docs(openai): add AI Badgr OpenAI-compatible example",
+    "author": "miguelmanlyx",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "Adds an example showing how to use AI Badgr as an OpenAI-compatible endpoint with `ChatOpenAI`, using `base_url` and tier-based model names. No behavior or API changes.  Disclaimer: Portions of this"
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34347,
+    "title": "fix(openai): handle streaming reasoning tokens.",
+    "author": "jimfcarroll",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "This adds the ability to handle reasoning tokens returned from Deepseek like and openai reasoning models. It complements this PR: https://github.com/langchain-ai/langchain/pull/34236  I ran this aga"
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34346,
+    "title": "release(text-splitters): 1.1.0",
+    "author": "mdrxy",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": ""
+  },
+  {
+    "repo": "langchain-ai/langchain",
+    "number": 34345,
+    "title": "feat(text-splitters): expose encode helper for sentence transformers",
+    "author": "jeetgoyal80",
+    "has_ai_disclosure": false,
+    "regex_detected": false,
+    "regex_tools": [],
+    "body_excerpt": "### Summary Expose a public helper to encode text into token IDs using the sentence-transformers tokenizer.  ### Changes - Add `encode()` method to `SentenceTransformersTokenTextSplitter` - Reuse"
+  }
+]

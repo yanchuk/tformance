@@ -132,6 +132,26 @@ def detect_ai_reviewer(username: str | None) -> AIReviewerResult:
     return _detect_ai_bot_username(username)
 
 
+# Patterns for negative AI disclosures (should NOT be counted as AI usage)
+_NEGATIVE_DISCLOSURE_PATTERNS = [
+    re.compile(r"no\s+ai\s+(?:was\s+)?used", re.IGNORECASE),
+    re.compile(r"ai\s+disclosure[:\s]*none\b", re.IGNORECASE),
+    re.compile(r"without\s+(?:any\s+)?ai", re.IGNORECASE),
+]
+
+
+def _strip_negative_disclosures(text: str) -> str:
+    """Remove negative disclosure phrases to prevent false positive matches.
+
+    For example, "No AI was used for any part" should not trigger the
+    "AI was used for" pattern.
+    """
+    result = text
+    for pattern in _NEGATIVE_DISCLOSURE_PATTERNS:
+        result = pattern.sub("", result)
+    return result
+
+
 def detect_ai_in_text(text: str | None) -> AITextResult:
     """
     Detect AI tool signatures in text (PR body, title, etc.).
@@ -151,10 +171,14 @@ def detect_ai_in_text(text: str | None) -> AITextResult:
     if not text:
         return {"is_ai_assisted": False, "ai_tools": []}
 
+    # Strip negative disclosure phrases to avoid false positives
+    # e.g., "No AI was used for this" should not match "AI was used for"
+    cleaned_text = _strip_negative_disclosures(text)
+
     detected_tools: list[str] = []
 
     for pattern, ai_type in _COMPILED_SIGNATURE_PATTERNS:
-        if pattern.search(text) and ai_type not in detected_tools:
+        if pattern.search(cleaned_text) and ai_type not in detected_tools:
             detected_tools.append(ai_type)
 
     return {
