@@ -1,6 +1,6 @@
 # Incremental Seeding Context
 
-**Last Updated:** 2025-12-24 (Phase 3 in Progress)
+**Last Updated:** 2025-12-24 (Phase 3.0-3.2 Complete, 3.3-3.4 Pending)
 
 ## Strategic Vision
 
@@ -146,3 +146,64 @@ git status --short
 - GitHub API rate limits hit during testing (403 on REST check runs endpoint)
 - Seeding works for GraphQL PR fetch, but REST fallback for check runs can fail
 - Consider: Make check runs fetch optional or use GraphQL for those too
+
+## Session Commits
+
+| Commit | Description |
+|--------|-------------|
+| `3f1f928` | Phase 3.0 (sequential check runs) + Phase 3.1 (repo change detection) |
+| `7e5094e` | Phase 3.2 (REST API rate limit monitoring) |
+
+## Handoff Notes for Next Session
+
+### Current State
+- **All Phase 3.0-3.2 complete and committed**
+- **56 tests passing** (25 PRCache + 31 GitHubGraphQLFetcher)
+- No uncommitted changes for this feature (other files have unrelated changes)
+
+### Next Task: Phase 3.3 Incremental PR Sync
+
+**Goal:** Instead of re-fetching all PRs when cache is invalid, fetch only updated PRs and merge with cache.
+
+**Implementation Plan:**
+1. Add `_fetch_updated_prs_async()` method using `FETCH_PRS_UPDATED_QUERY`
+2. Update `fetch_prs_with_details()` to:
+   - If cache exists but repo changed → fetch only updated PRs since `cache.fetched_at`
+   - Merge updated PRs into cached PRs (by PR number)
+   - Save merged result to cache
+3. Track `updated_at` in PRCache for merge logic
+
+**Key Files:**
+- `apps/metrics/seeding/github_graphql_fetcher.py` - Add incremental fetch method
+- `apps/metrics/seeding/pr_cache.py` - May need to track last_updated
+- `apps/integrations/services/github_graphql.py` - Already has `FETCH_PRS_UPDATED_QUERY`
+
+**Existing Query (already available):**
+```python
+# In github_graphql.py line 114
+FETCH_PRS_UPDATED_QUERY = gql("""
+    query($owner: String!, $repo: String!, $cursor: String) {
+      repository(owner: $owner, name: $repo) {
+        pullRequests(first: 25, after: $cursor, orderBy: {field: UPDATED_AT, direction: DESC}) {
+          # ... includes updatedAt field
+        }
+      }
+    }
+""")
+```
+
+### Verification Commands
+```bash
+# Verify tests pass
+.venv/bin/pytest apps/metrics/tests/test_pr_cache.py apps/metrics/tests/test_github_graphql_fetcher.py -v
+
+# Check git status
+git status --short
+
+# Test seeding
+python manage.py seed_real_projects --project antiwork --max-prs 10
+```
+
+### No Migrations Needed
+- No model changes in this phase
+- All changes are to seeding utilities (not production models)

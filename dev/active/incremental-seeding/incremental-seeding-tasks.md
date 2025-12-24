@@ -1,6 +1,6 @@
 # Incremental Seeding Tasks
 
-**Last Updated:** 2025-12-24 (Phase 3 in Progress)
+**Last Updated:** 2025-12-24 (Phase 3.0-3.2 Complete, 3.3-3.4 Pending)
 
 ## Phase 1: Stability ✅ COMPLETE (Commit: a1bff2d)
 
@@ -103,14 +103,16 @@
 - [x] Linked issues stored in PullRequest model
 - [x] 43 tests passing (32 Phase 1 + 11 Phase 2)
 
-### Phase 3 (In Progress)
-- [x] Check runs fetched sequentially (not parallel)
-- [x] Repo metadata query costs ~1 point
-- [x] Cache uses `repo_pushed_at` for change detection
-- [x] Old cache files without `repo_pushed_at` still load
-- [x] 51 tests passing (25 PRCache + 26 GitHubGraphQLFetcher)
-- [ ] Rate limit warnings logged when low
-- [ ] Incremental sync only fetches updated PRs
+### Phase 3 (3.0-3.2 Complete)
+- [x] Check runs fetched sequentially (not parallel) - Commit `3f1f928`
+- [x] Repo metadata query costs ~1 point - Commit `3f1f928`
+- [x] Cache uses `repo_pushed_at` for change detection - Commit `3f1f928`
+- [x] Old cache files without `repo_pushed_at` still load - Commit `3f1f928`
+- [x] Rate limit warnings logged when low - Commit `7e5094e`
+- [x] Check runs skipped when rate limit too low - Commit `7e5094e`
+- [x] **56 tests passing** (25 PRCache + 31 GitHubGraphQLFetcher)
+- [ ] Incremental sync only fetches updated PRs (Phase 3.3)
+- [ ] Exponential backoff with jitter (Phase 3.4)
 
 ## Test Commands
 
