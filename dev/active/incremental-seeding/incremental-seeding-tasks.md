@@ -76,11 +76,18 @@
 - [ ] Add random jitter to retry delays
 - [ ] ~~Not needed for single-user seeding - thundering herd isn't a problem~~
 
-## Phase 4: Production Alignment (PLANNED)
+## Phase 4: Production Alignment (IN PROGRESS)
 
-- [ ] **4.1** Apply Phase 1-2 improvements to production Celery tasks
-- [ ] **4.2** Rate limit wait logic for single-token users
-- [ ] **4.3** Better error handling and resume in sync tasks
+- [x] **4.1** Apply Phase 1-2 improvements to production Celery tasks
+  - N/A: Caching is seeding-specific, complete data collection already in production
+- [x] **4.2** Rate limit wait logic for single-token users (Commit `600018d`)
+  - Added `wait_for_reset` parameter to GitHubGraphQLClient (default: True)
+  - Added `max_wait_seconds` parameter (default: 1 hour)
+  - Made `_check_rate_limit()` async to wait instead of error
+  - Fixed PyGithub API compatibility (rate_limit.core → rate_limit.rate)
+  - Added `wait_for_rate_limit_reset_async()` helper
+  - 11 new tests (6 GraphQL + 5 rate limit)
+- [ ] **4.3** Better error handling and resume in sync tasks (DEFERRED)
 
 ## Phase 5: Analytics (PLANNED)
 
