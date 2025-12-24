@@ -114,17 +114,20 @@ def _compute_initials(name: str) -> str:
 
 
 def _avatar_url_from_github_id(github_id: str | None) -> str:
-    """Construct GitHub avatar URL from user ID.
+    """Construct GitHub avatar URL from user ID or username.
 
     Args:
-        github_id: GitHub user ID or None
+        github_id: GitHub user ID (numeric) or username (alphanumeric), or None
 
     Returns:
         str: Avatar URL or empty string if no ID
     """
-    if github_id:
+    if not github_id:
+        return ""
+    # Numeric IDs use /u/ prefix, usernames don't
+    if github_id.isdigit():
         return f"https://avatars.githubusercontent.com/u/{github_id}?s=80"
-    return ""
+    return f"https://avatars.githubusercontent.com/{github_id}?s=80"
 
 
 def _get_key_metrics_cache_key(team_id: int, start_date: date, end_date: date) -> str:
@@ -311,16 +314,21 @@ def get_cycle_time_trend(team: Team, start_date: date, end_date: date) -> list[d
     return _get_metric_trend(team, start_date, end_date, "cycle_time_hours", "avg_cycle_time")
 
 
-def get_team_breakdown(team: Team, start_date: date, end_date: date) -> list[dict]:
+def get_team_breakdown(
+    team: Team, start_date: date, end_date: date, sort_by: str = "prs_merged", order: str = "desc"
+) -> list[dict]:
     """Get team breakdown with metrics per member.
 
     Args:
         team: Team instance
         start_date: Start date (inclusive)
         end_date: End date (inclusive)
+        sort_by: Field to sort by (prs_merged, cycle_time, ai_pct, name)
+        order: Sort order (asc or desc)
 
     Returns:
         list of dicts with keys:
+            - member_id (int): Team member ID
             - member_name (str): Team member display name
             - prs_merged (int): Count of merged PRs
             - avg_cycle_time (Decimal): Average cycle time in hours (0.00 if None)
@@ -328,8 +336,25 @@ def get_team_breakdown(team: Team, start_date: date, end_date: date) -> list[dic
     """
     prs = _get_merged_prs_in_range(team, start_date, end_date)
 
+    # Map sort_by to actual field names
+    SORT_FIELDS = {
+        "prs_merged": "prs_merged",
+        "cycle_time": "avg_cycle_time",
+        "ai_pct": None,  # Sort in Python after aggregation
+        "name": "author__display_name",
+    }
+
+    # Determine database sort field
+    db_sort_field = SORT_FIELDS.get(sort_by, "prs_merged")
+
+    # Build order_by clause
+    order_by_clause = []
+    if db_sort_field:
+        prefix = "-" if order == "desc" else ""
+        order_by_clause = [f"{prefix}{db_sort_field}"]
+
     # Single aggregated query for PR metrics per author (replaces N+1 loop)
-    pr_aggregates = list(
+    query = (
         prs.exclude(author__isnull=True)
         .values(
             "author__id",
@@ -340,8 +365,13 @@ def get_team_breakdown(team: Team, start_date: date, end_date: date) -> list[dic
             prs_merged=Count("id"),
             avg_cycle_time=Avg("cycle_time_hours"),
         )
-        .order_by("author__display_name")
     )
+
+    # Apply DB sorting if applicable
+    if order_by_clause:
+        query = query.order_by(*order_by_clause)
+
+    pr_aggregates = list(query)
 
     # Get all author IDs for batch survey lookup
     author_ids = [row["author__id"] for row in pr_aggregates]
@@ -376,11 +406,12 @@ def get_team_breakdown(team: Team, start_date: date, end_date: date) -> list[dic
         github_id = row["author__github_id"]
 
         # Compute avatar_url and initials from aggregated data
-        avatar_url = f"https://avatars.githubusercontent.com/u/{github_id}?s=80" if github_id else ""
+        avatar_url = _avatar_url_from_github_id(github_id)
         initials = _compute_initials(display_name) if display_name else "??"
 
         result.append(
             {
+                "member_id": author_id,
                 "member_name": display_name,
                 "avatar_url": avatar_url,
                 "initials": initials,
@@ -389,6 +420,10 @@ def get_team_breakdown(team: Team, start_date: date, end_date: date) -> list[dic
                 "ai_pct": ai_pct_by_author.get(author_id, 0.0),
             }
         )
+
+    # Apply Python-based sorting if needed (for ai_pct which can't be sorted in DB)
+    if sort_by == "ai_pct":
+        result.sort(key=lambda x: x["ai_pct"], reverse=(order == "desc"))
 
     return result
 

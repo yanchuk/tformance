@@ -80,12 +80,28 @@ def key_metrics_cards(request: HttpRequest) -> HttpResponse:
 def team_breakdown_table(request: HttpRequest) -> HttpResponse:
     """Team breakdown table (admin only)."""
     start_date, end_date = get_date_range_from_request(request)
-    rows = dashboard_service.get_team_breakdown(request.team, start_date, end_date)
+    days = int(request.GET.get("days", 30))
+    sort = request.GET.get("sort", "prs_merged")
+    order = request.GET.get("order", "desc")
+
+    # Validate sort field (must match dashboard_service.get_team_breakdown SORT_FIELDS)
+    ALLOWED_SORT_FIELDS = {"prs_merged", "cycle_time", "ai_pct", "name"}
+    if sort not in ALLOWED_SORT_FIELDS:
+        sort = "prs_merged"
+
+    # Validate order
+    if order not in ("asc", "desc"):
+        order = "desc"
+
+    rows = dashboard_service.get_team_breakdown(request.team, start_date, end_date, sort_by=sort, order=order)
     return TemplateResponse(
         request,
         "metrics/partials/team_breakdown_table.html",
         {
             "rows": rows,
+            "sort": sort,
+            "order": order,
+            "days": days,
         },
     )
 

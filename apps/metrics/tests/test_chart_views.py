@@ -547,6 +547,78 @@ class TestTeamBreakdownTable(TestCase):
             self.assertIn("avg_cycle_time", rows[0])
             self.assertIn("ai_pct", rows[0])
 
+    def test_team_breakdown_table_accepts_sort_param(self):
+        """Test that team_breakdown_table accepts sort query parameter."""
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(reverse("metrics:table_breakdown"), {"sort": "cycle_time"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("rows", response.context)
+        # Verify sort param is in context
+        self.assertIn("sort", response.context)
+        self.assertEqual(response.context["sort"], "cycle_time")
+
+    def test_team_breakdown_table_accepts_order_param(self):
+        """Test that team_breakdown_table accepts order query parameter."""
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(reverse("metrics:table_breakdown"), {"order": "asc"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("rows", response.context)
+        # Verify order param is in context
+        self.assertIn("order", response.context)
+        self.assertEqual(response.context["order"], "asc")
+
+    def test_team_breakdown_table_default_sort_is_prs_merged_desc(self):
+        """Test that team_breakdown_table defaults to sort=prs_merged order=desc."""
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(reverse("metrics:table_breakdown"))
+
+        self.assertEqual(response.status_code, 200)
+        # Verify default sort and order are in context
+        self.assertIn("sort", response.context)
+        self.assertIn("order", response.context)
+        self.assertEqual(response.context["sort"], "prs_merged")
+        self.assertEqual(response.context["order"], "desc")
+
+    def test_team_breakdown_table_context_includes_sort_and_order(self):
+        """Test that team_breakdown_table context includes sort and order for template use."""
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(reverse("metrics:table_breakdown"), {"sort": "ai_pct", "order": "asc"})
+
+        self.assertEqual(response.status_code, 200)
+        # Context should have both sort and order for rendering sort controls
+        self.assertIn("sort", response.context)
+        self.assertIn("order", response.context)
+        self.assertEqual(response.context["sort"], "ai_pct")
+        self.assertEqual(response.context["order"], "asc")
+
+    def test_team_breakdown_table_rejects_invalid_sort_field(self):
+        """Test that team_breakdown_table rejects invalid sort field and defaults to prs_merged."""
+        self.client.force_login(self.admin_user)
+
+        # Try to inject invalid sort field
+        response = self.client.get(reverse("metrics:table_breakdown"), {"sort": "invalid__field"})
+
+        self.assertEqual(response.status_code, 200)
+        # Should fall back to default sort
+        self.assertEqual(response.context["sort"], "prs_merged")
+
+    def test_team_breakdown_table_rejects_invalid_order(self):
+        """Test that team_breakdown_table rejects invalid order and defaults to desc."""
+        self.client.force_login(self.admin_user)
+
+        # Try to inject invalid order
+        response = self.client.get(reverse("metrics:table_breakdown"), {"order": "invalid"})
+
+        self.assertEqual(response.status_code, 200)
+        # Should fall back to default order
+        self.assertEqual(response.context["order"], "desc")
+
 
 class TestLeaderboardTable(TestCase):
     """Tests for leaderboard_table view (member-accessible)."""

@@ -175,3 +175,226 @@ class TestGetTeamBreakdown(TestCase):
             result = dashboard_service.get_team_breakdown(self.team, self.start_date, self.end_date)
 
         self.assertEqual(len(result), 10)
+
+    def test_get_team_breakdown_includes_member_id(self):
+        """Test that get_team_breakdown includes member_id in each row."""
+        member = TeamMemberFactory(team=self.team, display_name="Alice Smith")
+        PullRequestFactory(
+            team=self.team,
+            author=member,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 10, 12, 0)),
+        )
+
+        result = dashboard_service.get_team_breakdown(self.team, self.start_date, self.end_date)
+
+        self.assertGreater(len(result), 0)
+        member_data = next((m for m in result if m["member_name"] == "Alice Smith"), None)
+        self.assertIsNotNone(member_data)
+        self.assertIn("member_id", member_data)
+        self.assertEqual(member_data["member_id"], member.id)
+
+    def test_get_team_breakdown_default_sort_is_prs_merged_desc(self):
+        """Test that default sorting is by prs_merged descending (most active first)."""
+        # Create members with different PR counts
+        member_low = TeamMemberFactory(team=self.team, display_name="Low Activity")
+        member_high = TeamMemberFactory(team=self.team, display_name="High Activity")
+        member_mid = TeamMemberFactory(team=self.team, display_name="Mid Activity")
+
+        # Low: 2 PRs
+        for i in range(2):
+            PullRequestFactory(
+                team=self.team,
+                author=member_low,
+                state="merged",
+                merged_at=timezone.make_aware(timezone.datetime(2024, 1, 5 + i, 12, 0)),
+            )
+
+        # High: 10 PRs
+        for i in range(10):
+            PullRequestFactory(
+                team=self.team,
+                author=member_high,
+                state="merged",
+                merged_at=timezone.make_aware(timezone.datetime(2024, 1, 10 + i, 12, 0)),
+            )
+
+        # Mid: 5 PRs
+        for i in range(5):
+            PullRequestFactory(
+                team=self.team,
+                author=member_mid,
+                state="merged",
+                merged_at=timezone.make_aware(timezone.datetime(2024, 1, 15 + i, 12, 0)),
+            )
+
+        result = dashboard_service.get_team_breakdown(self.team, self.start_date, self.end_date)
+
+        # Should be sorted by prs_merged descending: High (10), Mid (5), Low (2)
+        self.assertEqual(len(result), 3)
+        self.assertEqual(result[0]["member_name"], "High Activity")
+        self.assertEqual(result[0]["prs_merged"], 10)
+        self.assertEqual(result[1]["member_name"], "Mid Activity")
+        self.assertEqual(result[1]["prs_merged"], 5)
+        self.assertEqual(result[2]["member_name"], "Low Activity")
+        self.assertEqual(result[2]["prs_merged"], 2)
+
+    def test_get_team_breakdown_sort_by_cycle_time_asc(self):
+        """Test that sorting by cycle_time ascending works correctly."""
+        # Create members with different cycle times
+        member_slow = TeamMemberFactory(team=self.team, display_name="Slow Developer")
+        member_fast = TeamMemberFactory(team=self.team, display_name="Fast Developer")
+        member_medium = TeamMemberFactory(team=self.team, display_name="Medium Developer")
+
+        # Slow: avg 72 hours
+        PullRequestFactory(
+            team=self.team,
+            author=member_slow,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 10, 12, 0)),
+            cycle_time_hours=Decimal("72.00"),
+        )
+
+        # Fast: avg 12 hours
+        PullRequestFactory(
+            team=self.team,
+            author=member_fast,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 11, 12, 0)),
+            cycle_time_hours=Decimal("12.00"),
+        )
+
+        # Medium: avg 36 hours
+        PullRequestFactory(
+            team=self.team,
+            author=member_medium,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 12, 12, 0)),
+            cycle_time_hours=Decimal("36.00"),
+        )
+
+        result = dashboard_service.get_team_breakdown(
+            self.team, self.start_date, self.end_date, sort_by="cycle_time", order="asc"
+        )
+
+        # Should be sorted by cycle_time ascending: Fast (12), Medium (36), Slow (72)
+        self.assertEqual(len(result), 3)
+        self.assertEqual(result[0]["member_name"], "Fast Developer")
+        self.assertEqual(result[0]["avg_cycle_time"], Decimal("12.00"))
+        self.assertEqual(result[1]["member_name"], "Medium Developer")
+        self.assertEqual(result[1]["avg_cycle_time"], Decimal("36.00"))
+        self.assertEqual(result[2]["member_name"], "Slow Developer")
+        self.assertEqual(result[2]["avg_cycle_time"], Decimal("72.00"))
+
+    def test_get_team_breakdown_sort_by_name_asc(self):
+        """Test that sorting by name ascending works correctly (alphabetical)."""
+        # Create members with names that will sort differently
+        member_z = TeamMemberFactory(team=self.team, display_name="Zara Wilson")
+        member_a = TeamMemberFactory(team=self.team, display_name="Alice Anderson")
+        member_m = TeamMemberFactory(team=self.team, display_name="Mike Martinez")
+
+        # Give them all PRs
+        for member in [member_z, member_a, member_m]:
+            PullRequestFactory(
+                team=self.team,
+                author=member,
+                state="merged",
+                merged_at=timezone.make_aware(timezone.datetime(2024, 1, 10, 12, 0)),
+            )
+
+        result = dashboard_service.get_team_breakdown(
+            self.team, self.start_date, self.end_date, sort_by="name", order="asc"
+        )
+
+        # Should be sorted alphabetically: Alice, Mike, Zara
+        self.assertEqual(len(result), 3)
+        self.assertEqual(result[0]["member_name"], "Alice Anderson")
+        self.assertEqual(result[1]["member_name"], "Mike Martinez")
+        self.assertEqual(result[2]["member_name"], "Zara Wilson")
+
+    def test_get_team_breakdown_sort_by_ai_pct_desc(self):
+        """Test that sorting by ai_pct descending works correctly."""
+        # Create members with different AI percentages
+        member_low_ai = TeamMemberFactory(team=self.team, display_name="Low AI User")
+        member_high_ai = TeamMemberFactory(team=self.team, display_name="High AI User")
+        member_mid_ai = TeamMemberFactory(team=self.team, display_name="Mid AI User")
+
+        # Low AI: 1 out of 4 PRs = 25%
+        for i in range(4):
+            pr = PullRequestFactory(
+                team=self.team,
+                author=member_low_ai,
+                state="merged",
+                merged_at=timezone.make_aware(timezone.datetime(2024, 1, 5 + i, 12, 0)),
+            )
+            PRSurveyFactory(team=self.team, pull_request=pr, author_ai_assisted=(i == 0))
+
+        # High AI: 4 out of 4 PRs = 100%
+        for i in range(4):
+            pr = PullRequestFactory(
+                team=self.team,
+                author=member_high_ai,
+                state="merged",
+                merged_at=timezone.make_aware(timezone.datetime(2024, 1, 10 + i, 12, 0)),
+            )
+            PRSurveyFactory(team=self.team, pull_request=pr, author_ai_assisted=True)
+
+        # Mid AI: 2 out of 4 PRs = 50%
+        for i in range(4):
+            pr = PullRequestFactory(
+                team=self.team,
+                author=member_mid_ai,
+                state="merged",
+                merged_at=timezone.make_aware(timezone.datetime(2024, 1, 15 + i, 12, 0)),
+            )
+            PRSurveyFactory(team=self.team, pull_request=pr, author_ai_assisted=(i < 2))
+
+        result = dashboard_service.get_team_breakdown(
+            self.team, self.start_date, self.end_date, sort_by="ai_pct", order="desc"
+        )
+
+        # Should be sorted by ai_pct descending: High (100%), Mid (50%), Low (25%)
+        self.assertEqual(len(result), 3)
+        self.assertEqual(result[0]["member_name"], "High AI User")
+        self.assertAlmostEqual(float(result[0]["ai_pct"]), 100.0, places=1)
+        self.assertEqual(result[1]["member_name"], "Mid AI User")
+        self.assertAlmostEqual(float(result[1]["ai_pct"]), 50.0, places=1)
+        self.assertEqual(result[2]["member_name"], "Low AI User")
+        self.assertAlmostEqual(float(result[2]["ai_pct"]), 25.0, places=1)
+
+
+class TestAvatarUrlFromGithubId(TestCase):
+    """Tests for _avatar_url_from_github_id helper function."""
+
+    def test_avatar_url_with_numeric_id(self):
+        """Test that numeric GitHub ID produces /u/<id> format URL."""
+        from apps.metrics.services.dashboard_service import _avatar_url_from_github_id
+
+        result = _avatar_url_from_github_id("281715")
+
+        self.assertEqual(result, "https://avatars.githubusercontent.com/u/281715?s=80")
+
+    def test_avatar_url_with_username(self):
+        """Test that username produces /<username> format URL (no /u/)."""
+        from apps.metrics.services.dashboard_service import _avatar_url_from_github_id
+
+        result = _avatar_url_from_github_id("birkjernstrom")
+
+        # Username should not have /u/ prefix
+        self.assertEqual(result, "https://avatars.githubusercontent.com/birkjernstrom?s=80")
+
+    def test_avatar_url_with_none(self):
+        """Test that None returns empty string."""
+        from apps.metrics.services.dashboard_service import _avatar_url_from_github_id
+
+        result = _avatar_url_from_github_id(None)
+
+        self.assertEqual(result, "")
+
+    def test_avatar_url_with_empty_string(self):
+        """Test that empty string returns empty string."""
+        from apps.metrics.services.dashboard_service import _avatar_url_from_github_id
+
+        result = _avatar_url_from_github_id("")
+
+        self.assertEqual(result, "")
