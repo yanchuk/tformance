@@ -1198,3 +1198,353 @@ class TestGitHubGraphQLFetcherRateLimitMonitoring(TestCase):
         mock_github.get_repo.assert_not_called()  # Repo cache not accessed
         self.assertEqual(len(pr1.check_runs), 0)
         self.assertEqual(len(pr2.check_runs), 0)
+
+
+class TestGitHubGraphQLFetcherIncrementalSync(TestCase):
+    """Tests for incremental PR sync (Phase 3.3).
+
+    When cache exists but repo has changed, fetch only updated PRs
+    and merge with cached PRs instead of re-fetching everything.
+    """
+
+    def _create_pr(self, number: int, updated_at: datetime) -> FetchedPRFull:
+        """Helper to create a PR for testing."""
+        return FetchedPRFull(
+            github_pr_id=number,
+            number=number,
+            github_repo="owner/repo",
+            title=f"PR #{number}",
+            body=None,
+            state="merged",
+            is_merged=True,
+            is_draft=False,
+            created_at=datetime(2025, 1, 1, tzinfo=UTC),
+            updated_at=updated_at,
+            merged_at=datetime(2025, 1, 2, tzinfo=UTC),
+            closed_at=None,
+            additions=10,
+            deletions=5,
+            changed_files=1,
+            commits_count=1,
+            author_login="testuser",
+            author_id=0,
+            author_name=None,
+            author_avatar_url=None,
+            head_ref="feature",
+            base_ref="main",
+            labels=[],
+            jira_key_from_title=None,
+            jira_key_from_branch=None,
+            reviews=[],
+            commits=[],
+            files=[],
+            check_runs=[],
+        )
+
+    @patch("apps.metrics.seeding.github_graphql_fetcher.GitHubGraphQLClient")
+    def test_merge_prs_replaces_updated_prs(self, mock_client_class):
+        """Test that _merge_prs replaces PRs with same number from updates."""
+        # Arrange
+        fetcher = GitHubGraphQLFetcher(token="ghp_test_token")
+
+        old_pr1 = self._create_pr(1, datetime(2025, 1, 1, tzinfo=UTC))
+        old_pr1.title = "Old PR #1"
+        old_pr2 = self._create_pr(2, datetime(2025, 1, 1, tzinfo=UTC))
+        old_pr2.title = "Old PR #2"
+        cached_prs = [old_pr1, old_pr2]
+
+        updated_pr1 = self._create_pr(1, datetime(2025, 1, 10, tzinfo=UTC))
+        updated_pr1.title = "Updated PR #1"
+        updated_prs = [updated_pr1]
+
+        # Act
+        merged = fetcher._merge_prs(cached_prs, updated_prs)
+
+        # Assert
+        self.assertEqual(len(merged), 2)
+        # PR #1 should be updated
+        pr1 = next(pr for pr in merged if pr.number == 1)
+        self.assertEqual(pr1.title, "Updated PR #1")
+        # PR #2 should be unchanged
+        pr2 = next(pr for pr in merged if pr.number == 2)
+        self.assertEqual(pr2.title, "Old PR #2")
+
+    @patch("apps.metrics.seeding.github_graphql_fetcher.GitHubGraphQLClient")
+    def test_merge_prs_adds_new_prs(self, mock_client_class):
+        """Test that _merge_prs adds new PRs that weren't in cache."""
+        # Arrange
+        fetcher = GitHubGraphQLFetcher(token="ghp_test_token")
+
+        old_pr1 = self._create_pr(1, datetime(2025, 1, 1, tzinfo=UTC))
+        cached_prs = [old_pr1]
+
+        new_pr2 = self._create_pr(2, datetime(2025, 1, 10, tzinfo=UTC))
+        new_pr2.title = "New PR #2"
+        updated_prs = [new_pr2]
+
+        # Act
+        merged = fetcher._merge_prs(cached_prs, updated_prs)
+
+        # Assert
+        self.assertEqual(len(merged), 2)
+        self.assertTrue(any(pr.number == 1 for pr in merged))
+        self.assertTrue(any(pr.number == 2 for pr in merged))
+
+    @patch("apps.metrics.seeding.github_graphql_fetcher.GitHubGraphQLClient")
+    def test_merge_prs_sorts_by_updated_at_desc(self, mock_client_class):
+        """Test that merged PRs are sorted by updated_at descending."""
+        # Arrange
+        fetcher = GitHubGraphQLFetcher(token="ghp_test_token")
+
+        pr1 = self._create_pr(1, datetime(2025, 1, 5, tzinfo=UTC))
+        pr2 = self._create_pr(2, datetime(2025, 1, 10, tzinfo=UTC))
+        pr3 = self._create_pr(3, datetime(2025, 1, 1, tzinfo=UTC))
+        cached_prs = [pr1, pr2, pr3]
+
+        # Act
+        merged = fetcher._merge_prs(cached_prs, [])
+
+        # Assert - should be sorted by updated_at DESC
+        self.assertEqual(merged[0].number, 2)  # Jan 10
+        self.assertEqual(merged[1].number, 1)  # Jan 5
+        self.assertEqual(merged[2].number, 3)  # Jan 1
+
+    @patch("apps.metrics.seeding.github_graphql_fetcher.GitHubGraphQLClient")
+    def test_fetch_updated_prs_async_uses_client_method(self, mock_client_class):
+        """Test that _fetch_updated_prs_async uses fetch_prs_updated_since."""
+        import asyncio
+        from unittest.mock import AsyncMock
+
+        # Arrange
+        mock_client = mock_client_class.return_value
+        mock_client.fetch_prs_updated_since = AsyncMock(
+            return_value={
+                "repository": {
+                    "pullRequests": {
+                        "nodes": [
+                            {
+                                "number": 1,
+                                "title": "Updated PR",
+                                "body": None,
+                                "state": "MERGED",
+                                "createdAt": "2025-01-01T00:00:00Z",
+                                "updatedAt": "2025-01-10T00:00:00Z",
+                                "mergedAt": "2025-01-02T00:00:00Z",
+                                "additions": 10,
+                                "deletions": 5,
+                                "isDraft": False,
+                                "author": {"login": "testuser"},
+                                "headRefName": "feature",
+                                "baseRefName": "main",
+                                "labels": {"nodes": []},
+                                "milestone": None,
+                                "assignees": {"nodes": []},
+                                "closingIssuesReferences": {"nodes": []},
+                                "reviews": {"nodes": []},
+                                "commits": {"nodes": []},
+                                "files": {"nodes": []},
+                            }
+                        ],
+                        "pageInfo": {"hasNextPage": False, "endCursor": None},
+                    }
+                },
+                "rateLimit": {"remaining": 4500},
+            }
+        )
+
+        fetcher = GitHubGraphQLFetcher(token="ghp_test_token")
+        since = datetime(2025, 1, 5, tzinfo=UTC)
+
+        # Act
+        prs = asyncio.run(fetcher._fetch_updated_prs_async("owner/repo", since))
+
+        # Assert
+        mock_client.fetch_prs_updated_since.assert_called_once_with("owner", "repo", since, None)
+        self.assertEqual(len(prs), 1)
+        self.assertEqual(prs[0].number, 1)
+        self.assertEqual(prs[0].title, "Updated PR")
+
+    @patch("apps.metrics.seeding.github_graphql_fetcher.GitHubGraphQLClient")
+    def test_fetch_updated_prs_async_stops_at_old_prs(self, mock_client_class):
+        """Test that _fetch_updated_prs_async stops when PRs are older than since."""
+        import asyncio
+        from unittest.mock import AsyncMock
+
+        # Arrange
+        mock_client = mock_client_class.return_value
+
+        # Return PRs where second one is older than `since`
+        mock_client.fetch_prs_updated_since = AsyncMock(
+            return_value={
+                "repository": {
+                    "pullRequests": {
+                        "nodes": [
+                            {
+                                "number": 1,
+                                "title": "New PR",
+                                "body": None,
+                                "state": "OPEN",
+                                "createdAt": "2025-01-01T00:00:00Z",
+                                "updatedAt": "2025-01-10T00:00:00Z",  # After since
+                                "mergedAt": None,
+                                "additions": 10,
+                                "deletions": 5,
+                                "isDraft": False,
+                                "author": {"login": "testuser"},
+                                "headRefName": "feature",
+                                "baseRefName": "main",
+                                "labels": {"nodes": []},
+                                "milestone": None,
+                                "assignees": {"nodes": []},
+                                "closingIssuesReferences": {"nodes": []},
+                                "reviews": {"nodes": []},
+                                "commits": {"nodes": []},
+                                "files": {"nodes": []},
+                            },
+                            {
+                                "number": 2,
+                                "title": "Old PR",
+                                "body": None,
+                                "state": "MERGED",
+                                "createdAt": "2024-12-01T00:00:00Z",
+                                "updatedAt": "2025-01-01T00:00:00Z",  # Before since (Jan 5)
+                                "mergedAt": "2024-12-15T00:00:00Z",
+                                "additions": 5,
+                                "deletions": 2,
+                                "isDraft": False,
+                                "author": {"login": "testuser"},
+                                "headRefName": "old-feature",
+                                "baseRefName": "main",
+                                "labels": {"nodes": []},
+                                "milestone": None,
+                                "assignees": {"nodes": []},
+                                "closingIssuesReferences": {"nodes": []},
+                                "reviews": {"nodes": []},
+                                "commits": {"nodes": []},
+                                "files": {"nodes": []},
+                            },
+                        ],
+                        "pageInfo": {"hasNextPage": True, "endCursor": "cursor123"},
+                    }
+                },
+                "rateLimit": {"remaining": 4500},
+            }
+        )
+
+        fetcher = GitHubGraphQLFetcher(token="ghp_test_token")
+        since = datetime(2025, 1, 5, tzinfo=UTC)
+
+        # Act
+        prs = asyncio.run(fetcher._fetch_updated_prs_async("owner/repo", since))
+
+        # Assert - should only return PRs updated after `since`
+        self.assertEqual(len(prs), 1)
+        self.assertEqual(prs[0].number, 1)
+        # Should not call for next page since we found an old PR
+        self.assertEqual(mock_client.fetch_prs_updated_since.call_count, 1)
+
+    @patch("apps.metrics.seeding.github_graphql_fetcher.PRCache")
+    @patch("apps.metrics.seeding.github_graphql_fetcher.GitHubGraphQLClient")
+    def test_fetch_prs_with_details_uses_incremental_sync_when_cache_stale(self, mock_client_class, mock_cache_class):
+        """Test that fetch_prs_with_details uses incremental sync when cache is stale."""
+        from unittest.mock import AsyncMock
+
+        # Arrange
+        mock_client = mock_client_class.return_value
+
+        # Setup stale cache (exists but repo has changed)
+        cache_fetched_at = datetime(2025, 1, 5, 12, 0, 0, tzinfo=UTC)
+
+        # Create a proper serialized cached PR
+        cached_pr_serialized = {
+            "github_pr_id": 1,
+            "number": 1,
+            "github_repo": "owner/repo",
+            "title": "Cached PR #1",
+            "body": None,
+            "state": "merged",
+            "is_merged": True,
+            "is_draft": False,
+            "created_at": "2025-01-01T00:00:00+00:00",
+            "updated_at": "2025-01-03T00:00:00+00:00",
+            "merged_at": "2025-01-02T00:00:00+00:00",
+            "closed_at": None,
+            "additions": 10,
+            "deletions": 5,
+            "changed_files": 1,
+            "commits_count": 1,
+            "author_login": "testuser",
+            "author_id": 0,
+            "author_name": None,
+            "author_avatar_url": None,
+            "head_ref": "feature",
+            "base_ref": "main",
+            "labels": [],
+            "jira_key_from_title": None,
+            "jira_key_from_branch": None,
+            "reviews": [],
+            "commits": [],
+            "files": [],
+            "check_runs": [],
+            "milestone_title": None,
+            "assignees": [],
+            "linked_issues": [],
+        }
+
+        mock_cache = Mock()
+        mock_cache.fetched_at = cache_fetched_at
+        mock_cache.prs = [cached_pr_serialized]
+        mock_cache.is_valid.return_value = False  # Cache is stale
+        mock_cache_class.load.return_value = mock_cache
+
+        # Mock repo metadata (repo was pushed to after cache was created)
+        mock_client.fetch_repo_metadata = AsyncMock(return_value={"repository": {"pushedAt": "2025-01-10T00:00:00Z"}})
+
+        # Mock incremental fetch - returns one updated PR
+        updated_pr_node = {
+            "number": 1,
+            "title": "Updated PR #1",
+            "body": None,
+            "state": "MERGED",
+            "createdAt": "2025-01-01T00:00:00Z",
+            "updatedAt": "2025-01-08T00:00:00Z",  # After cache.fetched_at
+            "mergedAt": "2025-01-07T00:00:00Z",
+            "additions": 15,
+            "deletions": 8,
+            "isDraft": False,
+            "author": {"login": "testuser"},
+            "headRefName": "feature",
+            "baseRefName": "main",
+            "labels": {"nodes": []},
+            "milestone": None,
+            "assignees": {"nodes": []},
+            "closingIssuesReferences": {"nodes": []},
+            "reviews": {"nodes": []},
+            "commits": {"nodes": []},
+            "files": {"nodes": []},
+        }
+        mock_client.fetch_prs_updated_since = AsyncMock(
+            return_value={
+                "repository": {
+                    "pullRequests": {
+                        "nodes": [updated_pr_node],
+                        "pageInfo": {"hasNextPage": False, "endCursor": None},
+                    }
+                },
+                "rateLimit": {"remaining": 4500},
+            }
+        )
+
+        fetcher = GitHubGraphQLFetcher(token="ghp_test_token", use_cache=True)
+
+        # Act
+        since = datetime(2025, 1, 1, tzinfo=UTC)
+        prs = fetcher.fetch_prs_with_details("owner/repo", since, max_prs=100)
+
+        # Assert - should use incremental sync
+        mock_client.fetch_prs_updated_since.assert_called_once()
+        # Should save merged result to cache
+        mock_cache_class.assert_called()  # New cache created
+        # Result should have the updated PR
+        self.assertEqual(len(prs), 1)
+        self.assertEqual(prs[0].title, "Updated PR #1")

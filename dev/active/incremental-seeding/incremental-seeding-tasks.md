@@ -1,6 +1,6 @@
 # Incremental Seeding Tasks
 
-**Last Updated:** 2025-12-24 (Phase 3.0-3.2 Complete, 3.3-3.4 Pending)
+**Last Updated:** 2025-12-24 (Phase 3 Complete)
 
 ## Phase 1: Stability ✅ COMPLETE (Commit: a1bff2d)
 
@@ -65,15 +65,16 @@
 - [x] Show remaining points in console output
 - [x] Add 5 TDD tests for rate limit monitoring
 
-### 3.3 Incremental PR Sync (PLANNED)
-- [ ] Use `FETCH_PRS_UPDATED_QUERY` for incremental fetches
-- [ ] Merge new/updated PRs with cached PRs
-- [ ] Track PR `updated_at` for merge logic
+### 3.3 Incremental PR Sync ✅ COMPLETE
+- [x] Add `_fetch_updated_prs_async()` method using `FETCH_PRS_UPDATED_QUERY`
+- [x] Add `_merge_prs()` method to merge cached and updated PRs
+- [x] Update `fetch_prs_with_details()` to use incremental sync when cache is stale
+- [x] PRs merged by number, sorted by updated_at DESC
+- [x] Add 6 TDD tests for incremental sync
 
-### 3.4 Exponential Backoff with Jitter (PLANNED)
+### 3.4 Exponential Backoff with Jitter (DEFERRED)
 - [ ] Add random jitter to retry delays
-- [ ] Implement configurable max retry attempts
-- [ ] Add retry logging
+- [ ] ~~Not needed for single-user seeding - thundering herd isn't a problem~~
 
 ## Phase 4: Production Alignment (PLANNED)
 
@@ -103,16 +104,16 @@
 - [x] Linked issues stored in PullRequest model
 - [x] 43 tests passing (32 Phase 1 + 11 Phase 2)
 
-### Phase 3 (3.0-3.2 Complete)
+### Phase 3 ✅ COMPLETE
 - [x] Check runs fetched sequentially (not parallel) - Commit `3f1f928`
 - [x] Repo metadata query costs ~1 point - Commit `3f1f928`
 - [x] Cache uses `repo_pushed_at` for change detection - Commit `3f1f928`
 - [x] Old cache files without `repo_pushed_at` still load - Commit `3f1f928`
 - [x] Rate limit warnings logged when low - Commit `7e5094e`
 - [x] Check runs skipped when rate limit too low - Commit `7e5094e`
-- [x] **56 tests passing** (25 PRCache + 31 GitHubGraphQLFetcher)
-- [ ] Incremental sync only fetches updated PRs (Phase 3.3)
-- [ ] Exponential backoff with jitter (Phase 3.4)
+- [x] Incremental sync fetches only updated PRs and merges with cache
+- [x] **62 tests passing** (25 PRCache + 37 GitHubGraphQLFetcher)
+- [~] Exponential backoff with jitter - deferred (not needed for single-user)
 
 ## Test Commands
 

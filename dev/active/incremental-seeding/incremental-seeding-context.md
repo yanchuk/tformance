@@ -1,6 +1,6 @@
 # Incremental Seeding Context
 
-**Last Updated:** 2025-12-24 (Phase 3.0-3.2 Complete, 3.3-3.4 Pending)
+**Last Updated:** 2025-12-24 (Phase 3 Complete - Ready to Commit)
 
 ## Strategic Vision
 
@@ -11,7 +11,7 @@
 1. **Sequential requests** - "Make requests serially instead of concurrently" to avoid secondary rate limits
 2. **Conditional requests** - Check if data changed before re-fetching
 3. **Rate limit awareness** - Monitor `x-ratelimit-remaining`, pause if low
-4. **Exponential backoff** - With jitter on retries
+4. **Exponential backoff** - With jitter on retries (deferred - not needed for single-user)
 
 Sources:
 - [GitHub REST API Best Practices](https://docs.github.com/en/rest/using-the-rest-api/best-practices-for-using-the-rest-api)
@@ -65,87 +65,79 @@ Sources:
 6. **TDD Tests** (`apps/metrics/tests/test_github_graphql_fetcher.py`)
    - 11 new tests in `TestGitHubGraphQLFetcherMapPR`
 
-### 🔄 Phase 3: GitHub API Best Practices (IN PROGRESS)
+### ✅ Phase 3: GitHub API Best Practices (COMPLETE) - UNCOMMITTED
 
-**This Session's Work:**
-
-#### 3.0 Fix Parallel Check Runs ✅
+#### 3.0 Fix Parallel Check Runs ✅ (Commit `3f1f928`)
 - Removed `ThreadPoolExecutor` from `_add_check_runs_to_prs()`
 - Requests now made sequentially per GitHub guidelines
 - Added docstring with reference to GitHub best practices
-- Files changed:
-  - `apps/metrics/seeding/github_graphql_fetcher.py` (lines 376-410)
-  - `apps/metrics/tests/test_github_graphql_fetcher.py` (test updates)
 
-#### 3.1 Repository Change Detection ✅
+#### 3.1 Repository Change Detection ✅ (Commit `3f1f928`)
 - Added lightweight `FETCH_REPO_METADATA_QUERY` (~1 point)
 - Added `fetch_repo_metadata()` method to `GitHubGraphQLClient`
 - Extended `PRCache` with `repo_pushed_at` field
 - Updated `is_valid()` to check if repo has changed
 - Cache now skipped if repo was pushed to since last fetch
-- Files changed:
-  - `apps/integrations/services/github_graphql.py` (lines 315-330, 663-702)
-  - `apps/metrics/seeding/pr_cache.py` (lines 35, 56-58, 84-95, 97-121)
-  - `apps/metrics/seeding/github_graphql_fetcher.py` (lines 433-466, 470-493)
-  - `apps/metrics/tests/test_pr_cache.py` (lines 330-462, 7 new tests)
 
-#### 3.2 Rate Limit Monitoring ✅
+#### 3.2 Rate Limit Monitoring ✅ (Commit `7e5094e`)
 - Added `_check_rest_rate_limit()` method to `GitHubGraphQLFetcher`
 - Checks REST API rate limit before fetching check runs
 - Logs warning when remaining points are low (<100)
 - Skips check runs fetch if not enough points remaining
-- Shows remaining points in console output
-- Files changed:
-  - `apps/metrics/seeding/github_graphql_fetcher.py` (lines 112-139, 422-435)
-  - `apps/metrics/tests/test_github_graphql_fetcher.py` (5 new tests)
 
-## Key Files Modified This Session
+#### 3.3 Incremental PR Sync ✅ (UNCOMMITTED - This Session)
+- Added `_fetch_updated_prs_async()` method using `FETCH_PRS_UPDATED_QUERY`
+- Added `_merge_prs()` method to merge cached and updated PRs by number
+- Updated `fetch_prs_with_details()` to use incremental sync when cache is stale
+- PRs merged by number, sorted by `updated_at` DESC
+- 6 new TDD tests in `TestGitHubGraphQLFetcherIncrementalSync`
 
-| File | Lines | Changes |
-|------|-------|---------|
-| `apps/integrations/services/github_graphql.py` | 315-330, 663-702 | Added FETCH_REPO_METADATA_QUERY and fetch_repo_metadata() |
-| `apps/metrics/seeding/pr_cache.py` | 35, 56-58, 84-95, 97-121 | Added repo_pushed_at field, updated is_valid() |
-| `apps/metrics/seeding/github_graphql_fetcher.py` | 376-410, 433-493 | Sequential check runs, repo change detection |
-| `apps/metrics/tests/test_pr_cache.py` | 330-462 | 7 new tests for repo_pushed_at |
-| `apps/metrics/tests/test_github_graphql_fetcher.py` | 451, 525, 666-744 | Updated tests for sequential behavior |
+#### 3.4 Exponential Backoff with Jitter (DEFERRED)
+- Not needed for single-user seeding - thundering herd isn't a problem
 
-## Decisions Made This Session
+## This Session's Work (Phase 3.3)
 
-1. **Sequential over parallel** - GitHub explicitly says "make requests serially" for REST
-2. **repo_pushed_at for change detection** - Cheaper than ETags, works with GraphQL
-3. **Backward compatible cache** - Old cache files without repo_pushed_at still load
+### Files Modified
 
-## Commands for Next Session
+| File | Changes |
+|------|---------|
+| `apps/metrics/seeding/github_graphql_fetcher.py` | +119 lines: `_fetch_updated_prs_async()`, `_merge_prs()`, updated `fetch_prs_with_details()` |
+| `apps/metrics/tests/test_github_graphql_fetcher.py` | +350 lines: 6 new tests in `TestGitHubGraphQLFetcherIncrementalSync` |
+| `dev/active/incremental-seeding/*.md` | Documentation updates |
 
-```bash
-# Verify tests pass
-.venv/bin/pytest apps/metrics/tests/test_pr_cache.py apps/metrics/tests/test_github_graphql_fetcher.py -v
+### Key Methods Added
 
-# Test seeding with repo change detection
-python manage.py seed_real_projects --project antiwork --max-prs 10
-# (first run fetches, second run should use cache if repo unchanged)
+1. **`_fetch_updated_prs_async(repo, since)`** (lines 537-591)
+   - Fetches PRs updated since a datetime using `FETCH_PRS_UPDATED_QUERY`
+   - Stops pagination when encountering PRs older than `since`
 
-# Check uncommitted changes
-git status --short
+2. **`_merge_prs(cached_prs, updated_prs)`** (lines 593-615)
+   - Merges updated PRs with cached PRs by PR number
+   - Replaces cached PRs with updated versions
+   - Adds new PRs not in cache
+   - Sorts by `updated_at` DESC
+
+3. **Updated `fetch_prs_with_details()`** (lines 491-525)
+   - Detects stale cache (repo pushed to since cache created)
+   - Fetches only updated PRs since `cache.fetched_at`
+   - Merges with cached PRs
+   - Saves merged result to new cache
+
+### Incremental Sync Flow
+```
+1. Load cache → cache exists but is_valid() returns False
+2. Detect: repo_pushed_at > cache.repo_pushed_at (repo changed)
+3. Fetch only PRs updated since cache.fetched_at
+4. Merge: {cached_pr.number: cached_pr} | {updated_pr.number: updated_pr}
+5. Sort by updated_at DESC
+6. Save merged PRs to new cache
 ```
 
 ## Test Count
 
 - PRCache: 25 tests
-- GitHubGraphQLFetcher: 31 tests (26 existing + 5 rate limit)
-- **Total: 56 tests passing**
-
-## Next Steps (Remaining Phase 3)
-
-1. ~~**Rate Limit Monitoring**~~ ✅ - Checks REST API limit, skips if low
-2. **Incremental PR Sync** - Fetch only updated PRs using FETCH_PRS_UPDATED_QUERY
-3. **Exponential Backoff with Jitter** - Add random jitter to retry delays
-
-## Blockers / Issues
-
-- GitHub API rate limits hit during testing (403 on REST check runs endpoint)
-- Seeding works for GraphQL PR fetch, but REST fallback for check runs can fail
-- Consider: Make check runs fetch optional or use GraphQL for those too
+- GitHubGraphQLFetcher: 37 tests (31 existing + 6 incremental sync)
+- **Total: 62 tests passing**
 
 ## Session Commits
 
@@ -153,43 +145,33 @@ git status --short
 |--------|-------------|
 | `3f1f928` | Phase 3.0 (sequential check runs) + Phase 3.1 (repo change detection) |
 | `7e5094e` | Phase 3.2 (REST API rate limit monitoring) |
+| PENDING | Phase 3.3 (incremental PR sync) - ready to commit |
 
-## Handoff Notes for Next Session
+## Handoff Notes
 
 ### Current State
-- **All Phase 3.0-3.2 complete and committed**
-- **56 tests passing** (25 PRCache + 31 GitHubGraphQLFetcher)
-- No uncommitted changes for this feature (other files have unrelated changes)
+- **Phase 3 complete** (3.3 uncommitted, ready to commit)
+- **62 tests passing**
+- No migrations needed (seeding utilities only)
 
-### Next Task: Phase 3.3 Incremental PR Sync
+### Uncommitted Changes Ready for Commit
+```bash
+git -C /Users/yanchuk/Documents/GitHub/tformance add \
+  apps/metrics/seeding/github_graphql_fetcher.py \
+  apps/metrics/tests/test_github_graphql_fetcher.py \
+  dev/active/incremental-seeding/
 
-**Goal:** Instead of re-fetching all PRs when cache is invalid, fetch only updated PRs and merge with cache.
+git -C /Users/yanchuk/Documents/GitHub/tformance commit -m "Add incremental PR sync for seeding (Phase 3.3)
 
-**Implementation Plan:**
-1. Add `_fetch_updated_prs_async()` method using `FETCH_PRS_UPDATED_QUERY`
-2. Update `fetch_prs_with_details()` to:
-   - If cache exists but repo changed → fetch only updated PRs since `cache.fetched_at`
-   - Merge updated PRs into cached PRs (by PR number)
-   - Save merged result to cache
-3. Track `updated_at` in PRCache for merge logic
+Implements incremental sync when cache is stale instead of full re-fetch:
+- _fetch_updated_prs_async() fetches only PRs updated since cache.fetched_at
+- _merge_prs() merges updated PRs with cached PRs by number
+- fetch_prs_with_details() uses incremental sync when cache exists but is stale
 
-**Key Files:**
-- `apps/metrics/seeding/github_graphql_fetcher.py` - Add incremental fetch method
-- `apps/metrics/seeding/pr_cache.py` - May need to track last_updated
-- `apps/integrations/services/github_graphql.py` - Already has `FETCH_PRS_UPDATED_QUERY`
+Benefits: Faster re-seeding when repo has few updates, reduced API calls.
 
-**Existing Query (already available):**
-```python
-# In github_graphql.py line 114
-FETCH_PRS_UPDATED_QUERY = gql("""
-    query($owner: String!, $repo: String!, $cursor: String) {
-      repository(owner: $owner, name: $repo) {
-        pullRequests(first: 25, after: $cursor, orderBy: {field: UPDATED_AT, direction: DESC}) {
-          # ... includes updatedAt field
-        }
-      }
-    }
-""")
+Tests: 6 new TDD tests in TestGitHubGraphQLFetcherIncrementalSync
+All 62 tests passing (25 PRCache + 37 GitHubGraphQLFetcher)"
 ```
 
 ### Verification Commands
@@ -200,10 +182,15 @@ FETCH_PRS_UPDATED_QUERY = gql("""
 # Check git status
 git status --short
 
-# Test seeding
+# Test seeding with incremental sync
 python manage.py seed_real_projects --project antiwork --max-prs 10
+# (run twice - second run should use incremental sync if repo has updates)
 ```
 
 ### No Migrations Needed
-- No model changes in this phase
+- No model changes in Phase 3
 - All changes are to seeding utilities (not production models)
+
+### Next Steps (Phase 4+)
+- Phase 4: Apply improvements to production Celery sync tasks
+- Phase 5: Analytics (filter by label, milestone tracking, assignee workload)

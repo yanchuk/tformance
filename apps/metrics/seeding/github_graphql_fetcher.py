@@ -478,6 +478,7 @@ class GitHubGraphQLFetcher:
             repo_pushed_at = asyncio.run(self._fetch_repo_pushed_at(repo_full_name))
 
         # Try to load from cache (with repo change detection)
+        cache = None
         if self.use_cache:
             cache = PRCache.load(repo_full_name, self.cache_dir)
             if cache and cache.is_valid(since_date, repo_pushed_at=repo_pushed_at):
@@ -488,10 +489,42 @@ class GitHubGraphQLFetcher:
                 logger.info(f"Loaded {len(prs)} PRs from cache for {repo_full_name} (repo unchanged)")
                 return prs
             elif cache:
-                print("  🔄 Repo has changed since cache, re-fetching...")
-                logger.info(f"Cache invalidated for {repo_full_name} - repo was pushed to")
+                # Cache exists but is stale - use incremental sync
+                print(f"  🔄 Repo has changed since cache, fetching updates since {cache.fetched_at.date()}...")
+                logger.info(f"Cache stale for {repo_full_name} - using incremental sync")
 
-        # Fetch from GitHub
+                # Fetch only PRs updated since cache was created
+                updated_prs = asyncio.run(self._fetch_updated_prs_async(repo_full_name, cache.fetched_at))
+
+                if updated_prs:
+                    # Merge with cached PRs
+                    cached_prs = self._deserialize_prs(cache.prs)
+                    prs = self._merge_prs(cached_prs, updated_prs)
+                    print(f"  ✅ Merged {len(updated_prs)} updated PRs with {len(cached_prs)} cached PRs")
+                    logger.info(f"Merged {len(updated_prs)} updated PRs with {len(cached_prs)} cached")
+                else:
+                    # No updates - use cached PRs
+                    prs = self._deserialize_prs(cache.prs)
+                    print(f"  📦 No updates found, using {len(prs)} cached PRs")
+                    logger.info(f"No updated PRs found for {repo_full_name}, using cache")
+
+                # Limit to max_prs
+                prs = prs[:max_prs]
+
+                # Save merged result to cache
+                new_cache = PRCache(
+                    repo=repo_full_name,
+                    fetched_at=datetime.now(UTC),
+                    since_date=since_date,
+                    prs=self._serialize_prs(prs),
+                    repo_pushed_at=repo_pushed_at,
+                )
+                new_cache.save(self.cache_dir)
+                print(f"  💾 Saved {len(prs)} PRs to cache")
+                logger.info(f"Saved merged {len(prs)} PRs to cache for {repo_full_name}")
+                return prs
+
+        # No cache - fetch from GitHub
         prs = asyncio.run(self._fetch_prs_async(repo_full_name, since, max_prs))
 
         # Save to cache (with repo_pushed_at for future validation)
@@ -533,6 +566,86 @@ class GitHubGraphQLFetcher:
         except Exception as e:
             logger.debug(f"Failed to fetch repo metadata for {repo_full_name}: {e}")
             return None
+
+    async def _fetch_updated_prs_async(
+        self,
+        repo_full_name: str,
+        since: datetime,
+    ) -> list[FetchedPRFull]:
+        """Fetch PRs updated since a given datetime (async).
+
+        Uses FETCH_PRS_UPDATED_QUERY ordered by UPDATED_AT DESC.
+        Stops when encountering PRs older than `since`.
+
+        Args:
+            repo_full_name: Repository in "owner/repo" format
+            since: Only fetch PRs updated after this datetime
+
+        Returns:
+            List of FetchedPRFull objects updated since `since`
+        """
+        owner, repo = repo_full_name.split("/")
+        prs: list[FetchedPRFull] = []
+        cursor = None
+
+        logger.info(f"GraphQL: Fetching updated PRs from {repo_full_name} since {since}")
+
+        while True:
+            try:
+                result = await self._client.fetch_prs_updated_since(owner, repo, since, cursor)
+                self.api_calls_made += 1
+            except GitHubGraphQLRateLimitError as e:
+                logger.warning(f"Rate limit hit: {e}")
+                break
+            except Exception as e:
+                logger.error(f"GraphQL error fetching updated PRs: {e}")
+                break
+
+            pr_data = result.get("repository", {}).get("pullRequests", {})
+            nodes = pr_data.get("nodes") or []
+
+            for node in nodes:
+                pr = self._map_pr(node, repo_full_name)
+
+                # PRs are ordered by updated_at DESC, so stop when we see old PRs
+                if pr.updated_at < since:
+                    logger.debug(f"Reached PRs older than {since}, stopping")
+                    return prs
+
+                prs.append(pr)
+
+            # Check pagination
+            page_info = pr_data.get("pageInfo", {})
+            if not page_info.get("hasNextPage"):
+                break
+            cursor = page_info.get("endCursor")
+
+        logger.info(f"GraphQL: Fetched {len(prs)} updated PRs from {repo_full_name}")
+        return prs
+
+    def _merge_prs(self, cached_prs: list[FetchedPRFull], updated_prs: list[FetchedPRFull]) -> list[FetchedPRFull]:
+        """Merge updated PRs with cached PRs for incremental sync.
+
+        - Replaces cached PRs with updated ones (by PR number)
+        - Adds new PRs that weren't in cache
+        - Sorts by updated_at DESC (most recent first)
+
+        Args:
+            cached_prs: PRs loaded from cache
+            updated_prs: Newly fetched PRs (updated since cache was created)
+
+        Returns:
+            Merged list of PRs sorted by updated_at descending
+        """
+        # Create dict of cached PRs by number
+        pr_dict = {pr.number: pr for pr in cached_prs}
+
+        # Update/add PRs from updates
+        for pr in updated_prs:
+            pr_dict[pr.number] = pr
+
+        # Sort by updated_at DESC
+        return sorted(pr_dict.values(), key=lambda pr: pr.updated_at, reverse=True)
 
     def _serialize_prs(self, prs: list[FetchedPRFull]) -> list[dict]:
         """Serialize FetchedPRFull objects to dicts for caching."""
