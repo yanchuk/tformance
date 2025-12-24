@@ -983,3 +983,86 @@ class TestFetchPRsUpdatedSince(TestCase):
         # Assert
         self.assertEqual(mock_session.execute.call_count, 2)
         self.assertIn("repository", result)
+
+
+class TestRateLimitWaitBehavior(TestCase):
+    """Tests for rate limit wait behavior in GitHubGraphQLClient."""
+
+    def test_client_has_wait_for_reset_parameter(self):
+        """Test that client accepts wait_for_reset parameter."""
+        # Act
+        client = GitHubGraphQLClient("token", wait_for_reset=True)
+
+        # Assert
+        self.assertTrue(client.wait_for_reset)
+
+    def test_client_has_max_wait_seconds_parameter(self):
+        """Test that client accepts max_wait_seconds parameter."""
+        # Act
+        client = GitHubGraphQLClient("token", max_wait_seconds=1800)
+
+        # Assert
+        self.assertEqual(client.max_wait_seconds, 1800)
+
+    def test_client_defaults_to_wait_for_reset_true(self):
+        """Test that client defaults to waiting for rate limit reset."""
+        # Act
+        client = GitHubGraphQLClient("token")
+
+        # Assert
+        self.assertTrue(client.wait_for_reset)
+
+    def test_client_defaults_to_one_hour_max_wait(self):
+        """Test that client defaults to 1 hour max wait time."""
+        # Act
+        client = GitHubGraphQLClient("token")
+
+        # Assert
+        self.assertEqual(client.max_wait_seconds, 3600)
+
+    @patch("apps.integrations.services.github_graphql.Client")
+    @patch("apps.integrations.services.github_rate_limit.asyncio.sleep", new_callable=AsyncMock)
+    def test_waits_when_rate_limit_low_and_wait_enabled(self, mock_sleep, mock_client_class):
+        """Test that client waits when rate limit is low and wait_for_reset=True."""
+        import asyncio
+        from datetime import datetime, timedelta
+
+        # Arrange - use proper ISO format without double timezone suffix
+        reset_time = (datetime.now(UTC) + timedelta(seconds=10)).isoformat()
+        mock_client, mock_session = create_mock_client_context_manager(
+            execute_return_value={
+                "repository": {"pullRequests": {"nodes": [], "pageInfo": {"hasNextPage": False}}},
+                "rateLimit": {"remaining": 50, "resetAt": reset_time},  # Low remaining
+            }
+        )
+        mock_client_class.return_value = mock_client
+
+        client = GitHubGraphQLClient("token", wait_for_reset=True, max_wait_seconds=60)
+
+        # Act
+        asyncio.run(client.fetch_prs_bulk("owner", "repo"))
+
+        # Assert - should have waited
+        mock_sleep.assert_called_once()
+
+    @patch("apps.integrations.services.github_graphql.Client")
+    def test_raises_error_when_wait_disabled(self, mock_client_class):
+        """Test that client raises error when rate limit low and wait_for_reset=False."""
+        import asyncio
+        from datetime import datetime, timedelta
+
+        # Arrange - use proper ISO format without double timezone suffix
+        reset_time = (datetime.now(UTC) + timedelta(seconds=10)).isoformat()
+        mock_client, mock_session = create_mock_client_context_manager(
+            execute_return_value={
+                "repository": {"pullRequests": {"nodes": [], "pageInfo": {"hasNextPage": False}}},
+                "rateLimit": {"remaining": 50, "resetAt": reset_time},  # Low remaining
+            }
+        )
+        mock_client_class.return_value = mock_client
+
+        client = GitHubGraphQLClient("token", wait_for_reset=False)
+
+        # Act & Assert
+        with self.assertRaises(GitHubGraphQLRateLimitError):
+            asyncio.run(client.fetch_prs_bulk("owner", "repo"))

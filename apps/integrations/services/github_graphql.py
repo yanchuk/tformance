@@ -357,16 +357,25 @@ class GitHubGraphQLClient:
     This client uses the GitHub GraphQL API v4 which has a point-based rate limit
     (5000 points/hour). Connection pooling is handled by aiohttp transport.
 
-    Rate limiting: Queries are checked after execution and raise GitHubGraphQLRateLimitError
-    when remaining points drop below threshold to prevent hitting hard limit.
+    Rate limiting: Queries are checked after execution. When rate limit is low:
+    - If wait_for_reset=True: waits until reset (up to max_wait_seconds)
+    - If wait_for_reset=False: raises GitHubGraphQLRateLimitError
     """
 
-    def __init__(self, access_token: str, timeout: int = 60) -> None:
+    def __init__(
+        self,
+        access_token: str,
+        timeout: int = 60,
+        wait_for_reset: bool = True,
+        max_wait_seconds: int = 3600,
+    ) -> None:
         """Initialize GitHub GraphQL client with access token.
 
         Args:
             access_token: GitHub personal access token or OAuth token
             timeout: HTTP request timeout in seconds (default: 60)
+            wait_for_reset: If True, wait when rate limit is low instead of raising error
+            max_wait_seconds: Maximum seconds to wait for rate limit reset (default: 1 hour)
         """
         # Set 60-second timeout for complex queries with nested data
         client_timeout = aiohttp.ClientTimeout(total=timeout)
@@ -376,7 +385,9 @@ class GitHubGraphQLClient:
             timeout=timeout,
             client_session_args={"timeout": client_timeout},
         )
-        logger.debug(f"Initialized GitHubGraphQLClient with {timeout}s timeout")
+        self.wait_for_reset = wait_for_reset
+        self.max_wait_seconds = max_wait_seconds
+        logger.debug(f"Initialized GitHubGraphQLClient with {timeout}s timeout, wait_for_reset={wait_for_reset}")
 
     async def _execute(self, query, variable_values: dict) -> dict:
         """Execute a GraphQL query using async context manager.
@@ -391,21 +402,34 @@ class GitHubGraphQLClient:
         async with Client(transport=self.transport, fetch_schema_from_transport=False) as session:
             return await session.execute(query, variable_values=variable_values)
 
-    def _check_rate_limit(self, result: dict, operation: str) -> None:
-        """Check rate limit from query result and raise error if threshold exceeded.
+    async def _check_rate_limit(self, result: dict, operation: str) -> None:
+        """Check rate limit from query result and wait or raise error if threshold exceeded.
+
+        If wait_for_reset=True and remaining < threshold, waits until reset (up to max_wait_seconds).
+        If wait_for_reset=False or wait time exceeds max, raises GitHubGraphQLRateLimitError.
 
         Args:
             result: GraphQL query result containing rateLimit field
             operation: Name of operation being performed (for error context)
 
         Raises:
-            GitHubGraphQLRateLimitError: When rate limit remaining < threshold
+            GitHubGraphQLRateLimitError: When rate limit remaining < threshold and can't wait
         """
+        from apps.integrations.services.github_rate_limit import wait_for_rate_limit_reset_async
+
         rate_limit = result.get("rateLimit", {})
         remaining = rate_limit.get("remaining", 0)
         reset_at = rate_limit.get("resetAt", "unknown")
 
         if remaining < RATE_LIMIT_THRESHOLD:
+            # Try to wait if enabled
+            if self.wait_for_reset and reset_at != "unknown":
+                waited = await wait_for_rate_limit_reset_async(reset_at, self.max_wait_seconds)
+                if waited:
+                    logger.info(f"Rate limit recovered after waiting, continuing {operation}")
+                    return
+
+            # Either wait_for_reset is False, or wait would exceed max
             error_msg = (
                 f"GitHub GraphQL rate limit low during {operation}: {remaining} points remaining (resets at {reset_at})"
             )
@@ -445,7 +469,7 @@ class GitHubGraphQLClient:
                     FETCH_PRS_BULK_QUERY, variable_values={"owner": owner, "repo": repo, "cursor": cursor}
                 )
 
-                self._check_rate_limit(result, f"fetch_prs_bulk({owner}/{repo})")
+                await self._check_rate_limit(result, f"fetch_prs_bulk({owner}/{repo})")
 
                 pr_count = len(result.get("repository", {}).get("pullRequests", {}).get("nodes", []))
                 logger.info(f"Fetched {pr_count} PRs from {owner}/{repo}")
@@ -507,7 +531,7 @@ class GitHubGraphQLClient:
                     FETCH_SINGLE_PR_QUERY, variable_values={"owner": owner, "repo": repo, "number": pr_number}
                 )
 
-                self._check_rate_limit(result, f"fetch_single_pr({owner}/{repo}#{pr_number})")
+                await self._check_rate_limit(result, f"fetch_single_pr({owner}/{repo}#{pr_number})")
 
                 logger.info(f"Fetched PR #{pr_number} from {owner}/{repo}")
 
@@ -560,7 +584,7 @@ class GitHubGraphQLClient:
             try:
                 result = await self._execute(FETCH_ORG_MEMBERS_QUERY, variable_values={"org": org, "cursor": cursor})
 
-                self._check_rate_limit(result, f"fetch_org_members({org})")
+                await self._check_rate_limit(result, f"fetch_org_members({org})")
 
                 member_count = len(result.get("organization", {}).get("membersWithRole", {}).get("nodes", []))
                 logger.info(f"Fetched {member_count} members from org {org}")
@@ -628,7 +652,7 @@ class GitHubGraphQLClient:
                     FETCH_PRS_UPDATED_QUERY, variable_values={"owner": owner, "repo": repo, "cursor": cursor}
                 )
 
-                self._check_rate_limit(result, f"fetch_prs_updated_since({owner}/{repo})")
+                await self._check_rate_limit(result, f"fetch_prs_updated_since({owner}/{repo})")
 
                 pr_count = len(result.get("repository", {}).get("pullRequests", {}).get("nodes", []))
                 logger.info(f"Fetched {pr_count} updated PRs from {owner}/{repo}")
@@ -685,7 +709,7 @@ class GitHubGraphQLClient:
         try:
             result = await self._execute(FETCH_REPO_METADATA_QUERY, variable_values={"owner": owner, "repo": repo})
 
-            self._check_rate_limit(result, f"fetch_repo_metadata({owner}/{repo})")
+            await self._check_rate_limit(result, f"fetch_repo_metadata({owner}/{repo})")
 
             pushed_at = result.get("repository", {}).get("pushedAt")
             logger.info(f"Repo {owner}/{repo} last pushed at: {pushed_at}")

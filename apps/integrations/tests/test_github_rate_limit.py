@@ -1,7 +1,8 @@
 """Tests for GitHub rate limit helper service."""
 
-from datetime import UTC, datetime
-from unittest.mock import MagicMock, patch
+import asyncio
+from datetime import UTC, datetime, timedelta
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from django.test import TestCase
 
@@ -9,6 +10,7 @@ from apps.integrations.services.github_rate_limit import (
     check_rate_limit,
     should_pause_for_rate_limit,
     wait_for_rate_limit_reset,
+    wait_for_rate_limit_reset_async,
 )
 
 
@@ -38,7 +40,8 @@ class TestCheckRateLimit(TestCase):
         mock_core.remaining = remaining
         mock_core.limit = limit
         mock_core.reset = reset_time
-        mock_rate_limit.core = mock_core
+        # PyGithub API changed: rate_limit.core → rate_limit.rate
+        mock_rate_limit.rate = mock_core
         mock_github.get_rate_limit.return_value = mock_rate_limit
 
         return mock_github
@@ -208,3 +211,72 @@ class TestWaitForRateLimitReset(TestCase):
         # Assert - should sleep for 11 seconds (10 seconds + 1 second buffer)
         expected_sleep_duration = 11
         mock_time.sleep.assert_called_once_with(expected_sleep_duration)
+
+
+class TestWaitForRateLimitResetAsync(TestCase):
+    """Tests for async rate limit wait function."""
+
+    def test_returns_true_when_reset_in_past(self):
+        """Test that function returns True immediately when reset is in the past."""
+        # Arrange
+        past_reset = (datetime.now(UTC) - timedelta(minutes=5)).isoformat()
+
+        # Act
+        result = asyncio.run(wait_for_rate_limit_reset_async(past_reset))
+
+        # Assert
+        self.assertTrue(result)
+
+    @patch("apps.integrations.services.github_rate_limit.asyncio.sleep", new_callable=AsyncMock)
+    def test_waits_when_reset_in_near_future(self, mock_sleep):
+        """Test that function waits when reset is within max_wait_seconds."""
+        # Arrange - reset in 10 seconds
+        future_reset = (datetime.now(UTC) + timedelta(seconds=10)).isoformat()
+
+        # Act
+        result = asyncio.run(wait_for_rate_limit_reset_async(future_reset))
+
+        # Assert
+        self.assertTrue(result)
+        mock_sleep.assert_called_once()
+        # Should sleep for ~15 seconds (10 seconds + 5 buffer)
+        sleep_duration = mock_sleep.call_args[0][0]
+        self.assertGreaterEqual(sleep_duration, 14)
+        self.assertLessEqual(sleep_duration, 16)
+
+    def test_returns_false_when_reset_too_far_in_future(self):
+        """Test that function returns False when reset exceeds max_wait_seconds."""
+        # Arrange - reset in 2 hours (beyond default 1 hour max)
+        future_reset = (datetime.now(UTC) + timedelta(hours=2)).isoformat()
+
+        # Act
+        result = asyncio.run(wait_for_rate_limit_reset_async(future_reset))
+
+        # Assert
+        self.assertFalse(result)
+
+    @patch("apps.integrations.services.github_rate_limit.asyncio.sleep", new_callable=AsyncMock)
+    def test_respects_custom_max_wait_seconds(self, mock_sleep):
+        """Test that function respects custom max_wait_seconds parameter."""
+        # Arrange - reset in 30 seconds, but max wait is only 10 seconds
+        future_reset = (datetime.now(UTC) + timedelta(seconds=30)).isoformat()
+
+        # Act
+        result = asyncio.run(wait_for_rate_limit_reset_async(future_reset, max_wait_seconds=10))
+
+        # Assert
+        self.assertFalse(result)
+        mock_sleep.assert_not_called()
+
+    @patch("apps.integrations.services.github_rate_limit.asyncio.sleep", new_callable=AsyncMock)
+    def test_logs_info_when_waiting(self, mock_sleep):
+        """Test that function logs info message when waiting."""
+        # Arrange
+        future_reset = (datetime.now(UTC) + timedelta(seconds=10)).isoformat()
+
+        # Act
+        with self.assertLogs("apps.integrations.services.github_rate_limit", level="INFO") as logs:
+            asyncio.run(wait_for_rate_limit_reset_async(future_reset))
+
+        # Assert
+        self.assertTrue(any("waiting" in log.lower() for log in logs.output))
