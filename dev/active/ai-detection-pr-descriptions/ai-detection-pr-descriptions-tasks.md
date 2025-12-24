@@ -1,44 +1,67 @@
 # AI Detection via PR Description Analysis - Tasks
 
-**Last Updated: 2025-12-25 12:00 UTC**
+**Last Updated: 2025-12-24 23:15 UTC**
 
-## Immediate Next Steps (On Restart)
+## Pattern Improvement Loop ✅ COMPLETE
 
-1. **Enhance user prompt with full PR data** (highest priority):
-   ```python
-   # Update llm_prompts.py get_user_prompt() to include:
-   - pr_title
-   - additions/deletions (PR size)
-   - repo_languages from TrackedRepository
-   - total_comments
-   - file_count
-   ```
+### 2.6.6 Pattern v1.7.0 (2024-12-24) ✅
+- [x] Run LLM experiment on 100 PRs (96% agreement)
+- [x] Add CodeRabbit text patterns (22 new detections)
+- [x] Add Mintlify agent patterns (3 new detections)
+- [x] Bump PATTERNS_VERSION to 1.7.0
+- [x] Add 4 new tests for new patterns (117 total)
+- [x] Backfill database (459 PRs detected, 20.2%)
 
-2. **Update GroqBatchProcessor to use llm_prompts.py**:
-   ```python
-   from apps.metrics.services.llm_prompts import (
-       PR_ANALYSIS_SYSTEM_PROMPT,
-       PROMPT_VERSION,
-       get_user_prompt,
-   )
-   ```
-
-3. **Commit uncommitted changes**:
-   ```bash
-   git add apps/metrics/services/llm_prompts.py
-   git add apps/metrics/models/github.py
-   git add apps/metrics/migrations/0019_add_llm_summary.py
-   git add apps/integrations/services/github_repo_languages.py
-   git add apps/integrations/tests/test_github_repo_languages.py
-   git add apps/metrics/management/commands/export_prs_to_promptfoo.py
-   git add apps/metrics/management/commands/run_llm_experiment.py
-   git add prd/AI-DETECTION-TESTING.md
-   git add CLAUDE.md
-   ```
+### 2.6.5 Pattern v1.6.0 (2024-12-24) ✅
+- [x] Add Cubic AI patterns (59 new detections)
+- [x] Add Cursor.com domain patterns
+- [x] Add Copilot Coding Agent patterns (6 new)
 
 ---
 
-## Phase 2.6: Technology Detection [Effort: M] ✅ MOSTLY COMPLETE
+## PRIORITY: Enhanced LLM Prompt v6.0.0 [Effort: L]
+
+### Phase 1: User Prompt Enhancement
+- [ ] Update `get_user_prompt()` to accept full PR data dict
+- [ ] Add file paths (from `files_changed` JSONField or fetch)
+- [ ] Add commit messages with Co-Authored-By detection
+- [ ] Add comment bodies (requires API fetch or store)
+- [ ] Add timing metrics: cycle_time_hours, review_time_hours
+- [ ] Add state, labels, is_draft, assignees, linked_issues
+
+### Phase 2: System Prompt v6.0.0
+- [ ] Add "PR Health Assessment" task to system prompt
+- [ ] Document what each metric means for CTO
+- [ ] Add health indicators: review_friction, scope, risk_level
+- [ ] Add insights generation guidance
+
+### Phase 3: Response Schema Update
+- [ ] Add `health` section to response schema
+- [ ] Update `llm_summary` JSONField to store health data
+- [ ] Update GroqBatchProcessor to parse new format
+
+### Phase 4: Testing
+- [ ] Update promptfoo.yaml with v6 tests
+- [ ] Add unit tests for new prompt fields
+- [ ] Run evaluation on 100 PRs
+
+---
+
+## Future Tasks
+
+### Celery Batch Processing (Phase 2.7)
+- [ ] Create `queue_prs_for_llm_analysis` task
+- [ ] Create `apply_llm_analysis_results` task
+- [ ] Add to Celery beat schedule (nightly 2 AM UTC)
+
+### Dashboard Integration (Phase 3)
+- [ ] Display `llm_summary` in PR list UI
+- [ ] Show technology badges
+- [ ] Show health indicators with color coding
+
+---
+
+## Phase 2.6: Technology Detection [Effort: M] ✅ COMPLETE
 
 ### 2.6.1 Prompt v4/v5 - Tech Detection ✅
 - [x] Update `DEFAULT_SYSTEM_PROMPT` with Task 2: Technology Detection
@@ -46,7 +69,7 @@
 - [x] Add tech_categories detection (frontend, backend, test, config, docs)
 - [x] Create v5 prompt with comprehensive PR summary
 - [x] Create `apps/metrics/services/llm_prompts.py` as source of truth
-- [x] Verify 22 Groq batch tests pass
+- [x] Verify 24 Groq batch tests pass (including v5 format)
 
 ### 2.6.2 Repository Languages ✅ COMPLETE
 - [x] Add fields to `TrackedRepository` model (migration 0015)
@@ -57,25 +80,27 @@
 - [x] Create `refresh_all_repo_languages_task` Celery task
 - [x] Add to Celery beat schedule (monthly, 1st of month 3 AM UTC)
 - [x] Write 16 tests for language service
+- [x] Backfill languages for active repos
 
 ### 2.6.3 LLM Summary Field ✅ COMPLETE
 - [x] Add `llm_summary` JSONField to PullRequest (migration 0019)
 - [x] Add `llm_summary_version` CharField to PullRequest
 - [x] Apply migration
 
-### 2.6.4 User Prompt Enhancement ⟵ NEXT
-- [ ] Update `get_user_prompt()` in llm_prompts.py to include:
+### 2.6.4 User Prompt Enhancement ✅ COMPLETE
+- [x] Update `get_user_prompt()` in llm_prompts.py to include:
   - pr_title
   - additions/deletions
-  - file_count (from PRFile relation)
-  - total_comments
-  - repo_languages (from TrackedRepository via github_repo)
-- [ ] Add test for enhanced user prompt
+  - file_count
+  - comment_count
+  - repo_languages (from TrackedRepository)
+- [x] Add 19 tests for llm_prompts.py
 
-### 2.6.5 Update GroqBatchProcessor
-- [ ] Import prompts from `llm_prompts.py`
-- [ ] Store results in `llm_summary` field
-- [ ] Store `PROMPT_VERSION` in `llm_summary_version`
+### 2.6.5 Update GroqBatchProcessor ✅ COMPLETE
+- [x] Import prompts from `llm_prompts.py`
+- [x] Use `PR_ANALYSIS_SYSTEM_PROMPT` by default
+- [x] Parse both v4 (flat) and v5 (nested) response formats
+- [x] Store `llm_summary` and `prompt_version` on BatchResult
 
 ---
 

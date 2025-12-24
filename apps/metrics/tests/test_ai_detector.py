@@ -264,6 +264,76 @@ class TestDetectAIInText(TestCase):
         self.assertTrue(result["is_ai_assisted"])
         self.assertIn("claude_code", result["ai_tools"])
 
+    def test_detects_cubic_summary(self):
+        """Cubic AI summary signature should be detected."""
+        text = "## Summary by Cubic\nThis PR fixes a bug."
+        result = detect_ai_in_text(text)
+        self.assertTrue(result["is_ai_assisted"])
+        self.assertIn("cubic", result["ai_tools"])
+
+    def test_detects_cubic_auto_generated(self):
+        """Cubic AI auto-generated signature should be detected."""
+        text = "<!-- This is an auto-generated description by Cubic -->"
+        result = detect_ai_in_text(text)
+        self.assertTrue(result["is_ai_assisted"])
+        self.assertIn("cubic", result["ai_tools"])
+
+    def test_detects_cursor_com_background_agent(self):
+        """Cursor.com background-agent link should be detected."""
+        text = '<a href="https://cursor.com/background-agent?id=123">View</a>'
+        result = detect_ai_in_text(text)
+        self.assertTrue(result["is_ai_assisted"])
+        self.assertIn("cursor", result["ai_tools"])
+
+    def test_detects_cursor_com_dashboard(self):
+        """Cursor.com dashboard link should be detected."""
+        text = "See cursor.com/dashboard for details"
+        result = detect_ai_in_text(text)
+        self.assertTrue(result["is_ai_assisted"])
+        self.assertIn("cursor", result["ai_tools"])
+
+    def test_detects_copilot_coding_agent(self):
+        """Copilot coding agent signature should be detected."""
+        text = "<!-- START COPILOT CODING AGENT TIPS -->"
+        result = detect_ai_in_text(text)
+        self.assertTrue(result["is_ai_assisted"])
+        self.assertIn("copilot", result["ai_tools"])
+
+    def test_detects_copilot_original_prompt(self):
+        """Copilot original prompt marker should be detected."""
+        text = "<!-- START COPILOT ORIGINAL PROMPT -->\n<details>"
+        result = detect_ai_in_text(text)
+        self.assertTrue(result["is_ai_assisted"])
+        self.assertIn("copilot", result["ai_tools"])
+
+    def test_detects_coderabbit_summary(self):
+        """CodeRabbit summary text should be detected."""
+        text = "## Summary by CodeRabbit\n* Fixed the bug"
+        result = detect_ai_in_text(text)
+        self.assertTrue(result["is_ai_assisted"])
+        self.assertIn("coderabbit", result["ai_tools"])
+
+    def test_detects_coderabbit_ai_domain(self):
+        """coderabbit.ai domain should be detected."""
+        text = "<!-- release notes by coderabbit.ai -->"
+        result = detect_ai_in_text(text)
+        self.assertTrue(result["is_ai_assisted"])
+        self.assertIn("coderabbit", result["ai_tools"])
+
+    def test_detects_mintlify_created(self):
+        """Mintlify created by should be detected."""
+        text = "Created by Mintlify agent"
+        result = detect_ai_in_text(text)
+        self.assertTrue(result["is_ai_assisted"])
+        self.assertIn("mintlify", result["ai_tools"])
+
+    def test_detects_mintlify_agent(self):
+        """Mintlify agent should be detected."""
+        text = "This docs update was made by Mintlify agent."
+        result = detect_ai_in_text(text)
+        self.assertTrue(result["is_ai_assisted"])
+        self.assertIn("mintlify", result["ai_tools"])
+
 
 class TestParseCoAuthors(TestCase):
     """Tests for parse_co_authors() function."""

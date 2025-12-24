@@ -1,0 +1,1900 @@
+{
+  "tests": [
+    {
+      "description": "[Vercel] Update Rspack development test manifest",
+      "vars": {
+        "pr_body": "This auto-generated PR updates the development integration test manifest used when testing Rspack."
+      },
+      "metadata": {
+        "team": "Vercel",
+        "repo": "vercel/next.js",
+        "pr_number": 87749,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Vercel] Update Rspack production test manifest",
+      "vars": {
+        "pr_body": "This auto-generated PR updates the production integration test manifest used when testing Rspack."
+      },
+      "metadata": {
+        "team": "Vercel",
+        "repo": "vercel/next.js",
+        "pr_number": 87748,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Cal.com] refactor: Remove buildjet cache from cache-build action",
+      "vars": {
+        "pr_body": "## What does this PR do?\n\nRemoves the buildjet cache from the `cache-build` GitHub Action and simplifies it to just run `yarn build`, relying on Turbo Remote Caching instead.\n\n**Root cause of the issue:** The buildjet cache was causing consistent cache misses because the `hashFiles()` function in `key-2` was producing different hashes between the build job and E2E shards. This happened because `yarn prisma generate` (run during `yarn-install`) generates `.ts` files in `packages/prisma/zod/` and `packages/kysely/` that are included in the hash pattern, and these generated files can differ slightly between runs.\n\n**Why this fix works:** Since Turbo Remote Caching is already configured and handles the `.next` and `dist` outputs (as defined in `turbo.json`), the buildjet cache is redundant and was causing more problems than it solved.\n\n## Mandatory Tasks (DO NOT REMOVE)\n\n- [x] I have self-reviewed the code (A decent size PR without self-review might be rejected).\n- [x] I have updated the developer docs in /docs if this PR makes changes that would require a documentation change. N/A - CI infrastructure change only.\n- [x] I confirm automated tests are in place that prove my fix is effective or that my feature works. N/A - This will be validated by observing CI behavior.\n\n## How should this be tested?\n\n1. Merge this PR and observe a subsequent PR's CI run\n2. Verify that E2E shards no longer show \"Cache not found\" for the prod-build cache\n3. Verify that Turbo Remote Caching is being used (look for \"Remote cache hit\" in build logs)\n4. Monitor build times to ensure they're acceptable\n\n## Human Review Checklist\n\n- [x] Verify Turbo Remote Caching is properly configured in CI (TURBO_TOKEN and TURBO_TEAM secrets are set)\n- [x] Note: `@calcom/embed-core#build` has `cache: false` in turbo.json, so embed files will rebuild each time (this was an accepted tradeoff)\n\n## Checklist\n\n- [x] My code follows the style guidelines of this project\n- [x] I have checked if my changes generate no new warnings\n\n## Updates since last revision\n\n- Preserved the original action name and description per reviewer feedback\n\n---\n\nLink to Devin run: https://app.devin.ai/sessions/31be59cfbeb2411394ffac161d191049\nRequested by: keith@cal.com (@keithwillcode)"
+      },
+      "metadata": {
+        "team": "Cal.com",
+        "repo": "calcom/cal.com",
+        "pr_number": 26181,
+        "current_detection": true,
+        "current_tools": [
+          "devin"
+        ]
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        },
+        {
+          "type": "javascript",
+          "value": "JSON.parse(output).is_ai_assisted === true"
+        }
+      ]
+    },
+    {
+      "description": "[Cal.com] chore: Change API v2 depends on for CI",
+      "vars": {
+        "pr_body": "\n\n<!-- This is an auto-generated description by cubic. -->\n## Summary by cubic\nUpdate CI workflow dependencies to decouple non\u2013API v2 tests from the API v2 build. This reduces unnecessary blocking and speeds up PR checks.\n\n- **Refactors**\n  - integration-test and e2e now depend on prepare, build, and build-api-v1 (removed build-api-v2).\n  - e2e-api-v2 now depends only on prepare and build-api-v2 (removed build and build-api-v1).\n  - e2e-app-store, e2e-embed, and e2e-embed-react now depend on prepare and build (removed API build dependencies).\n\n<sup>Written for commit 2eaadf1481dfb79c5aea5afb35f54d5ff005f180. Summary will update automatically on new commits.</sup>\n\n<!-- End of auto-generated description by cubic. -->\n\n"
+      },
+      "metadata": {
+        "team": "Cal.com",
+        "repo": "calcom/cal.com",
+        "pr_number": 26170,
+        "current_detection": true,
+        "current_tools": [
+          "cubic"
+        ]
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        },
+        {
+          "type": "javascript",
+          "value": "JSON.parse(output).is_ai_assisted === true"
+        }
+      ]
+    },
+    {
+      "description": "[Cal.com] feat(ui): add DevProfiler component for tracking render coun",
+      "vars": {
+        "pr_body": "## What does this PR do?\n\nAdds a new `DevProfiler` component that helps developers track component render counts during development. The component:\n\n- Uses React refs to track render counts without causing additional re-renders\n- Only renders in development mode (`process.env.NODE_ENV === \"development\"`) - returns children directly in production\n- Displays a small badge in the bottom-right corner showing total render count\n- Opens a floating panel when clicked, showing per-component render statistics sorted by count\n- Color-codes render counts (green < 5, yellow 5-10, red > 10) to highlight potential performance issues\n- Exports a `useRenderCount(componentName)` hook for components to register themselves for tracking\n- Uses `@coss/ui` components (Badge, Button, Popover, ScrollArea) for consistent styling\n\n### Usage\n\n```tsx\nimport { DevProfiler, useRenderCount } from \"@calcom/ui/components/dev-profiler\";\n\n// Wrap your app\n<DevProfiler>\n  <App />\n</DevProfiler>\n\n// In components you want to track\nfunction MyComponent() {\n  useRenderCount(\"MyComponent\");\n  // ...\n}\n```\n\n### Changes included\n\n- New `DevProfiler` component in `packages/ui/components/dev-profiler/`\n- Added `@coss/ui` as a dependency to `@calcom/ui`\n- Added path mapping in `packages/ui/tsconfig.json` for `@coss/ui/*` imports\n\n### Updates since last revision\n\n- Refactored to use `@coss/ui` components (Badge, Button, Popover, ScrollArea) instead of custom classNames styling\n- Removed Shell integration - component is now standalone and doesn't modify any existing files\n- Badge variants map to render counts: success (<5), warning (5-10), error (>10)\n\n## Visual Demo (For contributors especially)\n\n#### Badge (bottom-right corner):\n![DevProfiler badge showing render count](https://app.devin.ai/api/presigned_proxy?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJvcmdfaWQiOiJvcmdfb0p1VEo4MFZNOWxldHVWViIsInVzZXJfaWQiOiJlbWFpbHw2NzZmMmQzNDMyMWE5NmU4OGU1MmM2ZmQiLCJidWNrZXRfbmFtZSI6ImRldmluYXR0YWNobWVudHMiLCJidWNrZXRfa2V5IjoiYXR0YWNobWVudHNfcHJpdmF0ZS9vcmdfb0p1VEo4MFZNOWxldHVWVi8xNmJhMTBhMC1kYzIyLTRmNmYtOTFhZi0wMjExNjc5YmRmNDAiLCJpYXQiOjE3NjY1MTk3MjEsImV4cCI6MTc2NzEyNDUyMX0.ExRPvb1hKcryDVYHLBe-Y7kcWDillnAZV-x23EzW7BU)\n\n#### Panel open with component statistics: \n![DevProfiler panel showing tracked components](https://app.devin.ai/api/presigned_proxy?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJvcmdfaWQiOiJvcmdfb0p1VEo4MFZNOWxldHVWViIsInVzZXJfaWQiOiJlbWFpbHw2NzZmMmQzNDMyMWE5NmU4OGU1MmM2ZmQiLCJidWNrZXRfbmFtZSI6ImRldmluYXR0YWNobWVudHMiLCJidWNrZXRfa2V5IjoiYXR0YWNobWVudHNfcHJpdmF0ZS9vcmdfb0p1VEo4MFZNOWxldHVWVi9kNmMxYzNjNC1lOTYxLTRiNTAtYTc2OC01MzVhNDY4Yjk2MTkiLCJpYXQiOjE3NjY1MTk3MjEsImV4cCI6MTc2NzEyNDUyMX0.HKt0NDy9XTCrEY4iUOC4juAjyjDF4fZBj1SqTkttpaQ)\n\n#### Color-coded render counts (red for >10 renders):\n![DevProfiler showing high render count in red](https://app.devin.ai/api/presigned_proxy?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJvcmdfaWQiOiJvcmdfb0p1VEo4MFZNOWxldHVWViIsInVzZXJfaWQiOiJlbWFpbHw2NzZmMmQzNDMyMWE5NmU4OGU1MmM2ZmQiLCJidWNrZXRfbmFtZSI6ImRldmluYXR0YWNobWVudHMiLCJidWNrZXRfa2V5IjoiYXR0YWNobWVudHNfcHJpdmF0ZS9vcmdfb0p1VEo4MFZNOWxldHVWVi9iMzA1ZjQ5OS1lODNkLTQ2MzMtODNjZC1kNGQyOTVlNTk5MzYiLCJpYXQiOjE3NjY1MTk3MjIsImV4cCI6MTc2NzEyNDUyMn0.tRZLi23Hga1HlBu8wFs_3yeDQLELAmRmyZ07T0n8JHY)\n\n## Mandatory Tasks (DO NOT REMOVE)\n\n- [x] I have self-reviewed the code (A decent size PR without self-review might be rejected).\n- [x] I have updated the developer docs in /docs if this PR makes changes that would require a [documentation change](https://cal.com/docs). N/A - this is a dev-only utility component.\n- [ ] I confirm automated tests are in place that prove my fix is effective or that my feature works.\n\n## How should this be tested?\n\n1. Run the app in development mode (`yarn dev`)\n2. Import and wrap any component tree with `<DevProfiler>` and use `useRenderCount(\"ComponentName\")` in components you want to track\n3. Look for the \"Renders: X\" badge in the bottom-right corner\n4. Click the badge t"
+      },
+      "metadata": {
+        "team": "Cal.com",
+        "repo": "calcom/cal.com",
+        "pr_number": 26165,
+        "current_detection": true,
+        "current_tools": [
+          "devin"
+        ]
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        },
+        {
+          "type": "javascript",
+          "value": "JSON.parse(output).is_ai_assisted === true"
+        }
+      ]
+    },
+    {
+      "description": "[PostHog Analytics] refactor(customers): Person profile content",
+      "vars": {
+        "pr_body": "## Problem\n\n<!-- Who are we building for, what are their needs, why is this important? -->\n\n<!-- Does this fix an issue? Uncomment the line below with the issue ID to automatically close it when merged -->\n<!-- Closes #ISSUE_ID -->\n\n## Changes\n\n<!-- If there are frontend changes, please include screenshots. -->\n<!-- If a reference design was involved, include a link to the relevant Figma frame! -->\n\n## How did you test this code?\n\n<!-- Briefly describe the steps you took. -->\n<!-- Include automated tests if possible, otherwise describe the manual testing routine. -->\n\n<!-- Docs reminder: If this change requires updated docs, please do that! Engineers are the primary people responsible for their documentation. \ud83d\ude4c -->\n\n\ud83d\udc49 _Stay up-to-date with [PostHog coding conventions](https://posthog.com/docs/contribute/coding-conventions) for a smoother review._\n\n## Changelog: (features only) Is this feature complete?\n\n<!-- Yes if this is okay to go in the changelog. No if it's still hidden behind a feature flag, or part of a feature that's not complete yet, etc.  -->\n<!-- Removing this section does not mean the changelog bot won't pick it up, because *some people* like to not use the template, so we can't rely on it existing. -->\n"
+      },
+      "metadata": {
+        "team": "PostHog Analytics",
+        "repo": "PostHog/posthog",
+        "pr_number": 43956,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Cal.com] fix(web): resolve build errors on Windows (invalid headers &",
+      "vars": {
+        "pr_body": "\r\n## Description\r\n\r\nThis PR fixes two specific issues preventing the `@calcom/web` app from building successfully on Windows environments:\r\n\r\n1.  **Invalid Path Separators in Rewrite Logic**:\r\n\r\n    - In `apps/web/pagesAndRewritePaths.ts`, `globSync` returns paths with backslashes (`\\`) on Windows.\r\n    - These paths are used to construct a Regex for excluded routes. Backslashes in the regex string were causing \"Invalid route source\" errors or matching failures because they were interpreted as escape characters or literal backslashes rather than path separators.\r\n    - **Fix**: Normalized all file paths to use forward slashes (`/`) regardless of the OS.\r\n\r\n2.  **Invalid Source Pattern in `next.config.ts`**:\r\n    - The `sprite.svg` route configuration included a query string matcher `(\\\\?v=[0-9a-zA-Z\\\\-\\\\.]+)?`.\r\n    - Next.js `rewrites` and `headers` `source` fields **do not support query strings**. Including them causes \"Invalid headers found\" or route parsing errors.\r\n    - **Fix**: Simplified the source to `/icons/sprite.svg`.\r\n\r\n## Type of change\r\n\r\n- [x] Bug fix (non-breaking change which fixes an issue)\r\n- [ ] New feature (non-breaking change which adds functionality)\r\n- [ ] Breaking change (fix or feature that would cause existing functionality to not work as expected)\r\n- [ ] Refactoring (no functional changes, no api changes)\r\n\r\n## How Has This Been Tested?\r\n\r\n- **Local Build (Windows)**: Ran `npm run build` in `apps/web`. Confirmed that the build process now passes the configuration parsing and route generation stages where it previously failed immediately.\r\n- **Note**: The build is memory intensive. It is recommended to use `NODE_OPTIONS=\"--max-old-space-size=8192\"` if encountering OOM errors.\r\n"
+      },
+      "metadata": {
+        "team": "Cal.com",
+        "repo": "calcom/cal.com",
+        "pr_number": 26147,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[PostHog Analytics] fix: remove duplicate last hour",
+      "vars": {
+        "pr_body": "We've recently added \"Last hour\" option to the default date mappings. This caused a duplicate because in error tracking we were appending that manually.\r\n\r\nRemoved that manual append"
+      },
+      "metadata": {
+        "team": "PostHog Analytics",
+        "repo": "PostHog/posthog",
+        "pr_number": 43927,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Resend] fix: unconsumed HTTP response",
+      "vars": {
+        "pr_body": "Unconsumed HTTP response in link validation causes memory and socket leaks\r\n\r\n<!-- Thanks for opening a PR! Your contribution is much appreciated.\r\nTo make sure your PR is handled as smoothly as possible we request that you follow the checklist sections below.\r\nChoose the right checklist for the change(s) that you're making:\r\n\r\nThe PR name should follow `<type>(<scope>): <Message>`\r\n\r\nExamples:\r\n- New feature: `feat(button): Add new thing`\r\n- Fix: `fix(react-email): Dev command\r\n- Misc/Chore: `chore(root): Update `readme.md`\r\n-->\r\n\n\n<!-- This is an auto-generated description by cubic. -->\n---\n## Summary by cubic\nConsume HTTP response streams in email link validation to prevent memory and socket leaks. After checking status, we now call res.resume() to free resources.\n\n- **Bug Fixes**\n  - Drain the response with res.resume() in checkLinks() after quickFetch.\n\n<sup>Written for commit 4e60e6c014f92482954926061a0fb6ac2581dca1. Summary will update automatically on new commits.</sup>\n\n<!-- End of auto-generated description by cubic. -->\n\n"
+      },
+      "metadata": {
+        "team": "Resend",
+        "repo": "resend/react-email",
+        "pr_number": 2753,
+        "current_detection": true,
+        "current_tools": [
+          "cubic"
+        ]
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        },
+        {
+          "type": "javascript",
+          "value": "JSON.parse(output).is_ai_assisted === true"
+        }
+      ]
+    },
+    {
+      "description": "[PostHog Analytics] refactor: Use new semiautomatic release workflow",
+      "vars": {
+        "pr_body": "Rather than using local actions, let's just use the ones from master - delete the local ones. Also, make sure we are using our new `posthog/create-app-token` action - it's global and a fork from the Sentry one we were using previously"
+      },
+      "metadata": {
+        "team": "PostHog Analytics",
+        "repo": "PostHog/posthog-js",
+        "pr_number": 2811,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Supabase] feat(realtime): expose heartbeat latency on heartbeat callba",
+      "vars": {
+        "pr_body": "<!-- Your PR title should follow the conventional commit format:\r\n<type>(<scope>): <description> -->\r\n\r\n## \ud83d\udd0d Description\r\n\r\n<!-- Provide a clear and concise description of what this PR does -->\r\n\r\nExpose latency for heartbeats when we get a reply. Only available for status `ok` and `error` otherwise `undefined`. It's backwards compatible because the second argument is `number | undefined` so a callback with just one argument will stil work fine. \r\n\r\nI've also changed so that it matches the heartbeatRef when the message arrives. This avoids any potential race condition where the message for a previous heartbeat arrives later but we had already given up on that previous heartbeat.\r\n\r\n### What changed?\r\n\r\nAn extra `latency` can be passed to the heartbeat callback when heartbeat gets a reply from the server. RealtimeClient keeps track of the last time the heartbeat was sent and provide the diff.\r\n\r\n### Why was this change needed?\r\n\r\nA feature that can help people react to high latency users like people on slow mobile internet. \r\n\r\n## \ud83d\udcf8 Screenshots/Examples\r\n\r\n<!-- If applicable, add screenshots or code examples to help explain your changes -->\r\n\r\n## \ud83d\udd04 Breaking changes\r\n\r\n<!-- If this PR contains breaking changes, describe them here -->\r\n\r\n- [x] This PR contains no breaking changes\r\n\r\n## \ud83d\udccb Checklist\r\n\r\n<!-- Ensure all items are checked before submitting -->\r\n\r\n- [x] I have read the [Contributing Guidelines](https://github.com/supabase/supabase-js/blob/master/CONTRIBUTING.md)\r\n- [x] My PR title follows the [conventional commit format](https://www.conventionalcommits.org/): `<type>(<scope>): <description>`\r\n- [x] I have run `npx nx format` to ensure consistent code formatting\r\n- [x] I have added tests for new functionality (if applicable)\r\n- [x] I have updated documentation (if applicable)\r\n\r\n## \ud83d\udcdd Additional notes\r\n\r\n<!-- Add any additional notes, context, or concerns for reviewers -->\r\n\r\n<!-- Thank you for contributing to Supabase! \ud83d\udc9a -->\r\n"
+      },
+      "metadata": {
+        "team": "Supabase",
+        "repo": "supabase/supabase-js",
+        "pr_number": 1982,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[PostHog Analytics] chore(experiments): Refactor reordering metrics",
+      "vars": {
+        "pr_body": "## Problem\r\n\r\nExperiment metrics are stored in arrays (`metrics`, `metrics_secondary`, `saved_metrics`) while their display order is tracked separately in ordering arrays (`primary_metrics_ordered_uuids`, `secondary_metrics_ordered_uuids`).\r\n\r\nWhen adding or removing metrics, the frontend has to update both the metrics array AND the ordering array. This coupling causes bugs/race conditions where metrics are added but their UUIDs wouldn't appear in the ordering array.\r\n\r\nThis is also problematic for API callers (i.e. MCP) who don't know about the ordering arrays.\r\n\r\n## Changes\r\n\r\n- Backend now automatically syncs ordering arrays when metrics change\r\n- Frontend no longer manages ordering arrays when adding/removing metrics\r\n- The explicit \"reorder metrics\" feature still works - it sends only the ordering arrays without metrics.\r\n\r\n**Caveats:**\r\n- One tradeoff I'm going for is that duplication will add a metric at the end of the main array list (e.g. `metrics_secondary`) as opposed to right after the original metric. Making this mimic the current functionality will require some more code in the backend (e.g. look up original metric by UUID and then place it behind it). I might add this later if we get complaints.\r\n- In the create form, we're no longer rendering from the ordering arrays (since we don't want to touch those arrays in the frontend), so the saved metrics will appear _after_ the main metrics, regardless of the insertion order.\r\n\r\n## How did you test this?\r\n\r\nAdded new tests for ordering sync.\r\n\r\nManual testing checklist:\r\n\r\n**Update flow - inline metrics:**\r\n- [x] Add a primary metric without sending ordering \u2192 UUID appears in ordering\r\n- [x] Add a secondary metric without sending ordering \u2192 UUID appears in ordering\r\n- [x] Remove a metric \u2192 UUID removed from ordering\r\n- [x] Update only experiment name \u2192 ordering unchanged\r\n\r\n**Update flow - saved metrics:**\r\n- [x] Add a saved metric without sending ordering \u2192 UUID appears in ordering\r\n- [x] Remove a saved metric \u2192 UUID removed from ordering\r\n\r\n**Create flow:**\r\n- [x] Create experiment with inline metrics \u2192 ordering auto-populated\r\n- [x] Create experiment with saved metrics \u2192 ordering auto-populated\r\n\r\n**Edge cases:**\r\n- [x] Duplicate a metric \u2192 new metric appears (at end of list)\r\n- [x] Explicit reorder still works (drag and drop in UI)\r\n"
+      },
+      "metadata": {
+        "team": "PostHog Analytics",
+        "repo": "PostHog/posthog",
+        "pr_number": 43892,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[PostHog Analytics] react native typos",
+      "vars": {
+        "pr_body": "## Changes\r\n\r\nTypos in our React Native installation instructions"
+      },
+      "metadata": {
+        "team": "PostHog Analytics",
+        "repo": "PostHog/posthog.com",
+        "pr_number": 14210,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[PostHog Analytics] feat(endpoints): support materialization for all insight que",
+      "vars": {
+        "pr_body": "## Problem\n\n<!-- Who are we building for, what are their needs, why is this important? -->\n\n<!-- Does this fix an issue? Uncomment the line below with the issue ID to automatically close it when merged -->\n<!-- Closes #ISSUE_ID -->\n\n## Changes\n\n<!-- If there are frontend changes, please include screenshots. -->\n<!-- If a reference design was involved, include a link to the relevant Figma frame! -->\n\n## How did you test this code?\n\n<!-- Briefly describe the steps you took. -->\n<!-- Include automated tests if possible, otherwise describe the manual testing routine. -->\n\n<!-- Docs reminder: If this change requires updated docs, please do that! Engineers are the primary people responsible for their documentation. \ud83d\ude4c -->\n\n\ud83d\udc49 _Stay up-to-date with [PostHog coding conventions](https://posthog.com/docs/contribute/coding-conventions) for a smoother review._\n\n## Changelog: (features only) Is this feature complete?\n\n<!-- Yes if this is okay to go in the changelog. No if it's still hidden behind a feature flag, or part of a feature that's not complete yet, etc.  -->\n<!-- Removing this section does not mean the changelog bot won't pick it up, because *some people* like to not use the template, so we can't rely on it existing. -->\n"
+      },
+      "metadata": {
+        "team": "PostHog Analytics",
+        "repo": "PostHog/posthog",
+        "pr_number": 43877,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Cal.com] fix: event type not installed apps list empty",
+      "vars": {
+        "pr_body": "## What does this PR do?\r\n\r\nhttps://github.com/calcom/cal.com/pull/24491 introduced the bug\r\n\r\n<!-- Please include a summary of the change and which issue is fixed. Please also include relevant motivation and context. List any dependencies that are required for this change. -->\r\n\r\n- Fixes #XXXX (GitHub issue number)\r\n- Fixes CAL-XXXX (Linear issue number - should be visible at the bottom of the GitHub issue description)\r\n\r\n<img width=\"1512\" height=\"982\" alt=\"Screenshot 2025-12-22 at 6 08 22\u202fPM\" src=\"https://github.com/user-attachments/assets/cc211774-702b-407c-b94d-292d53c7b61c\" />\r\n\r\n\r\n<img width=\"1512\" height=\"982\" alt=\"Screenshot 2025-12-22 at 6 22 32\u202fPM\" src=\"https://github.com/user-attachments/assets/4746f1c8-4d3c-407d-a968-3ad5d615beff\" />\r\n\r\n\r\n\r\n\r\n\r\n## Mandatory Tasks (DO NOT REMOVE)\r\n\r\n- [x] I have self-reviewed the code (A decent size PR without self-review might be rejected).\r\n- [x] I have updated the developer docs in /docs if this PR makes changes that would require a [documentation change](https://cal.com/docs). If N/A, write N/A here and check the checkbox.\r\n- [x] I confirm automated tests are in place that prove my fix is effective or that my feature works.\r\n\r\n\r\n\n\n<!-- This is an auto-generated description by cubic. -->\n---\n## Summary by cubic\nFixes the Event Type \u201cApps\u201d tab showing an empty list for not\u2011installed integrations. We now load all integrations and correctly display the installed count.\n\n- **Bug Fixes**\n  - Query all integrations (removed onlyInstalled) so not\u2011installed apps appear.\n  - Installed apps badge counts only apps with isInstalled.\n  - Minor label formatting cleanup in Availability and Assignment tabs.\n\n<sup>Written for commit 03406b2aaf6c24318b3d91df49f6a30796cd0215. Summary will update automatically on new commits.</sup>\n\n<!-- End of auto-generated description by cubic. -->\n\n\r\n\r\n"
+      },
+      "metadata": {
+        "team": "Cal.com",
+        "repo": "calcom/cal.com",
+        "pr_number": 26128,
+        "current_detection": true,
+        "current_tools": [
+          "cubic"
+        ]
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        },
+        {
+          "type": "javascript",
+          "value": "JSON.parse(output).is_ai_assisted === true"
+        }
+      ]
+    },
+    {
+      "description": "[LangChain] docs: Add comprehensive init_chat_model usage guide",
+      "vars": {
+        "pr_body": "## Description\r\n\r\nThis PR adds comprehensive documentation for `init_chat_model`, making it easy to understand, hard to misuse, and well-documented for real-world usage.\r\n\r\n### \ud83c\udfaf What This PR Delivers\r\n\r\n**New Documentation**: `libs/langchain_v1/INIT_CHAT_MODEL_GUIDE.md` (694 lines)\r\n\r\nThis is a natural continuation of my previous merged PR that added validation logic to `init_chat_model`. Now, users have clear guidance on how to use it effectively.\r\n\r\n### \u2705 What's Included\r\n\r\n#### 1. Clear Explanation\r\n- What `init_chat_model` is\r\n- Why it exists (solves provider fragmentation)\r\n- When to use it vs provider-specific classes\r\n\r\n#### 2. Working Code Examples\r\nSeven complete, tested examples covering:\r\n- Fixed models\r\n- Provider-agnostic tools\r\n- Runtime configurable models\r\n- Multiple models with prefixes\r\n- Tool binding (function calling)\r\n- Streaming and batching\r\n\r\nAll examples are copy-paste ready and follow best practices.\r\n\r\n#### 3. Common Mistakes & Error Explanations\r\nDocumented 7 common mistakes with:\r\n- \u274c What's wrong (with code example)\r\n- \u2705 How to fix it (with corrected code)\r\n- \ud83d\udca1 Why validation errors exist\r\n\r\nThis directly connects to the validation logic from my previous PR and helps users understand error messages.\r\n\r\n#### 4. Design Rationale\r\nExplains:\r\n- Why validation & inference are centralized\r\n- How it improves consistency across providers\r\n- System-level tradeoffs\r\n- When centralized approach makes sense\r\n\r\nShows understanding of architectural decisions and long-term maintainability.\r\n\r\n### \ud83d\udcc1 Files Changed\r\n\r\n- **`libs/langchain_v1/INIT_CHAT_MODEL_GUIDE.md`** (new): Complete usage guide\r\n- **`libs/langchain_v1/README.md`** (modified): Added link to guide\r\n\r\n### \ud83c\udfaf Target Audience\r\n\r\nThis documentation helps:\r\n1. **New users** quickly understand how to initialize models\r\n2. **Experienced users** learn runtime configuration patterns\r\n3. **Multi-provider app developers** build flexible systems\r\n4. **Everyone** avoid common pitfalls\r\n\r\n### \ud83d\udd04 Connection to Previous Work\r\n\r\nThis PR builds on my previous merged contribution that added validation logic. Now users understand:\r\n- Why validation exists\r\n- What errors mean\r\n- How to fix common mistakes\r\n\r\n### \u2705 Checklist\r\n\r\n- [x] Comprehensive \"What/Why/When\" explanation\r\n- [x] 7 working code examples\r\n- [x] Common mistakes documented with fixes\r\n- [x] Design rationale included\r\n- [x] README updated with guide link\r\n- [x] All examples follow LangChain coding standards\r\n- [x] Markdown formatting validated\r\n\r\n### \ud83d\udcdd Notes\r\n\r\n- This documentation can be later adapted for the separate `docs` repository\r\n- Examples tested with latest LangChain version\r\n- Follows Google-style documentation patterns from `AGENTS.md`\r\n\r\n---"
+      },
+      "metadata": {
+        "team": "LangChain",
+        "repo": "langchain-ai/langchain",
+        "pr_number": 34449,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Cal.com] feat: upgrade api/v1 and example apps to Next.js 16.1.0",
+      "vars": {
+        "pr_body": "## What does this PR do?\n\nUpgrades `apps/api/v1` and `packages/platform/examples/base` to Next.js 16.1.0, following the same upgrade pattern applied to `apps/web` in #26093.\n\nChanges include:\n- Update Next.js version in both apps (api/v1: 15.4.10 \u2192 16.1.0, examples/base: 14.2.35 \u2192 16.1.0)\n- Rename `middleware.ts` to `proxy.ts` per Next.js 16 migration (api/v1 only)\n- Add `turbopack: {}` config to next.config.js files\n- Add `/* eslint-disable */` to config files (following apps/web pattern)\n- Fix redundant double negation in Sentry config check\n- Update yarn.lock to remove unused Next.js 14.x/15.x dependencies\n\n## Mandatory Tasks (DO NOT REMOVE)\n\n- [x] I have self-reviewed the code (A decent size PR without self-review might be rejected).\n- [x] I have updated the developer docs in /docs if this PR makes changes that would require a [documentation change](https://cal.com/docs). N/A - no documentation changes needed.\n- [x] I confirm automated tests are in place that prove my fix is effective or that my feature works. N/A - configuration changes only, CI will validate.\n\n## How should this be tested?\n\n1. Verify CI passes for both apps (production builds, type check, lint)\n2. For api/v1: Confirm the API still responds correctly (the proxy.ts file blocks internal route segments like `/_get`, `/_post`, etc.)\n3. For the example app: Confirm it builds and runs with `yarn dev` in `packages/platform/examples/base`\n\n## Checklist\n\n- [x] My code follows the style guidelines of this project\n- [x] I have checked if my changes generate no new warnings\n\n## Human Review Checklist\n\n- [ ] Verify the `middleware.ts` \u2192 `proxy.ts` rename follows Next.js 16 migration correctly\n- [ ] Confirm the example app (jumping from 14.2.35 \u2192 16.1.0) doesn't need additional migration steps\n- [ ] Verify turbopack config is appropriate for both apps\n- [ ] Confirm the yarn.lock cleanup only removed unused dependencies\n\n---\n\nLink to Devin run: https://app.devin.ai/sessions/a978ce6e4cef4072857d00ca31fe3b68\nRequested by: Volnei Munhoz (@volnei)"
+      },
+      "metadata": {
+        "team": "Cal.com",
+        "repo": "calcom/cal.com",
+        "pr_number": 26104,
+        "current_detection": true,
+        "current_tools": [
+          "devin"
+        ]
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        },
+        {
+          "type": "javascript",
+          "value": "JSON.parse(output).is_ai_assisted === true"
+        }
+      ]
+    },
+    {
+      "description": "[Gumroad] Migrate _application.scss to Tailwind",
+      "vars": {
+        "pr_body": "A part of #1055.\r\n\r\nBefore\r\n<img width=\"541\" height=\"581\" alt=\"image\" src=\"https://github.com/user-attachments/assets/8aa2dda7-ee40-43c0-971c-19936bcffef2\" />\r\n<img width=\"1355\" height=\"589\" alt=\"image\" src=\"https://github.com/user-attachments/assets/187f13b1-d809-4b35-8248-b94db5007d36\" />\r\n<img width=\"1437\" height=\"679\" alt=\"image\" src=\"https://github.com/user-attachments/assets/59800322-e2cc-488b-9ba6-525252966680\" />\r\n\r\nAfter\r\n<img width=\"541\" height=\"581\" alt=\"image\" src=\"https://github.com/user-attachments/assets/20710dbd-98ba-4324-8558-6f470fb9274f\" />\r\n<img width=\"1355\" height=\"589\" alt=\"image\" src=\"https://github.com/user-attachments/assets/21ca848d-7808-4741-b306-8774f785ea07\" />\r\n<img width=\"1363\" height=\"679\" alt=\"image\" src=\"https://github.com/user-attachments/assets/aa76db89-d07f-4f14-a521-130b75a68f90\" />"
+      },
+      "metadata": {
+        "team": "Gumroad",
+        "repo": "antiwork/gumroad",
+        "pr_number": 1661,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Gumroad] refactor(ui): Migrate figure.code SCSS to Tailwind CSS",
+      "vars": {
+        "pr_body": "Part of #1055\r\n<h2> Summary</h2>\r\n<p>Migrated <code>figure.code</code> component styling from <strong>SCSS to Tailwind CSS</strong> across API documentation and admin pages. Replaced <code>_figure.scss</code> with utility classes while maintaining visual consistency.</p>\r\n\r\n<h3> AI Disclosure</h3>\r\n<ul>\r\n  <li><strong>IDE:</strong> Cursor</li>\r\n  <li><strong>Model:</strong> Auto</li>\r\n  <li><strong>Written by:</strong> Me</li>\r\n  <li><strong>Cursor used for:</strong> Hints and advice</li>\r\n</ul>\r\n\r\n<hr />\r\n\r\n<h2>\ud83c\udf12 Dark Mode Comparison</h2>\r\n\r\n<table>\r\n  <thead>\r\n    <tr>\r\n      <th>Before</th>\r\n      <th>After</th>\r\n    </tr>\r\n  </thead>\r\n  <tbody>\r\n    <tr>\r\n      <td><img src=\"https://github.com/user-attachments/assets/239e369f-aff9-4921-a2f7-c39f57171815\" width=\"400\" /></td>\r\n      <td><img src=\"https://github.com/user-attachments/assets/0bbaa072-ecc9-4a17-8d37-d90dcd431929\" width=\"400\" /></td>\r\n    </tr>\r\n    <tr>\r\n      <td><img src=\"https://github.com/user-attachments/assets/d15686e5-2d16-4a29-bcac-df294454b269\" width=\"400\" /></td>\r\n        <td><img src=\"https://github.com/user-attachments/assets/dc3bc930-c9e2-4021-91f5-618d5d7019ba\" width=\"400\" /></td>\r\n    </tr>\r\n    <tr>\r\n      <td><img src=\"https://github.com/user-attachments/assets/ee66004a-e6e5-4431-a408-cad2b8990a5c\" width=\"400\" /></td>\r\n  <td><img src=\"https://github.com/user-attachments/assets/0dcc1c50-ffba-4fc5-bc20-fe776681c0cf\" width=\"400\" /></td>\r\n    </tr>\r\n  </tbody>\r\n</table>\r\n\r\n<hr />\r\n\r\n<h2>\ud83c\udf15 Light Mode Comparison</h2>\r\n\r\n<table>\r\n  <thead>\r\n    <tr>\r\n      <th>Before</th>\r\n      <th>After</th>\r\n    </tr>\r\n  </thead>\r\n  <tbody>\r\n    <tr>\r\n      <td><img src=\"https://github.com/user-attachments/assets/e8b88d79-e2c4-4846-9e9e-9ce99fdc58ae\" width=\"400\" /></td>\r\n      <td><img src=\"https://github.com/user-attachments/assets/26679af3-8125-44cc-ada5-a040aefb38c9\" width=\"400\" /></td>\r\n    </tr>\r\n    <tr>\r\n      <td><img src=\"https://github.com/user-attachments/assets/9b4c016b-a174-4af8-94cb-729bc83515bb\" width=\"400\" /></td>\r\n      <td><img src=\"https://github.com/user-attachments/assets/94d3cc66-7af6-40fc-85da-bdc21e006124\" width=\"400\" /></td>\r\n    </tr>\r\n    <tr>\r\n      <td><img src=\"https://github.com/user-attachments/assets/531086c0-37f3-4794-bdbc-92c9e271fa66\" width=\"400\" /></td>\r\n      <td><img src=\"https://github.com/user-attachments/assets/3feec4fd-c12b-4f68-a233-954a00878d6b\" width=\"400\" /></td>\r\n    </tr>\r\n  </tbody>\r\n</table>\r\n"
+      },
+      "metadata": {
+        "team": "Gumroad",
+        "repo": "antiwork/gumroad",
+        "pr_number": 1656,
+        "current_detection": true,
+        "current_tools": [
+          "cursor"
+        ]
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        },
+        {
+          "type": "javascript",
+          "value": "JSON.parse(output).is_ai_assisted === true"
+        }
+      ]
+    },
+    {
+      "description": "[Cal.com] fix(workflows): fixed AddActionDialog overflow to prevent en",
+      "vars": {
+        "pr_body": "## What does this PR do?\r\n\r\n### Problem\r\nThe AddActionDialog component made the entire dialog scrollable when content overflowed.\r\nOnly the internal action content should scroll \u2014 not the dialog container itself.\r\n\r\nThis caused poor UX, especially when dynamic form fields (phone number, email, sender ID, etc.) were rendered.\r\n\r\n\r\n- Fixes #26086 \r\n- Fixes [CAL-6962](https://linear.app/calcom/issue/CAL-6962/addactiondialog-allows-entire-dialog-to-scroll-when-content-overflows)\r\n\r\n\r\n\r\n### Root Cause\r\n\r\nThe enableOverflow prop on DialogContent applied overflow-y-auto to the entire dialog container, causing the dialog itself to scroll instead of just the content area.\r\n\r\n### Solution\r\n\r\n- Removed enableOverflow from DialogContent . This was the root fix that prevented the dialog container from becoming scrollable.\r\n\r\n- Added noSticky to DialogFooter. Keeps the footer in the natural document flow and improves scrolling behavior when content overflows.\r\n\r\n## Visual Demo (For contributors especially)\r\n- before: \r\n\r\nhttps://github.com/user-attachments/assets/5e062e86-e8fd-479e-8f66-c5300750964f\r\n\r\n- after: \r\n\r\nhttps://github.com/user-attachments/assets/74733271-8f8c-459b-ab56-ffbbf0186f4b\r\n\r\n\r\n## Mandatory Tasks (DO NOT REMOVE)\r\n\r\n- [x] I have self-reviewed the code (A decent size PR without self-review might be rejected).\r\n- [x] I have updated the developer docs in /docs if this PR makes changes that would require a [documentation change](https://cal.com/docs). If N/A, write N/A here and check the checkbox.\r\n- [x] I confirm automated tests are in place that prove my fix is effective or that my feature works.\r\n\r\n## How should this be tested?\r\n\r\n- Tested with multiple action types that dynamically show/hide form fields\r\n- Verified dialog remains within viewport bounds\r\n- Confirmed scrolling is limited to internal content only\r\n"
+      },
+      "metadata": {
+        "team": "Cal.com",
+        "repo": "calcom/cal.com",
+        "pr_number": 26087,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[PostHog Analytics] chore(kafka-deduplicator): versioned checkpoint bucket prefi",
+      "vars": {
+        "pr_body": "## Problem\r\nDefault name is too long and the bucket name itself tells the story either way. **Merge this prior to the corresponding export enablement PR**\r\n<!-- Who are we building for, what are their needs, why is this important? -->\r\n\r\n<!-- Does this fix an issue? Uncomment the line below with the issue ID to automatically close it when merged -->\r\n<!-- Closes #ISSUE_ID -->\r\n\r\n## Changes\r\n* shorten S3 bucket prefix default to version tag\r\n<!-- If there are frontend changes, please include screenshots. -->\r\n<!-- If a reference design was involved, include a link to the relevant Figma frame! -->\r\n\r\n## How did you test this code?\r\nLocally & CI\r\n<!-- Briefly describe the steps you took. -->\r\n<!-- Include automated tests if possible, otherwise describe the manual testing routine. -->\r\n\r\n<!-- Docs reminder: If this change requires updated docs, please do that! Engineers are the primary people responsible for their documentation. \ud83d\ude4c -->\r\n\r\n\ud83d\udc49 _Stay up-to-date with [PostHog coding conventions](https://posthog.com/docs/contribute/coding-conventions) for a smoother review._\r\n\r\n## Changelog: (features only) Is this feature complete?\r\nN/A\r\n<!-- Yes if this is okay to go in the changelog. No if it's still hidden behind a feature flag, or part of a feature that's not complete yet, etc.  -->\r\n<!-- Removing this section does not mean the changelog bot won't pick it up, because *some people* like to not use the template, so we can't rely on it existing. -->\r\n"
+      },
+      "metadata": {
+        "team": "PostHog Analytics",
+        "repo": "PostHog/posthog",
+        "pr_number": 43822,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Linear] chore(release): version packages",
+      "vars": {
+        "pr_body": "This PR was opened by the [Changesets release](https://github.com/changesets/action) GitHub action. When you're ready to do a release, you can merge this and the packages will be published to npm automatically. If you're not ready to do a release yet, that's fine, whenever you add more changesets to master, this PR will be updated.\n\n# Releases\n## @linear/sdk@68.1.0\n\n### Minor Changes\n\n-   4a8c505: feat(schema): [dangerous] Input field 'hipaaComplianceEnabled' was added to input object type 'OrganizationUpdateInput' (OrganizationUpdateInput.hipaaComplianceEnabled)\n\n    feat(schema): [non_breaking] Field 'AgentSession.externalLink' is deprecated (AgentSession.externalLink)\n\n    feat(schema): [non_breaking] Field 'AgentSession.externalLink' has deprecation reason 'Use externalUrls instead.' (AgentSession.externalLink)\n\n    feat(schema): [non_breaking] Input field 'AgentSessionCreateInput.issueId' changed type from 'String!' to 'String' (AgentSessionCreateInput.issueId)\n\n-   7f5d131: feat(schema): [dangerous] Input field 'externalUrls' was added to input object type 'AgentSessionCreateOnComment' (AgentSessionCreateOnComment.externalUrls)\n\n    feat(schema): [dangerous] Input field 'externalUrls' was added to input object type 'AgentSessionCreateOnIssue' (AgentSessionCreateOnIssue.externalUrls)\n\n    feat(schema): [dangerous] Input field 'addedExternalUrls' was added to input object type 'AgentSessionUpdateExternalUrlInput' (AgentSessionUpdateExternalUrlInput.addedExternalUrls)\n\n    feat(schema): [dangerous] Input field 'externalUrls' was added to input object type 'AgentSessionUpdateExternalUrlInput' (AgentSessionUpdateExternalUrlInput.externalUrls)\n\n    feat(schema): [dangerous] Input field 'removedExternalUrls' was added to input object type 'AgentSessionUpdateExternalUrlInput' (AgentSessionUpdateExternalUrlInput.removedExternalUrls)\n\n    feat(schema): [dangerous] Input field 'addedExternalUrls' was added to input object type 'AgentSessionUpdateInput' (AgentSessionUpdateInput.addedExternalUrls)\n\n    feat(schema): [dangerous] Input field 'externalUrls' was added to input object type 'AgentSessionUpdateInput' (AgentSessionUpdateInput.externalUrls)\n\n    feat(schema): [dangerous] Input field 'removedExternalUrls' was added to input object type 'AgentSessionUpdateInput' (AgentSessionUpdateInput.removedExternalUrls)\n\n    feat(schema): [dangerous] Input field 'startDate' was added to input object type 'ReleaseCreateInput' (ReleaseCreateInput.startDate)\n\n    feat(schema): [dangerous] Input field 'targetDate' was added to input object type 'ReleaseCreateInput' (ReleaseCreateInput.targetDate)\n\n    feat(schema): [dangerous] Input field 'startDate' was added to input object type 'ReleaseUpdateInput' (ReleaseUpdateInput.startDate)\n\n    feat(schema): [dangerous] Input field 'targetDate' was added to input object type 'ReleaseUpdateInput' (ReleaseUpdateInput.targetDate)\n\n    feat(schema): [dangerous] Input field 'retiredAt' was added to input object type 'TeamUpdateInput' (TeamUpdateInput.retiredAt)\n\n    feat(schema): [non_breaking] Type 'AgentSessionExternalUrlInput' was added (AgentSessionExternalUrlInput)\n\n    feat(schema): [non_breaking] Type 'AgentSessionToPullRequest' was added (AgentSessionToPullRequest)\n\n    feat(schema): [non_breaking] Type 'AgentSessionToPullRequestConnection' was added (AgentSessionToPullRequestConnection)\n\n    feat(schema): [non_breaking] Type 'AgentSessionToPullRequestEdge' was added (AgentSessionToPullRequestEdge)\n\n    feat(schema): [non_breaking] Type 'AsksWebFormsAuthResponse' was added (AsksWebFormsAuthResponse)\n\n    feat(schema): [non_breaking] Field 'externalUrls' was added to object type 'AgentSession' (AgentSession.externalUrls)\n\n    feat(schema): [non_breaking] Field 'pullRequests' was added to object type 'AgentSession' (AgentSession.pullRequests)\n\n    feat(schema): [non_breaking] Field 'asksWebFormsAuth' was added to object type 'Mutation' (Mutation.asksWebFormsAuth)\n\n    feat(schema): [non_breaking] Fiel"
+      },
+      "metadata": {
+        "team": "Linear",
+        "repo": "linearapp/linear",
+        "pr_number": 990,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Deno] fix(compile): ensure temp dir exists during x64 codesign",
+      "vars": {
+        "pr_body": "Closes https://github.com/denoland/deno/issues/31664"
+      },
+      "metadata": {
+        "team": "Deno",
+        "repo": "denoland/deno",
+        "pr_number": 31672,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Cal.com] fix: settings icon at app setup - event types",
+      "vars": {
+        "pr_body": "## What does this PR do?\r\n\r\nFixed the placement of the settings (gear) icon \r\n\r\n- Fixes #26049\r\n- Fixes [CAL-6955](https://linear.app/calcom/issue/CAL-6955/settings-gear-icon-is-misaligned)\r\n\r\n## Visual Demo (For contributors especially)\r\n\r\n**//Before**\r\n\r\n<img width=\"1293\" height=\"862\" alt=\"Screenshot from 2025-12-19 15-12-13\" src=\"https://github.com/user-attachments/assets/58453a3d-cbd7-4aea-af4a-1f3d587eb67d\" />\r\n\r\n**//After**\r\n\r\n<img width=\"1293\" height=\"862\" alt=\"Screenshot from 2025-12-19 15-12-03\" src=\"https://github.com/user-attachments/assets/90c22b16-18b9-43c5-a0e5-a16b2d3363d5\" />\r\n\r\n## Mandatory Tasks (DO NOT REMOVE)\r\n\r\n\r\n\r\n- [x] I have self-reviewed the code (A decent size PR without self-review might be rejected).\r\n- [ ] I have updated the developer docs in /docs if this PR makes changes that would require a [documentation change](https://cal.com/docs). If N/A, write N/A here and check the checkbox.\r\n- [ ] I confirm automated tests are in place that prove my fix is effective or that my feature works.\r\n\r\n\r\n"
+      },
+      "metadata": {
+        "team": "Cal.com",
+        "repo": "calcom/cal.com",
+        "pr_number": 26048,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[PostHog Analytics] chore(ci): Replace PAT wth default github token",
+      "vars": {
+        "pr_body": "The PAT isn't needed for these actions."
+      },
+      "metadata": {
+        "team": "PostHog Analytics",
+        "repo": "PostHog/posthog-js",
+        "pr_number": 2794,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[LangChain] chore: version packages",
+      "vars": {
+        "pr_body": "This PR was opened by the [Changesets release](https://github.com/changesets/action) GitHub action. When you're ready to do a release, you can merge this and the packages will be published to npm automatically. If you're not ready to do a release yet, that's fine, whenever you add more changesets to main, this PR will be updated.\n\n\n# Releases\n## langchain@1.2.3\n\n### Patch Changes\n\n-   [#9707](https://github.com/langchain-ai/langchainjs/pull/9707) [`e5063f9`](https://github.com/langchain-ai/langchainjs/commit/e5063f9c6e9989ea067dfdff39262b9e7b6aba62) Thanks [@hntrl](https://github.com/hntrl)! - add security hardening for `load`\n\n-   Updated dependencies \\[[`e5063f9`](https://github.com/langchain-ai/langchainjs/commit/e5063f9c6e9989ea067dfdff39262b9e7b6aba62), [`8996647`](https://github.com/langchain-ai/langchainjs/commit/89966470e8c0b112ce4f9a326004af6a4173f9e6)]:\n    -   @langchain/core@1.1.8\n\n## @langchain/core@1.1.8\n\n### Patch Changes\n\n-   [#9707](https://github.com/langchain-ai/langchainjs/pull/9707) [`e5063f9`](https://github.com/langchain-ai/langchainjs/commit/e5063f9c6e9989ea067dfdff39262b9e7b6aba62) Thanks [@hntrl](https://github.com/hntrl)! - add security hardening for `load`\n\n-   [#9684](https://github.com/langchain-ai/langchainjs/pull/9684) [`8996647`](https://github.com/langchain-ai/langchainjs/commit/89966470e8c0b112ce4f9a326004af6a4173f9e6) Thanks [@christian-bromann](https://github.com/christian-bromann)! - fix(core): document purpose of name in base message\n\n## @langchain/anthropic@1.3.3\n\n### Patch Changes\n\n-   Updated dependencies \\[[`e5063f9`](https://github.com/langchain-ai/langchainjs/commit/e5063f9c6e9989ea067dfdff39262b9e7b6aba62), [`8996647`](https://github.com/langchain-ai/langchainjs/commit/89966470e8c0b112ce4f9a326004af6a4173f9e6)]:\n    -   @langchain/core@1.1.8\n\n## @langchain/google-cloud-sql-pg@1.0.9\n\n### Patch Changes\n\n-   Updated dependencies \\[[`e5063f9`](https://github.com/langchain-ai/langchainjs/commit/e5063f9c6e9989ea067dfdff39262b9e7b6aba62), [`8996647`](https://github.com/langchain-ai/langchainjs/commit/89966470e8c0b112ce4f9a326004af6a4173f9e6)]:\n    -   @langchain/core@1.1.8\n\n## @langchain/google-common@2.1.3\n\n### Patch Changes\n\n-   Updated dependencies \\[[`e5063f9`](https://github.com/langchain-ai/langchainjs/commit/e5063f9c6e9989ea067dfdff39262b9e7b6aba62), [`8996647`](https://github.com/langchain-ai/langchainjs/commit/89966470e8c0b112ce4f9a326004af6a4173f9e6)]:\n    -   @langchain/core@1.1.8\n\n## @langchain/google-gauth@2.1.3\n\n### Patch Changes\n\n-   Updated dependencies \\[]:\n    -   @langchain/google-common@2.1.3\n\n## @langchain/google-genai@2.1.3\n\n### Patch Changes\n\n-   Updated dependencies \\[[`e5063f9`](https://github.com/langchain-ai/langchainjs/commit/e5063f9c6e9989ea067dfdff39262b9e7b6aba62), [`8996647`](https://github.com/langchain-ai/langchainjs/commit/89966470e8c0b112ce4f9a326004af6a4173f9e6)]:\n    -   @langchain/core@1.1.8\n\n## @langchain/google-vertexai@2.1.3\n\n### Patch Changes\n\n-   Updated dependencies \\[]:\n    -   @langchain/google-gauth@2.1.3\n\n## @langchain/google-vertexai-web@2.1.3\n\n### Patch Changes\n\n-   Updated dependencies \\[]:\n    -   @langchain/google-webauth@2.1.3\n\n## @langchain/google-webauth@2.1.3\n\n### Patch Changes\n\n-   Updated dependencies \\[[`e5063f9`](https://github.com/langchain-ai/langchainjs/commit/e5063f9c6e9989ea067dfdff39262b9e7b6aba62), [`8996647`](https://github.com/langchain-ai/langchainjs/commit/89966470e8c0b112ce4f9a326004af6a4173f9e6)]:\n    -   @langchain/core@1.1.8\n    -   @langchain/google-common@2.1.3\n\n## @langchain/standard-tests@0.0.11\n\n### Patch Changes\n\n-   Updated dependencies \\[[`e5063f9`](https://github.com/langchain-ai/langchainjs/commit/e5063f9c6e9989ea067dfdff39262b9e7b6aba62), [`8996647`](https://github.com/langchain-ai/langchainjs/commit/89966470e8c0b112ce4f9a326004af6a4173f9e6)]:\n    -   @langchain/core@1.1.8\n"
+      },
+      "metadata": {
+        "team": "LangChain",
+        "repo": "langchain-ai/langchainjs",
+        "pr_number": 9697,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Cal.com] Admin team list view",
+      "vars": {
+        "pr_body": "## What does this PR do?\n\n- Introduces the backend tRPC endpoint (`viewer.admin.listTeams`) to enable admin users to view all teams in a data-table.\n- This endpoint supports server-side filtering (by ID, name, slug, organization, owner, subscription, kind), sorting, and pagination.\n- It provides comprehensive team data, including ID, name, slug, whether it's an organization, its parent organization, its owner, and associated subscription ID.\n\n## Visual Demo (For contributors especially)\n\n#### Video Demo (if applicable):\n\nN/A - This PR introduces the backend tRPC endpoint and schema; the UI implementation will follow in a subsequent PR.\n\n#### Image Demo (if applicable):\n\nN/A - This PR introduces the backend tRPC endpoint and schema; the UI implementation will follow in a subsequent PR.\n\n## Mandatory Tasks (DO NOT REMOVE)\n\n- [ ] I have self-reviewed the code (A decent size PR without self-review might be rejected).\n- [ ] I have updated the developer docs in /docs if this PR makes changes that would require a [documentation change](https://cal.com/docs). If N/A, write N/A here and check the checkbox.\n- [ ] I confirm automated tests are in place that prove my fix is effective or that my feature works.\n\n## How should this be tested?\n\n- This PR only includes the backend tRPC endpoint. To test, you can call the `viewer.admin.listTeams` endpoint with various parameters.\n- **Expected (happy path):**\n    - Calling the endpoint with `limit` and `offset` should return paginated team data.\n    - Adding `searchTerm` should filter teams by name or slug.\n    - Applying `filters` for `id`, `name`, `slug`, `organizationId`, `organizationSlug`, `owner`, `subscriptionId`, or `kind` should correctly filter the results.\n    - Providing `sorting` parameters should order the results as expected.\n    - The returned `rows` should contain `id`, `name`, `slug`, `isOrganization`, `organization`, `owner`, `subscriptionId`, and `createdAt` fields.\n- **Minimal test data:** Ensure you have multiple teams in your database, some with owners, some belonging to organizations, and some with associated subscriptions to fully test all filter and data display capabilities.\n\n## Checklist\n\n- [ ] I haven't read the [contributing guide](https://github.com/calcom/cal.com/blob/main/CONTRIBUTING.md)\n- [ ] My code doesn't follow the style guidelines of this project\n- [ ] I haven't commented my code, particularly in hard-to-understand areas\n- [ ] I haven't checked if my changes generate no new warnings\n\n---\n<a href=\"https://cursor.com/background-agent?bcId=bc-24a37f17-6075-4d1b-bf11-df3688c477f6\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://cursor.com/open-in-cursor-dark.svg\"><source media=\"(prefers-color-scheme: light)\" srcset=\"https://cursor.com/open-in-cursor-light.svg\"><img alt=\"Open in Cursor\" src=\"https://cursor.com/open-in-cursor.svg\"></picture></a>&nbsp;<a href=\"https://cursor.com/agents?id=bc-24a37f17-6075-4d1b-bf11-df3688c477f6\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://cursor.com/open-in-web-dark.svg\"><source media=\"(prefers-color-scheme: light)\" srcset=\"https://cursor.com/open-in-web-light.svg\"><img alt=\"Open in Web\" src=\"https://cursor.com/open-in-web.svg\"></picture></a>\n\n"
+      },
+      "metadata": {
+        "team": "Cal.com",
+        "repo": "calcom/cal.com",
+        "pr_number": 26029,
+        "current_detection": true,
+        "current_tools": [
+          "cursor"
+        ]
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        },
+        {
+          "type": "javascript",
+          "value": "JSON.parse(output).is_ai_assisted === true"
+        }
+      ]
+    },
+    {
+      "description": "[PostHog Analytics] feat: Q1 2026 objectives for Developer Experience",
+      "vars": {
+        "pr_body": "Updated Q1 2026 objectives for Developer Experience team to enhance clarity and detail.\r\n\r\n## Changes\r\n\r\n*Please describe.*\r\n\r\n*Add screenshots or screen recordings for visual / UI-focused changes.*\r\n\r\n## Checklist\r\n\r\n- [ ] Words are spelled using American English\r\n- [ ] PostHog product names are in [title case](https://apastyle.apa.org/style-grammar-guidelines/capitalization/title-case). It's \"Product Analytics\" not \"Product analytics\". If talking about a category of product, use sentence case e.g. \"There are a lot of product analytics tools, but PostHog's Product Analytics is the best\"\r\n- [ ] Titles are in [sentence case](https://apastyle.apa.org/style-grammar-guidelines/capitalization/sentence-case)\r\n- [ ] Feature names are in **[sentence case](https://apastyle.apa.org/style-grammar-guidelines/capitalization/sentence-case)**. It's \"Click here to create a trend insight\" not \"... create a Trend Insight\" and so on.\r\n- [ ] Use relative URLs for internal links\r\n- [ ] If I moved a page, I added a redirect in `vercel.json`\r\n- [ ] Remove this template if you're not going to fill it out!\r\n\r\n## Article checklist\r\n\r\n- [ ] I've added (at least) 3-5 internal links to this new article\r\n- [ ] I've added keywords for this page to the rank tracker in Ahrefs\r\n- [ ] I've checked the preview build of the article\r\n- [ ] The date on the article is today's date\r\n- [ ] I've added this to the relevant \"Tutorials and guides\" docs page (if applicable)\r\n"
+      },
+      "metadata": {
+        "team": "PostHog Analytics",
+        "repo": "PostHog/posthog.com",
+        "pr_number": 14164,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Resend] chore(deps): update dependency @react-three/fiber to v9.4.2",
+      "vars": {
+        "pr_body": "This PR contains the following updates:\n\n| Package | Change | [Age](https://docs.renovatebot.com/merge-confidence/) | [Confidence](https://docs.renovatebot.com/merge-confidence/) |\n|---|---|---|---|\n| [@react-three/fiber](https://redirect.github.com/pmndrs/react-three-fiber) | [`9.4.0` -> `9.4.2`](https://renovatebot.com/diffs/npm/@react-three%2ffiber/9.4.0/9.4.2) | ![age](https://developer.mend.io/api/mc/badges/age/npm/@react-three%2ffiber/9.4.2?slim=true) | ![confidence](https://developer.mend.io/api/mc/badges/confidence/npm/@react-three%2ffiber/9.4.0/9.4.2?slim=true) |\n\n---\n\n### Release Notes\n\n<details>\n<summary>pmndrs/react-three-fiber (@&#8203;react-three/fiber)</summary>\n\n### [`v9.4.2`](https://redirect.github.com/pmndrs/react-three-fiber/releases/tag/v9.4.2)\n\n[Compare Source](https://redirect.github.com/pmndrs/react-three-fiber/compare/v9.4.1...v9.4.2)\n\n#### What's Changed\n\n- docs: update installation guide with iOS simulator note by [@&#8203;rudin](https://redirect.github.com/rudin) in [#&#8203;3572](https://redirect.github.com/pmndrs/react-three-fiber/pull/3572)\n- fix: Expo SDK 54 compatibility through workaround by [@&#8203;alextoudic](https://redirect.github.com/alextoudic) in [#&#8203;3599](https://redirect.github.com/pmndrs/react-three-fiber/pull/3599)\n\n#### New Contributors\n\n- [@&#8203;rudin](https://redirect.github.com/rudin) made their first contribution in [#&#8203;3572](https://redirect.github.com/pmndrs/react-three-fiber/pull/3572)\n- [@&#8203;alextoudic](https://redirect.github.com/alextoudic) made their first contribution in [#&#8203;3599](https://redirect.github.com/pmndrs/react-three-fiber/pull/3599)\n\n**Full Changelog**: <https://github.com/pmndrs/react-three-fiber/compare/v9.4.1...v9.4.2>\n\n### [`v9.4.1`](https://redirect.github.com/pmndrs/react-three-fiber/releases/tag/v9.4.1)\n\n[Compare Source](https://redirect.github.com/pmndrs/react-three-fiber/compare/v9.4.0...v9.4.1)\n\n#### What's Changed\n\n- fix: pass DevTools config through createReconciler to fix React DevTools by [@&#8203;AlaricBaraou](https://redirect.github.com/AlaricBaraou) in [#&#8203;3594](https://redirect.github.com/pmndrs/react-three-fiber/pull/3594)\n\n**Full Changelog**: <https://github.com/pmndrs/react-three-fiber/compare/v9.4.0...v9.4.1>\n\n</details>\n\n---\n\n### Configuration\n\n\ud83d\udcc5 **Schedule**: Branch creation - At any time (no schedule defined), Automerge - At any time (no schedule defined).\n\n\ud83d\udea6 **Automerge**: Disabled by config. Please merge this manually once you are satisfied.\n\n\u267b **Rebasing**: Never, or you tick the rebase/retry checkbox.\n\n\ud83d\udd15 **Ignore**: Close this PR and you won't be reminded about this update again.\n\n---\n\n - [ ] <!-- rebase-check -->If you want to rebase/retry this PR, check this box\n\n---\n\nThis PR was generated by [Mend Renovate](https://mend.io/renovate/). View the [repository job log](https://developer.mend.io/github/resend/react-email).\n<!--renovate-debug:eyJjcmVhdGVkSW5WZXIiOiI0Mi41OS4wIiwidXBkYXRlZEluVmVyIjoiNDIuNTkuMCIsInRhcmdldEJyYW5jaCI6ImNhbmFyeSIsImxhYmVscyI6W119-->\n\n\n<!-- This is an auto-generated description by cubic. -->\n---\n## Summary by cubic\nUpgrade @react-three/fiber from 9.4.0 to 9.4.2 to pick up fixes for React DevTools and Expo SDK 54 compatibility. Lockfile-only change; no application code modified.\n\n<sup>Written for commit 2a435163e66e813730fca8faff2ab21acb94af77. Summary will update automatically on new commits.</sup>\n\n<!-- End of auto-generated description by cubic. -->\n\n"
+      },
+      "metadata": {
+        "team": "Resend",
+        "repo": "resend/react-email",
+        "pr_number": 2749,
+        "current_detection": true,
+        "current_tools": [
+          "cubic"
+        ]
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        },
+        {
+          "type": "javascript",
+          "value": "JSON.parse(output).is_ai_assisted === true"
+        }
+      ]
+    },
+    {
+      "description": "[Antiwork] Upgrade Next.js to 15.3.8",
+      "vars": {
+        "pr_body": "Fix for 2 additional CVEs, see https://react.dev/blog/2025/12/03/critical-security-vulnerability-in-react-server-components#update-instructions"
+      },
+      "metadata": {
+        "team": "Antiwork",
+        "repo": "antiwork/helper",
+        "pr_number": 1091,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[PostHog Analytics] Capacitor plugin supports session recording and feature flag",
+      "vars": {
+        "pr_body": "## Changes\r\n\r\nUpdate features frontmatter on Capacitor page. The Capacitor plugin supports Feature Flags (since v7) and Session Recordings (since v7.3.0). See: https://github.com/capawesome-team/capacitor-plugins/tree/main/packages/posthog\r\n \r\n## Checklist\r\n\r\n- [x] Words are spelled using American English\r\n- [x] PostHog product names are in [title case](https://apastyle.apa.org/style-grammar-guidelines/capitalization/title-case). It's \"Product Analytics\" not \"Product analytics\". If talking about a category of product, use sentence case e.g. \"There are a lot of product analytics tools, but PostHog's Product Analytics is the best\"\r\n- [x] Titles are in [sentence case](https://apastyle.apa.org/style-grammar-guidelines/capitalization/sentence-case)\r\n- [x] Feature names are in **[sentence case](https://apastyle.apa.org/style-grammar-guidelines/capitalization/sentence-case)**. It's \"Click here to create a trend insight\" not \"... create a Trend Insight\" and so on.\r\n- [x] Use relative URLs for internal links\r\n- [x] If I moved a page, I added a redirect in `vercel.json`\r\n- [x] Remove this template if you're not going to fill it out!\r\n"
+      },
+      "metadata": {
+        "team": "PostHog Analytics",
+        "repo": "PostHog/posthog.com",
+        "pr_number": 14161,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Cal.com] fix(stripe): lazy load stripe client to prevent crash on sel",
+      "vars": {
+        "pr_body": "## Description\r\nThis PR fixes a critical crash that occurs on self-hosted instances or local development environments where the `STRIPE_PRIVATE_KEY` is not defined.\r\n\r\nPreviously, the application would crash on startup or when accessing billing-related pages because the Stripe module attempted to initialize immediately with an undefined key.\r\n\r\n## Changes\r\n- **Refactor:** Updated `StripeService` to lazy-load the Stripe client only when requested, rather than at import time.\r\n- **Fix:** Updated `StripeClient.ts` (DI module) to safely handle a missing API key. Instead of throwing an error, it now logs a warning and returns a dummy object, allowing the server to start and run non-billing features.\r\n- **Refactor:** Updated consumers (e.g., `TeamBillingServiceFactory`, `webhook.ts`) to use the new lazy-loading pattern.\r\n\r\n## How to Test\r\n1. Ensure `STRIPE_PRIVATE_KEY` is missing or commented out in the `.env` file.\r\n2. Run `yarn dev`.\r\n3. Verify the server starts successfully without the \"STRIPE_PRIVATE_KEY is missing\" crash.\r\n4. Navigate to `/settings/teams/new` (or click \"Create a new team\").\r\n5. Verify the page loads successfully (previously caused a runtime crash)."
+      },
+      "metadata": {
+        "team": "Cal.com",
+        "repo": "calcom/cal.com",
+        "pr_number": 26001,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[PostHog Analytics] docs(batch-exports): Add note on Parquet compression for S3 ",
+      "vars": {
+        "pr_body": "## Changes\r\n\r\nAdd note about Parquet compression and file formats when setting up an S3 batch export\r\n\r\n## Checklist\r\n\r\n- [x] Words are spelled using American English\r\n"
+      },
+      "metadata": {
+        "team": "PostHog Analytics",
+        "repo": "PostHog/posthog.com",
+        "pr_number": 14154,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Cal.com] fix: render markdown in custom page redirect messages",
+      "vars": {
+        "pr_body": "Before:-\r\n<img width=\"1986\" height=\"762\" alt=\"image (26)\" src=\"https://github.com/user-attachments/assets/90e16a5c-a8f1-4269-8873-8854a82c012e\" />\r\n<img width=\"3456\" height=\"2068\" alt=\"image (27)\" src=\"https://github.com/user-attachments/assets/6714a1d5-454d-4fe7-b6ce-84120353a10a\" />\r\nAfter:-\r\n<img width=\"977\" height=\"456\" alt=\"Screenshot 2025-12-17 at 9 09 22\u202fPM\" src=\"https://github.com/user-attachments/assets/449611ab-8d84-41e2-a342-0e334562cec5\" />\r\n"
+      },
+      "metadata": {
+        "team": "Cal.com",
+        "repo": "calcom/cal.com",
+        "pr_number": 25987,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Cal.com] refactor: Move SelectedCalendarRepository and WorkflowRelati",
+      "vars": {
+        "pr_body": "## What does this PR do?\r\n\r\nMoves `SelectedCalendarRepository` and `WorkflowRelationsRepository` from `packages/lib/server/repository/` to `packages/features/` and updates all import references.\r\n\r\n### Why this change is needed\r\n\r\nThere's no reason for feature-specific repositories to live in `lib` - they belong in `features` where the related feature code resides. This refactor is part of a larger effort to move all repositories into `repositories` folders within their specific feature directories in `features/`, improving module boundaries and keeping feature code self-contained.\r\n\r\n## Mandatory Tasks (DO NOT REMOVE)\r\n\r\n- [x] I have self-reviewed the code (A decent size PR without self-review might be rejected).\r\n- [x] N/A - I have updated the developer docs in /docs if this PR makes changes that would require a [documentation change](https://cal.com/docs). If N/A, write N/A here and check the checkbox.\r\n- [x] N/A - I confirm automated tests are in place that prove my fix is effective or that my feature works.\r\n\r\n"
+      },
+      "metadata": {
+        "team": "Cal.com",
+        "repo": "calcom/cal.com",
+        "pr_number": 25982,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Polar.sh]  events: Add materialised events metrics view ",
+      "vars": {
+        "pr_body": "Based on the hyper table we set up a materialized view to pre-aggregate\r\nsome of the metrics we use for the metrics.\r\n\r\nLeaving the automatic refresh until we have manually refreshed these\r\naggregated views."
+      },
+      "metadata": {
+        "team": "Polar.sh",
+        "repo": "polarsource/polar",
+        "pr_number": 8620,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Polar.sh] replaced arbitrary height with tailwind h-75 utility",
+      "vars": {
+        "pr_body": "## Description\r\n\r\nReplaced an arbitrary inline height value with Tailwind's `h-75` utility class for the meter quantity chart component to improve code consistency and maintainability.\r\n\r\n\r\n## \ud83e\uddea Testing\r\n- [x] I have tested these changes locally\r\n- [x] All existing tests pass (`uv run task test` for backend, `pnpm test` for frontend)\r\n- [ ] I have added new tests for new functionality\r\n- [x] I have run linting and type checking (`uv run task lint && uv run task lint_types` for backend)\r\n\r\n## \ud83d\uddbc\ufe0f Screenshots/Recordings\r\n\r\n### BEFORE\r\n\r\n\r\n\r\nhttps://github.com/user-attachments/assets/51a29d0f-9bec-4033-ae05-6e03a320c567\r\n\r\n\r\n\r\n### AFTER\r\n\r\nhttps://github.com/user-attachments/assets/0ce7c504-0364-49a8-818f-26e00762e1ae\r\n\r\n\r\n\r\n\r\n\r\n## \u2705 Pre-submission Checklist\r\n\r\n- [x] My code follows the project's style guidelines\r\n- [x] I have performed a self-review of my code\r\n- [ ] I have commented my code where necessary\r\n- [ ] I have made corresponding changes to the documentation\r\n- [x] My changes generate no new warnings\r\n- [ ] I have updated the relevant tests\r\n- [x] All tests pass locally\r\n- [x] **AI/LLM Policy**: If I used AI assistance, I have tested and executed the code locally (not just \"vibe-coded\")\r\n"
+      },
+      "metadata": {
+        "team": "Polar.sh",
+        "repo": "polarsource/polar",
+        "pr_number": 8611,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[LangChain] feat(tavily): added tavily client-source",
+      "vars": {
+        "pr_body": "Added tavily client-source for monitoring\r\n\r\n<!--\r\nThank you for contributing to LangChain.js! Your PR will appear in our next release under the title you set above. Please make sure it highlights your valuable contribution.\r\n\r\nTo help streamline the review process, please make sure you read our contribution guidelines:\r\nhttps://github.com/langchain-ai/langchainjs/blob/main/CONTRIBUTING.md\r\n\r\nIf you are adding an integration (e.g. a new LLM, vector store, or memory), please also read our additional guidelines for integrations. You must include tests (if applicable) and documentation for your integration:\r\nhttps://github.com/langchain-ai/langchainjs/blob/main/.github/contributing/INTEGRATIONS.md\r\n\r\nReplace this block with a description of the change, the issue it fixes (if applicable), and relevant context.\r\n\r\nFinally, we'd love to show appreciation for your contribution - if you'd like us to shout you out on Twitter, please also include your handle below!\r\n-->\r\n\r\n"
+      },
+      "metadata": {
+        "team": "LangChain",
+        "repo": "langchain-ai/langchainjs",
+        "pr_number": 9677,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[PostHog Analytics] fix(surveys): react native text colors",
+      "vars": {
+        "pr_body": "## Problem\n\nsurvey text color is hard-coded to black on react native. this means users can't create dark-mode surveys\n\n<!-- Who are we building for, what are their needs, why is this important? -->\n\n## Changes\n\n- adds `inputBackground` to core sdk types\n- updates all text colors for surveys in RN to use the contrasting color function, matching browser behavior\n- update contrast function to support shorthand hex e.g. `#111`\n\n![survey-rn-demo2.png](https://app.graphite.com/user-attachments/assets/deb27ef6-5340-4f48-8ae1-aec9037139a4.png)\n\n<!-- What is changed and what information would be useful to a reviewer? -->\n\n## Release info Sub-libraries affected\n\n### Libraries affected\n\n<!-- Please mark which libraries will require a version bump. -->\n\n- [ ] All of them\n- [ ] posthog-js (web)\n- [ ] posthog-js-lite (web lite)\n- [ ] posthog-node\n- [x] posthog-react-native\n- [ ] @posthog/react\n- [ ] @posthog/ai\n- [ ] @posthog/nextjs-config\n- [ ] @posthog/nuxt\n- [ ] @posthog/rollup-plugin\n- [ ] @posthog/webpack-plugin\n\n## Checklist\n\n- [ ] Tests for new code\n- [x] Accounted for the impact of any changes across different platforms\n- [x] Accounted for backwards compatibility of any changes (no breaking changes!)\n- [x] Took care not to unnecessarily increase the bundle size\n\n### If releasing new changes\n\n- [x] Ran `pnpm changeset` to generate a changeset file\n- [x] Added the \"release\" label to the PR to indicate we're publishing new versions for the affected packages\n\n<!-- For more details check RELEASING.md -->"
+      },
+      "metadata": {
+        "team": "PostHog Analytics",
+        "repo": "PostHog/posthog-js",
+        "pr_number": 2774,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[PostHog Analytics] fix: Fix position of git identity",
+      "vars": {
+        "pr_body": "see title"
+      },
+      "metadata": {
+        "team": "PostHog Analytics",
+        "repo": "PostHog/posthog-js",
+        "pr_number": 2773,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Supabase] feat(auth): allow custom predicate for detectSessionInUrl op",
+      "vars": {
+        "pr_body": "## Summary\r\n\r\n  - Extends `detectSessionInUrl` option to accept a custom predicate function\r\n  - Allows users to exclude specific URLs from Supabase's implicit grant detection\r\n  - Fixes issue where non-Supabase OAuth flows (e.g., Facebook Login) were incorrectly intercepted\r\n\r\n## Problem\r\n\r\nWhen users have other OAuth providers that return `access_token` in the URL fragment (like Facebook Login for connecting Instagram accounts), Supabase Auth intercepts these tokens and attempts to process them, causing unintended session logouts.\r\n\r\n## Solution\r\n\r\nThe `detectSessionInUrl` option now accepts either:\r\n  - `boolean` - existing behavior (default: `true`)\r\n  - `function(url: URL, params: object) => boolean` - custom predicate\r\n\r\nExample usage:\r\n\r\n```ts\r\n  const supabase = createClient(url, key, {\r\n    auth: {\r\n      detectSessionInUrl: (url, params) => {\r\n        // Ignore Facebook OAuth redirects\r\n        if (url.pathname === '/facebook/redirect') return false\r\n        // Default behavior for Supabase callbacks\r\n        return Boolean(params.access_token || params.error_description)\r\n      }\r\n    }\r\n  })\r\n```\r\n\r\nRelated: \r\n* https://github.com/supabase/supabase-js/issues/1697\r\n* https://github.com/supabase/auth/pull/2299"
+      },
+      "metadata": {
+        "team": "Supabase",
+        "repo": "supabase/supabase-js",
+        "pr_number": 1958,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Deno] ci: run flaky tests in isolation on failure then restore par",
+      "vars": {
+        "pr_body": "If a test is flaky on the CI, it will now force the flaky test to run all by itself. Once it passes or fails in isolation, it will then restore having tests run in parallel.\r\n\r\n* https://github.com/denoland/file_test_runner/pull/25"
+      },
+      "metadata": {
+        "team": "Deno",
+        "repo": "denoland/deno",
+        "pr_number": 31626,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Linear] chore(release): version packages",
+      "vars": {
+        "pr_body": "This PR was opened by the [Changesets release](https://github.com/changesets/action) GitHub action. When you're ready to do a release, you can merge this and the packages will be published to npm automatically. If you're not ready to do a release yet, that's fine, whenever you add more changesets to master, this PR will be updated.\n\n# Releases\n## @linear/sdk@66.0.0\n\n### Major Changes\n\n-   4767210: feat(schema): [breaking] Input field 'name' was removed from input object type 'CustomerTierFilter' (CustomerTierFilter.name)\n\n    feat(schema): [breaking] Field 'releaseIds' was removed from object type 'Issue' (Issue.releaseIds)\n\n    feat(schema): [breaking] Field 'releaseIds' was removed from object type 'IssueSearchResult' (IssueSearchResult.releaseIds)\n\n    feat(schema): [dangerous] Input field 'displayName' was added to input object type 'CustomerTierFilter' (CustomerTierFilter.displayName)\n\n    feat(schema): [dangerous] Input field 'type' was added to input object type 'ReleasePipelineCreateInput' (ReleasePipelineCreateInput.type)\n\n    feat(schema): [dangerous] Input field 'type' was added to input object type 'ReleasePipelineUpdateInput' (ReleasePipelineUpdateInput.type)\n\n    feat(schema): [dangerous] Enum value 'release' was added to enum 'ViewType' (ViewType.release)\n\n    feat(schema): [non_breaking] Type 'IssueToRelease' was added (IssueToRelease)\n\n    feat(schema): [non_breaking] Type 'IssueToReleaseConnection' was added (IssueToReleaseConnection)\n\n    feat(schema): [non_breaking] Type 'IssueToReleaseCreateInput' was added (IssueToReleaseCreateInput)\n\n    feat(schema): [non_breaking] Type 'IssueToReleaseEdge' was added (IssueToReleaseEdge)\n\n    feat(schema): [non_breaking] Type 'IssueToReleasePayload' was added (IssueToReleasePayload)\n\n    feat(schema): [non_breaking] Type 'ReleasePipelineType' was added (ReleasePipelineType)\n\n    feat(schema): [non_breaking] Field 'allowNameChange' was added to object type 'IdentityProvider' (IdentityProvider.allowNameChange)\n\n    feat(schema): [non_breaking] Field 'addedToReleaseIds' was added to object type 'IssueHistory' (IssueHistory.addedToReleaseIds)\n\n    feat(schema): [non_breaking] Field 'addedToReleases' was added to object type 'IssueHistory' (IssueHistory.addedToReleases)\n\n    feat(schema): [non_breaking] Field 'removedFromReleaseIds' was added to object type 'IssueHistory' (IssueHistory.removedFromReleaseIds)\n\n    feat(schema): [non_breaking] Field 'removedFromReleases' was added to object type 'IssueHistory' (IssueHistory.removedFromReleases)\n\n    feat(schema): [non_breaking] Field 'issueToReleaseCreate' was added to object type 'Mutation' (Mutation.issueToReleaseCreate)\n\n    feat(schema): [non_breaking] Field 'issueToReleaseDelete' was added to object type 'Mutation' (Mutation.issueToReleaseDelete)\n\n    feat(schema): [non_breaking] Field 'issueToReleaseDeleteByIssueAndRelease' was added to object type 'Mutation' (Mutation.issueToReleaseDeleteByIssueAndRelease)\n\n    feat(schema): [non_breaking] Field 'projectExternalSyncDisable' was added to object type 'Mutation' (Mutation.projectExternalSyncDisable)\n\n    feat(schema): [non_breaking] Field 'trialStartsAt' was added to object type 'Organization' (Organization.trialStartsAt)\n\n    feat(schema): [non_breaking] Field 'issueToRelease' was added to object type 'Query' (Query.issueToRelease)\n\n    feat(schema): [non_breaking] Field 'issueToReleases' was added to object type 'Query' (Query.issueToReleases)\n\n    feat(schema): [non_breaking] Field 'slugId' was added to object type 'Release' (Release.slugId)\n\n    feat(schema): [non_breaking] Input field 'ReleaseCreateInput.stageId' description changed from 'The current stage of the release. Defaults to the first 'planned' stage.' to 'The current stage of the release. Defaults to the first 'completed' stage.' (ReleaseCreateInput.stageId)\n\n    feat(schema): [non_breaking] Field 'type' was added to object type 'ReleasePipeline' (ReleasePipeline.type)\n\n    feat(schema): [non_breaking] Field"
+      },
+      "metadata": {
+        "team": "Linear",
+        "repo": "linearapp/linear",
+        "pr_number": 978,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Gumroad] Upgrade to Tailwind 4",
+      "vars": {
+        "pr_body": "Part of #1055\r\n\r\nUpgrades Tailwind to v4 according to the [upgrade guide](https://tailwindcss.com/docs/upgrade-guide).\r\n\r\n* Replaced `tailwind.config.js` with the new CSS-based config format in `tailwind.css`\r\n* Upgraded NPM packages, replaced the old Prettier plugin with the new separate package\r\n* Lots of tweaks to class names and class ordering, mainly done by the upgrade package and upgraded Prettier plugin.\r\n\r\nNo visual changes - some example screenshots:\r\n\r\n| Before | After |\r\n| --- | --- |\r\n| <img width=\"2560\" height=\"1386\" alt=\"Screenshot 2025-10-09 at 11 20 08\" src=\"https://github.com/user-attachments/assets/81cac42b-808a-4442-98f1-185a1c531f0c\" /> | <img width=\"2560\" height=\"1386\" alt=\"Screenshot 2025-10-09 at 11 28 45\" src=\"https://github.com/user-attachments/assets/7d6fdcb6-4187-4f28-9e29-88e1c4d3e5c8\" /> |\r\n| <img width=\"2560\" height=\"1386\" alt=\"Screenshot 2025-10-09 at 11 20 47\" src=\"https://github.com/user-attachments/assets/2508e167-ba14-4e8b-a96b-f1527a12cf30\" /> | <img width=\"2560\" height=\"1386\" alt=\"Screenshot 2025-10-09 at 11 29 26\" src=\"https://github.com/user-attachments/assets/b0bac77b-8197-445a-9ca6-89d919b4fd9f\" /> |\r\n| <img width=\"2560\" height=\"1386\" alt=\"Screenshot 2025-10-09 at 11 22 06\" src=\"https://github.com/user-attachments/assets/637c59f5-410c-4b25-b3b9-1e21a3dbccb7\" /> | <img width=\"2560\" height=\"1386\" alt=\"Screenshot 2025-10-09 at 11 28 50\" src=\"https://github.com/user-attachments/assets/51aebe80-bb5d-4f33-ad8e-c246a32b51e8\" /> |\r\n| <img width=\"2560\" height=\"1386\" alt=\"Screenshot 2025-10-09 at 11 22 55\" src=\"https://github.com/user-attachments/assets/75d050db-f039-4e69-bbdf-24eafb2282cd\" /> | <img width=\"2560\" height=\"1386\" alt=\"Screenshot 2025-10-09 at 11 28 58\" src=\"https://github.com/user-attachments/assets/20d3e8fb-816c-4592-a154-25a03190ce2e\" /> |\r\n| <img width=\"2560\" height=\"1386\" alt=\"Screenshot 2025-10-09 at 11 23 14\" src=\"https://github.com/user-attachments/assets/8e741371-1b30-40bd-9137-b78b1188fcc4\" /> | <img width=\"2560\" height=\"1386\" alt=\"Screenshot 2025-10-09 at 11 29 06\" src=\"https://github.com/user-attachments/assets/4b2b8631-c36d-477f-a186-7f39bfa08580\" /> |\r\n| <img width=\"2560\" height=\"1386\" alt=\"Screenshot 2025-10-09 at 11 23 33\" src=\"https://github.com/user-attachments/assets/6aa504cb-d460-4853-95f8-61537e7f6e9e\" /> | <img width=\"2560\" height=\"1386\" alt=\"Screenshot 2025-10-09 at 11 29 13\" src=\"https://github.com/user-attachments/assets/535adaf7-3c2c-4500-b5a1-7f963344afa4\" /> |"
+      },
+      "metadata": {
+        "team": "Gumroad",
+        "repo": "antiwork/gumroad",
+        "pr_number": 1593,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Linear] chore(deps): bump next from 15.5.7 to 15.5.9 in /examples/ne",
+      "vars": {
+        "pr_body": "Bumps [next](https://github.com/vercel/next.js) from 15.5.7 to 15.5.9.\n<details>\n<summary>Release notes</summary>\n<p><em>Sourced from <a href=\"https://github.com/vercel/next.js/releases\">next's releases</a>.</em></p>\n<blockquote>\n<h2>v15.5.9</h2>\n<p>Please see the <a href=\"https://nextjs.org/blog/security-update-2025-12-11\">Next.js Security Update</a> for information about this security patch.</p>\n</blockquote>\n</details>\n<details>\n<summary>Commits</summary>\n<ul>\n<li><a href=\"https://github.com/vercel/next.js/commit/c5de33e93ccccaf3bee60cf50603e2152f9886e1\"><code>c5de33e</code></a> v15.5.9</li>\n<li><a href=\"https://github.com/vercel/next.js/commit/dd233994aeb24e906cdb9aedca5447cdef401792\"><code>dd23399</code></a> Backport <a href=\"https://redirect.github.com/facebook/react/issues/35351\">facebook/react#35351</a> for 15.5.8 (<a href=\"https://redirect.github.com/vercel/next.js/issues/87086\">#87086</a>)</li>\n<li><a href=\"https://github.com/vercel/next.js/commit/7526cd6f24300726964eaba78927fe2a9c3fed5e\"><code>7526cd6</code></a> v15.5.8</li>\n<li><a href=\"https://github.com/vercel/next.js/commit/1e9ec4133af3657964833bfcc9abb0ee73fb19f0\"><code>1e9ec41</code></a> Update React Version (<a href=\"https://redirect.github.com/vercel/next.js/issues/41\">#41</a>)</li>\n<li><a href=\"https://github.com/vercel/next.js/commit/16141e5df9ce51136ba42988b574981f89d01081\"><code>16141e5</code></a> Update React Version (<a href=\"https://redirect.github.com/vercel/next.js/issues/30\">#30</a>)</li>\n<li><a href=\"https://github.com/vercel/next.js/commit/e01e589e181d66d48c57698238b8b7f59218dfef\"><code>e01e589</code></a> Backport Next.js changes to v15.5.8 (<a href=\"https://redirect.github.com/vercel/next.js/issues/23\">#23</a>)</li>\n<li><a href=\"https://github.com/vercel/next.js/commit/b2706db1e62c261ddfddaa040b2b26d93a091eca\"><code>b2706db</code></a> lock binaries</li>\n<li>See full diff in <a href=\"https://github.com/vercel/next.js/compare/v15.5.7...v15.5.9\">compare view</a></li>\n</ul>\n</details>\n<br />\n\n\n[![Dependabot compatibility score](https://dependabot-badges.githubapp.com/badges/compatibility_score?dependency-name=next&package-manager=npm_and_yarn&previous-version=15.5.7&new-version=15.5.9)](https://docs.github.com/en/github/managing-security-vulnerabilities/about-dependabot-security-updates#about-compatibility-scores)\n\nDependabot will resolve any conflicts with this PR as long as you don't alter it yourself. You can also trigger a rebase manually by commenting `@dependabot rebase`.\n\n[//]: # (dependabot-automerge-start)\n[//]: # (dependabot-automerge-end)\n\n---\n\n<details>\n<summary>Dependabot commands and options</summary>\n<br />\n\nYou can trigger Dependabot actions by commenting on this PR:\n- `@dependabot rebase` will rebase this PR\n- `@dependabot recreate` will recreate this PR, overwriting any edits that have been made to it\n- `@dependabot merge` will merge this PR after your CI passes on it\n- `@dependabot squash and merge` will squash and merge this PR after your CI passes on it\n- `@dependabot cancel merge` will cancel a previously requested merge and block automerging\n- `@dependabot reopen` will reopen this PR if it is closed\n- `@dependabot close` will close this PR and stop Dependabot recreating it. You can achieve the same result by closing it manually\n- `@dependabot show <dependency name> ignore conditions` will show all of the ignore conditions of the specified dependency\n- `@dependabot ignore this major version` will close this PR and stop Dependabot creating any more for this major version (unless you reopen the PR or upgrade to it yourself)\n- `@dependabot ignore this minor version` will close this PR and stop Dependabot creating any more for this minor version (unless you reopen the PR or upgrade to it yourself)\n- `@dependabot ignore this dependency` will close this PR and stop Dependabot creating any more for this dependency (unless you reopen the PR or upgrade to it yourself)\nYou can disable automated security fix PRs for this repo from the [Se"
+      },
+      "metadata": {
+        "team": "Linear",
+        "repo": "linearapp/linear",
+        "pr_number": 976,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Gumroad] refactor(PaymentForm): fix tip position to avoid layout shif",
+      "vars": {
+        "pr_body": "Ref: \r\n- #1334 Thread start\r\n- #1127 \r\n> I can see why moving tip may make sense from this UX. it's quite janky atm. what do you think about moving it to the left so it's more on the total side?\r\n- https://github.com/antiwork/gumroad/pull/1395#issuecomment-3347416966\r\n\r\nDesign Link:\r\n\r\n<img width=\"780\" height=\"469\" alt=\"design\" src=\"https://github.com/user-attachments/assets/ccc6992f-aa7e-464b-93b5-266bbc0ef175\" />\r\n\r\n- https://github.com/antiwork/gumroad/pull/1395#issuecomment-3377197857\r\n\r\n### Before\r\n\r\nhttps://github.com/user-attachments/assets/4569c661-f66c-4ebb-b6b9-ec1d0a083f6b\r\n\r\n### After\r\n\r\n#### Mobile\r\n\r\nhttps://github.com/user-attachments/assets/7c91817e-5240-4f1a-bbd8-5b1d1bf1f848\r\n\r\n#### Desktop\r\n\r\nhttps://github.com/user-attachments/assets/d2068f92-99f9-42e4-af00-941c8661d667\r\n\r\n| Dark | Light |\r\n|-------|----------|\r\n| <img width=\"1710\" height=\"984\" alt=\"dark\" src=\"https://github.com/user-attachments/assets/f1ef0879-764e-4429-9147-5ee51fa38683\" /> | <img width=\"1710\" height=\"984\" alt=\"light\" src=\"https://github.com/user-attachments/assets/150794f8-742d-4e48-9905-f817db0bbe4d\" /> |\r\n\r\n### Failing tests addressed\r\n1.  `spec/requests/purchases/tipping_spec.rb#L174 > Product checkout with tipping when the cart is free, for single creator applies full tip to first product when tip meets minimum`\r\n2. `spec/requests/purchases/tipping_spec.rb#L197 > Product checkout with tipping when the cart is free, for single creator shows backend validation error when tip below minimum`\r\n3. ` spec/requests/purchases/tipping_spec.rb#L211 > Product checkout with tipping when the cart is free, for multiple creators distributes tip per creator to first product from each when tip meets minimum`\r\n4. `spec/requests/purchases/tipping_spec.rb#L233 > Product checkout with tipping when the cart is free, for multiple creators shows backend validation error with per-creator minimum when tip below minimum`\r\n\r\n### AI Usage\r\nClaude for edits\r\n"
+      },
+      "metadata": {
+        "team": "Gumroad",
+        "repo": "antiwork/gumroad",
+        "pr_number": 1579,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Gumroad] fix: Hide filter section when all archived products are dele",
+      "vars": {
+        "pr_body": "### Explanation of Change\r\nFilter still visible after deleting all archived products, updated UI to hide filter section and show only empty state when no products remain\r\n\r\n### Screenshots/Videos\r\nBefore\r\n\r\nhttps://github.com/user-attachments/assets/404874a1-db50-4886-b2da-1e1a5d6dd759\r\n\r\nAfter\r\n\r\nhttps://github.com/user-attachments/assets/9d73e116-5052-4d4c-bf90-fdff9e1fa6be\r\n\r\n### Test Results\r\n<img width=\"611\" height=\"174\" alt=\"image\" src=\"https://github.com/user-attachments/assets/c08e46ab-0580-4903-b151-7100b4ac3bdd\" />\r\n\r\n### AI Disclosure\r\nNo AI tools used"
+      },
+      "metadata": {
+        "team": "Gumroad",
+        "repo": "antiwork/gumroad",
+        "pr_number": 1564,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[PostHog Analytics] build(deps): bump next from 14.2.33 to 14.2.35 in /playgroun",
+      "vars": {
+        "pr_body": "Bumps [next](https://github.com/vercel/next.js) from 14.2.33 to 14.2.35.\n<details>\n<summary>Release notes</summary>\n<p><em>Sourced from <a href=\"https://github.com/vercel/next.js/releases\">next's releases</a>.</em></p>\n<blockquote>\n<h2>v14.2.35</h2>\n<p>Please see the <a href=\"https://nextjs.org/blog/security-update-2025-12-11\">Next.js Security Update</a> for information about this security patch.</p>\n</blockquote>\n</details>\n<details>\n<summary>Commits</summary>\n<ul>\n<li><a href=\"https://github.com/vercel/next.js/commit/7b940d9ce96faddb9f92ff40f5e35c34ace04eb2\"><code>7b940d9</code></a> v14.2.35</li>\n<li><a href=\"https://github.com/vercel/next.js/commit/7c1be85a2eb9bd704140ea0dca7a6fdf93e854a7\"><code>7c1be85</code></a> Backport <a href=\"https://redirect.github.com/facebook/react/issues/35351\">facebook/react#35351</a> for 14.2.34 (<a href=\"https://redirect.github.com/vercel/next.js/issues/87095\">#87095</a>)</li>\n<li><a href=\"https://github.com/vercel/next.js/commit/f3073688ce18878a674fdb9954da68e9d626a930\"><code>f307368</code></a> v14.2.34</li>\n<li><a href=\"https://github.com/vercel/next.js/commit/8e43882798208066d8fb4c44f9d4362bb4900a1b\"><code>8e43882</code></a> Update React Version (<a href=\"https://redirect.github.com/vercel/next.js/issues/36\">#36</a>)</li>\n<li><a href=\"https://github.com/vercel/next.js/commit/385e8c286c21db9a15f4ec7bb68c8860caa08e3d\"><code>385e8c2</code></a> Backport Next.js changes to v14.2.34 (<a href=\"https://redirect.github.com/vercel/next.js/issues/29\">#29</a>)</li>\n<li><a href=\"https://github.com/vercel/next.js/commit/7a2cf51e785225c9dd94969dff80f75b41001708\"><code>7a2cf51</code></a> update version script</li>\n<li><a href=\"https://github.com/vercel/next.js/commit/778e7bf1211106a4a98298be219e29a28f05df10\"><code>778e7bf</code></a> lock swc binaries</li>\n<li>See full diff in <a href=\"https://github.com/vercel/next.js/compare/v14.2.33...v14.2.35\">compare view</a></li>\n</ul>\n</details>\n<br />\n\n\n[![Dependabot compatibility score](https://dependabot-badges.githubapp.com/badges/compatibility_score?dependency-name=next&package-manager=npm_and_yarn&previous-version=14.2.33&new-version=14.2.35)](https://docs.github.com/en/github/managing-security-vulnerabilities/about-dependabot-security-updates#about-compatibility-scores)\n\nDependabot will resolve any conflicts with this PR as long as you don't alter it yourself. You can also trigger a rebase manually by commenting `@dependabot rebase`.\n\n[//]: # (dependabot-automerge-start)\n[//]: # (dependabot-automerge-end)\n\n---\n\n<details>\n<summary>Dependabot commands and options</summary>\n<br />\n\nYou can trigger Dependabot actions by commenting on this PR:\n- `@dependabot rebase` will rebase this PR\n- `@dependabot recreate` will recreate this PR, overwriting any edits that have been made to it\n- `@dependabot merge` will merge this PR after your CI passes on it\n- `@dependabot squash and merge` will squash and merge this PR after your CI passes on it\n- `@dependabot cancel merge` will cancel a previously requested merge and block automerging\n- `@dependabot reopen` will reopen this PR if it is closed\n- `@dependabot close` will close this PR and stop Dependabot recreating it. You can achieve the same result by closing it manually\n- `@dependabot show <dependency name> ignore conditions` will show all of the ignore conditions of the specified dependency\n- `@dependabot ignore this major version` will close this PR and stop Dependabot creating any more for this major version (unless you reopen the PR or upgrade to it yourself)\n- `@dependabot ignore this minor version` will close this PR and stop Dependabot creating any more for this minor version (unless you reopen the PR or upgrade to it yourself)\n- `@dependabot ignore this dependency` will close this PR and stop Dependabot creating any more for this dependency (unless you reopen the PR or upgrade to it yourself)\nYou can disable automated security fix PRs for this repo from the [Security Alerts page](https://github.com/PostHog/posthog-js"
+      },
+      "metadata": {
+        "team": "PostHog Analytics",
+        "repo": "PostHog/posthog-js",
+        "pr_number": 2744,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Polar.sh] Add conductor configuration",
+      "vars": {
+        "pr_body": "## \ud83d\udccb Summary\n\nAdds Conductor workspace configuration file to enable streamlined local development setup and execution.\n\n## \ud83c\udfaf What\n\nAdded `conductor.json` with scripts for automated environment setup and running the API server.\n\n## \ud83e\udd14 Why\n\nThe Conductor configuration enables consistent, reproducible development setup across the team with a single command.\n\n## \ud83d\udd27 How\n\nThe configuration includes:\n- `setup`: Copies environment files, starts Docker services, installs dependencies, builds email templates, and runs database migrations\n- `run`: Starts the backend API server"
+      },
+      "metadata": {
+        "team": "Polar.sh",
+        "repo": "polarsource/polar",
+        "pr_number": 8513,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Deno] ci: deflake some watch_env_file tests",
+      "vars": {
+        "pr_body": "Debugged and fixed by claude, mostly"
+      },
+      "metadata": {
+        "team": "Deno",
+        "repo": "denoland/deno",
+        "pr_number": 31577,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Deno] fix(compile): intel mac compile fix",
+      "vars": {
+        "pr_body": "<!--\r\nBefore submitting a PR, please read https://docs.deno.com/runtime/manual/references/contributing\r\n\r\n1. Give the PR a descriptive title.\r\n\r\n  Examples of good title:\r\n    - fix(std/http): Fix race condition in server\r\n    - docs(console): Update docstrings\r\n    - feat(doc): Handle nested reexports\r\n\r\n  Examples of bad title:\r\n    - fix #7123\r\n    - update docs\r\n    - fix bugs\r\n\r\n2. Ensure there is a related issue and it is referenced in the PR text.\r\n3. Ensure there are tests that cover the changes.\r\n4. Ensure `cargo test` passes.\r\n5. Ensure `./tools/format.js` passes without changing files.\r\n6. Ensure `./tools/lint.js` passes.\r\n7. Open as a draft PR if your work is still in progress. The CI won't run\r\n   all steps, but you can add '[ci]' to a commit message to force it to.\r\n8. If you would like to run the benchmarks on the CI, add the 'ci-bench' label.\r\n-->\r\n"
+      },
+      "metadata": {
+        "team": "Deno",
+        "repo": "denoland/deno",
+        "pr_number": 31575,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[PostHog Analytics] feat: super properties for posthog-node",
+      "vars": {
+        "pr_body": "\r\n## Problem\r\n\r\n- This PR address issue https://github.com/PostHog/posthog-js/issues/2727\r\n- added super properties in posthog-node\r\n\r\n## Changes\r\n\r\n- added `registeredProperties` in `prepareEventMessage`\r\n- this allows `prepareEventMessage` to ensure that every event includes globally registered super properties.\r\n- Added tests to verify the correct behavior of property registration and overriding.\r\n\r\n## Release info Sub-libraries affected\r\n\r\n### Libraries affected\r\n\r\n<!-- Please mark which libraries will require a version bump. -->\r\n\r\n- [ ] All of them\r\n- [ ] posthog-js (web)\r\n- [ ] posthog-js-lite (web lite)\r\n- [x] posthog-node\r\n- [ ] posthog-react-native\r\n- [ ] @posthog/react\r\n- [ ] @posthog/ai\r\n- [ ] @posthog/nextjs-config\r\n- [ ] @posthog/nuxt\r\n- [ ] @posthog/rollup-plugin\r\n- [ ] @posthog/webpack-plugin\r\n\r\n## Checklist\r\n\r\n- [x] Tests for new code\r\n- [ ] Accounted for the impact of any changes across different platforms\r\n- [x] Accounted for backwards compatibility of any changes (no breaking changes!)\r\n- [x] Took care not to unnecessarily increase the bundle size\r\n\r\n### If releasing new changes\r\n\r\n- [ ] Ran `pnpm changeset` to generate a changeset file\r\n- [ ] Added the \"release\" label to the PR to indicate we're publishing new versions for the affected packages\r\n\r\n<!-- For more details check RELEASING.md -->\r\n"
+      },
+      "metadata": {
+        "team": "PostHog Analytics",
+        "repo": "PostHog/posthog-js",
+        "pr_number": 2729,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[PostHog Analytics] Fix snippet issues propertly",
+      "vars": {
+        "pr_body": "## Changes\r\n\r\nReliable raw markdown, even with complex, nested snippet imports and TSX files from monorepo.\r\n\r\nHere's what it does:\r\n- Remark/rehype plugin gets MD AST tree\r\n- Babel for fetching JSX/TSX AST tree\r\n- Script onPostBootstrap to stitch it all together.\r\n- **Doesn't need to wait for build**, this will build when running dev. Works pretty fast and doesn't impact start up time noticibly.\r\n\r\nSee how it handles the complex manual capture page form llma docs\r\n\r\n\r\n`public/docs/llm-analytics/installation/manual-capture.md`\r\n\r\n``````md\r\n# Manual capture\r\n\r\nIf you're using a different server-side SDK or prefer to use the API, you can manually capture the data\r\n                by calling the `capture` method or using the [capture API](https://posthog.com/docs/api/capture).\r\n\r\n## Node.js\r\n\r\n### 1. Install\r\n\r\n```bash\r\nnpm install posthog-node\r\n```\r\n\r\n### 2. Initialize PostHog\r\n\r\n```javascript\r\nimport { PostHog } from 'posthog-node'\r\n\r\nconst client = new PostHog('<ph_project_api_key>', {\r\n    host: '<ph_client_api_host>'\r\n})\r\n```\r\n\r\n### 3. Capture Event\r\n\r\n```javascript\r\n// After your LLM call\r\nclient.capture({\r\n    distinctId: 'user_123',\r\n    event: '$ai_generation',\r\n    properties: {\r\n        $ai_trace_id: 'trace_id_here',\r\n        $ai_model: 'gpt-4o-mini',\r\n        $ai_provider: 'openai',\r\n        $ai_input: [{ role: 'user', content: 'Tell me a fun fact about hedgehogs' }],\r\n        $ai_input_tokens: 10,\r\n        $ai_output_choices: [{ role: 'assistant', content: 'Hedgehogs have around 5,000 to 7,000 spines on their backs!' }],\r\n        $ai_output_tokens: 20,\r\n        $ai_latency: 1.5\r\n    }\r\n})\r\n\r\nclient.shutdown()\r\n```\r\n\r\n## Python\r\n\r\n### 1. Install\r\n\r\n```bash\r\npip install posthog\r\n```\r\n\r\n### 2. Initialize PostHog\r\n\r\n```python\r\nfrom posthog import Posthog\r\n\r\nposthog = Posthog(\"<ph_project_api_key>\", host=\"<ph_client_api_host>\")\r\n```\r\n\r\n### 3. Capture Event\r\n\r\n```python\r\n# After your LLM call\r\nposthog.capture(\r\n    distinct_id='user_123',\r\n    event='$ai_generation',\r\n    properties={\r\n        '$ai_trace_id': 'trace_id_here',\r\n        '$ai_model': 'gpt-4o-mini',\r\n        '$ai_provider': 'openai',\r\n        '$ai_input': [{'role': 'user', 'content': 'Tell me a fun fact about hedgehogs'}],\r\n        '$ai_input_tokens': 10,\r\n        '$ai_output_choices': [{'role': 'assistant', 'content': 'Hedgehogs have around 5,000 to 7,000 spines on their backs!'}],\r\n        '$ai_output_tokens': 20,\r\n        '$ai_latency': 1.5\r\n    }\r\n)\r\n```\r\n\r\n## Go\r\n\r\n### 1. Install\r\n\r\n```bash\r\ngo get github.com/posthog/posthog-go\r\n```\r\n\r\n### 2. Initialize PostHog\r\n\r\n```go\r\nimport \"github.com/posthog/posthog-go\"\r\n\r\nclient, _ := posthog.NewWithConfig(\"<ph_project_api_key>\", posthog.Config{\r\n    Endpoint: \"<ph_client_api_host>\",\r\n})\r\ndefer client.Close()\r\n```\r\n\r\n### 3. Capture Event\r\n\r\n```go\r\n// After your LLM call\r\nclient.Enqueue(posthog.Capture{\r\n    DistinctId: \"user_123\",\r\n    Event:      \"$ai_generation\",\r\n    Properties: map[string]interface{}{\r\n        \"$ai_trace_id\":        \"trace_id_here\",\r\n        \"$ai_model\":           \"gpt-4o-mini\",\r\n        \"$ai_provider\":        \"openai\",\r\n        \"$ai_input_tokens\":    10,\r\n        \"$ai_output_tokens\":   20,\r\n        \"$ai_latency\":         1.5,\r\n    },\r\n})\r\n```\r\n\r\n## Ruby\r\n\r\n### 1. Install\r\n\r\n```bash\r\ngem install posthog-ruby\r\n```\r\n\r\n### 2. Initialize PostHog\r\n\r\n```ruby\r\nrequire 'posthog-ruby'\r\n\r\nposthog = PostHog::Client.new({\r\n    api_key: '<ph_project_api_key>',\r\n    host: '<ph_client_api_host>'\r\n})\r\n```\r\n\r\n### 3. Capture Event\r\n\r\n```ruby\r\n# After your LLM call\r\nposthog.capture({\r\n    distinct_id: 'user_123',\r\n    event: '$ai_generation',\r\n    properties: {\r\n    '$ai_trace_id' => 'trace_id_here',\r\n    '$ai_model' => 'gpt-4o-mini',\r\n    '$ai_provider' => 'openai',\r\n    '$ai_input_tokens' => 10,\r\n    '$ai_output_tokens' => 20,\r\n    '$ai_latency' => 1.5\r\n    }\r\n})\r\n```\r\n\r\n## PHP\r\n\r\n### 1. Install\r\n\r\n```bash\r\ncomposer require posthog/posthog-php\r\n```\r\n\r\n### 2. Initialize PostHog\r\n\r\n```php\r\n<?php\r\nrequire_once __D"
+      },
+      "metadata": {
+        "team": "PostHog Analytics",
+        "repo": "PostHog/posthog.com",
+        "pr_number": 14063,
+        "current_detection": true,
+        "current_tools": [
+          "chatgpt"
+        ]
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        },
+        {
+          "type": "javascript",
+          "value": "JSON.parse(output).is_ai_assisted === true"
+        }
+      ]
+    },
+    {
+      "description": "[PostHog Analytics] add platform install pattern across all docs",
+      "vars": {
+        "pr_body": "**_it's a lot of files! but this updates every install page where we use this hard coded table pattern and auto-generates it. maintenance burden who?_**\r\n\r\n## Changes\r\n- Makes AI wizard installs front and center, with platform installs coupled below using the autogenerated platform installation  pattern\r\n- Had to move some pages around out of the tabbed view, any impacted links have redirects in vercel.json\r\n- I didn't touch any of the content itself, just moved it over to new individual pages to make the pattern consistent\r\n\r\n## Checklist\r\n- [x] Use relative URLs for internal links\r\n- [x] If I moved a page, I added a redirect in `vercel.json`\r\n\r\n## Testing\r\n_MUCH_ easier to test by visiting each section in docs, and verifying the installation pages populate correctly (based on side nav). I did test locally but 1.) will rerun in the vercel preview to be extra super sure bc it is a lot of files 2.) would love an extra pair of eyes: \r\n- Feature flags\r\n- LLMA\r\n- Logs\r\n- Product analytics\r\n- Data warehouse sources\r\n- Data pipeline sources\r\n- Revenue analytics\r\n- Session replay\r\n- Surveys\r\n- Web analytics\r\n- Product OS frameworks\r\n"
+      },
+      "metadata": {
+        "team": "PostHog Analytics",
+        "repo": "PostHog/posthog.com",
+        "pr_number": 14057,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Gumroad] Migrate rating to Tailwind",
+      "vars": {
+        "pr_body": "ref #1055 \r\n\r\n1. RatingSelector.tsx\r\nused in form\r\n\r\n\r\n| Before | After | Dark Mode |\r\n|------------|-----------------|-----------------|\r\n| <img width=\"1512\" height=\"943\" alt=\"Screenshot 2025-10-03 at 10 51 25 PM\" src=\"https://github.com/user-attachments/assets/f8a13285-836b-4446-b56a-885bf554ef55\" /> | <img width=\"1512\" height=\"943\" alt=\"Screenshot 2025-10-03 at 10 51 25 PM\" src=\"https://github.com/user-attachments/assets/f8a13285-836b-4446-b56a-885bf554ef55\" /> | no change in color |\r\n\r\n2. same RatingSelector.tsx component (used in checkout)\r\n\r\n| Before | After | Dark Mode |\r\n|------------|-----------------|-----------------|\r\n| <img width=\"1512\" height=\"982\" alt=\"image\" src=\"https://github.com/user-attachments/assets/5c694013-8550-462f-bfcb-085140e32f17\" /> | <img width=\"1512\" height=\"982\" alt=\"image\" src=\"https://github.com/user-attachments/assets/5c694013-8550-462f-bfcb-085140e32f17\" /> | <img width=\"1512\" height=\"982\" alt=\"image\" src=\"https://github.com/user-attachments/assets/536d6952-e610-4ccd-b636-9d8740b21787\" /> |\r\n\r\n3. index/discover route\r\n\r\n| Before | After | Dark Mode |\r\n|------------|-----------------|-----------------|\r\n| <img width=\"655\" height=\"817\" alt=\"image\" src=\"https://github.com/user-attachments/assets/f4b0b185-e9d1-4a64-b71e-5bd00ee33d17\" /> | <img width=\"655\" height=\"817\" alt=\"image\" src=\"https://github.com/user-attachments/assets/f4b0b185-e9d1-4a64-b71e-5bd00ee33d17\" /> | <img width=\"659\" height=\"698\" alt=\"image\" src=\"https://github.com/user-attachments/assets/6b7a00dc-d416-470c-8d28-d2092d99fcb4\" />|\r\n\r\n\r\n4. Card.tsx\r\n\r\n| Before | After | Dark Mode |\r\n|------------|-----------------|-----------------|\r\n| <img width=\"1512\" height=\"982\" alt=\"image\" src=\"https://github.com/user-attachments/assets/bddbced2-8228-46b4-9b1e-cfde8a57db1a\" /> | <img width=\"1512\" height=\"982\" alt=\"image\" src=\"https://github.com/user-attachments/assets/bddbced2-8228-46b4-9b1e-cfde8a57db1a\" /> | <img width=\"1512\" height=\"982\" alt=\"image\" src=\"https://github.com/user-attachments/assets/46d6bf4a-5102-4cb8-ba40-9558a58db911\" /> |\r\n\r\n5. CustomerPage.tsx\r\nhere there was a missing styling. as you can see in the before image. all the rating stars have no gap and is tightly layout.\r\nwe have applied the same styling as rest of the rating component here to make it consistent with others.\r\n\r\n| Before | After | Dark Mode |\r\n|------------|-----------------|-----------------|\r\n| <img width=\"1512\" height=\"982\" alt=\"image\" src=\"https://github.com/user-attachments/assets/93e6ee1f-cd18-4d1a-a539-3e691474ca36\" />| <img width=\"1512\" height=\"982\" alt=\"image\" src=\"https://github.com/user-attachments/assets/f59dac91-b20f-4ba0-be09-6f5bbad8189c\" /> | <img width=\"1512\" height=\"982\" alt=\"Screenshot 2025-10-03 at 11 16 45\u202fPM\" src=\"https://github.com/user-attachments/assets/01e0e1a8-610d-4e49-ba4b-a99011b75924\" /> |\r\n\r\n\r\n### use of ai\r\n\r\nnone\r\n\r\n\r\n\r\n"
+      },
+      "metadata": {
+        "team": "Gumroad",
+        "repo": "antiwork/gumroad",
+        "pr_number": 1513,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Resend] feat(docs): automatic changelog.mdx generation",
+      "vars": {
+        "pr_body": "For some time now, we've had the problem where our changelog has stayed outdated for some time because it takes a long time to update manually, and we were trying to focus on other things. But in truth, it feels unacceptable to have an outdated changelog for so long. Because of that, I've been entertaining the idea of auto generating it for a really long time and finally have come to it.\r\n\r\nThis generates it from the CHANGELOG.md file for each package we have. It then parses the markdown files there in a very simple way to determine the versions for each log and the changes themselves. It then, using `git blame` and the line of the version's header (i.e., `## x.x.x`) to determine the date of that version. Finally, it then groups those logs based on the date formatted as `[Month] [Date], [Year]`, sorts and then outputs using the [Mintlify's Update component](https://www.mintlify.com/docs/components/update).\r\n\r\nWith those changes, the changelog (now updated automatically), looks like this:\r\n\r\n<img width=\"2262\" height=\"1206\" alt=\"image\" src=\"https://github.com/user-attachments/assets/0a2a9465-1f3e-4da3-8aee-4e81aa444a25\" />\r\n\r\nThe single problem with this right now is that it rewrites the entire changelog, since it's also a different structure, which removes the changelog entries we had before we started using changesets."
+      },
+      "metadata": {
+        "team": "Resend",
+        "repo": "resend/react-email",
+        "pr_number": 2724,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Deno] fix(add): include type-only imports when building graph",
+      "vars": {
+        "pr_body": "- Fixes #31550"
+      },
+      "metadata": {
+        "team": "Deno",
+        "repo": "denoland/deno",
+        "pr_number": 31552,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Deno] Revert \"chore: Rust 1.91.1 (#31165)\"",
+      "vars": {
+        "pr_body": "This reverts commit e5f9b441ef9e2ba75306679068ad292a29f690ef.\r\n\r\nTrying to revert this because we started getting a lot of seemingly random\r\nfailures after this upgrade."
+      },
+      "metadata": {
+        "team": "Deno",
+        "repo": "denoland/deno",
+        "pr_number": 31548,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Deno] Revert \"fix(ext/node): fix sqlite extension used for testing",
+      "vars": {
+        "pr_body": "\u2026related tests are actually meaningful (#31455)\"\r\n\r\nThis reverts commit 40cf41275b8e1ec4358d6bca5fdecd104787e5d5.\r\n\r\nStarted getting random kills on linux arm after this PR landed. Reverting\r\nto see if it will help."
+      },
+      "metadata": {
+        "team": "Deno",
+        "repo": "denoland/deno",
+        "pr_number": 31539,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Gumroad] fix: replaced inline styles of `_user.html.erb` with Tailwin",
+      "vars": {
+        "pr_body": "Part of fix: https://github.com/antiwork/gumroad/issues/1055\r\n\r\nMigrate inline CSS styles to Tailwind CSS classes in the admin user view file `app/views/admin/users/_user.html.erb`\r\n\r\n## Changes\r\n- Replace inline flex styles with `flex items-center gap-4` utility classes\r\n- Replace inline grid styles with `grid gap-2` utility classes\r\n- Remove dependency on CSS variables `--spacer-4` and `--spacer-2`\r\n- Maintain identical visual layout and spacing\r\n\r\n\r\n### Technical Mapping:\r\n\r\n| Before (CSS Variables) | After (Tailwind) | Purpose |\r\n|------------------------|------------------|---------|\r\n| `display: flex` | `flex` | Flexbox display |\r\n| `align-items: center` | `items-center` | Vertical alignment |\r\n| `gap: var(--spacer-4)` | `gap-4` | 1rem spacing |\r\n| `display: grid` | `grid` | Grid display |\r\n| `gap: var(--spacer-2)` | `gap-2` | 0.5rem spacing |\r\n\r\n\r\n### Before (light mode)\r\n\r\n<img width=\"1121\" height=\"227\" alt=\"image\" src=\"https://github.com/user-attachments/assets/6ebb30ab-d679-4a34-b6b8-0a48fd2c4760\" />\r\n\r\n### Before (dark mode)\r\n\r\n<img width=\"939\" height=\"238\" alt=\"image\" src=\"https://github.com/user-attachments/assets/3fe99027-02f5-43e3-84bd-2f5e55cd683b\" />\r\n\r\n\r\n### After (light mode)\r\n\r\n<img width=\"1037\" height=\"227\" alt=\"image\" src=\"https://github.com/user-attachments/assets/3f169325-bb04-4f9b-8515-a6d9a094e1b6\" />\r\n\r\n\r\n### After (dark mode)\r\n\r\n<img width=\"995\" height=\"241\" alt=\"image\" src=\"https://github.com/user-attachments/assets/01fa8f11-cf7e-49ca-ba2a-a4433ad6a9ba\" />\r\n\r\n\r\n***\r\n\r\n\r\n## Mobile\r\n\r\n### Before (dark mode)\r\n\r\n<img width=\"361\" height=\"698\" alt=\"image\" src=\"https://github.com/user-attachments/assets/91910ce0-2e3c-4808-b004-97f34908549b\" />\r\n\r\n\r\n### Before (light mode)\r\n\r\n<img width=\"366\" height=\"701\" alt=\"image\" src=\"https://github.com/user-attachments/assets/f6adc50a-cde4-4a3c-a26f-c331768251ae\" />\r\n\r\n### After (dark mode)\r\n\r\n<img width=\"366\" height=\"698\" alt=\"image\" src=\"https://github.com/user-attachments/assets/66082d22-aa8f-42d7-9a13-01719348f152\" />\r\n\r\n### After (light mode)\r\n\r\n<img width=\"368\" height=\"705\" alt=\"image\" src=\"https://github.com/user-attachments/assets/d3ad24b0-bac5-4d4b-9bdf-932dc9371438\" />\r\n\r\n\r\nAI Disclosure:\r\nNo AI Used"
+      },
+      "metadata": {
+        "team": "Gumroad",
+        "repo": "antiwork/gumroad",
+        "pr_number": 1471,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Gumroad] fix: Show \"Add Password\" label for users logged in with a so",
+      "vars": {
+        "pr_body": "### Explanation of Change\r\nFix incorrect label by showing \"Add Password\" instead of \"Change Password\" for users authenticated via a social provider who don\u2019t yet have a password.\r\n\r\n### Screenshots/Videos\r\nBefore\r\n<img width=\"1470\" height=\"416\" alt=\"image\" src=\"https://github.com/user-attachments/assets/09f20fcb-7eac-442e-92b6-70bed6c18aae\" />\r\n\r\n\r\nAfter\r\n<img width=\"1470\" height=\"429\" alt=\"image\" src=\"https://github.com/user-attachments/assets/dd62be19-20e9-4f14-b1da-483eead59049\" />\r\n\r\n### Test Result\r\n<img width=\"986\" height=\"494\" alt=\"image\" src=\"https://github.com/user-attachments/assets/a0370c97-8903-46dc-82a7-c78e94b07770\" />\r\n\r\n\r\n### AI Disclosure\r\nNo AI tools used\r\n\r\n\r\n"
+      },
+      "metadata": {
+        "team": "Gumroad",
+        "repo": "antiwork/gumroad",
+        "pr_number": 1460,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[PostHog Analytics] Christmas sweater size guide",
+      "vars": {
+        "pr_body": "## Changes\r\n\r\n<img width=\"808\" height=\"1352\" alt=\"image\" src=\"https://github.com/user-attachments/assets/5e34070e-ba14-4f65-b500-a107ec90eeec\" />\r\n"
+      },
+      "metadata": {
+        "team": "PostHog Analytics",
+        "repo": "PostHog/posthog.com",
+        "pr_number": 14029,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Deno] fix(node): missing `statfs` export from `node:fs/promises`",
+      "vars": {
+        "pr_body": "We already had the functionality, we just didn't export it.\r\n\r\nFixes https://github.com/denoland/deno/issues/31526"
+      },
+      "metadata": {
+        "team": "Deno",
+        "repo": "denoland/deno",
+        "pr_number": 31528,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Gumroad] fix(CheckoutPage): hide percentage options for free cart",
+      "vars": {
+        "pr_body": "### Ref\r\n- #864\r\n\r\nPercentage options will only be visible when total price from products is greater than 0\r\n\r\n### Before\r\n\r\nhttps://github.com/user-attachments/assets/9dc864d6-b893-48da-96c3-9d13f63e677c\r\n\r\n### After\r\n\r\nhttps://github.com/user-attachments/assets/1ebde146-7797-4597-8e53-8a219be84560\r\n\r\n### AI Usage\r\nNone\r\n"
+      },
+      "metadata": {
+        "team": "Gumroad",
+        "repo": "antiwork/gumroad",
+        "pr_number": 1395,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[PostHog Analytics] chore: update versions",
+      "vars": {
+        "pr_body": "## Problem\r\n\r\n<!-- Who are we building for, what are their needs, why is this important? -->\r\n\r\n## Changes\r\n\r\n<!-- What is changed and what information would be useful to a reviewer? -->\r\n\r\n## Release info Sub-libraries affected\r\n\r\n### Libraries affected\r\n\r\n<!-- Please mark which libraries will require a version bump. -->\r\n\r\n- [ ] All of them\r\n- [ ] posthog-js (web)\r\n- [ ] posthog-js-lite (web lite)\r\n- [ ] posthog-node\r\n- [ ] posthog-react-native\r\n- [ ] @posthog/react\r\n- [ ] @posthog/ai\r\n- [ ] @posthog/nextjs-config\r\n- [ ] @posthog/nuxt\r\n- [ ] @posthog/rollup-plugin\r\n- [ ] @posthog/webpack-plugin\r\n\r\n## Checklist\r\n\r\n- [ ] Tests for new code\r\n- [ ] Accounted for the impact of any changes across different platforms\r\n- [ ] Accounted for backwards compatibility of any changes (no breaking changes!)\r\n- [ ] Took care not to unnecessarily increase the bundle size\r\n\r\n### If releasing new changes\r\n\r\n- [ ] Ran `pnpm changeset` to generate a changeset file\r\n- [ ] Added the \"release\" label to the PR to indicate we're publishing new versions for the affected packages\r\n\r\n<!-- For more details check RELEASING.md -->\r\n"
+      },
+      "metadata": {
+        "team": "PostHog Analytics",
+        "repo": "PostHog/posthog-js",
+        "pr_number": 2684,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Deno] chore: speed up macos compile tests",
+      "vars": {
+        "pr_body": "Most of the tests for deno compile take >= 20 seconds (each) on macos. This is mostly due to sha2 and libsui taking a long time to process the debug binary. This speeds them up to <1 sec each, which saves multiple minutes when running all the tests"
+      },
+      "metadata": {
+        "team": "Deno",
+        "repo": "denoland/deno",
+        "pr_number": 31477,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Polar.sh] Bump better-auth from 1.2.7 to 1.4.2 in /packages/polar-next",
+      "vars": {
+        "pr_body": "Bumps [better-auth](https://github.com/better-auth/better-auth/tree/HEAD/packages/better-auth) from 1.2.7 to 1.4.2.\n<details>\n<summary>Release notes</summary>\n<p><em>Sourced from <a href=\"https://github.com/better-auth/better-auth/releases\">better-auth's releases</a>.</em></p>\n<blockquote>\n<h2>v1.4.2</h2>\n<h3>\u00a0\u00a0\u00a0\ud83d\ude80 Features</h3>\n<ul>\n<li><strong>cli</strong>: Check <code>/auth</code> for <code>auth.ts</code> \u00a0-\u00a0 by <a href=\"https://github.com/ping-maxwell\"><code>@\u200bping-maxwell</code></a> in <a href=\"https://redirect.github.com/better-auth/better-auth/issues/6273\">better-auth/better-auth#6273</a> <a href=\"https://github.com/better-auth/better-auth/commit/53a742d5c\"><!-- raw HTML omitted -->(53a74)<!-- raw HTML omitted --></a></li>\n<li><strong>github</strong>: Add PKCE support for Github \u00a0-\u00a0 by <a href=\"https://github.com/Shridhad\"><code>@\u200bShridhad</code></a> in <a href=\"https://redirect.github.com/better-auth/better-auth/issues/6276\">better-auth/better-auth#6276</a> <a href=\"https://github.com/better-auth/better-auth/commit/deb62f116\"><!-- raw HTML omitted -->(deb62)<!-- raw HTML omitted --></a></li>\n<li><strong>jwt</strong>: Allow custom jwks endpoint \u00a0-\u00a0 by <a href=\"https://github.com/luist18\"><code>@\u200bluist18</code></a> in <a href=\"https://redirect.github.com/better-auth/better-auth/issues/6269\">better-auth/better-auth#6269</a> <a href=\"https://github.com/better-auth/better-auth/commit/1c45f3736\"><!-- raw HTML omitted -->(1c45f)<!-- raw HTML omitted --></a></li>\n</ul>\n<h3>\u00a0\u00a0\u00a0\ud83d\udc1e Bug Fixes</h3>\n<ul>\n<li>Support <code>@\u200btanstack/solid-start</code> in tanstackStartCookies plugin \u00a0-\u00a0 by <a href=\"https://github.com/jakst\"><code>@\u200bjakst</code></a> in <a href=\"https://redirect.github.com/better-auth/better-auth/issues/6235\">better-auth/better-auth#6235</a> <a href=\"https://github.com/better-auth/better-auth/commit/c69b3da99\"><!-- raw HTML omitted -->(c69b3)<!-- raw HTML omitted --></a></li>\n<li>SignIn/signUp API returns user additional field \u00a0-\u00a0 by <a href=\"https://github.com/himself65\"><code>@\u200bhimself65</code></a> in <a href=\"https://redirect.github.com/better-auth/better-auth/issues/6287\">better-auth/better-auth#6287</a> <a href=\"https://github.com/better-auth/better-auth/commit/5ea36abe1\"><!-- raw HTML omitted -->(5ea36)<!-- raw HTML omitted --></a></li>\n<li><strong>cli</strong>:\n<ul>\n<li>Kysely migration fails due to chaining addIndex and addColumn on the same alterTable builder \u00a0-\u00a0 by <a href=\"https://github.com/ping-maxwell\"><code>@\u200bping-maxwell</code></a> in <a href=\"https://redirect.github.com/better-auth/better-auth/issues/6214\">better-auth/better-auth#6214</a> <a href=\"https://github.com/better-auth/better-auth/commit/b8a73a910\"><!-- raw HTML omitted -->(b8a73)<!-- raw HTML omitted --></a></li>\n<li>Prevent duplicate index creation in Prisma schema generation \u00a0-\u00a0 by <a href=\"https://github.com/rovertrack\"><code>@\u200brovertrack</code></a> in <a href=\"https://redirect.github.com/better-auth/better-auth/issues/6234\">better-auth/better-auth#6234</a> <a href=\"https://github.com/better-auth/better-auth/commit/0bbd87cf3\"><!-- raw HTML omitted -->(0bbd8)<!-- raw HTML omitted --></a></li>\n</ul>\n</li>\n<li><strong>client</strong>:\n<ul>\n<li>Get-session gets triggered twice on foucs \u00a0-\u00a0 by <a href=\"https://github.com/Bekacru\"><code>@\u200bBekacru</code></a> in <a href=\"https://redirect.github.com/better-auth/better-auth/issues/6186\">better-auth/better-auth#6186</a> <a href=\"https://github.com/better-auth/better-auth/commit/54852e30e\"><!-- raw HTML omitted -->(54852)<!-- raw HTML omitted --></a></li>\n</ul>\n</li>\n<li><strong>email-otp</strong>:\n<ul>\n<li>Sign-in email-otp bugs with capitalized emails \u00a0-\u00a0 by <a href=\"https://github.com/ping-maxwell\"><code>@\u200bping-maxwell</code></a> in <a href=\"https://redirect.github.com/better-auth/better-auth/issues/6237\">better-auth/better-auth#6237</a> <a href=\"https://github.com/better-auth/better-auth/commit/fd010b995\"><!-- raw HTML omitted -->(fd010)<!-- raw HTML omitted --></a></li>\n</ul>\n</li>\n<li><strong>oidc"
+      },
+      "metadata": {
+        "team": "Polar.sh",
+        "repo": "polarsource/polar-adapters",
+        "pr_number": 335,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Resend] feat: log API errors in non-production environments",
+      "vars": {
+        "pr_body": "\n\n\n\n<!-- This is an auto-generated description by cubic. -->\n## Summary by cubic\nAdds structured console logging for Resend API errors in non-production to make debugging easier. Production behavior is unchanged.\n\n- **New Features**\n  - Logs \u201c[Resend API Error]\u201d with status, error payload, and path when API calls fail (non-production only).\n  - Normalizes error objects for JSON parse failures, generic errors, and network errors.\n  - Logging gated by NODE_ENV !== 'production'.\n\n<sup>Written for commit 401471d1830de7fcee4c2eb8e7088e1365da6c19. Summary will update automatically on new commits.</sup>\n\n<!-- End of auto-generated description by cubic. -->\n\n\n\n"
+      },
+      "metadata": {
+        "team": "Resend",
+        "repo": "resend/resend-node",
+        "pr_number": 763,
+        "current_detection": true,
+        "current_tools": [
+          "cubic"
+        ]
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        },
+        {
+          "type": "javascript",
+          "value": "JSON.parse(output).is_ai_assisted === true"
+        }
+      ]
+    },
+    {
+      "description": "[PostHog Analytics] fix: Fix CD by using PAT token",
+      "vars": {
+        "pr_body": "The commit is being created with the wrong username which is causing us to block the push (that user cannot push directly to master without codeql checks)\r\n\r\nLet's instead use the global PAT"
+      },
+      "metadata": {
+        "team": "PostHog Analytics",
+        "repo": "PostHog/posthog-js",
+        "pr_number": 2651,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Gumroad] improvement / fix: add missing error alerts, email validatio",
+      "vars": {
+        "pr_body": "ref #864 \r\n\r\n### What PR does:\r\n- improves error messages, email validation & autofocus on error on affiliates page\r\n\r\n### AI Disclosure:\r\n- no AI used\r\n\r\n### Before:\r\nhttps://github.com/user-attachments/assets/73f1ae0d-a664-42c5-8681-bedb177a690f\r\n\r\n### After:\r\nhttps://github.com/user-attachments/assets/e3ca30ad-a932-4abf-ad05-608ac5d62472\r\n\r\n"
+      },
+      "metadata": {
+        "team": "Gumroad",
+        "repo": "antiwork/gumroad",
+        "pr_number": 1280,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Deno] refactor: complete move to Vite Environment API",
+      "vars": {
+        "pr_body": "I was perusing the code whilst investigating #3606 and noticed that, despite the release post claiming that Fresh had [\"fully embrace[d]\"](https://deno.com/blog/fresh-and-vite#:~:text=fully%20embraces) the Vite Environment API, it was still using `ssrLoadModule`. Once I started looking, I noticed a bunch of other code that wasn't future-proof (env-wise, not rolldown-wise, which'll bring it's own swath of deprecations[^1]), so I updated them as well.\r\n\r\nThe newly added source map tests from #3624 currently fail again because the ModuleRunner API at the heart of the Environment API relies on [`process.setSourceMapsEnabled`](https://docs.deno.com/api/node/process/~/Process.setSourceMapsEnabled), which is [currently set to no-op](https://github.com/denoland/deno/pull/22993) in Deno.\r\n\r\n[^1]: Separately tried to try out rolldown-vite but it seems that Deno doesn't support aliasing dependencies whatsoever? (I know there's not official support, but I was going to try to edit the lockfile to hack around it; however, it seems that there's not alias support in there at all?)"
+      },
+      "metadata": {
+        "team": "Deno",
+        "repo": "denoland/fresh",
+        "pr_number": 3634,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Deno] fix: force at least @deno/loader@0.3.10",
+      "vars": {
+        "pr_body": "Ref: https://github.com/denoland/deno-js-loader/pull/68"
+      },
+      "metadata": {
+        "team": "Deno",
+        "repo": "denoland/fresh",
+        "pr_number": 3631,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Gumroad] refactor: use popover on analytics page",
+      "vars": {
+        "pr_body": "ref #864 \r\n\r\n## summary\r\n\r\nThis PR fixes UI issues on /analytics page\r\n\r\n## Before:-\r\nOn /analytics page some dropdowns are not using using the default select and option HTML instead of following design system\r\n\r\n\r\nhttps://github.com/user-attachments/assets/7d84b0d9-de44-43c7-b71b-4b3a0b019b97\r\n\r\n\r\n## after\r\n\r\nhttps://github.com/user-attachments/assets/54dd01f0-127f-41d3-a1e4-94f950cf0430\r\n\r\n## AI Usage\r\nNo AI was used to generate any of this code.\r\n\r\n## Self-Review\r\nI have self-reviewed all the code that I have written."
+      },
+      "metadata": {
+        "team": "Gumroad",
+        "repo": "antiwork/gumroad",
+        "pr_number": 1234,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Polar.sh] Adds theme to the portal hook",
+      "vars": {
+        "pr_body": "supersedes https://github.com/polarsource/polar-adapters/pull/261"
+      },
+      "metadata": {
+        "team": "Polar.sh",
+        "repo": "polarsource/polar-adapters",
+        "pr_number": 329,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Trigger.dev] chore: Update version for release",
+      "vars": {
+        "pr_body": "This PR was opened by the [Changesets release](https://github.com/changesets/action) GitHub action. When you're ready to do a release, you can merge this and the packages will be published to npm automatically. If you're not ready to do a release yet, that's fine, whenever you add more changesets to main, this PR will be updated.\n\n\n# Releases\n## @trigger.dev/build@4.1.1\n\n### Patch Changes\n\n-   The `prismaExtension` has been completely redesigned to support multiple Prisma versions and deployment strategies. This update introduces **three distinct modes** to handle the evolving Prisma ecosystem, from legacy setups to the upcoming Prisma 7. ([#2689](https://github.com/triggerdotdev/trigger.dev/pull/2689))\n\n    **Highlights:**\n\n    -   \ud83c\udfaf Three modes: Legacy, Engine-Only, and Modern\n    -   \ud83c\udf89 **NEW:** Support for `prisma.config.ts` files (Legacy Mode)\n    -   \ud83d\udd0d **NEW:** Enhanced version detection with filesystem fallback\n\n    ## Breaking Changes\n\n    \u26a0\ufe0f **MIGRATION REQUIRED**: The `prismaExtension` now requires an explicit `mode` parameter. Existing configurations without a `mode` will need to be updated.\n\n    **Note:** All other existing options remain backward compatible. The new `configFile` option is optional and doesn't affect existing setups using the `schema` option.\n\n    ### Before (Old API)\n\n    ```ts\n    import { prismaExtension } from \"@trigger.dev/build/extensions/prisma\";\n\n    extensions: [\n      prismaExtension({\n        schema: \"prisma/schema.prisma\",\n        migrate: true,\n        typedSql: true,\n        directUrlEnvVarName: \"DATABASE_URL_UNPOOLED\",\n      }),\n    ];\n    ```\n\n    ### After (New API)\n\n    ```ts\n    import { prismaExtension } from \"@trigger.dev/build/extensions/prisma\";\n\n    extensions: [\n      prismaExtension({\n        mode: \"legacy\", // \u2190 MODE IS NOW REQUIRED\n        schema: \"prisma/schema.prisma\",\n        migrate: true,\n        typedSql: true,\n        directUrlEnvVarName: \"DATABASE_URL_UNPOOLED\",\n      }),\n    ];\n    ```\n\n    ## New Features\n\n    ### 1. Legacy Mode\n\n    **Use when:** You're using Prisma 6.x or earlier with the `prisma-client-js` provider.\n\n    **Features:**\n\n    -   Automatic `prisma generate` during deployment\n    -   Supports single-file schemas (`prisma/schema.prisma`)\n    -   Supports multi-file schemas (Prisma 6.7+, directory-based schemas)\n    -   **NEW:** Supports Prisma config files (`prisma.config.ts`) via `@prisma/config` package\n    -   Migration support with `migrate: true`\n    -   TypedSQL support with `typedSql: true`\n    -   Custom generator selection\n    -   Handles Prisma client versioning automatically (with filesystem fallback detection)\n    -   Automatic extraction of schema and migrations paths from config files\n\n    **Schema Configuration:**\n\n    ```prisma\n    generator client {\n      provider        = \"prisma-client-js\"\n      previewFeatures = [\"typedSql\"]\n    }\n\n    datasource db {\n      provider  = \"postgresql\"\n      url       = env(\"DATABASE_URL\")\n      directUrl = env(\"DATABASE_URL_UNPOOLED\")\n    }\n    ```\n\n    **Extension Configuration:**\n\n    ```ts\n    // Single-file schema\n    prismaExtension({\n      mode: \"legacy\",\n      schema: \"prisma/schema.prisma\",\n      migrate: true,\n      typedSql: true,\n      directUrlEnvVarName: \"DATABASE_URL_UNPOOLED\",\n    });\n\n    // Multi-file schema (Prisma 6.7+)\n    prismaExtension({\n      mode: \"legacy\",\n      schema: \"./prisma\", // \u2190 Point to directory\n      migrate: true,\n      typedSql: true,\n      directUrlEnvVarName: \"DATABASE_URL_UNPOOLED\",\n    });\n    ```\n\n    **Tested Versions:**\n\n    -   Prisma 6.14.0 \u2705\n    -   Prisma 6.7.0+ (multi-file schema support) \u2705\n    -   Prisma 5.x \u2705\n\n    * * *\n\n    ### 2. Engine-Only Mode\n\n    **Use when:** You have a custom Prisma client output path and want to manage `prisma generate` yourself.\n\n    **Features:**\n\n    -   Only installs Prisma engine binaries (no client generation)\n    -   Automatic version detection from `@prisma/client`\n    -   Manual override of version and binary "
+      },
+      "metadata": {
+        "team": "Trigger.dev",
+        "repo": "triggerdotdev/trigger.dev",
+        "pr_number": 2693,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Linear] chore(release): version packages",
+      "vars": {
+        "pr_body": "This PR was opened by the [Changesets release](https://github.com/changesets/action) GitHub action. When you're ready to do a release, you can merge this and the packages will be published to npm automatically. If you're not ready to do a release yet, that's fine, whenever you add more changesets to master, this PR will be updated.\n\n# Releases\n## @linear/sdk@64.0.0\n\n### Major Changes\n\n-   d535751: feat(schema): [breaking] Field 'AuthOrganization.userCount' changed type from 'Float!' to 'Float' (AuthOrganization.userCount)\n\n    feat(schema): [dangerous] Argument 'teamId: String' added to field 'Mutation.integrationMcpServerConnect' (Mutation.integrationMcpServerConnect.teamId)\n\n    feat(schema): [dangerous] Input field 'agentGuidanceRole' was added to input object type 'OrganizationSecuritySettingsInput' (OrganizationSecuritySettingsInput.agentGuidanceRole)\n\n    feat(schema): [dangerous] Input field 'codeIntelligenceEnabled' was added to input object type 'OrganizationUpdateInput' (OrganizationUpdateInput.codeIntelligenceEnabled)\n\n    feat(schema): [dangerous] Input field 'codeIntelligenceRepository' was added to input object type 'OrganizationUpdateInput' (OrganizationUpdateInput.codeIntelligenceRepository)\n\n    feat(schema): [dangerous] Input field 'gitLinkbackDescriptionsEnabled' was added to input object type 'OrganizationUpdateInput' (OrganizationUpdateInput.gitLinkbackDescriptionsEnabled)\n\n    feat(schema): [dangerous] Enum value 'PrivateGroup' was added to enum 'SlackChannelType' (SlackChannelType.PrivateGroup)\n\n    feat(schema): [non_breaking] Field 'dismissedBy' was added to object type 'AgentSession' (AgentSession.dismissedBy)\n\n    feat(schema): [non_breaking] Field 'sourceComment' was added to object type 'AgentSession' (AgentSession.sourceComment)\n\n    feat(schema): [non_breaking] Field 'sourceCommentId' was added to object type 'AgentSessionWebhookPayload' (AgentSessionWebhookPayload.sourceCommentId)\n\n    feat(schema): [non_breaking] Field 'AgentSessionWebhookPayload.comment' description changed from 'The comment this agent session is associated with.' to 'The root comment of the thread this agent session is attached to.' (AgentSessionWebhookPayload.comment)\n\n    feat(schema): [non_breaking] Field 'AgentSessionWebhookPayload.commentId' description changed from 'The ID of the comment this agent session is associated with.' to 'The ID of the root comment of the thread this agent session is attached to.' (AgentSessionWebhookPayload.commentId)\n\n    feat(schema): [non_breaking] Field 'initiativeUpdateHealth' was added to object type 'CustomerNeedNotification' (CustomerNeedNotification.initiativeUpdateHealth)\n\n    feat(schema): [non_breaking] Field 'initiativeUpdateHealth' was added to object type 'CustomerNotification' (CustomerNotification.initiativeUpdateHealth)\n\n    feat(schema): [non_breaking] Field 'initiativeUpdateHealth' was added to object type 'DocumentNotification' (DocumentNotification.initiativeUpdateHealth)\n\n    feat(schema): [non_breaking] Field 'initiativeUpdateHealth' was added to object type 'InitiativeNotification' (InitiativeNotification.initiativeUpdateHealth)\n\n    feat(schema): [non_breaking] Field 'initiativeUpdateHealth' was added to object type 'IssueNotification' (IssueNotification.initiativeUpdateHealth)\n\n    feat(schema): [non_breaking] Field 'initiativeUpdateHealth' was added to interface 'Notification' (Notification.initiativeUpdateHealth)\n\n    feat(schema): [non_breaking] Field 'initiativeUpdateHealth' was added to object type 'OauthClientApprovalNotification' (OauthClientApprovalNotification.initiativeUpdateHealth)\n\n    feat(schema): [non_breaking] Field 'codeIntelligenceEnabled' was added to object type 'Organization' (Organization.codeIntelligenceEnabled)\n\n    feat(schema): [non_breaking] Field 'codeIntelligenceRepository' was added to object type 'Organization' (Organization.codeIntelligenceRepository)\n\n    feat(schema): [non_breaking] Field 'gitLinkbackDescriptionsEnabled' was added to"
+      },
+      "metadata": {
+        "team": "Linear",
+        "repo": "linearapp/linear",
+        "pr_number": 941,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[PostHog Analytics] fix: network plugin cleanup",
+      "vars": {
+        "pr_body": "two small improvements to the replay network plugin\n\n1. clean up in the xhr wrapper a little more nicely\n2. very defensive cleanup of the handlers so when we stop and restart we're really really starting from clean"
+      },
+      "metadata": {
+        "team": "PostHog Analytics",
+        "repo": "PostHog/posthog-js",
+        "pr_number": 2582,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Deno] feat(docs): improve copy button appearance on light mode",
+      "vars": {
+        "pr_body": "| Before| After |\r\n| :---: | :---: |\r\n| ![before](https://github.com/user-attachments/assets/6d485c89-79ec-485d-9897-de9db0a9b044) | ![after](https://github.com/user-attachments/assets/5c134ea1-6dec-4da5-8a84-e7e7b7e062a7) |\r\n\r\nThe appearance on dark mode doesn't change.\r\n"
+      },
+      "metadata": {
+        "team": "Deno",
+        "repo": "denoland/fresh",
+        "pr_number": 3620,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Anthropic] release: 0.73.0",
+      "vars": {
+        "pr_body": "Automated Release PR\n---\n\n\n## 0.73.0 (2025-11-14)\n\nFull Changelog: [v0.72.1...v0.73.0](https://github.com/anthropics/anthropic-sdk-python/compare/v0.72.1...v0.73.0)\n\n### Features\n\n* **api:** add support for structured outputs beta ([688da81](https://github.com/anthropics/anthropic-sdk-python/commit/688da8126df8a304c5f01f0dc63cda437a62c217))\n\n---\nThis pull request is managed by Stainless's [GitHub App](https://github.com/apps/stainless-app).\n\nThe [semver version number](https://semver.org/#semantic-versioning-specification-semver) is based on included [commit messages](https://www.conventionalcommits.org/en/v1.0.0/). Alternatively, you can manually set the version number in the title of this pull request.\n\nFor a better experience, it is recommended to use either rebase-merge or squash-merge when merging this pull request.\n\n\ud83d\udd17 Stainless [website](https://www.stainlessapi.com)\n\ud83d\udcda Read the [docs](https://app.stainlessapi.com/docs)\n\ud83d\ude4b [Reach out](mailto:support@stainlessapi.com) for help or questions"
+      },
+      "metadata": {
+        "team": "Anthropic",
+        "repo": "anthropics/anthropic-sdk-python",
+        "pr_number": 1069,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Resend] chore(root): version packages",
+      "vars": {
+        "pr_body": "This PR was opened by the [Changesets release](https://github.com/changesets/action) GitHub action. When you're ready to do a release, you can merge this and the packages will be published to npm automatically. If you're not ready to do a release yet, that's fine, whenever you add more changesets to main, this PR will be updated.\n\n\n# Releases\n## @react-email/components@1.0.1\n\n### Patch Changes\n\n-   Updated dependencies [e25aaad]\n    -   @react-email/tailwind@2.0.1\n\n## @react-email/preview-server@5.0.3\n\n### Patch Changes\n\n-   4861354: move most dependenices to devDependencies\n-   7ab924c: fix unwanted dependency installation when typescript's not installed\n\n## @react-email/tailwind@2.0.1\n\n### Patch Changes\n\n-   e25aaad: unpin tailwindcss to avoid duplicate dependencies\n\n## react-email@5.0.3\n\n\n\n\n\n\n<!-- This is an auto-generated description by cubic. -->\n---\n## Summary by cubic\nPublish patch releases to align Tailwind across packages and streamline preview-server dependencies. This reduces duplicate installs and prevents unwanted installs when TypeScript isn\u2019t present.\n\n- **Dependencies**\n  - Unpinned tailwindcss in @react-email/tailwind; updated consumers to @react-email/tailwind@2.0.1.\n  - Moved most @react-email/preview-server dependencies to devDependencies.\n  - Version bumps: components 1.0.1, preview-server 5.0.3, tailwind 2.0.1, react-email 5.0.3.\n\n- **Bug Fixes**\n  - Prevents unwanted dependency installation in @react-email/preview-server when TypeScript isn\u2019t installed.\n\n<sup>Written for commit f16e9a846e545df5b99b453e9f785f7f09d2e9a1. Summary will update automatically on new commits.</sup>\n\n<!-- End of auto-generated description by cubic. -->\n\n\n\n"
+      },
+      "metadata": {
+        "team": "Resend",
+        "repo": "resend/react-email",
+        "pr_number": 2680,
+        "current_detection": true,
+        "current_tools": [
+          "cubic"
+        ]
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        },
+        {
+          "type": "javascript",
+          "value": "JSON.parse(output).is_ai_assisted === true"
+        }
+      ]
+    },
+    {
+      "description": "[Anthropic] fix: resolve tool cache invalidation bug and bedrock HTTP/2 ",
+      "vars": {
+        "pr_body": "## Summary\r\n\r\nFixes two **MEDIUM** priority bugs affecting SDK functionality.\r\n\r\n### 1. Tool Runner Cache Invalidation Bug\r\n\r\n**Problem:**\r\n`BaseToolRunner.set_messages_params()` promises to \"invalidate any cached tool responses\" in its docstring, but never actually cleared `_cached_tool_call_response`. This caused:\r\n- Stale cached blocks reused after parameter mutations\r\n- 400 errors and runaway loops with wrong `tool_use_id`\r\n- Message duplication when `_messages_modified` flag wasn't set\r\n\r\n**Fix:**\r\n- Clear `_cached_tool_call_response = None` when params change\r\n- Set `_messages_modified = True` to prevent message duplication\r\n\r\n### 2. Bedrock HTTP/2 KeyError\r\n\r\n**Problem:**\r\n`get_auth_headers()` unconditionally executed `del headers[\"connection\"]`:\r\n- HTTP/2 requests don't have a Connection header (HTTP/1.x only)\r\n- HTTPX defaults to HTTP/2 where available\r\n- Caused KeyError, preventing SigV4 signing from running\r\n\r\n**Fix:**\r\n- Use `headers.pop(\"connection\", None)` for safe removal\r\n- Works with both HTTP/1.1 (removes header) and HTTP/2 (no-op)\r\n\r\n## Implementation Details\r\n\r\n### Cache Invalidation\r\n- **Issue Location**: `src/anthropic/lib/tools/_beta_runner.py:79-92`\r\n- **Root Cause**: Method updated `_params` but never cleared cached tool responses\r\n- **Fix**: Added two lines:\r\n  - `self._cached_tool_call_response = None` - clears cached tool response\r\n  - `self._messages_modified = True` - prevents message duplication in loops\r\n\r\n### HTTP/2 Compatibility\r\n- **Issue Location**: `src/anthropic/lib/bedrock/_auth.py:56-61`\r\n- **Root Cause**: `del headers[\"connection\"]` assumes header exists\r\n- **Fix**: Changed to `headers.pop(\"connection\", None)`\r\n- **Safety**: Works with `httpx.Headers` (case-insensitive) and plain dicts\r\n\r\n## Testing\r\n\r\n- \u2705 Cache invalidation is complete (both cache and flag cleared)\r\n- \u2705 HTTP/2 compatibility fix uses best approach\r\n- \u2705 No message duplication edge cases\r\n- \u2705 Safe header removal across HTTP versions\r\n\r\n## Changes\r\n\r\n- `src/anthropic/lib/tools/_beta_runner.py:91-92`\r\n  - Added `self._cached_tool_call_response = None`\r\n  - Added `self._messages_modified = True`\r\n- `src/anthropic/lib/bedrock/_auth.py:61`\r\n  - Changed `del headers[\"connection\"]` to `headers.pop(\"connection\", None)`\r\n\r\n## Impact\r\n\r\n- **Tool Runner**: Fixes 400 errors and runaway loops when mutating parameters\r\n- **Bedrock Client**: Enables HTTP/2 requests for AWS Bedrock integration\r\n- **Backwards Compatibility**: Fully maintained, no breaking changes"
+      },
+      "metadata": {
+        "team": "Anthropic",
+        "repo": "anthropics/anthropic-sdk-python",
+        "pr_number": 1067,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Resend] chore(root): version packages (canary)",
+      "vars": {
+        "pr_body": "This PR was opened by the [Changesets release](https://github.com/changesets/action) GitHub action. When you're ready to do a release, you can merge this and the packages will be published to npm automatically. If you're not ready to do a release yet, that's fine, whenever you add more changesets to canary, this PR will be updated.\n\n\u26a0\ufe0f\u26a0\ufe0f\u26a0\ufe0f\u26a0\ufe0f\u26a0\ufe0f\u26a0\ufe0f\n\n`canary` is currently in **pre mode** so this branch has prereleases rather than normal releases. If you want to exit prereleases, run `changeset pre exit` on `canary`.\n\n\u26a0\ufe0f\u26a0\ufe0f\u26a0\ufe0f\u26a0\ufe0f\u26a0\ufe0f\u26a0\ufe0f\n\n# Releases\n## @react-email/preview-server@5.0.1-canary.0\n\n### Patch Changes\n\n-   37b405b: Update link for Resend\n-   56a696f: Increases the sleep time between bulk templates import to avoid exceeding the default API rate limit of 2 requests per second\n\n## react-email@5.0.1-canary.0\n\n\n\n\n<!-- This is an auto-generated description by cubic. -->\n---\n## Summary by cubic\nBump @react-email/preview-server and react-email to 5.0.1-canary.0 for the canary prerelease. Includes fixes to the preview server for Resend link and API rate limiting.\n\n- **Bug Fixes**\n  - Update Resend link in preview server.\n  - Increase sleep between bulk template imports to stay under the 2 req/s API limit.\n\n<sup>Written for commit cee029c7ad5982e630bb243b9c51045e978126e0. Summary will update automatically on new commits.</sup>\n\n<!-- End of auto-generated description by cubic. -->\n\n"
+      },
+      "metadata": {
+        "team": "Resend",
+        "repo": "resend/react-email",
+        "pr_number": 2665,
+        "current_detection": true,
+        "current_tools": [
+          "cubic"
+        ]
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        },
+        {
+          "type": "javascript",
+          "value": "JSON.parse(output).is_ai_assisted === true"
+        }
+      ]
+    },
+    {
+      "description": "[Resend] feat: add dub link",
+      "vars": {
+        "pr_body": "<!-- Thanks for opening a PR! Your contribution is much appreciated.\r\nTo make sure your PR is handled as smoothly as possible we request that you follow the checklist sections below.\r\nChoose the right checklist for the change(s) that you're making:\r\n\r\nThe PR name should follow `<type>(<scope>): <Message>`\r\n\r\nExamples:\r\n- New feature: `feat(button): Add new thing`\r\n- Fix: `fix(react-email): Dev command\r\n- Misc/Chore: `chore(root): Update `readme.md`\r\n-->\r\n\n\n\n\n<!-- This is an auto-generated description by cubic. -->\n---\n## Summary by cubic\nUpdate \"Resend\" links in the footer and Send popovers to use the Dub tracking URL (https://go.resend.com/react-email). This enables click tracking without changing UI or behavior.\n\n<sup>Written for commit c4975634c50b65fbd348c10bb7dd242ae41f280d. Summary will update automatically on new commits.</sup>\n\n<!-- End of auto-generated description by cubic. -->\n\n\n\n"
+      },
+      "metadata": {
+        "team": "Resend",
+        "repo": "resend/react-email",
+        "pr_number": 2662,
+        "current_detection": true,
+        "current_tools": [
+          "cubic"
+        ]
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        },
+        {
+          "type": "javascript",
+          "value": "JSON.parse(output).is_ai_assisted === true"
+        }
+      ]
+    },
+    {
+      "description": "[Antiwork] speed up E2E test setup",
+      "vars": {
+        "pr_body": "ref #1064\r\n\r\n- Speed up Playwright E2E test workflow by disabling **unused** Supabase services and enabling Docker layer **caching**.\r\n- reduces the time of e2e setup and using cache it is again further reduced for next commits in the same PR\r\n\r\n### Changes\r\n\r\n#### 1. Disabled unused supabase services\r\n- Disabled `realtime` service  as e2e tests don't test real-time subscriptions\r\n- Disabled `storage` service  as e2e tests don't test S3 persistence\r\n- Saves time by skipping 2 Docker image pulls\r\n\r\n#### 2. Enabled Docker BuildKit caching \r\n- Added `docker/setup-buildx-action@v3`\r\n- Enabled `DOCKER_BUILDKIT=1`\r\n- Caches Docker image layers between workflow runs\r\n- Saves times on subsequent commits by reusing cached layers\r\n\r\n### Use of AI\r\n- none"
+      },
+      "metadata": {
+        "team": "Antiwork",
+        "repo": "antiwork/helper",
+        "pr_number": 1077,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Polar.sh] chore: \ud83d\udc1d Update SDK - Generate 0.28.1",
+      "vars": {
+        "pr_body": "> [!IMPORTANT]\n> Linting report available at: <https://app.speakeasy.com/org/polar/polar/linting-report/323cd4fcdd6fc9ddb727c6579baad772>\n> OpenAPI Change report available at: <https://app.speakeasy.com/org/polar/polar/changes-report/9089a8d3c3f0dbf26dd7e536f3b1b978>\n# SDK update\n## Versioning\n\nVersion Bump Type: [patch] - \ud83e\udd16 (automated)\n## Python SDK Changes Detected:\n* `polar._endpointcheckout_created_post()`: \n  *  `request.data` **Changed** **Breaking** :warning:\n* `polar._endpointcheckout_updated_post()`: \n  *  `request.data` **Changed** **Breaking** :warning:\n* `polar._endpointorder_created_post()`: \n  *  `request.data.platform_fee_currency` **Added** **Breaking** :warning:\n* `polar._endpointorder_updated_post()`: \n  *  `request.data.platform_fee_currency` **Added** **Breaking** :warning:\n* `polar._endpointorder_paid_post()`: \n  *  `request.data.platform_fee_currency` **Added** **Breaking** :warning:\n* `polar.events.get()`:  `response` **Changed** **Breaking** :warning:\n* `polar.events.list()`: \n  *  `request.depth` **Added**\n  *  `response` **Changed** **Breaking** :warning:\n* `polar.customer_portal.subscriptions.update()`:  `response` **Changed** **Breaking** :warning:\n* `polar.customer_portal.subscriptions.cancel()`:  `response` **Changed** **Breaking** :warning:\n* `polar.customer_portal.subscriptions.get()`:  `response` **Changed** **Breaking** :warning:\n* `polar.customer_portal.subscriptions.list()`:  `response.items.[]` **Changed** **Breaking** :warning:\n* `polar.customer_portal.organizations.get()`:  `response` **Changed** **Breaking** :warning:\n* `polar._endpointorder_refunded_post()`: \n  *  `request.data.platform_fee_currency` **Added** **Breaking** :warning:\n* `polar._endpointsubscription_created_post()`: \n  *  `request.data.product.prices.[]` **Changed** **Breaking** :warning:\n* `polar._endpointsubscription_updated_post()`: \n  *  `request.data.product.prices.[]` **Changed** **Breaking** :warning:\n* `polar._endpointsubscription_active_post()`: \n  *  `request.data.product.prices.[]` **Changed** **Breaking** :warning:\n* `polar._endpointsubscription_canceled_post()`: \n  *  `request.data.product.prices.[]` **Changed** **Breaking** :warning:\n* `polar._endpointsubscription_uncanceled_post()`: \n  *  `request.data.product.prices.[]` **Changed** **Breaking** :warning:\n* `polar._endpointsubscription_revoked_post()`: \n  *  `request.data.product.prices.[]` **Changed** **Breaking** :warning:\n* `polar._endpointrefund_created_post()`: \n  *  `request.data.dispute` **Added** **Breaking** :warning:\n* `polar._endpointrefund_updated_post()`: \n  *  `request.data.dispute` **Added** **Breaking** :warning:\n* `polar._endpointproduct_created_post()`: \n  *  `request.data.prices.[]` **Changed** **Breaking** :warning:\n* `polar._endpointproduct_updated_post()`: \n  *  `request.data.prices.[]` **Changed** **Breaking** :warning:\n* `polar._endpointorganization_updated_post()`: \n  *  `request.data` **Changed** **Breaking** :warning:\n* `polar.customer_portal.orders.update()`:  `response.product` **Changed** **Breaking** :warning:\n* `polar.customer_portal.orders.get()`:  `response.product` **Changed** **Breaking** :warning:\n* `polar.customer_portal.orders.list()`:  `response.items.[].product` **Changed** **Breaking** :warning:\n* `polar.customer_portal.seats.list_claimed_subscriptions()`:  `response.[]` **Changed** **Breaking** :warning:\n* `polar.customer_portal.benefit-grants.update()`:  `response` **Changed** **Breaking** :warning:\n* `polar.customer_portal.benefit-grants.get()`:  `response` **Changed** **Breaking** :warning:\n* `polar.customer_portal.benefit-grants.list()`: \n  *  `request` **Changed**\n  *  `response.items.[]` **Changed** **Breaking** :warning:\n* `polar.customers.create()`: \n  *  `request` **Changed** **Breaking** :warning:\n  *  `response.members` **Added**\n* `polar.metrics.get()`: \n  *  `request.metrics` **Added**\n  *  `response` **Changed** **Breaking** :warning:\n* `polar.checkouts.client_confirm()`: \n  *  `request.checkout_confir"
+      },
+      "metadata": {
+        "team": "Polar.sh",
+        "repo": "polarsource/polar-python",
+        "pr_number": 120,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Trigger.dev] fix(webapp): Fix for showing the incident UI panel in the si",
+      "vars": {
+        "pr_body": "This fix adds `uncrypto` package to the remix config"
+      },
+      "metadata": {
+        "team": "Trigger.dev",
+        "repo": "triggerdotdev/trigger.dev",
+        "pr_number": 2638,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[PostHog Analytics] chore: bump version to 6.7.11 for AI framework feature",
+      "vars": {
+        "pr_body": "## Summary\n\nUpdates version.py and CHANGELOG.md for the AI framework feature merged in #347.\n\n## Changes\n\n- Bump version from 6.7.10 to 6.7.11\n- Add changelog entry for `$ai_framework` property\n\nCloses follow-up from #347"
+      },
+      "metadata": {
+        "team": "PostHog Analytics",
+        "repo": "PostHog/posthog-python",
+        "pr_number": 354,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Anthropic] Feature/fix wikipedia",
+      "vars": {
+        "pr_body": "There were some changes in the api for that needed to be updated in the wikipedia notebook example.  We need to start using the transformers library for the tokenizer."
+      },
+      "metadata": {
+        "team": "Anthropic",
+        "repo": "anthropics/anthropic-cookbook",
+        "pr_number": 240,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Trigger.dev] feat(realtime): Realtime streams v2",
+      "vars": {
+        "pr_body": "This PR introduces an upgraded Realtime streams backend and SDK that makes streams more reliable (and resumable) with increased or the removal of limits. We've also improved the visibily of streams via the run dashboard.\r\n\r\n## New limits\r\n\r\nView the below limits table for more details:\r\n\r\n| Limit                            | Streams v1 | Streams v2 |\r\n| -------------------------------- | ---------- | ---------- |\r\n| Maximum stream length            | 2000       | Unlimited  |\r\n| Number of active streams per run | 5          | Unlimited  |\r\n| Maximum streams per run          | 10         | Unlimited  |\r\n| Maximum stream TTL               | 1 day      | 28 days    |\r\n| Maximum stream size              | 10MB       | 300 MiB    |\r\n\r\nAdditionally, previously only a single client stream could be sent to a Realtime stream. Now, you can send multiple client streams to a single Realtime stream.\r\n\r\n## Reliability improvements\r\n\r\nWhen appending to a stream, the backend will now reliably resume appending from the last chunk index if there is a lost connection. Additionally, we've improved the reliability of reading from a stream by automatically resuming failed reads from the last chunk index if there is a lost connection.\r\n\r\nThis means that both sides of the stream will be much more reliable and will not lose data even when faced with network issues or other disruptions.\r\n\r\n## SDK improvements\r\n\r\nWe've moved the stream logic into their own dedicated namespace in the SDK instead of being mixed in with the other metadata methods:\r\n\r\n```ts\r\nimport { streams, metadata, task } from \"@trigger.dev/sdk\";\r\n\r\nconst myTask = task({\r\n  id: \"my-task\",\r\n  run: async (payload: { message: string }) => {\r\n    const stream = // ... get a stream from somewhere\r\n      // Before:\r\n      await metadata.stream(\"my-stream\", stream);\r\n\r\n    // After: (notice we don't await the result)\r\n    streams.pipe(\"my-stream\", stream);\r\n  },\r\n});\r\n```\r\n\r\nYou can now pipe to a stream using the `streams.pipe` method, which returns a result that can be used to wait until the stream is complete:\r\n\r\n```ts\r\nimport { streams, task } from \"@trigger.dev/sdk\";\r\n\r\nconst myTask = task({\r\n  id: \"my-task\",\r\n  run: async (payload: { message: string }) => {\r\n    const myAIStream = // ... get a stream from somewhere\r\n\r\n    const { stream, waitUntilComplete } = streams.pipe(\"ai-stream\", myAIStream);\r\n\r\n    // A. Iterate over the stream which is an async iterable and a ReadableStream\r\n    for await (const chunk of stream) {\r\n      console.log(chunk);\r\n    }\r\n\r\n    // B. Wait until the stream is complete\r\n    await waitUntilComplete();\r\n\r\n    return {\r\n      message: \"Stream completed successfully\",\r\n    };\r\n  },\r\n});\r\n```\r\n\r\nWhen calling `streams.pipe` from inside a task, the stream is automatically associated with the current run. You can also optionally specify a target run ID to pipe to a stream on a different run:\r\n\r\n```ts\r\nimport { streams, task } from \"@trigger.dev/sdk\";\r\n\r\nconst myTask = task({\r\n  id: \"my-task\",\r\n  run: async (payload: { message: string; otherRunId?: string }, { ctx }) => {\r\n    const myAIStream = // ... get a stream from somewhere\r\n\r\n    // Pipe to a stream on the root run\r\n    const { stream, waitUntilComplete } = streams.pipe(\"ai-stream\", myAIStream, { target: ctx.run.rootTaskRunId });\r\n\r\n    // Pipe to a stream on the parent run\r\n    const { stream, waitUntilComplete } = streams.pipe(\"ai-stream\", myAIStream, { target: ctx.run.parentTaskRunId });\r\n\r\n    // Pipe to a stream on another run by ID\r\n    const { stream, waitUntilComplete } = streams.pipe(\"ai-stream\", myAIStream, { target: payload.otherRunId });\r\n  },\r\n});\r\n```\r\n\r\nThis means that, if you specify a target run ID, you can pipe to a stream outside of a task:\r\n\r\n```ts\r\nimport { streams } from \"@trigger.dev/sdk\";\r\nimport { openai } from \"@ai-sdk/openai\";\r\nimport {\r\n  convertToModelMessages,\r\n  streamText,\r\n  UIMessage,\r\n  createUIMessageStreamResponse,\r\n} from \"ai\";\r\n\r\n// Allow streaming responses up to 30 sec"
+      },
+      "metadata": {
+        "team": "Trigger.dev",
+        "repo": "triggerdotdev/trigger.dev",
+        "pr_number": 2632,
+        "current_detection": true,
+        "current_tools": [
+          "chatgpt"
+        ]
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        },
+        {
+          "type": "javascript",
+          "value": "JSON.parse(output).is_ai_assisted === true"
+        }
+      ]
+    },
+    {
+      "description": "[Neon] Add getConnectionParameters() method to WebSocket client",
+      "vars": {
+        "pr_body": "Add a new getConnectionParameters() method to NeonClient that exposes PostgreSQL connection parameters sent by the server during the connection lifecycle.\r\n\r\nAdded test coverage in tests/cli/ws.test.ts"
+      },
+      "metadata": {
+        "team": "Neon",
+        "repo": "neondatabase/serverless",
+        "pr_number": 178,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Linear] chore(release): version packages",
+      "vars": {
+        "pr_body": "This PR was opened by the [Changesets release](https://github.com/changesets/action) GitHub action. When you're ready to do a release, you can merge this and the packages will be published to npm automatically. If you're not ready to do a release yet, that's fine, whenever you add more changesets to master, this PR will be updated.\n\n# Releases\n## @linear/sdk@61.0.0\n\n### Major Changes\n\n-   4c5acd5: feat(schema): [breaking] Type 'AppUserAuthentication' was removed (AppUserAuthentication)\n\n    feat(schema): [breaking] Type 'AuthorizingUser' was removed (AuthorizingUser)\n\n    feat(schema): [breaking] Type 'SummaryPayload' was removed (SummaryPayload)\n\n    feat(schema): [breaking] Type 'UserAuthorizedApplication' was removed (UserAuthorizedApplication)\n\n    feat(schema): [breaking] Field 'applicationWithAuthorization' was removed from object type 'Query' (Query.applicationWithAuthorization)\n\n    feat(schema): [breaking] Field 'summarizeProjectUpdates' was removed from object type 'Query' (Query.summarizeProjectUpdates)\n\n    feat(schema): [breaking] Argument 'type: IdentityProviderType!' added to field 'Query.ssoUrlFromEmail' (Query.ssoUrlFromEmail.type)\n\n    feat(schema): [dangerous] Input field 'url' was added to input object type 'ContactSalesCreateInput' (ContactSalesCreateInput.url)\n\n    feat(schema): [dangerous] Input field 'issueId' was added to input object type 'DocumentCreateInput' (DocumentCreateInput.issueId)\n\n    feat(schema): [dangerous] Input field 'issue' was added to input object type 'DocumentFilter' (DocumentFilter.issue)\n\n    feat(schema): [dangerous] Input field 'issueId' was added to input object type 'DocumentUpdateInput' (DocumentUpdateInput.issueId)\n\n    feat(schema): [dangerous] Input field 'hasSuggestedTeams' was added to input object type 'IssueCollectionFilter' (IssueCollectionFilter.hasSuggestedTeams)\n\n    feat(schema): [dangerous] Input field 'hasSuggestedTeams' was added to input object type 'IssueFilter' (IssueFilter.hasSuggestedTeams)\n\n    feat(schema): [dangerous] Input field 'retiredAt' was added to input object type 'IssueLabelCreateInput' (IssueLabelCreateInput.retiredAt)\n\n    feat(schema): [dangerous] Input field 'retiredAt' was added to input object type 'IssueLabelUpdateInput' (IssueLabelUpdateInput.retiredAt)\n\n    feat(schema): [dangerous] Input field 'noSecret' was added to input object type 'JiraUpdateInput' (JiraUpdateInput.noSecret)\n\n    feat(schema): [dangerous] Argument 'skipEditedAt: Boolean' added to field 'Mutation.commentUpdate' (Mutation.commentUpdate.skipEditedAt)\n\n    feat(schema): [dangerous] Input field 'hasSuggestedTeams' was added to input object type 'NullableIssueFilter' (NullableIssueFilter.hasSuggestedTeams)\n\n    feat(schema): [dangerous] Input field 'startedAt' was added to input object type 'NullableProjectFilter' (NullableProjectFilter.startedAt)\n\n    feat(schema): [dangerous] Input field 'aiDiscussionSummariesEnabled' was added to input object type 'OrganizationUpdateInput' (OrganizationUpdateInput.aiDiscussionSummariesEnabled)\n\n    feat(schema): [dangerous] Input field 'aiThreadSummariesEnabled' was added to input object type 'OrganizationUpdateInput' (OrganizationUpdateInput.aiThreadSummariesEnabled)\n\n    feat(schema): [dangerous] Input field 'generatedUpdatesEnabled' was added to input object type 'OrganizationUpdateInput' (OrganizationUpdateInput.generatedUpdatesEnabled)\n\n    feat(schema): [dangerous] Input field 'startedAt' was added to input object type 'ProjectCollectionFilter' (ProjectCollectionFilter.startedAt)\n\n    feat(schema): [dangerous] Input field 'startedAt' was added to input object type 'ProjectFilter' (ProjectFilter.startedAt)\n\n    feat(schema): [dangerous] Input field 'retiredAt' was added to input object type 'ProjectLabelCreateInput' (ProjectLabelCreateInput.retiredAt)\n\n    feat(schema): [dangerous] Input field 'retiredAt' was added to input object type 'ProjectLabelUpdateInput' (ProjectLabelUpdateInput.retiredAt)\n\n    feat(schema): [dangerous] "
+      },
+      "metadata": {
+        "team": "Linear",
+        "repo": "linearapp/linear",
+        "pr_number": 904,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Anthropic] release: 0.71.1",
+      "vars": {
+        "pr_body": "Automated Release PR\n---\n\n\n## 0.71.1 (2025-10-28)\n\nFull Changelog: [v0.71.0...v0.71.1](https://github.com/anthropics/anthropic-sdk-python/compare/v0.71.0...v0.71.1)\n\n### Bug Fixes\n\n* **client:** resolve non-functional default socket options ([4606137](https://github.com/anthropics/anthropic-sdk-python/commit/4606137fcca27ab2d03669999b624c11394b090a))\n\n\n### Chores\n\n* **api:** mark older sonnet models as deprecated ([7906595](https://github.com/anthropics/anthropic-sdk-python/commit/7906595fe2f214cf0449d073145629ea8d3da437))\n* bump `httpx-aiohttp` version to 0.1.9 ([5d27492](https://github.com/anthropics/anthropic-sdk-python/commit/5d2749222bb75201279c1877690c75687f3f8abc))\n\n---\nThis pull request is managed by Stainless's [GitHub App](https://github.com/apps/stainless-app).\n\nThe [semver version number](https://semver.org/#semantic-versioning-specification-semver) is based on included [commit messages](https://www.conventionalcommits.org/en/v1.0.0/). Alternatively, you can manually set the version number in the title of this pull request.\n\nFor a better experience, it is recommended to use either rebase-merge or squash-merge when merging this pull request.\n\n\ud83d\udd17 Stainless [website](https://www.stainlessapi.com)\n\ud83d\udcda Read the [docs](https://app.stainlessapi.com/docs)\n\ud83d\ude4b [Reach out](mailto:support@stainlessapi.com) for help or questions"
+      },
+      "metadata": {
+        "team": "Anthropic",
+        "repo": "anthropics/anthropic-sdk-python",
+        "pr_number": 1047,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Polar.sh] chore: \ud83d\udc1d Update SDK - Generate 0.27.0",
+      "vars": {
+        "pr_body": "> [!IMPORTANT]\n> Linting report available at: <https://app.speakeasy.com/org/polar/polar/linting-report/7d02d3e187311e6cf4bb3bdbf3c5cd70>\n> OpenAPI Change report available at: <https://app.speakeasy.com/org/polar/polar/changes-report/921ed21ebe67a65ae731de45b46a001a>\n# SDK update\n## Versioning\n\nVersion Bump Type: [minor] - \ud83e\udd16 (automated)\n## Python SDK Changes Detected:\n* `polar._endpointorder_created_post()`: \n  *  `request.data.platform_fee_amount` **Added** **Breaking** :warning:\n* `polar._endpointorder_updated_post()`: \n  *  `request.data.platform_fee_amount` **Added** **Breaking** :warning:\n* `polar._endpointorder_paid_post()`: \n  *  `request.data.platform_fee_amount` **Added** **Breaking** :warning:\n* `polar._endpointorder_refunded_post()`: \n  *  `request.data.platform_fee_amount` **Added** **Breaking** :warning:\n* `polar._endpointorganization_updated_post()`: \n  *  `request.data.customer_email_settings` **Added** **Breaking** :warning:\n* `polar.organizations.list()`:  `response.items.[].customer_email_settings` **Added**\n* `polar.organizations.create()`: \n  *  `request.customer_email_settings` **Added**\n  *  `response.customer_email_settings` **Added**\n* `polar.organizations.get()`:  `response.customer_email_settings` **Added**\n* `polar.organizations.update()`: \n  *  `request.organization_update.customer_email_settings` **Added**\n  *  `response.customer_email_settings` **Added**\n* `polar.oauth2.clients.create()`: \n  *  `request.default_sub_type` **Added**\n* `polar.oauth2.clients.update()`: \n  *  `request.o_auth2client_configuration_update.default_sub_type` **Added**\n* `polar.orders.list()`:  `response.items.[].platform_fee_amount` **Added**\n* `polar.orders.get()`:  `response.platform_fee_amount` **Added**\n* `polar.orders.update()`:  `response.platform_fee_amount` **Added**\n* `polar.checkouts.client_get()`:  `response.organization.customer_email_settings` **Added**\n* `polar.checkouts.client_update()`:  `response.organization.customer_email_settings` **Added**\n* `polar.checkouts.client_confirm()`:  `response.organization.customer_email_settings` **Added**\n* `polar.customer_portal.benefit-grants.list()`:  `response.items.[].[customer_benefit_grant_license_keys].benefit.organization.customer_email_settings` **Added**\n* `polar.customer_portal.benefit-grants.get()`:  `response.[customer_benefit_grant_git_hub_repository].benefit.organization.customer_email_settings` **Added**\n* `polar.customer_portal.benefit-grants.update()`:  `response.[customer_benefit_grant_custom].benefit.organization.customer_email_settings` **Added**\n* `polar.customer_portal.seats.list_claimed_subscriptions()`:  `response.[].product.organization.customer_email_settings` **Added**\n* `polar.customer_portal.orders.list()`:  `response.items.[].product.organization.customer_email_settings` **Added**\n* `polar.customer_portal.orders.get()`:  `response.product.organization.customer_email_settings` **Added**\n* `polar.customer_portal.orders.update()`:  `response.product.organization.customer_email_settings` **Added**\n* `polar.customer_portal.organizations.get()`:  `response.organization.customer_email_settings` **Added**\n* `polar.customer_portal.subscriptions.list()`:  `response.items.[].product.organization.customer_email_settings` **Added**\n* `polar.customer_portal.subscriptions.get()`:  `response.product.organization.customer_email_settings` **Added**\n* `polar.customer_portal.subscriptions.cancel()`:  `response.product.organization.customer_email_settings` **Added**\n* `polar.customer_portal.subscriptions.update()`:  `response.product.organization.customer_email_settings` **Added**\n\n<details>\n<summary>OpenAPI Change Summary</summary>\n\n\n```\n\u251c\u2500\u252cPaths\n\u2502 \u2514\u2500\u252c/v1/customers/\n\u2502   \u2514\u2500\u252cGET\n\u2502     \u2514\u2500\u252cParameters\n\u2502       \u251c\u2500\u2500[\ud83d\udd00] description (8096:28)\n\u2502       \u2514\u2500\u252cSchema\n\u2502         \u2514\u2500\u2500[\ud83d\udd00] description (8093:30)\n\u2514\u2500\u252cComponents\n  \u251c\u2500\u2500[+] schemas (41655:44)\n  \u251c\u2500\u252cCustomerSubscription\n  \u2502 \u251c\u2500\u252camount\n  \u2502 \u2502 \u2514\u2500\u2500[+] examples (31743:15)\n  \u2502 \u2514\u2500\u252ccurrency\n  \u2502   \u2514\u2500\u2500[+] examples (31751:15)\n  \u251c\u2500\u252cOrder\n "
+      },
+      "metadata": {
+        "team": "Polar.sh",
+        "repo": "polarsource/polar-python",
+        "pr_number": 114,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Neon] refactor(compaction): rename skip_some to add and update imp",
+      "vars": {
+        "pr_body": "## Summary\r\n\r\n  Refactors the `CompactionKey` trait to replace `skip_some()` with `add(u32)`, addressing the FIXME comment in       \r\n  `pageserver/compaction/src/interface.rs:114`.\r\n\r\n  ## Changes\r\n\r\n  - **interface.rs**: Replace `skip_some()` method with `add(offset: u32)` in `CompactionKey` trait\r\n  - **simulator.rs**: Update mock implementation to use new `add()` method\r\n  - **compact_tiered.rs**: Update call site to explicitly use `add(128)`\r\n\r\n  ## Motivation\r\n\r\n  The previous `skip_some()` method was inflexible - it advanced by a hardcoded amount that implementors couldn't     \r\n  control. The FIXME comment noted \"why not just add(u32)? This is hard to use.\"\r\n\r\n  This change makes the API more flexible by allowing callers to specify exactly how much to advance, making the      \r\n  intent clearer at call sites.\r\n"
+      },
+      "metadata": {
+        "team": "Neon",
+        "repo": "neondatabase/neon",
+        "pr_number": 12831,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Polar.sh] Version Packages",
+      "vars": {
+        "pr_body": "This PR was opened by the [Changesets release](https://github.com/changesets/action) GitHub action. When you're ready to do a release, you can merge this and the packages will be published to npm automatically. If you're not ready to do a release yet, that's fine, whenever you add more changesets to main, this PR will be updated.\n\n\n# Releases\n## @polar-sh/supabase@0.1.1\n\n### Patch Changes\n\n-   017e7c3: New Supabase adapter version\n"
+      },
+      "metadata": {
+        "team": "Polar.sh",
+        "repo": "polarsource/polar-adapters",
+        "pr_number": 303,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Deno] fix: use free port in builder globals test",
+      "vars": {
+        "pr_body": "Fix \"port in use\" problem re-introduced in builder globals test."
+      },
+      "metadata": {
+        "team": "Deno",
+        "repo": "denoland/fresh",
+        "pr_number": 3529,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Polar.sh] chore: \ud83d\udc1d Update SDK - Generate 0.36.0",
+      "vars": {
+        "pr_body": "> [!IMPORTANT]\n> Linting report available at: <https://app.speakeasy.com/org/polar/polar/linting-report/2883ce509d875ac52abef880a46db5ea>\n> OpenAPI Change report available at: <https://app.speakeasy.com/org/polar/polar/changes-report/725162c7ff8d09a60816b1a605982d87>\n# SDK update\n## Versioning\n\nVersion Bump Type: [minor] - \ud83e\udd16 (automated)\n## Typescript SDK Changes Detected:\n* `polar.products.updateBenefits()`:  `response.prices.[].[productPrice].[meteredUnit]` **Changed** **Breaking** :warning:\n* `polar.checkoutLinks.update()`:  `response.products.[].prices.[].[productPrice].[meteredUnit]` **Changed** **Breaking** :warning:\n* `polar.EndpointorderCreatedPost()`: \n  *  `request.data` **Changed** **Breaking** :warning:\n* `polar.EndpointorderUpdatedPost()`: \n  *  `request.data` **Changed** **Breaking** :warning:\n* `polar.EndpointorderPaidPost()`: \n  *  `request.data` **Changed** **Breaking** :warning:\n* `polar.customerPortal.subscriptions.update()`:  `response.product.prices.[].[productPrice].[meteredUnit]` **Changed** **Breaking** :warning:\n* `polar.customerPortal.subscriptions.cancel()`:  `response.product.prices.[].[productPrice].[meteredUnit]` **Changed** **Breaking** :warning:\n* `polar.orders.get()`:  `response` **Changed** **Breaking** :warning:\n* `polar.customerPortal.subscriptions.get()`:  `response.product.prices.[].[productPrice].[meteredUnit]` **Changed** **Breaking** :warning:\n* `polar.EndpointorderRefundedPost()`: \n  *  `request.data` **Changed** **Breaking** :warning:\n* `polar.EndpointsubscriptionCreatedPost()`: \n  *  `request.data.product.prices.[].[productPrice].[meteredUnit]` **Changed** **Breaking** :warning:\n* `polar.EndpointsubscriptionUpdatedPost()`: \n  *  `request.data.product.prices.[].[productPrice].[meteredUnit]` **Changed** **Breaking** :warning:\n* `polar.EndpointsubscriptionActivePost()`: \n  *  `request.data.product.prices.[].[productPrice].[meteredUnit]` **Changed** **Breaking** :warning:\n* `polar.EndpointsubscriptionCanceledPost()`: \n  *  `request.data.product.prices.[].[productPrice].[meteredUnit]` **Changed** **Breaking** :warning:\n* `polar.EndpointsubscriptionUncanceledPost()`: \n  *  `request.data.product.prices.[].[productPrice].[meteredUnit]` **Changed** **Breaking** :warning:\n* `polar.EndpointsubscriptionRevokedPost()`: \n  *  `request.data.product.prices.[].[productPrice].[meteredUnit]` **Changed** **Breaking** :warning:\n* `polar.EndpointproductCreatedPost()`: \n  *  `request.data.prices.[].[productPrice].[meteredUnit]` **Changed** **Breaking** :warning:\n* `polar.EndpointproductUpdatedPost()`: \n  *  `request.data.prices.[].[productPrice].[meteredUnit]` **Changed** **Breaking** :warning:\n* `polar.subscriptions.list()`:  `response.items.[].product.prices.[].[productPrice].[meteredUnit]` **Changed** **Breaking** :warning:\n* `polar.subscriptions.get()`:  `response.product.prices.[].[productPrice].[meteredUnit]` **Changed** **Breaking** :warning:\n* `polar.subscriptions.revoke()`:  `response.product.prices.[].[productPrice].[meteredUnit]` **Changed** **Breaking** :warning:\n* `polar.subscriptions.update()`:  `response.product.prices.[].[productPrice].[meteredUnit]` **Changed** **Breaking** :warning:\n* `polar.products.list()`:  `response.items.[].prices.[].[productPrice].[meteredUnit]` **Changed** **Breaking** :warning:\n* `polar.products.create()`: \n  *  `request.[productCreateRecurring].prices.[].[productPriceSeatBasedCreate]` **Changed** **Breaking** :warning:\n  *  `response.prices.[].[productPrice].[meteredUnit]` **Changed** **Breaking** :warning:\n* `polar.products.get()`:  `response.prices.[].[productPrice].[meteredUnit]` **Changed** **Breaking** :warning:\n* `polar.products.update()`: \n  *  `request.productUpdate.prices.[].[productPriceSeatBasedCreate]` **Changed** **Breaking** :warning:\n  *  `response.prices.[].[productPrice].[meteredUnit]` **Changed** **Breaking** :warning:\n* `polar.EndpointcheckoutUpdatedPost()`: \n  *  `request.data.products.[].prices.[].[productPrice].[meteredUnit]` **Changed** **Br"
+      },
+      "metadata": {
+        "team": "Polar.sh",
+        "repo": "polarsource/polar-js",
+        "pr_number": 122,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Deno] docs: troubleshoot deploy error message",
+      "vars": {
+        "pr_body": "This adds one sentence to the \"My deployment won't start\" section mentioning the common `ISOLATE_INTERNAL_FAILURE` error message, so it can get found via search.\r\n\r\nSee also discussion in Discord -> https://discord.com/channels/684898665143206084/1422792167797166121"
+      },
+      "metadata": {
+        "team": "Deno",
+        "repo": "denoland/fresh",
+        "pr_number": 3511,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Antiwork] Update chat auth to allow anonymous sessions with matching s",
+      "vars": {
+        "pr_body": "Fixes #1058 \r\n\r\n# Update chat auth to allow anonymous sessions with matching sessionId\r\n\r\n## Summary\r\nUpdated authentication logic across chat endpoints to use OR instead of AND logic. Previously, anonymous sessions were blocked from accessing conversations that had an `emailFrom` set. Now, access is granted if either:\r\n- The session has a matching `anonymousSessionId` (for anonymous sessions)\r\n- The session has a matching email address (for authenticated sessions)\r\n\r\nThis change affects 3 endpoints:\r\n- `app/api/chat/route.ts` - Main chat endpoint\r\n- `app/api/chat/conversation/[slug]/message/[id]/route.ts` - Message reactions\r\n- `app/api/chat/conversation/[slug]/message/[id]/event/route.ts` - Message events\r\n\r\nThe new logic follows the same pattern already used in `app/api/chat/customerFilter.ts`.\r\n\r\n## Review & Testing Checklist for Human\r\n- [ ] **Security review**: Verify the OR logic doesn't grant unintended access to conversations\r\n- [ ] **End-to-end testing**: Test with both anonymous and authenticated sessions to ensure proper access control\r\n- [ ] **Edge case testing**: Test scenarios with missing `anonymousSessionId` or `emailFrom` values\r\n- [ ] **Requirements alignment**: Confirm the change matches the original request to allow anonymous sessions with correct sessionId\r\n\r\n### Notes\r\nThis is a critical authentication change that should be thoroughly tested before deployment. The logic change allows anonymous users to continue accessing conversations even after they provide their email address, as long as they have the correct `anonymousSessionId`.\r\n\r\nLink to Devin run: https://app.devin.ai/sessions/686cb024beba4e4682568ce9c307835c\r\nRequested by: reason.koan@gmail.com"
+      },
+      "metadata": {
+        "team": "Antiwork",
+        "repo": "antiwork/helper",
+        "pr_number": 1060,
+        "current_detection": true,
+        "current_tools": [
+          "devin"
+        ]
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        },
+        {
+          "type": "javascript",
+          "value": "JSON.parse(output).is_ai_assisted === true"
+        }
+      ]
+    },
+    {
+      "description": "[Anthropic] fix file upload 404 due to Omit not being stripped from file",
+      "vars": {
+        "pr_body": "The function `anthropic_client.beta.files.upload` returns error code 404. Because the object Omit is not being stripped away from the request header, which overrides the otherwise hardcoded beta string for file upload, [see](https://github.com/anthropics/anthropic-sdk-python/blob/8bd83a10f22ee8ca8564d4bee99c0451aaace849/src/anthropic/resources/beta/files.py#L303C1-L304C1).\r\n\r\nWithout this fix, it renders [this piece](https://docs.claude.com/en/docs/build-with-claude/files#uploading-a-file) of the python sdk example from the Anthropic's official documentation unusable\r\n\r\nThis is my first time contributing to a public git repo, so I hope I'm doing this right :) I do notice the [contributing doc](https://github.com/anthropics/anthropic-sdk-python?tab=contributing-ov-file) says code are being generated, so was I supposed to generate my code using my own code agent or something?"
+      },
+      "metadata": {
+        "team": "Anthropic",
+        "repo": "anthropics/anthropic-sdk-python",
+        "pr_number": 1038,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    }
+  ]
+}

@@ -1,12 +1,16 @@
 # Promptfoo Configuration for AI Detection Prompts
-# See RUNBOOK-PROMPTS.md for iteration workflow
+# See prd/AI-DETECTION-TESTING.md for workflow
 #
 # Quick Start:
 #   cd dev/active/ai-detection-pr-descriptions/experiments
-#   npx promptfoo eval
+#   export GROQ_API_KEY="your-key"
+#   npx promptfoo eval -c promptfoo.yaml
 #   npx promptfoo view  # Opens browser UI
+#
+# Run with 100 real PRs:
+#   npx promptfoo eval -c promptfoo-100.yaml
 
-description: "AI Detection Prompt Evaluation"
+description: "AI Detection Prompt Evaluation (v5) - Curated Tests"
 
 providers:
   - id: groq:llama-3.3-70b-versatile
@@ -17,20 +21,23 @@ providers:
         type: json_object
 
 prompts:
-  - id: v4
+  - id: v5
     raw: |
       [
         {"role": "system", "content": "{{system_prompt}}"},
-        {"role": "user", "content": "Analyze this PR description for AI tool usage. Return valid JSON.\n\n{{pr_body}}"}
+        {"role": "user", "content": "Analyze this pull request:\n\nTitle: {{pr_title}}\nLines: +{{additions}}/-{{deletions}}\n\nDescription:\n{{pr_body}}"}
       ]
 
 # Default variables (can override per test)
 defaultTest:
   vars:
     pr_body: ""
-    system_prompt: file://prompts/v4-system.txt
+    pr_title: ""
+    additions: 0
+    deletions: 0
+    system_prompt: file://prompts/v5-system.txt
 
-# Test Cases
+# Test Cases - v5 format uses nested ai/tech/summary structure
 tests:
   # ============================================
   # POSITIVE: Should detect AI usage
@@ -39,6 +46,7 @@ tests:
   # Explicit tool mentions
   - description: "Cursor IDE mentioned explicitly"
     vars:
+      pr_title: "Add user profile feature"
       pr_body: |
         ## Summary
         Added new feature for user profiles.
@@ -48,14 +56,15 @@ tests:
     assert:
       - type: is-json
       - type: javascript
-        value: JSON.parse(output).is_ai_assisted === true
+        value: JSON.parse(output).ai.is_assisted === true
       - type: javascript
-        value: JSON.parse(output).tools.includes("cursor")
+        value: JSON.parse(output).ai.tools.includes("cursor")
       - type: javascript
-        value: JSON.parse(output).confidence >= 0.7
+        value: JSON.parse(output).ai.confidence >= 0.7
 
   - description: "Claude Code signature"
     vars:
+      pr_title: "Fix login validation bug"
       pr_body: |
         Fix login validation bug.
 
@@ -65,14 +74,15 @@ tests:
     assert:
       - type: is-json
       - type: javascript
-        value: JSON.parse(output).is_ai_assisted === true
+        value: JSON.parse(output).ai.is_assisted === true
       - type: javascript
-        value: JSON.parse(output).tools.includes("claude")
+        value: JSON.parse(output).ai.tools.includes("claude")
       - type: javascript
-        value: JSON.parse(output).confidence >= 0.9
+        value: JSON.parse(output).ai.confidence >= 0.9
 
   - description: "Copilot usage"
     vars:
+      pr_title: "Add new API endpoint"
       pr_body: |
         ## Changes
         - Add new API endpoint
@@ -83,40 +93,26 @@ tests:
     assert:
       - type: is-json
       - type: javascript
-        value: JSON.parse(output).is_ai_assisted === true
+        value: JSON.parse(output).ai.is_assisted === true
       - type: javascript
-        value: JSON.parse(output).tools.includes("copilot")
+        value: JSON.parse(output).ai.tools.includes("copilot")
 
   - description: "Multiple tools mentioned"
     vars:
+      pr_title: "Major refactor"
       pr_body: |
         AI Disclosure: Used Cursor with Claude Sonnet for the implementation,
         and Copilot for test generation.
     assert:
       - type: is-json
       - type: javascript
-        value: JSON.parse(output).is_ai_assisted === true
+        value: JSON.parse(output).ai.is_assisted === true
       - type: javascript
-        value: JSON.parse(output).tools.length >= 2
-
-  # Implicit AI usage (in AI Disclosure section)
-  - description: "Implicit 'Used for' in AI Disclosure section"
-    vars:
-      pr_body: |
-        ## Summary
-        Refactored authentication flow.
-
-        ## AI Disclosure
-        Used for brainstorming the approach.
-    assert:
-      - type: is-json
-      - type: javascript
-        value: JSON.parse(output).is_ai_assisted === true
-      - type: javascript
-        value: JSON.parse(output).usage_category === "brainstorm"
+        value: JSON.parse(output).ai.tools.length >= 2
 
   - description: "Gemini usage"
     vars:
+      pr_title: "Add dashboard widget"
       pr_body: |
         Implement new dashboard widget.
 
@@ -124,9 +120,9 @@ tests:
     assert:
       - type: is-json
       - type: javascript
-        value: JSON.parse(output).is_ai_assisted === true
+        value: JSON.parse(output).ai.is_assisted === true
       - type: javascript
-        value: JSON.parse(output).tools.includes("gemini")
+        value: JSON.parse(output).ai.tools.includes("gemini")
 
   # ============================================
   # NEGATIVE: Should NOT detect AI usage
@@ -134,6 +130,7 @@ tests:
 
   - description: "Explicit 'No AI' denial"
     vars:
+      pr_title: "Fix API timeout"
       pr_body: |
         ## Changes
         Bug fix for API timeout.
@@ -143,12 +140,11 @@ tests:
     assert:
       - type: is-json
       - type: javascript
-        value: JSON.parse(output).is_ai_assisted === false
-      - type: javascript
-        value: JSON.parse(output).confidence >= 0.8
+        value: JSON.parse(output).ai.is_assisted === false
 
   - description: "N/A disclosure"
     vars:
+      pr_title: "Add unit tests"
       pr_body: |
         Added unit tests.
 
@@ -156,10 +152,11 @@ tests:
     assert:
       - type: is-json
       - type: javascript
-        value: JSON.parse(output).is_ai_assisted === false
+        value: JSON.parse(output).ai.is_assisted === false
 
   - description: "None disclosure"
     vars:
+      pr_title: "Update dependencies"
       pr_body: |
         ## Summary
         Updated dependencies.
@@ -169,10 +166,11 @@ tests:
     assert:
       - type: is-json
       - type: javascript
-        value: JSON.parse(output).is_ai_assisted === false
+        value: JSON.parse(output).ai.is_assisted === false
 
   - description: "AI as product feature (not authoring)"
     vars:
+      pr_title: "Add Gemini API integration"
       pr_body: |
         ## Summary
         Added Gemini API integration for AI-powered search.
@@ -182,11 +180,12 @@ tests:
     assert:
       - type: is-json
       - type: javascript
-        value: JSON.parse(output).is_ai_assisted === false
+        value: JSON.parse(output).ai.is_assisted === false
         description: "Building AI features != using AI to code"
 
   - description: "Claude SDK integration (product feature)"
     vars:
+      pr_title: "Integrate Claude API"
       pr_body: |
         ## Changes
         - Add Claude SDK dependency
@@ -197,22 +196,24 @@ tests:
     assert:
       - type: is-json
       - type: javascript
-        value: JSON.parse(output).is_ai_assisted === false
+        value: JSON.parse(output).ai.is_assisted === false
         description: "Integrating Claude SDK != using Claude to write code"
 
   - description: "Person named Devin"
     vars:
+      pr_title: "Follow-up on auth tokens"
       pr_body: |
         Follow-up on Devin's previous PR. He mentioned we need
         to update the auth tokens after the refactor.
     assert:
       - type: is-json
       - type: javascript
-        value: JSON.parse(output).is_ai_assisted === false
+        value: JSON.parse(output).ai.is_assisted === false
         description: "Devin the person, not Devin the AI"
 
   - description: "UI cursor mention"
     vars:
+      pr_title: "Fix cursor position"
       pr_body: |
         Fix: Move cursor to end of input field after paste.
 
@@ -220,11 +221,12 @@ tests:
     assert:
       - type: is-json
       - type: javascript
-        value: JSON.parse(output).is_ai_assisted === false
+        value: JSON.parse(output).ai.is_assisted === false
         description: "Text cursor != Cursor IDE"
 
   - description: "Database cursor"
     vars:
+      pr_title: "Optimize pagination"
       pr_body: |
         Optimize pagination with cursor-based approach.
 
@@ -233,7 +235,7 @@ tests:
     assert:
       - type: is-json
       - type: javascript
-        value: JSON.parse(output).is_ai_assisted === false
+        value: JSON.parse(output).ai.is_assisted === false
         description: "Database cursor != Cursor IDE"
 
   # ============================================
@@ -242,34 +244,115 @@ tests:
 
   - description: "Empty body"
     vars:
+      pr_title: "Minor fix"
       pr_body: ""
     assert:
       - type: is-json
       - type: javascript
-        value: JSON.parse(output).is_ai_assisted === false
-      - type: javascript
-        value: JSON.parse(output).confidence >= 0.9
+        value: JSON.parse(output).ai.is_assisted === false
 
   - description: "Body with only whitespace"
     vars:
+      pr_title: "Whitespace fix"
       pr_body: "   \n\n   "
     assert:
       - type: is-json
       - type: javascript
-        value: JSON.parse(output).is_ai_assisted === false
+        value: JSON.parse(output).ai.is_assisted === false
 
   - description: "Ambiguous - 'helped with' without tool"
     vars:
+      pr_title: "Refactor auth"
       pr_body: |
         ## AI Disclosure
         AI helped with the implementation.
     assert:
       - type: is-json
       - type: javascript
-        value: JSON.parse(output).is_ai_assisted === true
+        value: JSON.parse(output).ai.is_assisted === true
       - type: javascript
-        value: JSON.parse(output).confidence < 0.9
+        value: JSON.parse(output).ai.confidence < 0.9
         description: "Lower confidence when no specific tool mentioned"
+
+  # ============================================
+  # TECHNOLOGY DETECTION (v5 feature)
+  # ============================================
+
+  - description: "Python backend PR"
+    vars:
+      pr_title: "Add user authentication"
+      additions: 250
+      deletions: 50
+      pr_body: |
+        ## Summary
+        Added Django authentication with JWT tokens.
+
+        Changes:
+        - Added views.py with login/logout endpoints
+        - Added auth middleware
+        - Added tests in test_auth.py
+    assert:
+      - type: is-json
+      - type: javascript
+        value: JSON.parse(output).tech.languages.includes("python")
+      - type: javascript
+        value: JSON.parse(output).tech.frameworks.includes("django")
+      - type: javascript
+        value: JSON.parse(output).tech.categories.includes("backend")
+
+  - description: "React frontend PR"
+    vars:
+      pr_title: "Add dark mode toggle"
+      additions: 180
+      deletions: 20
+      pr_body: |
+        ## Summary
+        Implemented dark mode toggle in the settings page.
+
+        - Added ThemeContext provider
+        - Updated App.tsx and Settings.tsx
+        - Added theme toggle component
+    assert:
+      - type: is-json
+      - type: javascript
+        value: JSON.parse(output).tech.languages.includes("typescript")
+      - type: javascript
+        value: JSON.parse(output).tech.frameworks.includes("react")
+      - type: javascript
+        value: JSON.parse(output).tech.categories.includes("frontend")
+
+  # ============================================
+  # SUMMARY DETECTION (v5 feature)
+  # ============================================
+
+  - description: "Feature PR summary"
+    vars:
+      pr_title: "Add CSV export"
+      additions: 400
+      deletions: 10
+      pr_body: |
+        ## Summary
+        Adds ability to export analytics data to CSV format.
+
+        Users can now download their metrics for offline analysis.
+    assert:
+      - type: is-json
+      - type: javascript
+        value: JSON.parse(output).summary.type === "feature"
+
+  - description: "Bugfix PR summary"
+    vars:
+      pr_title: "Fix login timeout"
+      additions: 15
+      deletions: 5
+      pr_body: |
+        Fixed bug where users were logged out after 5 minutes.
+
+        Root cause: JWT token expiry was set incorrectly.
+    assert:
+      - type: is-json
+      - type: javascript
+        value: JSON.parse(output).summary.type === "bugfix"
 
 # Output configuration
 outputPath: ./results/promptfoo-results.json

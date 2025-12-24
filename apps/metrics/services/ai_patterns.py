@@ -26,7 +26,7 @@ selective reprocessing.
 # =============================================================================
 # This version is stored with AI detections to support selective reprocessing.
 # Increment major version for breaking changes, minor for additions.
-PATTERNS_VERSION = "1.5.0"
+PATTERNS_VERSION = "1.7.0"
 
 # =============================================================================
 # AI Reviewer Bots (username-based detection)
@@ -103,6 +103,9 @@ AI_SIGNATURE_PATTERNS: list[tuple[str, str]] = [
     (r"copilot\s+generated", "copilot"),
     # "Copilot used to...", "Copilot used for..."
     (r"\bcopilot\s+used\b", "copilot"),
+    # Copilot Coding Agent markers
+    (r"\bcopilot\s+coding\s+agent\b", "copilot"),
+    (r"\bcopilot\s+original\s+prompt\b", "copilot"),
     # ----- Cursor AI -----
     (r"generated\s+by\s+cursor", "cursor"),
     (r"cursor\s+ai", "cursor"),
@@ -129,9 +132,19 @@ AI_SIGNATURE_PATTERNS: list[tuple[str, str]] = [
     (r"\bcursor\s+autocompletions?\b", "cursor"),
     # "written by Cursor"
     (r"\bwritten\s+by\s+cursor\b", "cursor"),
+    # Cursor.com domain links (background-agent, dashboard/bugbot)
+    (r"cursor\.com/(?:background-agent|dashboard)", "cursor"),
     # ----- Cody (Sourcegraph) -----
     (r"generated\s+by\s+cody", "cody"),
     (r"sourcegraph\s+cody", "cody"),
+    # ----- CodeRabbit (text mentions, not just username) -----
+    (r"\bsummary\s+by\s+coderabbit\b", "coderabbit"),
+    (r"\bcoderabbit\.ai\b", "coderabbit"),
+    (r"\bby\s+coderabbit\b", "coderabbit"),
+    # ----- Mintlify (docs agent) -----
+    (r"\bcreated\s+by\s+mintlify\b", "mintlify"),
+    (r"\bmintlify\s+agent\b", "mintlify"),
+    (r"\bgenerated\s+by\s+mintlify\b", "mintlify"),
     # ----- Windsurf -----
     (r"generated\s+by\s+windsurf", "windsurf"),
     (r"windsurf\s+ai", "windsurf"),
@@ -162,6 +175,11 @@ AI_SIGNATURE_PATTERNS: list[tuple[str, str]] = [
     # ----- Aider -----
     (r"generated\s+by\s+aider", "aider"),
     (r"aider\.chat", "aider"),
+    # ----- Cubic AI (PR description generator) -----
+    # "Summary by Cubic", "auto-generated description by Cubic"
+    (r"\bsummary\s+by\s+cubic\b", "cubic"),
+    (r"\bauto-generated\s+(?:description\s+)?by\s+cubic\b", "cubic"),
+    (r"\bgenerated\s+by\s+cubic\b", "cubic"),
     # ----- Devin AI -----
     (r"generated\s+by\s+devin", "devin"),
     (r"created\s+by\s+devin", "devin"),
@@ -222,6 +240,8 @@ AI_CO_AUTHOR_PATTERNS: list[tuple[str, str]] = [
 # =============================================================================
 # Maps AI tool type identifiers to human-friendly display names
 AI_TOOL_DISPLAY_NAMES: dict[str, str] = {
+    "cubic": "Cubic AI",
+    "mintlify": "Mintlify",
     "devin": "Devin AI",
     "coderabbit": "CodeRabbit",
     "copilot": "Copilot",
