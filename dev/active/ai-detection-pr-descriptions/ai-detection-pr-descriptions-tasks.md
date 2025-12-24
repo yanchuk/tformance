@@ -96,7 +96,7 @@
 - [x] Add dependencies: `uv add groq litellm posthog`
 - [x] Create experiment runner: `apps/metrics/experiments/runner.py`
 - [ ] Create analysis utils: `apps/metrics/experiments/analysis.py`
-- [ ] Integrate PostHog LLM analytics for automatic logging
+- [x] Integrate PostHog LLM analytics for automatic logging
 - [x] Create management command: `run_ai_detection_experiment`
 
 ### 2.5.1 Promptfoo Integration (Fast Prompt Iteration)
