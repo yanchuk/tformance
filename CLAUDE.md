@@ -51,6 +51,46 @@ Follow phases in [IMPLEMENTATION-PLAN.md](prd/IMPLEMENTATION-PLAN.md):
 | Slack | OAuth | `chat:write`, `users:read`, `users:read.email` |
 | Copilot | Via GitHub OAuth | `manage_billing:copilot` |
 
+## AI Detection System
+
+Detects AI tool usage in PRs via regex patterns and LLM analysis.
+
+### Pattern Versioning
+
+Patterns are versioned to enable reprocessing when new patterns are added:
+
+| File | Purpose |
+|------|---------|
+| `apps/metrics/services/ai_patterns.py` | Active patterns + `PATTERNS_VERSION` |
+| `dev/active/ai-detection-pr-descriptions/experiments/patterns/` | Version history (v1.4.0.md, v1.5.0.md) |
+
+When adding patterns:
+1. Update `AI_SIGNATURE_PATTERNS` in `ai_patterns.py`
+2. Increment `PATTERNS_VERSION` (e.g., 1.5.0 → 1.6.0)
+3. Create new version file documenting changes
+4. Run backfill to update historical PRs
+
+### Prompt Versioning (LLM Detection)
+
+LLM prompts for AI detection are versioned in files:
+
+| File | Purpose |
+|------|---------|
+| `dev/active/ai-detection-pr-descriptions/experiments/prompts/v1.md` | Basic prompt |
+| `dev/active/ai-detection-pr-descriptions/experiments/prompts/v2.md` | Rich PR context |
+| `dev/active/ai-detection-pr-descriptions/experiments/prompts/v3.md` | Full data (files, commits, reviews) |
+
+Active prompt is `DEFAULT_SYSTEM_PROMPT` in `apps/integrations/services/groq_batch.py`.
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `apps/metrics/services/ai_patterns.py` | Pattern definitions |
+| `apps/metrics/services/ai_detector.py` | Detection functions |
+| `apps/integrations/services/groq_batch.py` | LLM batch processing |
+| `apps/integrations/services/github_graphql_sync.py` | PR sync with AI detection |
+
 ## Data Flow
 
 GitHub/Jira APIs → Our Backend → PostgreSQL → Dashboard (Chart.js) → User ↓ Slack Bot (surveys)

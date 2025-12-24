@@ -1,8 +1,134 @@
 # AI Detection via PR Description Analysis - Context
 
-**Last Updated: 2025-12-24 23:00 UTC (Groq Batch API Complete)**
+**Last Updated: 2025-12-25 06:00 UTC**
 
-## Session Summary (2025-12-24 Late Evening)
+## Session Summary (2025-12-25 - Pattern Sync Complete)
+
+### What Was Accomplished
+1. **Created prompt version files** (v2.md, v3.md):
+   - Documents prompt evolution from basic → rich context → files/commits/reviews
+   - Located in `experiments/prompts/`
+
+2. **Pattern Version 1.5.0** - Added patterns for tools LLM detects but regex missed:
+   - **GPT/ChatGPT patterns**: `chatgpt`, `gpt-4`, `gpt-4o`, `gpt-5`, `used openai`
+   - **Warp AI patterns**: `warp ai`, `warp terminal`
+   - **Fixed Gemini false positives**: Changed from broad `\bgemini\b` to specific usage patterns
+     - Now requires context like "used Gemini", "with Gemini", "Gemini helped"
+     - Avoids false positives on "Gemini API", "Gemini SDK"
+
+3. **TDD Tests** - 107 tests passing:
+   - 5 new tests for GPT/ChatGPT patterns
+   - 2 new tests for Warp AI patterns
+   - 4 new tests for improved Gemini patterns (including false positive prevention)
+
+4. **Display Names Added**: chatgpt → "ChatGPT", warp → "Warp AI"
+
+### Files Modified
+| File | Changes |
+|------|---------|
+| `apps/metrics/services/ai_patterns.py` | Version 1.5.0, added 16 new patterns |
+| `apps/metrics/tests/test_ai_detector.py` | Added 11 new tests |
+| `experiments/prompts/v2.md` | NEW: Rich context prompt |
+| `experiments/prompts/v3.md` | NEW: Full data prompt (files/commits/reviews) |
+
+### Known Limitation
+Pattern version not stored on PullRequest model - cannot track which version detected each PR.
+If needed, add: `ai_detection_version = CharField(max_length=10, null=True)`
+
+### Next Steps
+1. **Backfill validation**: Run `--dry-run --limit 50` on Gumroad team
+2. **Phase 3**: Usage categorization + dashboard enhancements
+3. (Optional) Add `ai_detection_version` field to track pattern versions per PR
+
+---
+
+## Previous Session (2025-12-25 - Pattern Improvements)
+
+### What Was Accomplished
+1. **Enhanced User Prompts with Full PR Data** ✅:
+   - Added files changed (grouped by category: frontend, backend, test, etc.)
+   - Added commit messages (captures Co-Authored-By AI signatures)
+   - Added review comments (captures "Did you use Cursor?" discussions)
+   - TDD implementation with 4 new tests
+
+2. **Updated System Prompt (v3)** ✅:
+   - Documents all input sections (metadata, description, files, commits, reviews)
+   - Explains what to look for in each section
+   - Guides LLM to check commits for AI co-author signatures
+
+3. **Detection Rate Improvement** ✅:
+   - Gumroad: 29.9% (66/221) - up from 24.4%
+   - Antiwork: 43.9% (18/41) - up from 40.9%
+
+4. **Test Coverage** ✅:
+   - 22 tests for GroqBatchProcessor (up from 18)
+   - New tests for files, commits, reviews context formatting
+
+### In Progress: Regex Pattern Updates (TDD RED Phase)
+**Goal**: Update keyword detection patterns based on LLM findings
+
+**Analysis of LLM-detected tools vs regex patterns:**
+| Tool | LLM Count | Regex Status | Action Needed |
+|------|-----------|--------------|---------------|
+| claude | 36 | ✅ Has patterns | - |
+| cursor | 33 | ✅ Has patterns | - |
+| copilot | 11 | ✅ Has patterns | - |
+| devin | 5 | ✅ Has patterns | - |
+| **gpt** | 4 | ❌ Missing | Add GPT/ChatGPT patterns |
+| **gpt-5** | 3 | ❌ Missing | Add GPT-4/5 patterns |
+| **warp ai** | 1 | ❌ Missing | Add Warp terminal AI pattern |
+| gemini | 1 | ⚠️ Too broad | Make pattern more specific |
+
+**Tests Written (TDD RED - all should FAIL):**
+- `apps/metrics/tests/test_ai_detector.py` - 3 new test classes added:
+  - `TestGPTPatterns` - 5 tests for ChatGPT/GPT-4/GPT-5/OpenAI
+  - `TestWarpAIPatterns` - 2 tests for Warp terminal AI
+  - `TestImprovedGeminiPatterns` - 4 tests for specific Gemini patterns
+
+**LLM Output Issues Found:**
+- LLM returns "clause 4.5" (typo for "Claude 4.5") - need normalization
+- LLM returns "none mentioned" - not a valid tool
+- LLM returns varying formats: "gpt", "gpt-5", "chatgpt"
+
+### Next Steps on Restart
+1. Run failing tests: `.venv/bin/pytest apps/metrics/tests/test_ai_detector.py::TestGPTPatterns -v`
+2. Add patterns to `apps/metrics/services/ai_patterns.py`:
+   - GPT/ChatGPT: `chatgpt`, `gpt-4`, `gpt-4o`, `used openai`
+   - Warp: `warp ai`, `warp.*ai`
+   - Gemini: Change from `\bgemini\b` to `used\s+gemini`, `gemini\s+used`
+3. Run tests again to confirm GREEN
+4. (Optional) Add tool name normalization to GroqBatchProcessor
+
+### Files Modified This Session
+| File | Changes |
+|------|---------|
+| `apps/integrations/services/groq_batch.py` | Added `_format_files_section`, `_format_commits_section`, `_format_reviews_section`, updated system prompt |
+| `apps/integrations/tests/test_groq_batch.py` | Added 4 new tests for enhanced context |
+| `apps/metrics/tests/test_ai_detector.py` | Added 11 new tests for GPT, Warp, Gemini patterns |
+
+### Uncommitted Changes
+```bash
+git status  # Check for:
+# - apps/integrations/services/groq_batch.py (enhanced prompts)
+# - apps/integrations/tests/test_groq_batch.py (4 new tests)
+# - apps/metrics/tests/test_ai_detector.py (11 new tests - failing)
+# - dev/active/ai-detection-pr-descriptions/*.md (docs)
+```
+
+### Commands to Run on Restart
+```bash
+# Verify existing tests pass
+.venv/bin/pytest apps/integrations/tests/test_groq_batch.py -v
+
+# Check new pattern tests (should FAIL - TDD RED)
+.venv/bin/pytest apps/metrics/tests/test_ai_detector.py::TestGPTPatterns -v
+.venv/bin/pytest apps/metrics/tests/test_ai_detector.py::TestWarpAIPatterns -v
+.venv/bin/pytest apps/metrics/tests/test_ai_detector.py::TestImprovedGeminiPatterns -v
+```
+
+## Previous Session (2025-12-25 Morning)
+
+## Previous Session (2025-12-24 Late Evening)
 
 ### What Was Accomplished
 1. **Groq Batch API Service**: Full implementation with 18 tests

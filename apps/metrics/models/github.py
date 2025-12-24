@@ -190,6 +190,13 @@ class PullRequest(BaseTeamModel):
         verbose_name="AI tools detected",
         help_text="List of AI tools detected (e.g., claude_code, copilot)",
     )
+    ai_detection_version = models.CharField(
+        max_length=10,
+        blank=True,
+        default="",
+        verbose_name="AI detection version",
+        help_text="Pattern version used for AI detection (e.g., 1.5.0)",
+    )
 
     # Jira integration
     jira_key = models.CharField(

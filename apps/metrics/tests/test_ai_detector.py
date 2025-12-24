@@ -591,9 +591,9 @@ class TestCopilotPatterns(TestCase):
 class TestGeminiPatterns(TestCase):
     """Tests for Google Gemini detection patterns."""
 
-    def test_gemini_basic(self):
-        """'Gemini' should detect Gemini."""
-        text = "Gemini, cursor in auto mode, and claude-4.5 sonnet used"
+    def test_gemini_with_usage_context(self):
+        """'with Gemini' should detect Gemini (requires usage context to avoid false positives)."""
+        text = "with Gemini, cursor in auto mode, and claude-4.5 sonnet used"
         result = detect_ai_in_text(text)
         self.assertTrue(result["is_ai_assisted"])
         self.assertIn("gemini", result["ai_tools"])
@@ -748,5 +748,93 @@ class TestFalsePositivePrevention(TestCase):
     def test_ai_in_url_not_detected(self):
         """AI in URLs should not trigger detection."""
         text = "See https://example.com/ai-docs for more info"
+        result = detect_ai_in_text(text)
+        self.assertFalse(result["is_ai_assisted"])
+
+
+class TestGPTPatterns(TestCase):
+    """Tests for GPT/ChatGPT pattern detection."""
+
+    def test_chatgpt_basic(self):
+        """'ChatGPT' should detect as GPT tool."""
+        text = "Used ChatGPT to help with this implementation"
+        result = detect_ai_in_text(text)
+        self.assertTrue(result["is_ai_assisted"])
+        self.assertIn("chatgpt", result["ai_tools"])
+
+    def test_gpt4(self):
+        """'GPT-4' should detect as GPT tool."""
+        text = "Generated with GPT-4"
+        result = detect_ai_in_text(text)
+        self.assertTrue(result["is_ai_assisted"])
+        self.assertIn("chatgpt", result["ai_tools"])
+
+    def test_gpt4o(self):
+        """'GPT-4o' should detect as GPT tool."""
+        text = "AI Disclosure: GPT-4o used for code review"
+        result = detect_ai_in_text(text)
+        self.assertTrue(result["is_ai_assisted"])
+        self.assertIn("chatgpt", result["ai_tools"])
+
+    def test_openai(self):
+        """'OpenAI' in usage context should detect."""
+        text = "Used OpenAI to generate test cases"
+        result = detect_ai_in_text(text)
+        self.assertTrue(result["is_ai_assisted"])
+        self.assertIn("chatgpt", result["ai_tools"])
+
+    def test_openai_api_not_detected(self):
+        """Integrating OpenAI API should NOT detect (product feature)."""
+        text = "Add OpenAI API integration for chat feature"
+        result = detect_ai_in_text(text)
+        # This is building an AI feature, not using AI to write code
+        self.assertFalse(result["is_ai_assisted"])
+
+
+class TestWarpAIPatterns(TestCase):
+    """Tests for Warp terminal AI pattern detection."""
+
+    def test_warp_ai_explicit(self):
+        """'Warp AI' should detect as Warp tool."""
+        text = "Used Warp AI to help debug this issue"
+        result = detect_ai_in_text(text)
+        self.assertTrue(result["is_ai_assisted"])
+        self.assertIn("warp", result["ai_tools"])
+
+    def test_warp_terminal_ai(self):
+        """'Warp terminal' with AI context should detect."""
+        text = "Warp terminal's AI helped with the bash script"
+        result = detect_ai_in_text(text)
+        self.assertTrue(result["is_ai_assisted"])
+        self.assertIn("warp", result["ai_tools"])
+
+
+class TestImprovedGeminiPatterns(TestCase):
+    """Tests for improved Gemini pattern detection to avoid false positives."""
+
+    def test_gemini_used_for(self):
+        """'Gemini used for' should detect."""
+        text = "Gemini used for code review"
+        result = detect_ai_in_text(text)
+        self.assertTrue(result["is_ai_assisted"])
+        self.assertIn("gemini", result["ai_tools"])
+
+    def test_used_gemini(self):
+        """'used Gemini' should detect."""
+        text = "I used Gemini to refactor this module"
+        result = detect_ai_in_text(text)
+        self.assertTrue(result["is_ai_assisted"])
+        self.assertIn("gemini", result["ai_tools"])
+
+    def test_gemini_api_product_not_detected(self):
+        """Integrating Gemini API should NOT detect (product feature)."""
+        text = "Add Gemini API support for content generation"
+        result = detect_ai_in_text(text)
+        # This is about building with Gemini, not using it to write code
+        self.assertFalse(result["is_ai_assisted"])
+
+    def test_gemini_sdk_not_detected(self):
+        """'Gemini SDK' feature work should NOT detect."""
+        text = "Implement Gemini SDK integration for the app"
         result = detect_ai_in_text(text)
         self.assertFalse(result["is_ai_assisted"])

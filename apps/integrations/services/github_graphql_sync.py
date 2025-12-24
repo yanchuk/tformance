@@ -20,7 +20,7 @@ from apps.integrations.services.github_graphql import (
 )
 from apps.metrics.models import Commit, PRFile, PRReview, PullRequest, TeamMember
 from apps.metrics.processors import _calculate_cycle_time_hours, _calculate_time_diff_hours
-from apps.metrics.services.ai_detector import detect_ai_author, detect_ai_in_text
+from apps.metrics.services.ai_detector import PATTERNS_VERSION, detect_ai_author, detect_ai_in_text
 
 logger = logging.getLogger(__name__)
 
@@ -313,6 +313,7 @@ def _process_pr(
         "author": author,
         "is_ai_assisted": is_ai_assisted,
         "ai_tools_detected": ai_tools,
+        "ai_detection_version": PATTERNS_VERSION,
     }
 
     # Create or update PR
@@ -614,6 +615,7 @@ def _process_pr_incremental(
         "author": author,
         "is_ai_assisted": is_ai_assisted,
         "ai_tools_detected": ai_tools,
+        "ai_detection_version": PATTERNS_VERSION,
     }
 
     # Create or update PR

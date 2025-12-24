@@ -57,7 +57,7 @@
 
 ---
 
-## Phase 2: Groq LLM Integration [Effort: M] ⟵ CURRENT
+## Phase 2: Groq LLM Integration [Effort: M] ✅ COMPLETE
 
 **Decision**: Skip complex section parser - Groq LLM handles all cases at $0.08/1000 PRs
 
@@ -78,6 +78,14 @@
 - [x] Rich PR context in prompts (title, author, size, labels, linked issues)
 - [x] Write 18 unit tests (mock Groq responses)
 - [x] Test batch submission with real Gumroad data (100 PRs)
+
+### 2.2.1 Enhanced Prompts with Full PR Data (TDD) ✅
+- [x] Add files changed to context (grouped by category)
+- [x] Add commit messages to context (for Co-Authored-By detection)
+- [x] Add review comments to context (for "Did you use Cursor?" detection)
+- [x] Update system prompt to document new input format
+- [x] Add 4 new tests for enhanced context formatting
+- [x] Run batch with enhanced prompts - detection improved!
 
 ### 2.3 Create Backfill Management Command ✅
 - [x] Create `apps/metrics/management/commands/backfill_ai_detection.py`
@@ -266,22 +274,76 @@
 ## Progress Tracking
 
 - [x] **Phase 1 Complete** - Enhanced regex patterns (2025-12-24) - Commit `8723f22`
-- [ ] **Phase 2 In Progress** - Groq LLM integration
+- [x] **Phase 2 Complete** - Groq LLM integration with enhanced prompts
+- [x] **Phase 2.5 Complete** - Pattern sync (regex ↔ LLM findings) - Version 1.5.0
 - [ ] **Phase 3 Pending** - Usage categorization + dashboard
 - [ ] **Phase 4 Pending** - Production deployment
 
-**Current Status**: Phase 2 starting - Groq integration
+**Current Status**: Phase 2.5 complete - Ready for Phase 3 or backfill validation
 
 ## Revised Plan Summary
 
 | Phase | Description | Effort | Detection Rate |
 |-------|-------------|--------|----------------|
 | 1 ✅ | Regex patterns | S | 24.4% |
-| 2 ⟵ | Groq LLM (Llama 3.3 70B) | M | 70-90% |
+| 2 ✅ | Groq LLM (Llama 3.3 70B) | M | 29.9% (Gumroad) |
+| 2.5 ⟵ | Pattern sync (GPT, Warp, Gemini) | S | +consistency |
 | 3 | Usage categorization | S | +analytics |
 | 4 | Dashboard + production | M | shipped |
 
 **Key Decision**: Skip complex section parser - Groq handles everything at $0.08/1000 PRs
+
+---
+
+## Phase 2.5: Pattern Sync [Effort: S] ✅ COMPLETE
+
+**Goal**: Add regex patterns for tools the LLM is detecting but regex misses
+
+### 2.5.1 Add GPT/ChatGPT Patterns (TDD)
+- [x] Write tests for ChatGPT, GPT-4, GPT-4o, OpenAI patterns
+- [x] Add patterns to AI_SIGNATURE_PATTERNS
+- [x] Verify tests pass
+
+### 2.5.2 Add Warp AI Patterns (TDD)
+- [x] Write tests for Warp terminal AI
+- [x] Add patterns to AI_SIGNATURE_PATTERNS
+- [x] Verify tests pass
+
+### 2.5.3 Fix Gemini False Positives (TDD)
+- [x] Write tests for specific Gemini usage (vs API integration)
+- [x] Update Gemini pattern from `\bgemini\b` to usage-specific
+- [x] Verify tests pass
+
+### 2.5.4 Increment Pattern Version
+- [x] Update PATTERNS_VERSION to "1.5.0"
+
+**Patterns to Add:**
+```python
+# GPT/ChatGPT patterns
+(r"\bchatgpt\b", "chatgpt"),
+(r"\bgpt-?4\b", "chatgpt"),
+(r"\bgpt-?4o\b", "chatgpt"),
+(r"\bused\s+openai\b", "chatgpt"),
+
+# Warp AI patterns
+(r"\bwarp\s+ai\b", "warp"),
+(r"\bwarp\b.*\bai\b", "warp"),
+
+# Gemini (more specific to avoid "Gemini API" false positives)
+# Replace: (r"\bgemini\b", "gemini"),
+# With:
+(r"\bused\s+gemini\b", "gemini"),
+(r"\bgemini\s+used\b", "gemini"),
+(r"\bgemini\s+(?:helped|assisted)\b", "gemini"),
+```
+
+**Test Commands:**
+```bash
+# Run new failing tests
+.venv/bin/pytest apps/metrics/tests/test_ai_detector.py::TestGPTPatterns -v
+.venv/bin/pytest apps/metrics/tests/test_ai_detector.py::TestWarpAIPatterns -v
+.venv/bin/pytest apps/metrics/tests/test_ai_detector.py::TestImprovedGeminiPatterns -v
+```
 
 ## Phase 1 Results (2025-12-24)
 

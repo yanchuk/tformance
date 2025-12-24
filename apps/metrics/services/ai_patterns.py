@@ -26,7 +26,7 @@ selective reprocessing.
 # =============================================================================
 # This version is stored with AI detections to support selective reprocessing.
 # Increment major version for breaking changes, minor for additions.
-PATTERNS_VERSION = "1.4.0"
+PATTERNS_VERSION = "1.5.0"
 
 # =============================================================================
 # AI Reviewer Bots (username-based detection)
@@ -142,7 +142,23 @@ AI_SIGNATURE_PATTERNS: list[tuple[str, str]] = [
     (r"codewhisperer", "codewhisperer"),
     (r"amazon\s+q", "amazon_q"),
     # ----- Google Gemini -----
-    (r"\bgemini\b", "gemini"),
+    # Specific patterns to avoid false positives on "Gemini API", "Gemini SDK"
+    (r"\bused\s+gemini\b", "gemini"),
+    (r"\bgemini\s+used\b", "gemini"),
+    (r"\bgemini\s+(?:helped|assisted)\b", "gemini"),
+    (r"\bwith\s+gemini\b", "gemini"),
+    (r"\busing\s+gemini\b", "gemini"),
+    # ----- ChatGPT / OpenAI GPT -----
+    (r"\bchatgpt\b", "chatgpt"),
+    (r"\bgpt-?4o?\b", "chatgpt"),
+    (r"\bgpt-?5\b", "chatgpt"),
+    (r"\bused\s+openai\b", "chatgpt"),
+    (r"\busing\s+openai\b", "chatgpt"),
+    (r"\bwith\s+openai\b", "chatgpt"),
+    # ----- Warp Terminal AI -----
+    (r"\bwarp\s+ai\b", "warp"),
+    (r"\bwarp\b.*\bai\b", "warp"),
+    (r"\bwarp\s+terminal\b.*\bai\b", "warp"),
     # ----- Aider -----
     (r"generated\s+by\s+aider", "aider"),
     (r"aider\.chat", "aider"),
@@ -227,6 +243,8 @@ AI_TOOL_DISPLAY_NAMES: dict[str, str] = {
     "codewhisperer": "CodeWhisperer",
     "amazon_q": "Amazon Q",
     "gemini": "Gemini",
+    "chatgpt": "ChatGPT",
+    "warp": "Warp AI",
     "aider": "Aider",
     "ai_generic": "AI",
 }
