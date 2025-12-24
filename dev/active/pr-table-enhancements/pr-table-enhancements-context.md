@@ -1,6 +1,31 @@
 # PR Table Enhancements - Context
 
-**Last Updated: 2025-12-24**
+**Last Updated: 2025-12-24 (Session 2)**
+
+## Recent Session Work (2025-12-24)
+
+### Completed: Instant Tooltips for Size Column
+- Changed from native HTML `title` attribute to DaisyUI `tooltip` class with `data-tip`
+- Native tooltips had ~500ms delay, DaisyUI tooltips appear instantly on hover
+- Commit: `1b49a0f Use DaisyUI tooltip for instant Size hover display`
+
+### Template Change (table.html lines 110-120)
+```html
+<!-- Before (native tooltip with delay) -->
+<span class="badge badge-ghost badge-sm cursor-help" title="+{{ pr.additions }}/-{{ pr.deletions }}">{{ size }}</span>
+
+<!-- After (DaisyUI instant tooltip) -->
+<div class="tooltip" data-tip="+{{ pr.additions }}/-{{ pr.deletions }}">
+  <span class="badge badge-ghost badge-sm cursor-help">{{ size }}</span>
+</div>
+```
+
+### Prior Size Column Work (Same Session)
+- Replaced "Lines" column with "Size" buckets (XS/S/M/L/XL)
+- Added `calculate_pr_size_bucket()` utility in `pr_list_service.py`
+- Added `pr_size_bucket` template filter in `pr_list_tags.py`
+- Added author name truncation with ellipsis (100px max width)
+- Commit: `d1a5b5f Replace Lines column with Size column, add author ellipsis`
 
 ## Key Files
 

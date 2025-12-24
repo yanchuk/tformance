@@ -118,3 +118,30 @@
 
 - **34 unit tests passing** (view tests only: 18 original + 12 sorting + 2 badge + 2 other)
 - **E2E tests passing** for PR table features
+
+## Phase 6: Size Column Improvements (S effort) ✅
+
+**Completed: 2025-12-24**
+
+### Changes Made
+- [x] Replace "Lines" column with "Size" buckets (XS/S/M/L/XL)
+- [x] Add `calculate_pr_size_bucket()` utility function in `pr_list_service.py`
+- [x] Add `pr_size_bucket` template filter in `pr_list_tags.py`
+- [x] Add author name truncation with ellipsis (100px max, tooltip on hover)
+- [x] Change native `title` tooltip to DaisyUI `tooltip` with `data-tip` for instant display (no 500ms delay)
+- [x] Use neutral `badge-ghost` for all size buckets (no colors per user preference)
+- [x] 22 unit tests for size bucket filter (TDD)
+
+### Size Buckets
+| Bucket | Lines Changed |
+|--------|---------------|
+| XS | 0-10 |
+| S | 11-50 |
+| M | 51-200 |
+| L | 201-500 |
+| XL | 501+ |
+
+### Commits
+- `d1a5b5f` - Replace Lines column with Size column, add author ellipsis
+- `0cc0c55` - Move pr-list-size-column to dev/completed
+- `1b49a0f` - Use DaisyUI tooltip for instant Size hover display
