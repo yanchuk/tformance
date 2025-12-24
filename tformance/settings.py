@@ -584,6 +584,11 @@ SCHEDULED_TASKS = {
         "schedule": schedules.crontab(minute=0, hour=6),  # 6 AM UTC (after data syncs)
         "expire_seconds": 60 * 60,  # 1 hour expiry
     },
+    "refresh-repo-languages-monthly": {
+        "task": "apps.integrations.tasks.refresh_all_repo_languages_task",
+        "schedule": schedules.crontab(minute=0, hour=3, day_of_month=1),  # 1st of month 3 AM UTC
+        "expire_seconds": 60 * 60 * 2,  # 2 hour expiry
+    },
 }
 
 # Channels / Daphne setup

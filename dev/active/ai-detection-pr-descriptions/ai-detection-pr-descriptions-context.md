@@ -1,8 +1,102 @@
 # AI Detection via PR Description Analysis - Context
 
-**Last Updated: 2025-12-25 06:00 UTC**
+**Last Updated: 2025-12-25 08:30 UTC**
 
-## Session Summary (2025-12-25 - Pattern Sync Complete)
+## Session Summary (2025-12-25 - Technology Detection v4)
+
+### What Was Accomplished
+1. **Pattern Version 1.5.0 Committed** (`99789a5`):
+   - GPT/ChatGPT, Warp AI patterns added
+   - Gemini false positives fixed
+   - `ai_detection_version` field added to PullRequest model
+   - Migration 0018 created and applied
+
+2. **Prompt v4 - Technology Detection**:
+   - Updated `DEFAULT_SYSTEM_PROMPT` in `groq_batch.py`
+   - Added Task 2: Technology Detection (primary_language, tech_categories)
+   - Extended language list to 20 languages (SO 2025 Survey data)
+   - Updated `BatchResult` dataclass with new fields
+
+3. **Versioning System Extended**:
+   - Created `experiments/patterns/tech/v1.0.0.md` for tech patterns
+   - Created `experiments/prompts/v4.md` documenting tech detection
+   - Added AI Detection System section to CLAUDE.md
+
+4. **Tests**: 22 Groq batch tests passing
+
+### In Progress: Repo Languages Feature
+**Goal**: Fetch GitHub repo language data to improve LLM accuracy
+
+**Plan**:
+1. Add to `TrackedRepository` model:
+   ```python
+   languages = models.JSONField(default=dict)  # {"Python": 150000, ...}
+   primary_language = models.CharField(max_length=50, blank=True)
+   languages_updated_at = models.DateTimeField(null=True)
+   ```
+2. Create Celery task for monthly refresh
+3. Pass top 3-5 languages to LLM prompt
+
+**GitHub API**:
+```bash
+GET /repos/{owner}/{repo}/languages
+# Returns: {"Python": 150000, "JavaScript": 25000, "HTML": 5000}
+```
+
+### Files Modified (Uncommitted)
+| File | Changes |
+|------|---------|
+| `apps/integrations/services/groq_batch.py` | Prompt v4, BatchResult fields |
+| `apps/integrations/tests/test_groq_batch.py` | Tests still passing |
+| `experiments/prompts/v4.md` | NEW: Tech detection prompt |
+| `experiments/patterns/tech/v1.0.0.md` | NEW: Tech patterns version |
+
+### Files Already Committed
+- `apps/metrics/services/ai_patterns.py` - v1.5.0
+- `apps/metrics/models/github.py` - ai_detection_version field
+- `apps/metrics/migrations/0018_add_ai_detection_version.py`
+- `apps/integrations/services/github_graphql_sync.py` - stores version
+- `CLAUDE.md` - AI Detection System docs
+
+### Next Steps on Restart
+1. **Add languages to TrackedRepository**:
+   ```bash
+   # Check integrations/models.py for TrackedRepository
+   # Add languages, primary_language, languages_updated_at fields
+   # Create migration
+   ```
+
+2. **Create fetch_repo_languages function**:
+   - Use GitHub GraphQL or REST API
+   - Return dict of language -> bytes
+
+3. **Create Celery task**:
+   - `refresh_repo_languages_task`
+   - Run monthly via Celery beat
+   - Update TrackedRepository.languages
+
+4. **Update Groq prompt**:
+   - Add "# Repository Languages" section
+   - Limit to top 3-5 languages by percentage
+
+5. **Commit all changes**
+
+### Commands to Run
+```bash
+# Check uncommitted changes
+git status
+
+# Run tests
+.venv/bin/pytest apps/integrations/tests/test_groq_batch.py -v
+
+# After adding model fields
+make migrations
+make migrate
+```
+
+---
+
+## Previous Session (2025-12-25 - Pattern Sync Complete)
 
 ### What Was Accomplished
 1. **Created prompt version files** (v2.md, v3.md):

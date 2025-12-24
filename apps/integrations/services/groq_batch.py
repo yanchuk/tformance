@@ -29,9 +29,11 @@ from groq import Groq
 if TYPE_CHECKING:
     from apps.metrics.models import PullRequest
 
+# Import models for related data queries
+from apps.metrics.models import Commit, PRFile, PRReview
+
 # Default system prompt for AI detection with rich context
-DEFAULT_SYSTEM_PROMPT = """You are an AI detection system analyzing pull requests.
-Your task is to identify if AI coding assistants were used to write or assist with the code.
+DEFAULT_SYSTEM_PROMPT = """You analyze pull requests to detect AI tool usage and identify technologies.
 You MUST respond with valid JSON only.
 
 ## Input Format
@@ -47,26 +49,69 @@ You will receive a PR in this structured format:
 - Linked Issues: <issue numbers if any>
 
 # PR Description
-<full body/description text>
+<full body/description text - may contain AI Disclosure section>
+
+# Files Changed (if available)
+- [category] filename (+additions/-deletions)
+<files are categorized as: frontend, backend, test, config, docs, other>
+
+# Commit Messages (if available)
+- <commit message - may contain Co-Authored-By signatures>
+<Important: Look for "Co-Authored-By: Claude" or similar AI co-author signatures>
+
+# Review Comments (if available)
+- [STATE] reviewer: <comment text>
+<Reviewers may discuss or ask about AI tool usage in comments>
 ```
 
-## Detection Rules
+## Task 1: AI Detection
 
-POSITIVE signals (AI was used to write/assist code):
-1. **Tool mentions**: Cursor, Claude, Copilot, Cody, Aider, Devin, Gemini, Windsurf, Tabnine
-2. **AI Disclosure sections**: Look for headings like "AI Disclosure", "AI Usage", "Tools Used"
-   - Usage statements: "Used for", "Used to", "Helped with", "Assisted with"
-   - Model names: Sonnet, Opus, Haiku, GPT-4, Claude 4.5
-3. **Commit signatures**: Co-Authored-By with AI emails (@anthropic.com, @cursor.sh)
-4. **Explicit markers**: "Generated with Claude Code", "AI-generated", "written by AI"
-5. **IDE references**: "in Cursor", "via Cursor", "using Cursor IDE"
+**POSITIVE signals** (AI was used):
+1. Tool mentions: Cursor, Claude, Copilot, Cody, Aider, Devin, Gemini, Windsurf, Tabnine
+2. AI Disclosure sections with usage statements
+3. Commit signatures: Co-Authored-By with AI emails (@anthropic.com, @cursor.sh)
+4. Explicit markers: "Generated with Claude Code", "AI-generated"
 
-NEGATIVE signals (AI was NOT used):
-1. **Explicit denials**: "No AI was used", "None", "N/A", "Not used"
-2. **AI as product feature** (building AI != using AI):
-   - "Add AI to dashboard", "Integrate Claude API", "Gemini SDK support"
-3. **Past references**: "Devin's previous PR", "as Claude mentioned" (referring to people/past work)
-4. **Bot authors** (already tracked separately): dependabot, renovate
+**NEGATIVE signals** (AI was NOT used):
+1. Explicit denials: "No AI was used", "None", "N/A"
+2. AI as product feature (building AI != using AI)
+3. Bot authors: dependabot, renovate (tracked separately)
+
+## Task 2: Technology Detection
+
+Analyze the **Files Changed** section to determine:
+1. **Primary language**: Most significant language by lines changed
+2. **Tech categories**: What areas the PR touches
+
+**Language detection** (from file extensions, SO 2025 Survey):
+Top languages:
+- JavaScript: .js, .jsx, .mjs → "javascript"
+- TypeScript: .ts, .tsx → "typescript"
+- Python: .py → "python"
+- Java: .java → "java"
+- C#: .cs → "csharp"
+- C++: .cpp, .cc, .cxx → "cpp"
+- PHP: .php → "php"
+- Go: .go → "go"
+- Rust: .rs → "rust"
+- Ruby: .rb → "ruby"
+- Swift: .swift → "swift"
+- Kotlin: .kt, .kts → "kotlin"
+- Scala: .scala → "scala"
+- Dart: .dart → "dart"
+- Elixir: .ex, .exs → "elixir"
+- SQL: .sql → "sql"
+- Shell: .sh, .bash → "shell"
+- HTML/CSS: .html, .css, .scss → "html_css"
+- Vue: .vue → "vue"
+- Svelte: .svelte → "svelte"
+
+**Category detection** (from [category] prefix and paths):
+- frontend: React, Vue, CSS, HTML components
+- backend: API, services, models, database
+- test: Test files
+- config: Configuration, CI/CD
+- docs: Documentation
 
 ## Response Format
 
@@ -77,7 +122,9 @@ Return JSON:
   "tools": ["lowercase", "tool", "names"],
   "usage_category": "authored" | "assisted" | "reviewed" | "brainstorm" | null,
   "confidence": 0.0-1.0,
-  "reasoning": "1-sentence explanation"
+  "reasoning": "1-sentence explanation",
+  "primary_language": "<language-name>" | null,
+  "tech_categories": ["frontend", "backend", "test", "config", "docs"]
 }
 ```
 
@@ -102,6 +149,9 @@ class BatchResult:
     usage_category: str | None = None
     reasoning: str | None = None
     error: str | None = None
+    # Technology detection (v4 prompt)
+    primary_language: str | None = None
+    tech_categories: list[str] | None = None
 
     @classmethod
     def from_response(cls, custom_id: str, response_body: dict) -> BatchResult:
@@ -129,6 +179,8 @@ class BatchResult:
                 confidence=data.get("confidence", 0.0),
                 usage_category=data.get("usage_category"),
                 reasoning=data.get("reasoning"),
+                primary_language=data.get("primary_language"),
+                tech_categories=data.get("tech_categories", []),
             )
         except (json.JSONDecodeError, KeyError, IndexError) as e:
             return cls(
@@ -193,6 +245,9 @@ class GroqBatchProcessor:
         - Size helps identify AI-typical large PRs
         - Labels may include "ai-generated" tags
         - Author context for bot detection
+        - Files changed (may reveal AI-typical patterns)
+        - Commit messages (may contain AI co-author signatures)
+        - Review comments (may discuss AI usage)
         """
         # Get author username
         author = "unknown"
@@ -217,7 +272,112 @@ class GroqBatchProcessor:
 # PR Description
 {pr.body}"""
 
+        # Add files changed section
+        files_section = self._format_files_section(pr)
+        if files_section:
+            context += f"\n\n{files_section}"
+
+        # Add commit messages section
+        commits_section = self._format_commits_section(pr)
+        if commits_section:
+            context += f"\n\n{commits_section}"
+
+        # Add review comments section
+        reviews_section = self._format_reviews_section(pr)
+        if reviews_section:
+            context += f"\n\n{reviews_section}"
+
+        # Add repository languages section (limits LLM language choices)
+        languages_section = self._format_repo_languages_section(pr)
+        if languages_section:
+            context += f"\n\n{languages_section}"
+
         return context
+
+    def _format_repo_languages_section(self, pr: PullRequest) -> str:
+        """Format repository languages from GitHub API.
+
+        Provides primary language and top languages to constrain LLM choices.
+        """
+        from apps.integrations.models import TrackedRepository
+
+        try:
+            repo = TrackedRepository.objects.get(  # noqa: TEAM001 - Looking up by repo name
+                full_name=pr.github_repo,
+                team=pr.team,
+                is_active=True,
+            )
+        except TrackedRepository.DoesNotExist:
+            return ""
+
+        if not repo.languages:
+            return ""
+
+        # Format top languages (limit to 5)
+        sorted_langs = sorted(repo.languages.items(), key=lambda x: x[1], reverse=True)[:5]
+        if not sorted_langs:
+            return ""
+
+        lines = ["# Repository Languages (from GitHub)"]
+        lines.append(f"- Primary: {repo.primary_language or 'Unknown'}")
+        lines.append(f"- All: {', '.join(lang for lang, _ in sorted_langs)}")
+
+        return "\n".join(lines)
+
+    def _format_files_section(self, pr: PullRequest) -> str:
+        """Format files changed, grouped by category."""
+        files = PRFile.objects.filter(pull_request=pr).order_by("file_category", "filename")[:20]  # noqa: TEAM001
+
+        if not files:
+            return ""
+
+        lines = ["# Files Changed"]
+        for f in files:
+            # Show filename with category hint
+            category = f.file_category or "other"
+            lines.append(f"- [{category}] {f.filename} (+{f.additions}/-{f.deletions})")
+
+        return "\n".join(lines)
+
+    def _format_commits_section(self, pr: PullRequest) -> str:
+        """Format commit messages (may contain AI co-author signatures)."""
+        commits = Commit.objects.filter(pull_request=pr).order_by("-committed_at")[:10]  # noqa: TEAM001
+
+        if not commits:
+            return ""
+
+        lines = ["# Commit Messages"]
+        for c in commits:
+            # Include full message to capture Co-Authored-By lines
+            message = c.message or ""
+            # Truncate very long messages but keep first ~200 chars
+            if len(message) > 200:
+                message = message[:200] + "..."
+            lines.append(f"- {message}")
+
+        return "\n".join(lines)
+
+    def _format_reviews_section(self, pr: PullRequest) -> str:
+        """Format review comments (may discuss AI usage)."""
+        reviews = (
+            PRReview.objects.filter(  # noqa: TEAM001
+                pull_request=pr,
+                body__isnull=False,
+            )
+            .exclude(body="")
+            .order_by("submitted_at")[:5]
+        )
+
+        if not reviews:
+            return ""
+
+        lines = ["# Review Comments"]
+        for r in reviews:
+            reviewer = r.reviewer.github_username if r.reviewer else "unknown"
+            body = r.body[:150] + "..." if len(r.body) > 150 else r.body
+            lines.append(f"- [{r.state}] {reviewer}: {body}")
+
+        return "\n".join(lines)
 
     def create_batch_file(
         self,

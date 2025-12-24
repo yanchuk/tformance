@@ -275,11 +275,56 @@
 
 - [x] **Phase 1 Complete** - Enhanced regex patterns (2025-12-24) - Commit `8723f22`
 - [x] **Phase 2 Complete** - Groq LLM integration with enhanced prompts
-- [x] **Phase 2.5 Complete** - Pattern sync (regex ↔ LLM findings) - Version 1.5.0
+- [x] **Phase 2.5 Complete** - Pattern sync (regex ↔ LLM findings) - Version 1.5.0 - Commit `99789a5`
+- [x] **Phase 2.6 In Progress** - Technology detection (prompt v4) + repo languages
 - [ ] **Phase 3 Pending** - Usage categorization + dashboard
 - [ ] **Phase 4 Pending** - Production deployment
 
-**Current Status**: Phase 2.5 complete - Ready for Phase 3 or backfill validation
+**Current Status**: Phase 2.6 - Technology detection prompt v4 done, repo languages feature in progress
+
+---
+
+## Phase 2.6: Technology Detection [Effort: M] ⟵ CURRENT
+
+### 2.6.1 Prompt v4 - Tech Detection ✅
+- [x] Update `DEFAULT_SYSTEM_PROMPT` with Task 2: Technology Detection
+- [x] Add primary_language detection (20 languages from SO 2025)
+- [x] Add tech_categories detection (frontend, backend, test, config, docs)
+- [x] Update `BatchResult` dataclass with new fields
+- [x] Create `experiments/prompts/v4.md`
+- [x] Create `experiments/patterns/tech/v1.0.0.md`
+- [x] Verify 22 Groq batch tests pass
+
+### 2.6.2 Repository Languages (In Progress)
+- [ ] Add fields to `TrackedRepository` model:
+  - `languages: JSONField` (e.g., {"Python": 150000})
+  - `primary_language: CharField`
+  - `languages_updated_at: DateTimeField`
+- [ ] Create migration for integrations app
+- [ ] Implement `fetch_repo_languages()` using GitHub API
+- [ ] Create `refresh_repo_languages_task` Celery task
+- [ ] Add to Celery beat schedule (monthly)
+- [ ] Update prompt to include "# Repository Languages" section
+- [ ] Limit to top 3-5 languages by percentage
+
+### 2.6.3 Testing
+- [ ] Add tests for language fetching
+- [ ] Add tests for Celery task
+- [ ] Test prompt with repo language context
+
+**GitHub API for languages:**
+```bash
+GET /repos/{owner}/{repo}/languages
+# Returns: {"Python": 150000, "JavaScript": 25000, "HTML": 5000}
+```
+
+**Prompt Addition (planned):**
+```
+# Repository Languages
+Primary: Python (80%), JavaScript (15%), HTML (5%)
+```
+
+---
 
 ## Revised Plan Summary
 
@@ -287,7 +332,8 @@
 |-------|-------------|--------|----------------|
 | 1 ✅ | Regex patterns | S | 24.4% |
 | 2 ✅ | Groq LLM (Llama 3.3 70B) | M | 29.9% (Gumroad) |
-| 2.5 ⟵ | Pattern sync (GPT, Warp, Gemini) | S | +consistency |
+| 2.5 ✅ | Pattern sync (GPT, Warp, Gemini) | S | +consistency |
+| 2.6 ⟵ | Tech detection + repo languages | M | +tech insights |
 | 3 | Usage categorization | S | +analytics |
 | 4 | Dashboard + production | M | shipped |
 

@@ -1502,3 +1502,78 @@ def fetch_pr_complete_data_task(self, pr_id: int) -> dict:
         "review_comments_synced": review_comments_synced,
         "errors": errors,
     }
+
+
+@shared_task
+def refresh_repo_languages_task(repo_id: int) -> dict:
+    """Refresh language breakdown for a single repository.
+
+    Args:
+        repo_id: ID of the TrackedRepository to refresh
+
+    Returns:
+        Dict with language count and primary language
+    """
+    from apps.integrations.services.github_repo_languages import update_repo_languages
+
+    try:
+        repo = TrackedRepository.objects.get(id=repo_id)  # noqa: TEAM001 - ID from Celery task queue
+    except TrackedRepository.DoesNotExist:
+        logger.warning(f"TrackedRepository with id {repo_id} not found")
+        return {"error": f"TrackedRepository with id {repo_id} not found"}
+
+    if not repo.is_active:
+        return {"skipped": True, "reason": "Repository is not active"}
+
+    try:
+        languages = update_repo_languages(repo)
+        return {
+            "repo": repo.full_name,
+            "languages_count": len(languages),
+            "primary_language": repo.primary_language,
+        }
+    except Exception as e:
+        logger.exception(f"Failed to refresh languages for {repo.full_name}")
+        return {"error": str(e)}
+
+
+@shared_task
+def refresh_all_repo_languages_task() -> dict:
+    """Refresh language breakdown for all active repositories.
+
+    Scheduled monthly to keep language data current.
+
+    Returns:
+        Dict with count of repos updated and errors
+    """
+    from datetime import timedelta
+
+    from django.db.models import Q
+    from django.utils import timezone
+
+    from apps.integrations.services.github_repo_languages import update_repo_languages
+
+    # Find repos that need refresh (never updated or updated > 30 days ago)
+    threshold = timezone.now() - timedelta(days=30)
+    repos = TrackedRepository.objects.filter(  # noqa: TEAM001 - Background task for all teams
+        is_active=True,
+    ).filter(Q(languages_updated_at__isnull=True) | Q(languages_updated_at__lt=threshold))
+
+    updated = 0
+    errors = []
+
+    for repo in repos:
+        try:
+            update_repo_languages(repo)
+            updated += 1
+        except Exception as e:
+            logger.warning(f"Failed to update languages for {repo.full_name}: {e}")
+            errors.append({"repo": repo.full_name, "error": str(e)})
+
+    logger.info(f"Refreshed languages for {updated} repos, {len(errors)} errors")
+
+    return {
+        "repos_updated": updated,
+        "errors_count": len(errors),
+        "errors": errors[:10],  # First 10 errors only
+    }

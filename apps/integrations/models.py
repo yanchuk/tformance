@@ -217,6 +217,26 @@ class TrackedRepository(BaseTeamModel):
         help_text="When rate limit resets",
     )
 
+    # Language detection (for LLM tech detection)
+    languages = models.JSONField(
+        default=dict,
+        verbose_name="Languages",
+        help_text="Language breakdown from GitHub API (e.g., {'Python': 150000, 'JavaScript': 5000})",
+    )
+    primary_language = models.CharField(
+        max_length=50,
+        blank=True,
+        default="",
+        verbose_name="Primary language",
+        help_text="Most-used language in this repository",
+    )
+    languages_updated_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Languages updated at",
+        help_text="When language data was last fetched from GitHub",
+    )
+
     # Progress tracking (Phase 2)
     sync_progress = models.IntegerField(
         default=0,
