@@ -34,13 +34,14 @@ class TestPrListView(TestCase):
         self.assertIn("/accounts/login/", response.url)
 
     def test_pr_list_renders_successfully(self):
-        """Test that PR list page renders with 200 status."""
+        """Test that PR list page renders with 200 status and analytics tabs."""
         url = reverse("metrics:pr_list")
 
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, "metrics/pull_requests/list.html")
+        self.assertTemplateUsed(response, "metrics/analytics/pull_requests.html")
+        self.assertTemplateUsed(response, "metrics/analytics/base_analytics.html")
 
     def test_pr_list_shows_prs(self):
         """Test that PR list page shows PRs for the team."""

@@ -1,0 +1,150 @@
+{% extends "metrics/analytics/base_analytics.html" %}
+{% load static %}
+{% load i18n %}
+{% load partials %}
+
+{% block analytics_content %}
+  {% partialdef page-content inline %}
+  <div id="page-content" class="min-w-0 overflow-hidden">
+    <!-- Header with title -->
+    <div class="flex justify-between items-center mb-6">
+      <h1 class="pg-title">{% trans "Pull Requests" %}</h1>
+    </div>
+
+    <!-- Filters Panel -->
+    <div class="bg-base-200 rounded-lg p-4 mb-6 min-w-0">
+      <form hx-get="{% url 'metrics:pr_list' %}"
+            hx-target="#page-content"
+            hx-swap="outerHTML"
+            hx-push-url="true"
+            class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 min-w-0">
+
+        <!-- Repository Filter -->
+        <div class="form-control">
+          <label class="label">
+            <span class="label-text text-base-content/80">{% trans "Repository" %}</span>
+          </label>
+          <select name="repo" class="select select-bordered select-sm w-full">
+            <option value="">{% trans "All Repositories" %}</option>
+            {% for repo in filter_options.repos %}
+            <option value="{{ repo }}" {% if filters.repo == repo %}selected{% endif %}>{{ repo }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Author Filter -->
+        <div class="form-control">
+          <label class="label">
+            <span class="label-text text-base-content/80">{% trans "Author" %}</span>
+          </label>
+          <select name="author" class="select select-bordered select-sm w-full">
+            <option value="">{% trans "All Authors" %}</option>
+            {% for author in filter_options.authors %}
+            <option value="{{ author.id }}" {% if filters.author == author.id %}selected{% endif %}>{{ author.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- AI Assisted Filter -->
+        <div class="form-control">
+          <label class="label">
+            <span class="label-text text-base-content/80">{% trans "AI Assisted" %}</span>
+          </label>
+          <select name="ai" class="select select-bordered select-sm w-full">
+            <option value="">{% trans "All" %}</option>
+            <option value="yes" {% if filters.ai == 'yes' %}selected{% endif %}>{% trans "Yes" %}</option>
+            <option value="no" {% if filters.ai == 'no' %}selected{% endif %}>{% trans "No" %}</option>
+          </select>
+        </div>
+
+        <!-- State Filter -->
+        <div class="form-control">
+          <label class="label">
+            <span class="label-text text-base-content/80">{% trans "State" %}</span>
+          </label>
+          <select name="state" class="select select-bordered select-sm w-full">
+            <option value="">{% trans "All States" %}</option>
+            {% for state in filter_options.states %}
+            <option value="{{ state }}" {% if filters.state == state %}selected{% endif %}>{{ state|title }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Date From -->
+        <div class="form-control">
+          <label class="label">
+            <span class="label-text text-base-content/80">{% trans "Date From" %}</span>
+          </label>
+          <input type="date" name="date_from" value="{{ filters.date_from|default:'' }}"
+                 class="input input-bordered input-sm w-full">
+        </div>
+
+        <!-- Date To -->
+        <div class="form-control">
+          <label class="label">
+            <span class="label-text text-base-content/80">{% trans "Date To" %}</span>
+          </label>
+          <input type="date" name="date_to" value="{{ filters.date_to|default:'' }}"
+                 class="input input-bordered input-sm w-full">
+        </div>
+
+        <!-- Actions -->
+        <div class="form-control lg:col-span-2 flex flex-row items-end gap-2">
+          <button type="submit" class="btn btn-primary btn-sm">
+            {% trans "Apply Filters" %}
+          </button>
+          <a href="{% url 'metrics:pr_list' %}" class="btn btn-ghost btn-sm">
+            {% trans "Clear" %}
+          </a>
+          <a href="{% url 'metrics:pr_list_export' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}"
+             class="btn btn-outline btn-sm ml-auto">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            {% trans "Export CSV" %}
+          </a>
+        </div>
+      </form>
+    </div>
+
+    <!-- Stats Row -->
+    <div class="overflow-x-auto min-w-0 mb-6">
+    <div class="stats stats-horizontal shadow bg-base-200 w-full min-w-0">
+      <div class="stat">
+        <div class="stat-title">{% trans "Total PRs" %}</div>
+        <div class="stat-value text-2xl">{{ stats.total_count }}</div>
+      </div>
+      <div class="stat">
+        <div class="stat-title">{% trans "Avg Cycle Time" %}</div>
+        <div class="stat-value text-2xl">
+          {% if stats.avg_cycle_time %}
+            {{ stats.avg_cycle_time|floatformat:1 }}h
+          {% else %}
+            -
+          {% endif %}
+        </div>
+      </div>
+      <div class="stat">
+        <div class="stat-title">{% trans "Avg Review Time" %}</div>
+        <div class="stat-value text-2xl">
+          {% if stats.avg_review_time %}
+            {{ stats.avg_review_time|floatformat:1 }}h
+          {% else %}
+            -
+          {% endif %}
+        </div>
+      </div>
+      <div class="stat">
+        <div class="stat-title">{% trans "AI Assisted" %}</div>
+        <div class="stat-value text-2xl">{{ stats.ai_assisted_count }}</div>
+      </div>
+    </div>
+    </div>
+
+    <!-- PR Table -->
+    <div id="pr-table-container" class="min-w-0">
+      {% include "metrics/pull_requests/partials/table.html" %}
+    </div>
+  </div>
+  {% endpartialdef page-content %}
+{% endblock %}

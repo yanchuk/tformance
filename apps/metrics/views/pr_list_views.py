@@ -84,18 +84,19 @@ def pr_list(request: HttpRequest) -> HttpResponse:
     context = _get_pr_list_context(team, filters, page_number)
 
     # Add page-specific context
-    context["active_tab"] = "pull_requests"
+    context["active_page"] = "pull_requests"  # For tab highlighting
+    context["days"] = 30  # Default for date filter in tabs
     context["filter_options"] = get_filter_options(team)
 
     # Return partial for HTMX requests
     if request.headers.get("HX-Request"):
         return TemplateResponse(
             request,
-            "metrics/pull_requests/list.html#page-content",
+            "metrics/analytics/pull_requests.html#page-content",
             context,
         )
 
-    return TemplateResponse(request, "metrics/pull_requests/list.html", context)
+    return TemplateResponse(request, "metrics/analytics/pull_requests.html", context)
 
 
 @login_and_team_required

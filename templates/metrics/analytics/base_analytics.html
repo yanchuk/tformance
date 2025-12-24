@@ -104,4 +104,34 @@
 
 {% block page_js %}
 {% vite_asset 'assets/javascript/app.js' %}
+<script>
+  // Update active tab indicator after HTMX navigation
+  function updateActiveTab() {
+    const path = window.location.pathname;
+    const tabs = document.querySelectorAll('[role="tablist"] [role="tab"]');
+
+    tabs.forEach(tab => {
+      const href = tab.getAttribute('href');
+      if (!href) return;
+
+      // Check if tab href matches current path
+      const tabPath = href.split('?')[0]; // Remove query params
+      const isActive = path === tabPath || path.startsWith(tabPath + '/') ||
+        (tabPath.endsWith('/') && path === tabPath.slice(0, -1));
+
+      if (isActive) {
+        tab.classList.add('tab-active');
+      } else {
+        tab.classList.remove('tab-active');
+      }
+    });
+  }
+
+  // Listen for HTMX URL changes
+  document.body.addEventListener('htmx:pushedIntoHistory', updateActiveTab);
+  document.body.addEventListener('htmx:replacedInHistory', updateActiveTab);
+
+  // Also handle browser back/forward
+  window.addEventListener('popstate', updateActiveTab);
+</script>
 {% endblock %}

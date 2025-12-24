@@ -476,6 +476,73 @@ test.describe('Analytics Pages Tests @analytics', () => {
     });
   });
 
+  test.describe('Active Tab Indicator', () => {
+    test('active tab indicator updates after HTMX navigation', async ({ page }) => {
+      // Start at Overview
+      await page.goto('/app/metrics/analytics/');
+      await page.waitForLoadState('domcontentloaded');
+
+      // Verify Overview tab is active on initial load
+      await expect(page.getByRole('tab', { name: 'Overview' })).toHaveClass(/tab-active/);
+      await expect(page.getByRole('tab', { name: 'Quality' })).not.toHaveClass(/tab-active/);
+
+      // Click Quality tab (HTMX navigation)
+      await page.getByRole('tab', { name: 'Quality' }).click();
+      await page.waitForURL(/\/quality/);
+
+      // Verify Quality tab is now active (this is the bug - it should be active)
+      await expect(page.getByRole('tab', { name: 'Quality' })).toHaveClass(/tab-active/);
+      await expect(page.getByRole('tab', { name: 'Overview' })).not.toHaveClass(/tab-active/);
+    });
+
+    test('active tab indicator correct on each page full load', async ({ page }) => {
+      // Test Overview
+      await page.goto('/app/metrics/analytics/');
+      await expect(page.getByRole('tab', { name: 'Overview' })).toHaveClass(/tab-active/);
+
+      // Test AI Adoption
+      await page.goto('/app/metrics/analytics/ai-adoption/');
+      await expect(page.getByRole('tab', { name: 'AI Adoption' })).toHaveClass(/tab-active/);
+
+      // Test Delivery
+      await page.goto('/app/metrics/analytics/delivery/');
+      await expect(page.getByRole('tab', { name: 'Delivery' })).toHaveClass(/tab-active/);
+
+      // Test Quality
+      await page.goto('/app/metrics/analytics/quality/');
+      await expect(page.getByRole('tab', { name: 'Quality' })).toHaveClass(/tab-active/);
+
+      // Test Team
+      await page.goto('/app/metrics/analytics/team/');
+      await expect(page.getByRole('tab', { name: 'Team' })).toHaveClass(/tab-active/);
+
+      // Test Pull Requests
+      await page.goto('/app/metrics/pull-requests/');
+      await expect(page.getByRole('tab', { name: 'Pull Requests' })).toHaveClass(/tab-active/);
+    });
+
+    test('active tab indicator updates through full navigation flow', async ({ page }) => {
+      await page.goto('/app/metrics/analytics/');
+      await page.waitForLoadState('domcontentloaded');
+
+      // Navigate through tabs and verify active state updates
+      const tabSequence = [
+        { click: 'AI Adoption', url: /\/ai-adoption/ },
+        { click: 'Delivery', url: /\/delivery/ },
+        { click: 'Quality', url: /\/quality/ },
+        { click: 'Team', url: /\/team/ },
+        { click: 'Pull Requests', url: /\/pull-requests/ },
+        { click: 'Overview', url: /\/analytics\/(\?|$)/ },
+      ];
+
+      for (const { click, url } of tabSequence) {
+        await page.getByRole('tab', { name: click }).click();
+        await page.waitForURL(url);
+        await expect(page.getByRole('tab', { name: click })).toHaveClass(/tab-active/);
+      }
+    });
+  });
+
   test.describe('Cross-Page Navigation', () => {
     test('can navigate from old dashboard to new analytics', async ({ page }) => {
       // Go to old CTO overview

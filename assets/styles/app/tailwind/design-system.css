@@ -91,6 +91,7 @@
 .app-card {
   @apply bg-base-200 rounded-xl border border-base-300;
   @apply p-6;
+  @apply min-w-0; /* Prevent flex children from expanding card beyond container */
 }
 
 /* Card with hover effect */
@@ -730,6 +731,20 @@
 /* Menu hover states - warm highlight */
 .menu li > *:not(ul, .menu-title, details, .btn):hover:not(.menu-active):not(.active) {
   @apply bg-base-100/50 text-base-content;
+}
+
+/* DaisyUI tabs-boxed contrast fix for inactive tabs - WCAG AA 4.5:1 minimum */
+.tabs-boxed .tab:not(.tab-active) {
+  @apply text-base-content/80;
+}
+
+.tabs-boxed .tab:not(.tab-active):hover {
+  @apply text-base-content bg-base-100/50;
+}
+
+/* Active tab indicator - orange underline for clear visibility */
+.tabs-boxed .tab-active {
+  @apply border-b-2 border-primary;
 }
 
 /* -----------------------------------------------------------------------------
