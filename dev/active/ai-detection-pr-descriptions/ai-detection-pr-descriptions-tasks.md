@@ -90,17 +90,17 @@
 - [ ] Run actual backfill if results look good
 
 ### 2.5 Experiment Framework + PostHog Logging
-- [ ] Add dependencies: `uv add groq litellm posthog`
-- [ ] Create experiment runner: `apps/metrics/experiments/runner.py`
+- [x] Add dependencies: `uv add groq litellm posthog`
+- [x] Create experiment runner: `apps/metrics/experiments/runner.py`
 - [ ] Create analysis utils: `apps/metrics/experiments/analysis.py`
 - [ ] Integrate PostHog LLM analytics for automatic logging
-- [ ] Create management command: `run_ai_detection_experiment`
+- [x] Create management command: `run_ai_detection_experiment`
 
 ### 2.5.1 Promptfoo Integration (Fast Prompt Iteration)
 - [x] Create `experiments/promptfoo.yaml` with test cases
 - [x] Update runbook with Promptfoo workflow
-- [ ] Add 20+ test cases covering positive/negative/edge cases
-- [ ] Run initial evaluation: `npx promptfoo eval`
+- [x] Add 18 test cases covering positive/negative/edge cases
+- [ ] Run initial evaluation: `npx promptfoo eval` (requires GROQ_API_KEY)
 
 ### 2.6 Runbooks (Documentation for Context-Free Operation)
 - [x] Create `RUNBOOK-EXPERIMENTS.md` - How to run experiments
