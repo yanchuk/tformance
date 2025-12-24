@@ -1875,3 +1875,208 @@ class TestGraphQLSyncAIDetectionIncrementalSync(TransactionTestCase):
         existing_pr.refresh_from_db()
         self.assertTrue(existing_pr.is_ai_assisted)
         self.assertIn("claude_code", existing_pr.ai_tools_detected)
+
+
+# =============================================================================
+# Timing Metrics Tests (cycle_time_hours, review_time_hours, first_review_at)
+# =============================================================================
+
+
+class TestGraphQLSyncTimingMetrics(TransactionTestCase):
+    """Tests for timing metrics calculation during GraphQL sync."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.team = TeamFactory()
+        self.tracked_repo = TrackedRepositoryFactory(team=self.team, full_name="owner/repo")
+        self.author = TeamMemberFactory(team=self.team, github_id="testuser")
+        self.reviewer = TeamMemberFactory(team=self.team, github_id="reviewer1")
+
+    @patch("apps.integrations.services.github_graphql_sync.GitHubGraphQLClient")
+    def test_process_pr_calculates_cycle_time_for_merged_pr(self, mock_client_class):
+        """Test that _process_pr calculates cycle_time_hours for merged PRs."""
+        # Arrange
+        mock_client = MagicMock()
+        mock_client_class.return_value = mock_client
+
+        # PR created and merged 48 hours later (2 days)
+        pr_created = timezone.now() - timedelta(days=3)
+        pr_merged = pr_created + timedelta(hours=48)
+
+        pr_data = create_graphql_pr_response(pr_number=123, state="MERGED")
+        pr_data["createdAt"] = pr_created.isoformat()
+        pr_data["mergedAt"] = pr_merged.isoformat()
+
+        mock_client.fetch_prs_bulk = AsyncMock(
+            return_value={
+                "repository": {
+                    "pullRequests": {"nodes": [pr_data], "pageInfo": {"hasNextPage": False, "endCursor": None}}
+                },
+                "rateLimit": {"remaining": 5000},
+            }
+        )
+
+        # Act
+        asyncio.run(sync_repository_history_graphql(self.tracked_repo, days_back=90))
+
+        # Assert
+        pr = PullRequest.objects.get(team=self.team, github_pr_id=123)
+        self.assertIsNotNone(pr.cycle_time_hours)
+        # 48 hours between creation and merge
+        self.assertAlmostEqual(float(pr.cycle_time_hours), 48.0, delta=0.1)
+
+    @patch("apps.integrations.services.github_graphql_sync.GitHubGraphQLClient")
+    def test_process_pr_does_not_calculate_cycle_time_for_open_pr(self, mock_client_class):
+        """Test that _process_pr does not calculate cycle_time_hours for open PRs."""
+        # Arrange
+        mock_client = MagicMock()
+        mock_client_class.return_value = mock_client
+
+        # Open PR (not merged)
+        pr_created = timezone.now() - timedelta(days=2)
+
+        pr_data = create_graphql_pr_response(pr_number=456, state="OPEN")
+        pr_data["createdAt"] = pr_created.isoformat()
+        pr_data["mergedAt"] = None  # Not merged
+
+        mock_client.fetch_prs_bulk = AsyncMock(
+            return_value={
+                "repository": {
+                    "pullRequests": {"nodes": [pr_data], "pageInfo": {"hasNextPage": False, "endCursor": None}}
+                },
+                "rateLimit": {"remaining": 5000},
+            }
+        )
+
+        # Act
+        asyncio.run(sync_repository_history_graphql(self.tracked_repo, days_back=90))
+
+        # Assert
+        pr = PullRequest.objects.get(team=self.team, github_pr_id=456)
+        self.assertIsNone(pr.cycle_time_hours)
+
+    @patch("apps.integrations.services.github_graphql_sync.GitHubGraphQLClient")
+    def test_process_reviews_updates_first_review_at(self, mock_client_class):
+        """Test that _process_reviews updates PR's first_review_at field."""
+        # Arrange
+        mock_client = MagicMock()
+        mock_client_class.return_value = mock_client
+
+        pr_created = timezone.now() - timedelta(days=3)
+        review_submitted = pr_created + timedelta(hours=6)
+
+        pr_data = create_graphql_pr_response(pr_number=789, state="MERGED", has_reviews=True)
+        pr_data["createdAt"] = pr_created.isoformat()
+        pr_data["reviews"]["nodes"][0]["submittedAt"] = review_submitted.isoformat()
+
+        mock_client.fetch_prs_bulk = AsyncMock(
+            return_value={
+                "repository": {
+                    "pullRequests": {"nodes": [pr_data], "pageInfo": {"hasNextPage": False, "endCursor": None}}
+                },
+                "rateLimit": {"remaining": 5000},
+            }
+        )
+
+        # Act
+        asyncio.run(sync_repository_history_graphql(self.tracked_repo, days_back=90))
+
+        # Assert
+        pr = PullRequest.objects.get(team=self.team, github_pr_id=789)
+        self.assertIsNotNone(pr.first_review_at)
+        # Should match the review submission time
+        self.assertEqual(pr.first_review_at.replace(microsecond=0), review_submitted.replace(microsecond=0))
+
+    @patch("apps.integrations.services.github_graphql_sync.GitHubGraphQLClient")
+    def test_process_reviews_calculates_review_time_hours(self, mock_client_class):
+        """Test that _process_reviews calculates review_time_hours."""
+        # Arrange
+        mock_client = MagicMock()
+        mock_client_class.return_value = mock_client
+
+        pr_created = timezone.now() - timedelta(days=3)
+        review_submitted = pr_created + timedelta(hours=12)  # 12 hours after PR creation
+
+        pr_data = create_graphql_pr_response(pr_number=101, state="MERGED", has_reviews=True)
+        pr_data["createdAt"] = pr_created.isoformat()
+        pr_data["reviews"]["nodes"][0]["submittedAt"] = review_submitted.isoformat()
+
+        mock_client.fetch_prs_bulk = AsyncMock(
+            return_value={
+                "repository": {
+                    "pullRequests": {"nodes": [pr_data], "pageInfo": {"hasNextPage": False, "endCursor": None}}
+                },
+                "rateLimit": {"remaining": 5000},
+            }
+        )
+
+        # Act
+        asyncio.run(sync_repository_history_graphql(self.tracked_repo, days_back=90))
+
+        # Assert
+        pr = PullRequest.objects.get(team=self.team, github_pr_id=101)
+        self.assertIsNotNone(pr.review_time_hours)
+        # 12 hours between PR creation and first review
+        self.assertAlmostEqual(float(pr.review_time_hours), 12.0, delta=0.1)
+
+    @patch("apps.integrations.services.github_graphql_sync.GitHubGraphQLClient")
+    def test_process_reviews_uses_earliest_review_timestamp(self, mock_client_class):
+        """Test that _process_reviews uses the earliest review when multiple reviews exist."""
+        # Arrange
+        mock_client = MagicMock()
+        mock_client_class.return_value = mock_client
+
+        pr_created = timezone.now() - timedelta(days=3)
+        first_review = pr_created + timedelta(hours=4)
+        second_review = pr_created + timedelta(hours=10)
+        third_review = pr_created + timedelta(hours=15)
+
+        pr_data = create_graphql_pr_response(pr_number=202, state="MERGED")
+        pr_data["createdAt"] = pr_created.isoformat()
+        pr_data["reviews"] = {
+            "nodes": [
+                {
+                    "databaseId": 2000001,
+                    "author": {"login": "reviewer1"},
+                    "state": "COMMENTED",
+                    "submittedAt": second_review.isoformat(),  # Not the earliest
+                    "body": "Looks good",
+                },
+                {
+                    "databaseId": 2000002,
+                    "author": {"login": "reviewer2"},
+                    "state": "APPROVED",
+                    "submittedAt": first_review.isoformat(),  # Earliest
+                    "body": "LGTM",
+                },
+                {
+                    "databaseId": 2000003,
+                    "author": {"login": "reviewer1"},
+                    "state": "APPROVED",
+                    "submittedAt": third_review.isoformat(),  # Latest
+                    "body": "Approved",
+                },
+            ]
+        }
+
+        # Need reviewer2 for the test
+        TeamMemberFactory(team=self.team, github_id="reviewer2")
+
+        mock_client.fetch_prs_bulk = AsyncMock(
+            return_value={
+                "repository": {
+                    "pullRequests": {"nodes": [pr_data], "pageInfo": {"hasNextPage": False, "endCursor": None}}
+                },
+                "rateLimit": {"remaining": 5000},
+            }
+        )
+
+        # Act
+        asyncio.run(sync_repository_history_graphql(self.tracked_repo, days_back=90))
+
+        # Assert
+        pr = PullRequest.objects.get(team=self.team, github_pr_id=202)
+        self.assertIsNotNone(pr.first_review_at)
+        # Should use the earliest review (4 hours after creation)
+        self.assertEqual(pr.first_review_at.replace(microsecond=0), first_review.replace(microsecond=0))
+        self.assertAlmostEqual(float(pr.review_time_hours), 4.0, delta=0.1)

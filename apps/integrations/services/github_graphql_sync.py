@@ -19,6 +19,7 @@ from apps.integrations.services.github_graphql import (
     GitHubGraphQLRateLimitError,
 )
 from apps.metrics.models import Commit, PRFile, PRReview, PullRequest, TeamMember
+from apps.metrics.processors import _calculate_cycle_time_hours, _calculate_time_diff_hours
 from apps.metrics.services.ai_detector import detect_ai_author, detect_ai_in_text
 
 logger = logging.getLogger(__name__)
@@ -235,6 +236,40 @@ def _process_pr_async(team_id: int, github_repo: str, pr_data: dict, cutoff_date
     _process_pr(team, github_repo, pr_data, cutoff_date, result)
 
 
+def _detect_pr_ai_involvement(author_login: str | None, title: str, body: str) -> tuple[bool, list[str]]:
+    """Detect AI involvement in a PR from author and text.
+
+    Args:
+        author_login: GitHub login of PR author
+        title: PR title
+        body: PR body text
+
+    Returns:
+        Tuple of (is_ai_assisted, ai_tools_detected)
+    """
+    author_ai_result = detect_ai_author(author_login)
+    text_ai_result = detect_ai_in_text(f"{title}\n{body}")
+
+    # Combine AI detection results
+    ai_tools = list(text_ai_result["ai_tools"])  # Copy to avoid mutation
+    if author_ai_result["is_ai"] and author_ai_result["ai_type"] not in ai_tools:
+        ai_tools.append(author_ai_result["ai_type"])
+    is_ai_assisted = author_ai_result["is_ai"] or text_ai_result["is_ai_assisted"]
+
+    return is_ai_assisted, ai_tools
+
+
+def _update_pr_timing_metrics(pr: PullRequest) -> None:
+    """Update timing metrics (cycle_time_hours) for a PR if applicable.
+
+    Args:
+        pr: PullRequest instance to update
+    """
+    if pr.merged_at:
+        pr.cycle_time_hours = _calculate_cycle_time_hours(pr.pr_created_at, pr.merged_at)
+        pr.save()
+
+
 def _process_pr(
     team,
     github_repo: str,
@@ -264,15 +299,8 @@ def _process_pr(
     title = pr_data.get("title", "")
     body = pr_data.get("body", "") or ""
 
-    # Detect AI involvement from author and text
-    author_ai_result = detect_ai_author(author_login)
-    text_ai_result = detect_ai_in_text(f"{title}\n{body}")
-
-    # Combine AI detection results
-    ai_tools = list(text_ai_result["ai_tools"])  # Copy to avoid mutation
-    if author_ai_result["is_ai"] and author_ai_result["ai_type"] not in ai_tools:
-        ai_tools.append(author_ai_result["ai_type"])
-    is_ai_assisted = author_ai_result["is_ai"] or text_ai_result["is_ai_assisted"]
+    # Detect AI involvement
+    is_ai_assisted, ai_tools = _detect_pr_ai_involvement(author_login, title, body)
 
     pr_defaults = {
         "title": title,
@@ -297,6 +325,9 @@ def _process_pr(
     result.prs_synced += 1
     logger.debug(f"{'Created' if created else 'Updated'} PR #{pr_number}")
 
+    # Update timing metrics
+    _update_pr_timing_metrics(pr)
+
     # Process nested data
     _process_reviews(team, pr, pr_data.get("reviews", {}).get("nodes", []), result)
     _process_commits(team, pr, github_repo, pr_data.get("commits", {}).get("nodes", []), result)
@@ -310,15 +341,23 @@ def _process_reviews(
     result: SyncResult,
 ) -> None:
     """Process PR reviews from GraphQL response."""
+    earliest_review_at = None
+
     for review_data in review_nodes:
         review_id = review_data.get("databaseId")
         reviewer_login = review_data.get("author", {}).get("login") if review_data.get("author") else None
         reviewer = _get_team_member(team, reviewer_login)
 
+        submitted_at = _parse_datetime(review_data.get("submittedAt"))
+
+        # Track earliest review timestamp
+        if submitted_at and (earliest_review_at is None or submitted_at < earliest_review_at):
+            earliest_review_at = submitted_at
+
         review_defaults = {
             "state": _map_review_state(review_data.get("state", "COMMENTED")),
             "body": review_data.get("body", "") or "",
-            "submitted_at": _parse_datetime(review_data.get("submittedAt")),
+            "submitted_at": submitted_at,
             "reviewer": reviewer,
             "pull_request": pr,
         }
@@ -339,6 +378,12 @@ def _process_reviews(
                 defaults=review_defaults,
             )
         result.reviews_synced += 1
+
+    # Update PR's first_review_at and review_time_hours if we found an earlier review
+    if earliest_review_at and (pr.first_review_at is None or earliest_review_at < pr.first_review_at):
+        pr.first_review_at = earliest_review_at
+        pr.review_time_hours = _calculate_time_diff_hours(pr.pr_created_at, earliest_review_at)
+        pr.save()
 
 
 def _process_commits(
@@ -555,15 +600,8 @@ def _process_pr_incremental(
     title = pr_data.get("title", "")
     body = pr_data.get("body", "") or ""
 
-    # Detect AI involvement from author and text
-    author_ai_result = detect_ai_author(author_login)
-    text_ai_result = detect_ai_in_text(f"{title}\n{body}")
-
-    # Combine AI detection results
-    ai_tools = list(text_ai_result["ai_tools"])  # Copy to avoid mutation
-    if author_ai_result["is_ai"] and author_ai_result["ai_type"] not in ai_tools:
-        ai_tools.append(author_ai_result["ai_type"])
-    is_ai_assisted = author_ai_result["is_ai"] or text_ai_result["is_ai_assisted"]
+    # Detect AI involvement
+    is_ai_assisted, ai_tools = _detect_pr_ai_involvement(author_login, title, body)
 
     pr_defaults = {
         "title": title,
@@ -587,6 +625,9 @@ def _process_pr_incremental(
     )
     result.prs_synced += 1
     logger.debug(f"{'Created' if created else 'Updated'} PR #{pr_number}")
+
+    # Update timing metrics
+    _update_pr_timing_metrics(pr)
 
     # Process nested data
     _process_reviews(team, pr, pr_data.get("reviews", {}).get("nodes", []), result)
