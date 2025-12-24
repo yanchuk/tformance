@@ -86,8 +86,12 @@ class Command(BaseCommand):
             # Only process PRs without llm_summary or with older version
             qs = qs.filter(llm_summary__isnull=True) | qs.exclude(llm_summary_version=PROMPT_VERSION)
 
-        # Order by most recent first
-        prs = list(qs.order_by("-pr_created_at")[:limit])
+        # Prefetch related data for v6.1.0 - avoid N+1 queries
+        prs = list(
+            qs.select_related("author")
+            .prefetch_related("files", "commits", "reviews__reviewer")
+            .order_by("-pr_created_at")[:limit]
+        )
 
         self.stdout.write(f"Found {len(prs)} PRs to process (limit: {limit})")
         self.stdout.write(f"Using prompt version: {PROMPT_VERSION}")
@@ -115,6 +119,13 @@ class Command(BaseCommand):
             self.stdout.write(f"\n[{i + 1}/{len(prs)}] PR #{pr.github_pr_id}: {pr.title[:50]}...")
 
             try:
+                # Extract related data (v6.1.0)
+                file_paths = list(pr.files.values_list("filename", flat=True))
+                commit_messages = list(pr.commits.values_list("message", flat=True))
+                reviewers = list(
+                    set(r.reviewer.display_name for r in pr.reviews.all() if r.reviewer and r.reviewer.display_name)
+                )
+
                 # Build user prompt with all available context
                 user_prompt = get_user_prompt(
                     pr_body=pr.body or "",
@@ -131,6 +142,15 @@ class Command(BaseCommand):
                     review_time_hours=pr.review_time_hours,
                     commits_after_first_review=pr.commits_after_first_review,
                     review_rounds=pr.review_rounds,
+                    # v6.1.0 - Additional context
+                    file_paths=file_paths,
+                    commit_messages=commit_messages,
+                    reviewers=reviewers,
+                    milestone=pr.milestone_title or None,
+                    assignees=pr.assignees or [],
+                    linked_issues=[str(i) for i in pr.linked_issues] if pr.linked_issues else [],
+                    jira_key=pr.jira_key or None,
+                    author_name=pr.author.display_name if pr.author else None,
                 )
 
                 # Call Groq API

@@ -589,6 +589,11 @@ SCHEDULED_TASKS = {
         "schedule": schedules.crontab(minute=0, hour=3, day_of_month=1),  # 1st of month 3 AM UTC
         "expire_seconds": 60 * 60 * 2,  # 2 hour expiry
     },
+    "run-llm-analysis-nightly": {
+        "task": "apps.metrics.tasks.run_all_teams_llm_analysis",
+        "schedule": schedules.crontab(minute=0, hour=5),  # 5 AM UTC (after GitHub/Jira syncs)
+        "expire_seconds": 60 * 60 * 2,  # 2 hour expiry
+    },
 }
 
 # Channels / Daphne setup

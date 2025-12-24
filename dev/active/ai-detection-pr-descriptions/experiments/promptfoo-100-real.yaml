@@ -1,0 +1,2453 @@
+description: 100 Real PRs for Manual AI Detection Review
+providers:
+- id: groq:llama-3.3-70b-versatile
+  config:
+    temperature: 0
+    max_tokens: 800
+    response_format:
+      type: json_object
+prompts:
+- id: v6
+  raw: '[{"role": "system", "content": "{{system_prompt}}"}, {"role": "user", "content": "Analyze this pull request:\n\n{{user_prompt}}"}]'
+defaultTest:
+  vars:
+    system_prompt: file://prompts/v6-system.txt
+  assert:
+  - type: is-json
+tests:
+- description: 'PR #2360: Feat: Feature/migrate help to spa inertia'
+  vars:
+    user_prompt: "Title: Feat: Feature/migrate help to spa inertia\nState: closed\nLines: +21431/-13328\nTime to first review:\
+      \ 0.0 hours\n\nDescription:\nFixes: #856 \r\n\r\n### Summary \r\nMigrated the Help Center (/help) to a Single Page Application\
+      \ (SPA) using Inertia.js to eliminate full page reloads and provide a seamless navigation experience.\r\n\r\n### Key\
+      \ Changes\r\n\r\nBackend:  ArticlesController and  CategoriesController to render Inertia pages. Article content is\
+      \ now rendered server-side and passed as HTML props.\r\nFrontend: Created new Inertia components (Articles/Index, Articles/Show,\
+      \ Categories/Show) that replicate the original design with proper styling and layout.\r\nNavigation: Added a \"Help\"\
+      \ link to the main sidebar using ClientNavLink to ensure SPA navigation from the dashboard.\r\n\r\nFeatures: Preserved\
+      \ instant search functionality and responsive design.\r\n\r\n### Verification\r\nVerified no page reloads when navigating\
+      \ between articles, categories, or clicking \"Help\" from the sidebar.\r\nConfirmed article content and layout match\
+      \ production exactly.\r\n\r\n### Before (page is refreshing while opening articles or clicking on Help itself)\r\n[Inertial_help\
+      \ _old.webm](https://github.com/user-attachments/assets/9ecf93e7-04f0-41c4-8181-b5bc15e9fb04)\r\n\r\n### After \r\n\
+      https://github.com/user-attachments/assets/f3efb870-6024-4550-923b-91b54939dfa1\r\n\r\n\r\nAI Disclousre:\r\n\r\nAI\
+      \ USED: Claude Sonnet 4.5 for understanding the flow and tradeoff of approaches.\r\nLivestream Viewing Confirmation\r\
+      \n\r\nHave watched both the live streams end-to-end. \r\n\r\n> Requested Changes on [PR](https://github.com/antiwork/gumroad/pull/2307)\
+      \ are implemented here. \r\n"
+  metadata:
+    pr_id: 2360
+    regex_detected: true
+    github_url: https://github.com/antiwork/gumroad/pull/2360
+- description: 'PR #26192: feat(storybook): add component stories and screens'
+  vars:
+    user_prompt: 'Title: feat(storybook): add component stories and screenshot generation
+
+      State: open
+
+      Lines: +42851/-49
+
+      Labels: community, size/XXL
+
+      Hotfix: Yes
+
+      Time to first review: 0.1 hours
+
+
+      Description:
+
+      ## Summary
+
+      - Add 100+ component stories across packages (Button, Alert, Avatar, Badge, etc.)
+
+      - Update storybook-onbook-plugin to 0.2.7 with working CLI
+
+      - Configure E2B sandbox template for automated screenshot generation
+
+      - Fix storybook scripts to avoid duplicate port args
+
+
+      ## Test plan
+
+      - [x] Verified storybook starts locally with `yarn storybook`
+
+      - [x] Tested screenshot generation with `npx storybook-onbook-plugin generate-screenshots`
+
+      - [x] E2B sandbox build in progress (Storybook starts successfully)
+
+
+      🤖 Generated with [Claude Code](https://claude.com/claude-code)'
+  metadata:
+    pr_id: 26192
+    regex_detected: true
+    github_url: https://github.com/calcom/cal.com/pull/26192
+- description: 'PR #31718: fix(serve): net permissions in config file'
+  vars:
+    user_prompt: 'Title: fix(serve): net permissions in config file
+
+      State: open
+
+      Lines: +67/-86
+
+
+      Description:
+
+      It wasn''t being resolved properly because we were injecting allow-net options when parsing flags instead of when resolving
+      wholly resolving permissions.'
+  metadata:
+    pr_id: 31718
+    regex_detected: false
+    github_url: https://github.com/denoland/deno/pull/31718
+- description: 'PR #43985: feat(capture): implement GlobalRateLimiter for cap'
+  vars:
+    user_prompt: "Title: feat(capture): implement GlobalRateLimiter for capture\nState: open\nLines: +543/-0\nDraft: Yes\n\
+      \nDescription:\n## Problem\r\nAll our event capture endpoints require global, easy-to-document rate limits that can\
+      \ be enforced in a uniform way across each deployment. At first, we'll want to limit by events-ingested-per-interval\
+      \ per _team_ (API token) but the approach should be scalable to multiples of current event traffic volume, and more\
+      \ granular key scopes, in the future.\r\n\r\n<!-- Who are we building for, what are their needs, why is this important?\
+      \ -->\r\n\r\n<!-- Does this fix an issue? Uncomment the line below with the issue ID to automatically close it when\
+      \ merged -->\r\n<!-- Closes #ISSUE_ID -->\r\n\r\n## Changes\r\n* Implement `GlobalRateLimiter` in Rust `common/limiters`\r\
+      \n* Implement related unit tests\r\n* Wire up initial application for smoke testing in `capture` mirror deployment\r\
+      \n\r\n<!-- If there are frontend changes, please include screenshots. -->\r\n<!-- If a reference design was involved,\
+      \ include a link to the relevant Figma frame! -->\r\n\r\n## How did you test this code?\r\nLocally and in CI. Planning\
+      \ to smoke test in capture mirror deploy prior to introduction into prod critical path ✅ \r\n<!-- Briefly describe the\
+      \ steps you took. -->\r\n<!-- Include automated tests if possible, otherwise describe the manual testing routine. -->\r\
+      \n\r\n<!-- Docs reminder: If this change requires updated docs, please do that! Engineers are the primary people responsible\
+      \ for their documentation. \U0001F64C -->\r\n\r\n\U0001F449 _Stay up-to-date with [PostHog coding conventions](https://posthog.com/docs/contribute/coding-conventions)\
+      \ for a smoother review._\r\n\r\n## Changelog: (features only) Is this feature complete?\r\nN/A\r\n<!-- Yes if this\
+      \ is okay to go in the changelog. No if it's still hidden behind a feature flag, or part of a feature that's not complete\
+      \ yet, etc.  -->\r\n<!-- Removing this section does not mean the changelog bot won't pick it up, because *some people*\
+      \ like to not use the template, so we can't rely on it existing. -->\r\n"
+  metadata:
+    pr_id: 43985
+    regex_detected: false
+    github_url: https://github.com/PostHog/posthog/pull/43985
+- description: 'PR #2813: feat(flags): add updateFlags() method for injectin'
+  vars:
+    user_prompt: "Title: feat(flags): add updateFlags() method for injecting flags without network request\nState: open\n\
+      Lines: +198/-1\nLabels: release\nTime to first review: 0.1 hours\n\nDescription:\n## Problem\r\n\r\nWhen using `instrumentation-client.ts`\
+      \ in Next.js, PostHog initializes once per app launch. This means feature flag values don't update on subsequent client-side\
+      \ navigations, even if a middleware evaluates fresh flags server-side. Users need a way to inject server-evaluated flag\
+      \ values into the client SDK without making additional network requests. This is applicable to other single-page applications\
+      \ with similar initialization methods.\r\n\r\nRelated: https://github.com/PostHog/posthog/issues/43980\r\n\r\n## Changes\r\
+      \n\r\nAdds a new public method `posthog.updateFlags(flags, payloads?, options?)` that:\r\n\r\n- Injects feature flag\
+      \ values from an external source (e.g., server-side evaluation, edge middleware)\r\n- Fires `onFeatureFlags` callbacks\
+      \ so React hooks auto-update\r\n- Works with `advanced_disable_flags: true` for server-only evaluation patterns\r\n\
+      - Supports `{ merge: true }` option to merge with existing flags instead of replacing\r\n\r\nThis is the foundational\
+      \ primitive: the transport/sync layer (cookies, navigation detection, race conditions) is a separate concern requiring\
+      \ more careful consideration.\r\n\r\n## Release info Sub-libraries affected\r\n\r\n### Libraries affected\r\n\r\n- [x]\
+      \ posthog-js (web)\r\n\r\n## Checklist\r\n\r\n- [x] Tests for new code\r\n- [x] Accounted for the impact of any changes\
+      \ across different platforms\r\n- [x] Accounted for backwards compatibility of any changes (no breaking changes!)\r\n\
+      - [x] Took care not to unnecessarily increase the bundle size\r\n\r\n### If releasing new changes\r\n\r\n- [x] Ran `pnpm\
+      \ changeset` to generate a changeset file\r\n- [x] Added the \"release\" label to the PR to indicate we're publishing\
+      \ new versions for the affected packages\r\n\r\n<!-- For more details check RELEASING.md -->\r\n"
+  metadata:
+    pr_id: 2813
+    regex_detected: false
+    github_url: https://github.com/PostHog/posthog-js/pull/2813
+- description: 'PR #41589: fix: SQL injection vulnerability in parameter proc'
+  vars:
+    user_prompt: "Title: fix: SQL injection vulnerability in parameter processing\nState: open\nLines: +79/-2\nHotfix: Yes\n\
+      Time to first review: 0.1 hours\n\nDescription:\nThis pull request introduces important security improvements to the\
+      \ SQL parameterization logic, specifically to prevent SQL injection attacks. The main change is the use of a proper\
+      \ SQL literal escaping function when substituting parameters, and a comprehensive set of tests has been added to verify\
+      \ protection against various SQL injection techniques.\r\n\r\nSecurity enhancements:\r\n\r\n* Updated `processParameterizedSql`\
+      \ in `sql-parameters.ts` to use the `literal()` function from `@supabase/pg-meta/src/pg-format`, ensuring all parameter\
+      \ values are safely escaped and quoted to prevent SQL injection. [[1]](diffhunk://#diff-bab72f5896c222a2880990ae0979308d4c78bfd591dc9e49a60e94b94c249512R1-R2)\
+      \ [[2]](diffhunk://#diff-bab72f5896c222a2880990ae0979308d4c78bfd591dc9e49a60e94b94c249512L103-R115)\r\n\r\nTesting improvements:\r\
+      \n\r\n* Added a new test suite to `sql-parameters.test.ts` covering multiple SQL injection scenarios (single quote escape,\
+      \ UNION attacks, OR 1=1, comment injection, semicolon termination, numeric injection, and batch statement injection)\
+      \ to confirm that the escaping logic effectively neutralizes malicious input.\n\n<!-- This is an auto-generated comment:\
+      \ release notes by coderabbit.ai -->\n\n## Summary by CodeRabbit\n\n* **Bug Fixes**\n  * Improved SQL parameter security\
+      \ with enhanced escaping to prevent SQL injection attacks.\n\n* **Tests**\n  * Added comprehensive test suite for SQL\
+      \ injection protection, validating defense mechanisms against multiple attack vectors including quote escaping, UNION-based\
+      \ injections, and command injections.\n\n<sub>✏️ Tip: You can customize this high-level summary in your review settings.</sub>\n\
+      \n<!-- end of auto-generated comment: release notes by coderabbit.ai -->"
+  metadata:
+    pr_id: 41589
+    regex_detected: true
+    github_url: https://github.com/supabase/supabase/pull/41589
+- description: 'PR #26191: feat(webhooks): add oneTimePassword to BOOKING_REQ'
+  vars:
+    user_prompt: "Title: feat(webhooks): add oneTimePassword to BOOKING_REQUESTED payload\nState: open\nLines: +4/-0\nLabels:\
+      \ ✨ feature, Medium priority, Stale, webhooks, community, size/XS\nTime to first review: 0.0 hours\n\nDescription:\n\
+      ## What does this PR do?\r\n\r\nAdds the `oneTimePassword` (accept/reject token) to the `BOOKING_REQUESTED` webhook\
+      \ payload, enabling external integrations like Slack/Mattermost to create action buttons for accepting or rejecting\
+      \ booking requests directly from notifications.\r\n\r\n- Fixes #9538\r\n\r\n## Visual Demo (For contributors especially)\r\
+      \n\r\nA visual demonstration is strongly recommended, for both the original and new change **(video / image - any one)**.\r\
+      \n\r\n#### Webhook Payload Before:\r\n```json\r\n{\r\n  \"triggerEvent\": \"BOOKING_REQUESTED\",\r\n  \"payload\": {\r\
+      \n    \"uid\": \"qLZj3xMahHmVrdbzEzgbkw\",\r\n    \"title\": \"Meeting with John\",\r\n    ...\r\n  }\r\n}\r\n```\r\n\
+      \r\n#### Webhook Payload After:\r\n```json\r\n{\r\n  \"triggerEvent\": \"BOOKING_REQUESTED\",\r\n  \"payload\": {\r\n\
+      \    \"uid\": \"qLZj3xMahHmVrdbzEzgbkw\",\r\n    \"title\": \"Meeting with John\",\r\n    \"oneTimePassword\": \"aa8d5be0-4263-4857-b9b4-0e391de20d9f\"\
+      ,\r\n    ...\r\n  }\r\n}\r\n```\r\n\r\n#### Video Demo (if applicable):\r\n\r\n- Show screen recordings of the issue\
+      \ or feature.\r\n\r\nNow we have this otp section: \r\n\r\n<img width=\"1102\" height=\"782\" alt=\"image\" src=\"https://github.com/user-attachments/assets/9a3f8fdd-8bec-4356-8bf9-73edeb1e5972\"\
+      \ />\r\n\r\n#### Image Demo (if applicable):\r\n\r\n- Add side-by-side screenshots of the original and updated change.\r\
+      \n- Highlight any significant change(s).\r\n\r\n## Mandatory Tasks (DO NOT REMOVE)\r\n\r\n- [x] I have self-reviewed\
+      \ the code (A decent size PR without self-review might be rejected).\r\n- [x] I have updated the developer docs in /docs\
+      \ if this PR makes changes that would require a [documentation change](https://cal.com/docs). If N/A, write N/A here\
+      \ and check the checkbox.\r\n- [x] I confirm automated tests are in place that prove my fix is effective or that my\
+      \ feature works.\r\n\r\n## How should this be tested?\r\n\r\n1. **Setup:**\r\n   - Create an event type with \"Requires\
+      \ confirmation\" enabled\r\n   - Create a webhook for `BOOKING_REQUESTED` trigger event\r\n\r\n2. **Test Steps:**\r\n\
+      \   - Book a meeting on the event type\r\n   - Check the webhook "
+  metadata:
+    pr_id: 26191
+    regex_detected: false
+    github_url: https://github.com/calcom/cal.com/pull/26191
+- description: 'PR #87768: [strict-route-types] Ensure chache profiles and ro'
+  vars:
+    user_prompt: "Title: [strict-route-types] Ensure chache profiles and routes are type-checked even if .next is excluded\n\
+      State: open\nLines: +919/-445\nLabels: type: next, created-by: Next.js team, tests\nDraft: Yes\n\nDescription:\nFlagged\
+      \ behind `experimental.strictRouteTypes`\r\n\r\nThis fixes issues where cache profiles where not included or routes\
+      \ not validated if `.next` was excluded to squeeze out every bit of TypeScript performance.\r\n\r\nIt also fixes a redundant\
+      \ type-checking since we now have separate dev and prod dist folders.  If you run `next dev` and (`next build` or `next\
+      \ typegen`), you'd type-check routes and links twice. Now `next-env.d.ts` only exists once where we decide which dist\
+      \ folder to type-check.\r\n\r\nGoing forward, new Next.js type-checking should be added to `next-env.d.ts`. That file\
+      \ is fully controlled by Next.js and churning it, does not churn users since it's not in version control.\r\n\r\n`next-env.d.ts`\
+      \ will be moved into `.next` in a follow-up. Ideally independent of the dist folder i.e.  independent of `next dev`\
+      \ vs `next build`.\r\n\r\nCloses https://linear.app/vercel/issue/NXT-124/\r\n\r\nhttps://github.com/vercel/next.js/pull/87319\
+      \ but flagged."
+  metadata:
+    pr_id: 87768
+    regex_detected: false
+    github_url: https://github.com/vercel/next.js/pull/87768
+- description: 'PR #2463: Inertia migration - Following'
+  vars:
+    user_prompt: "Title: Inertia migration - Following\nState: open\nLines: +71/-31\nDraft: Yes\n\nDescription:\nref #856\
+      \ \r\nThis PR migrates the following page to Inertia:\r\n\r\n1. Following (/dashboard/audience)\r\n"
+  metadata:
+    pr_id: 2463
+    regex_detected: false
+    github_url: https://github.com/antiwork/gumroad/pull/2463
+- description: 'PR #43984: fix(flags): Add warning for flags that can''t be ev'
+  vars:
+    user_prompt: "Title: fix(flags): Add warning for flags that can't be evaluated locally\nState: open\nLines: +85/-11\n\
+      Hotfix: Yes\nTime to first review: 0.0 hours\n\nDescription:\n## Problem\r\n\r\n<!-- Who are we building for, what are\
+      \ their needs, why is this important? -->\r\n\r\nUsers configuring feature flags with `is_not_set` operator or static\
+      \ cohorts have no visibility that these flags cannot be evaluated locally. This leads to confusion when local evaluation\
+      \ doesn't work as expected.\r\n\r\n<!-- Does this fix an issue? Uncomment the line below with the issue ID to automatically\
+      \ close it when merged -->\r\nCloses #43821\r\n\r\n## Changes\r\n\r\n<!-- If there are frontend changes, please include\
+      \ screenshots. -->\r\n<!-- If a reference design was involved, include a link to the relevant Figma frame! -->\r\n\r\
+      \nExtended `featureFlagConditionWarningLogic` to detect and warn about:\r\n- `is_not_set` operator usage\r\n- Static\
+      \ cohort dependencies\r\n\r\nThe warning appears as a subtle note via the existing `LemonBanner` component, consistent\
+      \ with the current regex pattern warnings.\r\n\r\n## How did you test this code?\r\n\r\n<!-- Briefly describe the steps\
+      \ you took. -->\r\n<!-- Include automated tests if possible, otherwise describe the manual testing routine. -->\r\n\r\
+      \n- Verified existing regex warning tests still pass (message format preserved)\r\n- TypeScript type checking passed\
+      \ for modified file\r\n\r\n<!-- Docs reminder: If this change requires updated docs, please do that! Engineers are the\
+      \ primary people responsible for their documentation. \U0001F64C -->\r\n\r\n\U0001F449 _Stay up-to-date with [PostHog\
+      \ coding conventions](https://posthog.com/docs/contribute/coding-conventions) for a smoother review._\r\n\r\n## Changelog:\
+      \ (features only) Is this feature complete?\r\n\r\n<!-- Yes if this is okay to go in the changelog. No if it's still\
+      \ hidden behind a feature flag, or part of a feature that's not complete yet, etc.  -->\r\n\r\nNo - This is a bug fix,\
+      \ not a new feature.\r\n"
+  metadata:
+    pr_id: 43984
+    regex_detected: false
+    github_url: https://github.com/PostHog/posthog/pull/43984
+- description: 'PR #43981: feat: Added CI output summary for docker builds'
+  vars:
+    user_prompt: "Title: feat: Added CI output summary for docker builds\nState: open\nLines: +25/-0\nTime to first review:\
+      \ 0.4 hours\n\nDescription:\n## Problem\r\n\r\nOften using the CI built image for manual test deploys for sensitive\
+      \ changes.\r\n\r\n\r\n## Changes\r\n\r\n<img width=\"1571\" height=\"370\" alt=\"Screenshot 2025-12-24 at 17 59 15\"\
+      \ src=\"https://github.com/user-attachments/assets/b2e3325c-43e4-4e81-a439-63c92d364818\" />\r\n\r\n* Output this at\
+      \ the summary level now\r\n\r\n## How did you test this code?\r\n\r\n<!-- Briefly describe the steps you took. -->\r\
+      \n<!-- Include automated tests if possible, otherwise describe the manual testing routine. -->\r\n\r\n<!-- Docs reminder:\
+      \ If this change requires updated docs, please do that! Engineers are the primary people responsible for their documentation.\
+      \ \U0001F64C -->\r\n\r\n\U0001F449 _Stay up-to-date with [PostHog coding conventions](https://posthog.com/docs/contribute/coding-conventions)\
+      \ for a smoother review._\r\n\r\n## Changelog: (features only) Is this feature complete?\r\n\r\n<!-- Yes if this is\
+      \ okay to go in the changelog. No if it's still hidden behind a feature flag, or part of a feature that's not complete\
+      \ yet, etc.  -->\r\n<!-- Removing this section does not mean the changelog bot won't pick it up, because *some people*\
+      \ like to not use the template, so we can't rely on it existing. -->\r\n"
+  metadata:
+    pr_id: 43981
+    regex_detected: false
+    github_url: https://github.com/PostHog/posthog/pull/43981
+- description: 'PR #11426: docs: add jsonrepair cookbook'
+  vars:
+    user_prompt: 'Title: docs: add jsonrepair cookbook
+
+      State: merged
+
+      Lines: +95/-0
+
+      Labels: documentation
+
+      Cycle time: 0.2 hours
+
+      Time to first review: 0.2 hours
+
+
+      Description:
+
+      Helpful recipe for repairing structured outputs with repairjson and experimental_repairText. '
+  metadata:
+    pr_id: 11426
+    regex_detected: false
+    github_url: https://github.com/vercel/ai/pull/11426
+- description: 'PR #43979: fix: ForeignKeyViolation error'
+  vars:
+    user_prompt: "Title: fix: ForeignKeyViolation error\nState: open\nLines: +29/-0\nDraft: Yes\n\nDescription:\n## Problem\r\
+      \n\r\nError: https://us.posthog.com/project/2/error_tracking/019b4fd3-3065-7ac0-ae77-ceb1cba6bb6e?timestamp=2025-12-24%2002%3A47%3A23.097000-08%3A00\r\
+      \n\r\nTask: https://us.posthog.com/project/2/tasks/dbbc9b0c-99c5-40ab-86fe-86a2a284c7d0?runId=488999e7-55ea-4d7c-9622-5a4aa224eaf7\r\
+      \n\r\n## Changes\r\n\r\n<!-- If there are frontend changes, please include screenshots. -->\r\n<!-- If a reference design\
+      \ was involved, include a link to the relevant Figma frame! -->\r\n\r\n## How did you test this code?\r\n\r\n<!-- Briefly\
+      \ describe the steps you took. -->\r\n<!-- Include automated tests if possible, otherwise describe the manual testing\
+      \ routine. -->\r\n\r\n<!-- Docs reminder: If this change requires updated docs, please do that! Engineers are the primary\
+      \ people responsible for their documentation. \U0001F64C -->\r\n\r\n\U0001F449 _Stay up-to-date with [PostHog coding\
+      \ conventions](https://posthog.com/docs/contribute/coding-conventions) for a smoother review._\r\n\r\n## Changelog:\
+      \ (features only) Is this feature complete?\r\n\r\n<!-- Yes if this is okay to go in the changelog. No if it's still\
+      \ hidden behind a feature flag, or part of a feature that's not complete yet, etc.  -->\r\n<!-- Removing this section\
+      \ does not mean the changelog bot won't pick it up, because *some people* like to not use the template, so we can't\
+      \ rely on it existing. -->\r\n"
+  metadata:
+    pr_id: 43979
+    regex_detected: false
+    github_url: https://github.com/PostHog/posthog/pull/43979
+- description: 'PR #41588: feature: add explain w/ AI on pretty-explain tab'
+  vars:
+    user_prompt: "Title: feature: add explain w/ AI on pretty-explain tab\nState: merged\nLines: +142/-32\nHotfix: Yes\nCycle\
+      \ time: 1.2 hours\nTime to first review: 0.7 hours\n\nDescription:\n## I have read the [CONTRIBUTING.md](https://github.com/supabase/supabase/blob/master/CONTRIBUTING.md)\
+      \ file.\r\n\r\nYES\r\n\r\n## What kind of change does this PR introduce?\r\n\r\n- Add AI explain to new pretty-explain\
+      \ view\r\n- Update raw/visual button to match designs\r\n\r\n## Demo\r\n<img width=\"626\" height=\"1340\" alt=\"Screenshot\
+      \ 2025-12-24 at 8 11 05 AM\" src=\"https://github.com/user-attachments/assets/a3f008a5-496c-4519-b5a3-9ed90104246d\"\
+      \ />\r\n<img width=\"1826\" height=\"596\" alt=\"Screenshot 2025-12-24 at 8 10 59 AM\" src=\"https://github.com/user-attachments/assets/3ae5bff1-482d-419f-b450-3818d0c8acd4\"\
+      \ />\r\n"
+  metadata:
+    pr_id: 41588
+    regex_detected: false
+    github_url: https://github.com/supabase/supabase/pull/41588
+- description: 'PR #11424: Bugfix/add image propers to generate call'
+  vars:
+    user_prompt: "Title: Bugfix/add image propers to generate call\nState: open\nLines: +89/-0\nLabels: ai/gateway\nTime to\
+      \ first review: 3.4 hours\n\nDescription:\n\r\n## Background\r\n\r\nThe gateway image model class was missing images\
+      \ and masks from the actual request, but these are necessary for image editing. \r\n\r\n## Summary\r\n\r\nUpdated doGenerate\
+      \ method to pass in the required params \r\n\r\n\r\n## Checklist\r\n\r\n<!--\r\nDo not edit this list. Leave items unchecked\
+      \ that don't apply. If you need to track subtasks, create a new \"## Tasks\" section\r\n\r\nPlease check if the PR fulfills\
+      \ the following requirements:\r\n-->\r\n\r\n- [x] Tests have been added / updated (for bug fixes / features)\r\n- [\
+      \ ] Documentation has been added / updated (for bug fixes / features)\r\n- [x] A _patch_ changeset for relevant packages\
+      \ has been added (for bug fixes / features - run `pnpm changeset` in the project root)\r\n- [x] I have reviewed this\
+      \ pull request (self-review)\r\n\r\n## Future Work\r\n\r\n<!--\r\nFeel free to mention things not covered by this PR\
+      \ that can be done in future PRs.\r\nRemove the section if it's not needed.\r\n -->\r\n\r\n## Related Issues\r\n\r\n\
+      <!--\r\nList related issues here, e.g. \"Fixes #1234\".\r\nRemove the section if it's not needed.\r\n-->\r\n"
+  metadata:
+    pr_id: 11424
+    regex_detected: false
+    github_url: https://github.com/vercel/ai/pull/11424
+- description: 'PR #41587: chore: project scoped roles entitlement '
+  vars:
+    user_prompt: "Title: chore: project scoped roles entitlement \nState: open\nLines: +162/-13\nLabels: do-not-merge\nTime\
+      \ to first review: 0.1 hours\n\nDescription:\nDepends on https://github.com/supabase/platform/pull/28632\r\n\r\nUses\
+      \ entitlements in project scoped roles\n\n<!-- This is an auto-generated comment: release notes by coderabbit.ai -->\n\
+      \n## Summary by CodeRabbit\n\n* **New Features**\n  * Added cloud marketplace contract linking eligibility check API.\n\
+      \  * Added structured validation errors to project upgrade eligibility responses.\n  * Introduced new platform capabilities\
+      \ including SOC2 reporting, private link, function scaling controls, and realtime features.\n  * Added support for project-scoped\
+      \ roles permission model.\n\n* **Deprecations**\n  * Three legacy error fields deprecated in favor of new validation_errors\
+      \ structure.\n\n<sub>✏️ Tip: You can customize this high-level summary in your review settings.</sub>\n\n<!-- end of\
+      \ auto-generated comment: release notes by coderabbit.ai -->"
+  metadata:
+    pr_id: 41587
+    regex_detected: true
+    github_url: https://github.com/supabase/supabase/pull/41587
+- description: 'PR #43977: feat(batch-exports): Add Azure Blob Storage as bat'
+  vars:
+    user_prompt: "Title: feat(batch-exports): Add Azure Blob Storage as batch export destination\nState: open\nLines: +2041/-7\n\
+      Time to first review: 0.1 hours\n\nDescription:\n## Problem\r\n\r\nCustomers using Azure infrastructure currently can't\
+      \ export PostHog data directly to Azure Blob Storage. This adds Azure Blob as a new batch export destination.\r\n\r\n\
+      Addresses #41383\r\n\r\nThis is PR 1 of 2 (with backend changes only). The API blocks creation until the frontend form\
+      \ is added in a follow-up PR.\r\n\r\n## Changes\r\n\r\nAdds `AzureBlob` as a new batch export destination type with\
+      \ a Temporal workflow (`azure-blob-export`) that uses the existing internal S3 staging pipeline, so no new ClickHouse\
+      \ query logic needed.\r\n\r\nCredentials are stored via a new `AzureBlobIntegration` class (connection string auth).\
+      \ Added Azurite emulator to docker-compose for local dev.\r\n\r\nTest suite covers end-to-end tests for format/compression\
+      \ combinations, error handling, and file splitting.\r\n\r\n## How did you test this code?\r\n\r\n    # Run Azure Blob\
+      \ tests (requires Azurite)\r\n    docker-compose up -d objectstorage-azure\r\n    pytest products/batch_exports/backend/tests/temporal/destinations/azure_blob/\
+      \ -v\r\n\r\n    # Verify API blocks creation until frontend is ready\r\n    pytest posthog/api/test/batch_exports/test_create.py::test_cannot_create_azure_blob_batch_export_yet\
+      \ -v\r\n\r\nManual testing: Ran full workflow with Temporal workers, created exports via Django shell, verified blobs\
+      \ appear in Azurite with correct format/compression.\r\n\r\n### Test Coverage\r\n\r\n| Test File | Coverage |\r\n|-----------|----------|\r\
+      \n| `test_activity_data_export.py` | Activity-level exports for all model types (events/persons/sessions), format/compression\
+      \ combinations, empty data handling, file splitting. |\r\n| `test_workflow_execution.py` | End-to-end workflow execution\
+      \ for all models, formats, compressions, graceful handling of no data. |\r\n| `test_workflow_error_states.py` | Transient\
+      \ errors, container not found, invalid credentials, cancellation. |\r\n| `test_workflow_with_azure_account.py` | Real\
+      \ Azure account tests (skipped in CI, for manual validation). |\r\n| `test_utils.py` | Unit tests for blob key generat"
+  metadata:
+    pr_id: 43977
+    regex_detected: false
+    github_url: https://github.com/PostHog/posthog/pull/43977
+- description: 'PR #87763: docs: update link for search parameters documentat'
+  vars:
+    user_prompt: "Title: docs: update link for search parameters documentation\nState: open\nLines: +1/-1\nLabels: Documentation\n\
+      \nDescription:\n## What was done\r\n\r\nThe current link explaining what search parameters are results in a `Page not\
+      \ found` error on MDN. I've updated the link to reflect the new location of the article in the Mozilla website.\r\n\r\
+      \nOld link:\r\n- https://developer.mozilla.org/docs/Learn/Common_questions/What_is_a_URL#parameters\r\n\r\nNew link:\r\
+      \n- https://developer.mozilla.org/docs/Learn_web_development/Howto/Web_mechanics/What_is_a_URL#parameters"
+  metadata:
+    pr_id: 87763
+    regex_detected: false
+    github_url: https://github.com/vercel/next.js/pull/87763
+- description: 'PR #41586: fix: Check the password strength before creating a'
+  vars:
+    user_prompt: "Title: fix: Check the password strength before creating a project\nState: merged\nLines: +108/-112\nCycle\
+      \ time: 1.3 hours\nTime to first review: 0.0 hours\n\nDescription:\n\n\n<!-- This is an auto-generated comment: release\
+      \ notes by coderabbit.ai -->\n## Summary by CodeRabbit\n\n* **New Features**\n  * Centralized password strength tracking\
+      \ stored in the project creation form for consistent feedback.\n  * Generated passwords now automatically update the\
+      \ strength indicator and message.\n\n* **Bug Fixes**\n  * Enforced a minimum database password strength with clear validation\
+      \ and warning shown to users.\n  * Improved password strength bar accessibility and more accurate visual percentage\
+      \ display.\n\n* **Refactor**\n  * Simplified password-strength flow and reduced external state coupling for more reliable\
+      \ UI behavior.\n\n<sub>✏️ Tip: You can customize this high-level summary in your review settings.</sub>\n<!-- end of\
+      \ auto-generated comment: release notes by coderabbit.ai -->"
+  metadata:
+    pr_id: 41586
+    regex_detected: true
+    github_url: https://github.com/supabase/supabase/pull/41586
+- description: 'PR #43976: Test'
+  vars:
+    user_prompt: 'Title: Test
+
+      State: closed
+
+      Lines: +670024/-283989
+
+      Time to first review: 0.3 hours
+
+
+      Description:
+
+      Looks like GitHub patched this :sweat_smile: '
+  metadata:
+    pr_id: 43976
+    regex_detected: false
+    github_url: https://github.com/PostHog/posthog/pull/43976
+- description: 'PR #31714: fix: deno cross compile for intel mac target'
+  vars:
+    user_prompt: 'Title: fix: deno cross compile for intel mac target
+
+      State: open
+
+      Lines: +3/-3
+
+
+      Description:
+
+      Do not attempt to codesign the final deno compile binary on non-macOS hosts. This restores earlier behavior of deno
+      compile when binary is built for the intel mac target'
+  metadata:
+    pr_id: 31714
+    regex_detected: false
+    github_url: https://github.com/denoland/deno/pull/31714
+- description: 'PR #26189: fix: playwright(WIP)'
+  vars:
+    user_prompt: "Title: fix: playwright(WIP)\nState: closed\nLines: +4/-6\nLabels: ready-for-e2e, size/S\nDraft: Yes\nHotfix:\
+      \ Yes\nTime to first review: 0.0 hours\n\nDescription:\n\n\n\n\n\n\n\n\n\n\n<!-- This is an auto-generated description\
+      \ by cubic. -->\n## Summary by cubic\nSet Jest e2e maxWorkers to 6 and updated the PR workflow to run on pull_request\
+      \ events for more predictable e2e runs and simpler debugging.\n\n- **Performance**\n  - Set Jest e2e maxWorkers to 6\
+      \ for consistent parallelism.\n\n- **Refactors**\n  - Switch PR workflow from pull_request_target to pull_request and\
+      \ remove branch filters.\n\n<sup>Written for commit c62c9cc9e83cefcdd05e25fdd8f4650a48ebeb82. Summary will update automatically\
+      \ on new commits.</sup>\n\n<!-- End of auto-generated description by cubic. -->\n\n\n\n\n\n\n\n\n\n"
+  metadata:
+    pr_id: 26189
+    regex_detected: true
+    github_url: https://github.com/calcom/cal.com/pull/26189
+- description: 'PR #3659: fix(fresh/plugin-vite): fix staticFiles path encod'
+  vars:
+    user_prompt: "Title: fix(fresh/plugin-vite): fix staticFiles path encode ([#3657](https://github.com/denoland/fresh/issues/3657))\n\
+      State: open\nLines: +94/-12\n\nDescription:\nfix [#3657](https://github.com/denoland/fresh/issues/3657)\r\n\r\n1. fresh-build:\r\
+      \na. `prepareStaticFile()` 函数 转化`test %20encodeUri` 为`test%20%20encodeUri`，而非 `test%20%2520encodeUri` 的问题.\r\n`prepareStaticFile()`\
+      \ function converts `test %20encodeUri` to `test%20%20encodeUri`, instead of  `test%20%2520encodeUri`\r\nb. `staticFiles`\
+      \ 路径编码与 `freshServeStaticFiles()` 函数存在重复编码问题.\r\nThere is a double encoding issue caused by duplicate path encoding\
+      \ logic between staticFiles and the `freshServeStaticFiles()` function\r\n2. fresh-vite-plugin:\r\na. devServer 中通过\
+      \ urlpath 读取系统文件时的路径转编码异常问题\r\nPath encoding conversion error when `devServer` reads system files via urlpath"
+  metadata:
+    pr_id: 3659
+    regex_detected: false
+    github_url: https://github.com/denoland/fresh/pull/3659
+- description: 'PR #26188: fix(signup): prevent calendar popup from being cli'
+  vars:
+    user_prompt: "Title: fix(signup): prevent calendar popup from being clipped\nState: closed\nLines: +9/-0\nLabels: \U0001F41B\
+      \ bug, community, size/XS\nTime to first review: 0.0 hours\n\nDescription:\n### What\r\nFixes an issue where the date\
+      \ picker calendar was clipped on the signup page.\r\n\r\n### How\r\n- Ensured calendar popup renders above parent containers\
+      \ using z-index\r\n- Prevented overflow clipping on signup form container\r\n\r\n### Issue\r\nFixes #26144\r\n"
+  metadata:
+    pr_id: 26188
+    regex_detected: false
+    github_url: https://github.com/calcom/cal.com/pull/26188
+- description: 'PR #34476: style(core): add ruff rules TC'
+  vars:
+    user_prompt: "Title: style(core): add ruff rules TC\nState: open\nLines: +28/-23\nLabels: core, dependencies, linting\n\
+      Time to first review: 1.0 hours\n\nDescription:\n* Fixed a few TC\r\n* Added a few Pydantic classes to `flake8-type-checking.runtime-evaluated-base-classes`\
+      \ (not as much as I would have imagined)\r\n* Added a few `noqa: TC`\r\n* Activated TC rules"
+  metadata:
+    pr_id: 34476
+    regex_detected: false
+    github_url: https://github.com/langchain-ai/langchain/pull/34476
+- description: 'PR #2461: Refactor admin unreviewed users page'
+  vars:
+    user_prompt: "Title: Refactor admin unreviewed users page\nState: merged\nLines: +39/-42\nCycle time: 0.6 hours\nTime\
+      \ to first review: 2.8 hours\n\nDescription:\nFollow up to #2446\r\n\r\n<img width=\"1703\" height=\"730\" alt=\"image\"\
+      \ src=\"https://github.com/user-attachments/assets/8ba9b55f-165d-441b-a4a0-5ac438550f2d\" />\r\n"
+  metadata:
+    pr_id: 2461
+    regex_detected: false
+    github_url: https://github.com/antiwork/gumroad/pull/2461
+- description: 'PR #1513: fix(README): Fixed primary admin mail'
+  vars:
+    user_prompt: "Title: fix(README): Fixed primary admin mail\nState: open\nLines: +1/-1\n\nDescription:\n#### Admin mails\
+      \ available in seed:\r\n\r\n<img width=\"1271\" height=\"118\" alt=\"Screenshot from 2025-12-24 17-59-31\" src=\"https://github.com/user-attachments/assets/c64c9a26-f837-406d-9724-0b9a32f6484b\"\
+      \ />\r\n\r\n\r\n#### The mail mentioned in the README does not exist:\r\n\r\n<img width=\"1689\" height=\"132\" alt=\"\
+      Screenshot from 2025-12-24 18-03-29\" src=\"https://github.com/user-attachments/assets/af7f9cd5-77e7-426e-a8a2-66a6252bdd3e\"\
+      \ />\r\n"
+  metadata:
+    pr_id: 1513
+    regex_detected: false
+    github_url: https://github.com/antiwork/flexile/pull/1513
+- description: 'PR #2817: docs: tidy up sync env vars note blocks'
+  vars:
+    user_prompt: "Title: docs: tidy up sync env vars note blocks\nState: merged\nLines: +55/-44\nCycle time: 0.9 hours\nTime\
+      \ to first review: 0.1 hours\n\nDescription:\nbefore: \r\n<img width=\"890\" height=\"576\" alt=\"image\" src=\"https://github.com/user-attachments/assets/a6d92de6-4223-4e8c-9818-ac373581e981\"\
+      \ />\r\n\r\nafter: \r\n<img width=\"890\" height=\"576\" alt=\"image\" src=\"https://github.com/user-attachments/assets/7be2e8b8-61cf-42ba-a3d1-be0efe8fc346\"\
+      \ />\r\n"
+  metadata:
+    pr_id: 2817
+    regex_detected: false
+    github_url: https://github.com/triggerdotdev/trigger.dev/pull/2817
+- description: 'PR #2460: Remove customer reviews from products when bundle '
+  vars:
+    user_prompt: "Title: Remove customer reviews from products when bundle is refunded\nState: open\nLines: +56/-0\nRevert:\
+      \ Yes\n\nDescription:\n### What\r\n\r\nWhen a bundle is refunded, reviews on the bundled products by the corresponding\
+      \ customer are now properly removed.\r\n\r\nResolves https://github.com/antiwork/gumroad-private/issues/31.\r\n\r\n\
+      ### Why\r\n\r\nRefunding a bundle only marks the bundle purchase as refunded, but leaves the individual product purchases\
+      \ untouched. This meant customer reviews remains visible on those products even after the bundle was fully refunded.\r\
+      \n\r\n"
+  metadata:
+    pr_id: 2460
+    regex_detected: false
+    github_url: https://github.com/antiwork/gumroad/pull/2460
+- description: 'PR #41584: chore: add Auth team as code owners for SQL querie'
+  vars:
+    user_prompt: "Title: chore: add Auth team as code owners for SQL queries\nState: open\nLines: +2/-2\n\nDescription:\n\
+      Adds `@supabase/auth` as code owners for SQL queries and `pg-meta`.\r\n\r\nEventually, we might want to consider segmenting\
+      \ the queries into separate directories by function to reduce the ownership surface area.\n\n<!-- This is an auto-generated\
+      \ comment: release notes by coderabbit.ai -->\n\n## Summary by CodeRabbit\n\n* **Chores**\n  * Updated code ownership\
+      \ assignments for internal review processes.\n\n<sub>✏️ Tip: You can customize this high-level summary in your review\
+      \ settings.</sub>\n\n<!-- end of auto-generated comment: release notes by coderabbit.ai -->"
+  metadata:
+    pr_id: 41584
+    regex_detected: true
+    github_url: https://github.com/supabase/supabase/pull/41584
+- description: 'PR #43974: fix: remove debounce'
+  vars:
+    user_prompt: "Title: fix: remove debounce\nState: open\nLines: +1/-1\nLabels: bug, feature/cohorts, team/feature-flags\n\
+      Time to first review: 0.0 hours\n\nDescription:\n## Problem\r\n\r\nFixes issue with debounce on cohort matching date\
+      \ picker:\r\nhttps://posthoghelp.zendesk.com/agent/tickets/45723\r\n\r\n<img width=\"1255\" height=\"487\" alt=\"image\"\
+      \ src=\"https://github.com/user-attachments/assets/2f1095b9-42d9-4f3b-adce-00f65a39a779\" />\r\n\r\n\r\n## Changes\r\
+      \n\r\nremoved debounce on selector\r\n\r\n## How did you test this code?\r\n\r\nRan locally and checked changes \r\n\
+      \r\n## Changelog: (features only) Is this feature complete?\r\n\r\nno\r\n"
+  metadata:
+    pr_id: 43974
+    regex_detected: false
+    github_url: https://github.com/PostHog/posthog/pull/43974
+- description: 'PR #41581: chore: use utils for query escaping'
+  vars:
+    user_prompt: "Title: chore: use utils for query escaping\nState: open\nLines: +29/-26\nTime to first review: 0.1 hours\n\
+      \nDescription:\nReplaces manual escaping in users query with `ident` and `literal` helpers\n\n<!-- This is an auto-generated\
+      \ comment: release notes by coderabbit.ai -->\n\n## Summary by CodeRabbit\n\n* **Refactor**\n  * Streamlined database\
+      \ query construction for improved reliability and code consistency.\n\n<sub>✏️ Tip: You can customize this high-level\
+      \ summary in your review settings.</sub>\n\n<!-- end of auto-generated comment: release notes by coderabbit.ai -->"
+  metadata:
+    pr_id: 41581
+    regex_detected: true
+    github_url: https://github.com/supabase/supabase/pull/41581
+- description: 'PR #41580: Fix truncation in column type dropdown'
+  vars:
+    user_prompt: "Title: Fix truncation in column type dropdown\nState: open\nLines: +4/-3\nTime to first review: 0.0 hours\n\
+      \nDescription:\n## I have read the [CONTRIBUTING.md](https://github.com/supabase/supabase/blob/master/CONTRIBUTING.md)\
+      \ file.\r\n\r\nYES\r\n\r\n## What kind of change does this PR introduce?\r\n\r\nImprovements and bug fix for the column\
+      \ type dropdown in the table editor.\r\n\r\n## What is the current behavior?\r\n\r\nThe column type dropdown is always\
+      \ truncated, which means we can't differentiate between \"timestamp\" and \"timestamptz\". The placeholder text \"Choose\
+      \ a column type...\" is also always truncated.\r\n\r\n<img width=\"655\" height=\"180\" alt=\"Screenshot 2025-12-24\
+      \ at 12 40 27\" src=\"https://github.com/user-attachments/assets/3b2ae9e2-2aad-4cc3-8fc5-de351916de36\" />\r\n\r\n\r\
+      \n## What is the new behavior?\r\n\r\nI've made 4 changes:\r\n1. improvement: the sidepanel's width was increased for\
+      \ \"large\" to \"xlarge\"\r\n2. improvement: added a `title` attribute to the dropdown to make it easy to view the column\
+      \ type if truncated\r\n3. improvement: \"Choose a column type...\" was changed to \"Choose a type\". The ellipsis felt\
+      \ like wasted space and we already know we're picking a column type. \r\n4. fix: the value in the button is now actually\
+      \ truncated. The buttons have the `truncate` class already but it doesn't apply because the children have `display:\
+      \ flex`.\r\n\r\n## Additional context\r\n\r\nThe SidePanel is now wider, which allows the column type dropdown to be\
+      \ fully readable:\r\n\r\n<img width=\"747\" height=\"371\" alt=\"Screenshot 2025-12-24 at 12 35 19\" src=\"https://github.com/user-attachments/assets/472172e7-50c2-4082-ad1e-12665d5e3ac4\"\
+      \ />\r\n\r\nThe text in the button is now truncated properly and hovering the button shows its value. This is helpful\
+      \ on smaller screens:\r\n\r\n<img width=\"649\" height=\"318\" alt=\"Screenshot 2025-12-24 at 12 25 40\" src=\"https://github.com/user-attachments/assets/9d44b002-07f8-4f31-8d84-35e16a8d6174\"\
+      \ />\r\n\r\nResolves #41579 \n\n<!-- This is an auto-generated comment: release notes by coderabbit.ai -->\n\n## Summary\
+      \ by CodeRabbit\n\n* **Style**\n  * Enhanced column type selector with improved text truncation and tooltip disp"
+  metadata:
+    pr_id: 41580
+    regex_detected: true
+    github_url: https://github.com/supabase/supabase/pull/41580
+- description: 'PR #43973: feat: Added node docker image'
+  vars:
+    user_prompt: "Title: feat: Added node docker image\nState: open\nLines: +313/-0\nTime to first review: 0.0 hours\n\nDescription:\n\
+      ## Problem\r\n\r\nSeperates out the node related code into its own dockerfile\r\n\r\n## Changes\r\n\r\n* Adds the dockerfile\r\
+      \n* Its now non-root\r\n* Builds and deploys\r\n\r\nIdea is we can have this released, test out services on it, move\
+      \ everything over then have a follow up PR to remove it from the main image (need to ensure docker-compose etc is updated).\r\
+      \n\r\n## How did you test this code?\r\n\r\n<!-- Briefly describe the steps you took. -->\r\n<!-- Include automated\
+      \ tests if possible, otherwise describe the manual testing routine. -->\r\n\r\n<!-- Docs reminder: If this change requires\
+      \ updated docs, please do that! Engineers are the primary people responsible for their documentation. \U0001F64C -->\r\
+      \n\r\n\U0001F449 _Stay up-to-date with [PostHog coding conventions](https://posthog.com/docs/contribute/coding-conventions)\
+      \ for a smoother review._\r\n\r\n## Changelog: (features only) Is this feature complete?\r\n\r\n<!-- Yes if this is\
+      \ okay to go in the changelog. No if it's still hidden behind a feature flag, or part of a feature that's not complete\
+      \ yet, etc.  -->\r\n<!-- Removing this section does not mean the changelog bot won't pick it up, because *some people*\
+      \ like to not use the template, so we can't rely on it existing. -->\r\n"
+  metadata:
+    pr_id: 43973
+    regex_detected: false
+    github_url: https://github.com/PostHog/posthog/pull/43973
+- description: 'PR #43972: fix(trends): histogram bins with max show correct '
+  vars:
+    user_prompt: "Title: fix(trends): histogram bins with max show correct value for 'Other'\nState: open\nLines: +391/-20\n\
+      Time to first review: 0.0 hours\n\nDescription:\n## Problem\r\nhttps://posthog.slack.com/archives/C090GAZNU1H/p1766429502961009?thread_ts=1765509708.280919&cid=C090GAZNU1H\r\
+      \n\r\n## Changes\r\n1. Changed GROUP BY breakdown_value, day_start to GROUP BY day_start so all excluded breakdown values\
+      \ are aggregated together correctly per day using the math-appropriate function (MAX/MIN/SUM).\r\n2. Added get_array_fold_merge_operation()\
+      \ method to AggregationOperations that returns the correct ClickHouse operation\r\n\r\n## How did you test this code?\r\
+      \nAdded tests + \U0001F441️ \r\n<!-- Briefly describe the steps you took. -->\r\n<!-- Include automated tests if possible,\
+      \ otherwise describe the manual testing routine. -->\r\n\r\n<!-- Docs reminder: If this change requires updated docs,\
+      \ please do that! Engineers are the primary people responsible for their documentation. \U0001F64C -->\r\n\r\n\U0001F449\
+      \ _Stay up-to-date with [PostHog coding conventions](https://posthog.com/docs/contribute/coding-conventions) for a smoother\
+      \ review._\r\n\r\n## Changelog: (features only) Is this feature complete?\r\n\r\n<!-- Yes if this is okay to go in the\
+      \ changelog. No if it's still hidden behind a feature flag, or part of a feature that's not complete yet, etc.  -->\r\
+      \n<!-- Removing this section does not mean the changelog bot won't pick it up, because *some people* like to not use\
+      \ the template, so we can't rely on it existing. -->\r\n"
+  metadata:
+    pr_id: 43972
+    regex_detected: false
+    github_url: https://github.com/PostHog/posthog/pull/43972
+- description: 'PR #26186: fix: prevent WelcomeToCalcomModal footer overflow'
+  vars:
+    user_prompt: "Title: fix: prevent WelcomeToCalcomModal footer overflow\nState: open\nLines: +2/-2\nLabels: community,\
+      \ ready-for-e2e, size/XS\nTime to first review: 0.0 hours\n\nDescription:\n## What does this PR do?\r\n\r\nFixes the\
+      \ WelcomeToCalcomModal overflow issue where the \"Continue\" button footer was being cut off at 100% screen size. The\
+      \ modal now properly handles content overflow while keeping the footer visible and accessible.\r\n\r\n**Changes:**\r\
+      \n- Added `enableOverflow` prop to `DialogContent` to enable proper scrolling behavior when content exceeds modal height\r\
+      \n- Added `shrink-0` class to footer to prevent it from shrinking in flex layout and ensure it stays visible\r\n- Fixed\
+      \ linter warning by changing `!p-0` to `p-0!` (Tailwind class order)\r\n\r\n**Motivation:**\r\nWhen users complete personal\
+      \ onboarding and are redirected to `/event-types?welcomeToCalcomModal=true`, the welcome modal displays. At 100% screen\
+      \ size, the modal content was too tall, causing the footer with the \"Continue\" button to overflow and be cut off.\
+      \ This fix ensures the modal respects viewport constraints and allows content scrolling while keeping the footer accessible.\r\
+      \n\r\n- Fixes #XXXX (GitHub issue number)\r\n- Fixes CAL-XXXX (Linear issue number - should be visible at the bottom\
+      \ of the GitHub issue description)\r\n\r\n## Visual Demo (For contributors especially)\r\n\r\n**Before:**\r\n<img width=\"\
+      1350\" height=\"803\" alt=\"image\" src=\"https://github.com/user-attachments/assets/76566cfd-9875-4c2c-a60e-574e64e6c910\"\
+      \ />\r\n\r\n**After:**\r\n\r\nhttps://github.com/user-attachments/assets/24135d9d-d4de-45ff-8298-62c2ec683106\r\n\r\n\
+      \r\n## Mandatory Tasks (DO NOT REMOVE)\r\n\r\n- [x] I have self-reviewed the code (A decent size PR without self-review\
+      \ might be rejected).\r\n- [x] I have updated the developer docs in /docs if this PR makes changes that would require\
+      \ a [documentation change](https://cal.com/docs). If N/A, write N/A here and check the checkbox.\r\n- [x] I confirm\
+      \ automated tests are in place that prove my fix is effective or that my feature works.\r\n\r\n## How should this be\
+      \ tested?\r\n\r\n**Environment variables:**\r\n- No special environment variables required\r\n- Standard development\
+      \ setup is sufficient\r\n\r\n**Minimal t"
+  metadata:
+    pr_id: 26186
+    regex_detected: false
+    github_url: https://github.com/calcom/cal.com/pull/26186
+- description: 'PR #43971: fix: Proper fix for formula bug'
+  vars:
+    user_prompt: "Title: fix: Proper fix for formula bug\nState: merged\nLines: +1/-173\nCycle time: 0.7 hours\nTime to first\
+      \ review: 0.0 hours\n\nDescription:\n## Problem\r\n\r\nWe need to remove the legacy endpoint\r\n\r\n## Changes\r\n\r\
+      \n* Actually remove the code, not just commented out\r\n\r\n## How did you test this code?\r\n\r\n<!-- Briefly describe\
+      \ the steps you took. -->\r\n<!-- Include automated tests if possible, otherwise describe the manual testing routine.\
+      \ -->\r\n\r\n<!-- Docs reminder: If this change requires updated docs, please do that! Engineers are the primary people\
+      \ responsible for their documentation. \U0001F64C -->\r\n\r\n\U0001F449 _Stay up-to-date with [PostHog coding conventions](https://posthog.com/docs/contribute/coding-conventions)\
+      \ for a smoother review._\r\n\r\n## Changelog: (features only) Is this feature complete?\r\n\r\n<!-- Yes if this is\
+      \ okay to go in the changelog. No if it's still hidden behind a feature flag, or part of a feature that's not complete\
+      \ yet, etc.  -->\r\n<!-- Removing this section does not mean the changelog bot won't pick it up, because *some people*\
+      \ like to not use the template, so we can't rely on it existing. -->\r\n"
+  metadata:
+    pr_id: 43971
+    regex_detected: false
+    github_url: https://github.com/PostHog/posthog/pull/43971
+- description: 'PR #1986: fix(supabase): inline string literal in databasewi'
+  vars:
+    user_prompt: "Title: fix(supabase): inline string literal in databasewithoutinternals type\nState: open\nLines: +1/-4\n\
+      \nDescription:\nFixes TS2304 error ppl get \"Cannot find name 'InternalSupabaseKey'\" when using DatabaseWithoutInternals\
+      \ type.\r\n\r\nThe private type alias was referenced in the exported type but not included in declaration files. Inlining\
+      \ the string literal directly resolves this.\r\n\r\ncloses https://github.com/supabase/supabase-js/issues/1987"
+  metadata:
+    pr_id: 1986
+    regex_detected: false
+    github_url: https://github.com/supabase/supabase-js/pull/1986
+- description: 'PR #1985: test(auth): use supabase cli where possible - dock'
+  vars:
+    user_prompt: "Title: test(auth): use supabase cli where possible - docker for extra tests\nState: open\nLines: +1003/-402\n\
+      Labels: auth-js\n\nDescription:\n## Summary\r\n\r\nThis PR migrates the `auth-js` test infrastructure from a multi-instance\
+      \ Docker Compose setup to a single Supabase CLI instance for the majority of tests, while preserving Docker-based tests\
+      \ for edge cases that require specific GoTrue configurations.\r\n\r\n## Motivation\r\n\r\nThe original `auth-js` test\
+      \ setup used Docker Compose to run 4 separate GoTrue instances with different configurations:\r\n\r\n| Port | Configuration\
+      \ | Use Case |\r\n|------|---------------|----------|\r\n| 9999 | Signup enabled, autoconfirm OFF | Email verification\
+      \ flows, SMS tests |\r\n| 9998 | Signup enabled, autoconfirm ON | Standard auth flows |\r\n| 9997 | Signup disabled,\
+      \ autoconfirm OFF | Signup disabled tests |\r\n| 9996 | Signup enabled, asymmetric keys | RS256 JWT verification |\r\
+      \n\r\nWe have decided to move our test suites to use the `supabase` CLI wherever possible. It provides a simpler, faster\
+      \ alternative that covers the majority of test scenarios with a single instance.\r\n\r\n## Changes\r\n\r\n### New Test\
+      \ Structure\r\n\r\n```\r\npackages/core/auth-js/test/\r\n├── lib/\r\n│   └── clients.ts          # CLI clients only\
+      \ (simplified)\r\n├── docker-tests/\r\n│   ├── clients.ts          # Docker clients (self-contained)\r\n│   ├── signup-disabled.test.ts\r\
+      \n│   ├── asymmetric-jwt.test.ts\r\n│   ├── phone-otp.test.ts\r\n│   └── anonymous-disabled.test.ts\r\n├── supabase/\r\
+      \n│   └── config.toml         # Supabase CLI configuration\r\n├── GoTrueClient.test.ts    # Main tests (CLI)\r\n├──\
+      \ GoTrueApi.test.ts       # Admin API tests (CLI)\r\n└── ...other test files\r\n```\r\n\r\n### Test Distribution\r\n\
+      \r\n| Test Suite | Runner | Tests | Description |\r\n|------------|--------|-------|-------------|\r\n| `test:auth`\
+      \ | Supabase CLI | 331 | Standard auth flows |\r\n| `test:docker` | Docker Compose | 11 | Edge cases requiring specific\
+      \ configs |\r\n\r\n### Docker-Only Tests (11 total)\r\n\r\nThese tests require GoTrue configurations not possible with\
+      \ a single CLI instance:\r\n\r\n1. **Signup Disabled** (1 test)\r\n   - Requires `GOTRUE_DISABLE_SIGNUP=true`\r\n\r\n\
+      2. **Asymm"
+  metadata:
+    pr_id: 1985
+    regex_detected: false
+    github_url: https://github.com/supabase/supabase-js/pull/1985
+- description: 'PR #2459: Add feature flag to disable Stripe signups for exi'
+  vars:
+    user_prompt: "Title: Add feature flag to disable Stripe signups for existing users\nState: open\nLines: +40/-42\n\nDescription:\n\
+      This PR addresses [issue #2450](https://github.com/antiwork/gumroad/issues/2450) by introducing a feature flag to prevent\
+      \ automatic creation of new accounts when connecting via Stripe. Existing users can still log in via Stripe without\
+      \ creating new accounts, maintaining current functionality.\r\n\r\n**Changes:**\r\n\r\n1. Feature Flag:\r\n    • Added\
+      \ a new environment variable DISABLE_STRIPE_SIGNUP (default: false).\r\n    • When set to true, users attempting to\
+      \ sign up via Stripe will not create new accounts. Existing users will still be able to connect Stripe automatically.\r\
+      \n\r\n2. Controller Changes:\r\n    • Modified app/controllers/users/oauth_controller.rb to respect the feature flag.\r\
+      \n    • Before creating a new user via Stripe, the controller now checks if ENV[\"DISABLE_STRIPE_SIGNUP\"] is enabled.\r\
+      \n    • No other login flows are affected.\r\n\r\n3. Safety & Backwards Compatibility:\r\n    • Existing users can continue\
+      \ using Stripe login without any change.\r\n    • Default behavior remains unchanged when the environment variable is\
+      \ unset or false.\r\n\r\n\r\nEnvironment Variable:\r\n    • Name: DISABLE_STRIPE_SIGNUP\r\n    • File: .env or deployment\
+      \ environment config\r\n    • Default: false\r\n\r\n\r\nAI Disclosure:\r\n    •  no AI used\r\nLive Stream Disclosure:\r\
+      \n    • watched all live streams"
+  metadata:
+    pr_id: 2459
+    regex_detected: false
+    github_url: https://github.com/antiwork/gumroad/pull/2459
+- description: 'PR #43970: fix: Remove problematic formula mixin'
+  vars:
+    user_prompt: "Title: fix: Remove problematic formula mixin\nState: merged\nLines: +2/-2\nCycle time: 0.0 hours\nTime to\
+      \ first review: 0.0 hours\n\nDescription:\n## Problem\r\n\r\n<!-- Who are we building for, what are their needs, why\
+      \ is this important? -->\r\n\r\n<!-- Does this fix an issue? Uncomment the line below with the issue ID to automatically\
+      \ close it when merged -->\r\n<!-- Closes #ISSUE_ID -->\r\n\r\n## Changes\r\n\r\n<!-- If there are frontend changes,\
+      \ please include screenshots. -->\r\n<!-- If a reference design was involved, include a link to the relevant Figma frame!\
+      \ -->\r\n\r\n## How did you test this code?\r\n\r\n<!-- Briefly describe the steps you took. -->\r\n<!-- Include automated\
+      \ tests if possible, otherwise describe the manual testing routine. -->\r\n\r\n<!-- Docs reminder: If this change requires\
+      \ updated docs, please do that! Engineers are the primary people responsible for their documentation. \U0001F64C -->\r\
+      \n\r\n\U0001F449 _Stay up-to-date with [PostHog coding conventions](https://posthog.com/docs/contribute/coding-conventions)\
+      \ for a smoother review._\r\n\r\n## Changelog: (features only) Is this feature complete?\r\n\r\n<!-- Yes if this is\
+      \ okay to go in the changelog. No if it's still hidden behind a feature flag, or part of a feature that's not complete\
+      \ yet, etc.  -->\r\n<!-- Removing this section does not mean the changelog bot won't pick it up, because *some people*\
+      \ like to not use the template, so we can't rely on it existing. -->\r\n"
+  metadata:
+    pr_id: 43970
+    regex_detected: false
+    github_url: https://github.com/PostHog/posthog/pull/43970
+- description: 'PR #34475: style(langchain): fix some PLC0415 rules'
+  vars:
+    user_prompt: 'Title: style(langchain): fix some PLC0415 rules
+
+      State: open
+
+      Lines: +35/-96
+
+      Labels: langchain, linting
+
+
+      Description:
+
+      The remaining ones are solved in https://github.com/langchain-ai/langchain/pull/32813'
+  metadata:
+    pr_id: 34475
+    regex_detected: false
+    github_url: https://github.com/langchain-ai/langchain/pull/34475
+- description: 'PR #41577: Bump @tanstack/eslint-plugin-query and migrate the'
+  vars:
+    user_prompt: "Title: Bump @tanstack/eslint-plugin-query and migrate the config.\nState: merged\nLines: +21/-45\nCycle\
+      \ time: 7.1 hours\nTime to first review: 2.6 hours\n\nDescription:\n\n\n<!-- This is an auto-generated comment: release\
+      \ notes by coderabbit.ai -->\n## Summary by CodeRabbit\n\n* **Chores**\n  * Updated ESLint config to use TanStack Query\
+      \ plugin v5, improving query-related linting and rules.\n  * Removed a deprecated linting utility and consolidated its\
+      \ settings into an inline configuration.\n  * Expanded global lint ignore patterns to include an additional build/content\
+      \ directory.\n  * Broadened file-specific lint ignores to cover both .ts and .tsx files in pages and app areas.\n\n\
+      <sub>✏️ Tip: You can customize this high-level summary in your review settings.</sub>\n<!-- end of auto-generated comment:\
+      \ release notes by coderabbit.ai -->"
+  metadata:
+    pr_id: 41577
+    regex_detected: true
+    github_url: https://github.com/supabase/supabase/pull/41577
+- description: 'PR #34473: fix(langchain): allow Gemini 3 models to use nativ'
+  vars:
+    user_prompt: "Title: fix(langchain): allow Gemini 3 models to use native structured output…\nState: closed\nLines: +8/-2\n\
+      Labels: langchain, fix\n\nDescription:\nProblem: Models in \r\ncreate_agent\r\n are checked for provider-native structured\
+      \ output support via \r\n_supports_provider_strategy\r\n. Previously, this function was hard-coded to return False for\
+      \ all Gemini models if tools were present, as earlier Gemini versions (e.g., 1.5) did not support simultaneous tool\
+      \ use and native structured output.\r\n\r\nSolution: This PR updates the logic to allow Gemini 3 series models (e.g.,\
+      \ gemini-3-flash) to use \r\nProviderStrategy.py\r\n even when tools are present, as these models now natively support\
+      \ this combination. The restriction remains in place for older Gemini 1.x models.\r\n \r\n Changes:\r\n\r\nModified\
+      \ \r\nlibs/langchain_v1/langchain/agents/factory.py\r\n to refine the Gemini model check."
+  metadata:
+    pr_id: 34473
+    regex_detected: false
+    github_url: https://github.com/langchain-ai/langchain/pull/34473
+- description: 'PR #11422: fix(ai): implement elementStream for streamText wi'
+  vars:
+    user_prompt: "Title: fix(ai): implement elementStream for streamText with Output.array()\nState: open\nLines: +167/-2\n\
+      Labels: ai/core\n\nDescription:\n## Background\r\n\r\nThe [AI SDK v6 documentation](https://ai-sdk.dev/docs/ai-sdk-core/generating-structured-data#outputarray)\
+      \ states that `elementStream` is available when using `streamText` with `Output.array()`:\r\n\r\n> With streamText,\
+      \ you can also iterate over the generated array elements using elementStream\r\n\r\nHowever, this method was not implemented,\
+      \ causing errors when trying to use.\r\n\r\n## Summary\r\n\r\nImplements `elementStream` for `streamText` when using\
+      \ `output: Output.array()`. \r\n\r\nThe implementation mirrors the approach from the deprecated `streamObject` function's\
+      \ `elementStream`.\r\n\r\n**Changes:**\r\n- Added `InferElementOutput` type helper to `output-utils.ts`\r\n- Added `elementStream`\
+      \ property to `StreamTextResult` interface\r\n- Implemented `elementStream` getter in `DefaultStreamTextResult` class\r\
+      \n\r\n## Manual Verification\r\n\r\n- Ran the example and test files to ensure everything works as expected. The individual\
+      \ elements stream in one at a time.\r\n\r\n## Checklist\r\n\r\n- [x] Tests have been added / updated (for bug fixes\
+      \ / features)\r\n- [ ] Documentation has been added / updated (for bug fixes / features)\r\n- [x] A _patch_ changeset\
+      \ for relevant packages has been added (for bug fixes / features - run `pnpm changeset` in the project root)\r\n- [x]\
+      \ I have reviewed this pull request (self-review)\r\n\r\n## Related Issues\r\n\r\nFixes https://github.com/vercel/ai/issues/11421\r\
+      \n"
+  metadata:
+    pr_id: 11422
+    regex_detected: false
+    github_url: https://github.com/vercel/ai/pull/11422
+- description: 'PR #2458: Update tip position in checkout'
+  vars:
+    user_prompt: "Title: Update tip position in checkout\nState: open\nLines: +192/-177\nTime to first review: 0.8 hours\n\
+      \nDescription:\n# Closes #1929 \r\n- #1929\r\n\r\n- This update fixes layout and interaction issues by keeping the tip\
+      \ selector in a stable position and preventing focus or layout shifts during user input. \r\n- Additionally, we've moved\
+      \ tip sub-section from cart summary rendering it besides the new tip section header \r\n\r\n## Design\r\n\r\n- [Multiple\
+      \ options (Desktop)](https://www.figma.com/design/p0aMLuSmomzt6kQZgojN2a/Fix-tip-position-to-avoid-layout-shift?node-id=295-9380&t=SlBJrwgiHxY9EDV6-4)\r\
+      \n- [Custom tip only](https://www.figma.com/design/p0aMLuSmomzt6kQZgojN2a/Fix-tip-position-to-avoid-layout-shift?node-id=295-9825&t=SlBJrwgiHxY9EDV6-4)\r\
+      \n- [Mobile layout](https://www.figma.com/design/p0aMLuSmomzt6kQZgojN2a/Fix-tip-position-to-avoid-layout-shift?node-id=295-10362&t=SlBJrwgiHxY9EDV6-4)\r\
+      \n\r\n## Screenshots\r\n\r\n- [x] Render tip selector in a consistent, fixed position in the left side of the checkout.\r\
+      \n\r\n| Device | Before | After |\r\n|---------|--------|----|\r\n| Desktop | <img width=\"418\" height=\"506\" alt=\"\
+      desktop-before\" src=\"https://github.com/user-attachments/assets/852fe751-eebc-4865-9f86-17fc4fb9c1d2\" /> | <img width=\"\
+      921\" height=\"576\" alt=\"desktop-after\" src=\"https://github.com/user-attachments/assets/6cb518c0-cad7-497f-ab2d-2e327dd60460\"\
+      \ /> |\r\n| Mobile | <img width=\"418\" height=\"506\" alt=\"mobile-before\" src=\"https://github.com/user-attachments/assets/869cac2b-a32f-4c59-960b-ae9abf7db0ae\"\
+      \ /> | <img width=\"418\" height=\"506\" alt=\"mobile-after\" src=\"https://github.com/user-attachments/assets/d9e1574d-5c9b-409a-a5db-749d543bba61\"\
+      \ /> |\r\n\r\n## Interaction Demo\r\n\r\n- [x] Implement updated tip selection UI. Show five options: No Tip, 15%, 20%,\
+      \ 25%, and Custom. Default selection: No Tip. Selecting a percentage automatically updates the tip amount and subtotal.\r\
+      \n- [x] Ensure the cart summary always displays the correct subtotal and total, including the selected tip.\r\n- [x]\
+      \ Prevent any layout, focus, or scroll shifts when interacting with the tip selector (especially when typing a custom\
+      \ tip).\r\n\r\n| P"
+  metadata:
+    pr_id: 2458
+    regex_detected: true
+    github_url: https://github.com/antiwork/gumroad/pull/2458
+- description: 'PR #26185: feat(companion): implement comprehensive booking a'
+  vars:
+    user_prompt: "Title: feat(companion): implement comprehensive booking actions system\nState: open\nLines: +4742/-739\n\
+      Labels: size/XXL\nDraft: Yes\n\nDescription:\n## What does this PR do?\n\nImplements a comprehensive booking actions\
+      \ system for the Cal.com Companion mobile app with web parity. This provides the foundation for all booking action functionality\
+      \ in the mobile app.\n\n**Key changes:**\n\n1. **Centralized Action Gating** (`companion/utils/booking-actions.ts`)\
+      \ - Pure function that determines visibility/enabled state for all actions (reschedule, cancel, add guests, edit location,\
+      \ view recordings, session details, mark no-show) based on booking state, user role, event type settings, and network\
+      \ status. Matches web's `bookingActions.ts` semantics.\n\n2. **New API v2 Endpoints** in CalComAPIService:\n   - `addGuests`\
+      \ - POST /v2/bookings/:bookingUid/guests\n   - `updateLocation` - PATCH /v2/bookings/:bookingUid/location  \n   - `getRecordings`\
+      \ - GET /v2/bookings/:bookingUid/recordings\n   - `getConferencingSessions` - GET /v2/bookings/:bookingUid/conferencing-sessions\n\
+      \   - `getTranscripts` - GET /v2/bookings/:bookingUid/transcripts\n\n3. **Action Modals** - AddGuestsModal, EditLocationModal,\
+      \ ViewRecordingsModal, MeetingSessionDetailsModal, MarkNoShowModal with appropriate UX (email validation, side-effect\
+      \ notes, undo capability)\n\n4. **Request Reschedule** - Deep link approach that opens web app, since this is a server-driven\
+      \ operation with complex side effects (emails, webhooks, calendar updates)\n\n5. **Safety Features** - Network status\
+      \ hook for offline-aware mutations, proper auth error handling (401/403)\n\n### Updates since last revision\n\n**iOS\
+      \ header menu action gating and reschedule wiring:**\n- iOS header menu now filters actions based on centralized gating\
+      \ (same as booking list) - hides Mark No-Show for upcoming bookings, shows Reschedule only when enabled\n- Added `onActionsReady`\
+      \ callback prop to `BookingDetailScreen` to expose internal action handlers (reschedule modal) to parent component\n\
+      - iOS header menu reschedule action now properly triggers BookingDetailScreen's reschedule modal instead of showing\
+      \ an alert\n- Uses ref-based"
+  metadata:
+    pr_id: 26185
+    regex_detected: true
+    github_url: https://github.com/calcom/cal.com/pull/26185
+- description: 'PR #34472: feat: add AND/OR trigger logic to summarization mi'
+  vars:
+    user_prompt: "Title: feat: add AND/OR trigger logic to summarization middleware\nState: open\nLines: +147/-26\nLabels:\
+      \ langchain, feature\n\nDescription:\nI added TriggerConfig support to SummarizationMiddleware so Python can mirror\
+      \ LangChain.js semantics: tuples still work, dicts require AND across metrics (e.g. {\"tokens\": 4000, \"messages\"\
+      : 10}), and lists apply OR across clauses.\r\n\r\nI refactored _should_summarize to evaluate normalized clauses (AND\
+      \ inside, OR across clauses) and documented the new syntax inline.\r\n\r\nI wrote regression tests covering AND clauses,\
+      \ mixed clause lists, and the empty-mapping error to prove the new behavior.\r\n\r\nTesting\r\nI created a local venv,\
+      \ installed the editable LangChain packages + test deps, and ran test_summarization.py (all 36 tests pass; only the\
+      \ existing deprecation warning remains).\r\n\r\nFixes #34465."
+  metadata:
+    pr_id: 34472
+    regex_detected: false
+    github_url: https://github.com/langchain-ai/langchain/pull/34472
+- description: 'PR #1666: fix: metric cleaner on vacant tenants'
+  vars:
+    user_prompt: "Title: fix: metric cleaner on vacant tenants\nState: open\nLines: +172/-51\nDraft: Yes\n\nDescription:\n\
+      ## What kind of change does this PR introduce?\r\n\r\nUse Beacon to remove metrics from tenant that have no websockets\
+      \ for more than 5 minutes\r\n\r\n"
+  metadata:
+    pr_id: 1666
+    regex_detected: false
+    github_url: https://github.com/supabase/realtime/pull/1666
+- description: 'PR #2455: Fix admin impersonation performance and CSV export'
+  vars:
+    user_prompt: "Title: Fix admin impersonation performance and CSV export bugs\nState: open\nLines: +72/-5\nTime to first\
+      \ review: 0.3 hours\n\nDescription:\n# Fixes #1931 \r\n\r\n## What\r\n\r\nTwo bugs when admins impersonate users with\
+      \ lots of sales:\r\n\r\n**Performance issue**: Dashboard is super slow or times out completely when becoming a large\
+      \ seller.\r\n\r\n**CSV export bug**: When you download sales data while impersonating someone, it could pull YOUR sales\
+      \ instead of theirs.\r\n\r\nAffects users like `1265432` and `432151` - anyone with a ton of sales basically.\r\n\r\n\
+      ## Why this happens\r\n\r\n### Performance\r\nThe `LargeSeller` table tracks users with 1000+ sales so we can cache\
+      \ their analytics. Problem is, these records only get created when users visit their own analytics page (`analytics_controller.rb`\
+      \ does this). The dashboard also uses `CreatorAnalytics::CachingProxy` but wasn't creating LargeSeller records.\r\n\r\
+      \n**Fix**: Add `LargeSeller.create_if_warranted(current_seller)` to `dashboard_controller.rb` (same pattern as `analytics_controller.rb:15`)\
+      \ + redirect impersonation to products page for faster initial load.\r\n\r\n### CSV exports\r\nThe issue is an edge\
+      \ case with `current_seller`:\r\n\r\nWhen impersonating, `current_seller` uses cookie-based lookup with validation:\r\
+      \n1. Cookie might have admin's seller ID from before impersonation\r\n2. `valid_seller?` checks `logged_in_user.member_of?(seller)`\r\
+      \n3. If the impersonated user IS a team member of admin's account, this returns TRUE\r\n4. `current_seller` returns\
+      \ admin's account instead of impersonated user\r\n\r\nThis edge case is rare but possible. Instead of relying on `current_seller`\
+      \ during impersonation, we now explicitly use `logged_in_user` for exports.\r\n\r\n**Fix**: Add `seller_for_export`\
+      \ method that returns `logged_in_user` when impersonating, bypassing the potentially-buggy `current_seller` logic.\r\
+      \n\r\n## The fix\r\n\r\n**app/controllers/dashboard_controller.rb**\r\n```ruby\r\ndef index\r\n  authorize :dashboard\r\
+      \n\r\n  if current_seller.suspended_for_tos_violation?\r\n    redirect_to products_url\r\n  else\r\n    LargeSeller.create_if_warranted(current_seller)\
+      \  # New - enables analytics caching\r\n    presenter"
+  metadata:
+    pr_id: 2455
+    regex_detected: true
+    github_url: https://github.com/antiwork/gumroad/pull/2455
+- description: 'PR #334: tool_use: memory_tool: _insert: cnvert to 0-indexe'
+  vars:
+    user_prompt: "Title: tool_use: memory_tool: _insert: cnvert to 0-indexed like _view is imp…\nState: open\nLines: +5/-2\n\
+      \nDescription:\n…lemented\r\n\r\n# Pull Request\r\n\r\n## Description\r\n\r\nFix memory tool _insert function to use\
+      \ 0 indexing like _view.\r\n\r\n## Type of Change\r\n\r\n<!-- Check all that apply by replacing [ ] with [x] -->\r\n\
+      \r\n- [ ] New cookbook\r\n- [x] Bug fix (fixes an issue in existing cookbook)\r\n- [ ] Documentation update\r\n- [ ]\
+      \ Code quality improvement (refactoring, optimization)\r\n- [ ] Dependency update\r\n- [ ] Other (please describe):\r\
+      \n\r\n## Cookbook Checklist (if applicable)\r\n\r\n<!-- For new cookbooks or significant updates to existing ones -->\r\
+      \n\r\n- [ ] Cookbook has a clear, descriptive title\r\n- [ ] Includes a problem statement or use case description\r\n\
+      - [ ] Code is well-commented and easy to follow\r\n- [ ] Includes expected outputs or results\r\n- [ ] Added entry to\
+      \ `registry.yaml` (run `/add-registry <notebook-path>` or add manually)\r\n\r\n## Testing\r\n\r\n<!-- Describe how you\
+      \ tested your changes -->\r\n\r\n- [x] I have tested this cookbook/change locally\r\n- [x] All cells execute without\
+      \ errors\r\n\r\n## Additional Context\r\n\r\n<!-- Add any other context, screenshots, or information about the pull\
+      \ request here -->\r\n<!-- Link to related issues, documentation, or discussions -->\r\n\r\n---\r\n\r\n**Note:** Pull\
+      \ requests that do not follow these guidelines or lack sufficient detail may be closed. This helps us maintain high-quality,\
+      \ useful cookbooks for the community. If you're unsure about any requirements, please open an issue to discuss before\
+      \ submitting a PR.\r\n"
+  metadata:
+    pr_id: 334
+    regex_detected: false
+    github_url: https://github.com/anthropics/anthropic-cookbook/pull/334
+- description: 'PR #8691: Francois ➡️ François'
+  vars:
+    user_prompt: 'Title: Francois ➡️ François
+
+      State: merged
+
+      Lines: +1/-1
+
+      Cycle time: 0.1 hours
+
+
+      Description:
+
+
+      <!--
+
+      Thank you for contributing to Polar! 🎉
+
+
+      Before submitting your PR, please ensure:
+
+      - An issue exists and you''re assigned to it (unless it''s a minor fix)
+
+      - You''ve tested your changes locally
+
+      - All tests pass
+
+      - Code follows our style guidelines
+
+
+      For minor fixes (typos, broken links, formatting), you may skip the issue requirement.
+
+      -->
+
+
+      ## 📋 Summary
+
+
+      **Related Issue**: Fixes #<!-- issue number -->
+
+
+      <!-- Brief description of what this PR does -->
+
+
+      ## 🎯 What
+
+
+      <!-- Describe what changes you''ve made -->
+
+
+      ## 🤔 Why
+
+
+      <!-- Explain why this change is needed -->
+
+
+      ## 🔧 How
+
+
+      <!-- Describe the approach you took to implement the changes -->
+
+
+      ## 🧪 Testing
+
+
+      <!-- Check all that apply -->
+
+
+      - [ ] I have tested these changes locally
+
+      - [ ] All existing tests pass (`uv run task test` for backend, `pnpm test` for frontend)
+
+      - [ ] I have added new tests for new functionality
+
+      - [ ] I have run linting and type checking (`uv run task lint && uv run task lint_types` for backend)
+
+
+      ### Test Instructions
+
+
+      <!-- Provide step-by-step instructions for reviewers to test your changes -->
+
+
+      1.
+
+      2.
+
+      3.
+
+
+      ## 🖼️ Screenshots/Recordings
+
+
+      <!-- Include screenshots or recordings if your changes affect the UI -->
+
+      <!-- You can drag and drop images directly into this text area -->
+
+
+      ## 📝 Additional Notes
+
+
+      <!-- Any additional context, considerations, or notes for reviewers -->
+
+
+      ## ✅ Pre-submission Checklist
+
+
+      - [ ] My code follows the project''s style guidelines
+
+      - [ ] I have performed a self-review of my code
+
+      - [ ] I have commented my code where necessary
+
+      - [ ] I have made corresponding changes to the documentation
+
+      - [ ] My changes generate no new warnings
+
+      - [ ] I have updated the relevant tests
+
+      - [ ] All tests pass locally
+
+      - [ ] **AI/LLM Policy**: If I used AI assistance, I have tested and executed the code locally (not just "vibe-coded")
+
+      '
+  metadata:
+    pr_id: 8691
+    regex_detected: false
+    github_url: https://github.com/polarsource/polar/pull/8691
+- description: 'PR #87749: Update Rspack development test manifest'
+  vars:
+    user_prompt: 'Title: Update Rspack development test manifest
+
+      State: open
+
+      Lines: +111/-44
+
+      Labels: tests, run-react-18-tests
+
+
+      Description:
+
+      This auto-generated PR updates the development integration test manifest used when testing Rspack.'
+  metadata:
+    pr_id: 87749
+    regex_detected: false
+    github_url: https://github.com/vercel/next.js/pull/87749
+- description: 'PR #87748: Update Rspack production test manifest'
+  vars:
+    user_prompt: 'Title: Update Rspack production test manifest
+
+      State: open
+
+      Lines: +95/-38
+
+      Labels: tests, run-react-18-tests
+
+      Hotfix: Yes
+
+
+      Description:
+
+      This auto-generated PR updates the production integration test manifest used when testing Rspack.'
+  metadata:
+    pr_id: 87748
+    regex_detected: false
+    github_url: https://github.com/vercel/next.js/pull/87748
+- description: 'PR #34470: fix(mistralai): ensure JSON serialization for Tool'
+  vars:
+    user_prompt: "Title: fix(mistralai): ensure JSON serialization for ToolMessage content\nState: open\nLines: +1/-1\nLabels:\
+      \ integration, fix, mistralai\n\nDescription:\n---\n\n## **Fix: Serialize ToolMessage content for Mistral chat completions**\n\
+      \n### **Problem**\n\nWhen using `langchain-mistralai` with MCP tools, tool outputs are propagated as `ToolMessage.content`.\n\
+      For MCP servers, `message.content` is a **list of structured chunks** (e.g. `[{type: \"text\", text: \"...\", id: \"\
+      ...\"}]`), not a plain string.\n\nThe Mistral Chat Completions API **strictly requires `tool.content` to be a string**.\n\
+      Passing structured content results in a hard API failure:\n\n```\nHTTPStatusError: 422\nInput should be a valid string\n\
+      ```\n\nThis happens even though:\n\n* The MCP tool itself returns valid output\n* LangChain correctly deserializes the\
+      \ tool response\n* The failure occurs only at the Mistral API boundary\n\nThis is consistent with the documented limitation\
+      \ that **Mistral does not support JSON / structured tool message content**.\n\n---\n\n### **Root Cause**\n\nIn `langchain-mistralai`,\
+      \ `ToolMessage` objects are serialized as-is:\n\n```python\nif isinstance(message, ToolMessage):\n    return {\n   \
+      \     \"role\": \"tool\",\n        \"content\": message.content,  # ❌ may be list[dict], not str\n        \"name\":\
+      \ message.name,\n        \"tool_call_id\": ...\n    }\n```\n\nWhen `message.content` is a list of chunks, this violates\
+      \ Mistral’s schema and triggers a 422 error.\n\n---\n\n### **Fix**\n\nForce serialization of tool message content into\
+      \ a valid string before sending it to Mistral:\n\n```python\nif isinstance(message, ToolMessage):\n    return {\n  \
+      \      \"role\": \"tool\",\n        \"content\": json.dumps(message.content, ensure_ascii=False),\n        \"name\"\
+      : message.name,\n        \"tool_call_id\": ...\n    }\n```\n\nThis guarantees:\n\n* `tool.content` is always a string\n\
+      * No schema violations at the API boundary\n* Compatibility with MCP tools and structured outputs\n\n---\n\n### **Why\
+      \ this approach**\n\n* Matches Mistral API requirements exactly\n* Aligns with LangChain’s existing behavior for providers\
+      \ without structured tool message support\n* Does **not** alter tool execution or MCP semantics\n* Keeps the fix narro"
+  metadata:
+    pr_id: 34470
+    regex_detected: false
+    github_url: https://github.com/langchain-ai/langchain/pull/34470
+- description: 'PR #31711: fix(install): wait for package installations befor'
+  vars:
+    user_prompt: "Title: fix(install): wait for package installations before applying patches\nState: merged\nLines: +79/-3\n\
+      Cycle time: 13.9 hours\nTime to first review: 13.9 hours\n\nDescription:\n## Overview\r\n\r\nIn the current latest version\
+      \ of Deno (2.6.3), there is an issue where running the `deno install` command causes patched packages specified in the\
+      \ `links` property of `deno.json` to be overwritten with npm package sources. To reproduce this issue, first remove\
+      \ all node_modules directories using a command like `rm -r node_modules **/node_modules`, then run `deno install`.\r\
+      \n\r\nWith the following configuration, the files under `./patches/@deno/vite-plugin` are overwritten with the source\
+      \ code from npm:\r\n\r\n```json\r\n{\r\n  \"links\": [\"./patches/@deno/vite-plugin\"]\r\n}\r\n```\r\n\r\nThis occurs\
+      \ because patch files are cloned using hard links.\r\n\r\nPreviously, only `./patches/@deno/vite-plugin/package.json`\
+      \ was being modified. This was because `clone_dir_recursive_except_node_modules_child` was calling `clone_dir_recursive`\
+      \ instead of itself during recursion, resulting in simple copies rather than hard links. As a result, the overwriting\
+      \ occurred silently and was difficult to notice. Since the intended behavior appears to be using hard links to allow\
+      \ direct modifications to the original files, I have updated the function to call itself recursively.\r\n\r\nAdditionally,\
+      \ we have added a regression test to check that files in the existing integrations tests (under `/tests/specs`) are\
+      \ not overwritten. I added it by looking at other tests, but please let me know if there is a more desirable testing\
+      \ method.\r\n\r\n\r\n## Related issue\r\n\r\nI couldn't find it, but if it was there, I'm sorry."
+  metadata:
+    pr_id: 31711
+    regex_detected: false
+    github_url: https://github.com/denoland/deno/pull/31711
+- description: 'PR #87746: [turbopack] Demonstrate worker_threads problem'
+  vars:
+    user_prompt: 'Title: [turbopack] Demonstrate worker_threads problem
+
+      State: open
+
+      Lines: +60/-0
+
+      Labels: Turbopack, created-by: Turbopack team
+
+      Draft: Yes
+
+
+      Description:
+
+      A simple test to demonstrate that we need a code gen for `new Worker`'
+  metadata:
+    pr_id: 87746
+    regex_detected: false
+    github_url: https://github.com/vercel/next.js/pull/87746
+- description: 'PR #2454: Automatically unpublish products when archiving'
+  vars:
+    user_prompt: "Title: Automatically unpublish products when archiving\nState: open\nLines: +65/-1\n\nDescription:\n# Automatically\
+      \ unpublish products when archiving\r\n\r\n## Summary\r\n\r\nThis PR ensures that when a product is archived, it is\
+      \ automatically unpublished if it's currently published. This prevents archived products from remaining publicly available\
+      \ for purchase.\r\n\r\n## Implementation Details\r\n\r\n1. The product is marked as archived (`archived: true`)\r\n\
+      2. If the product is currently published, it is automatically unpublished by calling `unpublish!`\r\n3. Both operations\
+      \ are wrapped in a database transaction to ensure consistency\r\n\r\n### Before\r\n\r\nhttps://github.com/user-attachments/assets/e81ef14d-e0f7-4f7f-bbc4-1995e1697d91\r\
+      \n\r\n\r\n### After\r\n\r\nhttps://github.com/user-attachments/assets/5eb829b0-df23-44f0-860e-f1a58f8ed676\r\n\r\n\r\
+      \n## Related\r\nFixed #2373 "
+  metadata:
+    pr_id: 2454
+    regex_detected: false
+    github_url: https://github.com/antiwork/gumroad/pull/2454
+- description: 'PR #2453: [#2184] On reassign purchase send receipts and lin'
+  vars:
+    user_prompt: "Title: [#2184] On reassign purchase send receipts and link purchases.\nState: open\nLines: +26/-11\nRevert:\
+      \ Yes\n\nDescription:\n# Enhance purchase reassignment to automatically send receipts and link to user accounts\r\n\r\
+      \n**Before:**\r\n\r\n- Purchases were reassigned but receipts were not automatically sent\r\n- Purchaser_id assignment\
+      \ logic was more verbose with explicit nil checks\r\n- API documentation didn't mention receipt sending or user account\
+      \ linking\r\n\r\n**After:**\r\n\r\n- Receipts are automatically sent to the new email address for all reassigned purchases\r\
+      \n- Purchases are properly linked to user accounts (via `purchaser_id`) when the target email has an associated user\
+      \ account\r\n- API documentation clearly describes the automatic receipt sending and user account linking behavior\r\
+      \n\r\n## Testing\r\n\r\nAll existing tests pass with the new behavior.\r\n\r\n- Verification that receipts are sent\
+      \ for all reassigned purchases\r\n- Verification that purchaser_id is correctly set when target user exists\r\n- Verification\
+      \ that receipts are sent for original subscription purchases\r\n- Verification that receipts are sent for recurring\
+      \ subscription purchases\r\n\r\n## Related\r\n\r\nFixed #2184\r\n"
+  metadata:
+    pr_id: 2453
+    regex_detected: false
+    github_url: https://github.com/antiwork/gumroad/pull/2453
+- description: 'PR #2452: fix: disable signup with stripe'
+  vars:
+    user_prompt: "Title: fix: disable signup with stripe\nState: open\nLines: +1096/-12\nHotfix: Yes\nTime to first review:\
+      \ 2.8 hours\n\nDescription:\nFixes #2450 \r\n\r\n## Summary \r\n- Added a new flag `disable_stripe_signup` (defaults\
+      \ to false, meaning Stripe signup is ALLOWED by default)\r\n- To block Stripe signups, activate the flag: `Feature.activate(:disable_stripe_signup)`\r\
+      \n- Checks if user account present if yes logs in else shows alert toast with \r\n`Signing up with Stripe is currently\
+      \ disabled. Please sign up with email first, then connect your Stripe account.`\r\n\r\n\r\n### ScreenShots `/signup`\
+      \ page: \r\n<table>\r\n<tr>\r\n<th>Before</th>\r\n<th>After</th>\r\n</tr>\r\n<tr>\r\n<td>\r\n\r\n<img width=\"1920\"\
+      \ height=\"1051\" alt=\"Screenshot 2025-12-24 at 1 13 50 PM\" src=\"https://github.com/user-attachments/assets/c43aafba-11e0-41e0-b6a7-cd89fd3d49e6\"\
+      \ />\r\n\r\n</td>\r\n<td>\r\n\r\n\r\n<img width=\"1920\" height=\"1051\" alt=\"Screenshot 2025-12-24 at 1 14 53 PM\"\
+      \ src=\"https://github.com/user-attachments/assets/08946a55-5431-4ebd-b229-47ffb0a9bb99\" />\r\n\r\n\r\n\r\n</td>\r\n\
+      </tr>\r\n</table>\r\n\r\n### Feature page: \r\n\r\n<img width=\"1920\" height=\"1051\" alt=\"Screenshot 2025-12-24 at\
+      \ 2 01 10 PM\" src=\"https://github.com/user-attachments/assets/4da44d3b-89f8-41d7-8e4e-fd7f30e25bac\" />\r\n\r\n\r\n\
+      ### Tests: \r\n\r\n<img width=\"879\" height=\"78\" alt=\"Screenshot 2025-12-24 at 10 31 12 AM\" src=\"https://github.com/user-attachments/assets/2ed34d91-c4d1-4f5a-8316-74f56d6838fc\"\
+      \ />\r\n\r\n ---\r\n\r\n<img width=\"927\" height=\"82\" alt=\"Screenshot 2025-12-24 at 10 29 52 AM\" src=\"https://github.com/user-attachments/assets/5e208127-7c36-430b-9f26-e10786e90cb2\"\
+      \ />\r\n\r\n---\r\n\r\n<img width=\"1526\" height=\"173\" alt=\"Screenshot 2025-12-24 at 10 30 22 AM\" src=\"https://github.com/user-attachments/assets/643acc29-9f8c-4e33-b313-d5c3d43ac4a7\"\
+      \ />\r\n\r\n> Failing tests are unrelated due to missing env\r\n### AI disclosure\r\nUsed Claude Opus 4.5 via Opencode\
+      \ for initial drafting \r\n\r\n### Confirmation\r\nI have watched all Antiwork Livestreams"
+  metadata:
+    pr_id: 2452
+    regex_detected: true
+    github_url: https://github.com/antiwork/gumroad/pull/2452
+- description: 'PR #2451: Enhance Stripe signup flow with feature flag suppo'
+  vars:
+    user_prompt: "Title: Enhance Stripe signup flow with feature flag support\nState: open\nLines: +1875/-40\n\nDescription:\n\
+      Fixed #2450 \r\n\r\nThis change improves the flexibility of the signup process and enhances user experience by providing\
+      \ clear messaging based on the current feature state.\r\n\r\n- Updated `User::OmniauthCallbacksController` to conditionally\
+      \ allow signup via Stripe based on the `stripe_signup_enabled` feature flag.\r\n- Modified `find_or_create_for_stripe_connect_account`\
+      \ method to accept an `allow_signup` parameter, controlling user creation based on the feature flag.\r\n- Adjusted flash\
+      \ messages to provide user feedback depending on the feature flag status.\r\n- Updated `SocialAuth` component to show\
+      \ or hide the Stripe button based on the feature flag.\r\n- Added tests to ensure correct behavior when the feature\
+      \ flag is disabled, including user login and error messaging.\r\n\r\n### Screenshots\r\n\r\n### Login\r\n\r\n<img width=\"\
+      1728\" height=\"1049\" alt=\"Screenshot 2025-12-24 at 1 24 52 PM\" src=\"https://github.com/user-attachments/assets/9e08264a-cee6-4768-812c-47be69afa02a\"\
+      \ />\r\n\r\n### Sign up\r\n\r\n\r\n<img width=\"1683\" height=\"1040\" alt=\"Screenshot 2025-12-24 at 1 25 01 PM\" src=\"\
+      https://github.com/user-attachments/assets/9575e4b7-754f-419a-8622-279b83b987f2\" />\r\n\r\n"
+  metadata:
+    pr_id: 2451
+    regex_detected: false
+    github_url: https://github.com/antiwork/gumroad/pull/2451
+- description: 'PR #26184: fix: add ''use client'' directive to embed-react bui'
+  vars:
+    user_prompt: 'Title: fix: add ''use client'' directive to embed-react build for Next.js App Router compatibility
+
+      State: merged
+
+      Lines: +23/-1
+
+      Labels: enterprise, core, ready-for-e2e, size/S
+
+      Cycle time: 5.6 hours
+
+      Time to first review: 0.0 hours
+
+
+      Description:
+
+      ## What does this PR do?
+
+
+      Fixes the embed-react package build to properly support Next.js App Router by adding a `"use client"` directive banner
+      to the Rollup output.
+
+
+      During bundling, the `"use client"` directive that exists in source files ends up in the middle of the bundled output,
+      which Rollup ignores/removes since the directive only makes sense at the top of a file. This PR:
+
+
+      1. Adds a `"use client"` banner to the top of the bundled output for proper client component support
+
+      2. Suppresses the `MODULE_LEVEL_DIRECTIVE` warning that Rollup emits when it encounters `"use client"` mid-file (following
+      the same approach as [vite-plugin-react](https://github.com/vitejs/vite-plugin-react/blob/3748fc7493cf0a07a2ae275fbd1ae035f01010cc/packages/plugin-react/src/index.ts#L307-L323))
+
+      3. Suppresses the "Can''t resolve original location of error" warning that occurs due to the directive being ignored
+
+      4. Adds the missing UMD global for `react/jsx-runtime`
+
+
+      ## Mandatory Tasks (DO NOT REMOVE)
+
+
+      - [x] I have self-reviewed the code (A decent size PR without self-review might be rejected).
+
+      - [x] I have updated the developer docs in /docs if this PR makes changes that would require a [documentation change](https://cal.com/docs).
+      N/A - build config change only.
+
+      - [x] I confirm automated tests are in place that prove my fix is effective or that my feature works.
+
+
+      ## How should this be tested?
+
+
+      1. Build the embed-react package: `yarn workspace @calcom/embed-react build`
+
+      2. Verify the output bundle starts with `"use client";`
+
+      3. Verify no MODULE_LEVEL_DIRECTIVE warnings appear during build
+
+
+      ## Checklist
+
+
+      - [x] My code follows the style guidelines of this project
+
+      - [x] I have commented my code, particularly in hard-to-understand areas
+
+      - [x] I have checked if my changes generate no new warnings
+
+
+
+
+
+      <!-- This is an auto-generated description by cubic. -->
+
+      ---
+
+      ## Summary by cubic
+
+      Adds a "use client" banner to the embed-react build and suppresses noisy Rollup warnings. Improves Next.js App Rou'
+  metadata:
+    pr_id: 26184
+    regex_detected: true
+    github_url: https://github.com/calcom/cal.com/pull/26184
+- description: 'PR #14229: Editorial Q1 2026 goals + 2026 mission'
+  vars:
+    user_prompt: "Title: Editorial Q1 2026 goals + 2026 mission\nState: open\nLines: +52/-81\nTime to first review: 5.9 hours\n\
+      \nDescription:\n## Changes\r\n\r\nAdd Q1 goals + 2026 mission\r\n\r\n## Checklist\r\n\r\n- [ ] I've checked the preview\
+      \ build of the article\r\n\r\n"
+  metadata:
+    pr_id: 14229
+    regex_detected: false
+    github_url: https://github.com/PostHog/posthog.com/pull/14229
+- description: 'PR #26183: ci: shard API v2 E2E tests into 4 parallel jobs'
+  vars:
+    user_prompt: "Title: ci: shard API v2 E2E tests into 4 parallel jobs\nState: merged\nLines: +86/-20\nLabels: ready-for-e2e,\
+      \ size/L\nCycle time: 9.2 hours\nTime to first review: 0.4 hours\n\nDescription:\n## What does this PR do?\r\n\r\nShards\
+      \ the API v2 E2E tests into 4 parallel jobs to reduce CI runtime. The current single-job approach takes 10+ minutes;\
+      \ sharding should reduce wall-clock time significantly.\r\n\r\n**Changes:**\r\n- Split the workflow into two jobs:\r\
+      \n  - `check-breaking-changes`: Runs swagger generation and oasdiff check once (on smaller buildjet-4vcpu runner)\r\n\
+      \  - `e2e`: Runs sharded tests (4 shards) using Jest's built-in `--shard` option\r\n- Each shard runs independently\
+      \ with its own postgres and redis services\r\n- Artifact names are now unique per shard: `test-results-api-v2-shard-{1,2,3,4}`\r\
+      \n\r\n**Analysis:**\r\n- 82 E2E test files with 1,102 total test cases\r\n- Top 3 files contain ~17% of all tests (user-bookings:\
+      \ 75, event-types: 67, slots: 47)\r\n- Jest 29.7.0 supports native `--shard` which distributes tests across shards\r\
+      \n\r\n"
+  metadata:
+    pr_id: 26183
+    regex_detected: false
+    github_url: https://github.com/calcom/cal.com/pull/26183
+- description: 'PR #11419: Version Packages'
+  vars:
+    user_prompt: 'Title: Version Packages
+
+      State: merged
+
+      Lines: +7/-6
+
+      Cycle time: 0.1 hours
+
+
+      Description:
+
+      This PR was opened by the [Changesets release](https://github.com/changesets/action) GitHub action. When you''re ready
+      to do a release, you can merge this and the packages will be published to npm automatically. If you''re not ready to
+      do a release yet, that''s fine, whenever you add more changesets to release-v5.0, this PR will be updated.
+
+
+
+      # Releases
+
+      ## @ai-sdk/amazon-bedrock@3.0.72
+
+
+      ### Patch Changes
+
+
+      -   4f0e5af: Fix bedrock ConverseStream using /delta/stop_sequence
+
+      '
+  metadata:
+    pr_id: 11419
+    regex_detected: false
+    github_url: https://github.com/vercel/ai/pull/11419
+- description: 'PR #41576: fix: update dependencies in useRealtimeMessages ho'
+  vars:
+    user_prompt: "Title: fix: update dependencies in useRealtimeMessages hook\nState: open\nLines: +1/-1\nTime to first review:\
+      \ 0.1 hours\n\nDescription:\nsmall update to the dependencies of a React effect in the `useRealtimeMessages` hook, ensuring\
+      \ that the effect properly reacts to changes in `realtimeUrl` as well as the existing dependencies.\n\n<!-- This is\
+      \ an auto-generated comment: release notes by coderabbit.ai -->\n\n## Summary by CodeRabbit\n\n* **Bug Fixes**\n  *\
+      \ Enhanced Realtime Inspector connection handling to ensure proper updates and reconnection behavior.\n\n<sub>✏️ Tip:\
+      \ You can customize this high-level summary in your review settings.</sub>\n\n<!-- end of auto-generated comment: release\
+      \ notes by coderabbit.ai -->"
+  metadata:
+    pr_id: 41576
+    regex_detected: true
+    github_url: https://github.com/supabase/supabase/pull/41576
+- description: 'PR #41575: chore(design-system): improve tab focus'
+  vars:
+    user_prompt: "Title: chore(design-system): improve tab focus\nState: open\nLines: +35/-22\nLabels: documentation\nDraft:\
+      \ Yes\n\nDescription:\n## What kind of change does this PR introduce?\r\n\r\nUI improvement.\r\n\r\n## What is the current\
+      \ behavior?\r\n\r\nWe either have browser default or inconsistent `focus-visible` states. This makes tabbing through\
+      \ with the keyboard feel quite clunky.\r\n\r\n## What is the new behavior?\r\n\r\nConsistent `focus-visible` tab states.\r\
+      \n\r\n## Still to come\r\n\r\n- [ ] Better handling of global styles. Is `focus.scss` the best place? Or should it be\
+      \ at the component level? That would keep things agnostic and atomic but isn’t that the opposite of DRY?\r\n- [ ] Decide\
+      \ on `ring` vs `outline`\r\n- [ ] Design documentation\r\n"
+  metadata:
+    pr_id: 41575
+    regex_detected: false
+    github_url: https://github.com/supabase/supabase/pull/41575
+- description: 'PR #26182: fix: flaky E2E tests on filter segment'
+  vars:
+    user_prompt: 'Title: fix: flaky E2E tests on filter segment
+
+      State: merged
+
+      Lines: +18/-12
+
+      Labels: ready-for-e2e, size/M
+
+      Cycle time: 6.2 hours
+
+      Time to first review: 0.0 hours
+
+
+      Description:
+
+
+
+
+
+
+
+
+
+      <!-- This is an auto-generated description by cubic. -->
+
+      ## Summary by cubic
+
+      Stabilized filter segment E2E tests by consistently targeting the first user-list data table and reinitializing locators
+      after navigation or login.
+
+
+      <sup>Written for commit 22348da4e7bc23e3a0747e0f34cf434d792fc2fa. Summary will update automatically on new commits.</sup>
+
+
+      <!-- End of auto-generated description by cubic. -->
+
+
+
+
+
+
+
+
+      '
+  metadata:
+    pr_id: 26182
+    regex_detected: true
+    github_url: https://github.com/calcom/cal.com/pull/26182
+- description: 'PR #43969: fix(experiments): Explore as insight for experimen'
+  vars:
+    user_prompt: "Title: fix(experiments): Explore as insight for experiment funnel metric\nState: open\nLines: +643/-14\n\
+      Time to first review: 0.1 hours\n\nDescription:\n## Problem\r\n\r\nRelated to https://github.com/posthog/posthog/issues/40180\r\
+      \n\r\n## Changes\r\n\r\nConvert the `ExperimentMetric` into an insight by using data from `Experiment`.\r\n\r\nIm planning\
+      \ to support the other type of metrics in separate PRs!\r\n\r\nhttps://github.com/user-attachments/assets/71b8fa8d-df15-42fb-925b-c795ce0bde17\r\
+      \n\r\n\r\n\r\n## How did you test this code?\r\n\r\n1) Create a experiment with a primary funnel metric\r\n2) Click\
+      \ on `details` for the metric\r\n3) Click on one of the variant's button, `Explore as Insight`\r\n4) You should see\
+      \ the insight page show up, its filtered by the flag with various settings in place according to your metric.\r\n"
+  metadata:
+    pr_id: 43969
+    regex_detected: false
+    github_url: https://github.com/PostHog/posthog/pull/43969
+- description: 'PR #26181: refactor: Remove buildjet cache from cache-build a'
+  vars:
+    user_prompt: 'Title: refactor: Remove buildjet cache from cache-build action
+
+      State: merged
+
+      Lines: +0/-22
+
+      Labels: core, foundation, ready-for-e2e, size/S
+
+      Cycle time: 1.2 hours
+
+      Time to first review: 0.1 hours
+
+
+      Description:
+
+      ## What does this PR do?
+
+
+      Removes the buildjet cache from the `cache-build` GitHub Action and simplifies it to just run `yarn build`, relying
+      on Turbo Remote Caching instead.
+
+
+      **Root cause of the issue:** The buildjet cache was causing consistent cache misses because the `hashFiles()` function
+      in `key-2` was producing different hashes between the build job and E2E shards. This happened because `yarn prisma generate`
+      (run during `yarn-install`) generates `.ts` files in `packages/prisma/zod/` and `packages/kysely/` that are included
+      in the hash pattern, and these generated files can differ slightly between runs.
+
+
+      **Why this fix works:** Since Turbo Remote Caching is already configured and handles the `.next` and `dist` outputs
+      (as defined in `turbo.json`), the buildjet cache is redundant and was causing more problems than it solved.
+
+
+      ## Mandatory Tasks (DO NOT REMOVE)
+
+
+      - [x] I have self-reviewed the code (A decent size PR without self-review might be rejected).
+
+      - [x] I have updated the developer docs in /docs if this PR makes changes that would require a documentation change.
+      N/A - CI infrastructure change only.
+
+      - [x] I confirm automated tests are in place that prove my fix is effective or that my feature works. N/A - This will
+      be validated by observing CI behavior.
+
+
+      ## How should this be tested?
+
+
+      1. Merge this PR and observe a subsequent PR''s CI run
+
+      2. Verify that E2E shards no longer show "Cache not found" for the prod-build cache
+
+      3. Verify that Turbo Remote Caching is being used (look for "Remote cache hit" in build logs)
+
+      4. Monitor build times to ensure they''re acceptable
+
+
+      ## Human Review Checklist
+
+
+      - [x] Verify Turbo Remote Caching is properly configured in CI (TURBO_TOKEN and TURBO_TEAM secrets are set)
+
+      - [x] Note: `@calcom/embed-core#build` has `cache: false` in turbo.json, so embed files will rebuild each time (this
+      was an accepted tradeoff)
+
+
+      ## Checklist
+
+
+      - [x] My code follows the style guidelines of this project
+
+      - [x] I have checked if my changes generate no'
+  metadata:
+    pr_id: 26181
+    regex_detected: true
+    github_url: https://github.com/calcom/cal.com/pull/26181
+- description: 'PR #41573: docs: fix typo in Google SMTP troubleshooting guid'
+  vars:
+    user_prompt: 'Title: docs: fix typo in Google SMTP troubleshooting guide
+
+      State: open
+
+      Lines: +5/-5
+
+      Labels: documentation
+
+      Time to first review: 0.0 hours
+
+
+      Description:
+
+      ## I have read the CONTRIBUTING.md file.
+
+
+      YES
+
+
+      ## What kind of change does this PR introduce?
+
+
+      Documentation fixes (typos and grammar)
+
+
+      ## What is the current behavior?
+
+
+      The Google SMTP troubleshooting guide contains typos and inconsistent capitalization:
+
+      - Duplicate word "to to"
+
+      - Lowercase brand names and sentence starts
+
+      - Repetitive phrasing
+
+
+      ## What is the new behavior?
+
+
+      Fixed typos, grammar, and improved clarity:
+
+      - Removed duplicate "to"
+
+      - Capitalized "Google Workspace" and "Google SMTP"
+
+      - Capitalized "I''ve" at sentence starts
+
+      - Simplified repetitive port instructions
+
+
+      File: `apps/docs/content/troubleshooting/using-google-smtp-with-supabase-custom-smtp-ZZzU4Y.mdx`'
+  metadata:
+    pr_id: 41573
+    regex_detected: false
+    github_url: https://github.com/supabase/supabase/pull/41573
+- description: 'PR #43967: fix(flags): Add `gc.collect()` and reduce memory i'
+  vars:
+    user_prompt: "Title: fix(flags): Add `gc.collect()` and reduce memory in cache verification\nState: open\nLines: +17/-4\n\
+      Hotfix: Yes\nTime to first review: 0.0 hours\n\nDescription:\n## Problem\r\n\r\nThe `verify_and_fix_flags_cache_task`\
+      \ has been experiencing OOM kills. Investigation revealed that while the batch size reduction in #43961 was correct,\
+      \ memory can accumulate between batches because Python's GC doesn't aggressively release memory to the OS. Additionally,\
+      \ workers with high baseline memory from previous tasks have less headroom for this memory-intensive operation.\r\n\r\
+      \n## Changes\r\n\r\n- Add `gc.collect()` at the start of verification to clear accumulated garbage from previous tasks,\
+      \ maximizing available memory headroom\r\n- Add `gc.collect()` after each batch to prevent memory accumulation between\
+      \ batches\r\n- Remove unnecessary `select_related(\"team\")` from the flags batch loading query since only `team_id`\
+      \ is needed for grouping (Team objects are already loaded by the caller)\r\n\r\n## How did you test this code?\r\n\r\
+      \n- Ran all 126 affected unit tests:\r\n  - `posthog/storage/test/test_hypercache_verifier.py` (43 tests)\r\n  - `posthog/models/feature_flag/test/test_flags_cache.py`\
+      \ (75 tests)\r\n  - `posthog/tasks/test/test_hypercache_verification.py` (8 tests)\r\n- Verified with ruff that code\
+      \ passes linting and formatting checks\r\n\r\nThese are conservative changes that reduce memory pressure without changing\
+      \ verification behavior. Worker memory recycling configuration is being investigated separately as an infrastructure\
+      \ change.\r\n"
+  metadata:
+    pr_id: 43967
+    regex_detected: false
+    github_url: https://github.com/PostHog/posthog/pull/43967
+- description: 'PR #26180: chore: Use 8 shards for E2E'
+  vars:
+    user_prompt: 'Title: chore: Use 8 shards for E2E
+
+      State: closed
+
+      Lines: +1/-1
+
+      Labels: core, foundation, ready-for-e2e, size/XS
+
+      Draft: Yes
+
+      Time to first review: 0.0 hours
+
+
+      Description:
+
+
+
+      <!-- This is an auto-generated description by cubic. -->
+
+      ## Summary by cubic
+
+      Increase E2E shards in GitHub Actions from 4 to 8 to parallelize test runs and reduce CI time.
+
+
+      <sup>Written for commit a25da942c3e3855a49856a71de3006ece1669bd4. Summary will update automatically on new commits.</sup>
+
+
+      <!-- End of auto-generated description by cubic. -->
+
+
+      '
+  metadata:
+    pr_id: 26180
+    regex_detected: true
+    github_url: https://github.com/calcom/cal.com/pull/26180
+- description: 'PR #26179: Use storybook plugin'
+  vars:
+    user_prompt: 'Title: Use storybook plugin
+
+      State: closed
+
+      Lines: +42197/-23
+
+      Labels: community, size/XXL
+
+      Time to first review: 0.1 hours
+
+
+      Description:
+
+      - **feat: Add Storybook setup for cal.com component library**
+
+      - **feat(storybook): add 26 UI component stories and cleanup config**
+
+      - **feat(storybook): add 12 more UI component stories**
+
+      - **feat(storybook): add FormCard, ErrorBoundary, RadioAreaGroup stories**
+
+      - **feat(storybook): add StepCard, Steps, FilterSelect, BooleanToggleGroup, AppListCard stories**
+
+      - **feat(storybook): add Label, InputError, PanelCard, RangeSliderPopover stories**
+
+      - **feat(storybook): add FormStep, InfoBadge, Calendar, LinkIconButton, SplitButton stories**
+
+      - **feat(storybook): add AvatarGroup stories**
+
+      - **feat(storybook): add ConfirmationDialogContent, DateRangePicker stories**
+
+      - **feat(storybook): add MultiSelectCheckboxes stories**
+
+      - **feat(storybook): add WizardForm, ImageUploader, BannerUploader stories**
+
+      - **feat(storybook): add stories for Button, badges, navigation, and layout components**
+
+      - **fix(storybook): add global TooltipProvider to fix tooltip errors**
+
+      - **feat(storybook): add stories for icons, popover, toast, table, and more**
+
+      - **feat(storybook): add stories for TableNew, AddressInput, and MultiEmail**
+
+      - **feat(storybook): add stories for HoverCard and CalendarSwitch**
+
+      - **feat(sandbox): update E2B template configuration**
+
+      - **feat(sandbox): add screenshot generation for E2B template**
+
+      - **fix(sandbox): use npx storybook dev directly for screenshot generation**
+
+      - **feat(storybook): add 100+ new component stories across packages**
+
+      - **Clean up storybook-generator**
+
+      - **chore(sandbox): update branch and limit screenshots for testing**
+
+      - **chore: switch to storybook-onbook-plugin npm package**
+
+
+      ## What does this PR do?
+
+
+      <!-- Please include a summary of the change and which issue is fixed. Please also include relevant motivation and context.
+      List any dependencies that are required for this change. -->
+
+
+      - Fixes #XXXX (GitHub issue number)
+
+      - Fixes CAL-XXXX (Linear issue number - should be visible at the bottom of the GitHub issue description)
+
+
+      ## Visual Demo (For contributors e'
+  metadata:
+    pr_id: 26179
+    regex_detected: true
+    github_url: https://github.com/calcom/cal.com/pull/26179
+- description: 'PR #87740: Update mdx.mdx'
+  vars:
+    user_prompt: "Title: Update mdx.mdx\nState: open\nLines: +1/-1\nLabels: Documentation\n\nDescription:\nUsing `export const\
+      \ dynamicParams = false` with `cacheComponents` results in an error:\r\n\r\n<img width=\"1680\" height=\"985\" alt=\"\
+      Screenshot 2025-12-23 at 5 27 00 PM\" src=\"https://github.com/user-attachments/assets/b4d50f21-cfbe-4d9b-a788-6751dd62d61e\"\
+      \ />\r\n<br />\r\n<br />\r\nSeems unnecessary with `cacheComponents` as well."
+  metadata:
+    pr_id: 87740
+    regex_detected: false
+    github_url: https://github.com/vercel/next.js/pull/87740
+- description: 'PR #11417: fix(langchain): do not re-emit executed tool calls'
+  vars:
+    user_prompt: "Title: fix(langchain): do not re-emit executed tool calls\nState: open\nLines: +370/-1\nLabels: bug, ai/core\n\
+      \nDescription:\n## Background\r\n\r\nWhen using `@ai-sdk/langchain` with LangGraph agents that have tools, multi-turn\
+      \ conversations fail with:\r\n\r\n```\r\n400 An assistant message with 'tool_calls' must be followed by tool messages\
+      \ responding to each 'tool_call_id'. The following tool_call_ids did not have response messages: call_xxxxx\r\n```\r\
+      \n\r\nThe root cause is in `toUIMessageStream`'s handling of LangGraph `values` events. When a `values` event contains\
+      \ the full message history (including AIMessages with `tool_calls` from previous turns), the adapter emits `tool-input-start`\
+      \ and `tool-input-available` events for ALL historical tool calls, but does NOT emit corresponding `tool-output-available`\
+      \ events for them.\r\n\r\nThis creates orphaned tool parts in the UIMessage with state `input-available` (no output).\
+      \ When `toBaseMessages` converts these back for the next request, it creates AIMessages with `tool_calls` but no following\
+      \ ToolMessages, causing the OpenAI API error.\r\n\r\n## Summary\r\n\r\nAdded a two-pass approach when processing `values`\
+      \ events in `processLangGraphEvent`:\r\n\r\n1. **First pass**: Collect all tool call IDs that have been responded to\
+      \ by ToolMessages in the message history. These are \"completed\" historical tool calls.\r\n\r\n2. **Second pass**:\
+      \ When processing AIMessages with tool calls, skip emitting events for any tool call that exists in the completed set.\r\
+      \n\r\nThis ensures that:\r\n- Historical tool calls that already have ToolMessage responses are NOT re-emitted\r\n-\
+      \ Only new/current tool calls (those without ToolMessage responses yet) are emitted\r\n- The client's message history\
+      \ remains consistent without orphaned tool parts\r\n\r\n## Manual Verification\r\n\r\nI double checked this resolution\
+      \ using the provided reproduction case and was able to validate that all is working fine:\r\n\r\n<img width=\"1624\"\
+      \ height=\"1056\" alt=\"Screenshot 2025-12-23 at 5 25 32 PM\" src=\"https://github.com/user-attachments/assets/94f08b19-2cb6-4bb7-8b46-8c3b2a3863d0\"\
+      \ />\r\n\r\n\r\n## Checklist\r\n\r\n- [x] Tests have been added / up"
+  metadata:
+    pr_id: 11417
+    regex_detected: false
+    github_url: https://github.com/vercel/ai/pull/11417
+- description: 'PR #41572: fix(studio): tab focus on generate password button'
+  vars:
+    user_prompt: "Title: fix(studio): tab focus on generate password button\nState: merged\nLines: +5/-17\nCycle time: 5.9\
+      \ hours\nTime to first review: 0.0 hours\n\nDescription:\n## What kind of change does this PR introduce?\r\n\r\n- Bug\
+      \ fix\r\n\r\n## What is the current behavior?\r\n\r\n- The _Generate a password_ button (that looks like `InlineLink`)\
+      \ in the _New project_ form is not focusable by keyboard\r\n- The other ones (`InlineLinks`) around it _are_ focusable\
+      \ by keyboard\r\n- The _Generate a password_ button uses a `span` but a `button` would be more semantic and fix this\
+      \ issue\r\n\r\n## What is the new behavior?\r\n\r\n- The _Generate a password_ button now uses a `button` element, not\
+      \ a `span`\r\n- Minor cleanup of redundant `className` elsewhere in form\r\n\r\n## Additional context\r\n\r\nNo visual\
+      \ changes. Here’s the bit of UI in question:\r\n\r\n| New Project |\r\n| --- |\r\n| <img width=\"1616\" height=\"874\"\
+      \ alt=\"25617\" src=\"https://github.com/user-attachments/assets/c727212c-8566-47bf-a534-e29320e144af\" /> |\r\n\r\n\
+      Spotted by @jahrlin.\r\n\n\n<!-- This is an auto-generated comment: release notes by coderabbit.ai -->\n\n## Summary\
+      \ by CodeRabbit\n\n* **Improvements**\n  * Updated links in the compute size selector to open in the same tab with standard\
+      \ styling instead of launching external windows for a more seamless navigation experience.\n  * Enhanced the password\
+      \ strength bar with improved semantic structure for better accessibility when generating strong passwords.\n\n<sub>✏️\
+      \ Tip: You can customize this high-level summary in your review settings.</sub>\n\n<!-- end of auto-generated comment:\
+      \ release notes by coderabbit.ai -->"
+  metadata:
+    pr_id: 41572
+    regex_detected: true
+    github_url: https://github.com/supabase/supabase/pull/41572
+- description: 'PR #26178: perf: batch freebusy calls by grouping credentials'
+  vars:
+    user_prompt: "Title: perf: batch freebusy calls by grouping credentials with same delegationCredentialId\nState: closed\n\
+      Lines: +125/-68\nLabels: ready-for-e2e, size/L\nDraft: Yes\n\nDescription:\n## What does this PR do?\n\nThis PR optimizes\
+      \ calendar availability fetching by batching freebusy API calls for credentials that share the same delegation credential\
+      \ (`delegatedToId`).\n\n**Problem:** Previously, `getCalendarsEvents` created a separate calendar service for each credential\
+      \ and made individual `getAvailability` calls. When multiple users in an organization share the same delegation credential,\
+      \ this resulted in multiple redundant freebusy API calls to Google Calendar.\n\n**Solution:** \n- Group credentials\
+      \ by their `delegatedToId` before creating calendar services\n- Create ONE calendar service per delegation group (using\
+      \ the first credential as representative)\n- Merge all selected calendars from credentials in the same group\n- Make\
+      \ a single batched freebusy call per delegation group\n\nThis reduces the number of Google Calendar API calls when multiple\
+      \ organization members share the same delegation credential.\n\n**Link to Devin run:** https://app.devin.ai/sessions/bfd6c7ec011a4f70b20a29961fe1af7b\n\
+      **Requested by:** Volnei Munhoz (@volnei)\n\n## Updates since last revision\n\nAdded comprehensive tests for the batching\
+      \ functionality:\n- **Scenario 1:** Multiple users with same delegation credential → verifies only ONE freebusy call\
+      \ is made\n- **Scenario 2:** Mixed delegation and own credentials → verifies ONE call per delegation group + ONE per\
+      \ own credential\n- **Scenario 3:** Different calendar providers (google, office365) → verifies batching doesn't break\
+      \ multi-provider support\n- Fixed existing test by giving Office365 credential a unique ID to ensure separate grouping\n\
+      - Cleaned up unused mock classes in test file\n\n## Mandatory Tasks (DO NOT REMOVE)\n\n- [x] I have self-reviewed the\
+      \ code (A decent size PR without self-review might be rejected).\n- [x] I have updated the developer docs in /docs if\
+      \ this PR makes changes that would require a [documentation change](https://cal.com/docs). N/A - no documentation changes\
+      \ needed.\n- [x] I confirm automated tests are in place that "
+  metadata:
+    pr_id: 26178
+    regex_detected: true
+    github_url: https://github.com/calcom/cal.com/pull/26178
+- description: 'PR #43966: fix(experiments): Create experiment button in insi'
+  vars:
+    user_prompt: "Title: fix(experiments): Create experiment button in insight wasn't adding metric to experiment\nState:\
+      \ open\nLines: +8/-4\nTime to first review: 0.0 hours\n\nDescription:\n## Problem\r\n\r\nWhen we click on `create experiment`\
+      \ in a funnel insight, it goes the new experiment page but the metric is empty:\r\n\r\n\r\nhttps://github.com/user-attachments/assets/506ff66e-cf2e-4c77-9294-f5ccf2fe076c\r\
+      \n\r\n\r\n\r\n## Changes\r\n\r\n1) `ExperimentForm` did not receive the `draftExperiment` from `experimentSceneLogic`,\
+      \ so the `experiment` in `ExperimentForm` does not include the `metric` that comes from the URL\r\n\r\n2) When we set\
+      \ the `experiment`, we need to add the `uuid` to `primary_metrics_ordered_uuids`, if not it will not show up in the\
+      \ section. \r\n\r\n## How did you test this code?\r\n\r\n1) Create a funnel insight with at least 2 steps.\r\n2) If\
+      \ the `Create experiment` button do not show up, you might have to refresh the page \r\n3) Click on the button\r\n4)\
+      \ You should be redirected to the experiment creation page with 1 primary metric\r\n\r\n\U0001F449 _Stay up-to-date\
+      \ with [PostHog coding conventions](https://posthog.com/docs/contribute/coding-conventions) for a smoother review._\r\
+      \n"
+  metadata:
+    pr_id: 43966
+    regex_detected: false
+    github_url: https://github.com/PostHog/posthog/pull/43966
+- description: 'PR #1665: fix: fix tenant cache handling'
+  vars:
+    user_prompt: "Title: fix: fix tenant cache handling\nState: open\nLines: +150/-86\n\nDescription:\n## What kind of change\
+      \ does this PR introduce?\r\n\r\n* Simplify `Realtime.Tenants.Cache`; \r\n* Change to populate cache globally on `create`\
+      \ and `update` instead of just invalidating. We don't need to worry about replication lag.\r\n* Fix tenant caching when\
+      \ tenant is not found. Previously we were caching `nil`. \r\n"
+  metadata:
+    pr_id: 1665
+    regex_detected: false
+    github_url: https://github.com/supabase/realtime/pull/1665
+- description: 'PR #26177: feat(platform-libraries): migrate from Vite to tsu'
+  vars:
+    user_prompt: 'Title: feat(platform-libraries): migrate from Vite to tsup for faster builds
+
+      State: open
+
+      Lines: +852/-2
+
+      Labels: ready-for-e2e, size/XL
+
+      Draft: Yes
+
+
+      Description:
+
+      ## What does this PR do?
+
+
+      Migrates the `@calcom/platform-libraries` package from Vite to tsup (esbuild-based) for library bundling. This addresses
+      the complexity of the current Vite setup and removes the brittle `sed` hack that was required to fix lru-cache CJS/ESM
+      module interop issues.
+
+
+      **Changes:**
+
+      - Replace Vite with tsup for bundling
+
+      - Remove the `sed` workaround for lru-cache interop (`watch-lru-fix` and `build:dev` scripts)
+
+      - Create `tsup.config.ts` with all 13 entry points, externals list, and path aliases
+
+      - Maintain ESM + CJS dual output with TypeScript declarations
+
+
+      **Link to Devin run:** https://app.devin.ai/sessions/33c4374e933d4f1c840016c6d1102a24
+
+      **Requested by:** keith@cal.com (@keithwillcode)
+
+
+      ## Updates since last revision
+
+
+      Fixed Jest test failures caused by dynamic `import()` calls in the bundled CJS output:
+
+
+      - **Split tsup config into separate ESM and CJS builds** - ESM uses `splitting: true` for code splitting, CJS uses `splitting:
+      false` to convert dynamic imports to lazy initialization functions
+
+      - **Bundle `@calcom/app-store`** - Added to `noExternal` to avoid JSON import issues when Jest loads app-store metadata
+      files via ts-jest
+
+      - **All 14 API v2 test suites now pass** (208 tests)
+
+
+      The key insight: Vite converts dynamic `import()` to `Promise.resolve().then(() => require())` which works in CJS. By
+      using `splitting: false` for CJS, esbuild does the same conversion.
+
+
+      ## Mandatory Tasks (DO NOT REMOVE)
+
+
+      - [x] I have self-reviewed the code (A decent size PR without self-review might be rejected).
+
+      - [x] I have updated the developer docs in /docs if this PR makes changes that would require a [documentation change](https://cal.com/docs).
+      N/A - no documentation changes needed.
+
+      - [x] I confirm automated tests are in place that prove my fix is effective or that my feature works.
+
+
+      ## How should this be tested?
+
+
+      1. Run `cd packages/platform/libraries && yarn build` to verify tsup compilation works
+
+      2. Run the API v2 tests: `cd apps/api/v2 && TZ=UTC yarn t'
+  metadata:
+    pr_id: 26177
+    regex_detected: true
+    github_url: https://github.com/calcom/cal.com/pull/26177
+- description: 'PR #26176: feat(api-v2): add SWC compiler support for faster '
+  vars:
+    user_prompt: 'Title: feat(api-v2): add SWC compiler support for faster builds
+
+      State: open
+
+      Lines: +959/-10
+
+      Labels: ready-for-e2e, size/XL
+
+      Draft: Yes
+
+
+      Description:
+
+      ## What does this PR do?
+
+
+      This PR configures API v2 (NestJS) to use SWC (Speedy Web Compiler) instead of the default TypeScript compiler for faster
+      build times. SWC is a Rust-based compiler that is ~20x faster than tsc and is officially supported by NestJS.
+
+
+      Changes:
+
+      - Added `@swc/cli` and `@swc/core` as dev dependencies
+
+      - Created `.swcrc` configuration with `decoratorMetadata: true` (required for NestJS dependency injection)
+
+      - Updated `nest-cli.json` to use `"builder": "swc"` with `"typeCheck": true` to ensure the swagger plugin continues
+      to work
+
+
+      This is Phase 1 of a potential migration away from the current Vite-based bundling setup for platform libraries.
+
+
+      **Link to Devin run:** https://app.devin.ai/sessions/33c4374e933d4f1c840016c6d1102a24
+
+      **Requested by:** keith@cal.com (@keithwillcode)
+
+
+      ## Mandatory Tasks (DO NOT REMOVE)
+
+
+      - [x] I have self-reviewed the code (A decent size PR without self-review might be rejected).
+
+      - [x] I have updated the developer docs in /docs if this PR makes changes that would require a [documentation change](https://cal.com/docs).
+      N/A - no documentation changes needed.
+
+      - [ ] I confirm automated tests are in place that prove my fix is effective or that my feature works.
+
+
+      ## How should this be tested?
+
+
+      1. Run `cd apps/api/v2 && yarn nest build` to verify SWC compilation works
+
+      2. Start the API v2 server and verify it boots without errors
+
+      3. Test a few API endpoints to ensure decorator-based dependency injection works correctly
+
+      4. Verify swagger documentation is still generated correctly at `/api/v2/docs`
+
+
+      **Note:** There are pre-existing type errors in `@calcom/trpc` package that cause the build to fail with `typeCheck:
+      true`. These errors exist on the main branch as well and are unrelated to this PR. CI may need these fixed first, or
+      `typeCheck` could be temporarily set to `false`.
+
+
+      ## Human Review Checklist
+
+
+      - [ ] Verify `.swcrc` configuration is correct for NestJS (especially `decoratorMetadata: true`)
+
+      - [ ] Test that API v2 starts and r'
+  metadata:
+    pr_id: 26176
+    regex_detected: true
+    github_url: https://github.com/calcom/cal.com/pull/26176
+- description: 'PR #26175: fix: compose CalendarCacheWrapper with CalendarBat'
+  vars:
+    user_prompt: 'Title: fix: compose CalendarCacheWrapper with CalendarBatchWrapper for proper batching
+
+      State: open
+
+      Lines: +37/-15
+
+      Labels: size/M
+
+      Draft: Yes
+
+
+      Description:
+
+      ## What does this PR do?
+
+
+      Previously, `CalendarCacheWrapper` and `CalendarBatchWrapper` were mutually exclusive - when cache was enabled, the
+      batch wrapper was bypassed entirely. This caused uncached calendars to skip the batching logic, resulting in multiple
+      freebusy API calls per `delegationCredential` instead of one consolidated call.
+
+
+      This PR changes the wrapper composition so that:
+
+      - If cache is enabled AND batch is supported: `CalendarCacheWrapper(CalendarBatchWrapper(originalCalendar))`
+
+      - If cache is enabled but batch is not supported: `CalendarCacheWrapper(originalCalendar)`
+
+      - If cache is not enabled but batch is supported: `CalendarBatchWrapper(originalCalendar)`
+
+      - Otherwise: `originalCalendar`
+
+
+      This ensures that when `CalendarCacheWrapper` passes uncached calendars to its underlying calendar, they are still properly
+      batched by `delegationCredentialId` via `CalendarBatchWrapper`.
+
+
+      ## Mandatory Tasks (DO NOT REMOVE)
+
+
+      - [x] I have self-reviewed the code (A decent size PR without self-review might be rejected).
+
+      - [x] I have updated the developer docs in /docs if this PR makes changes that would require a [documentation change](https://cal.com/docs).
+      N/A - internal implementation change only.
+
+      - [x] I confirm automated tests are in place that prove my fix is effective or that my feature works.
+
+
+      ## How should this be tested?
+
+
+      1. Enable both calendar cache and batch features for a Google Calendar credential with delegation
+
+      2. Have some calendars with sync enabled (cached) and some without (uncached)
+
+      3. Request availability for multiple calendars sharing the same `delegationCredentialId`
+
+      4. Verify in logs that uncached calendars are batched together per `delegationCredentialId` instead of making separate
+      freebusy calls
+
+
+      **Expected behavior:** When both cache and batch are supported, the logs should show:
+
+      - "Calendar Batch is supported, wrapping with CalendarBatchWrapper"
+
+      - "Calendar Cache is enabled, wrapping with CalendarCacheWrapper" with `hasBatchWrapper: true`
+
+      '
+  metadata:
+    pr_id: 26175
+    regex_detected: true
+    github_url: https://github.com/calcom/cal.com/pull/26175
+- description: 'PR #43965: chore(flags): Add canonical log line for /flags re'
+  vars:
+    user_prompt: "Title: chore(flags): Add canonical log line for /flags requests\nState: open\nLines: +1076/-204\nTime to\
+      \ first review: 0.1 hours\n\nDescription:\n## Problem\r\n\r\nWhen debugging `/flags` request issues in production, we\
+      \ need to correlate multiple log entries to understand what happened during a request. This makes debugging slow and\
+      \ error-prone, especially when investigating SDK-specific issues or tracking down problems for specific teams.\r\n\r\
+      \nWe need a single, comprehensive log entry per request that contains all key telemetry. This is inspired by this post\
+      \ entitled [Fast and flexible observability with canonical log lines](https://stripe.com/blog/canonical-log-lines).\
+      \ @andyzzhao brought this post to our attention in [this Slack thread](https://posthog.slack.com/archives/C07Q2U4BH4L/p1766351262135789)\
+      \ and noted that it would enable simple ClickHouse queries for debugging without needing to join multiple log entries.\r\
+      \n\r\n## Changes\r\n\r\nImplement Stripe-style canonical log lines for the Rust `/flags` service:\r\n\r\n**Core canonical\
+      \ log infrastructure:**\r\n\r\n- Add `CanonicalLogLine` struct to accumulate telemetry throughout request lifecycle\r\
+      \n- Add `CanonicalLogGuard` RAII wrapper to ensure logs are always emitted, even on early returns\r\n- Emit a single\
+      \ log entry at request completion with message `\"canonical_log_line\"`\r\n\r\n**Fields captured:**\r\n| Field | Description\
+      \ |\r\n|-------|-------------|\r\n| `request_id` | UUID for distributed tracing |\r\n| `team_id` | Team identifier |\r\
+      \n| `distinct_id` | User identifier (truncated to 64 chars) |\r\n| `ip` | Client IP address |\r\n| `user_agent` | Full\
+      \ User-Agent string |\r\n| `lib` | SDK name (e.g., \"posthog-python\", \"web\") |\r\n| `lib_version` | SDK version (from\
+      \ query param or User-Agent) |\r\n| `api_version` | Response format version (v=1,2,3,4) |\r\n| `duration_ms` | Request\
+      \ latency |\r\n| `http_status` | Response status code |\r\n| `flags_evaluated` | Count of flags evaluated |\r\n| `flags_enabled`\
+      \ | Count of enabled flags |\r\n| `flags_disabled` | Whether flags were disabled via request |\r\n| `quota_limited`\
+      \ | Hit quota limit |\r\n| `rate_limited` | Hit rate limit |\r\n| `error_code` | Error code if re"
+  metadata:
+    pr_id: 43965
+    regex_detected: false
+    github_url: https://github.com/PostHog/posthog/pull/43965
+- description: 'PR #26174: fix: save button in availibility disabled when no '
+  vars:
+    user_prompt: "Title: fix: save button in availibility disabled when no changes\nState: open\nLines: +22/-2\nLabels: \U0001F41B\
+      \ bug, community, size/S\nTime to first review: 0.1 hours\n\nDescription:\n## What does this PR do?\r\n\r\n<!-- Please\
+      \ include a summary of the change and which issue is fixed. Please also include relevant motivation and context. List\
+      \ any dependencies that are required for this change. -->\r\n\r\n- Fixes #26173 \r\n- Fixes CAL-6971\r\n- updated code\
+      \ so that save button is only enabled when there are changes\r\n\r\n## Visual Demo (For contributors especially)\r\n\
+      \r\nA visual demonstration is strongly recommended, for both the original and new change **(video / image - any one)**.\r\
+      \n\r\n#### Video Demo (if applicable):\r\n\r\nBefore:\r\n\r\nhttps://github.com/user-attachments/assets/1ecbdbb0-f847-4c2a-81d6-e79141f407e2\r\
+      \n\r\nAfter:\r\n\r\nhttps://github.com/user-attachments/assets/1eaccd4e-7020-487d-9da4-c9cec0225c8d\r\n\r\n## Mandatory\
+      \ Tasks (DO NOT REMOVE)\r\n\r\n- [x] I have self-reviewed the code (A decent size PR without self-review might be rejected).\r\
+      \n- [x] I have updated the developer docs in /docs if this PR makes changes that would require a [documentation change](https://cal.com/docs).\
+      \ If N/A, write N/A here and check the checkbox. - N/A\r\n- [x] I confirm automated tests are in place that prove my\
+      \ fix is effective or that my feature works.\r\n\r\n## How should this be tested?\r\n\r\n<!-- Please describe the tests\
+      \ that you ran to verify your changes. Provide instructions so we can reproduce. Please also list any relevant details\
+      \ for your test configuration. Write details that help to start the tests -->\r\n\r\n1. Go to availability section\r\
+      \n2. Click on any availability\r\n3. See that the save button now is only enabled when changes are made\r\n"
+  metadata:
+    pr_id: 26174
+    regex_detected: false
+    github_url: https://github.com/calcom/cal.com/pull/26174
+- description: 'PR #26172: chore: update dependencies'
+  vars:
+    user_prompt: "Title: chore: update dependencies\nState: merged\nLines: +175/-101\nLabels: core, foundation, ready-for-e2e,\
+      \ size/L\nCycle time: 2.6 hours\nTime to first review: 0.2 hours\n\nDescription:\n## What does this PR do?\r\n\r\nUpdates\
+      \ direct dependencies to more recent versions. These updates bring bug fixes, performance improvements, and better compatibility\
+      \ with the ecosystem.\r\n\r\n### Changes\r\n\r\n- **vite**: 4.5.3→4.5.14 (embeds), 5.4.6→5.4.21 (atoms/libraries)\r\n\
+      - **nodemailer**: 6.7.8→7.0.11\r\n- **@playwright/test**: 1.45.3→1.55.1\r\n- **next-auth**: 4.22.1→4.24.13\r\n- **class-validator**:\
+      \ 0.14.0→0.14.3\r\n- **dompurify**: 3.2.3→3.3.1\r\n\r\nAlso includes type fixes in `next-auth-custom-adapter.ts` for\
+      \ compatibility with next-auth 4.24\r\n\r\n## How should this be tested?\r\n\r\n1. `yarn workspace @calcom/web build`\
+      \ - should pass\r\n2. `yarn type-check` - should pass\r\n3. Test login/signup flow manually (next-auth updated)\r\n\
+      4. Test email sending (nodemailer updated)\r\n\r\nNo environment variables or test data required.\r\n\r\n## Mandatory\
+      \ Tasks\r\n\r\n- [x] I have self-reviewed the code\r\n- [x] N/A - No documentation changes required\r\n- [x] I confirm\
+      \ automated tests are in place that prove my fix is effective or that my feature works"
+  metadata:
+    pr_id: 26172
+    regex_detected: false
+    github_url: https://github.com/calcom/cal.com/pull/26172
+- description: 'PR #26171: refactor: Add dedicated setup-db job to eliminate '
+  vars:
+    user_prompt: "Title: refactor: Add dedicated setup-db job to eliminate cache race condition\nState: merged\nLines: +80/-11\n\
+      Labels: core, foundation, ready-for-e2e, size/M\nCycle time: 2.2 hours\nTime to first review: 0.1 hours\n\nDescription:\n\
+      ## What does this PR do?\n\nRefactors the CI workflow to create a dedicated `setup-db` job that runs before all E2E\
+      \ and integration test jobs, eliminating a potential race condition in database cache creation.\n\n**Problem:** Previously,\
+      \ `build-api-v1` was the first job that ran the `cache-db` action to create the database cache. However, several E2E\
+      \ jobs (`e2e-api-v2`, `e2e-app-store`, `e2e-embed`, `e2e-embed-react`) didn't depend on `build-api-v1`, so they could\
+      \ potentially run `cache-db` simultaneously, causing a race condition where multiple jobs might try to write to the\
+      \ same cache.\n\n**Solution:** \n- Create a new `setup-db.yml` workflow with only the env vars needed for database seeding:\n\
+      \  - `CALENDSO_ENCRYPTION_KEY`, `DATABASE_URL`, `DATABASE_DIRECT_URL` (core DB setup)\n  - `E2E_TEST_CALCOM_QA_EMAIL`,\
+      \ `E2E_TEST_CALCOM_QA_PASSWORD`, `E2E_TEST_CALCOM_QA_GCAL_CREDENTIALS` (QA user seeding)\n  - `GOOGLE_API_CREDENTIALS`\
+      \ (google-calendar app keys seeding)\n  - `TURBO_TOKEN`, `TURBO_TEAM` (turbo caching)\n- Add `setup-db` job to `pr.yml`\
+      \ that runs before all E2E jobs\n- Update all E2E and integration test jobs to depend on `setup-db`\n- Update `build-api-v1`\
+      \ to depend on `setup-db` (it still has its own postgres service and cache-db action, which will get a cache hit)\n\n\
+      ### Updates since last revision\n\n- **Fixed cache key invalidation in reusable workflows:** The `cache-db` action now\
+      \ accepts a `COMMIT_SHA` input and uses a fallback chain (`inputs.COMMIT_SHA || github.event.pull_request.head.sha ||\
+      \ github.sha`). This fixes an issue where `github.event.pull_request.head.sha` was empty in `workflow_call` contexts,\
+      \ causing the cache to not invalidate on new commits.\n- **Added `GOOGLE_API_CREDENTIALS`:** Required by `seed-app-store.ts`\
+      \ to populate the google-calendar app keys in the database. Without this, the E2E API v2 tests for Google Calendar OAuth\
+      \ endpoints would fail with 400 Bad Request due to null app keys.\n\n## Mandatory Tasks (DO NOT REMOVE)\n\n- [x] I have\
+      \ self-reviewed t"
+  metadata:
+    pr_id: 26171
+    regex_detected: true
+    github_url: https://github.com/calcom/cal.com/pull/26171
+- description: 'PR #11416: feat(google): add per-part mediaResolution support'
+  vars:
+    user_prompt: "Title: feat(google): add per-part mediaResolution support for file parts\nState: open\nLines: +391/-6\n\
+      Labels: ai/provider\n\nDescription:\n## Background\r\n\r\nAdd support for setting mediaResolution on individual file\
+      \ parts via providerOptions, enabling fine-grained control over token usage for media inputs.\r\n\r\nThis is a Gemini\
+      \ 3 exclusive feature at the moment, it allows mixing different resolution levels in a single request (e.g., high resolution\
+      \ for complex diagrams, low for simple images).\r\n\r\nSee: https://ai.google.dev/gemini-api/docs/media-resolution#per-part-media-resolution\r\
+      \n\r\n## Summary\r\n\r\n- Add GoogleGenerativeAIFilePartProviderOptions schema with mediaResolution enum (including\
+      \ MEDIA_RESOLUTION_ULTRA_HIGH which is only available per-part)\r\n- Update message conversion to extract and apply\
+      \ per-part mediaResolution from providerOptions\r\n- Add warning when per-part mediaResolution is used with non-Gemini\
+      \ 3 models\r\n- Export new type from package index\r\n- Add comprehensive tests for the new functionality\r\n\r\nThe\
+      \ implementation is backward compatible - mediaResolution is only added to parts when explicitly specified, so older\
+      \ models are unaffected.\r\n\r\n## Manual Verification\r\n\r\nVerified using the following:\r\n\r\n```\r\n    const\
+      \ result1 = await generateText({\r\n      model: google('gemini-3-flash-preview'),\r\n      messages: [\r\n        {\r\
+      \n          role: 'user',\r\n          content: [\r\n            {\r\n              type: 'text',\r\n              text:\
+      \ 'Describe this image in detail. What do you see?',\r\n            },\r\n            {\r\n              type: 'file',\r\
+      \n              data: fs.readFileSync('./data/comic-cat.png'),\r\n              mediaType: 'image/png',\r\n        \
+      \      providerOptions: {\r\n                google: {\r\n                  mediaResolution: 'MEDIA_RESOLUTION_ULTRA_HIGH',\r\
+      \n                } satisfies GoogleGenerativeAIFilePartProviderOptions,\r\n              },\r\n            },\r\n \
+      \         ],\r\n        },\r\n      ],\r\n    });\r\n\r\n    const result2 = await generateText({\r\n      model: google('gemini-3-flash-preview'),\r\
+      \n      messages: [\r\n        {\r\n          role: 'user',\r\n          content: [\r\n            {\r"
+  metadata:
+    pr_id: 11416
+    regex_detected: false
+    github_url: https://github.com/vercel/ai/pull/11416
+- description: 'PR #14228: Update Surveys team Q1 2026 goals'
+  vars:
+    user_prompt: 'Title: Update Surveys team Q1 2026 goals
+
+      State: open
+
+      Lines: +27/-20
+
+      Time to first review: 0.8 hours
+
+
+      Description:
+
+      Updates the Surveys team objectives for Q1 2026:
+
+
+      - **Goal 1: Survey Platform UX Simplification** (Lucas)
+
+      - **Goal 2: Product Tours Shipped** (Adam)
+
+      - **Goal 3: Surveys Everywhere v2** (Lucas, Adam, Cory)
+
+      - **Goal 4: PostHog AI User Interviews** (Lucas, Adam, Cory)'
+  metadata:
+    pr_id: 14228
+    regex_detected: false
+    github_url: https://github.com/PostHog/posthog.com/pull/14228
+- description: 'PR #2812: fix(surveys): queue callbacks when fetch is in pro'
+  vars:
+    user_prompt: "Title: fix(surveys): queue callbacks when fetch is in progress instead of returning error\nState: open\n\
+      Lines: +160/-74\nLabels: release\nTime to first review: 0.0 hours\n\nDescription:\n## Summary\n\nFixes a race condition\
+      \ where `onSurveysLoaded` callbacks received an empty array on first page load.\n\n**The bug:** `generateSurveys` starts\
+      \ an async fetch, and when `onSurveysLoaded` callbacks tried to call `getSurveys`, it immediately returned an empty\
+      \ array with error \"Surveys are already being loaded\" due to concurrent fetch protection.\n\n**The fix:** Instead\
+      \ of returning an error when a fetch is in progress, we now track the in-flight request with a Promise. Multiple callers\
+      \ share the same Promise and all receive the result when it completes.\n\n```typescript\n// Before: immediately returned\
+      \ error when fetch in progress\nif (this._isFetchingSurveys) {\n    return callback([], {\n        isLoaded: false,\n\
+      \        error: 'Surveys are already being loaded',\n    })\n}\n\n// After: callers subscribe to the in-flight Promise\n\
+      if (this._getSurveysInFlightPromise) {\n    this._getSurveysInFlightPromise.then(({ surveys, context }) => callback(surveys,\
+      \ context))\n    return\n}\n```\n\n## Test plan\n\n- [x] Added regression test for the race condition\n- [x] Added unit\
+      \ tests for Promise reuse behavior  \n- [x] All existing survey tests pass"
+  metadata:
+    pr_id: 2812
+    regex_detected: false
+    github_url: https://github.com/PostHog/posthog-js/pull/2812
+- description: 'PR #34468: test(langchain): enforce STTI-001 argument provena'
+  vars:
+    user_prompt: "Title: test(langchain): enforce STTI-001 argument provenance invariant\nState: closed\nLines: +52/-0\nLabels:\
+      \ tests, langchain-classic\n\nDescription:\nThis PR adds a small integration test that exposes a gap in how tool calls\
+      \ are validated today.\r\n\r\nRight now, tool arguments are checked for schema correctness only. That means a model\
+      \ can pass a value that is type-valid but never came from any prior tool output in the session, and the tool still executes.\r\
+      \n\r\nThe test demonstrates this by allowing a delete call for an ID that was previously listed, and rejecting one that\
+      \ was never observed.\r\n\r\nNothing here depends on prompts, model behavior, or safety tuning. It’s just about whether\
+      \ tool arguments are required to come from earlier tool results.\r\n\r\nThe test fails under current behavior and is\
+      \ meant to make that gap explicit."
+  metadata:
+    pr_id: 34468
+    regex_detected: false
+    github_url: https://github.com/langchain-ai/langchain/pull/34468
+- description: 'PR #11414: Backport: Fix bedrock ConverseStream undocumented '
+  vars:
+    user_prompt: 'Title: Backport: Fix bedrock ConverseStream undocumented `/delta/stop_sequence`
+
+      State: merged
+
+      Lines: +174/-8
+
+      Revert: Yes
+
+      Cycle time: 5.5 hours
+
+      Time to first review: 0.1 hours
+
+
+      Description:
+
+
+      This is an automated backport of #11410 to the release-v5.0 branch. FYI @gaspar09
+
+      This backport has conflicts that need to be resolved manually.
+
+
+      ### `git cherry-pick` output
+
+
+      ```
+
+      Auto-merging packages/amazon-bedrock/src/bedrock-chat-language-model.test.ts
+
+      CONFLICT (content): Merge conflict in packages/amazon-bedrock/src/bedrock-chat-language-model.test.ts
+
+      Auto-merging packages/amazon-bedrock/src/bedrock-chat-language-model.ts
+
+      CONFLICT (content): Merge conflict in packages/amazon-bedrock/src/bedrock-chat-language-model.ts
+
+      error: could not apply afe9730ab... Fix bedrock ConverseStream undocumented `/delta/stop_sequence` (#11410)
+
+      hint: After resolving the conflicts, mark them with
+
+      hint: "git add/rm <pathspec>", then run
+
+      hint: "git cherry-pick --continue".
+
+      hint: You can instead skip this commit with "git cherry-pick --skip".
+
+      hint: To abort and get back to the state before "git cherry-pick",
+
+      hint: run "git cherry-pick --abort".
+
+      hint: Disable this message with "git config set advice.mergeConflict false"
+
+      ```
+
+      '
+  metadata:
+    pr_id: 11414
+    regex_detected: false
+    github_url: https://github.com/vercel/ai/pull/11414
+- description: 'PR #26170: chore: Change API v2 depends on for CI'
+  vars:
+    user_prompt: "Title: chore: Change API v2 depends on for CI\nState: merged\nLines: +6/-6\nLabels: core, foundation, ready-for-e2e,\
+      \ size/S\nCycle time: 0.3 hours\nTime to first review: 0.1 hours\n\nDescription:\n\n\n<!-- This is an auto-generated\
+      \ description by cubic. -->\n## Summary by cubic\nUpdate CI workflow dependencies to decouple non–API v2 tests from\
+      \ the API v2 build. This reduces unnecessary blocking and speeds up PR checks.\n\n- **Refactors**\n  - integration-test\
+      \ and e2e now depend on prepare, build, and build-api-v1 (removed build-api-v2).\n  - e2e-api-v2 now depends only on\
+      \ prepare and build-api-v2 (removed build and build-api-v1).\n  - e2e-app-store, e2e-embed, and e2e-embed-react now\
+      \ depend on prepare and build (removed API build dependencies).\n\n<sup>Written for commit 2eaadf1481dfb79c5aea5afb35f54d5ff005f180.\
+      \ Summary will update automatically on new commits.</sup>\n\n<!-- End of auto-generated description by cubic. -->\n\n"
+  metadata:
+    pr_id: 26170
+    regex_detected: true
+    github_url: https://github.com/calcom/cal.com/pull/26170
+- description: 'PR #26169: chore: remove unused dependencies'
+  vars:
+    user_prompt: "Title: chore: remove unused dependencies\nState: merged\nLines: +67/-1911\nLabels: core, foundation, ready-for-e2e,\
+      \ size/XXL\nCycle time: 2.1 hours\nTime to first review: 1.7 hours\n\nDescription:\n ## What does this PR do?\r\n\r\n\
+      Removes unused dependencies to resolve alerts. These dependencies were declared but never imported in the codebase.\r\
+      \n\r\n  ### Changes\r\n\r\n- **apps/web**: Remove `msw` (unused, test was disabled with `test.fixme`)\r\n- **apps/web**:\
+      \ Delete `playwright/integrations.e2e.ts` (disabled test file using msw)\r\n- **apps/api/v2**: Remove `jsforce` (salesforce\
+      \ integration uses `@jsforce/jsforce-node` instead)\r\n- **packages/platform/atoms**: Remove `vite-plugin-node-polyfills`\
+      \ and `rollup-plugin-node-builtins` (declared but never imported)\r\n- **packages/platform/atoms**: Remove unused fs/path/os\
+      \ aliases from vite.config.ts\r\n- **companion**: Remove `glob` (declared but never imported)\r\n\r\n## How should this\
+      \ be tested?\r\n\r\n1. `yarn workspace @calcom/web build` - should pass\r\n2. `yarn workspace @calcom/atoms build` -\
+      \ should pass\r\n3. `cd companion && bun run ext:build` - should pass\r\n4. `cd companion && bun run typecheck` - should\
+      \ pass\r\n5. Verify no runtime errors in affected packages\r\n\r\nNo environment variables or test data required, this\
+      \ PR only removes unused code\r\n\r\n## Mandatory Tasks\r\n\r\n- [x] I have self-reviewed the code\r\n- [x] N/A - No\
+      \ documentation changes required\r\n- [x] I confirm automated tests are in place that prove my fix is effective or that\
+      \ my feature works"
+  metadata:
+    pr_id: 26169
+    regex_detected: false
+    github_url: https://github.com/calcom/cal.com/pull/26169
+- description: 'PR #1984: fix(realtime) : add generic overload for postgres_'
+  vars:
+    user_prompt: "Title: fix(realtime) : add generic overload for postgres_changes event type\nState: open\nLines: +5/-0\n\
+      Hotfix: Yes\n\nDescription:\nAdds a generic overload for `on()` with `postgres_changes` that accepts any event type,\
+      \ enabling reusable subscription helpers with union types like `'*' | 'INSERT' | 'UPDATE' | 'DELETE'`.\r\n\r\nFixes\
+      \ \"No overload matches this call\" error when passing generic event parameters to `channel.on('postgres_changes', ...)`.\r\
+      \n\r\n\r\ncloses https://github.com/supabase/supabase-js/issues/1451"
+  metadata:
+    pr_id: 1984
+    regex_detected: false
+    github_url: https://github.com/supabase/supabase-js/pull/1984
+- description: 'PR #43962: feat: add organization integrations settings page'
+  vars:
+    user_prompt: "Title: feat: add organization integrations settings page\nState: open\nLines: +535/-0\nHotfix: Yes\nTime\
+      \ to first review: 0.1 hours\n\nDescription:\n## Problem\r\n\r\nFor Vercel marketplace integration, we need a way for\
+      \ users to view and manage organization-level integrations. Currently, there's no UI for users to see which integrations\
+      \ are connected at the organization level or disconnect them when needed.\r\n\r\n## Changes\r\n\r\n<img width=\"1728\"\
+      \ height=\"1010\" alt=\"image\" src=\"https://github.com/user-attachments/assets/90ce4d7b-8e48-4688-8ef7-7b08d26dbc0c\"\
+      \ />\r\n\r\n\r\n**Backend:**\r\n- Added new `OrganizationIntegrationViewSet` API endpoint (`/api/organizations/@current/integrations/`)\r\
+      \n  - List endpoint to retrieve all organization integrations\r\n  - Delete endpoint to disconnect integrations (admin-only)\r\
+      \n  - Properly scoped to organization with permission checks\r\n- Added Django signal handler to trigger billing cancellation\
+      \ when Vercel integration is deleted\r\n- Registered route in organizations router\r\n\r\n**Frontend:**\r\n- Created\
+      \ new Organization Integrations settings page (`/organization/settings`)\r\n- Added `organizationIntegrationsLogic`\
+      \ Kea logic for state management\r\n- Displays integration cards with:\r\n  - Integration icon and name\r\n  - Account\
+      \ details (for Vercel: account name)\r\n  - Created by/at information\r\n  - Link to manage integration in external\
+      \ service (Vercel dashboard)\r\n  - Admin-only disconnect button with confirmation dialog\r\n- Added 'vercel' to `INTEGRATION_KINDS`\
+      \ and `ICONS` mapping (using Vercel CDN favicon)\r\n- Fixed API client to use correct URL builder pattern (`addPathComponent`\
+      \ instead of `withAction`)\r\n\r\n## How did you test this code?\r\n\r\n**Manual testing:**\r\n1. Created a Vercel organization\
+      \ integration via the Vercel marketplace flow\r\n2. Navigated to Organization Settings > Integrations\r\n3. Verified\
+      \ the integration displays correctly with:\r\n   - Vercel icon\r\n   - Account name from config\r\n   - \"View in Vercel\"\
+      \ link working correctly\r\n   - Created by information showing\r\n4. Tested disconnect functionality:\r\n   - Confirmed\
+      \ dialog appears with warning\r\n   - Verified admin-only access (tested as non-admin"
+  metadata:
+    pr_id: 43962
+    regex_detected: true
+    github_url: https://github.com/PostHog/posthog/pull/43962
+- description: 'PR #11412: feat(provider/prodia): Create Prodia provider pack'
+  vars:
+    user_prompt: "Title: feat(provider/prodia): Create Prodia provider package\nState: open\nLines: +1497/-24\nLabels: ai/provider,\
+      \ provider/community\n\nDescription:\n<!--\r\nWelcome to contributing to AI SDK! We're excited to see your changes.\r\
+      \n\r\nWe suggest you read the following contributing guide we've created before submitting:\r\n\r\nhttps://github.com/vercel/ai/blob/main/CONTRIBUTING.md\r\
+      \n-->\r\n\r\n## Background\r\nProdia doesn't have an OpenAI-compatible API, so they need a provider package\r\n\r\n\
+      ## Summary\r\nCreated it\r\n\r\n## Manual Verification\r\nUnit tests and example scripts\r\n\r\n## Checklist\r\n\r\n\
+      <!--\r\nDo not edit this list. Leave items unchecked that don't apply. If you need to track subtasks, create a new \"\
+      ## Tasks\" section\r\n\r\nPlease check if the PR fulfills the following requirements:\r\n-->\r\n\r\n- [x] Tests have\
+      \ been added / updated (for bug fixes / features)\r\n- [x] Documentation has been added / updated (for bug fixes / features)\r\
+      \n- [x] A _patch_ changeset for relevant packages has been added (for bug fixes / features - run `pnpm changeset` in\
+      \ the project root)\r\n- [X] I have reviewed this pull request (self-review)\r\n\r\n## Future Work\r\n\r\n<!--\r\nFeel\
+      \ free to mention things not covered by this PR that can be done in future PRs.\r\nRemove the section if it's not needed.\r\
+      \n -->\r\n\r\n## Related Issues\r\n\r\n<!--\r\nList related issues here, e.g. \"Fixes #1234\".\r\nRemove the section\
+      \ if it's not needed.\r\n-->\r\n"
+  metadata:
+    pr_id: 11412
+    regex_detected: false
+    github_url: https://github.com/vercel/ai/pull/11412
+- description: 'PR #11411: Version Packages'
+  vars:
+    user_prompt: 'Title: Version Packages
+
+      State: merged
+
+      Lines: +9/-8
+
+      Labels: maintenance
+
+      Hotfix: Yes
+
+      Cycle time: 0.0 hours
+
+
+      Description:
+
+      This PR was opened by the [Changesets release](https://github.com/changesets/action) GitHub action. When you''re ready
+      to do a release, you can merge this and the packages will be published to npm automatically. If you''re not ready to
+      do a release yet, that''s fine, whenever you add more changesets to main, this PR will be updated.
+
+
+
+      # Releases
+
+      ## @ai-sdk/amazon-bedrock@4.0.3
+
+
+      ### Patch Changes
+
+
+      -   afe9730: Fix bedrock ConverseStream using /delta/stop_sequence
+
+      '
+  metadata:
+    pr_id: 11411
+    regex_detected: false
+    github_url: https://github.com/vercel/ai/pull/11411
+- description: 'PR #43961: fix(flags): Prevent OOM in flags cache verificatio'
+  vars:
+    user_prompt: "Title: fix(flags): Prevent OOM in flags cache verification task\nState: merged\nLines: +51/-24\nCycle time:\
+      \ 0.8 hours\nTime to first review: 0.0 hours\n\nDescription:\n## Problem\r\n\r\nThe flags cache verification task was\
+      \ experiencing two issues causing it to fail ~50% of scheduled runs:\r\n\r\n1. **OOM kills**: The task loads both cached\
+      \ data (from Redis) and DB data (FeatureFlag objects with large `filters` JSON) into memory simultaneously. With 1000\
+      \ teams per batch, some batches containing \"power user\" teams with 100+ flags caused memory spikes of 100-200MB, triggering\
+      \ OOM kills.\r\n\r\n2. **Stale locks after crashes**: When pods are killed (OOM or deploy), the `finally` block never\
+      \ runs, leaving a stale distributed lock for the full 1-hour timeout. This caused the next scheduled run to skip, resulting\
+      \ in 2 hours of lost verification after each crash.\r\n\r\n## Changes\r\n\r\n**Batch size reduction (flags only):**\r\
+      \n- Reduce flags cache verification batch size from 1000 to 250 teams\r\n- Keep team metadata verification at 1000 (lighter\
+      \ data, no OOM issues)\r\n- Add separate Django settings for each cache type's chunk size\r\n\r\n**Scheduling improvements:**\r\
+      \n- Run flags verification every 30 min instead of hourly\r\n- Reduce lock timeout from 60 to 25 min for faster crash\
+      \ recovery\r\n- Reduce task time limits from 45/60 to 20/25 min (soft/hard)\r\n\r\n**Expected behavior after changes:**\r\
+      \n\r\n| Metric | Before | After |\r\n|--------|--------|-------|\r\n| Flags batch size | 1000 | 250 |\r\n| Memory per\
+      \ batch | 100-200MB | 25-50MB |\r\n| Task duration | ~3-5 min (but OOM'd) | ~8-10 min |\r\n| Runs per hour | 1 | 2 |\r\
+      \n| Recovery after crash | 2 hours | ~30 min |\r\n\r\n## How did you test this code?\r\n\r\n- Ran existing unit tests\
+      \ for hypercache verification tasks\r\n- Analyzed production data to understand flag distribution across teams\r\n-\
+      \ Verified batch size reduction prevents memory amplification from heavy teams\r\n\r\nQuery results showed oldest teams\
+      \ (IDs 0-999) average 27.4 flags vs 4.1 for newer teams, and the first batch with ID ordering contained 6-14x more flags\
+      \ than subsequent batches.\r\n\r\n## Changelog: (features only) Is this feature complete?\r\n\r\nNo - this is a reliability\
+      \ fix"
+  metadata:
+    pr_id: 43961
+    regex_detected: false
+    github_url: https://github.com/PostHog/posthog/pull/43961
+- description: 'PR #14227: changelog build over christmas'
+  vars:
+    user_prompt: "Title: changelog build over christmas\nState: merged\nLines: +2/-2\nHotfix: Yes\nCycle time: 8.9 hours\n\
+      Time to first review: 0.2 hours\n\nDescription:\n## Changes\r\n\r\nA dummy PR to trigger build for changelog while everyone\
+      \ is out \r\n"
+  metadata:
+    pr_id: 14227
+    regex_detected: false
+    github_url: https://github.com/PostHog/posthog.com/pull/14227
+outputPath: ./results/promptfoo-100-real-results.json
+evaluateOptions:
+  maxConcurrency: 3
+  showProgressBar: true

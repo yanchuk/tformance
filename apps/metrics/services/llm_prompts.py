@@ -7,7 +7,7 @@ Version: 6.0.0 (2024-12-24) - Enhanced with full PR context and health assessmen
 """
 
 # Current prompt version - increment when making changes
-PROMPT_VERSION = "6.0.0"
+PROMPT_VERSION = "6.1.0"
 
 # Main PR analysis prompt - v6.0.0
 PR_ANALYSIS_SYSTEM_PROMPT = """You analyze pull requests to provide comprehensive insights for CTOs.
@@ -138,6 +138,14 @@ def get_user_prompt(
     review_rounds: int | None = None,
     file_paths: list[str] | None = None,
     commit_messages: list[str] | None = None,
+    # v6.1.0 - Additional PR metadata and collaboration context
+    milestone: str | None = None,
+    assignees: list[str] | None = None,
+    linked_issues: list[str] | None = None,
+    jira_key: str | None = None,
+    author_name: str | None = None,
+    reviewers: list[str] | None = None,
+    review_comments: list[str] | None = None,
 ) -> str:
     """Generate user prompt with full PR context.
 
@@ -160,6 +168,13 @@ def get_user_prompt(
         review_rounds: Number of review cycles
         file_paths: List of changed file paths (for tech detection)
         commit_messages: List of commit messages (for AI co-author detection)
+        milestone: Milestone title (e.g., "Q1 2025 Release")
+        assignees: List of assignee usernames
+        linked_issues: List of linked issue references (e.g., ["#123", "#456"])
+        jira_key: Jira issue key (e.g., "PROJ-1234")
+        author_name: PR author's display name
+        reviewers: List of reviewer names
+        review_comments: List of review comment bodies (sample)
 
     Returns:
         Formatted user prompt for LLM
@@ -170,6 +185,8 @@ def get_user_prompt(
     basic_info = []
     if pr_title:
         basic_info.append(f"Title: {pr_title}")
+    if author_name:
+        basic_info.append(f"Author: {author_name}")
     if state:
         basic_info.append(f"State: {state}")
     if labels:
@@ -182,6 +199,23 @@ def get_user_prompt(
         basic_info.append("Revert: Yes")
     if basic_info:
         sections.append("\n".join(basic_info))
+
+    # === Metadata (v6.1.0) ===
+    metadata = []
+    if milestone:
+        metadata.append(f"Milestone: {milestone}")
+    if jira_key:
+        metadata.append(f"Jira: {jira_key}")
+    if assignees:
+        # Limit to 10 assignees
+        names_str = ", ".join(assignees[:10])
+        if len(assignees) > 10:
+            names_str += f" (+{len(assignees) - 10} more)"
+        metadata.append(f"Assignees: {names_str}")
+    if linked_issues:
+        metadata.append(f"Linked issues: {', '.join(linked_issues)}")
+    if metadata:
+        sections.append("\n".join(metadata))
 
     # === Code Changes ===
     changes = []
@@ -224,6 +258,25 @@ def get_user_prompt(
         if len(commit_messages) > 5:
             msgs.append(f"... and {len(commit_messages) - 5} more commits")
         sections.append("Recent commits:\n" + "\n".join(f"- {m}" for m in msgs))
+
+    # === Reviewers (v6.1.0) ===
+    if reviewers:
+        # Limit to 5 reviewers
+        names_str = ", ".join(reviewers[:5])
+        if len(reviewers) > 5:
+            names_str += f" (+{len(reviewers) - 5} more)"
+        sections.append(f"Reviewers: {names_str}")
+
+    # === Review Comments (v6.1.0) ===
+    if review_comments:
+        # Limit to 3 comments, truncate long ones
+        truncated = []
+        for comment in review_comments[:3]:
+            if len(comment) > 200:
+                truncated.append(comment[:200] + "...")
+            else:
+                truncated.append(comment)
+        sections.append("Review comments:\n" + "\n".join(f"- {c}" for c in truncated))
 
     # === Description ===
     sections.append(f"Description:\n{pr_body}")

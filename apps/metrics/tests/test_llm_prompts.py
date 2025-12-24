@@ -383,6 +383,179 @@ class TestGetUserPromptV6Fields(TestCase):
         self.assertIn("Description:", prompt)
 
 
+class TestGetUserPromptV61Fields(TestCase):
+    """Tests for v6.1.0 new fields - additional PR context."""
+
+    # === Milestone ===
+    def test_prompt_includes_milestone(self):
+        """Milestone should be included when provided."""
+        prompt = get_user_prompt(pr_body="Changes", milestone="Q1 2025 Release")
+        self.assertIn("Milestone: Q1 2025 Release", prompt)
+
+    def test_prompt_excludes_milestone_none(self):
+        """Milestone should not be included when None."""
+        prompt = get_user_prompt(pr_body="Changes", milestone=None)
+        self.assertNotIn("Milestone:", prompt)
+
+    def test_prompt_excludes_milestone_empty(self):
+        """Milestone should not be included when empty string."""
+        prompt = get_user_prompt(pr_body="Changes", milestone="")
+        self.assertNotIn("Milestone:", prompt)
+
+    # === Assignees ===
+    def test_prompt_includes_assignees(self):
+        """Assignees should be included when provided."""
+        prompt = get_user_prompt(
+            pr_body="Changes",
+            assignees=["john", "jane", "bob"],
+        )
+        self.assertIn("Assignees: john, jane, bob", prompt)
+
+    def test_prompt_limits_assignees_to_10(self):
+        """Assignees should be limited to 10 with count indicator."""
+        assignees = [f"user{i}" for i in range(15)]
+        prompt = get_user_prompt(pr_body="Changes", assignees=assignees)
+        self.assertIn("user9", prompt)
+        self.assertIn("(+5 more)", prompt)
+        self.assertNotIn("user10", prompt)
+
+    def test_prompt_excludes_assignees_empty(self):
+        """Assignees should not be included when empty."""
+        prompt = get_user_prompt(pr_body="Changes", assignees=[])
+        self.assertNotIn("Assignees:", prompt)
+
+    # === Linked Issues ===
+    def test_prompt_includes_linked_issues(self):
+        """Linked issues should be included when provided."""
+        prompt = get_user_prompt(
+            pr_body="Changes",
+            linked_issues=["#123", "#456", "#789"],
+        )
+        self.assertIn("Linked issues: #123, #456, #789", prompt)
+
+    def test_prompt_excludes_linked_issues_empty(self):
+        """Linked issues should not be included when empty."""
+        prompt = get_user_prompt(pr_body="Changes", linked_issues=[])
+        self.assertNotIn("Linked issues:", prompt)
+
+    # === Jira Key ===
+    def test_prompt_includes_jira_key(self):
+        """Jira key should be included when provided."""
+        prompt = get_user_prompt(pr_body="Changes", jira_key="PROJ-1234")
+        self.assertIn("Jira: PROJ-1234", prompt)
+
+    def test_prompt_excludes_jira_key_none(self):
+        """Jira key should not be included when None."""
+        prompt = get_user_prompt(pr_body="Changes", jira_key=None)
+        self.assertNotIn("Jira:", prompt)
+
+    def test_prompt_excludes_jira_key_empty(self):
+        """Jira key should not be included when empty string."""
+        prompt = get_user_prompt(pr_body="Changes", jira_key="")
+        self.assertNotIn("Jira:", prompt)
+
+    # === Author Name ===
+    def test_prompt_includes_author_name(self):
+        """Author name should be included when provided."""
+        prompt = get_user_prompt(pr_body="Changes", author_name="John Smith")
+        self.assertIn("Author: John Smith", prompt)
+
+    def test_prompt_excludes_author_name_none(self):
+        """Author name should not be included when None."""
+        prompt = get_user_prompt(pr_body="Changes", author_name=None)
+        self.assertNotIn("Author:", prompt)
+
+    def test_prompt_excludes_author_name_empty(self):
+        """Author name should not be included when empty string."""
+        prompt = get_user_prompt(pr_body="Changes", author_name="")
+        self.assertNotIn("Author:", prompt)
+
+    # === Reviewers ===
+    def test_prompt_includes_reviewers(self):
+        """Reviewers should be included when provided."""
+        prompt = get_user_prompt(
+            pr_body="Changes",
+            reviewers=["alice", "bob"],
+        )
+        self.assertIn("Reviewers: alice, bob", prompt)
+
+    def test_prompt_limits_reviewers_to_5(self):
+        """Reviewers should be limited to 5 with count indicator."""
+        reviewers = [f"reviewer{i}" for i in range(8)]
+        prompt = get_user_prompt(pr_body="Changes", reviewers=reviewers)
+        self.assertIn("reviewer4", prompt)
+        self.assertIn("(+3 more)", prompt)
+        self.assertNotIn("reviewer5", prompt)
+
+    def test_prompt_excludes_reviewers_empty(self):
+        """Reviewers should not be included when empty."""
+        prompt = get_user_prompt(pr_body="Changes", reviewers=[])
+        self.assertNotIn("Reviewers:", prompt)
+
+    # === Review Comments ===
+    def test_prompt_includes_review_comments(self):
+        """Review comments should be included when provided."""
+        prompt = get_user_prompt(
+            pr_body="Changes",
+            review_comments=[
+                "Great work on this!",
+                "Can you add a test for the edge case?",
+            ],
+        )
+        self.assertIn("Review comments:", prompt)
+        self.assertIn("Great work on this!", prompt)
+        self.assertIn("Can you add a test for the edge case?", prompt)
+
+    def test_prompt_limits_review_comments_to_3(self):
+        """Review comments should be limited to 3."""
+        comments = [f"Comment {i}" for i in range(5)]
+        prompt = get_user_prompt(pr_body="Changes", review_comments=comments)
+        self.assertIn("Comment 0", prompt)
+        self.assertIn("Comment 2", prompt)
+        self.assertNotIn("Comment 3", prompt)
+
+    def test_prompt_truncates_long_review_comments(self):
+        """Long review comments should be truncated to 200 chars."""
+        long_comment = "A" * 300
+        prompt = get_user_prompt(pr_body="Changes", review_comments=[long_comment])
+        # Should have truncated version (200 chars + "...")
+        self.assertIn("A" * 200, prompt)
+        self.assertNotIn("A" * 201, prompt)
+
+    def test_prompt_excludes_review_comments_empty(self):
+        """Review comments should not be included when empty."""
+        prompt = get_user_prompt(pr_body="Changes", review_comments=[])
+        self.assertNotIn("Review comments:", prompt)
+
+    # === Full v6.1 Test ===
+    def test_full_v61_prompt_with_all_new_fields(self):
+        """Prompt with all v6.1 fields should be properly formatted."""
+        prompt = get_user_prompt(
+            pr_body="Implements user authentication with OAuth2.",
+            pr_title="Add OAuth2 login",
+            milestone="Q1 2025 Release",
+            assignees=["john", "jane"],
+            linked_issues=["#100", "#101"],
+            jira_key="AUTH-42",
+            author_name="John Developer",
+            reviewers=["alice", "bob"],
+            review_comments=[
+                "Looks good overall!",
+                "Please add error handling for token refresh.",
+            ],
+        )
+
+        # Check all v6.1 parts are present
+        self.assertIn("Milestone: Q1 2025 Release", prompt)
+        self.assertIn("Assignees: john, jane", prompt)
+        self.assertIn("Linked issues: #100, #101", prompt)
+        self.assertIn("Jira: AUTH-42", prompt)
+        self.assertIn("Author: John Developer", prompt)
+        self.assertIn("Reviewers: alice, bob", prompt)
+        self.assertIn("Review comments:", prompt)
+        self.assertIn("Looks good overall!", prompt)
+
+
 class TestSystemPromptV6(TestCase):
     """Tests for v6.0.0 system prompt enhancements."""
 
