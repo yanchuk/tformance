@@ -1,8 +1,34 @@
 # AI Detection via PR Description Analysis - Context
 
-**Last Updated: 2025-12-24 22:00 UTC (Experiment Runner Complete)**
+**Last Updated: 2025-12-24 23:00 UTC (Groq Batch API Complete)**
 
-## Session Summary (2025-12-24 Evening)
+## Session Summary (2025-12-24 Late Evening)
+
+### What Was Accomplished
+1. **Groq Batch API Service**: Full implementation with 18 tests
+   - `GroqBatchProcessor` class in `apps/integrations/services/groq_batch.py`
+   - 50% cheaper than real-time API
+   - Rich PR context in prompts (title, author, size, labels, linked issues)
+   - Batch workflow: create file → upload → submit → poll status → apply results
+
+2. **Batch Management Commands**:
+   - `backfill_ai_detection_batch` - Submit, status, and apply batch jobs
+   - Preview mode shows estimated cost ($0.008 for 100 PRs)
+   - Successfully processed 100 Gumroad PRs
+
+3. **Enhanced Prompts** (v2):
+   - System prompt now documents expected input format
+   - User prompt includes rich PR context:
+     - Title, Author, Repository
+     - Size (+additions/-deletions lines)
+     - Labels, Linked Issues
+   - Better detection of AI tools in title/labels
+
+4. **Test Coverage**:
+   - 18 tests for GroqBatchProcessor
+   - Tests for context formatting, batch file creation, status, results
+
+## Previous Session Summary (2025-12-24 Evening)
 
 ### What Was Accomplished
 1. **Groq Integration Decision**: Llama 3.3 70B at $0.08/1000 PRs (44x cheaper than Claude)

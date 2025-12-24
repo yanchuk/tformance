@@ -61,19 +61,23 @@
 
 **Decision**: Skip complex section parser - Groq LLM handles all cases at $0.08/1000 PRs
 
-### 2.1 Setup Groq Integration
-- [ ] Add groq package: `uv add groq`
-- [ ] Add `GROQ_API_KEY` to environment/secrets
-- [ ] Create migration for `llm_detection_at` field on PullRequest
+### 2.1 Setup Groq Integration ✅
+- [x] Add groq package: `uv add groq`
+- [x] Add `GROQ_API_KEY` to environment/secrets
+- [ ] Create migration for `llm_detection_at` field on PullRequest (optional, for tracking)
 
-### 2.2 Implement Groq Service (TDD)
-- [ ] Create `apps/integrations/services/groq_ai_detector.py`
-- [ ] Implement `detect_ai_with_groq(pr_body: str) -> AIDetectionResult`
-- [ ] Implement `create_batch_file(prs, output_path)` for batch API
-- [ ] Implement `submit_batch_job(file_path)` → batch_id
-- [ ] Implement `get_batch_results(batch_id)` → results dict
-- [ ] Write unit tests (mock Groq responses)
-- [ ] Write integration test with real API call (1 PR)
+### 2.2 Implement Groq Batch Service (TDD) ✅
+- [x] Create `apps/integrations/services/groq_batch.py`
+- [x] Implement `GroqBatchProcessor` class with:
+  - `create_batch_file(prs)` - Creates JSONL with rich PR context
+  - `upload_file(path)` - Uploads to Groq
+  - `submit_batch(prs)` - Full workflow returns batch_id
+  - `get_status(batch_id)` - Returns BatchStatus
+  - `get_results(batch_id)` - Returns list[BatchResult]
+  - `cancel_batch(batch_id)` - Cancel running batch
+- [x] Rich PR context in prompts (title, author, size, labels, linked issues)
+- [x] Write 18 unit tests (mock Groq responses)
+- [x] Test batch submission with real Gumroad data (100 PRs)
 
 ### 2.3 Create Backfill Management Command ✅
 - [x] Create `apps/metrics/management/commands/backfill_ai_detection.py`
