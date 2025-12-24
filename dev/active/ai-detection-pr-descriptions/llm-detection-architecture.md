@@ -1,322 +1,162 @@
 # LLM-Based AI Detection Architecture
 
 **Last Updated: 2025-12-24**
+**Provider: Groq (Llama 3.3 70B)**
 
-## Problem Statement
+## Executive Summary
 
-Phase 1 regex patterns achieve 24% detection rate on Gumroad PRs. ~10 PRs have ambiguous disclosures like "Used for brainstorming" without specifying the tool. LLM can infer from context (e.g., "Used for" in an "AI Disclosure" section implies AI tool usage).
+Use **Groq's Llama 3.3 70B** with **full payload approach** (all data in single prompt) and **batch API** for cost optimization. This is the simplest, most reliable approach for MVP.
 
-## Approaches Comparison
-
-### 1. Data Passing Strategies
-
-#### Option A: Full Payload Approach
-
-```python
-# All data in single API call
-response = claude.messages.create(
-    model="claude-sonnet-4-20250514",
-    messages=[{
-        "role": "user",
-        "content": f"""
-        PR Title: {pr.title}
-        PR Body: {pr.body}
-        Commits: {commits_text}
-        Reviews: {reviews_text}
-
-        Analyze for AI tool usage...
-        """
-    }]
-)
-```
-
-| Aspect | Evaluation |
-|--------|------------|
-| **Complexity** | Low - Single API call, no infrastructure |
-| **Latency** | Low - Single round-trip |
-| **Cost** | Variable - Scales with PR size (avg ~2K tokens) |
-| **Token Limits** | Risk for large PRs (200K context limit) |
-| **Testability** | High - Deterministic input/output |
-| **Caching** | Easy - Cache by PR content hash |
-
-#### Option B: Remote Tools / MCP Approach
-
-```python
-# LLM fetches data via tools as needed
-tools = [
-    {"name": "get_pr_body", "description": "Get PR description"},
-    {"name": "get_commits", "description": "Get commit messages"},
-    {"name": "get_reviews", "description": "Get review comments"},
-]
-
-# LLM decides what to fetch
-response = claude.messages.create(
-    model="claude-sonnet-4-20250514",
-    tools=tools,
-    messages=[{
-        "role": "user",
-        "content": f"Analyze PR #{pr_number} for AI tool usage"
-    }]
-)
-# Handle tool calls, provide results, continue conversation
-```
-
-| Aspect | Evaluation |
-|--------|------------|
-| **Complexity** | High - Multi-turn, tool handling logic |
-| **Latency** | High - Multiple API calls (3-5 round trips) |
-| **Cost** | Variable - Could be lower for simple PRs |
-| **Token Limits** | Solved - Fetch only needed data |
-| **Testability** | Medium - Need to mock tool responses |
-| **Caching** | Complex - Cache tool results separately |
-
-#### Recommendation: **Option A (Full Payload)**
-
-For AI detection, PR body is the primary signal. Most PRs are <5K tokens. The simplicity and testability of full payload outweighs the theoretical efficiency of tools.
+**Cost**: ~$0.08/1000 PRs with batch (effectively free)
+**Accuracy Target**: 70-90% detection rate (up from 24.4% regex-only)
 
 ---
 
-### 2. Thinking Mode Comparison
+## Decision: Why Groq + Llama 3.3 70B + Full Payload
 
-#### Option A: Extended Thinking (claude-sonnet-4-20250514 with thinking)
+### Model Selection
 
-```python
-response = claude.messages.create(
-    model="claude-sonnet-4-20250514",
-    max_tokens=16000,
-    thinking={
-        "type": "enabled",
-        "budget_tokens": 10000
-    },
-    messages=[...]
-)
-```
+| Model | JSON Mode | Speed | Quality | Cost (Batch) | Decision |
+|-------|-----------|-------|---------|--------------|----------|
+| **Llama 3.3 70B** | Best-effort | 300 T/s | ⭐⭐⭐⭐⭐ | $0.30/M in | ✅ **CHOSEN** |
+| GPT-OSS 120B | Strict | 200 T/s | ⭐⭐⭐⭐ | Higher | ❌ Less tested |
+| GPT-OSS 20B | Strict | 1000 T/s | ⭐⭐⭐ | Lower | ❌ May miss nuance |
+| Llama 3.1 8B | Best-effort | Fast | ⭐⭐ | $0.025/M in | ❌ Too weak |
+| Compound | Tools | Varies | ⭐⭐⭐⭐ | Higher | ❌ Overkill |
 
-**Advantages:**
-- Shows reasoning chain for ambiguous cases
-- Better at handling edge cases ("Used for brainstorming" in AI section)
-- More accurate for complex disclosures
+**Why Llama 3.3 70B:**
+- Best reasoning for nuanced cases ("Used for brainstorming" in AI section)
+- Proven quality, widely tested
+- Best-effort JSON works 99%+ with proper prompting
+- Cost difference vs 8B is negligible ($0.08 vs $0.01 per 1000 PRs)
 
-**Disadvantages:**
-- Higher cost (~10K extra tokens per call)
-- Higher latency (~5-10s vs ~1-2s)
-- Thinking tokens not cacheable
+### Approach Selection
 
-#### Option B: Standard Mode with Structured Output
+| Approach | Complexity | Reliability | For Our Use Case |
+|----------|------------|-------------|------------------|
+| **Full Payload** | Low ✅ | High ✅ | ✅ **CHOSEN** |
+| Tool Calling | Medium | Medium | ❌ Not compatible with JSON mode on Groq |
+| MCP/Remote Tools | High | Medium | ❌ Overkill - we have all data upfront |
+| Compound (Agentic) | High | Variable | ❌ Overkill for single task |
 
-```python
-response = claude.messages.create(
-    model="claude-sonnet-4-20250514",
-    max_tokens=1000,
-    messages=[{
-        "role": "user",
-        "content": prompt
-    }],
-    # Force JSON response
-    response_format={"type": "json_object"}
-)
-```
+**Why Full Payload:**
+1. **Simplest** - Single API call, no tool handling logic
+2. **Reliable** - No multi-turn complexity
+3. **Compatible** - Works with JSON mode
+4. **Batchable** - Easy to batch 1000s of requests
+5. **We have all data** - PR body is self-contained, no fetching needed
 
-**Advantages:**
-- Lower cost (1K tokens vs 11K)
-- Lower latency (~1-2s)
-- Easier to parse
+### Why NOT Tool Calling
 
-**Disadvantages:**
-- May miss nuances in ambiguous cases
-- Less explainable decisions
+From Groq docs: *"Streaming and tool use are not currently supported with Structured Outputs."*
 
-#### Recommendation: **Tiered Approach**
+We need structured JSON output. Tool calling would sacrifice that.
 
-1. **Standard Mode First**: Fast, cheap for clear cases
-2. **Thinking Mode Fallback**: When confidence < threshold
+### Why NOT MCP/Remote Tools
 
-```python
-# First pass: Fast standard mode
-result = detect_ai_standard(pr.body)
+MCP is designed for:
+- Fetching external data the LLM doesn't have
+- Multi-step workflows with decisions
 
-if result['confidence'] < 0.7 and has_ai_disclosure_section(pr.body):
-    # Second pass: Extended thinking for ambiguous cases
-    result = detect_ai_with_thinking(pr.body)
-```
+We have:
+- All data upfront (PR body)
+- Single decision task (is it AI-assisted?)
+
+MCP would add 3-5 round trips for zero benefit.
 
 ---
 
-### 3. Training and Validation Strategy
+## Cost Analysis
 
-#### Public Data Sources
+### Pricing (Groq Batch API - 50% off)
 
-| Source | Volume | AI Disclosure Rate | Access |
-|--------|--------|-------------------|--------|
-| Gumroad (antiwork/gumroad) | 1700+ PRs | ~68% have section | OAuth (team) |
-| Rails (rails/rails) | 20K+ PRs | Low | Public |
-| Django (django/django) | 15K+ PRs | Low | Public |
-| Claude Code contributions | Varies | High (Co-Authored-By) | Public |
+| Token Type | Standard | Batch (50% off) |
+|------------|----------|-----------------|
+| Input (Llama 3.3 70B) | $0.59/M | $0.295/M |
+| Output (Llama 3.3 70B) | $0.79/M | $0.395/M |
 
-#### OSS Repositories to Parse (For Training Data)
+### Per-PR Cost Estimate
 
-**IMPORTANT: False Positive Risk in AI Product Repos**
-Repos that BUILD AI products (vercel/ai, langchain) frequently mention AI tool names
-(Gemini, Claude, etc.) as PRODUCTS they integrate with, NOT as authoring tools.
+| Component | Tokens | Cost (Batch) |
+|-----------|--------|--------------|
+| System prompt | ~400 | $0.00012 |
+| PR body (avg) | ~600 | $0.00018 |
+| Output | ~100 | $0.00004 |
+| **Total per PR** | ~1100 | **$0.00008** |
 
-Preliminary analysis (200 PRs):
-- vercel/ai: 7% detected, but mostly false positives (Gemini API mentions)
-- langchain: 5% detected, 1 true positive (Claude Code signature)
+### Batch Costs
 
-**Tier 1: High Confidence Signal (Explicit AI Disclosure Culture)**
-```python
-TIER1_REPOS = [
-    # Has AI Disclosure section template
-    ("antiwork", "gumroad"),        # PRIMARY - 68% have AI Disclosure section
+| Volume | Cost |
+|--------|------|
+| 1,000 PRs | **$0.08** |
+| 10,000 PRs | **$0.80** |
+| 100,000 PRs | **$8.00** |
 
-    # Anthropic projects - likely Claude Code usage
-    ("anthropic", "anthropic-cookbook"),
-    ("anthropic", "courses"),
-
-    # Companies known to encourage AI tool usage
-    ("supabase", "supabase"),       # AI-forward culture
-    ("cal-com", "cal.com"),         # Indie dev, likely AI users
-]
-```
-
-**Tier 2: AI Tool/Framework Repos (High False Positive Risk)**
-```python
-TIER2_REPOS = [
-    # WARNING: Product mentions ≠ AI authoring
-    ("vercel", "ai"),               # Gemini/Claude API product mentions
-    ("langchain-ai", "langchain"),  # LLM product integrations
-    ("openai", "openai-python"),
-    ("cursor", "cursor"),           # May have Cursor IDE mentions as product
-]
-# Strategy: Look ONLY at Co-Authored-By and explicit disclosure signatures
-```
-
-**Tier 3: General OSS (Low AI Signal, Good for Negative Examples)**
-```python
-TIER3_REPOS = [
-    ("microsoft", "vscode"),        # ~60K PRs, traditional dev
-    ("facebook", "react"),          # Established, formal process
-    ("django", "django"),           # Python, traditional
-    ("rails", "rails"),             # Ruby, traditional
-    ("kubernetes", "kubernetes"),   # Enterprise, formal
-]
-# Use to calibrate false positive rate
-```
-
-**Tier 4: Search-Based Discovery**
-```bash
-# GitHub search for Claude Code signatures
-gh search prs --limit 100 "Co-Authored-By: Claude" --json repository,number
-
-# Search for AI Disclosure sections
-gh search prs --limit 100 "AI Disclosure" --json repository,number
-
-# Search for Claude Code signature
-gh search prs --limit 100 "Generated with Claude Code" --json repository,number
-```
-
-**Organizations to Watch**
-```python
-AI_FORWARD_ORGS = [
-    "anthropic",      # Claude creator
-    "vercel",         # AI SDK, Next.js
-    "supabase",       # Developer-focused
-    "cal-com",        # Open source calendar
-    "remotion",       # Video in React
-    "trigger-dev",    # Background jobs
-    "highlight-io",   # Monitoring
-]
-```
-
-#### Data Collection Script
-
-```python
-# Fetch PRs from OSS repos via GitHub GraphQL API
-def fetch_oss_training_data():
-    repos = [
-        "antiwork/gumroad",
-        "anthropic/courses",
-        "vercel/ai",
-        "langchain-ai/langchain",
-    ]
-
-    for repo in repos:
-        prs = fetch_prs_graphql(repo, since="2024-01-01", limit=500)
-        for pr in prs:
-            yield {
-                "repo": repo,
-                "pr_number": pr.number,
-                "title": pr.title,
-                "body": pr.body,
-                "author": pr.author,
-                "commits": [c.message for c in pr.commits],
-                # Ground truth labels added manually
-            }
-```
-
-#### Labeling Strategy
-
-1. **Ground Truth Dataset**: Manually label 200 PRs from Gumroad
-   - 100 positive (AI-assisted)
-   - 100 negative (not AI-assisted)
-   - Focus on ambiguous cases
-
-2. **Annotation Guidelines**:
-   ```markdown
-   POSITIVE if:
-   - Explicit AI tool mention (Cursor, Claude, Copilot)
-   - "Used for X" in AI Disclosure section (implies AI)
-   - Co-Authored-By AI patterns
-
-   NEGATIVE if:
-   - "No AI", "None", "Not used"
-   - Reference to AI product (not authoring)
-   - No AI disclosure section and no signatures
-   ```
-
-3. **Evaluation Metrics**:
-   - Precision: Avoid false positives (claiming AI when human-only)
-   - Recall: Catch true AI usage
-   - Target: 95% precision, 90% recall
+**This is effectively free.** We can run LLM on ALL PRs, not just ambiguous cases.
 
 ---
 
-## System Prompt Design
+## Implementation Architecture
 
-### V1: Basic Detection Prompt
+### Flow Diagram
 
-```markdown
-You are an AI detection system analyzing pull requests to identify if AI coding assistants were used.
-
-Analyze the following PR for AI tool involvement. Look for:
-1. Explicit tool mentions (Cursor, Claude, Copilot, Cody, Aider, Devin, Gemini, etc.)
-2. AI Disclosure sections with positive statements
-3. Co-Authored-By AI patterns
-4. Phrases like "used AI", "AI-assisted", "generated with"
-
-IMPORTANT: "Used for X" inside an "AI Disclosure" section implies AI tool usage even without explicit tool name.
-
-Negative indicators (NOT AI-assisted):
-- "No AI was used", "None", "Not used"
-- References to AI as a product feature (not authoring)
-
-PR Title: {title}
-PR Body:
-{body}
-
-Respond in JSON format:
-{
-  "is_ai_assisted": boolean,
-  "confidence": float (0.0-1.0),
-  "tools_detected": ["tool1", "tool2"],
-  "reasoning": "Brief explanation"
-}
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         AI DETECTION FLOW                                │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│   PR Synced from GitHub                                                  │
+│          │                                                               │
+│          ▼                                                               │
+│   ┌──────────────────┐                                                  │
+│   │  Regex Detection  │  ← Free, instant, catches 24%                   │
+│   │   (Synchronous)   │                                                  │
+│   └────────┬─────────┘                                                  │
+│            │                                                             │
+│            ▼                                                             │
+│   ┌──────────────────┐                                                  │
+│   │ Queue for Groq   │  ← PRs with body text, not yet LLM processed    │
+│   │  Batch Processing │                                                  │
+│   └────────┬─────────┘                                                  │
+│            │                                                             │
+│            ▼  (Nightly Celery task)                                     │
+│   ┌──────────────────┐                                                  │
+│   │  Groq Batch API   │  ← $0.08/1000 PRs                               │
+│   │  Llama 3.3 70B    │    24h completion window                        │
+│   │  Full Payload     │    JSON response format                         │
+│   └────────┬─────────┘                                                  │
+│            │                                                             │
+│            ▼                                                             │
+│   ┌──────────────────┐                                                  │
+│   │  Update PR Model  │  ← is_ai_assisted, ai_tools, usage_category    │
+│   │  (bulk_update)    │     llm_detection_at timestamp                  │
+│   └──────────────────┘                                                  │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
-### V2: With Context Section Parsing
+### Code Implementation
 
-```markdown
-You are an AI detection system. Your task is to determine if AI coding assistants were used to create this pull request.
+#### 1. Groq Service (`apps/integrations/services/groq_ai_detector.py`)
+
+```python
+import json
+import os
+from dataclasses import dataclass
+
+from groq import Groq
+
+
+@dataclass
+class AIDetectionResult:
+    is_ai_assisted: bool
+    tools: list[str]
+    usage_category: str | None  # "authored", "assisted", "reviewed", "brainstorm"
+    confidence: float
+    reasoning: str | None = None
+
+
+SYSTEM_PROMPT = """You are an AI detection system analyzing pull requests to identify if AI coding assistants were used.
 
 ## Detection Rules
 
@@ -331,364 +171,428 @@ NEGATIVE signals (AI was NOT used):
 2. AI as feature: "Add AI to dashboard" (building AI features ≠ using AI to code)
 3. Past tense references: "Devin's previous PR" (referencing past work)
 
-## Analysis
+## Response Format
 
-PR Title: {title}
+Return JSON with these fields:
+- is_ai_assisted: boolean
+- tools: list of lowercase tool names detected (e.g., ["cursor", "claude"])
+- usage_category: "authored" | "assisted" | "reviewed" | "brainstorm" | null
+- confidence: float 0.0-1.0
+- reasoning: brief 1-sentence explanation"""
 
-PR Body:
----
-{body}
----
-
-## Response Format (JSON)
-
-{
-  "is_ai_assisted": boolean,
-  "confidence": float,  // 0.0-1.0, use 0.5-0.7 for ambiguous cases
-  "tools_detected": string[],  // normalized names: "cursor", "claude", "copilot", etc.
-  "ai_disclosure_found": boolean,
-  "disclosure_type": "positive" | "negative" | "ambiguous" | "none",
-  "reasoning": string  // 1-2 sentences explaining decision
+DETECTION_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "is_ai_assisted": {"type": "boolean"},
+        "tools": {"type": "array", "items": {"type": "string"}},
+        "usage_category": {
+            "type": ["string", "null"],
+            "enum": ["authored", "assisted", "reviewed", "brainstorm", None],
+        },
+        "confidence": {"type": "number"},
+        "reasoning": {"type": ["string", "null"]},
+    },
+    "required": ["is_ai_assisted", "tools", "confidence"],
 }
-```
 
----
 
-## Implementation Plan
+def detect_ai_with_groq(pr_body: str) -> AIDetectionResult:
+    """Detect AI usage in a PR using Groq's Llama 3.3 70B.
+
+    Single synchronous call - use for real-time detection or testing.
+    For batch processing, use create_batch_detection_file() instead.
+    """
+    client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+
+    response = client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        messages=[
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": f"Analyze this PR description:\n\n{pr_body}"},
+        ],
+        response_format={
+            "type": "json_schema",
+            "json_schema": {
+                "name": "ai_detection",
+                "strict": False,  # Best-effort for Llama
+                "schema": DETECTION_SCHEMA,
+            },
+        },
+        temperature=0,
+        max_tokens=500,
+    )
+
+    result = json.loads(response.choices[0].message.content)
+
+    return AIDetectionResult(
+        is_ai_assisted=result["is_ai_assisted"],
+        tools=result.get("tools", []),
+        usage_category=result.get("usage_category"),
+        confidence=result.get("confidence", 0.5),
+        reasoning=result.get("reasoning"),
+    )
+
+
+def create_batch_request(pr_id: int, pr_body: str) -> dict:
+    """Create a single batch request for Groq batch API."""
+    return {
+        "custom_id": f"pr-{pr_id}",
+        "method": "POST",
+        "url": "/v1/chat/completions",
+        "body": {
+            "model": "llama-3.3-70b-versatile",
+            "messages": [
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": f"Analyze this PR description:\n\n{pr_body}"},
+            ],
+            "response_format": {
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "ai_detection",
+                    "strict": False,
+                    "schema": DETECTION_SCHEMA,
+                },
+            },
+            "temperature": 0,
+            "max_tokens": 500,
+        },
+    }
+
+
+def create_batch_file(prs: list[tuple[int, str]], output_path: str) -> str:
+    """Create JSONL file for Groq batch API.
+
+    Args:
+        prs: List of (pr_id, pr_body) tuples
+        output_path: Path to write JSONL file
+
+    Returns:
+        Path to created file
+    """
+    import json
+
+    with open(output_path, "w") as f:
+        for pr_id, pr_body in prs:
+            request = create_batch_request(pr_id, pr_body)
+            f.write(json.dumps(request) + "\n")
+
+    return output_path
+
+
+def submit_batch_job(file_path: str, completion_window: str = "24h") -> str:
+    """Submit batch file to Groq and return batch ID.
+
+    Args:
+        file_path: Path to JSONL batch file
+        completion_window: "24h" to "7d"
+
+    Returns:
+        Batch job ID for polling
+    """
+    client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+
+    # Upload file
+    with open(file_path, "rb") as f:
+        uploaded_file = client.files.create(file=f, purpose="batch")
+
+    # Create batch job
+    batch = client.batches.create(
+        completion_window=completion_window,
+        endpoint="/v1/chat/completions",
+        input_file_id=uploaded_file.id,
+    )
 
-### Phase 5.1: Prompt Engineering (Effort: S)
-
-- [ ] Create 50 labeled test cases from Gumroad PRs
-- [ ] Design V1 prompt, evaluate on test cases
-- [ ] Iterate to V2, compare precision/recall
-- [ ] Document edge cases and handling
-
-### Phase 5.2: Service Implementation (Effort: M)
-
-```python
-# apps/metrics/services/ai_disclosure_llm.py
-
-from anthropic import Anthropic
-
-class AIDisclosureLLMParser:
-    def __init__(self):
-        self.client = Anthropic()
-        self.cache = {}  # Redis in production
-
-    def parse(self, pr_body: str, use_thinking: bool = False) -> dict:
-        cache_key = hashlib.sha256(pr_body.encode()).hexdigest()
-        if cached := self.cache.get(cache_key):
-            return cached
-
-        response = self._call_claude(pr_body, use_thinking)
-        result = json.loads(response.content[0].text)
-
-        self.cache[cache_key] = result
-        return result
-
-    def _call_claude(self, pr_body: str, use_thinking: bool) -> Message:
-        kwargs = {
-            "model": "claude-sonnet-4-20250514",
-            "max_tokens": 1000 if not use_thinking else 16000,
-            "messages": [{"role": "user", "content": self.prompt.format(body=pr_body)}]
-        }
-        if use_thinking:
-            kwargs["thinking"] = {"type": "enabled", "budget_tokens": 10000}
-
-        return self.client.messages.create(**kwargs)
-```
-
-### Phase 5.3: Integration with Sync (Effort: S)
-
-```python
-# In github_graphql_sync.py
-
-async def _detect_pr_ai_involvement(author: str, title: str, body: str) -> tuple[bool, list]:
-    # First: Regex (fast, free)
-    regex_result = detect_ai_in_text(body)
-    if regex_result['is_ai_assisted']:
-        return True, regex_result['ai_tools']
-
-    # Second: Check for AI Disclosure section
-    if 'ai disclosure' not in body.lower():
-        return False, []
-
-    # Third: LLM for ambiguous cases
-    llm_result = ai_llm_parser.parse(body)
-    if llm_result['confidence'] >= 0.7:
-        return llm_result['is_ai_assisted'], llm_result['tools_detected']
-
-    # Fourth: Extended thinking for low confidence
-    llm_result = ai_llm_parser.parse(body, use_thinking=True)
-    return llm_result['is_ai_assisted'], llm_result['tools_detected']
-```
-
-### Phase 5.4: Batch Processing & Backfill (Effort: M)
-
-- [ ] Create Celery task for async LLM detection
-- [ ] Rate limiting (respect API limits)
-- [ ] Cost tracking and budgeting
-- [ ] Backfill command with dry-run
-
-### Phase 5.5: Monitoring & Iteration (Effort: S)
-
-- [ ] Log LLM decisions for review
-- [ ] A/B compare regex vs LLM accuracy
-- [ ] Dashboard for detection confidence distribution
-
----
-
-## Cost Analysis
-
-### Standard Pricing (claude-sonnet-4-20250514)
-
-| Approach | Tokens/PR | Cost/PR | Cost/1000 PRs |
-|----------|-----------|---------|---------------|
-| Regex only | 0 | $0 | $0 |
-| Standard LLM | ~2K total | $0.009 | $9 |
-| Extended Thinking | ~12K total | $0.036 | $36 |
-
-### With Prompt Caching + Batch API
-
-Claude API optimizations:
-- **Prompt Caching**: System prompt cached, 90% reduction on prompt tokens
-- **Batch API**: 50% discount for async processing (24h window)
-
-| Optimization | Input Cost | Output Cost | Effective Discount |
-|--------------|------------|-------------|-------------------|
-| Standard | $3/M | $15/M | 0% |
-| Prompt Cache (cached tokens) | $0.30/M | $15/M | ~85% on prompt |
-| Batch API | $1.50/M | $7.50/M | 50% overall |
-| Cache + Batch | $0.15/M | $7.50/M | ~90% on prompt |
-
-**Cost with Optimizations:**
-
-Assumptions:
-- System prompt: 500 tokens (cached)
-- PR body: 1,500 tokens avg (not cached)
-- Output: 200 tokens
-
-| Approach | Cost/PR | Cost/1000 PRs | Cost/10K PRs |
-|----------|---------|---------------|--------------|
-| Batch + Cache | $0.0035 | $3.50 | $35 |
-| Tiered (20% LLM) | $0.0007 | $0.70 | $7 |
-
-**Conclusion**: At $3.50/1000 PRs, LLM-for-all is viable. Compare accuracy improvement vs $3.50/1000 additional cost.
-
----
-
-## Testability Matrix
-
-| Approach | Unit Tests | Integration Tests | E2E Tests |
-|----------|------------|-------------------|-----------|
-| Full Payload | Easy - Mock Claude response | Medium - Need API | Hard |
-| MCP/Tools | Medium - Mock tools | Hard - Multiple calls | Very Hard |
-| Thinking Mode | Easy - Mock response | Medium | Hard |
-| Tiered | Easy - Mock both layers | Medium | Medium |
-
----
-
-## Decision Summary
-
-| Decision | Choice | Rationale |
-|----------|--------|-----------|
-| Data Passing | Full Payload | Simpler, cacheable, PR body is primary signal |
-| LLM Model | claude-sonnet-4-20250514 | Best cost/quality balance |
-| Thinking Mode | Tiered | Fast for clear cases, thinking for ambiguous |
-| Caching | Redis (content hash) | Avoid repeat API calls for same PR |
-| Integration | Fallback after regex | Free regex first, paid LLM second |
-
----
-
----
-
-## Experiment Design: Regex vs LLM Comparison
-
-### Objective
-Determine if LLM-for-all with batch+cache is worth $3.50/1000 PRs vs free regex.
-
-### Experiment Setup
-
-```python
-# 1. Collect test dataset from multiple OSS repos
-test_repos = [
-    "antiwork/gumroad",      # 500 PRs (our primary)
-    "vercel/ai",             # 200 PRs (AI SDK)
-    "langchain-ai/langchain", # 200 PRs (LLM framework)
-    "microsoft/vscode",       # 200 PRs (large, traditional)
-]
-
-# 2. Run both detection methods
-for pr in test_prs:
-    regex_result = detect_ai_in_text(pr.body)
-    llm_result = detect_ai_with_llm(pr.body)
-
-    results.append({
-        "pr_id": pr.id,
-        "repo": pr.repo,
-        "regex_detected": regex_result["is_ai_assisted"],
-        "regex_tools": regex_result["ai_tools"],
-        "llm_detected": llm_result["is_ai_assisted"],
-        "llm_tools": llm_result["tools_detected"],
-        "llm_confidence": llm_result["confidence"],
-        "llm_reasoning": llm_result["reasoning"],
-    })
-
-# 3. Manual review of disagreements
-disagreements = [r for r in results if r["regex_detected"] != r["llm_detected"]]
-# Human labels these as ground truth
-```
-
-### Metrics to Measure
-
-| Metric | Calculation | Target |
-|--------|-------------|--------|
-| Regex Precision | TP / (TP + FP) | >95% |
-| Regex Recall | TP / (TP + FN) | >80% |
-| LLM Precision | TP / (TP + FP) | >98% |
-| LLM Recall | TP / (TP + FN) | >95% |
-| Agreement Rate | Same / Total | Measure |
-| LLM Lift | LLM Recall - Regex Recall | >10% to justify cost |
-
-### Decision Criteria
-
-```
-IF llm_lift > 10% AND llm_precision >= regex_precision:
-    USE LLM-for-all (with batch+cache)
-ELIF llm_lift > 5%:
-    USE tiered (regex first, LLM for AI Disclosure sections)
-ELSE:
-    KEEP regex-only (LLM not worth the cost)
-```
-
-### Pattern Improvement Loop
-
-When LLM catches what regex misses:
-
-```python
-# 1. Analyze LLM catches
-llm_only_detections = [r for r in results
-                       if r["llm_detected"] and not r["regex_detected"]]
-
-# 2. Extract patterns from LLM reasoning
-for detection in llm_only_detections:
-    print(f"PR: {detection['pr_id']}")
-    print(f"Body: {pr.body[:200]}")
-    print(f"LLM reasoning: {detection['llm_reasoning']}")
-    # Human reviews and adds new regex pattern if common
-
-# 3. Add to regex patterns, re-run experiment
-```
-
-This creates a feedback loop where LLM discoveries improve regex patterns.
-
----
-
-## Batch API Implementation
-
-### Using Anthropic Batch API
-
-```python
-from anthropic import Anthropic
-
-client = Anthropic()
-
-def create_batch_detection_job(prs: list[PullRequest]) -> str:
-    """Create a batch job for AI detection on multiple PRs."""
-
-    requests = []
-    for pr in prs:
-        requests.append({
-            "custom_id": f"pr-{pr.id}",
-            "params": {
-                "model": "claude-sonnet-4-20250514",
-                "max_tokens": 500,
-                "messages": [{
-                    "role": "user",
-                    "content": format_detection_prompt(pr.body)
-                }]
-            }
-        })
-
-    # Create batch job (returns in ~24h, 50% cheaper)
-    batch = client.batches.create(requests=requests)
     return batch.id
 
-def poll_batch_results(batch_id: str) -> dict:
-    """Poll for batch completion and parse results."""
 
-    while True:
-        batch = client.batches.retrieve(batch_id)
-        if batch.status == "completed":
-            break
-        time.sleep(60)  # Check every minute
+def get_batch_results(batch_id: str) -> dict[int, AIDetectionResult] | None:
+    """Get results from completed batch job.
+
+    Returns:
+        Dict mapping pr_id to detection result, or None if not complete
+    """
+    client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+
+    batch = client.batches.retrieve(batch_id)
+
+    if batch.status != "completed":
+        return None
 
     # Download results
+    content = client.files.content(batch.output_file_id)
+
     results = {}
-    for result in batch.results:
-        pr_id = result.custom_id.replace("pr-", "")
-        response = json.loads(result.message.content[0].text)
-        results[pr_id] = response
+    for line in content.text.strip().split("\n"):
+        item = json.loads(line)
+        pr_id = int(item["custom_id"].replace("pr-", ""))
+        response_data = json.loads(item["response"]["body"]["choices"][0]["message"]["content"])
+
+        results[pr_id] = AIDetectionResult(
+            is_ai_assisted=response_data["is_ai_assisted"],
+            tools=response_data.get("tools", []),
+            usage_category=response_data.get("usage_category"),
+            confidence=response_data.get("confidence", 0.5),
+            reasoning=response_data.get("reasoning"),
+        )
 
     return results
 ```
 
-### Celery Task for Batch Processing
+#### 2. Celery Tasks (`apps/metrics/tasks.py`)
 
 ```python
-# apps/metrics/tasks.py
+from celery import shared_task
+from django.utils import timezone
+
+from apps.integrations.services.groq_ai_detector import (
+    create_batch_file,
+    submit_batch_job,
+    get_batch_results,
+)
+from apps.metrics.models import PullRequest
+
 
 @shared_task
-def batch_detect_ai_usage(pr_ids: list[int]):
-    """Celery task to batch process PRs for AI detection."""
+def queue_prs_for_llm_detection():
+    """Nightly task to queue PRs needing LLM detection."""
 
-    prs = PullRequest.objects.filter(id__in=pr_ids)
+    # Get PRs with body that haven't been LLM processed
+    prs = PullRequest.objects.filter(
+        body__isnull=False,
+        llm_detection_at__isnull=True,
+    ).exclude(body="").values_list("id", "body")[:10000]  # Batch limit
 
-    # Create batch job
-    batch_id = create_batch_detection_job(list(prs))
+    if not prs:
+        return "No PRs to process"
+
+    # Create batch file
+    file_path = f"/tmp/ai_detection_batch_{timezone.now().isoformat()}.jsonl"
+    create_batch_file(list(prs), file_path)
+
+    # Submit batch job
+    batch_id = submit_batch_job(file_path)
 
     # Schedule polling task
-    poll_batch_results_task.apply_async(
-        args=[batch_id, pr_ids],
-        countdown=3600  # Start checking after 1 hour
+    poll_llm_detection_batch.apply_async(
+        args=[batch_id],
+        countdown=3600,  # Start checking after 1 hour
     )
 
+    return f"Submitted batch {batch_id} with {len(prs)} PRs"
+
+
 @shared_task
-def poll_batch_results_task(batch_id: str, pr_ids: list[int]):
-    """Poll for batch results and update PRs."""
+def poll_llm_detection_batch(batch_id: str, attempts: int = 0):
+    """Poll for batch completion and update PRs."""
 
-    results = poll_batch_results(batch_id)
+    results = get_batch_results(batch_id)
 
-    for pr_id, detection in results.items():
+    if results is None:
+        if attempts < 24:  # Max 24 hours
+            poll_llm_detection_batch.apply_async(
+                args=[batch_id, attempts + 1],
+                countdown=3600,
+            )
+            return f"Batch {batch_id} still processing, attempt {attempts + 1}"
+        else:
+            return f"Batch {batch_id} timed out after 24 attempts"
+
+    # Update PRs with results
+    now = timezone.now()
+    for pr_id, result in results.items():
         PullRequest.objects.filter(id=pr_id).update(
-            is_ai_assisted=detection["is_ai_assisted"],
-            ai_tools_detected=detection["tools_detected"],
-            ai_detection_confidence=detection["confidence"],
+            is_ai_assisted=result.is_ai_assisted,
+            ai_tools_detected=result.tools,
+            llm_detection_at=now,
         )
+
+    return f"Updated {len(results)} PRs from batch {batch_id}"
+```
+
+#### 3. Management Command (`apps/metrics/management/commands/backfill_ai_detection.py`)
+
+```python
+from django.core.management.base import BaseCommand
+
+from apps.integrations.services.groq_ai_detector import detect_ai_with_groq
+from apps.metrics.models import PullRequest
+from apps.metrics.services.ai_detector import detect_ai_in_text
+from apps.teams.models import Team
+
+
+class Command(BaseCommand):
+    help = "Backfill AI detection for existing PRs"
+
+    def add_arguments(self, parser):
+        parser.add_argument("--team", type=str, help="Team name to filter")
+        parser.add_argument("--dry-run", action="store_true", help="Preview changes")
+        parser.add_argument("--use-llm", action="store_true", help="Use Groq LLM")
+        parser.add_argument("--limit", type=int, default=100, help="Max PRs to process")
+
+    def handle(self, *args, **options):
+        qs = PullRequest.objects.filter(body__isnull=False).exclude(body="")
+
+        if options["team"]:
+            team = Team.objects.get(name=options["team"])
+            qs = qs.filter(team=team)
+
+        prs = qs[:options["limit"]]
+
+        changes = []
+        for pr in prs:
+            # Current detection
+            old_ai = pr.is_ai_assisted
+            old_tools = pr.ai_tools_detected or []
+
+            # New detection
+            if options["use_llm"]:
+                result = detect_ai_with_groq(pr.body)
+                new_ai = result.is_ai_assisted
+                new_tools = result.tools
+            else:
+                result = detect_ai_in_text(f"{pr.title}\n\n{pr.body}")
+                new_ai = result["is_ai_assisted"]
+                new_tools = result["ai_tools"]
+
+            if new_ai != old_ai or set(new_tools) != set(old_tools):
+                changes.append({
+                    "pr_id": pr.id,
+                    "number": pr.number,
+                    "old_ai": old_ai,
+                    "new_ai": new_ai,
+                    "old_tools": old_tools,
+                    "new_tools": new_tools,
+                })
+
+                if not options["dry_run"]:
+                    pr.is_ai_assisted = new_ai
+                    pr.ai_tools_detected = new_tools
+                    pr.save(update_fields=["is_ai_assisted", "ai_tools_detected"])
+
+        # Report
+        self.stdout.write(f"\n{'DRY RUN - ' if options['dry_run'] else ''}Changes:")
+        for c in changes:
+            self.stdout.write(
+                f"  PR #{c['number']}: {c['old_ai']} -> {c['new_ai']}, "
+                f"tools: {c['old_tools']} -> {c['new_tools']}"
+            )
+
+        self.stdout.write(f"\nTotal: {len(changes)} PRs would be updated")
 ```
 
 ---
 
-## Next Steps
+## Migration: Add LLM Detection Timestamp
 
-### Immediate (This Week)
-1. Fetch PRs from 4 OSS repos (antiwork/gumroad, vercel/ai, langchain-ai/langchain, microsoft/vscode)
-2. Create labeled test dataset (200 PRs with manual ground truth)
+```python
+# apps/metrics/migrations/0018_add_llm_detection_timestamp.py
 
-### Phase 1: Baseline Comparison
-3. Run regex on all test PRs, record results
-4. Run LLM (batch) on all test PRs, record results
-5. Calculate metrics, identify disagreements
-6. Manual review disagreements → ground truth
+from django.db import migrations, models
 
-### Phase 2: Pattern Improvement
-7. Analyze LLM-only detections
-8. Extract new regex patterns from LLM reasoning
-9. Add patterns, re-run comparison
-10. Iterate until regex catches 90%+ of what LLM catches
 
-### Phase 3: Production Decision
-11. Calculate final lift from LLM
-12. If lift > 10%: Implement LLM with batch+cache
-13. If lift < 10%: Stay with enhanced regex
-14. Document decision with data
+class Migration(migrations.Migration):
+    dependencies = [
+        ("metrics", "0017_add_pr_github_metadata"),
+    ]
+
+    operations = [
+        migrations.AddField(
+            model_name="pullrequest",
+            name="llm_detection_at",
+            field=models.DateTimeField(null=True, blank=True),
+        ),
+    ]
+```
+
+---
+
+## Testing Strategy
+
+### Unit Tests
+
+```python
+class TestGroqAIDetector(TestCase):
+    def test_detect_cursor_usage(self):
+        body = "## AI Disclosure\nCursor (Claude 4.5 Sonnet) used for implementation"
+        result = detect_ai_with_groq(body)
+        self.assertTrue(result.is_ai_assisted)
+        self.assertIn("cursor", result.tools)
+
+    def test_detect_negative_disclosure(self):
+        body = "## AI Disclosure\nNo AI was used for this PR"
+        result = detect_ai_with_groq(body)
+        self.assertFalse(result.is_ai_assisted)
+
+    def test_detect_ambiguous_usage(self):
+        body = "## AI Disclosure\nUsed for brainstorming the approach"
+        result = detect_ai_with_groq(body)
+        # Should infer AI usage from context
+        self.assertTrue(result.is_ai_assisted)
+        self.assertEqual(result.usage_category, "brainstorm")
+```
+
+### Integration Tests
+
+```python
+class TestBatchProcessing(TestCase):
+    def test_batch_file_creation(self):
+        prs = [(1, "Test body 1"), (2, "Test body 2")]
+        path = create_batch_file(prs, "/tmp/test_batch.jsonl")
+
+        with open(path) as f:
+            lines = f.readlines()
+
+        self.assertEqual(len(lines), 2)
+        self.assertIn("pr-1", lines[0])
+```
+
+---
+
+## Rollout Plan
+
+### Phase 1: Setup (Day 1)
+- [ ] Add `groq` package: `uv add groq`
+- [ ] Create `GROQ_API_KEY` secret
+- [ ] Create migration for `llm_detection_at`
+- [ ] Implement Groq service with tests
+
+### Phase 2: Validation (Day 2)
+- [ ] Run backfill command with `--dry-run --use-llm --limit 50`
+- [ ] Manually verify 20 detections
+- [ ] Compare regex vs LLM results
+- [ ] Fix any prompt issues
+
+### Phase 3: Production (Day 3)
+- [ ] Run backfill on Gumroad team
+- [ ] Add Celery periodic task for nightly batch
+- [ ] Monitor batch job completions
+- [ ] Track detection rate improvement
+
+---
+
+## Success Metrics
+
+| Metric | Regex Only | With Groq LLM | Target |
+|--------|------------|---------------|--------|
+| Detection Rate | 24.4% | TBD | 70%+ |
+| False Positive Rate | TBD | TBD | <2% |
+| Cost per 1000 PRs | $0 | $0.08 | <$1 |
+| Processing Time | Instant | 24h (batch) | <48h |
+
+---
+
+## Appendix: Alternative Approaches Rejected
+
+### 1. Claude API (Anthropic)
+- **Cost**: $3.50/1000 PRs (44x more expensive than Groq)
+- **Rejected**: Too expensive for running on all PRs
+
+### 2. GPT-OSS with Strict Mode
+- **Benefit**: Guaranteed JSON schema adherence
+- **Rejected**: Less proven for nuanced reasoning, Llama 3.3 is better for ambiguous cases
+
+### 3. Tool Calling Approach
+- **Rejected**: Not compatible with Groq's structured outputs feature
+
+### 4. MCP/Remote Tools
+- **Rejected**: Overkill complexity, we have all data upfront

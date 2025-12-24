@@ -1,19 +1,22 @@
 # AI Detection via PR Description Analysis - Tasks
 
-**Last Updated: 2025-12-24 18:30 UTC**
+**Last Updated: 2025-12-24 20:00 UTC**
 
 ## Immediate Next Steps (On Restart)
 
-1. **Verify tests pass**: `make test ARGS='apps/metrics/tests/test_ai_detector.py'`
-2. **Commit Phase 1 changes**: Patterns v1.4.0 + 96 tests
-3. **Fix Gemini false positive**: Change `\bgemini\b` to require context
-4. **Run backfill**: Create and run `backfill_ai_detection` command (Phase 4)
+1. ✅ **Verify tests pass**: 96 tests passing
+2. ✅ **Commit Phase 1 changes**: Committed as `8723f22`
+3. ✅ **Plan Groq integration**: Architecture doc updated with Llama 3.3 70B + full payload
+4. **Add groq package**: `uv add groq`
+5. **Create Groq service**: `apps/integrations/services/groq_ai_detector.py`
+6. **Create backfill command**: With `--use-llm` option
 
-## Blocking Issue
+## Known Issue (Low Priority)
 
 **Gemini Pattern False Positive** in AI product repos:
 - `vercel/ai` - "Gemini 3 exclusive feature" matched as AI authoring
-- Need to change pattern to: `\bused\s+gemini\b` or similar
+- Workaround: LLM handles this correctly, regex is just first pass
+- Fix if needed: Change `\bgemini\b` to `\bused\s+gemini\b`
 
 ## Phase 1: Expand Regex Pattern Coverage [Effort: S]
 
@@ -54,39 +57,49 @@
 
 ---
 
-## Phase 2: AI Disclosure Section Parser [Effort: M]
+## Phase 2: Groq LLM Integration [Effort: M] ⟵ CURRENT
 
-### 2.1 Create Section Extractor Function
-- [ ] Create `extract_ai_disclosure_section(body: str) -> str | None`
-- [ ] Handle variations: "AI Disclosure", "### AI Disclosure:", "## AI Disclosure"
-- [ ] Handle section ending: next header, ---, or EOF
-- [ ] Write unit tests (8+ cases for different formats)
+**Decision**: Skip complex section parser - Groq LLM handles all cases at $0.08/1000 PRs
 
-### 2.2 Implement Negative Disclosure Detection
-- [ ] Create `NEGATIVE_DISCLOSURE_PATTERNS` list
-- [ ] Add pattern: `no\s+ai\s+(?:was\s+)?used`
-- [ ] Add pattern: `none\.?\s*$` (just "None" or "None.")
-- [ ] Add pattern: `no\s+ai\s+(?:was\s+)?used\s+for\s+any\s+part`
-- [ ] Create `is_negative_disclosure(text: str) -> bool`
-- [ ] Write unit tests for negative detection (10+ cases)
+### 2.1 Setup Groq Integration
+- [ ] Add groq package: `uv add groq`
+- [ ] Add `GROQ_API_KEY` to environment/secrets
+- [ ] Create migration for `llm_detection_at` field on PullRequest
 
-### 2.3 Integrate into Detection Flow
-- [ ] Update `detect_ai_in_text()` to use disclosure section parsing
-- [ ] Logic: if disclosure section exists and is negative → return empty
-- [ ] Logic: if disclosure section exists → analyze section preferentially
-- [ ] Write integration tests
+### 2.2 Implement Groq Service (TDD)
+- [ ] Create `apps/integrations/services/groq_ai_detector.py`
+- [ ] Implement `detect_ai_with_groq(pr_body: str) -> AIDetectionResult`
+- [ ] Implement `create_batch_file(prs, output_path)` for batch API
+- [ ] Implement `submit_batch_job(file_path)` → batch_id
+- [ ] Implement `get_batch_results(batch_id)` → results dict
+- [ ] Write unit tests (mock Groq responses)
+- [ ] Write integration test with real API call (1 PR)
 
-### 2.4 Parse Structured Disclosure Formats
-- [ ] Detect and parse "IDE:" field
-- [ ] Detect and parse "Model:" field
-- [ ] Detect and parse "Used for:" field (for future analytics)
-- [ ] Return structured data for dashboard enhancement
+### 2.3 Create Backfill Management Command
+- [ ] Create `apps/metrics/management/commands/backfill_ai_detection.py`
+- [ ] Add `--team` filter option
+- [ ] Add `--dry-run` option (preview changes)
+- [ ] Add `--use-llm` option (use Groq vs regex-only)
+- [ ] Add `--limit` option (max PRs to process)
+- [ ] Show before/after comparison for each changed PR
+
+### 2.4 Run Backfill Validation
+- [ ] Run `--dry-run --limit 50` on Gumroad team
+- [ ] Manually verify 20 detections
+- [ ] Compare regex vs LLM results
+- [ ] Run actual backfill if results look good
+
+### 2.5 Add Celery Task for Nightly Batch
+- [ ] Create `queue_prs_for_llm_detection` task
+- [ ] Create `poll_llm_detection_batch` task
+- [ ] Add to Celery beat schedule (nightly)
+- [ ] Test full batch flow
 
 **Acceptance Criteria Phase 2**:
-- [ ] AI Disclosure section correctly extracted from 150+ Gumroad PRs
-- [ ] Negative disclosures correctly excluded
-- [ ] Structured formats properly parsed
-- [ ] Detection accuracy improved to 50%+
+- [ ] Groq service working with tests
+- [ ] Backfill command working with --dry-run
+- [ ] Detection rate on Gumroad: 24% → 70%+
+- [ ] Cost confirmed at ~$0.08/1000 PRs
 
 ---
 
@@ -223,13 +236,23 @@
 
 ## Progress Tracking
 
-- [x] **Phase 1 Complete** - Enhanced patterns added (2025-12-24)
-- [ ] **Phase 2 Complete** - AI Disclosure parser working
-- [ ] **Phase 3 Complete** - Usage categorization
-- [ ] **Phase 4 Complete** - Backfill executed
-- [ ] **Phase 5 Complete** - LLM detection live
+- [x] **Phase 1 Complete** - Enhanced regex patterns (2025-12-24) - Commit `8723f22`
+- [ ] **Phase 2 In Progress** - Groq LLM integration
+- [ ] **Phase 3 Pending** - Usage categorization + dashboard
+- [ ] **Phase 4 Pending** - Production deployment
 
-**Current Status**: Phase 1 fully validated and complete
+**Current Status**: Phase 2 starting - Groq integration
+
+## Revised Plan Summary
+
+| Phase | Description | Effort | Detection Rate |
+|-------|-------------|--------|----------------|
+| 1 ✅ | Regex patterns | S | 24.4% |
+| 2 ⟵ | Groq LLM (Llama 3.3 70B) | M | 70-90% |
+| 3 | Usage categorization | S | +analytics |
+| 4 | Dashboard + production | M | shipped |
+
+**Key Decision**: Skip complex section parser - Groq handles everything at $0.08/1000 PRs
 
 ## Phase 1 Results (2025-12-24)
 
