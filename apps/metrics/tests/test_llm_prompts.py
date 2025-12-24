@@ -180,3 +180,235 @@ This PR adds feature X.
         prompt = get_user_prompt(pr_body=body)
         self.assertIn("## Summary", prompt)
         self.assertIn("- Added A", prompt)
+
+
+class TestGetUserPromptV6Fields(TestCase):
+    """Tests for v6.0.0 new fields in get_user_prompt."""
+
+    def test_prompt_includes_state(self):
+        """State should be included when provided."""
+        prompt = get_user_prompt(pr_body="Changes", state="merged")
+        self.assertIn("State: merged", prompt)
+
+    def test_prompt_excludes_empty_state(self):
+        """State should not be included when empty."""
+        prompt = get_user_prompt(pr_body="Changes", state="")
+        self.assertNotIn("State:", prompt)
+
+    def test_prompt_includes_labels(self):
+        """Labels should be included when provided."""
+        prompt = get_user_prompt(
+            pr_body="Changes",
+            labels=["bug", "priority:high", "frontend"],
+        )
+        self.assertIn("Labels: bug, priority:high, frontend", prompt)
+
+    def test_prompt_excludes_empty_labels(self):
+        """Labels should not be included when empty."""
+        prompt = get_user_prompt(pr_body="Changes", labels=[])
+        self.assertNotIn("Labels:", prompt)
+
+    def test_prompt_includes_is_draft(self):
+        """Draft flag should be included when True."""
+        prompt = get_user_prompt(pr_body="WIP", is_draft=True)
+        self.assertIn("Draft: Yes", prompt)
+
+    def test_prompt_excludes_is_draft_false(self):
+        """Draft flag should not be included when False."""
+        prompt = get_user_prompt(pr_body="Changes", is_draft=False)
+        self.assertNotIn("Draft:", prompt)
+
+    def test_prompt_includes_is_hotfix(self):
+        """Hotfix flag should be included when True."""
+        prompt = get_user_prompt(pr_body="Urgent fix", is_hotfix=True)
+        self.assertIn("Hotfix: Yes", prompt)
+
+    def test_prompt_excludes_is_hotfix_false(self):
+        """Hotfix flag should not be included when False."""
+        prompt = get_user_prompt(pr_body="Changes", is_hotfix=False)
+        self.assertNotIn("Hotfix:", prompt)
+
+    def test_prompt_includes_is_revert(self):
+        """Revert flag should be included when True."""
+        prompt = get_user_prompt(pr_body="Reverts #123", is_revert=True)
+        self.assertIn("Revert: Yes", prompt)
+
+    def test_prompt_excludes_is_revert_false(self):
+        """Revert flag should not be included when False."""
+        prompt = get_user_prompt(pr_body="Changes", is_revert=False)
+        self.assertNotIn("Revert:", prompt)
+
+    def test_prompt_includes_cycle_time_hours(self):
+        """Cycle time should be included when provided."""
+        prompt = get_user_prompt(pr_body="Changes", cycle_time_hours=48.5)
+        self.assertIn("Cycle time: 48.5 hours", prompt)
+
+    def test_prompt_excludes_cycle_time_none(self):
+        """Cycle time should not be included when None."""
+        prompt = get_user_prompt(pr_body="Changes", cycle_time_hours=None)
+        self.assertNotIn("Cycle time:", prompt)
+
+    def test_prompt_includes_review_time_hours(self):
+        """Review time should be included when provided."""
+        prompt = get_user_prompt(pr_body="Changes", review_time_hours=4.2)
+        self.assertIn("Time to first review: 4.2 hours", prompt)
+
+    def test_prompt_excludes_review_time_none(self):
+        """Review time should not be included when None."""
+        prompt = get_user_prompt(pr_body="Changes", review_time_hours=None)
+        self.assertNotIn("Time to first review:", prompt)
+
+    def test_prompt_includes_commits_after_first_review(self):
+        """Commits after first review should be included when > 0."""
+        prompt = get_user_prompt(pr_body="Changes", commits_after_first_review=5)
+        self.assertIn("Commits after first review: 5", prompt)
+
+    def test_prompt_excludes_commits_after_first_review_zero(self):
+        """Commits after first review should not be included when 0."""
+        prompt = get_user_prompt(pr_body="Changes", commits_after_first_review=0)
+        self.assertNotIn("Commits after first review:", prompt)
+
+    def test_prompt_excludes_commits_after_first_review_none(self):
+        """Commits after first review should not be included when None."""
+        prompt = get_user_prompt(pr_body="Changes", commits_after_first_review=None)
+        self.assertNotIn("Commits after first review:", prompt)
+
+    def test_prompt_includes_review_rounds(self):
+        """Review rounds should be included when > 0."""
+        prompt = get_user_prompt(pr_body="Changes", review_rounds=3)
+        self.assertIn("Review rounds: 3", prompt)
+
+    def test_prompt_excludes_review_rounds_zero(self):
+        """Review rounds should not be included when 0."""
+        prompt = get_user_prompt(pr_body="Changes", review_rounds=0)
+        self.assertNotIn("Review rounds:", prompt)
+
+    def test_prompt_excludes_review_rounds_none(self):
+        """Review rounds should not be included when None."""
+        prompt = get_user_prompt(pr_body="Changes", review_rounds=None)
+        self.assertNotIn("Review rounds:", prompt)
+
+    def test_prompt_includes_file_paths(self):
+        """File paths should be included when provided."""
+        prompt = get_user_prompt(
+            pr_body="Changes",
+            file_paths=["src/auth.py", "tests/test_auth.py", "README.md"],
+        )
+        self.assertIn("Files: src/auth.py, tests/test_auth.py, README.md", prompt)
+
+    def test_prompt_limits_file_paths_to_20(self):
+        """File paths should be limited to 20 with count indicator."""
+        file_paths = [f"src/file_{i}.py" for i in range(25)]
+        prompt = get_user_prompt(pr_body="Changes", file_paths=file_paths)
+        self.assertIn("(+5 more)", prompt)
+        self.assertIn("src/file_19.py", prompt)
+        self.assertNotIn("src/file_20.py", prompt)
+
+    def test_prompt_excludes_empty_file_paths(self):
+        """File paths should not be included when empty."""
+        prompt = get_user_prompt(pr_body="Changes", file_paths=[])
+        self.assertNotIn("Files:", prompt)
+
+    def test_prompt_includes_commit_messages(self):
+        """Commit messages should be included when provided."""
+        prompt = get_user_prompt(
+            pr_body="Changes",
+            commit_messages=[
+                "Add login endpoint",
+                "Add tests for login",
+                "Fix typo in error message",
+            ],
+        )
+        self.assertIn("Recent commits:", prompt)
+        self.assertIn("- Add login endpoint", prompt)
+        self.assertIn("- Add tests for login", prompt)
+        self.assertIn("- Fix typo in error message", prompt)
+
+    def test_prompt_limits_commit_messages_to_5(self):
+        """Commit messages should be limited to 5 with count indicator."""
+        commits = [f"Commit {i}" for i in range(8)]
+        prompt = get_user_prompt(pr_body="Changes", commit_messages=commits)
+        self.assertIn("- Commit 0", prompt)
+        self.assertIn("- Commit 4", prompt)
+        self.assertIn("... and 3 more commits", prompt)
+        self.assertNotIn("- Commit 5", prompt)
+
+    def test_prompt_excludes_empty_commit_messages(self):
+        """Commit messages should not be included when empty."""
+        prompt = get_user_prompt(pr_body="Changes", commit_messages=[])
+        self.assertNotIn("Recent commits:", prompt)
+
+    def test_full_v6_prompt_with_all_fields(self):
+        """Prompt with all v6 fields should be properly formatted."""
+        prompt = get_user_prompt(
+            pr_body="Fixes critical authentication bug causing session expiry.",
+            pr_title="Fix auth timeout bug",
+            file_count=5,
+            additions=50,
+            deletions=10,
+            comment_count=12,
+            repo_languages=["Python", "TypeScript"],
+            state="merged",
+            labels=["bug", "critical", "auth"],
+            is_draft=False,
+            is_hotfix=True,
+            is_revert=False,
+            cycle_time_hours=6.5,
+            review_time_hours=0.5,
+            commits_after_first_review=2,
+            review_rounds=1,
+            file_paths=["apps/auth/views.py", "apps/auth/tests.py"],
+            commit_messages=[
+                "Fix session expiry check",
+                "Add regression test",
+            ],
+        )
+
+        # Check all v6 parts are present
+        self.assertIn("Title: Fix auth timeout bug", prompt)
+        self.assertIn("State: merged", prompt)
+        self.assertIn("Labels: bug, critical, auth", prompt)
+        self.assertIn("Hotfix: Yes", prompt)
+        self.assertIn("Cycle time: 6.5 hours", prompt)
+        self.assertIn("Time to first review: 0.5 hours", prompt)
+        self.assertIn("Comments: 12", prompt)
+        self.assertIn("Commits after first review: 2", prompt)
+        self.assertIn("Review rounds: 1", prompt)
+        self.assertIn("Files: apps/auth/views.py, apps/auth/tests.py", prompt)
+        self.assertIn("Recent commits:", prompt)
+        self.assertIn("- Fix session expiry check", prompt)
+
+        # Check structure
+        self.assertIn("Analyze this pull request:", prompt)
+        self.assertIn("Description:", prompt)
+
+
+class TestSystemPromptV6(TestCase):
+    """Tests for v6.0.0 system prompt enhancements."""
+
+    def test_system_prompt_includes_health_assessment(self):
+        """System prompt should include health assessment guidelines."""
+        self.assertIn("Health Assessment", PR_ANALYSIS_SYSTEM_PROMPT)
+
+    def test_system_prompt_includes_timing_metrics(self):
+        """System prompt should explain timing metrics."""
+        self.assertIn("cycle_time_hours", PR_ANALYSIS_SYSTEM_PROMPT)
+        self.assertIn("review_time_hours", PR_ANALYSIS_SYSTEM_PROMPT)
+
+    def test_system_prompt_includes_iteration_indicators(self):
+        """System prompt should explain iteration indicators."""
+        self.assertIn("commits_after_first_review", PR_ANALYSIS_SYSTEM_PROMPT)
+        self.assertIn("review_rounds", PR_ANALYSIS_SYSTEM_PROMPT)
+
+    def test_system_prompt_includes_risk_flags(self):
+        """System prompt should explain risk flags."""
+        self.assertIn("is_hotfix", PR_ANALYSIS_SYSTEM_PROMPT)
+        self.assertIn("is_revert", PR_ANALYSIS_SYSTEM_PROMPT)
+
+    def test_system_prompt_includes_health_response_schema(self):
+        """System prompt should include health in response schema."""
+        self.assertIn('"health":', PR_ANALYSIS_SYSTEM_PROMPT)
+        self.assertIn('"review_friction":', PR_ANALYSIS_SYSTEM_PROMPT)
+        self.assertIn('"scope":', PR_ANALYSIS_SYSTEM_PROMPT)
+        self.assertIn('"risk_level":', PR_ANALYSIS_SYSTEM_PROMPT)
+        self.assertIn('"insights":', PR_ANALYSIS_SYSTEM_PROMPT)

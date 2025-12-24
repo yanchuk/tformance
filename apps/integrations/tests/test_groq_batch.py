@@ -194,6 +194,158 @@ class TestBatchResult(TestCase):
         self.assertEqual(result.primary_language, "go")
         self.assertEqual(result.summary_type, "bugfix")
 
+    def test_from_response_v6_format_with_health(self):
+        """Test parsing v6 nested response format with health assessment."""
+        response_body = {
+            "choices": [
+                {
+                    "message": {
+                        "content": json.dumps(
+                            {
+                                "ai": {
+                                    "is_assisted": True,
+                                    "tools": ["claude"],
+                                    "usage_type": "authored",
+                                    "confidence": 0.95,
+                                },
+                                "tech": {
+                                    "languages": ["python"],
+                                    "frameworks": ["django"],
+                                    "categories": ["backend"],
+                                },
+                                "summary": {
+                                    "title": "Fix auth timeout bug",
+                                    "description": "Resolves session expiry issue.",
+                                    "type": "bugfix",
+                                },
+                                "health": {
+                                    "review_friction": "low",
+                                    "scope": "small",
+                                    "risk_level": "high",
+                                    "insights": [
+                                        "Hotfix with quick review turnaround",
+                                        "Small scope but critical fix",
+                                    ],
+                                },
+                            }
+                        )
+                    }
+                }
+            ]
+        }
+
+        result = BatchResult.from_response("pr-400", response_body)
+
+        # AI detection
+        self.assertEqual(result.pr_id, 400)
+        self.assertTrue(result.is_ai_assisted)
+        self.assertEqual(result.tools, ["claude"])
+
+        # Summary
+        self.assertEqual(result.summary_title, "Fix auth timeout bug")
+        self.assertEqual(result.summary_type, "bugfix")
+
+        # Health assessment (v6)
+        self.assertEqual(result.health_review_friction, "low")
+        self.assertEqual(result.health_scope, "small")
+        self.assertEqual(result.health_risk_level, "high")
+        self.assertEqual(len(result.health_insights), 2)
+        self.assertIn("Hotfix with quick review turnaround", result.health_insights)
+
+        # Full LLM response stored
+        self.assertIn("health", result.llm_summary)
+
+    def test_from_response_v6_format_high_friction(self):
+        """Test parsing v6 response with high review friction."""
+        response_body = {
+            "choices": [
+                {
+                    "message": {
+                        "content": json.dumps(
+                            {
+                                "ai": {
+                                    "is_assisted": False,
+                                    "tools": [],
+                                    "usage_type": None,
+                                    "confidence": 0.0,
+                                },
+                                "tech": {
+                                    "languages": ["typescript", "python"],
+                                    "frameworks": ["react", "django"],
+                                    "categories": ["frontend", "backend"],
+                                },
+                                "summary": {
+                                    "title": "Major database migration",
+                                    "description": "Migrates from MySQL to PostgreSQL.",
+                                    "type": "refactor",
+                                },
+                                "health": {
+                                    "review_friction": "high",
+                                    "scope": "xlarge",
+                                    "risk_level": "high",
+                                    "insights": [
+                                        "5 review rounds indicates significant back-and-forth",
+                                        "Large scope across 45 files requires careful review",
+                                    ],
+                                },
+                            }
+                        )
+                    }
+                }
+            ]
+        }
+
+        result = BatchResult.from_response("pr-500", response_body)
+
+        # Health assessment
+        self.assertEqual(result.health_review_friction, "high")
+        self.assertEqual(result.health_scope, "xlarge")
+        self.assertEqual(result.health_risk_level, "high")
+        self.assertEqual(result.summary_type, "refactor")
+
+    def test_from_response_v5_format_no_health(self):
+        """Test v5 response without health section still works."""
+        response_body = {
+            "choices": [
+                {
+                    "message": {
+                        "content": json.dumps(
+                            {
+                                "ai": {
+                                    "is_assisted": True,
+                                    "tools": ["copilot"],
+                                    "usage_type": "assisted",
+                                    "confidence": 0.8,
+                                },
+                                "tech": {
+                                    "languages": ["javascript"],
+                                    "frameworks": ["express"],
+                                    "categories": ["backend"],
+                                },
+                                "summary": {
+                                    "title": "Add API endpoint",
+                                    "description": "Adds new user API.",
+                                    "type": "feature",
+                                },
+                            }
+                        )
+                    }
+                }
+            ]
+        }
+
+        result = BatchResult.from_response("pr-600", response_body)
+
+        # Health assessment should be None when not present
+        self.assertIsNone(result.health_review_friction)
+        self.assertIsNone(result.health_scope)
+        self.assertIsNone(result.health_risk_level)
+        self.assertEqual(result.health_insights, [])
+
+        # But AI and summary should still work
+        self.assertTrue(result.is_ai_assisted)
+        self.assertEqual(result.summary_type, "feature")
+
 
 class TestBatchStatus(TestCase):
     """Tests for BatchStatus."""

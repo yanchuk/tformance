@@ -148,8 +148,9 @@ cursor, claude, copilot, cody, devin, gemini, chatgpt, gpt4, aider, windsurf, ta
 class BatchResult:
     """Result from batch processing a single PR.
 
-    Supports both v4 (flat) and v5 (nested) response formats.
+    Supports both v4 (flat), v5 (nested), and v6 (with health) response formats.
     v5 adds summary field for CTO dashboard display.
+    v6 adds health assessment with review friction, scope, and risk.
     """
 
     pr_id: int
@@ -168,6 +169,11 @@ class BatchResult:
     summary_title: str | None = None
     summary_description: str | None = None
     summary_type: str | None = None
+    # Health Assessment (v6 prompt)
+    health_review_friction: str | None = None
+    health_scope: str | None = None
+    health_risk_level: str | None = None
+    health_insights: list[str] = field(default_factory=list)
     # Raw LLM response for storage
     llm_summary: dict = field(default_factory=dict)
     prompt_version: str = PROMPT_VERSION
@@ -227,10 +233,11 @@ class BatchResult:
 
     @classmethod
     def _parse_v5_response(cls, pr_id: int, data: dict) -> BatchResult:
-        """Parse v5 nested response format with ai/tech/summary sections."""
+        """Parse v5/v6 nested response format with ai/tech/summary/health sections."""
         ai = data.get("ai", {})
         tech = data.get("tech", {})
         summary = data.get("summary", {})
+        health = data.get("health", {})
 
         # Get tech categories and primary language
         tech_categories = tech.get("categories", [])
@@ -252,6 +259,11 @@ class BatchResult:
             summary_title=summary.get("title"),
             summary_description=summary.get("description"),
             summary_type=summary.get("type"),
+            # Health Assessment (v6)
+            health_review_friction=health.get("review_friction"),
+            health_scope=health.get("scope"),
+            health_risk_level=health.get("risk_level"),
+            health_insights=health.get("insights", []),
             # Store full response for llm_summary field
             llm_summary=data,
         )

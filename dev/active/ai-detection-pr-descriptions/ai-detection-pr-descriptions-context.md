@@ -1,8 +1,8 @@
 # AI Detection via PR Description Analysis - Context
 
-**Last Updated: 2025-12-24 23:15 UTC**
+**Last Updated: 2025-12-24 22:30 UTC**
 
-## Session Summary (2025-12-24 - Pattern v1.7.0 + Enhanced Prompt Planning)
+## Session Summary (2025-12-24 - Enhanced LLM Prompt v6.0.0 COMPLETE)
 
 ### What Was Accomplished This Session
 
@@ -17,18 +17,27 @@
    - v1.6.0: 264 PRs (14.9%) - +59 PRs
    - v1.7.0: 459 PRs (20.2%) - +25 PRs (CodeRabbit: 22, Mintlify: 3)
 
-3. **User Request for Enhanced LLM Prompt**:
-   - Current prompt only sends: title, file_count, lines, comment_count, repo_languages
-   - User wants FULL PR context for better AI detection AND PR summary generation
-   - Goal: CTO-ready insights about PR health, issues, and what it's about
+3. **Enhanced LLM Prompt v6.0.0 IMPLEMENTED**:
+   - Updated `llm_prompts.py` with health assessment guidelines
+   - Enhanced `get_user_prompt()` to accept ALL PR context fields
+   - New response schema with `health` section (review_friction, scope, risk_level, insights)
+   - 51 tests for llm_prompts.py (19 original + 27 v6 fields + 5 system prompt)
+   - Updated `groq_batch.py` to parse v6 health response fields
+   - 27 tests for groq_batch.py (including 3 v6 format tests)
 
 ### Files Modified This Session
 
 | File | Change |
 |------|--------|
 | `apps/metrics/services/ai_patterns.py` | v1.6.0 → v1.7.0 patterns |
+| `apps/metrics/services/llm_prompts.py` | v5.0.0 → v6.0.0 with health assessment |
+| `apps/metrics/tests/test_llm_prompts.py` | Added 32 tests (19→51) |
+| `apps/integrations/services/groq_batch.py` | Added v6 health field parsing |
+| `apps/integrations/tests/test_groq_batch.py` | Added 3 v6 format tests (24→27) |
 | `apps/metrics/services/PATTERN_CHANGELOG.md` | Added v1.6.0 and v1.7.0 entries |
 | `apps/metrics/tests/test_ai_detector.py` | Added 10 tests (107→117) |
+| `dev/.../experiments/prompts/v6-system.txt` | NEW - v6 promptfoo system prompt |
+| `dev/.../experiments/promptfoo-v6.yaml` | NEW - v6 promptfoo config |
 
 ### Uncommitted Changes
 
