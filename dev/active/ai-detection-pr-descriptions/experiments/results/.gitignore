@@ -1,0 +1,4 @@
+# Ignore experiment results (can be large, contain sensitive data)
+*
+!.gitignore
+!README.md

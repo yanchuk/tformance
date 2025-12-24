@@ -89,7 +89,21 @@
 - [ ] Compare regex vs LLM results
 - [ ] Run actual backfill if results look good
 
-### 2.5 Add Celery Task for Nightly Batch
+### 2.5 Experiment Framework + PostHog Logging
+- [ ] Add dependencies: `uv add groq litellm posthog`
+- [ ] Create experiment runner: `apps/metrics/experiments/runner.py`
+- [ ] Create analysis utils: `apps/metrics/experiments/analysis.py`
+- [ ] Integrate PostHog LLM analytics for automatic logging
+- [ ] Create management command: `run_ai_detection_experiment`
+
+### 2.6 Runbooks (Documentation for Context-Free Operation)
+- [x] Create `RUNBOOK-EXPERIMENTS.md` - How to run experiments
+- [x] Create `RUNBOOK-PROMPTS.md` - How to modify prompts
+- [x] Create `RUNBOOK-REPOS.md` - How to manage target repos
+- [x] Create `experiments/default.yaml` - Default config
+- [x] Create `experiments/prompts/v1.md` - Initial prompt
+
+### 2.7 Add Celery Task for Nightly Batch
 - [ ] Create `queue_prs_for_llm_detection` task
 - [ ] Create `poll_llm_detection_batch` task
 - [ ] Add to Celery beat schedule (nightly)
@@ -97,7 +111,9 @@
 
 **Acceptance Criteria Phase 2**:
 - [ ] Groq service working with tests
-- [ ] Backfill command working with --dry-run
+- [ ] Experiment framework operational
+- [ ] All LLM calls logged to PostHog
+- [ ] Runbooks enable context-free operation
 - [ ] Detection rate on Gumroad: 24% → 70%+
 - [ ] Cost confirmed at ~$0.08/1000 PRs
 
