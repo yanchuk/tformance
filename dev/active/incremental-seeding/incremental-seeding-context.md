@@ -1,6 +1,6 @@
 # Incremental Seeding Context
 
-**Last Updated:** 2025-12-24 (Phase 3 Complete - Committed `de10536`)
+**Last Updated:** 2025-12-24 (Phase 3 Complete + PyGithub Fix - Committed `09f4c0d`)
 
 ## Strategic Vision
 
@@ -146,11 +146,26 @@ Sources:
 | `3f1f928` | Phase 3.0 (sequential check runs) + Phase 3.1 (repo change detection) |
 | `7e5094e` | Phase 3.2 (REST API rate limit monitoring) |
 | `de10536` | Phase 3.3 (incremental PR sync) |
+| `09f4c0d` | PyGithub API fix (rate_limit.core → rate_limit.rate) |
+
+## Real-World Testing Results (2025-12-24)
+
+All 5 scenarios tested with antiwork/gumroad repo:
+
+| Scenario | Result | Behavior |
+|----------|--------|----------|
+| Fresh fetch (no cache) | ✅ Pass | Fetched from API, saved to cache |
+| Cache hit (repo unchanged) | ✅ Pass | Loaded from cache, no API calls |
+| Incremental sync (stale cache) | ✅ Pass | Detected stale cache, fetched updates, merged |
+| --refresh flag | ✅ Pass | Force re-fetched, updated cache |
+| --no-cache flag | ✅ Pass | Fetched from API, no cache save/load |
 
 ## Handoff Notes
 
 ### Current State
-- **Phase 3 complete and committed** (`de10536`)
+- **Phase 3 complete and committed** (`de10536`, `09f4c0d`)
+- **PyGithub API fix applied** (rate_limit.core → rate_limit.rate)
+- **Real-world testing complete** (5 scenarios all passing)
 - **62 tests passing**
 - No migrations needed (seeding utilities only)
 
