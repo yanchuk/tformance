@@ -22,24 +22,40 @@ Usage:
 
     # Use specific seed for reproducibility
     python manage.py seed_real_projects --project posthog --seed 42
+
+NOTE: This command requires development dependencies (factory-boy).
+      It is not available in production environments.
 """
 
 import os
 
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 
-from apps.metrics.seeding.real_project_seeder import RealProjectSeeder, clear_project_data
-from apps.metrics.seeding.real_projects import REAL_PROJECTS, get_project, list_projects
+# Guard imports - seeding requires factory-boy (dev dependency)
+try:
+    from apps.metrics.seeding.real_project_seeder import RealProjectSeeder, clear_project_data
+    from apps.metrics.seeding.real_projects import REAL_PROJECTS, get_project, list_projects
+
+    SEEDING_AVAILABLE = True
+except ImportError:
+    SEEDING_AVAILABLE = False
+    RealProjectSeeder = None
+    clear_project_data = None
+    REAL_PROJECTS = {}
+    get_project = None
+    list_projects = None
 
 
 class Command(BaseCommand):
-    help = "Seed demo data from real GitHub projects (PostHog, Polar, FastAPI)"
+    help = "Seed demo data from real GitHub projects (requires dev dependencies)"
 
     def add_arguments(self, parser):
+        # Note: choices validation happens in handle() if seeding not available
+        project_choices = list(REAL_PROJECTS.keys()) + ["all"] if REAL_PROJECTS else None
         parser.add_argument(
             "--project",
             type=str,
-            choices=list(REAL_PROJECTS.keys()) + ["all"],
+            choices=project_choices,
             help="Project to seed ('all' for all projects)",
         )
         parser.add_argument(
@@ -101,6 +117,14 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
+        # Check dev dependencies are available
+        if not SEEDING_AVAILABLE:
+            raise CommandError(
+                "This command requires development dependencies.\n"
+                "Install them with: uv sync --group dev\n"
+                "The seed_real_projects command is not available in production."
+            )
+
         # Handle --list-projects
         if options["list_projects"]:
             self.print_projects()

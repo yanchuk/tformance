@@ -24,21 +24,41 @@ Usage:
 
     # Clear existing data before seeding
     python manage.py seed_demo_data --clear --scenario ai-success
+
+NOTE: This command requires development dependencies (factory-boy).
+      It is not available in production environments.
 """
 
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 
-from apps.metrics.factories import (
-    AIUsageDailyFactory,
-    CommitFactory,
-    JiraIssueFactory,
-    PRReviewFactory,
-    PRSurveyFactory,
-    PRSurveyReviewFactory,
-    PullRequestFactory,
-    TeamMemberFactory,
-    WeeklyMetricsFactory,
-)
+# Guard imports - factory-boy is only available in dev environment
+try:
+    from apps.metrics.factories import (
+        AIUsageDailyFactory,
+        CommitFactory,
+        JiraIssueFactory,
+        PRReviewFactory,
+        PRSurveyFactory,
+        PRSurveyReviewFactory,
+        PullRequestFactory,
+        TeamMemberFactory,
+        WeeklyMetricsFactory,
+    )
+
+    FACTORY_BOY_AVAILABLE = True
+except ImportError:
+    FACTORY_BOY_AVAILABLE = False
+    # Define dummy placeholders to prevent NameError
+    AIUsageDailyFactory = None
+    CommitFactory = None
+    JiraIssueFactory = None
+    PRReviewFactory = None
+    PRSurveyFactory = None
+    PRSurveyReviewFactory = None
+    PullRequestFactory = None
+    TeamMemberFactory = None
+    WeeklyMetricsFactory = None
+
 from apps.metrics.models import (
     AIUsageDaily,
     Commit,
@@ -50,12 +70,20 @@ from apps.metrics.models import (
     TeamMember,
     WeeklyMetrics,
 )
-from apps.metrics.seeding import ScenarioDataGenerator, get_scenario, list_scenarios
+
+# Seeding module also requires factory-boy
+try:
+    from apps.metrics.seeding import ScenarioDataGenerator, get_scenario, list_scenarios
+except ImportError:
+    ScenarioDataGenerator = None
+    get_scenario = None
+    list_scenarios = None
+
 from apps.teams.models import Team
 
 
 class Command(BaseCommand):
-    help = "Seed demo data for development and testing"
+    help = "Seed demo data for development and testing (requires dev dependencies)"
 
     def add_arguments(self, parser):
         # Scenario-based seeding (new)
@@ -120,6 +148,14 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
+        # Check dev dependencies are available
+        if not FACTORY_BOY_AVAILABLE:
+            raise CommandError(
+                "This command requires development dependencies.\n"
+                "Install them with: uv sync --group dev\n"
+                "The seed_demo_data command is not available in production."
+            )
+
         # Handle --list-scenarios
         if options["list_scenarios"]:
             self.print_scenarios()
