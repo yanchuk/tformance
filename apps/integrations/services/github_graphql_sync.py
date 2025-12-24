@@ -19,6 +19,7 @@ from apps.integrations.services.github_graphql import (
     GitHubGraphQLRateLimitError,
 )
 from apps.metrics.models import Commit, PRFile, PRReview, PullRequest, TeamMember
+from apps.metrics.services.ai_detector import detect_ai_author, detect_ai_in_text
 
 logger = logging.getLogger(__name__)
 
@@ -260,15 +261,30 @@ def _process_pr(
 
     # Map PR data to model fields
     pr_number = pr_data.get("number")
+    title = pr_data.get("title", "")
+    body = pr_data.get("body", "") or ""
+
+    # Detect AI involvement from author and text
+    author_ai_result = detect_ai_author(author_login)
+    text_ai_result = detect_ai_in_text(f"{title}\n{body}")
+
+    # Combine AI detection results
+    ai_tools = list(text_ai_result["ai_tools"])  # Copy to avoid mutation
+    if author_ai_result["is_ai"] and author_ai_result["ai_type"] not in ai_tools:
+        ai_tools.append(author_ai_result["ai_type"])
+    is_ai_assisted = author_ai_result["is_ai"] or text_ai_result["is_ai_assisted"]
+
     pr_defaults = {
-        "title": pr_data.get("title", ""),
-        "body": pr_data.get("body", "") or "",
+        "title": title,
+        "body": body,
         "state": _map_pr_state(pr_data.get("state", "OPEN")),
         "pr_created_at": created_at,
         "merged_at": _parse_datetime(pr_data.get("mergedAt")),
         "additions": pr_data.get("additions", 0),
         "deletions": pr_data.get("deletions", 0),
         "author": author,
+        "is_ai_assisted": is_ai_assisted,
+        "ai_tools_detected": ai_tools,
     }
 
     # Create or update PR
@@ -536,15 +552,30 @@ def _process_pr_incremental(
 
     # Map PR data to model fields
     pr_number = pr_data.get("number")
+    title = pr_data.get("title", "")
+    body = pr_data.get("body", "") or ""
+
+    # Detect AI involvement from author and text
+    author_ai_result = detect_ai_author(author_login)
+    text_ai_result = detect_ai_in_text(f"{title}\n{body}")
+
+    # Combine AI detection results
+    ai_tools = list(text_ai_result["ai_tools"])  # Copy to avoid mutation
+    if author_ai_result["is_ai"] and author_ai_result["ai_type"] not in ai_tools:
+        ai_tools.append(author_ai_result["ai_type"])
+    is_ai_assisted = author_ai_result["is_ai"] or text_ai_result["is_ai_assisted"]
+
     pr_defaults = {
-        "title": pr_data.get("title", ""),
-        "body": pr_data.get("body", "") or "",
+        "title": title,
+        "body": body,
         "state": _map_pr_state(pr_data.get("state", "OPEN")),
         "pr_created_at": created_at,
         "merged_at": _parse_datetime(pr_data.get("mergedAt")),
         "additions": pr_data.get("additions", 0),
         "deletions": pr_data.get("deletions", 0),
         "author": author,
+        "is_ai_assisted": is_ai_assisted,
+        "ai_tools_detected": ai_tools,
     }
 
     # Create or update PR

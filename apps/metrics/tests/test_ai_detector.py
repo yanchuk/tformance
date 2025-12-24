@@ -2,6 +2,7 @@
 Tests for AI detector service - TDD RED phase.
 
 These tests define the expected behavior for:
+- detect_ai_author(username) - identify AI bot PR authors
 - detect_ai_reviewer(username) - identify AI reviewer bots
 - detect_ai_in_text(text) - find AI signatures in PR/commit text
 - parse_co_authors(message) - extract AI co-authors from commit messages
@@ -10,10 +11,75 @@ These tests define the expected behavior for:
 from django.test import TestCase
 
 from apps.metrics.services.ai_detector import (
+    detect_ai_author,
     detect_ai_in_text,
     detect_ai_reviewer,
     parse_co_authors,
 )
+
+
+class TestDetectAIAuthor(TestCase):
+    """Tests for detect_ai_author() function - identifies bot PR authors."""
+
+    def test_detects_devin_ai_integration_bot(self):
+        """Devin AI integration bot should be detected as AI author."""
+        result = detect_ai_author("devin-ai-integration[bot]")
+        self.assertTrue(result["is_ai"])
+        self.assertEqual(result["ai_type"], "devin")
+
+    def test_detects_devin_bot(self):
+        """Devin bot should be detected as AI author."""
+        result = detect_ai_author("devin[bot]")
+        self.assertTrue(result["is_ai"])
+        self.assertEqual(result["ai_type"], "devin")
+
+    def test_detects_devin_ai_bot(self):
+        """Devin AI bot should be detected as AI author."""
+        result = detect_ai_author("devin-ai[bot]")
+        self.assertTrue(result["is_ai"])
+        self.assertEqual(result["ai_type"], "devin")
+
+    def test_detects_dependabot_author(self):
+        """Dependabot should be detected as AI author."""
+        result = detect_ai_author("dependabot[bot]")
+        self.assertTrue(result["is_ai"])
+        self.assertEqual(result["ai_type"], "dependabot")
+
+    def test_detects_renovate_bot_author(self):
+        """Renovate bot should be detected as AI author."""
+        result = detect_ai_author("renovate[bot]")
+        self.assertTrue(result["is_ai"])
+        self.assertEqual(result["ai_type"], "renovate")
+
+    def test_detects_github_actions_bot(self):
+        """GitHub Actions bot should be detected as AI author."""
+        result = detect_ai_author("github-actions[bot]")
+        self.assertTrue(result["is_ai"])
+        self.assertEqual(result["ai_type"], "github_actions")
+
+    def test_human_author_not_detected(self):
+        """Regular human authors should not be detected as AI."""
+        result = detect_ai_author("john-doe")
+        self.assertFalse(result["is_ai"])
+        self.assertEqual(result["ai_type"], "")
+
+    def test_case_insensitive_detection(self):
+        """Detection should be case-insensitive."""
+        result = detect_ai_author("Devin-AI-Integration[bot]")
+        self.assertTrue(result["is_ai"])
+        self.assertEqual(result["ai_type"], "devin")
+
+    def test_empty_username(self):
+        """Empty username should return not AI."""
+        result = detect_ai_author("")
+        self.assertFalse(result["is_ai"])
+        self.assertEqual(result["ai_type"], "")
+
+    def test_none_username(self):
+        """None username should return not AI."""
+        result = detect_ai_author(None)
+        self.assertFalse(result["is_ai"])
+        self.assertEqual(result["ai_type"], "")
 
 
 class TestDetectAIReviewer(TestCase):

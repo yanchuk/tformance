@@ -71,6 +71,10 @@
             {% if pr.reviewer_count == 1 and pr.has_author_review %}
               <span class="badge badge-warning badge-xs ml-1" title="{% trans 'Self-reviewed: Author is the only reviewer' %}">{% trans "Self" %}</span>
             {% endif %}
+          {% elif pr.is_ai_assisted and pr.ai_tools_detected %}
+            {# Bot author without TeamMember - show AI tool name #}
+            <span class="text-primary">{{ pr.ai_tools_detected|ai_tools_display }}</span>
+            <span class="badge badge-secondary badge-xs ml-1" title="{% trans 'AI Bot Author' %}">{% trans "Bot" %}</span>
           {% else %}
             <span class="text-base-content/50">-</span>
           {% endif %}
@@ -107,7 +111,7 @@
         </td>
         <td class="text-center">
           {% if pr.is_ai_assisted %}
-            <span class="badge badge-primary badge-sm" title="{{ pr.ai_tools_detected|join:', ' }}">
+            <span class="badge badge-primary badge-sm" title="{{ pr.ai_tools_detected|ai_tools_display }}">
               {% trans "Yes" %}
             </span>
           {% else %}

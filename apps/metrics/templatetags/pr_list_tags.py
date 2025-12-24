@@ -2,7 +2,27 @@
 
 from django import template
 
+from apps.metrics.services.ai_patterns import get_ai_tool_display_name
+
 register = template.Library()
+
+
+@register.filter
+def ai_tools_display(ai_tools_detected: list[str]) -> str:
+    """Convert AI tool type identifiers to human-friendly display names.
+
+    Args:
+        ai_tools_detected: List of AI tool type identifiers (e.g., ['devin', 'copilot'])
+
+    Returns:
+        Comma-separated friendly display names (e.g., 'Devin AI, Copilot')
+
+    Usage:
+        {{ pr.ai_tools_detected|ai_tools_display }}
+    """
+    if not ai_tools_detected:
+        return ""
+    return ", ".join(get_ai_tool_display_name(tool) for tool in ai_tools_detected)
 
 
 @register.simple_tag(takes_context=True)

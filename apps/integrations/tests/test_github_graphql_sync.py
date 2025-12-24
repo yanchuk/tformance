@@ -1594,3 +1594,284 @@ class TestSyncGitHubMembersGraphQLErrorHandling(TransactionTestCase):
         # Assert
         self.assertIn("errors", result)
         self.assertTrue(any("rate limit" in e.lower() for e in result["errors"]))
+
+
+# =============================================================================
+# AI Detection in GraphQL Sync Tests
+# =============================================================================
+
+
+class TestGraphQLSyncAIDetectionInitialSync(TransactionTestCase):
+    """Tests for AI detection during initial sync (sync_repository_history_graphql)."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.team = TeamFactory()
+        self.tracked_repo = TrackedRepositoryFactory(team=self.team, full_name="owner/repo")
+        self.human_author = TeamMemberFactory(team=self.team, github_id="testuser")
+
+    @patch("apps.integrations.services.github_graphql_sync.GitHubGraphQLClient")
+    def test_pr_by_bot_author_is_marked_ai_assisted(self, mock_client_class):
+        """Test that PR authored by a bot (e.g., Devin) is marked as AI-assisted."""
+        # Arrange
+        mock_client = MagicMock()
+        mock_client_class.return_value = mock_client
+
+        # PR authored by Devin AI bot
+        pr_data = create_graphql_pr_response(pr_number=123, state="MERGED")
+        pr_data["author"] = {"login": "devin-ai-integration[bot]"}
+        pr_data["body"] = "Regular PR description without AI disclosure"
+
+        mock_client.fetch_prs_bulk = AsyncMock(
+            return_value={
+                "repository": {
+                    "pullRequests": {"nodes": [pr_data], "pageInfo": {"hasNextPage": False, "endCursor": None}}
+                },
+                "rateLimit": {"remaining": 5000},
+            }
+        )
+
+        # Act
+        asyncio.run(sync_repository_history_graphql(self.tracked_repo, days_back=90))
+
+        # Assert
+        pr = PullRequest.objects.get(team=self.team, github_pr_id=123)
+        self.assertTrue(pr.is_ai_assisted)
+        self.assertIn("devin", pr.ai_tools_detected)
+
+    @patch("apps.integrations.services.github_graphql_sync.GitHubGraphQLClient")
+    def test_pr_with_ai_disclosure_in_body_is_marked_ai_assisted(self, mock_client_class):
+        """Test that PR with AI disclosure in body is marked as AI-assisted."""
+        # Arrange
+        mock_client = MagicMock()
+        mock_client_class.return_value = mock_client
+
+        # PR by human author with AI disclosure in body
+        pr_data = create_graphql_pr_response(pr_number=456, state="MERGED")
+        pr_data["author"] = {"login": "testuser"}  # Human author
+        pr_data["body"] = """## Summary
+        Added new feature
+
+        🤖 Generated with [Claude Code](https://claude.com/claude-code)
+        """
+
+        mock_client.fetch_prs_bulk = AsyncMock(
+            return_value={
+                "repository": {
+                    "pullRequests": {"nodes": [pr_data], "pageInfo": {"hasNextPage": False, "endCursor": None}}
+                },
+                "rateLimit": {"remaining": 5000},
+            }
+        )
+
+        # Act
+        asyncio.run(sync_repository_history_graphql(self.tracked_repo, days_back=90))
+
+        # Assert
+        pr = PullRequest.objects.get(team=self.team, github_pr_id=456)
+        self.assertTrue(pr.is_ai_assisted)
+        self.assertIn("claude_code", pr.ai_tools_detected)
+
+    @patch("apps.integrations.services.github_graphql_sync.GitHubGraphQLClient")
+    def test_pr_without_ai_involvement_not_marked_ai_assisted(self, mock_client_class):
+        """Test that PR without AI involvement stays is_ai_assisted=False."""
+        # Arrange
+        mock_client = MagicMock()
+        mock_client_class.return_value = mock_client
+
+        # Regular PR by human author
+        pr_data = create_graphql_pr_response(pr_number=789, state="MERGED")
+        pr_data["author"] = {"login": "testuser"}
+        pr_data["body"] = "Fixed a bug in the login flow"
+
+        mock_client.fetch_prs_bulk = AsyncMock(
+            return_value={
+                "repository": {
+                    "pullRequests": {"nodes": [pr_data], "pageInfo": {"hasNextPage": False, "endCursor": None}}
+                },
+                "rateLimit": {"remaining": 5000},
+            }
+        )
+
+        # Act
+        asyncio.run(sync_repository_history_graphql(self.tracked_repo, days_back=90))
+
+        # Assert
+        pr = PullRequest.objects.get(team=self.team, github_pr_id=789)
+        self.assertFalse(pr.is_ai_assisted)
+        self.assertEqual(pr.ai_tools_detected, [])
+
+    @patch("apps.integrations.services.github_graphql_sync.GitHubGraphQLClient")
+    def test_pr_by_dependabot_is_marked_ai_assisted(self, mock_client_class):
+        """Test that PR by dependabot is marked as AI-assisted."""
+        # Arrange
+        mock_client = MagicMock()
+        mock_client_class.return_value = mock_client
+
+        pr_data = create_graphql_pr_response(pr_number=100, state="MERGED")
+        pr_data["author"] = {"login": "dependabot[bot]"}
+        pr_data["title"] = "Bump requests from 2.28.0 to 2.31.0"
+        pr_data["body"] = "Bumps [requests](https://github.com/psf/requests) from 2.28.0 to 2.31.0."
+
+        mock_client.fetch_prs_bulk = AsyncMock(
+            return_value={
+                "repository": {
+                    "pullRequests": {"nodes": [pr_data], "pageInfo": {"hasNextPage": False, "endCursor": None}}
+                },
+                "rateLimit": {"remaining": 5000},
+            }
+        )
+
+        # Act
+        asyncio.run(sync_repository_history_graphql(self.tracked_repo, days_back=90))
+
+        # Assert
+        pr = PullRequest.objects.get(team=self.team, github_pr_id=100)
+        self.assertTrue(pr.is_ai_assisted)
+        self.assertIn("dependabot", pr.ai_tools_detected)
+
+    @patch("apps.integrations.services.github_graphql_sync.GitHubGraphQLClient")
+    def test_pr_combines_bot_author_and_text_detection(self, mock_client_class):
+        """Test that PR combines bot author and text detection for ai_tools_detected."""
+        # Arrange
+        mock_client = MagicMock()
+        mock_client_class.return_value = mock_client
+
+        # Bot PR with additional AI tool mention in body
+        pr_data = create_graphql_pr_response(pr_number=200, state="MERGED")
+        pr_data["author"] = {"login": "devin-ai-integration[bot]"}
+        pr_data["body"] = "Used GitHub Copilot for some suggestions"
+
+        mock_client.fetch_prs_bulk = AsyncMock(
+            return_value={
+                "repository": {
+                    "pullRequests": {"nodes": [pr_data], "pageInfo": {"hasNextPage": False, "endCursor": None}}
+                },
+                "rateLimit": {"remaining": 5000},
+            }
+        )
+
+        # Act
+        asyncio.run(sync_repository_history_graphql(self.tracked_repo, days_back=90))
+
+        # Assert
+        pr = PullRequest.objects.get(team=self.team, github_pr_id=200)
+        self.assertTrue(pr.is_ai_assisted)
+        self.assertIn("devin", pr.ai_tools_detected)
+        self.assertIn("copilot", pr.ai_tools_detected)
+
+
+class TestGraphQLSyncAIDetectionIncrementalSync(TransactionTestCase):
+    """Tests for AI detection during incremental sync."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.team = TeamFactory()
+        self.tracked_repo = TrackedRepositoryFactory(
+            team=self.team,
+            full_name="owner/repo",
+            last_sync_at=timezone.now() - timedelta(hours=24),
+        )
+        self.human_author = TeamMemberFactory(team=self.team, github_id="testuser")
+
+    @patch("apps.integrations.services.github_graphql_sync.GitHubGraphQLClient")
+    def test_incremental_sync_detects_bot_author(self, mock_client_class):
+        """Test that incremental sync detects bot authors."""
+        # Arrange
+        mock_client = MagicMock()
+        mock_client_class.return_value = mock_client
+
+        pr_data = create_incremental_pr_response(pr_number=300, state="MERGED")
+        pr_data["author"] = {"login": "renovate[bot]"}
+        pr_data["body"] = "Dependency update"
+
+        mock_client.fetch_prs_updated_since = AsyncMock(
+            return_value={
+                "repository": {
+                    "pullRequests": {"nodes": [pr_data], "pageInfo": {"hasNextPage": False, "endCursor": None}}
+                },
+                "rateLimit": {"remaining": 5000},
+            }
+        )
+
+        # Act
+        from apps.integrations.services.github_graphql_sync import sync_repository_incremental_graphql
+
+        asyncio.run(sync_repository_incremental_graphql(self.tracked_repo))
+
+        # Assert
+        pr = PullRequest.objects.get(team=self.team, github_pr_id=300)
+        self.assertTrue(pr.is_ai_assisted)
+        self.assertIn("renovate", pr.ai_tools_detected)
+
+    @patch("apps.integrations.services.github_graphql_sync.GitHubGraphQLClient")
+    def test_incremental_sync_detects_ai_disclosure_in_body(self, mock_client_class):
+        """Test that incremental sync detects AI disclosure in PR body."""
+        # Arrange
+        mock_client = MagicMock()
+        mock_client_class.return_value = mock_client
+
+        pr_data = create_incremental_pr_response(pr_number=400, state="MERGED")
+        pr_data["author"] = {"login": "testuser"}
+        pr_data["body"] = "AI Disclosure: This PR was created using Cursor AI"
+
+        mock_client.fetch_prs_updated_since = AsyncMock(
+            return_value={
+                "repository": {
+                    "pullRequests": {"nodes": [pr_data], "pageInfo": {"hasNextPage": False, "endCursor": None}}
+                },
+                "rateLimit": {"remaining": 5000},
+            }
+        )
+
+        # Act
+        from apps.integrations.services.github_graphql_sync import sync_repository_incremental_graphql
+
+        asyncio.run(sync_repository_incremental_graphql(self.tracked_repo))
+
+        # Assert
+        pr = PullRequest.objects.get(team=self.team, github_pr_id=400)
+        self.assertTrue(pr.is_ai_assisted)
+        self.assertIn("cursor", pr.ai_tools_detected)
+
+    @patch("apps.integrations.services.github_graphql_sync.GitHubGraphQLClient")
+    def test_incremental_sync_updates_existing_pr_ai_status(self, mock_client_class):
+        """Test that incremental sync can update AI status of existing PR."""
+        # Arrange - create existing PR without AI detection
+        from apps.metrics.factories import PullRequestFactory
+
+        existing_pr = PullRequestFactory(
+            team=self.team,
+            github_pr_id=500,
+            github_repo="owner/repo",
+            is_ai_assisted=False,
+            ai_tools_detected=[],
+            author=self.human_author,
+        )
+
+        mock_client = MagicMock()
+        mock_client_class.return_value = mock_client
+
+        # Update adds AI disclosure
+        pr_data = create_incremental_pr_response(pr_number=500, state="MERGED")
+        pr_data["author"] = {"login": "testuser"}
+        pr_data["body"] = "Updated with Claude Code\n\n🤖 Generated with Claude Code"
+
+        mock_client.fetch_prs_updated_since = AsyncMock(
+            return_value={
+                "repository": {
+                    "pullRequests": {"nodes": [pr_data], "pageInfo": {"hasNextPage": False, "endCursor": None}}
+                },
+                "rateLimit": {"remaining": 5000},
+            }
+        )
+
+        # Act
+        from apps.integrations.services.github_graphql_sync import sync_repository_incremental_graphql
+
+        asyncio.run(sync_repository_incremental_graphql(self.tracked_repo))
+
+        # Assert
+        existing_pr.refresh_from_db()
+        self.assertTrue(existing_pr.is_ai_assisted)
+        self.assertIn("claude_code", existing_pr.ai_tools_detected)

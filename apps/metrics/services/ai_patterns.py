@@ -149,6 +149,36 @@ AI_CO_AUTHOR_PATTERNS: list[tuple[str, str]] = [
 
 
 # =============================================================================
+# Friendly Display Names for AI Tools
+# =============================================================================
+# Maps AI tool type identifiers to human-friendly display names
+AI_TOOL_DISPLAY_NAMES: dict[str, str] = {
+    "devin": "Devin AI",
+    "coderabbit": "CodeRabbit",
+    "copilot": "Copilot",
+    "dependabot": "Dependabot",
+    "renovate": "Renovate",
+    "snyk": "Snyk",
+    "sonarcloud": "SonarCloud",
+    "codecov": "Codecov",
+    "linear": "Linear",
+    "vercel": "Vercel",
+    "github_actions": "GitHub Actions",
+    "autofix": "Autofix CI",
+    "claude": "Claude",
+    "claude_code": "Claude Code",
+    "cursor": "Cursor",
+    "cody": "Cody",
+    "windsurf": "Windsurf",
+    "tabnine": "Tabnine",
+    "codewhisperer": "CodeWhisperer",
+    "amazon_q": "Amazon Q",
+    "aider": "Aider",
+    "ai_generic": "AI",
+}
+
+
+# =============================================================================
 # Helper: Get all known AI tool types
 # =============================================================================
 def get_all_ai_tools() -> set[str]:
@@ -157,3 +187,15 @@ def get_all_ai_tools() -> set[str]:
     tools.update(tool for _, tool in AI_SIGNATURE_PATTERNS)
     tools.update(tool for _, tool in AI_CO_AUTHOR_PATTERNS)
     return tools
+
+
+def get_ai_tool_display_name(tool_type: str) -> str:
+    """Get the friendly display name for an AI tool type.
+
+    Args:
+        tool_type: The AI tool type identifier (e.g., 'devin', 'copilot')
+
+    Returns:
+        Human-friendly display name (e.g., 'Devin AI', 'Copilot')
+    """
+    return AI_TOOL_DISPLAY_NAMES.get(tool_type, tool_type.replace("_", " ").title())

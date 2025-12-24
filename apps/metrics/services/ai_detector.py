@@ -2,6 +2,7 @@
 AI Detector Service
 
 Provides functions to detect AI involvement in PRs, reviews, and commits:
+- detect_ai_author(username) - Identify AI bot PR authors by username
 - detect_ai_reviewer(username) - Identify AI reviewer bots by username
 - detect_ai_in_text(text) - Find AI tool signatures in PR/commit text
 - parse_co_authors(message) - Extract AI co-authors from commit messages
@@ -66,6 +67,52 @@ def get_patterns_version() -> str:
     return PATTERNS_VERSION
 
 
+def _detect_ai_bot_username(username: str | None) -> AIReviewerResult:
+    """
+    Internal function to detect if a GitHub username is an AI bot.
+
+    Used by both detect_ai_author() and detect_ai_reviewer().
+
+    Args:
+        username: GitHub username to check
+
+    Returns:
+        AIReviewerResult with is_ai and ai_type fields
+    """
+    if not username:
+        return {"is_ai": False, "ai_type": ""}
+
+    # Normalize username to lowercase for comparison
+    username_lower = username.lower()
+
+    # Check exact match in known bots
+    if username_lower in AI_REVIEWER_BOTS:
+        return {"is_ai": True, "ai_type": AI_REVIEWER_BOTS[username_lower]}
+
+    return {"is_ai": False, "ai_type": ""}
+
+
+def detect_ai_author(username: str | None) -> AIReviewerResult:
+    """
+    Detect if a PR author username is an AI bot.
+
+    Use this to identify PRs authored by AI agents like Devin, Dependabot, etc.
+
+    Args:
+        username: GitHub username of the PR author
+
+    Returns:
+        AIReviewerResult with is_ai and ai_type fields
+
+    Examples:
+        >>> detect_ai_author("devin-ai-integration[bot]")
+        {'is_ai': True, 'ai_type': 'devin'}
+        >>> detect_ai_author("john-doe")
+        {'is_ai': False, 'ai_type': ''}
+    """
+    return _detect_ai_bot_username(username)
+
+
 def detect_ai_reviewer(username: str | None) -> AIReviewerResult:
     """
     Detect if a reviewer username is an AI bot.
@@ -82,17 +129,7 @@ def detect_ai_reviewer(username: str | None) -> AIReviewerResult:
         >>> detect_ai_reviewer("john-doe")
         {'is_ai': False, 'ai_type': ''}
     """
-    if not username:
-        return {"is_ai": False, "ai_type": ""}
-
-    # Normalize username to lowercase for comparison
-    username_lower = username.lower()
-
-    # Check exact match in known bots
-    if username_lower in AI_REVIEWER_BOTS:
-        return {"is_ai": True, "ai_type": AI_REVIEWER_BOTS[username_lower]}
-
-    return {"is_ai": False, "ai_type": ""}
+    return _detect_ai_bot_username(username)
 
 
 def detect_ai_in_text(text: str | None) -> AITextResult:
