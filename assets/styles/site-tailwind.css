@@ -211,5 +211,15 @@
   color: oklch(0.50 0.18 25) !important; /* Darker red for 4.5:1+ contrast */
 }
 
+/* Primary color contrast fix for light theme - stat values, links */
+[data-theme="tformance-light"] .text-primary {
+  color: oklch(0.50 0.16 40) !important; /* #C2410C - Darker orange for 4.5:1+ contrast */
+}
+
+/* Link-primary contrast fix for light theme - PR links in tables */
+[data-theme="tformance-light"] .link-primary {
+  color: oklch(0.50 0.16 40) !important; /* #C2410C - Darker orange for 4.5:1+ contrast */
+}
+
 /* Note: Marketing pages use text-teal-400 directly for reliable dark mode contrast.
    App pages should use semantic classes from design-system.css (app-accent-tertiary). */

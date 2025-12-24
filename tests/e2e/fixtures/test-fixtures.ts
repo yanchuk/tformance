@@ -60,7 +60,7 @@ export const test = base.extend<TestFixtures>({
    */
   ctoDashboardPage: async ({ page }, use) => {
     await loginAs(page, 'admin');
-    await page.goto('/app/metrics/dashboard/cto/');
+    await page.goto('/app/metrics/overview/');
     // Wait for HTMX content to load
     await page.waitForSelector('.stat', { timeout: 10000 });
     await use(page);

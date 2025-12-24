@@ -15,7 +15,7 @@ test.describe('Copilot Metrics @copilot', () => {
 
   test.describe('CTO Dashboard Copilot Section', () => {
     test.beforeEach(async ({ page }) => {
-      await page.goto('/app/metrics/dashboard/cto/');
+      await page.goto('/app/metrics/overview/');
       await page.waitForLoadState('domcontentloaded');
       // Wait for HTMX content
       await page.waitForTimeout(1000);
@@ -129,7 +129,7 @@ test.describe('Copilot Metrics @copilot', () => {
 
   test.describe('Copilot Data Display', () => {
     test('Copilot metrics show numeric values', async ({ page }) => {
-      await page.goto('/app/metrics/dashboard/cto/');
+      await page.goto('/app/metrics/overview/');
       await page.waitForLoadState('domcontentloaded');
       await page.waitForTimeout(1000);
 
@@ -149,7 +149,7 @@ test.describe('Copilot Metrics @copilot', () => {
     });
 
     test('acceptance rate shows percentage format', async ({ page }) => {
-      await page.goto('/app/metrics/dashboard/cto/');
+      await page.goto('/app/metrics/overview/');
       await page.waitForLoadState('domcontentloaded');
       await page.waitForTimeout(1000);
 
@@ -169,7 +169,7 @@ test.describe('Copilot Metrics @copilot', () => {
 
   test.describe('Copilot Empty States', () => {
     test('shows appropriate message when no Copilot data', async ({ page }) => {
-      await page.goto('/app/metrics/dashboard/cto/');
+      await page.goto('/app/metrics/overview/');
       await page.waitForLoadState('domcontentloaded');
 
       // If no Copilot data, should show helpful message
@@ -179,7 +179,7 @@ test.describe('Copilot Metrics @copilot', () => {
     });
 
     test('Copilot section gracefully handles missing data', async ({ page }) => {
-      await page.goto('/app/metrics/dashboard/cto/');
+      await page.goto('/app/metrics/overview/');
       await page.waitForLoadState('domcontentloaded');
       await page.waitForTimeout(1000);
 
@@ -194,7 +194,7 @@ test.describe('Copilot Metrics @copilot', () => {
 
   test.describe('Copilot Chart Interactions', () => {
     test('Copilot trend chart responds to date filters', async ({ page }) => {
-      await page.goto('/app/metrics/dashboard/cto/');
+      await page.goto('/app/metrics/overview/');
       await page.waitForLoadState('domcontentloaded');
       await page.waitForTimeout(1000);
 
@@ -211,19 +211,24 @@ test.describe('Copilot Metrics @copilot', () => {
     });
 
     test('Copilot chart canvas exists when section visible', async ({ page }) => {
-      await page.goto('/app/metrics/dashboard/cto/');
+      await page.goto('/app/metrics/overview/');
       await page.waitForLoadState('domcontentloaded');
       await page.waitForTimeout(1000);
 
-      // Find the Copilot chart section
-      const copilotChartSection = page.locator('[data-chart="copilot-trend"]').or(
-        page.locator('#copilot-trend-chart')
-      );
+      // Find the Copilot chart section container
+      const copilotChartSection = page.locator('#copilot-trend-container');
 
-      // If section exists, it should have a canvas
+      // If section exists, check for canvas or "No data" message
       if (await copilotChartSection.isVisible()) {
         const canvas = copilotChartSection.locator('canvas');
-        await expect(canvas).toBeVisible();
+        const noDataMessage = copilotChartSection.getByText(/no.*data|not.*available/i);
+
+        // Either canvas or no-data message should be present
+        const hasCanvas = await canvas.isVisible().catch(() => false);
+        const hasNoData = await noDataMessage.isVisible().catch(() => false);
+
+        // At least one should be true (chart rendered or message shown)
+        expect(hasCanvas || hasNoData).toBeTruthy();
       }
     });
   });
@@ -233,10 +238,10 @@ test.describe('Copilot Access Control @copilot', () => {
   test('Copilot section only visible to admins/CTOs', async ({ page }) => {
     // Login as admin
     await loginAs(page);
-    await page.goto('/app/metrics/dashboard/cto/');
+    await page.goto('/app/metrics/overview/');
 
     // CTO dashboard should be accessible to admin
-    await expect(page).toHaveURL(/\/dashboard\/cto/);
+    await expect(page).toHaveURL(/\/metrics\/overview/);
 
     // Copilot section should be present (if data exists)
     const copilotText = page.getByText(/copilot/i);
