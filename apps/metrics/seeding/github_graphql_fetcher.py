@@ -109,6 +109,35 @@ class GitHubGraphQLFetcher:
             self._rest_github = Github(self.token)
         return self._rest_github
 
+    def _check_rest_rate_limit(self, warn_threshold: int = 100) -> int:
+        """Check REST API rate limit and log warning if low.
+
+        Per GitHub API best practices, monitor rate limit to avoid hitting limits.
+        See: https://docs.github.com/en/rest/using-the-rest-api/best-practices-for-using-the-rest-api
+
+        Args:
+            warn_threshold: Log warning if remaining points below this. Default: 100
+
+        Returns:
+            Remaining rate limit points
+        """
+        gh = self._get_rest_client()
+        rate_limit = gh.get_rate_limit()
+        self.api_calls_made += 1
+
+        remaining = rate_limit.core.remaining
+        reset_timestamp = rate_limit.core.reset.timestamp()
+
+        if remaining < warn_threshold:
+            from datetime import datetime
+
+            reset_time = datetime.fromtimestamp(reset_timestamp)
+            logger.warning(
+                f"REST API rate limit low: {remaining} remaining (resets at {reset_time.strftime('%H:%M:%S')})"
+            )
+
+        return remaining
+
     def _get_cached_repo(self, repo_full_name: str):
         """Get repo object from cache or fetch it."""
         if repo_full_name not in self._repo_cache:
@@ -390,7 +419,20 @@ class GitHubGraphQLFetcher:
             logger.info("REST: No PRs with commits to fetch check runs for")
             return
 
-        print(f"  🔄 Fetching check runs for {len(prs_with_commits)} PRs (REST API)...", end=" ", flush=True)
+        # Check REST API rate limit before making calls
+        remaining = self._check_rest_rate_limit()
+        calls_needed = len(prs_with_commits) + 1  # +1 for repo cache
+
+        if remaining < calls_needed:
+            print(f"⚠️ Skipping check runs - only {remaining} REST API calls remaining, need {calls_needed}")
+            logger.warning(f"Skipping check runs: {remaining} remaining < {calls_needed} needed")
+            return
+
+        print(
+            f"  🔄 Fetching check runs for {len(prs_with_commits)} PRs (REST API, {remaining} remaining)...",
+            end=" ",
+            flush=True,
+        )
         logger.info(f"REST: Fetching check runs for {len(prs_with_commits)} PRs from {repo_full_name} (1 call/PR)")
 
         # Pre-cache the repo object before sequential execution

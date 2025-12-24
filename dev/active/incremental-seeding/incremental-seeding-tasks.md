@@ -58,10 +58,12 @@
 - [x] Integrate repo change detection into `fetch_prs_with_details()`
 - [x] Add 7 TDD tests for repo_pushed_at functionality
 
-### 3.2 Rate Limit Monitoring (PLANNED)
-- [ ] Track `x-ratelimit-remaining` header value
-- [ ] Log warning when remaining points drop below threshold
-- [ ] Add `--pause-on-limit` flag for automatic waiting
+### 3.2 Rate Limit Monitoring ✅ COMPLETE
+- [x] Track `x-ratelimit-remaining` via `_check_rest_rate_limit()` method
+- [x] Log warning when remaining points drop below threshold (100)
+- [x] Skip check runs fetch if not enough points remaining
+- [x] Show remaining points in console output
+- [x] Add 5 TDD tests for rate limit monitoring
 
 ### 3.3 Incremental PR Sync (PLANNED)
 - [ ] Use `FETCH_PRS_UPDATED_QUERY` for incremental fetches

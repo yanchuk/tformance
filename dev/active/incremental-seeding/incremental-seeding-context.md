@@ -89,6 +89,16 @@ Sources:
   - `apps/metrics/seeding/github_graphql_fetcher.py` (lines 433-466, 470-493)
   - `apps/metrics/tests/test_pr_cache.py` (lines 330-462, 7 new tests)
 
+#### 3.2 Rate Limit Monitoring ✅
+- Added `_check_rest_rate_limit()` method to `GitHubGraphQLFetcher`
+- Checks REST API rate limit before fetching check runs
+- Logs warning when remaining points are low (<100)
+- Skips check runs fetch if not enough points remaining
+- Shows remaining points in console output
+- Files changed:
+  - `apps/metrics/seeding/github_graphql_fetcher.py` (lines 112-139, 422-435)
+  - `apps/metrics/tests/test_github_graphql_fetcher.py` (5 new tests)
+
 ## Key Files Modified This Session
 
 | File | Lines | Changes |
@@ -121,13 +131,13 @@ git status --short
 
 ## Test Count
 
-- PRCache: 25 tests (18 existing + 7 new)
-- GitHubGraphQLFetcher: 26 tests
-- **Total: 51 tests passing**
+- PRCache: 25 tests
+- GitHubGraphQLFetcher: 31 tests (26 existing + 5 rate limit)
+- **Total: 56 tests passing**
 
 ## Next Steps (Remaining Phase 3)
 
-1. **Rate Limit Monitoring** - Log warnings when remaining points low
+1. ~~**Rate Limit Monitoring**~~ ✅ - Checks REST API limit, skips if low
 2. **Incremental PR Sync** - Fetch only updated PRs using FETCH_PRS_UPDATED_QUERY
 3. **Exponential Backoff with Jitter** - Add random jitter to retry delays
 

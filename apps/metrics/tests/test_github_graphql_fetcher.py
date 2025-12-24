@@ -245,6 +245,13 @@ class TestGitHubGraphQLFetcherCheckRunsForCommit(TestCase):
 class TestGitHubGraphQLFetcherAddCheckRunsToPRs(TestCase):
     """Tests for _add_check_runs_to_prs() optimization."""
 
+    def _mock_rate_limit(self, mock_github, remaining=5000):
+        """Helper to set up rate limit mock."""
+        mock_rate_limit = Mock()
+        mock_rate_limit.core.remaining = remaining
+        mock_rate_limit.core.reset.timestamp.return_value = 1704110400
+        mock_github.get_rate_limit.return_value = mock_rate_limit
+
     @patch("github.Github")
     @patch("apps.metrics.seeding.github_graphql_fetcher.GitHubGraphQLClient")
     def test_uses_commit_sha_from_pr_object(self, mock_client_class, mock_github_class):
@@ -252,6 +259,7 @@ class TestGitHubGraphQLFetcherAddCheckRunsToPRs(TestCase):
         # Arrange
         mock_github = Mock()
         mock_github_class.return_value = mock_github
+        self._mock_rate_limit(mock_github)
         mock_repo = Mock()
         mock_commit = Mock()
         mock_commit.get_check_runs.return_value = []
@@ -380,6 +388,7 @@ class TestGitHubGraphQLFetcherAddCheckRunsToPRs(TestCase):
         # Arrange
         mock_github = Mock()
         mock_github_class.return_value = mock_github
+        self._mock_rate_limit(mock_github)
         mock_repo = Mock()
         mock_commit = Mock()
         mock_check_run = Mock()
@@ -453,6 +462,7 @@ class TestGitHubGraphQLFetcherAddCheckRunsToPRs(TestCase):
         # Arrange
         mock_github = Mock()
         mock_github_class.return_value = mock_github
+        self._mock_rate_limit(mock_github)
         mock_repo = Mock()
         mock_commit = Mock()
         mock_commit.get_check_runs.return_value = []
@@ -527,6 +537,7 @@ class TestGitHubGraphQLFetcherAddCheckRunsToPRs(TestCase):
         # Arrange
         mock_github = Mock()
         mock_github_class.return_value = mock_github
+        self._mock_rate_limit(mock_github)
         mock_repo = Mock()
         mock_commit = Mock()
         mock_commit.get_check_runs.return_value = []
@@ -593,6 +604,7 @@ class TestGitHubGraphQLFetcherAddCheckRunsToPRs(TestCase):
         # Arrange
         mock_github = Mock()
         mock_github_class.return_value = mock_github
+        self._mock_rate_limit(mock_github)
         mock_repo = Mock()
 
         # First commit succeeds, second fails, third succeeds
@@ -675,6 +687,7 @@ class TestGitHubGraphQLFetcherAddCheckRunsToPRs(TestCase):
         # Arrange
         mock_github = Mock()
         mock_github_class.return_value = mock_github
+        self._mock_rate_limit(mock_github)
         mock_repo = Mock()
         mock_commit = Mock()
         mock_commit.get_check_runs.return_value = []
@@ -1041,3 +1054,147 @@ class TestGitHubGraphQLFetcherMapPR(TestCase):
         self.assertEqual(result.milestone_title, "Sprint 5")
         self.assertEqual(result.assignees, ["developer", "reviewer"])
         self.assertEqual(result.linked_issues, [42])
+
+
+class TestGitHubGraphQLFetcherRateLimitMonitoring(TestCase):
+    """Tests for rate limit monitoring (Phase 3.2).
+
+    Verifies that the fetcher tracks and logs rate limit status.
+    """
+
+    @patch("apps.metrics.seeding.github_graphql_fetcher.GitHubGraphQLClient")
+    def test_fetcher_initializes_with_graphql_client(self, mock_client_class):
+        """Test that fetcher initializes with a GraphQL client for rate limit tracking."""
+        # Arrange
+        mock_client = Mock()
+        mock_client_class.return_value = mock_client
+        fetcher = GitHubGraphQLFetcher(token="ghp_test_token")
+
+        # Assert GraphQL client is initialized (which handles rate limit checking)
+        self.assertIsNotNone(fetcher._client)
+        mock_client_class.assert_called_once_with("ghp_test_token")
+
+    @patch("github.Github")
+    @patch("apps.metrics.seeding.github_graphql_fetcher.GitHubGraphQLClient")
+    def test_logs_rest_api_rate_limit_warning_when_low(self, mock_client_class, mock_github_class):
+        """Test that fetcher logs warning when REST API rate limit is low."""
+        # Arrange
+        mock_github = Mock()
+        mock_github_class.return_value = mock_github
+
+        # Mock rate limit response
+        mock_rate_limit = Mock()
+        mock_rate_limit.core.remaining = 50  # Low remaining
+        mock_rate_limit.core.reset.timestamp.return_value = 1704110400
+        mock_github.get_rate_limit.return_value = mock_rate_limit
+
+        fetcher = GitHubGraphQLFetcher(token="ghp_test_token")
+
+        # Act - access REST client which should check rate limit
+        with patch("apps.metrics.seeding.github_graphql_fetcher.logger") as mock_logger:
+            # Force REST client initialization
+            fetcher._get_rest_client()
+            fetcher._check_rest_rate_limit()
+
+            # Assert warning was logged
+            mock_logger.warning.assert_called()
+
+    @patch("github.Github")
+    @patch("apps.metrics.seeding.github_graphql_fetcher.GitHubGraphQLClient")
+    def test_check_rest_rate_limit_returns_remaining_points(self, mock_client_class, mock_github_class):
+        """Test that _check_rest_rate_limit returns the remaining points."""
+        # Arrange
+        mock_github = Mock()
+        mock_github_class.return_value = mock_github
+
+        mock_rate_limit = Mock()
+        mock_rate_limit.core.remaining = 4500
+        mock_rate_limit.core.reset.timestamp.return_value = 1704110400
+        mock_github.get_rate_limit.return_value = mock_rate_limit
+
+        fetcher = GitHubGraphQLFetcher(token="ghp_test_token")
+        fetcher._get_rest_client()
+
+        # Act
+        remaining = fetcher._check_rest_rate_limit()
+
+        # Assert
+        self.assertEqual(remaining, 4500)
+
+    @patch("github.Github")
+    @patch("apps.metrics.seeding.github_graphql_fetcher.GitHubGraphQLClient")
+    def test_check_rest_rate_limit_increments_api_counter(self, mock_client_class, mock_github_class):
+        """Test that _check_rest_rate_limit increments the API call counter."""
+        # Arrange
+        mock_github = Mock()
+        mock_github_class.return_value = mock_github
+
+        mock_rate_limit = Mock()
+        mock_rate_limit.core.remaining = 4500
+        mock_rate_limit.core.reset.timestamp.return_value = 1704110400
+        mock_github.get_rate_limit.return_value = mock_rate_limit
+
+        fetcher = GitHubGraphQLFetcher(token="ghp_test_token")
+        fetcher._get_rest_client()
+        initial_calls = fetcher.api_calls_made
+
+        # Act
+        fetcher._check_rest_rate_limit()
+
+        # Assert
+        self.assertEqual(fetcher.api_calls_made, initial_calls + 1)
+
+    @patch("github.Github")
+    @patch("apps.metrics.seeding.github_graphql_fetcher.GitHubGraphQLClient")
+    def test_add_check_runs_skips_when_rate_limit_too_low(self, mock_client_class, mock_github_class):
+        """Test that _add_check_runs_to_prs skips when rate limit is too low."""
+        # Arrange
+        mock_github = Mock()
+        mock_github_class.return_value = mock_github
+
+        # Mock low rate limit (fewer points than PRs)
+        mock_rate_limit = Mock()
+        mock_rate_limit.core.remaining = 2  # Only 2 remaining, but we need 3 (2 PRs + 1 repo cache)
+        mock_rate_limit.core.reset.timestamp.return_value = 1704110400
+        mock_github.get_rate_limit.return_value = mock_rate_limit
+
+        fetcher = GitHubGraphQLFetcher(token="ghp_test_token")
+
+        # Create mock PRs with commits
+        pr1 = Mock(spec=FetchedPRFull)
+        pr1.number = 1
+        pr1.commits = [
+            FetchedCommit(
+                sha="abc123",
+                message="test",
+                author_login="user",
+                author_name=None,
+                committed_at=datetime.now(UTC),
+                additions=0,
+                deletions=0,
+            )
+        ]
+        pr1.check_runs = []
+
+        pr2 = Mock(spec=FetchedPRFull)
+        pr2.number = 2
+        pr2.commits = [
+            FetchedCommit(
+                sha="def456",
+                message="test",
+                author_login="user",
+                author_name=None,
+                committed_at=datetime.now(UTC),
+                additions=0,
+                deletions=0,
+            )
+        ]
+        pr2.check_runs = []
+
+        # Act
+        fetcher._add_check_runs_to_prs([pr1, pr2], "owner/repo")
+
+        # Assert - check runs should NOT be fetched (skipped due to low rate limit)
+        mock_github.get_repo.assert_not_called()  # Repo cache not accessed
+        self.assertEqual(len(pr1.check_runs), 0)
+        self.assertEqual(len(pr2.check_runs), 0)
