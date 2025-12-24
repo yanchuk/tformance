@@ -47,7 +47,6 @@ def _get_filters_from_request(request: HttpRequest) -> dict:
         "size",
         "state",
         "has_jira",
-        "self_reviewed",
         "date_from",
         "date_to",
     ]

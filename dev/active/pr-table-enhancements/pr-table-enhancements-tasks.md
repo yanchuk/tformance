@@ -42,17 +42,19 @@
 - [x] Sort URL resets page to 1
 - [x] Pagination preserves sort params
 
-## Phase 4: Self-Reviewed Detection (M effort) ✅
+## Phase 4: Self-Reviewed Detection (S effort) ✅
 
 ### Backend Changes
 - [x] Add reviewer_count and has_author_review annotations to get_prs_queryset
-- [x] Add self_reviewed filter parameter ('yes'/'no')
-- [x] Add self_reviewed to filter_keys in views
+- [x] ~~Add self_reviewed filter parameter ('yes'/'no')~~ (Removed - data shows <1% usage)
+- [x] ~~Add self_reviewed to filter_keys in views~~ (Removed)
 
 ### Template Changes
-- [x] Add Self-Reviewed filter dropdown to pull_requests.html
+- [x] ~~Add Self-Reviewed filter dropdown to pull_requests.html~~ (Removed - low usage)
 - [x] Add "Self" badge next to author name when PR is self-reviewed
 - [x] Badge uses warning color (yellow) to indicate potential code quality concern
+
+**Note**: Self-reviewed filter removed because only 6 PRs (0.36%) across all data are self-reviewed. Badge kept as informational indicator.
 
 ## Phase 5: Testing (M effort) ✅
 
@@ -63,8 +65,6 @@
 - [x] Test sort order toggling
 - [x] Test sort with filters combined
 - [x] Test sort handles null values (nulls last)
-- [x] Test self_reviewed=yes filter
-- [x] Test self_reviewed=no filter
 - [x] Test self-reviewed badge displays
 - [x] Test multi-reviewer PRs not marked as self-reviewed
 
@@ -99,8 +99,7 @@
 
 4. **Self-Reviewed Detection** ✅
    - "Self" badge shown when author is the only reviewer
-   - Filter dropdown to show only self-reviewed or externally-reviewed PRs
-   - Works with all other filters
+   - ~~Filter dropdown~~ (Removed - <1% of data matches this filter)
 
 ## Files Modified
 
@@ -112,10 +111,10 @@
 | `apps/metrics/views/pr_list_views.py` | Added sort param handling, self_reviewed filter |
 | `apps/metrics/services/pr_list_service.py` | Added self-reviewed annotations and filtering |
 | `apps/metrics/templatetags/pr_list_tags.py` | Added sort_url tag |
-| `apps/metrics/tests/test_pr_list_views.py` | Added 16 new tests (12 sorting + 4 self-reviewed) |
+| `apps/metrics/tests/test_pr_list_views.py` | 12 sorting tests + 2 badge tests |
 | `tests/e2e/analytics.spec.ts` | Added 11 new E2E tests |
 
 ## Test Results
 
-- **72 unit tests passing** (36 original + 12 sorting + 4 self-reviewed + 20 other)
+- **34 unit tests passing** (view tests only: 18 original + 12 sorting + 2 badge + 2 other)
 - **E2E tests passing** for PR table features

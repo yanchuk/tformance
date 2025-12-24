@@ -118,16 +118,6 @@ def get_prs_queryset(team: Team, filters: dict[str, Any]) -> QuerySet[PullReques
         if date_to:
             qs = qs.filter(merged_at__date__lte=date_to)
 
-    # Filter by self-reviewed status
-    # (annotations are already added at the start of the function)
-    self_reviewed = filters.get("self_reviewed")
-    if self_reviewed == "yes":
-        # Only one unique reviewer AND that reviewer is the author
-        qs = qs.filter(reviewer_count=1, has_author_review=True)
-    elif self_reviewed == "no":
-        # Either no reviews, more than one reviewer, or the single reviewer isn't the author
-        qs = qs.exclude(reviewer_count=1, has_author_review=True)
-
     return qs
 
 

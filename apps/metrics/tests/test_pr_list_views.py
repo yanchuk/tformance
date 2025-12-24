@@ -460,8 +460,8 @@ class TestPrListSorting(TestCase):
         self.assertEqual(response.context["order"], "asc")
 
 
-class TestPrListSelfReviewedFilter(TestCase):
-    """Tests for self-reviewed filter functionality."""
+class TestPrListSelfReviewedBadge(TestCase):
+    """Tests for self-reviewed badge display (filter removed, badge kept)."""
 
     def setUp(self):
         """Set up test fixtures."""
@@ -476,48 +476,6 @@ class TestPrListSelfReviewedFilter(TestCase):
         self.client.force_login(self.user)
         self.PRReviewFactory = PRReviewFactory
 
-    def test_self_reviewed_filter_yes_returns_self_reviewed_prs(self):
-        """Test that self_reviewed=yes returns only self-reviewed PRs."""
-        from apps.metrics.services.pr_list_service import get_prs_queryset
-
-        # Create a self-reviewed PR (author is the only reviewer)
-        self_reviewed_pr = PullRequestFactory(team=self.team, title="Self Reviewed Unique", author=self.alice)
-        self.PRReviewFactory(team=self.team, pull_request=self_reviewed_pr, reviewer=self.alice)
-
-        # Create a PR with external review
-        external_pr = PullRequestFactory(team=self.team, title="External Review Unique", author=self.alice)
-        self.PRReviewFactory(team=self.team, pull_request=external_pr, reviewer=self.bob)
-
-        # Test via service layer first
-        qs = get_prs_queryset(self.team, {"self_reviewed": "yes"})
-        titles = [pr.title for pr in qs]
-        self.assertIn("Self Reviewed Unique", titles)
-        self.assertNotIn("External Review Unique", titles)
-
-        # Test via view
-        url = reverse("metrics:pr_list")
-        response = self.client.get(url, {"self_reviewed": "yes"})
-
-        self.assertContains(response, "Self Reviewed Unique")
-        self.assertNotContains(response, "External Review Unique")
-
-    def test_self_reviewed_filter_no_returns_external_reviewed_prs(self):
-        """Test that self_reviewed=no returns PRs with external reviews."""
-        # Create a self-reviewed PR
-        self_reviewed_pr = PullRequestFactory(team=self.team, title="Self Reviewed", author=self.alice)
-        self.PRReviewFactory(team=self.team, pull_request=self_reviewed_pr, reviewer=self.alice)
-
-        # Create a PR with external review
-        external_pr = PullRequestFactory(team=self.team, title="External Review", author=self.alice)
-        self.PRReviewFactory(team=self.team, pull_request=external_pr, reviewer=self.bob)
-
-        url = reverse("metrics:pr_list")
-
-        response = self.client.get(url, {"self_reviewed": "no"})
-
-        self.assertNotContains(response, "Self Reviewed")
-        self.assertContains(response, "External Review")
-
     def test_self_reviewed_badge_displays_for_self_reviewed_prs(self):
         """Test that self-reviewed PRs show the 'Self' badge."""
         self_reviewed_pr = PullRequestFactory(team=self.team, title="Self Reviewed PR", author=self.alice)
@@ -530,15 +488,17 @@ class TestPrListSelfReviewedFilter(TestCase):
         # Should contain the "Self" badge
         self.assertContains(response, 'title="Self-reviewed: Author is the only reviewer"')
 
-    def test_pr_with_multiple_reviewers_not_self_reviewed(self):
-        """Test that PR with multiple reviewers is not marked as self-reviewed."""
+    def test_pr_with_multiple_reviewers_not_marked_self_reviewed(self):
+        """Test that PR with multiple reviewers does not show Self badge."""
         pr = PullRequestFactory(team=self.team, title="Multi Review", author=self.alice)
         self.PRReviewFactory(team=self.team, pull_request=pr, reviewer=self.alice)
         self.PRReviewFactory(team=self.team, pull_request=pr, reviewer=self.bob)
 
         url = reverse("metrics:pr_list")
 
-        response = self.client.get(url, {"self_reviewed": "yes"})
+        response = self.client.get(url)
 
-        # Should not match self-reviewed filter
-        self.assertNotContains(response, "Multi Review")
+        # PR should appear
+        self.assertContains(response, "Multi Review")
+        # But should NOT have the Self badge (since there are multiple reviewers)
+        self.assertNotContains(response, 'title="Self-reviewed: Author is the only reviewer"')
