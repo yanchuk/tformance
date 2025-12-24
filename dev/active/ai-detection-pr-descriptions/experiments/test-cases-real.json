@@ -1,0 +1,980 @@
+{
+  "tests": [
+    {
+      "description": "[Cal.com] fix: search by branch instead of SHA in E2E report workflow_",
+      "vars": {
+        "pr_body": "## What does this PR do?\n\nFixes the E2E Report workflow's `workflow_dispatch` mode failing with \"No runs found with blob-report artifacts\" when manually triggered.\n\n**Root cause**: The workflow was searching for runs matching the PR's current `head_sha`, which fails when:\n1. The PR was updated after E2E tests ran (artifacts exist for an older commit SHA)\n2. The current run for that SHA is still queued/in-progress\n\n**Fix**: Search by `branch` instead of `head_sha`, and filter for `status: 'completed'` runs only.\n\n## Mandatory Tasks (DO NOT REMOVE)\n\n- [x] I have self-reviewed the code (A decent size PR without self-review might be rejected).\n- [x] I have updated the developer docs in /docs if this PR makes changes that would require a [documentation change](https://cal.com/docs). N/A - CI workflow change only.\n- [x] I confirm automated tests are in place that prove my fix is effective or that my feature works.\n\n## How should this be tested?\n\n1. Find a PR that has E2E test results from a previous commit (not the current head SHA)\n2. Go to Actions \u2192 \"E2E Report\" \u2192 \"Run workflow\"\n3. Enter the PR number\n4. Verify the workflow finds the blob-report artifacts and publishes the report\n\n## Human Review Checklist\n\n- [ ] Verify branch-based search is acceptable (could theoretically match wrong run if fork PRs have same branch name, but this is rare)\n- [ ] Confirm `status: 'completed'` filter correctly excludes queued/in-progress runs\n\n---\n\nLink to Devin run: https://app.devin.ai/sessions/4f639bb6992f47a3bb1ba13cb11117c5\nRequested by: keith@cal.com (@keithwillcode)"
+      },
+      "metadata": {
+        "team": "Cal.com",
+        "repo": "calcom/cal.com",
+        "pr_number": 26168,
+        "current_detection": true,
+        "current_tools": [
+          "devin"
+        ]
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        },
+        {
+          "type": "javascript",
+          "value": "JSON.parse(output).is_ai_assisted === true"
+        }
+      ]
+    },
+    {
+      "description": "[Trigger.dev] Added example projects link",
+      "vars": {
+        "pr_body": "Closes #<issue>\r\n\r\n## \u2705 Checklist\r\n\r\n- [ ] I have followed every step in the [contributing guide](https://github.com/triggerdotdev/trigger.dev/blob/main/CONTRIBUTING.md)\r\n- [ ] The PR title follows the convention.\r\n- [ ] I ran and tested the code works\r\n\r\n---\r\n\r\n## Testing\r\n\r\n_[Describe the steps you took to test this change]_\r\n\r\n---\r\n\r\n## Changelog\r\n\r\n_[Short description of what has changed]_\r\n\r\n---\r\n\r\n## Screenshots\r\n\r\n_[Screenshots]_\r\n\r\n\ud83d\udcaf\r\n"
+      },
+      "metadata": {
+        "team": "Trigger.dev",
+        "repo": "triggerdotdev/trigger.dev",
+        "pr_number": 2812,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[PostHog Analytics] feat(kafka-deduplicator): Commit batches only after processi",
+      "vars": {
+        "pr_body": "## Problem\r\n\r\nThe kafka-deduplicator was committing offsets immediately after receiving messages rather than after successful processing. This could lead to data loss if the service crashed between receiving and processing messages.\r\n\r\n## Changes\r\n\r\n- Added `OffsetTracker` that tracks processed offsets per partition with rebalancing protection\r\n- Partition workers now call `mark_processed()` after successful batch processing\r\n- `BatchConsumer` commits from `OffsetTracker` instead of on receive\r\n- Rebalance handler sets rebalancing flag to prevent commits during partition changes\r\n\r\n## How did you test this code?\r\n\r\n<!-- Briefly describe the steps you took. -->\r\n<!-- Include automated tests if possible, otherwise describe the manual testing routine. -->\r\n\r\n<!-- Docs reminder: If this change requires updated docs, please do that! Engineers are the primary people responsible for their documentation. \ud83d\ude4c -->\r\n\r\n\ud83d\udc49 _Stay up-to-date with [PostHog coding conventions](https://posthog.com/docs/contribute/coding-conventions) for a smoother review._\r\n\r\n## Changelog: (features only) Is this feature complete?\r\n\r\n<!-- Yes if this is okay to go in the changelog. No if it's still hidden behind a feature flag, or part of a feature that's not complete yet, etc.  -->\r\n<!-- Removing this section does not mean the changelog bot won't pick it up, because *some people* like to not use the template, so we can't rely on it existing. -->\r\n"
+      },
+      "metadata": {
+        "team": "PostHog Analytics",
+        "repo": "PostHog/posthog",
+        "pr_number": 43945,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Polar.sh] Disable failing webhooks faster",
+      "vars": {
+        "pr_body": "In main, we don't exclude pending webhook events (`succeeded is None`) from the check on consecutive failures, which makes it so that in burst of webhook triggers, some webhooks collect up to 400-500 events and a multiple of that in delivery attempts before there's a long enough pause that the 10 latest events are all effectively failed without any new ones in a pending state.\r\n\r\nThis fixes it by looking at the 10 latest completed events (succeeded or failed) which I think is correct behavior and was an initial oversight in implementing the auto-disable. We also mark pending webhooks as skipped to make sure they won't be (re-)tried. "
+      },
+      "metadata": {
+        "team": "Polar.sh",
+        "repo": "polarsource/polar",
+        "pr_number": 8690,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Cal.com] refactor: use explicit type annotations for TUpdateInputSche",
+      "vars": {
+        "pr_body": "## What does this PR do?\n\nRefactors `TUpdateInputSchema` in the tRPC event types package to use explicit TypeScript type annotations instead of relying on `z.infer<>` to compute types through complex schema chains. This is part of an effort to reduce TypeScript type-checking time, which was identified as the main performance bottleneck (20.5 seconds / 59% of total build time) in the tRPC package.\n\nThe key optimization is using `z.ZodType<T>` annotations on schemas, which tells TypeScript the type directly rather than having it infer through chains of `.extend()`, `.partial()`, `.merge()`, etc.\n\n**Changes:**\n- Define explicit TypeScript types for all nested structures (`HashedLinkInput`, `AiPhoneCallConfig`, `CalVideoSettings`, `HostInput`, `HostGroupInput`, `ChildInput`, `DestinationCalendarInput`, `RecurringEventInput`, `EventTypeColorInput`, `BookingFieldInput`, `RRSegmentQueryValueInput`)\n- Create comprehensive `TUpdateInputSchema` type with all ~80+ fields explicitly defined\n- Use `z.ZodType<TUpdateInputSchema>` annotation on `BaseEventTypeUpdateInput` schema\n- Remove dependency on `EventTypeSchema` from `@calcom/prisma/zod/modelSchema/` which was pulling in many generated types\n- Change from `.refine()` to `.superRefine()` for aiPhoneCallConfig transformations\n- Change `users` field type from `(string | number)[]` to `number[]` to match actual usage in handlers\n- Handle `bookingFields` null case in update handler by converting to `Prisma.DbNull` for JSON field compatibility\n\nRuntime validation behavior is preserved - only compile-time type inference is optimized.\n\n### Updates since last revision\n\n- **Fixed API v2 DTO compatibility**: Removed index signature `[key: string]: unknown` from `BookingFieldInput` type. The index signature was causing `BookingField_2024_04_15` (a NestJS DTO class) to be incompatible with `BookingFieldInput`. The index signature was unnecessary since `field.name` is used as an index key on `discoveredFields` (a `Record<string, true>`), not on the field object itself.\n\n- **Removed useless JSDoc comments**: Cleaned up redundant JSDoc comments on type definitions per PR feedback. Kept only the meaningful documentation on `BookingFieldInput` and `RRSegmentQueryValueInput` that explain important design decisions.\n\n- **Added unit tests for aiPhoneCallConfig transformation**: Added 8 unit tests in `types.test.ts` to verify the `.superRefine()` transformation behavior is equivalent to the original `.refine()` behavior. Tests cover default value handling for `yourPhoneNumber`, `numberToCall`, `guestName`, `guestEmail`, and `guestCompany` fields.\n\n## Mandatory Tasks (DO NOT REMOVE)\n\n- [x] I have self-reviewed the code (A decent size PR without self-review might be rejected).\n- [x] I have updated the developer docs in /docs if this PR makes changes that would require a [documentation change](https://cal.com/docs). N/A - no documentation changes needed.\n- [x] I confirm automated tests are in place that prove my fix is effective or that my feature works.\n\n## How should this be tested?\n\n1. Run `yarn type-check:ci --force` to verify TypeScript compilation passes\n2. Run `yarn lint` to verify linting passes\n3. Run `TZ=UTC yarn test packages/trpc/server/routers/viewer/eventTypes/__tests__/types.test.ts` to run the new unit tests\n4. Verify that event type update operations still work correctly in the application (the runtime validation should be unchanged)\n\nTo measure the performance improvement, compare tRPC build times before and after:\n```bash\ncd packages/trpc && time yarn build\n```\n\n\n## Human Review Checklist\n\n- [ ] Verify all fields from the original `EventTypeSchema` are present in `TUpdateInputSchema` with correct types\n- [ ] Check that nullability (`null`, `undefined`, optional) matches the original schema behavior\n- [ ] Verify the `superRefine` transformation is equivalent to the original `refine` behavior (unit tests now cover this)\n- [ ] Check if any consumers of `TUpdateInputSchema` break due to type cha"
+      },
+      "metadata": {
+        "team": "Cal.com",
+        "repo": "calcom/cal.com",
+        "pr_number": 26133,
+        "current_detection": true,
+        "current_tools": [
+          "devin"
+        ]
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        },
+        {
+          "type": "javascript",
+          "value": "JSON.parse(output).is_ai_assisted === true"
+        }
+      ]
+    },
+    {
+      "description": "[Cal.com] perf(features): add TypeScript project references to reduce ",
+      "vars": {
+        "pr_body": "## What does this PR do?\n\nThis PR implements TypeScript project references for `@calcom/features` to prevent SDK types from leaking into dependent packages like `@calcom/trpc`. This is a follow-up to #26117 which applied a similar pattern to app-store services.\n\n### Problem\nWhen TypeScript compiles `@calcom/trpc`, it must resolve the entire Twilio SDK type graph (~555 .d.ts files) because `@calcom/features` exports functions that return Twilio SDK types. This significantly increases compilation time.\n\n### Solution\n1. **Local interface types**: Created `twilioProvider.types.ts` with minimal interfaces that only expose properties actually used by consumers\n2. **Explicit return types**: Added return type annotations to all 11 exported functions in `twilioProvider.ts`\n3. **TypeScript project references**: Added `tsconfig.build.json` and `typesVersions` configuration so that when types are pre-built, trpc consumes `.d.ts` files instead of typechecking source files\n\n### Results (when types are built)\n- Twilio SDK files in trpc compilation: **555 \u2192 0**\n- Total files in trpc compilation: **~7,735 \u2192 4,655 (40% reduction)**\n\n### Changes\n- Created `twilioProvider.types.ts` with local interface types\n- Added explicit return type annotations to all exported functions\n- Added `tsconfig.build.json` to build declaration files for `@calcom/features`\n- Added `typesVersions` to `@calcom/features/package.json` with fallback pattern\n- Added `typesVersions` to `@calcom/ee/package.json` to redirect to prebuilt types\n- Added `.gitignore` for generated types directory\n\nThe `typesVersions` fallback pattern allows the codebase to work without prebuilt types (falls back to source files), but when types are built ahead of time with `yarn build:types`, trpc consumes the `.d.ts` files instead.\n\n### Updates since last revision\n- Fixed `build:types` script to clean `types/` directory before building, preventing TS5055 \"Cannot write file because it would overwrite input file\" errors on repeated runs\n- Added explicit excludes for `**/*.d.ts` and `**/*.d.ts.map` in tsconfig.build.json\n\n### Known Issue\nRunning `yarn build:types` will show ~400+ pre-existing type errors in `packages/trpc` and `packages/prisma` (Prisma type mismatches). **These errors exist on main and are NOT caused by this PR.** TypeScript still emits the `.d.ts` files despite these errors, and the performance benefits are achieved.\n\n## Mandatory Tasks (DO NOT REMOVE)\n\n- [x] I have self-reviewed the code (A decent size PR without self-review might be rejected).\n- [x] I have updated the developer docs in /docs if this PR makes changes that would require a [documentation change](https://cal.com/docs). N/A - no documentation changes needed.\n- [x] I confirm automated tests are in place that prove my fix is effective or that my feature works. N/A - this is a type-only change with no runtime behavior changes.\n\n## How should this be tested?\n\nThis is a TypeScript performance optimization with no runtime behavior changes. To verify:\n\n1. Build types: `cd packages/features && yarn build:types`\n2. Run `yarn tsc --project tsconfig.server.json --listFiles 2>/dev/null | grep \"node_modules/twilio\" | wc -l` in `packages/trpc` - should show 0 files\n3. Run `yarn tsc --project tsconfig.server.json --extendedDiagnostics` to compare compilation times\n4. Verify no type errors are introduced in consuming code\n\n## Human Review Checklist\n\n\n- [ ] Verify that consumers of `sendSMS`/`scheduleSMS` only use the `sid` property from the returned message response\n- [ ] Verify the `typesVersions` paths resolve correctly (especially `../features/types/ee/*` for `@calcom/ee`)\n- [ ] Verify CI/build pipeline will run `build:types` before trpc typecheck to get the performance benefits\n- [ ] Verify the fallback behavior (using source files when types aren't built) is acceptable for local development\n- [ ] Confirm the pre-existing Prisma type errors (~400+) shown during `build:types` are acceptable (they exist on main)\n\n## Checklist\n\n- ["
+      },
+      "metadata": {
+        "team": "Cal.com",
+        "repo": "calcom/cal.com",
+        "pr_number": 26132,
+        "current_detection": true,
+        "current_tools": [
+          "devin"
+        ]
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        },
+        {
+          "type": "javascript",
+          "value": "JSON.parse(output).is_ai_assisted === true"
+        }
+      ]
+    },
+    {
+      "description": "[Gumroad] Feat: Add churn to analytics ",
+      "vars": {
+        "pr_body": "Fixes #13 \r\n\r\nReopened #1668\r\n\r\nUsed Stripe's methodology for calculating churn rate as mentioned by Sahil here https://github.com/antiwork/gumroad/issues/13#issuecomment-3372005841\r\n\r\n> The churn rate is measured by the sum of churned subscribers in the past 30 days divided by the number of active subscribers as of 30 days ago, plus any new subscribers in those 30 days.\r\n\r\nImplemented a caching layer for large sellers to improve performance, as recalculating data across numerous products would otherwise degrade the user experience.\r\n\r\nData fetching is done using Inertia\u2019s partial reload method.\r\n\r\nA 31-day time window was introduced to ensure all monthly periods are fully captured.\r\nSince this window inherently represents a monthly range, daily or monthly aggregation filters were not included.\r\nSimilarly, the DatePicker doesn't include options that represent more than a month in the date filter.\r\n\r\n### Videos\r\n\r\nhttps://github.com/user-attachments/assets/242b4032-26a8-42a1-8eb8-40944f907978\r\n\r\nhttps://github.com/user-attachments/assets/e8080ddc-c6cf-4262-a995-14e92c65f6ef\r\n\r\n### Tests\r\n\r\n`bundle exec rspec spec/controllers/churn_controller_spec.rb spec/services/creator_analytics/churn_spec.rb spec/models/creator_analytics_churn_cache_spec.rb --format html --out spec_results.html`\r\n\r\n<img width=\"1470\" height=\"866\" alt=\"Screenshot 2025-10-13 at 11 36 56\u202fPM\" src=\"https://github.com/user-attachments/assets/2d107622-3ff0-4697-8b13-f0c9994ddf15\" />\r\n\r\n### AI Disclosure\r\n\r\nUse Cursor(auto-mode) for the initial setup of files and folders for this feature"
+      },
+      "metadata": {
+        "team": "Gumroad",
+        "repo": "antiwork/gumroad",
+        "pr_number": 1696,
+        "current_detection": true,
+        "current_tools": [
+          "cursor"
+        ]
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        },
+        {
+          "type": "javascript",
+          "value": "JSON.parse(output).is_ai_assisted === true"
+        }
+      ]
+    },
+    {
+      "description": "[Gumroad] Migrate _sidebar.scss to tailwind",
+      "vars": {
+        "pr_body": "# Migrate _sidebar.scss to Tailwind\r\n\r\n**Ref:** [Issue #1055](https://github.com/antiwork/gumroad/issues/1055)\r\n\r\n## Overview\r\nThis PR migrates the `_sidebar.scss` stylesheet to Tailwind CSS classes, maintaining exact visual consistency while eliminating custom SCSS dependencies.\r\n\r\n## \ud83d\udcc1 Files Modified\r\n- `app/javascript/components/Checkout/TemporaryLibrary.tsx`\r\n- `app/javascript/components/Checkout/index.tsx`\r\n- `app/javascript/components/Product/CardGrid.tsx`\r\n- `app/javascript/components/server-components/EmailsPage/EmailForm.tsx`\r\n- `app/javascript/components/server-components/LibraryPage.tsx`\r\n- `app/views/public/api.html.erb`\r\n- `app/javascript/packs/design.scss`\r\n\r\n## Files Deleted\r\n- `app/javascript/stylesheets/_sidebar.scss` - No longer needed\r\n\r\n## Migration Mapping\r\n\r\n| Original Rendered CSS | Tailwind Equivalent |\r\n|----------------------|-------------------|\r\n| `display: grid` | `grid` |\r\n| `gap: 2rem 4rem` | `gap-y-8 gap-x-16` |\r\n| `align-items: flex-start` | `items-start` |\r\n| `grid-template-columns: 1fr` | `grid-cols-1` |\r\n| `grid-auto-columns: 3fr` | `auto-cols-[3fr]` |\r\n| `grid-template-columns: 2fr` (right modifier) | `grid-cols-[2fr]` |\r\n| `grid-auto-columns: 1fr` (right modifier) | `auto-cols-[1fr]` |\r\n| `grid-auto-flow: column` (lg breakpoint) | `lg:grid-flow-col` |\r\n\r\n## Design Consistency\r\nThe migration maintains exact visual appearance and behavior:\r\n- **Spacing**: `gap-y-8 gap-x-16` perfectly matches the original `gap: 2rem 4rem`\r\n- **Grid behavior**: Same responsive grid system with proper column sizing\r\n- **Right modifier**: Special layout for checkout page preserved with custom `minmax(26rem,1fr)` sizing\r\n\r\n---\r\n\r\n## Visual Comparisons\r\n\r\n### API Page (`app/views/public/api.html.erb`)\r\n\r\n| Before | After |\r\n|--------|-------|\r\n| <img width=\"626\" alt=\"api-old\" src=\"https://github.com/user-attachments/assets/b31a545b-5814-4738-acab-4b228f3f4b71\" /> | <img width=\"621\" alt=\"api-new\" src=\"https://github.com/user-attachments/assets/d8b8ac79-33a9-4faa-8cbc-e7f1eb7d84af\" /> |\r\n\r\n---\r\n\r\n### Temporary Library (`app/javascript/components/Checkout/TemporaryLibrary.tsx`)\r\n\r\n#### Desktop View\r\n| Before | After |\r\n|--------|-------|\r\n| <img width=\"554\" alt=\"temporary-library-old\" src=\"https://github.com/user-attachments/assets/d4c593d0-7ab1-45df-b66e-aac0d91ea5e6\" /> | <img width=\"535\" alt=\"temporary-library-new\" src=\"https://github.com/user-attachments/assets/846bdd9f-72f2-443a-a252-f4b77af542b8\" /> |\r\n\r\n#### Mobile View\r\n| Before | After |\r\n|--------|-------|\r\n| <img width=\"322\" alt=\"temporary-library-old-mobile\" src=\"https://github.com/user-attachments/assets/16f9f8fa-34ff-4794-82ce-7c9c59ea2383\" /> | <img width=\"336\" alt=\"temporary-library-new-mobile\" src=\"https://github.com/user-attachments/assets/bbbb72fa-f290-4ad4-acd4-7ea381f4af18\" /> |\r\n\r\n---\r\n\r\n### Checkout (`app/javascript/components/Checkout/index.tsx`)\r\n\r\n#### Desktop View\r\n| Before | After |\r\n|--------|-------|\r\n| <img width=\"557\" alt=\"checkout-old\" src=\"https://github.com/user-attachments/assets/621ecae7-0286-42fd-a8ab-9211f665d510\" /> | <img width=\"556\" alt=\"checkout-new\" src=\"https://github.com/user-attachments/assets/6c79c90e-11f5-4cd3-a73a-36f0aa569973\" /> |\r\n\r\n#### Mobile View\r\n| Before | After |\r\n|--------|-------|\r\n| <img width=\"404\" alt=\"checkout-old-mobile\" src=\"https://github.com/user-attachments/assets/fac72a28-a724-44a1-8e57-43a067cb1d57\" /> | <img width=\"693\" alt=\"checkout-new-mobile\" src=\"https://github.com/user-attachments/assets/b0efcc29-4b56-410d-a995-2a64a9b11d16\" /> |\r\n\r\n---\r\n\r\n### Product Card Grid (`app/javascript/components/Product/CardGrid.tsx`)\r\n\r\n#### Desktop View\r\n| Before | After |\r\n|--------|-------|\r\n| <img width=\"632\" alt=\"discover-old\" src=\"https://github.com/user-attachments/assets/77e128a4-045f-4352-84f5-e64d61db7400\" /> | <img width=\"645\" alt=\"discover-new\" src=\"https://github.com/user-attachments/assets/c71ce274-4973-4c6a-bd04-91f61fca520c\" /> |\r\n\r\n#### Mobile View\r\n| Before | After |\r\n|--------|-------|\r\n| <img "
+      },
+      "metadata": {
+        "team": "Gumroad",
+        "repo": "antiwork/gumroad",
+        "pr_number": 1681,
+        "current_detection": true,
+        "current_tools": [
+          "copilot"
+        ]
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        },
+        {
+          "type": "javascript",
+          "value": "JSON.parse(output).is_ai_assisted === true"
+        }
+      ]
+    },
+    {
+      "description": "[Gumroad] refactor: replace containers.scss usages with Tailwind utili",
+      "vars": {
+        "pr_body": "Part of #1055 \r\n## AI Disclosure:\r\nNo AI was used\r\n## Changes\r\n<table>\r\n  <thead>\r\n    <tr>\r\n      <th>Before</th>\r\n      <th>After</th>\r\n    </tr>\r\n  </thead>\r\n  <tbody>\r\n    <tr>\r\n      <td><img width=\"1150\" height=\"885\" alt=\"image\" src=\"https://github.com/user-attachments/assets/8308571c-ff3f-4bef-b4c9-6091a3aafd59\" /></td>\r\n      <td><img width=\"1150\" height=\"885\" alt=\"image\" src=\"https://github.com/user-attachments/assets/8abccac4-1534-4c61-bd54-d7fa03e18b36\" /></td>\r\n    </tr>\r\n<table>\r\n  <thead>\r\n    <tr>\r\n      <th>Before</th>\r\n      <th>After</th>\r\n    </tr>\r\n  </thead>\r\n  <tbody>\r\n    <tr>\r\n      <td><img width=\"1638\" height=\"427\" alt=\"image\" src=\"https://github.com/user-attachments/assets/cc87d6ed-22a1-4da5-800b-eb9d993499ca\" /></td>\r\n      <td><img width=\"1638\" height=\"427\" alt=\"image\" src=\"https://github.com/user-attachments/assets/d0fea041-2b54-47d8-b135-05a81a674c90\" /></td>\r\n    </tr>\r\n\r\n"
+      },
+      "metadata": {
+        "team": "Gumroad",
+        "repo": "antiwork/gumroad",
+        "pr_number": 1667,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Polar.sh] Bump @polar-sh/sdk",
+      "vars": {
+        "pr_body": "- Bump @polar-sh/sdk"
+      },
+      "metadata": {
+        "team": "Polar.sh",
+        "repo": "polarsource/polar-adapters",
+        "pr_number": 352,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[PostHog Analytics] feat(product tours): allow customization",
+      "vars": {
+        "pr_body": "# don't merge yet!\n\n## Problem\n\nproduct tours can't be customized...\n\nCI won't pass til sdk is deployed: https://github.com/PostHog/posthog-js/pull/2797\n\n<!-- Who are we building for, what are their needs, why is this important? -->\n\n<!-- Does this fix an issue? Uncomment the line below with the issue ID to automatically close it when merged -->\n\n<!-- Closes #ISSUE_ID -->\n\n## Changes\n\nnow they can!\n\n(a few things were fixed / cleaned up after this video)\n\n[pt-customization.mp4 <span class=\"graphite__hidden\">(uploaded via Graphite)</span> <img class=\"graphite__hidden\" src=\"https://app.graphite.com/user-attachments/thumbnails/4e7e0ab6-4c27-4450-ad36-8bdf93223f43.mp4\" />](https://app.graphite.com/user-attachments/video/4e7e0ab6-4c27-4450-ad36-8bdf93223f43.mp4)\n\n<!-- If there are frontend changes, please include screenshots. -->\n\n<!-- If a reference design was involved, include a link to the relevant Figma frame! -->\n\n## How did you test this code?\n\n<!-- Briefly describe the steps you took. -->\n\n<!-- Include automated tests if possible, otherwise describe the manual testing routine. -->\n\n<!-- Docs reminder: If this change requires updated docs, please do that! Engineers are the primary people responsible for their documentation. \ud83d\ude4c -->\n\n\ud83d\udc49 _Stay up-to-date with_ [_PostHog coding conventions_](https://posthog.com/docs/contribute/coding-conventions) _for a smoother review._\n\n## Changelog: (features only) Is this feature complete?\n\n<!-- Yes if this is okay to go in the changelog. No if it's still hidden behind a feature flag, or part of a feature that's not complete yet, etc.  -->\n\n<!-- Removing this section does not mean the changelog bot won't pick it up, because *some people* like to not use the template, so we can't rely on it existing. -->"
+      },
+      "metadata": {
+        "team": "PostHog Analytics",
+        "repo": "PostHog/posthog",
+        "pr_number": 43840,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[PostHog Analytics] chore(product tours): add tabs to edit page",
+      "vars": {
+        "pr_body": "## Problem\n\nadding tabs to product tour edit page - there's still only one tab in this PR, but doing it separately cuz big diff\n\n<!-- Who are we building for, what are their needs, why is this important? -->\n\n<!-- Does this fix an issue? Uncomment the line below with the issue ID to automatically close it when merged -->\n\n<!-- Closes #ISSUE_ID -->\n\n## Changes\n\n<!-- If there are frontend changes, please include screenshots. -->\n\n<!-- If a reference design was involved, include a link to the relevant Figma frame! -->\n\n## How did you test this code?\n\n<!-- Briefly describe the steps you took. -->\n\n<!-- Include automated tests if possible, otherwise describe the manual testing routine. -->\n\n<!-- Docs reminder: If this change requires updated docs, please do that! Engineers are the primary people responsible for their documentation. \ud83d\ude4c -->\n\n\ud83d\udc49 _Stay up-to-date with_ [_PostHog coding conventions_](https://posthog.com/docs/contribute/coding-conventions) _for a smoother review._\n\n## Changelog: (features only) Is this feature complete?\n\n<!-- Yes if this is okay to go in the changelog. No if it's still hidden behind a feature flag, or part of a feature that's not complete yet, etc.  -->\n\n<!-- Removing this section does not mean the changelog bot won't pick it up, because *some people* like to not use the template, so we can't rely on it existing. -->"
+      },
+      "metadata": {
+        "team": "PostHog Analytics",
+        "repo": "PostHog/posthog",
+        "pr_number": 43839,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[PostHog Analytics] Team conversations Q1 2026 OKRs",
+      "vars": {
+        "pr_body": "Team conversations Q1 2026 OKRs"
+      },
+      "metadata": {
+        "team": "PostHog Analytics",
+        "repo": "PostHog/posthog.com",
+        "pr_number": 14190,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Cal.com] feat(companion): Update availability screen to use liquid gl",
+      "vars": {
+        "pr_body": "## What does this PR do?\r\n\r\n- [iOS] Updates the Availability screen to use native header items and context menus \r\n- For other platforms it defaults to the current implementation\r\n\r\n## Visual Demo (For contributors especially)\r\n\r\n| iOS 26 | iOS 18 |\r\n| ------ | ------ |\r\n| ![](https://github.com/user-attachments/assets/27a3836c-7cd1-4fc4-9140-07eb71f08975) | ![](https://github.com/user-attachments/assets/0ec303df-f195-46bf-987d-4c6303b6c39d) |\r\n\r\n## Mandatory Tasks (DO NOT REMOVE)\r\n\r\n- [x] I have self-reviewed the code (A decent size PR without self-review might be rejected).\r\n- [x] I have updated the developer docs in /docs if this PR makes changes that would require a [documentation change](https://cal.com/docs). If N/A, write N/A here and check the checkbox.\r\n- [x] I confirm automated tests are in place that prove my fix is effective or that my feature works.\r\n\r\n\n\n\n\n<!-- This is an auto-generated description by cubic. -->\n---\n## Summary by cubic\nUpdated the Availability screen to use Liquid Glass and Activity-based visibility, and added a native iOS context menu for schedule actions. Transitions are smoother on iOS while Android/web keep the previous header and behavior.\n\n- **UI/Platform behavior**\n  - Wrapped header and screen states (empty, search, list, action items) in Activity with mode toggles.\n  - iOS uses a Liquid Glass Stack.Header with SearchBar and a New button; Android/web keep the previous header.\n  - iOS availability items use a native context menu (Set as Default, Duplicate, Delete), styled with glass when available.\n  - Event Types: hide Stack.Header on Android; show Activity content on web and Android.\n\n<sup>Written for commit 6edb65b8afed553da029f690415dd486df0efcab. Summary will update automatically on new commits.</sup>\n\n<!-- End of auto-generated description by cubic. -->\n\n\n\n\r\n\r\n\r\n\r\n\r\n\r\n"
+      },
+      "metadata": {
+        "team": "Cal.com",
+        "repo": "calcom/cal.com",
+        "pr_number": 26041,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Cal.com] refactor: Move attribute and routing-forms code from `app-st",
+      "vars": {
+        "pr_body": "## What does this PR do?\n\nThis PR reorganizes code to improve module boundaries and prevent circular dependencies:\n\n1. **Attribute repositories and services**: Moves `PrismaAttributeRepository`, `PrismaAttributeToUserRepository`, `PrismaAttributeOptionRepository`, and related attribute services from `packages/lib/server/repository/` and `packages/lib/service/attribute/server/` to `packages/features/attributes/`\n\n2. **Routing forms logic**: Moves `findTeamMembersMatchingAttributeLogic` and `handleResponse` from `packages/app-store/` to `packages/features/routing-forms/lib/`\n\n3. **Query resolution utilities**: Moves `resolveQueryValue.ts` from `packages/lib/raqb/` to `packages/app-store/routing-forms/lib/`\n\n### Why this change is needed\n\n- **Circular dependency prevention**: `app-store` should not import from `features`, but `features` can import from `app-store`. Moving routing-forms logic that depends on features code into `features` itself prevents circular dependencies.\n- **Better module boundaries**: Feature-specific repositories and services belong in `features/` where the related feature code resides, not in generic `lib/` directories.\n- This refactor is part of a larger effort to keep feature code self-contained within their specific directories in `features/`.\n\n### Type changes\n\nMoved and consolidated types to `packages/app-store/routing-forms/types/types.d.ts`:\n- `AttributeOptionValue` - represents attribute option with `isGroup`, `value`, and `contains` fields\n- `AttributeOptionValueWithType` - wraps `AttributeOptionValue` with `type` field\n- `AttributeOptionAssignment` - updated to explicitly define the `attribute` property structure with `id`, `type`, and `isLocked` fields\n- `AttributeName`, `AttributeId`, `BulkAttributeAssigner` - moved from deleted `packages/lib/service/attribute/types.d.ts`\n\n### Updates since last revision\n\nFixed build errors caused by the refactoring:\n- **AppPage.tsx / MultiDisconnectIntegration.tsx**: Changed from `inferRouterOutputs<AppRouter>` to `RouterOutputs` from `@calcom/trpc/react` for consistent type inference with tRPC hooks\n- **packages/lib/service/attribute/utils.ts**: Updated import path to point to the new types location at `@calcom/app-store/routing-forms/types/types`\n- **AttributeOptionAssignment type**: Explicitly defined the `attribute` property structure and removed unused `assignedUsers` from Pick to match actual data shape\n- Added eslint-disable comments for pre-existing warnings in AppPage.tsx\n\n## Human Review Checklist\n\n- [ ] Verify all import paths have been updated correctly (search for old paths like `@calcom/lib/server/repository/PrismaAttribute` or `@calcom/app-store/_utils/raqb/findTeamMembersMatchingAttributeLogic`)\n- [ ] Confirm the `AttributeOptionAssignment` type change doesn't break any consumers expecting the old structure (now explicitly defines `attribute: { id, type, isLocked }` instead of using Prisma's `Attribute` type)\n- [ ] Verify the `RouterOutputs` type change in AppPage.tsx/MultiDisconnectIntegration.tsx maintains correct type inference for credentials\n- [ ] Verify test mock paths are correctly updated in relocated test files\n\n## Mandatory Tasks (DO NOT REMOVE)\n\n- [x] I have self-reviewed the code (A decent size PR without self-review might be rejected).\n- [x] N/A - I have updated the developer docs in /docs if this PR makes changes that would require a [documentation change](https://cal.com/docs). If N/A, write N/A here and check the checkbox.\n- [x] N/A - I confirm automated tests are in place that prove my fix is effective or that my feature works.\n\n---\n<!-- DEVIN SESSION METADATA: DO NOT REMOVE -->\nLink to Devin run: https://app.devin.ai/sessions/e22eac8f82d54989862dc6b1a9d0ae07\nRequested by: benny@cal.com (@hbjORbj)"
+      },
+      "metadata": {
+        "team": "Cal.com",
+        "repo": "calcom/cal.com",
+        "pr_number": 26025,
+        "current_detection": true,
+        "current_tools": [
+          "devin"
+        ]
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        },
+        {
+          "type": "javascript",
+          "value": "JSON.parse(output).is_ai_assisted === true"
+        }
+      ]
+    },
+    {
+      "description": "[Cal.com] feat: enhance CreatedAuditActionService with Salesforce app ",
+      "vars": {
+        "pr_body": "## What does this PR do?\n\nEnhances the booking audit system to capture Salesforce CRM data during booking creation, specifically for Team Round Robin events. This builds on PR #25125 (booking-audit-more-infra).\n\n**Changes:**\n- Adds Salesforce audit data schema to `CreatedAuditActionService` to track lead/contact creation and field writes\n- Creates `extractSalesforceAuditData` helper to extract Salesforce data from EventManager results\n- Modifies Salesforce CRM service to capture and return fields written to event records and lead/contact records\n- Updates `RegularBookingService` to pass extracted Salesforce data to the audit system\n\n**Data captured:**\n- Lead/Contact record ID and type when created\n- Fields written to the Salesforce Event record with their values\n- Fields written to the Lead/Contact record with their values\n\nLink to Devin run: https://app.devin.ai/sessions/2b352c202412416d95ac10c6202178d2\nRequested by: hariom@cal.com (@hariombalhara)\n\n## Mandatory Tasks (DO NOT REMOVE)\n\n- [x] I have self-reviewed the code (A decent size PR without self-review might be rejected).\n- [x] I have updated the developer docs in /docs if this PR makes changes that would require a [documentation change](https://cal.com/docs). N/A - internal audit logging changes only.\n- [ ] I confirm automated tests are in place that prove my fix is effective or that my feature works.\n\n## How should this be tested?\n\n1. Create a Team Round Robin event type with Salesforce integration configured\n2. Configure Salesforce app options to write to event records and/or lead/contact records on booking\n3. Create a booking for the event type\n4. Check the booking audit log to verify Salesforce data is captured:\n   - `apps.salesforce.leadOrContactCreated` should contain the contact/lead ID and type\n   - `apps.salesforce.eventRecordFields` should contain fields written to the SF Event\n   - `apps.salesforce.leadOrContactFields` should contain fields written to the lead/contact\n\n**Environment variables needed:**\n- Salesforce app credentials configured\n\n## Checklist\n\n- [x] My code follows the style guidelines of this project\n- [x] I have commented my code, particularly in hard-to-understand areas\n- [x] I have checked if my changes generate no new warnings\n\n## Items for Human Review\n\n- [ ] Verify `writeToRecordAndReturnFields` correctly mirrors `writeToRecord` behavior (CrmService.ts lines 1099-1168)\n- [ ] Confirm no other callers of `salesforceCreateEvent` exist that might be affected by the return type change\n- [ ] Consider whether `createdRecord` should be populated when new leads/contacts are created (currently only captures existing contacts)\n- [ ] Unit tests for `extractSalesforceAuditData` helper function are not included"
+      },
+      "metadata": {
+        "team": "Cal.com",
+        "repo": "calcom/cal.com",
+        "pr_number": 26012,
+        "current_detection": true,
+        "current_tools": [
+          "devin"
+        ]
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        },
+        {
+          "type": "javascript",
+          "value": "JSON.parse(output).is_ai_assisted === true"
+        }
+      ]
+    },
+    {
+      "description": "[PostHog Analytics] feat(surveys): emit survey abandoned event",
+      "vars": {
+        "pr_body": "## Problem\n\nfor surveys with partial responses enabled, there's no good way to know \"the user is definitely done with this survey\". examples:\n\n1. :white_check_mark: user completes the whole thing\n    1. listen for `survey sent` where complete=true\n2. :white_check_mark: user dismisses after completing some of it\n    1. listen for `survey dismissed` where partially complete = true\n3. :x: user completes some, then closes the browser\n    1. no event here! you'd have to build custom logic with timeouts or tie into pageleaves or something\n\n<!-- Who are we building for, what are their needs, why is this important? -->\n\n## Changes\n\nemits a new `survey abandoned` event that can fill the gap\n\n<!-- What is changed and what information would be useful to a reviewer? -->\n\n## Release info Sub-libraries affected\n\n### Libraries affected\n\n<!-- Please mark which libraries will require a version bump. -->\n\n- [ ] All of them\n- [x] posthog-js (web)\n- [ ] posthog-js-lite (web lite)\n- [ ] posthog-node\n- [ ] posthog-react-native\n- [ ] @posthog/react\n- [ ] @posthog/ai\n- [ ] @posthog/nextjs-config\n- [ ] @posthog/nuxt\n- [ ] @posthog/rollup-plugin\n- [ ] @posthog/webpack-plugin\n\n## Checklist\n\n- [ ] Tests for new code\n- [x] Accounted for the impact of any changes across different platforms\n- [x] Accounted for backwards compatibility of any changes (no breaking changes!)\n- [ ] Took care not to unnecessarily increase the bundle size\n\n### If releasing new changes\n\n- [x] Ran `pnpm changeset` to generate a changeset file\n- [x] Added the \"release\" label to the PR to indicate we're publishing new versions for the affected packages\n\n<!-- For more details check RELEASING.md -->"
+      },
+      "metadata": {
+        "team": "PostHog Analytics",
+        "repo": "PostHog/posthog-js",
+        "pr_number": 2786,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Polar.sh] org: adjust expected annual revenue",
+      "vars": {
+        "pr_body": "thanks kitze"
+      },
+      "metadata": {
+        "team": "Polar.sh",
+        "repo": "polarsource/polar",
+        "pr_number": 8624,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Cal.com] refactor: trpc test file is importing @calcom/web",
+      "vars": {
+        "pr_body": "## What does this PR do?\r\n\r\nPrevents the trpc package from importing apps/web to avoid circular dependencies.\r\n\r\n**Changes:**\r\n1. Added an ESLint `forbid` rule in `packages/trpc/eslint.config.mjs` to block imports from `../apps/web/**`\r\n2. Refactored `setDestinationCalendar.handler.test.ts` to remove `@calcom/web` imports and use local mocks instead\r\n\r\n## Mandatory Tasks (DO NOT REMOVE)\r\n\r\n- [x] I have self-reviewed the code (A decent size PR without self-review might be rejected).\r\n- [x] N/A - I have updated the developer docs in /docs if this PR makes changes that would require a [documentation change](https://cal.com/docs). If N/A, write N/A here and check the checkbox.\r\n- [x] I confirm automated tests are in place that prove my fix is effective or that my feature works.\r\n"
+      },
+      "metadata": {
+        "team": "Cal.com",
+        "repo": "calcom/cal.com",
+        "pr_number": 25979,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Polar.sh] events: Recreate the hypertable with timestamp as the partio",
+      "vars": {
+        "pr_body": "Instead of ingested_at\r\n\r\nSince we want to be querying by the timestamp, that's what we should be using as the partioning key for timescaledb.\r\n"
+      },
+      "metadata": {
+        "team": "Polar.sh",
+        "repo": "polarsource/polar",
+        "pr_number": 8597,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Gumroad] fix: tooltip position for small screen at product edit",
+      "vars": {
+        "pr_body": "#864 \r\n\r\n## Description\r\n\r\n### Problem\r\n- the tooltip was positioned left on small screen.\r\n- was introduced in #1336\r\n\r\n### Fix\r\n- positioned bottom for small screens and left for rest.\r\n\r\n\r\n## Screenshots\r\n\r\n### Before\r\n\r\n[Screencast from 2025-10-09 21-39-59.webm](https://github.com/user-attachments/assets/bc11851e-41a6-4eed-a9d4-795293d7e6ed)\r\n\r\n[Screencast from 2025-10-09 21-40-22.webm](https://github.com/user-attachments/assets/15a17189-b6ab-4a73-9a72-06f63e18513c)\r\n\r\n### After\r\n\r\n[Screencast from 2025-10-09 21-38-52.webm](https://github.com/user-attachments/assets/7ef8449b-837c-464d-bc0e-bbb0de7a4dfd)\r\n\r\n[Screencast from 2025-10-09 21-40-51.webm](https://github.com/user-attachments/assets/dac178aa-ebdd-4991-bf0f-527b78be9b97)\r\n\r\n## AI Usage\r\nNone\r\n"
+      },
+      "metadata": {
+        "team": "Gumroad",
+        "repo": "antiwork/gumroad",
+        "pr_number": 1600,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[PostHog Analytics] docs(handbook): add deployed preview documentation",
+      "vars": {
+        "pr_body": "Document the `hobby-preview` label for spinning up deployed PostHog instances to test PR branches.\n\nAdded to the \"Testing code\" section of the development process handbook page, alongside the Storybook visual regression docs."
+      },
+      "metadata": {
+        "team": "PostHog Analytics",
+        "repo": "PostHog/posthog.com",
+        "pr_number": 14120,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[PostHog Analytics] feat: Attempt to use environments for posthog-js deployment",
+      "vars": {
+        "pr_body": "We wanna move our `posthog-js` - and all other SDKs eventually - to environments to make sure a maintainer is always approving the workflow. We'll monitor those from Slack.\r\n\r\nThis is an initial attempt to get this to work, let's see how this goes!"
+      },
+      "metadata": {
+        "team": "PostHog Analytics",
+        "repo": "PostHog/posthog-js",
+        "pr_number": 2757,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Polar.sh] events: Add events hypertable",
+      "vars": {
+        "pr_body": "We create a shadow copy of the events table, that we make into a timescaledb\r\nhypertable. We will double write to both events table for a period of time\r\nuntil we are ready to drop the old events table.\r\n\r\nInitially we let the hypertable be bucketed by week, this can be changed going forward if\r\nthe event volumes pick up.\r\n\r\nThe `events_hyper` table is a 1:1 copy of the `events` table, except the foreign key references since that is not supported by timescaledb."
+      },
+      "metadata": {
+        "team": "Polar.sh",
+        "repo": "polarsource/polar",
+        "pr_number": 8561,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[PostHog Analytics] fix: lazy-load more of product tours",
+      "vars": {
+        "pr_body": "## Problem\n\nthere's product tours code in the main bundle that has no business being there\n\n<!-- Who are we building for, what are their needs, why is this important? -->\n\n## Changes\n\nputs that code in its place\n\n<!-- What is changed and what information would be useful to a reviewer? -->\n\n## Release info Sub-libraries affected\n\n### Libraries affected\n\n<!-- Please mark which libraries will require a version bump. -->\n\n- [ ] All of them\n- [x] posthog-js (web)\n- [ ] posthog-js-lite (web lite)\n- [ ] posthog-node\n- [ ] posthog-react-native\n- [ ] @posthog/react\n- [ ] @posthog/ai\n- [ ] @posthog/nextjs-config\n- [ ] @posthog/nuxt\n- [ ] @posthog/rollup-plugin\n- [ ] @posthog/webpack-plugin\n\n## Checklist\n\n- [ ] Tests for new code\n- [ ] Accounted for the impact of any changes across different platforms\n- [ ] Accounted for backwards compatibility of any changes (no breaking changes!)\n- [ ] Took care not to unnecessarily increase the bundle size\n\n### If releasing new changes\n\n- [x] Ran `pnpm changeset` to generate a changeset file\n- [x] Added the \"release\" label to the PR to indicate we're publishing new versions for the affected packages\n\n<!-- For more details check RELEASING.md -->"
+      },
+      "metadata": {
+        "team": "PostHog Analytics",
+        "repo": "PostHog/posthog-js",
+        "pr_number": 2745,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[PostHog Analytics] Update crm.md",
+      "vars": {
+        "pr_body": "added gmail <> vitally connection instructions\r\n\r\n## Changes\r\n\r\n*Please describe.*\r\n\r\n*Add screenshots or screen recordings for visual / UI-focused changes.*\r\n\r\n## Checklist\r\n\r\n- [ ] Words are spelled using American English\r\n- [ ] PostHog product names are in [title case](https://apastyle.apa.org/style-grammar-guidelines/capitalization/title-case). It's \"Product Analytics\" not \"Product analytics\". If talking about a category of product, use sentence case e.g. \"There are a lot of product analytics tools, but PostHog's Product Analytics is the best\"\r\n- [ ] Titles are in [sentence case](https://apastyle.apa.org/style-grammar-guidelines/capitalization/sentence-case)\r\n- [ ] Feature names are in **[sentence case](https://apastyle.apa.org/style-grammar-guidelines/capitalization/sentence-case)**. It's \"Click here to create a trend insight\" not \"... create a Trend Insight\" and so on.\r\n- [ ] Use relative URLs for internal links\r\n- [ ] If I moved a page, I added a redirect in `vercel.json`\r\n- [ ] Remove this template if you're not going to fill it out!\r\n\r\n## Article checklist\r\n\r\n- [ ] I've added (at least) 3-5 internal links to this new article\r\n- [ ] I've added keywords for this page to the rank tracker in Ahrefs\r\n- [ ] I've checked the preview build of the article\r\n- [ ] The date on the article is today's date\r\n- [ ] I've added this to the relevant \"Tutorials and guides\" docs page (if applicable)\r\n"
+      },
+      "metadata": {
+        "team": "PostHog Analytics",
+        "repo": "PostHog/posthog.com",
+        "pr_number": 14084,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[PostHog Analytics] remove wizard from experiments installation",
+      "vars": {
+        "pr_body": "## Changes\r\n\r\nNoticed this when reviewing Sarah's installation docs PR. \r\n\r\n- Remove Wizard from install steps in experiments. Not recommended for plain JS package installs. But also, the Wizard was being recommended for languages like Go, Python, and Android xD \r\n- Fix the iOS install import"
+      },
+      "metadata": {
+        "team": "PostHog Analytics",
+        "repo": "PostHog/posthog.com",
+        "pr_number": 14073,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[PostHog Analytics] customer data infra -> data stack",
+      "vars": {
+        "pr_body": "## Changes\r\n\r\nThis is a fairly sweeping change that moves our positioning from \"customer data infrastructure\" to a more industry-standard \"data stack.\"\r\n\r\n**It is very important we get this change out ASAP.** The positioning may not be perfect, and may not be exactly what we want to stick with in the long run, but it's far, far better than what is currently on the website. The current positioning was created when we were trying to position into \"you don't need data engineers, we build for product engineers.\" That is no longer our positioning, and we are directly building a stack that data engineers will use, so we need to make this change.\r\n\r\nSo: \r\n* I'm open to suggestions to improve copy, language, and structure\r\n* I'm not looking for opinions on positioning _in this PR_ (we can discuss elsewhere later)\r\n* I'm not looking for suggestions to keep the \"customer data infra\" language - I've intentionally moved away from that _for now_\r\n* Please review for breaking technical, URL, and other changes I may not be aware of\r\n\r\n### Main changes:\r\n\r\nCustomer data infra ->> PostHog data stack\r\n<img width=\"537\" height=\"422\" alt=\"Arc 2025-12-11 10 26 11\" src=\"https://github.com/user-attachments/assets/f1c64819-05b1-40e5-b50b-d68fedf8215e\" />\r\n\r\nMain page covers who we are building for, and lists the typical \"modern data stack\" components as products lower on the page and in the left side nav.\r\n<img width=\"1017\" height=\"807\" alt=\"Arc 2025-12-11 10 26 18\" src=\"https://github.com/user-attachments/assets/3e1c38d7-b08a-4aa8-b3ed-e80712c5a4ec\" />\r\n\r\nCurious if people like the \"perfect for / not quite ready for\" product descriptions?\r\n<img width=\"694\" height=\"116\" alt=\"image\" src=\"https://github.com/user-attachments/assets/d4c508d0-63f5-41cf-bd24-74f80f40d1f4\" />\r\n\r\nCDP page (/cdp) used to just be a list of destinations and sources, it now describes our CDP features as well. \r\n<img width=\"1007\" height=\"806\" alt=\"Arc 2025-12-11 10 34 22\" src=\"https://github.com/user-attachments/assets/9cf344ae-dbf1-42da-935f-e1788fc2e65d\" />\r\n\r\nTODO still:\r\n- Change the `/data-warehouse` URL to not point to the sql editor page\r\n- Create redirects"
+      },
+      "metadata": {
+        "team": "PostHog Analytics",
+        "repo": "PostHog/posthog.com",
+        "pr_number": 14072,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Gumroad] fix: Creator name getting hidden behind the impersonate butt",
+      "vars": {
+        "pr_body": "#864 \r\n\r\nThe absolute style on the navigation button (impersonate) was hiding the creator name when we make the screen smaller.\r\n\r\n## before:\r\nwindow screen:\r\n<img width=\"1390\" height=\"888\" alt=\"Screenshot 2025-10-04 at 2 50 23\u202fAM\" src=\"https://github.com/user-attachments/assets/50ef0615-ceee-482b-9482-5341e271a683\" />\r\nmobile screen:\r\n<img width=\"868\" height=\"1686\" alt=\"Screenshot 2025-10-04 at 02-51-12 Gumbo drawing\" src=\"https://github.com/user-attachments/assets/3d68ff1d-fea3-41d9-9bf5-729b05882f14\" />\r\n\r\n## after:\r\nwindow screen:\r\n<img width=\"1512\" height=\"982\" alt=\"Screenshot 2025-10-04 at 2 44 48\u202fAM\" src=\"https://github.com/user-attachments/assets/a72583e6-892c-4725-acbf-09cd47357f6f\" />\r\nmobile screen:\r\n<img width=\"447\" height=\"890\" alt=\"Screenshot 2025-10-04 at 2 46 41\u202fAM\" src=\"https://github.com/user-attachments/assets/555654e6-4141-4f43-94ee-437e6af7eb3e\" />\r\n\r\n\r\n## use of ai\r\nnone\r\n\r\n"
+      },
+      "metadata": {
+        "team": "Gumroad",
+        "repo": "antiwork/gumroad",
+        "pr_number": 1517,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[PostHog Analytics] feat(demo): disable screensaver for demo if video is playing",
+      "vars": {
+        "pr_body": "## Changes\r\nDisable the screensaver on the `/demo` video page while the video is playing, resolving GitHub issue #13694 .\r\n\r\nSolution  \r\n- Listen for playback state changes and suppress the screensaver only when the video is actively playing.  \r\n- Re-enable the screensaver when playback pauses or ends.  \r\n- Ensure the behavior is scoped strictly to the `/demo` route.  \r\n- Update the attached demo video to shorten the screensaver delay for demonstration purposes only.\r\n\r\n#### Before  \r\n\r\nhttps://github.com/user-attachments/assets/5c26f06f-2c23-46d0-b2db-72049bfce73e\r\n\r\n#### After\r\n\r\nhttps://github.com/user-attachments/assets/6d13cf87-6cd8-4858-8696-16ecc48fd86a\r\n\r\n\r\n"
+      },
+      "metadata": {
+        "team": "PostHog Analytics",
+        "repo": "PostHog/posthog.com",
+        "pr_number": 14048,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Gumroad] fix: preview section at content tab for bundle product",
+      "vars": {
+        "pr_body": "#864 \r\n## Description\r\n\r\n### Problem\r\n- the preview section has no padding and gap.\r\n\r\n### Fix\r\n- added `p-6` and margin top for product list .\r\n\r\n\r\n## Screenshots\r\n\r\n### Before\r\n\r\n<img width=\"573\" height=\"387\" alt=\"image\" src=\"https://github.com/user-attachments/assets/840fc2e1-5b44-4358-8b7b-c4085b87484e\" />\r\n\r\n\r\n### After\r\n\r\n<img width=\"573\" height=\"387\" alt=\"image\" src=\"https://github.com/user-attachments/assets/d648af5a-f6bc-4d42-b684-ccab063ead3a\" />\r\n\r\n\r\n\r\n## AI Usage\r\nNone\r\n"
+      },
+      "metadata": {
+        "team": "Gumroad",
+        "repo": "antiwork/gumroad",
+        "pr_number": 1501,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Gumroad] chore: migrate _figure.scss to tailwind css",
+      "vars": {
+        "pr_body": "Fixes: https://github.com/antiwork/gumroad/issues/1409\r\n\r\nMigrated all `figure.code` styling from `_figure.scss` to Tailwind CSS across 4 ERB files, removing few lines of SCSS and enabling future removal of `_figure.scss`.\r\n\r\n```\r\n// From _definitions.scss\r\n$grays: (0.1, 0.2, 0.5);  // Array of opacity values\r\n\r\n@function gray($index, $name: \"color\") {\r\n  @return rgb(var(--#{$name}) / nth($grays, $index));\r\n}\r\n```\r\n\r\nSo gray(1) means:\r\n\r\n- Take the 1st value from $grays array = 0.1\r\n- Use default color = \"color\"\r\n- Result: rgb(var(--color) / 0.1)\r\n- `--color` = current text color in the context\r\n- `rgb(var(--color) / 0.1)` = text color at 10% opacity\r\n- From tailwind translation: \r\n\r\n```\r\n// From tailwind.config.js\r\ncolors: {\r\n  foreground: \"rgb(var(--color))\",  // foreground = text color\r\n}\r\n```\r\n\r\n**Before Code**\r\n\r\n```\r\n/* BEFORE - SCSS */\r\nfigure.code {\r\n  border: $border;\r\n  @include bg-color(filled);\r\n  border-radius: border-radius(1);\r\n  overflow: hidden;\r\n\r\n  figcaption {\r\n    padding: spacer(4);\r\n  }\r\n\r\n  pre {\r\n    padding: spacer(4);\r\n    background-color: gray(1);\r\n    overflow-x: auto;\r\n  }\r\n\r\n  > :not(:first-child) {\r\n    border-top: $border;\r\n  }\r\n}\r\n```\r\n\r\n**After Code**\r\n\r\n```\r\n<!-- AFTER - Tailwind -->\r\n<figure class=\"rounded overflow-hidden border bg-background\">\r\n  <figcaption class=\"p-4\">Caption</figcaption>\r\n  <pre class=\"p-4 bg-foreground/10 overflow-x-auto border-t\">Code</pre>\r\n</figure>\r\n```\r\n\r\n### **Color Mapping**\r\n| SCSS Function | Tailwind Class | CSS Output | Description |\r\n|---------------|----------------|------------|-------------|\r\n| `@include bg-color(filled)` | `bg-background` | `rgb(var(--filled))` | Theme-aware background |\r\n| `gray(1)` | `bg-foreground/10` | `rgb(var(--color) / 0.1)` | 10% opacity text color |\r\n| `$border` | `border` | `rgb(var(--color) / var(--border-alpha))` | Theme border |\r\n\r\n### **Spacing & Layout**\r\n| SCSS | Tailwind | CSS Value |\r\n|------|----------|-----------|\r\n| `padding: spacer(4)` | `p-4` | `1rem` |\r\n| `border-radius: border-radius(1)` | `rounded` | `0.25rem` |\r\n| `overflow: hidden` | `overflow-hidden` | `hidden` |\r\n| `overflow-x: auto` | `overflow-x-auto` | `auto` |\r\n| `border-top: $border` | `border-t` | Top border |\r\n\r\n\r\n## **Testing URLs**\r\n\r\n### **Public API Documentation**\r\n```\r\nhttp://gumroad.dev/api\r\nhttp://gumroad.dev/api#api-errors\r\n```\r\n**Features:** API endpoint URLs, cURL examples, response samples\r\n\r\n### **Admin Tools (Admin Auth Required)**\r\n```\r\nhttp://gumroad.dev/admin/block_email_domains\r\nhttp://gumroad.dev/admin/unblock_email_domains  \r\nhttp://gumroad.dev/admin/suspend_users\r\n```\r\n**Features:** Input format examples for domain/user management\r\n\r\nThe critical insight was mapping SCSS's `gray(1)` function:\r\n```scss\r\ngray(1) \u2192 rgb(var(--color) / 0.1)\r\n```\r\nTo Tailwind's opacity shorthand:\r\n```html\r\nbg-foreground/10 \u2192 rgb(var(--color) / 0.1)\r\n```\r\n\r\nThis preserves the **context-aware** coloring where code backgrounds subtly match the current text color at 10% opacity, creating consistent visual hierarchy across different theme contexts.\r\n\r\n***\r\n\r\n**_errors.html.erb**\r\n\r\n### Before\r\n\r\n<img width=\"1641\" height=\"689\" alt=\"image\" src=\"https://github.com/user-attachments/assets/48b37164-1378-4354-b8a3-7f0984d5676f\" />\r\n\r\n### After\r\n\r\n\r\n<img width=\"1649\" height=\"692\" alt=\"image\" src=\"https://github.com/user-attachments/assets/f492006b-a37d-49e0-814d-adb30960a824\" />\r\n\r\n\r\n***\r\n\r\n\r\n**_method.html.erb**\r\n\r\n### Before\r\n\r\n<img width=\"1634\" height=\"703\" alt=\"image\" src=\"https://github.com/user-attachments/assets/3d5f015c-6559-490a-99cd-5bc7a9787009\" />\r\n\r\n\r\n### After\r\n\r\n<img width=\"1635\" height=\"684\" alt=\"image\" src=\"https://github.com/user-attachments/assets/868e2065-1b9a-4bc7-a1a8-95766e2602a5\" />\r\n\r\n\r\n***\r\n\r\n**_form.html.erb**\r\n\r\n### Before\r\n\r\n<img width=\"1630\" height=\"729\" alt=\"image\" src=\"https://github.com/user-attachments/assets/1ebf38f8-e7f2-4965-b104-9e90df533f61\" />\r\n\r\n<img width=\"1640\" height=\"712\" alt=\"image\" src=\"https://github.com/user-attachm"
+      },
+      "metadata": {
+        "team": "Gumroad",
+        "repo": "antiwork/gumroad",
+        "pr_number": 1452,
+        "current_detection": true,
+        "current_tools": [
+          "copilot"
+        ]
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        },
+        {
+          "type": "javascript",
+          "value": "JSON.parse(output).is_ai_assisted === true"
+        }
+      ]
+    },
+    {
+      "description": "[Gumroad] feat: Added UserAvatar component for tailwind migration",
+      "vars": {
+        "pr_body": "fix #1055 \r\n\r\nCreated a UserAvatar component to help with consistent migration of css classes to tailwindCSS \r\n\r\n### AI Disclosure\r\n\r\nused to identify all usages\r\n\r\n## Screenshots\r\n\r\n1. Before:\r\n\r\n<img width=\"233\" height=\"836\" alt=\"Screenshot 2025-10-01 at 4 00 21\u202fAM\" src=\"https://github.com/user-attachments/assets/6b3e0b7d-d544-46ab-bb3f-4e0ab278536d\" />\r\n \r\n  After:\r\n\r\n<img width=\"233\" height=\"836\" alt=\"Screenshot 2025-10-01 at 4 02 28\u202fAM\" src=\"https://github.com/user-attachments/assets/cf81f77e-281a-4db8-a60b-1c50a32547df\" />\r\n\r\n2. Before:\r\n   \r\n<img width=\"1322\" height=\"866\" alt=\"Screenshot 2025-10-01 at 4 02 57\u202fAM\" src=\"https://github.com/user-attachments/assets/7a0ab482-563f-4191-ae5d-b67f2f5a6e30\" />\r\n\r\n   After:\r\n\r\n<img width=\"1322\" height=\"866\" alt=\"Screenshot 2025-10-01 at 4 03 15\u202fAM\" src=\"https://github.com/user-attachments/assets/1a3b458a-5ae6-4857-b879-bcb0e819dff0\" />\r\n\r\n3. Before:\r\n\r\n<img width=\"1322\" height=\"866\" alt=\"Screenshot 2025-10-01 at 4 03 50\u202fAM\" src=\"https://github.com/user-attachments/assets/1b10f082-1c24-45c9-b1ec-264e1ef8a8a1\" />\r\n\r\n   After:\r\n\r\n<img width=\"1322\" height=\"866\" alt=\"Screenshot 2025-10-01 at 4 04 01\u202fAM\" src=\"https://github.com/user-attachments/assets/4d2f4aa6-b7a6-4c6a-9ae1-6a03389700c6\" />\r\n\r\n4. Before:\r\n    \r\n<img width=\"1322\" height=\"866\" alt=\"Screenshot 2025-10-01 at 4 05 08\u202fAM\" src=\"https://github.com/user-attachments/assets/2393d331-4f17-4f45-ba1a-6e228304fcc1\" />\r\n\r\n    After:\r\n\r\n<img width=\"1322\" height=\"866\" alt=\"Screenshot 2025-10-01 at 4 05 16\u202fAM\" src=\"https://github.com/user-attachments/assets/3d35ebf2-1b6c-4788-a294-d793f6b4d1f8\" />\r\n\r\n5. Before:\r\n\r\n<img width=\"1322\" height=\"866\" alt=\"Screenshot 2025-10-01 at 4 08 02\u202fAM\" src=\"https://github.com/user-attachments/assets/0f7229b8-209d-48e1-8ff2-5abb2832c1fe\" />\r\n\r\n   After:\r\n\r\n<img width=\"1322\" height=\"866\" alt=\"Screenshot 2025-10-01 at 4 07 36\u202fAM\" src=\"https://github.com/user-attachments/assets/5fb66d4e-8847-425a-be7e-2e7eb4e7b652\" />\r\n\r\n6. Before:\r\n\r\n<img width=\"508\" height=\"836\" alt=\"Screenshot 2025-10-01 at 4 11 01\u202fAM\" src=\"https://github.com/user-attachments/assets/e6b4a284-8f69-4377-afc0-0b17c2249d3a\" />\r\n\r\n   After:\r\n\r\n<img width=\"508\" height=\"463\" alt=\"Screenshot 2025-10-01 at 4 10 46\u202fAM\" src=\"https://github.com/user-attachments/assets/f166c94e-b2da-49df-965e-8ba8ee52bc53\" />\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n"
+      },
+      "metadata": {
+        "team": "Gumroad",
+        "repo": "antiwork/gumroad",
+        "pr_number": 1437,
+        "current_detection": true,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        },
+        {
+          "type": "javascript",
+          "value": "JSON.parse(output).is_ai_assisted === true"
+        }
+      ]
+    },
+    {
+      "description": "[Gumroad] feat: Automatically suspend creators with shared ACH account",
+      "vars": {
+        "pr_body": "Resolves https://github.com/antiwork/gumroad/issues/1158\r\n\r\n### AI Disclosure\r\nCursor was used to assist in understanding the issue and implementing the fix. All AI-generated code was reviewed by me.\r\n\r\n### Results\r\nhttps://github.com/user-attachments/assets/0cd32fe8-136b-4a91-a469-0893f52e6ac1\r\n\r\nMark compliant:\r\nhttps://github.com/user-attachments/assets/bda1c856-a4e1-474a-bf1e-b2aca9c0c6df\r\n\r\n### UX for light/dark/mobile/desktop\r\nThis is a purely back-end change, no UX/front-end code was updated\r\n\r\n### Tests\r\n<img width=\"702\" height=\"402\" alt=\"Screenshot 2025-09-30 at 11 13 50\u202fPM\" src=\"https://github.com/user-attachments/assets/4dac4470-1951-4694-8383-993d0bcd4cbb\" />\r\n\r\n"
+      },
+      "metadata": {
+        "team": "Gumroad",
+        "repo": "antiwork/gumroad",
+        "pr_number": 1417,
+        "current_detection": true,
+        "current_tools": [
+          "cursor"
+        ]
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        },
+        {
+          "type": "javascript",
+          "value": "JSON.parse(output).is_ai_assisted === true"
+        }
+      ]
+    },
+    {
+      "description": "[Gumroad] fix: Add consistent mobile margins on Coffee product page",
+      "vars": {
+        "pr_body": "### Explanation of Change\r\nFixes Coffee product page on mobile by adding consistent left & right padding like other product pages.\r\n\r\n### Screenshots/Videos\r\nBefore\r\n<img width=\"347\" height=\"786\" alt=\"image\" src=\"https://github.com/user-attachments/assets/25ee6b41-bce5-4c1e-b9a5-de282657c7f0\" />\r\n\r\nAfter\r\n<img width=\"346\" height=\"764\" alt=\"image\" src=\"https://github.com/user-attachments/assets/49a7761f-ac15-4617-8789-daa6bdb6eaa9\" />\r\n\r\n\r\n### AI Disclosure\r\nNo AI tools used\r\n\r\n\r\n"
+      },
+      "metadata": {
+        "team": "Gumroad",
+        "repo": "antiwork/gumroad",
+        "pr_number": 1394,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Gumroad] fix: Wrap product names in delete modal",
+      "vars": {
+        "pr_body": "### Explanation of Change\r\nEnsure long product names in the delete modal wrap properly by removing `whitespace-nowrap`, preventing the modal content from being cut off.\r\n\r\n### Screenshots/Videos\r\nBefore\r\n<img width=\"347\" height=\"585\" alt=\"image\" src=\"https://github.com/user-attachments/assets/284c0051-5eb5-419a-90fe-433179736678\" />\r\n\r\n<img width=\"736\" height=\"238\" alt=\"image\" src=\"https://github.com/user-attachments/assets/19ffb3a5-9c45-403f-ae99-686dd10c6e04\" />\r\n\r\n\r\nAfter\r\n<img width=\"723\" height=\"239\" alt=\"image\" src=\"https://github.com/user-attachments/assets/28570823-5b7c-4d14-a66a-67839ff0bbf5\" />\r\n\r\n<img width=\"343\" height=\"455\" alt=\"image\" src=\"https://github.com/user-attachments/assets/de169708-bc08-4514-96ad-a6fcfc341c1c\" />\r\n\r\n### AI Disclosure\r\nNo AI tools used\r\n\r\n\r\n"
+      },
+      "metadata": {
+        "team": "Gumroad",
+        "repo": "antiwork/gumroad",
+        "pr_number": 1393,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[PostHog Analytics] chore: update versions and lockfile",
+      "vars": {
+        "pr_body": "This PR was automatically generated by the label-version-bump workflow."
+      },
+      "metadata": {
+        "team": "PostHog Analytics",
+        "repo": "PostHog/posthog-js",
+        "pr_number": 2695,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[PostHog Analytics] feat: mask values",
+      "vars": {
+        "pr_body": "This adds masking based on values (not only keys)"
+      },
+      "metadata": {
+        "team": "PostHog Analytics",
+        "repo": "PostHog/posthog-python",
+        "pr_number": 382,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Gumroad] updated sensitive parameters for filtering in logs, specs cr",
+      "vars": {
+        "pr_body": "Fixes https://github.com/antiwork/gumroad/issues/1359\r\n\r\n**Enhanced Parameter Filtering Configuration**\r\n\r\nUpdated `filter_parameter_logging.rb` to include additional sensitive parameters for filtering:\r\n\r\n```\r\nsecret, token, auth, authorization, api_key, private_key, public_key, certificate, key_id, session_id, csrf_token, pin, cvv, security_code, verification_code, otp, two_factor, cc_number, access_token, refresh_token.\r\n```\r\n\r\nCreated focussed test `filter_parameter_logging_spec.rb` to validate - \r\n- presence of sensitive params in config\r\n- proper filtering of sensitive parameters in nested structures\r\n- preservation of non-sensitive parameters.\r\n\r\nCommad to test working of spec file - `bundle exec rspec spec/initializers/filter_parameter_logging_spec.rb`\r\n\r\n<img width=\"1320\" height=\"494\" alt=\"image\" src=\"https://github.com/user-attachments/assets/7b152ee1-9552-4030-99c0-b0ae2f7e33cf\" />\r\n\r\n\r\nAI disclosure:\r\nCopilot used to suggest filter parameters"
+      },
+      "metadata": {
+        "team": "Gumroad",
+        "repo": "antiwork/gumroad",
+        "pr_number": 1361,
+        "current_detection": true,
+        "current_tools": [
+          "copilot"
+        ]
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        },
+        {
+          "type": "javascript",
+          "value": "JSON.parse(output).is_ai_assisted === true"
+        }
+      ]
+    },
+    {
+      "description": "[Polar.sh] add client export",
+      "vars": {
+        "pr_body": "fix https://github.com/polarsource/polar/issues/8166 and fix https://github.com/polarsource/polar/issues/8251\r\n\r\nthe idea is to export the client.ts file seperately and fix the issue by importing from that file specifically\r\n\r\ntested by copying the local build into the example directory after npm i\r\n\r\nvideo showing the difference when importing now via just the client (vs from the index which had server things being exported) - https://rishi-recordings.neetorecord.com/watch/779799d3850cc09d1f93\r\n\r\nwill add the docs post the PR is merged"
+      },
+      "metadata": {
+        "team": "Polar.sh",
+        "repo": "polarsource/polar-adapters",
+        "pr_number": 337,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[PostHog Analytics] fix: fix webpack plugin",
+      "vars": {
+        "pr_body": "## Problem\r\n\r\n- Server sourcemaps are not generated with current webpack plugin:\r\n\t- Plugin cannot modify its own configuration\r\n- Server output directory does not contain all server chunks\r\n\r\n## Changes\r\n\r\n- find common ancestor for all generated chunks to avoid using process.cwd and fall into the node_modules black hole\r\n- update webpack config at nextjs-config level\r\n\r\n## Release info Sub-libraries affected\r\n\r\n### Libraries affected\r\n\r\n<!-- Please mark which libraries will require a version bump. -->\r\n\r\n- [ ] All of them\r\n- [ ] posthog-js (web)\r\n- [ ] posthog-js-lite (web lite)\r\n- [ ] posthog-node\r\n- [ ] posthog-react-native\r\n- [ ] @posthog/react\r\n- [ ] @posthog/ai\r\n- [ ] @posthog/nextjs-config\r\n- [ ] @posthog/nuxt\r\n\r\n## Checklist\r\n\r\n- [ ] Tests for new code\r\n- [ ] Accounted for the impact of any changes across different platforms\r\n- [ ] Accounted for backwards compatibility of any changes (no breaking changes!)\r\n- [ ] Took care not to unnecessarily increase the bundle size\r\n\r\n### If releasing new changes\r\n\r\n- [ ] Ran `pnpm changeset` to generate a changeset file\r\n- [ ] Added the \"release\" label to the PR to indicate we're publishing new versions for the affected packages\r\n\r\n<!-- For more details check RELEASING.md -->\r\n"
+      },
+      "metadata": {
+        "team": "PostHog Analytics",
+        "repo": "PostHog/posthog-js",
+        "pr_number": 2660,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Polar.sh] Bump better-auth from 1.3.34 to 1.4.0 in /packages/polar-bet",
+      "vars": {
+        "pr_body": "Bumps [better-auth](https://github.com/better-auth/better-auth/tree/HEAD/packages/better-auth) from 1.3.34 to 1.4.0.\n<details>\n<summary>Commits</summary>\n<ul>\n<li><a href=\"https://github.com/better-auth/better-auth/commit/bff00f6b7fb3d95363888186cd610ea3e4e0f174\"><code>bff00f6</code></a> chore: release v1.4.0</li>\n<li><a href=\"https://github.com/better-auth/better-auth/commit/31a816cc77802aec2ac062555b90853cb2ac8594\"><code>31a816c</code></a> feat: add support for organization slug on list members (<a href=\"https://github.com/better-auth/better-auth/tree/HEAD/packages/better-auth/issues/5862\">#5862</a>)</li>\n<li><a href=\"https://github.com/better-auth/better-auth/commit/4d2a894f4206cc756581c3dc3ee830ab93a97189\"><code>4d2a894</code></a> fix: remove active session requirement for change email verification (<a href=\"https://github.com/better-auth/better-auth/tree/HEAD/packages/better-auth/issues/6106\">#6106</a>)</li>\n<li><a href=\"https://github.com/better-auth/better-auth/commit/cfc453a2a6eb02951f9a0a7c944064936e73eee8\"><code>cfc453a</code></a> fix(email-otp): use constant time equal for equality checks (<a href=\"https://github.com/better-auth/better-auth/tree/HEAD/packages/better-auth/issues/6142\">#6142</a>)</li>\n<li><a href=\"https://github.com/better-auth/better-auth/commit/2f8dea4125d33a31e2de03545e54ba33cc03895c\"><code>2f8dea4</code></a> docs: 1.4 release notes (<a href=\"https://github.com/better-auth/better-auth/tree/HEAD/packages/better-auth/issues/6105\">#6105</a>)</li>\n<li><a href=\"https://github.com/better-auth/better-auth/commit/c9ac9a11804f1ed0f05a562b3827e5df18fd905b\"><code>c9ac9a1</code></a> chore: fix support kysely + pg with schema references in <code>modelName</code> (<a href=\"https://github.com/better-auth/better-auth/tree/HEAD/packages/better-auth/issues/6145\">#6145</a>)</li>\n<li><a href=\"https://github.com/better-auth/better-auth/commit/3bef6adbc0e519b39962989552a0eeb256abc8dd\"><code>3bef6ad</code></a> chore: release v1.4.0-beta.27</li>\n<li><a href=\"https://github.com/better-auth/better-auth/commit/631b2dd9ea981230be3b5cbe4ea26bbd85e28eaa\"><code>631b2dd</code></a> chore: release v1.4.0-beta.26</li>\n<li><a href=\"https://github.com/better-auth/better-auth/commit/2ff2fcd2210453ad66ec8d9037baab3c2b3a9573\"><code>2ff2fcd</code></a> chore: fix isAction meta property (<a href=\"https://github.com/better-auth/better-auth/tree/HEAD/packages/better-auth/issues/6180\">#6180</a>)</li>\n<li><a href=\"https://github.com/better-auth/better-auth/commit/05fa1169e17c53cdee395413ba2c79b6f8434d65\"><code>05fa116</code></a> feat(oauth-proxy): stateless mode compatibility (<a href=\"https://github.com/better-auth/better-auth/tree/HEAD/packages/better-auth/issues/6131\">#6131</a>)</li>\n<li>Additional commits viewable in <a href=\"https://github.com/better-auth/better-auth/commits/v1.4.0/packages/better-auth\">compare view</a></li>\n</ul>\n</details>\n<br />\n\n\n[![Dependabot compatibility score](https://dependabot-badges.githubapp.com/badges/compatibility_score?dependency-name=better-auth&package-manager=npm_and_yarn&previous-version=1.3.34&new-version=1.4.0)](https://docs.github.com/en/github/managing-security-vulnerabilities/about-dependabot-security-updates#about-compatibility-scores)\n\nDependabot will resolve any conflicts with this PR as long as you don't alter it yourself. You can also trigger a rebase manually by commenting `@dependabot rebase`.\n\n[//]: # (dependabot-automerge-start)\n[//]: # (dependabot-automerge-end)\n\n---\n\n<details>\n<summary>Dependabot commands and options</summary>\n<br />\n\nYou can trigger Dependabot actions by commenting on this PR:\n- `@dependabot rebase` will rebase this PR\n- `@dependabot recreate` will recreate this PR, overwriting any edits that have been made to it\n- `@dependabot merge` will merge this PR after your CI passes on it\n- `@dependabot squash and merge` will squash and merge this PR after your CI passes on it\n- `@dependabot cancel merge` will cancel a previously requested merge and block automerging\n- `@dependab"
+      },
+      "metadata": {
+        "team": "Polar.sh",
+        "repo": "polarsource/polar-adapters",
+        "pr_number": 333,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[PostHog Analytics] chore: remove auto upgrader",
+      "vars": {
+        "pr_body": "## Problem\r\n\r\nRemoving the auto upgrader out of an abundance of caution while we fix the malicious package\r\n"
+      },
+      "metadata": {
+        "team": "PostHog Analytics",
+        "repo": "PostHog/posthog-js",
+        "pr_number": 2620,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Anthropic] Update memory cookbook with context editing and extended thi",
+      "vars": {
+        "pr_body": "## Summary\n\nThis PR enhances the memory cookbook with comprehensive examples of the new **Context Editing API** and **Extended Thinking** features for Claude. The cookbook now demonstrates how to use these powerful features to build more efficient and intelligent memory-enabled applications.\n\n## Key Changes\n\n### 1. Context Editing API Integration\n- Added complete examples showing how to use the Context Editing API to manage conversation context\n- Demonstrated both clearing and replacing content within conversations\n- Showed how context editing helps reduce token usage and improve conversation efficiency\n- Updated the code review demo to leverage context editing for better memory management\n\n### 2. Extended Thinking Support\n- Integrated extended thinking capability into the memory demo framework\n- Added examples showing how thinking blocks work with tool use\n- Demonstrated proper handling of thinking blocks including signature fields\n- Updated helper functions to properly process and include thinking content\n\n### 3. Demo Framework Enhancements\n- Enhanced `demo_helpers.py` with support for:\n  - Context management configuration\n  - Extended thinking parameter\n  - Proper thinking block handling with signatures\n  - Context editing metrics tracking\n- Added comprehensive token usage and savings reporting\n- Improved verbose output for better debugging\n\n### 4. Code Review Demo Updates\n- Updated `code_review_demo.py` to use modern type hints (`dict`, `list` vs `Dict`, `List`)\n- Fixed import ordering and removed unused imports\n- Added context editing capabilities to the code reviewer\n- Improved error handling and code quality\n\n### 5. Documentation Updates\n- Updated `.env.example` with new configuration options\n- Enhanced inline documentation explaining context editing features\n- Added clear examples of token savings from context management\n\n## Technical Details\n\n**Context Editing API Usage:**\n- Utilizes the `context-management-2025-06-27` beta flag\n- Implements `extra_body` parameter for context management configuration\n- Demonstrates threshold-based automatic context clearing\n- Shows before/after token counts for transparency\n\n**Extended Thinking Integration:**\n- Properly handles thinking blocks in conversation flow\n- Includes signature fields when required\n- Maintains compatibility with tool use\n- Provides thinking previews in verbose mode\n\n## Testing Performed\n\n- \u2705 Ran ruff linting and formatting on all modified Python files\n- \u2705 Verified notebook structure with validation script\n- \u2705 Tested memory cookbook notebook executes without errors\n- \u2705 Confirmed context editing examples work correctly\n- \u2705 Validated extended thinking integration\n\n## Files Modified\n\n- `tool_use/memory_cookbook.ipynb` - Main cookbook with new examples (919 lines changed)\n- `tool_use/memory_demo/demo_helpers.py` - Enhanced helper functions (87 lines changed)\n- `tool_use/memory_demo/code_review_demo.py` - Updated code review demo (34 lines changed)\n- `tool_use/memory_demo/__init__.py` - Added package initialization\n- `tool_use/.env.example` - Updated configuration template\n\n## Impact\n\nThis update provides developers with:\n- Clear examples of how to use Context Editing for efficient memory management\n- Practical demonstrations of Extended Thinking with tool use\n- Best practices for building memory-enabled Claude applications\n- Real-world code review scenarios showing token savings\n\n\ud83e\udd16 Generated with [Claude Code](https://claude.com/claude-code)"
+      },
+      "metadata": {
+        "team": "Anthropic",
+        "repo": "anthropics/anthropic-cookbook",
+        "pr_number": 299,
+        "current_detection": true,
+        "current_tools": [
+          "claude_code"
+        ]
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        },
+        {
+          "type": "javascript",
+          "value": "JSON.parse(output).is_ai_assisted === true"
+        }
+      ]
+    },
+    {
+      "description": "[Trigger.dev] fix(api): Fix preview branch targeting in environment variab",
+      "vars": {
+        "pr_body": "This PR fixes the `x-trigger-branch` header support for targeting specific preview branches when managing environment variables. The header was documented but not actually being extracted or used in the environment variable API routes. Additionally, the query logic in `authenticatedEnvironmentForAuthentication` was fundamentally broken\u2014it searched for environments with both `slug: \"preview\"` (parent environment property) AND a specific `branchName` (child environment property), which no environment could satisfy simultaneously. The fix extracts the branch name using `branchNameFromRequest()` and correctly queries for child branch environments using `type: \"PREVIEW\"` and the specific `branchName`. This ensures that environment variable operations (create, update, get, list) properly target individual preview branches instead of affecting all preview environments."
+      },
+      "metadata": {
+        "team": "Trigger.dev",
+        "repo": "triggerdotdev/trigger.dev",
+        "pr_number": 2697,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Trigger.dev] docs: format Sequin embedding example",
+      "vars": {
+        "pr_body": "## \u2705 Checklist\r\n\r\n- [x] I have followed every step in the [contributing guide](https://github.com/triggerdotdev/trigger.dev/blob/main/CONTRIBUTING.md)\r\n- [x] The PR title follows the convention.\r\n- [x] I ran and tested the code works\r\n\r\n---\r\n\r\n## Testing\r\n\r\nI spun up the documentation locally, formatted the code, and tested the changed docs with FireFox and Google Chrome.\r\n\r\n---\r\n\r\n## Changelog\r\n\r\nFix the format on the `create-embedding-for-post.ts` example in the Sequin guide.\r\n\r\n---\r\n\r\n## Screenshots\r\n\r\n_[Before & After]_\r\n<img width=\"1017\" height=\"1283\" alt=\"Screenshot 2025-11-06 at 11 13 03\" src=\"https://github.com/user-attachments/assets/7f2aa535-e66d-4a31-8a4f-4a73fbee35fc\" />\r\n<img width=\"998\" height=\"1251\" alt=\"Screenshot 2025-11-06 at 11 13 37\" src=\"https://github.com/user-attachments/assets/bddc2f23-4794-45e0-a59f-84ae9434a433\" />\r\n\r\n\r\n\ud83d\udcaf\r\n"
+      },
+      "metadata": {
+        "team": "Trigger.dev",
+        "repo": "triggerdotdev/trigger.dev",
+        "pr_number": 2656,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Polar.sh] chore: \ud83d\udc1d Update SDK - Generate 0.41.0",
+      "vars": {
+        "pr_body": "> [!IMPORTANT]\n> Linting report available at: <https://app.speakeasy.com/org/polar/polar/linting-report/58fe07c8b64f3cf612244e7d74a1551b>\n> OpenAPI Change report available at: <https://app.speakeasy.com/org/polar/polar/changes-report/80a6d6914241f0e074cf28e5a2ba225a>\n# SDK update\n## Versioning\n\nVersion Bump Type: [minor] - \ud83e\udd16 (automated)\n## Typescript SDK Changes Detected:\n* `polar.events.list()`: \n  *  `request.parentId` **Added**\n  *  `response.items.[]` **Changed**\n* `polar.events.get()`:  `response` **Changed**\n* `polar.events.ingest()`: \n  *  `request.events.[]` **Changed**\n  *  `response.duplicates` **Added**\n\n<details>\n<summary>OpenAPI Change Summary</summary>\n\n\n```\n\u251c\u2500\u252cPaths\n\u2502 \u2514\u2500\u252c/v1/events/\n\u2502   \u2514\u2500\u252cGET\n\u2502     \u2514\u2500\u2500[+] parameters (13185:21)\u274c \n\u2514\u2500\u252cComponents\n  \u251c\u2500\u252cUserEvent\n  \u2502 \u251c\u2500\u2500[+] properties (49985:11)\n  \u2502 \u251c\u2500\u252cid\n  \u2502 \u2502 \u251c\u2500\u2500[-] type (1:817636)\u274c \n  \u2502 \u2502 \u251c\u2500\u2500[\ud83d\udd00] title (49982:22)\n  \u2502 \u2502 \u251c\u2500\u2500[-] format (1:817656)\u274c \n  \u2502 \u2502 \u251c\u2500\u2500[\ud83d\udd00] description (49983:28)\n  \u2502 \u2502 \u251c\u2500\u2500[+] anyOf (49975:15)\n  \u2502 \u2502 \u2514\u2500\u2500[+] anyOf (49978:15)\n  \u2502 \u251c\u2500\u252ctimestamp\n  \u2502 \u2502 \u251c\u2500\u2500[\ud83d\udd00] title (49999:22)\n  \u2502 \u2502 \u251c\u2500\u2500[-] format (1:817763)\u274c \n  \u2502 \u2502 \u251c\u2500\u2500[\ud83d\udd00] description (50000:28)\n  \u2502 \u2502 \u2514\u2500\u2500[+] const (49998:22)\u274c \n  \u2502 \u251c\u2500\u252cmetadata\n  \u2502 \u2502 \u2514\u2500\u2500[\ud83d\udd00] $ref (49923:17)\u274c \n  \u2502 \u251c\u2500\u252ccustomer\n  \u2502 \u2502 \u251c\u2500\u2500[+] type (49986:21)\u274c \n  \u2502 \u2502 \u251c\u2500\u2500[+] title (49987:22)\n  \u2502 \u2502 \u251c\u2500\u2500[\ud83d\udd00] description (49988:28)\n  \u2502 \u2502 \u251c\u2500\u2500[+] default (49989:24)\u274c \n  \u2502 \u2502 \u251c\u2500\u2500[-] anyOf (1:485289)\u274c \n  \u2502 \u2502 \u2514\u2500\u2500[-] anyOf (1:818439)\u274c \n  \u2502 \u251c\u2500\u252corganization_id\n  \u2502 \u2502 \u251c\u2500\u2500[-] examples (1:818006)\n  \u2502 \u2502 \u251c\u2500\u2500[\ud83d\udd00] title (49993:22)\n  \u2502 \u2502 \u251c\u2500\u2500[-] format (1:817893)\u274c \n  \u2502 \u2502 \u251c\u2500\u2500[\ud83d\udd00] description (49994:28)\n  \u2502 \u2502 \u2514\u2500\u252cExtensions\n  \u2502 \u2502   \u2514\u2500\u2500[-] x-polar-selector-widget (1:818074)\u274c \n  \u2502 \u251c\u2500\u252csource\n  \u2502 \u2502 \u251c\u2500\u2500[+] examples (49941:15)\n  \u2502 \u2502 \u251c\u2500\u2500[\ud83d\udd00] title (49938:22)\n  \u2502 \u2502 \u251c\u2500\u2500[+] format (49937:23)\u274c \n  \u2502 \u2502 \u251c\u2500\u2500[\ud83d\udd00] description (49939:28)\n  \u2502 \u2502 \u251c\u2500\u2500[-] const (1:818828)\u274c \n  \u2502 \u2502 \u2514\u2500\u252cExtensions\n  \u2502 \u2502   \u2514\u2500\u2500[+] x-polar-selector-widget (49943:40)\n  \u2502 \u251c\u2500\u252cexternal_customer_id\n  \u2502 \u2502 \u251c\u2500\u2500[\ud83d\udd00] title (49959:22)\n  \u2502 \u2502 \u251c\u2500\u2500[\ud83d\udd00] description (49960:28)\n  \u2502 \u2502 \u2514\u2500\u252cANYOF\n  \u2502 \u2502   \u2514\u2500\u2500[+] format (49953:27)\u274c \n  \u2502 \u251c\u2500\u252ccustomer_id\n  \u2502 \u2502 \u251c\u2500\u2500[-] title (1:818266)\n  \u2502 \u2502 \u251c\u2500\u2500[\ud83d\udd00] description (49971:28)\n  \u2502 \u2502 \u2514\u2500\u252cANYOF\n  \u2502 \u2502   \u2514\u2500\u2500[\ud83d\udd00] $ref (29375:23)\u274c \n  \u2502 \u2514\u2500\u252cname\n  \u2502   \u2514\u2500\u2500[\ud83d\udd00] $ref (37727:33)\u274c \n  \u251c\u2500\u252cMeterResetEvent\n  \u2502 \u251c\u2500\u2500[+] properties (40900:11)\n  \u2502 \u251c\u2500\u252ccustomer\n  \u2502 \u2502 \u251c\u2500\u2500[+] type (40901:21)\u274c \n  \u2502 \u2502 \u251c\u2500\u2500[+] title (40902:22)\n  \u2502 \u2502 \u251c\u2500\u2500[\ud83d\udd00] description (40903:28)\n  \u2502 \u2502 \u251c\u2500\u2500[+] default (40904:24)\u274c \n  \u2502 \u2502 \u251c\u2500\u2500[-] anyOf (1:485289)\u274c \n  \u2502 \u2502 \u2514\u2500\u2500[-] anyOf (1:668920)\u274c \n  \u2502 \u251c\u2500\u252csource\n  \u2502 \u2502 \u251c\u2500\u2500[+] examples (40856:15)\n  \u2502 \u2502 \u251c\u2500\u2500[\ud83d\udd00] title (40853:22)\n  \u2502 \u2502 \u251c\u2500\u2500[+] format (40852:23)\u274c \n  \u2502 \u2502 \u251c\u2500\u2500[\ud83d\udd00] description (40854:28)\n  \u2502 \u2502 \u251c\u2500\u2500[-] const (1:669223)\u274c \n  \u2502 \u2502 \u2514\u2500\u252cExtensions\n  \u2502 \u2502   \u2514\u2500\u2500[+] x-polar-selector-widget (40858:40)\n  \u2502 \u251c\u2500\u252cmetadata\n  \u2502 \u2502 \u2514\u2500\u2500[\ud83d\udd00] $ref (40838:17)\u274c \n  \u2502 \u251c\u2500\u252corganization_id\n  \u2502 \u2502 \u251c\u2500\u2500[-] examples (1:668487)\n  \u2502 \u2502 \u251c\u2500\u2500[\ud83d\udd00] title (40915:22)\n  \u2502 \u2502 \u251c\u2500\u2500[-] format (1:668374)\u274c \n  \u2502 \u2502 \u251c\u2500\u2500[\ud83d\udd00] description (40916:28)\n  \u2502 \u2502 \u251c\u2500\u2500[+] const (40914:22)\u274c \n  \u2502 \u2502 \u2514\u2500\u252cExtensions\n  \u2502 \u2502   \u2514\u2500\u2500[-] x-polar-selector-widget (1:668555)\u274c \n  \u2502 \u251c\u2500\u252cname\n  \u2502 \u2502 \u2514\u2500\u2500[\ud83d\udd00] $ref (40938:23)\u274c \n  \u2502 \u251c\u2500\u252cexternal_customer_id\n  \u2502 \u2502 \u251c\u2500\u2500[\ud83d\udd00] title (40874:22)\n  \u2502 \u2502 \u251c\u2500\u2500[\ud83d\udd00] description (40875:28)\n  \u2502 \u2502 \u2514\u2500\u252cANYOF\n  \u2502 \u2502   \u2514\u2500\u2500[+] format (40868:27)\u274c \n  \u2502 \u251c\u2500\u252ctimestamp\n  \u2502 \u2502 \u251c\u2500\u2500[\ud83d\udd00] title (40909:22)\n  \u2502 \u2502 \u251c\u2500\u2500[-] format (1:668244)\u274c \n  \u2502 \u2502 \u251c\u2500\u2500[\ud83d\udd00] description (40910:28)\n  \u2502 \u2502 \u2514\u2500\u2500[+] const (40908:22)\u274c \n  \u2502 \u251c\u2500\u252cid\n  \u2502 \u2502 \u251c\u2500\u2500[-] type (1:668117)\u274c \n  \u2502 \u2502 \u251c\u2500\u2500[\ud83d\udd00] title (40897:22)\n  \u2502 \u2502 \u251c\u2500\u2500[-] format (1:668137)\u274c \n  \u2502 \u2502 \u251c\u2500\u2500[\ud83d\udd00] description (40898:28)\n  \u2502 \u2502 \u251c\u2500\u2500[+] anyOf (40890:15)\n  \u2502 \u2502 \u2514\u2500\u2500[+] anyOf (40893:15)\n  \u2502 \u2514\u2500\u252ccustomer_id\n  \u2502   \u251c\u2500\u2500[-] title (1:668747)\n  \u2502   \u251c\u2500\u2500[\ud83d\udd00] description (40886:28)\n  \u2502   \u2514\u2500\u252cANYOF\n  \u2502     \u2514\u2500\u2500[\ud83d\udd00] $ref (29375:23)\u274c \n  \u251c\u2500\u252cCustomerUpdatedEvent\n  \u2502 \u251c\u2500\u2500[+] properties (34713:11)\n  \u2502 \u251c\u2500\u252ctimestamp\n  \u2502 \u2502 \u251c\u2500\u2500[\ud83d\udd00] title (34722:22)\n  \u2502 \u2502 \u251c\u2500\u2500[-] format (1:569570)\u274c \n  \u2502 \u2502 \u251c\u2500\u2500[\ud83d\udd00] description (34723:28)\n  \u2502 \u2502 \u2514\u2500\u2500[+] const (34721:22)\u274c \n  \u2502 \u251c\u2500\u252cmetadata\n  \u2502 \u2502 \u2514\u2500\u2500[\ud83d\udd00] $ref (34651:17)\u274c \n  \u2502 \u251c\u2500\u252ccustomer\n  \u2502 \u2502 \u251c\u2500\u2500[+] type (34714:"
+      },
+      "metadata": {
+        "team": "Polar.sh",
+        "repo": "polarsource/polar-js",
+        "pr_number": 138,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Polar.sh] chore: \ud83d\udc1d Update SDK - Generate 0.40.1",
+      "vars": {
+        "pr_body": "> [!IMPORTANT]\n> Linting report available at: <https://app.speakeasy.com/org/polar/polar/linting-report/64a5a8a2ffd6b51ea45878c5e413c45b>\n> OpenAPI Change report available at: <https://app.speakeasy.com/org/polar/polar/changes-report/06855be66180f61629e3f23c53b6cfd6>\n# SDK update\n## Versioning\n\nVersion Bump Type: [patch] - \ud83e\udd16 (automated)\n## Typescript SDK Changes Detected:\n* `polar.events.ingest()`: \n  *  `request.events.[].[eventCreateCustomer].metadata.{}` **Changed** **Breaking** :warning:\n* `polar.events.list()`:  `response.items.[].[userEvent].metadata.{}` **Changed**\n* `polar.events.get()`:  `response.[userevent].metadata.{}` **Changed**\n\n<details>\n<summary>OpenAPI Change Summary</summary>\n\n\n```\n\u2514\u2500\u252cComponents\n  \u251c\u2500\u252cEventMetadataOutput\n  \u2502 \u2514\u2500\u252cSchema\n  \u2502   \u251c\u2500\u2500[+] anyOf (37115:22)\n  \u2502   \u2514\u2500\u252cANYOF\n  \u2502     \u2514\u2500\u2500[\ud83d\udd00] $ref (26696:23)\u274c \n  \u2514\u2500\u252cEventMetadataInput\n    \u2514\u2500\u252cSchema\n      \u251c\u2500\u2500[+] anyOf (37115:22)\n      \u2514\u2500\u252cANYOF\n        \u2514\u2500\u2500[\ud83d\udd00] $ref (26667:23)\u274c \n```\n\n| Document Element | Total Changes | Breaking Changes |\n|------------------|---------------|------------------|\n| components       | 4             | 2                |\n\n\n</details>\n\n## TYPESCRIPT CHANGELOG\nNo relevant generator changes\n\n\nBased on [Speakeasy CLI](https://github.com/speakeasy-api/speakeasy) 1.639.3\n"
+      },
+      "metadata": {
+        "team": "Polar.sh",
+        "repo": "polarsource/polar-js",
+        "pr_number": 134,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Trigger.dev] fix(webapp): runs not appearing in local development",
+      "vars": {
+        "pr_body": "## \ud83d\udc1b Bug Description\r\n\r\nTask runs execute successfully but **do not appear on the dashboard's \"Runs\" page** in local development environments.\r\n\r\n**Root Cause:** The dashboard was always querying ClickHouse by default, but in local development:\r\n1. ClickHouse replication is **disabled by default** (`RUN_REPLICATION_ENABLED` not set)\r\n2. Without replication, ClickHouse tables remain **empty**\r\n3. Result: Dashboard shows **\"No runs found\"** even though runs exist in PostgreSQL \u274c\r\n\r\n\r\n## \u2705 Checklist\r\n\r\n- [X] I have followed every step in the [contributing guide](https://github.com/triggerdotdev/trigger.dev/blob/main/CONTRIBUTING.md)\r\n- [X] The PR title follows the convention.\r\n- [X] I ran and tested the code works\r\n\r\n---\r\n\r\n## Testing\r\n\r\n### \u2705 Bug Fixed in Local Development\r\n1. Followed `CONTRIBUTING.md` setup (without `RUN_REPLICATION_ENABLED=1`)\r\n2. Started services with `pnpm run docker`\r\n3. Started webapp with `pnpm run dev --filter webapp`\r\n4. Triggered a task run\r\n5. **Result:** \u2705 Runs now appear on the dashboard (was showing \"No runs found\" before)\r\n\r\n### \u2705 Production Behavior Unchanged\r\n1. Set `RUN_REPLICATION_ENABLED=1` and `RUN_REPLICATION_CLICKHOUSE_URL`\r\n2. Triggered a task run\r\n3. **Result:** \u2705 Still uses ClickHouse, performance unchanged\r\n\r\n### \u2705 No Lint Errors\r\n- All files pass TypeScript checks\r\n- No new linter warnings introduced\r\n\r\n---\r\n\r\n## Changelog\r\n\r\n-\r\n\r\n---\r\n\r\n## Screenshots\r\n\r\n-\r\n\r\n\ud83d\udcaf\r\n"
+      },
+      "metadata": {
+        "team": "Trigger.dev",
+        "repo": "triggerdotdev/trigger.dev",
+        "pr_number": 2599,
+        "current_detection": false,
+        "current_tools": []
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        }
+      ]
+    },
+    {
+      "description": "[Antiwork] Update chat auth to allow anonymous sessions with matching s",
+      "vars": {
+        "pr_body": "Fixes #1058 \r\n\r\n# Update chat auth to allow anonymous sessions with matching sessionId\r\n\r\n## Summary\r\nUpdated authentication logic across chat endpoints to use OR instead of AND logic. Previously, anonymous sessions were blocked from accessing conversations that had an `emailFrom` set. Now, access is granted if either:\r\n- The session has a matching `anonymousSessionId` (for anonymous sessions)\r\n- The session has a matching email address (for authenticated sessions)\r\n\r\nThis change affects 3 endpoints:\r\n- `app/api/chat/route.ts` - Main chat endpoint\r\n- `app/api/chat/conversation/[slug]/message/[id]/route.ts` - Message reactions\r\n- `app/api/chat/conversation/[slug]/message/[id]/event/route.ts` - Message events\r\n\r\nThe new logic follows the same pattern already used in `app/api/chat/customerFilter.ts`.\r\n\r\n## Review & Testing Checklist for Human\r\n- [ ] **Security review**: Verify the OR logic doesn't grant unintended access to conversations\r\n- [ ] **End-to-end testing**: Test with both anonymous and authenticated sessions to ensure proper access control\r\n- [ ] **Edge case testing**: Test scenarios with missing `anonymousSessionId` or `emailFrom` values\r\n- [ ] **Requirements alignment**: Confirm the change matches the original request to allow anonymous sessions with correct sessionId\r\n\r\n### Notes\r\nThis is a critical authentication change that should be thoroughly tested before deployment. The logic change allows anonymous users to continue accessing conversations even after they provide their email address, as long as they have the correct `anonymousSessionId`.\r\n\r\nLink to Devin run: https://app.devin.ai/sessions/686cb024beba4e4682568ce9c307835c\r\nRequested by: reason.koan@gmail.com"
+      },
+      "metadata": {
+        "team": "Antiwork",
+        "repo": "antiwork/helper",
+        "pr_number": 1060,
+        "current_detection": true,
+        "current_tools": [
+          "devin"
+        ]
+      },
+      "assert": [
+        {
+          "type": "is-json"
+        },
+        {
+          "type": "javascript",
+          "value": "JSON.parse(output).is_ai_assisted === true"
+        }
+      ]
+    }
+  ]
+}

@@ -12,7 +12,14 @@ from apps.integrations.services.groq_batch import (
     BatchStatus,
     GroqBatchProcessor,
 )
-from apps.metrics.factories import PullRequestFactory, TeamFactory
+from apps.metrics.factories import (
+    CommitFactory,
+    PRFileFactory,
+    PRReviewFactory,
+    PullRequestFactory,
+    TeamFactory,
+    TeamMemberFactory,
+)
 
 
 class TestBatchResult(TestCase):
@@ -93,6 +100,100 @@ class TestBatchResult(TestCase):
         self.assertEqual(result.tools, [])
         self.assertEqual(result.confidence, 0.1)
 
+    def test_from_response_v5_format(self):
+        """Test parsing v5 nested response format with ai/tech/summary."""
+        response_body = {
+            "choices": [
+                {
+                    "message": {
+                        "content": json.dumps(
+                            {
+                                "ai": {
+                                    "is_assisted": True,
+                                    "tools": ["cursor", "claude"],
+                                    "usage_type": "authored",
+                                    "confidence": 0.95,
+                                },
+                                "tech": {
+                                    "languages": ["python", "typescript"],
+                                    "frameworks": ["django", "react"],
+                                    "categories": ["backend", "frontend"],
+                                },
+                                "summary": {
+                                    "title": "Add dark mode toggle",
+                                    "description": "Implements dark mode with user preferences.",
+                                    "type": "feature",
+                                },
+                            }
+                        )
+                    }
+                }
+            ]
+        }
+
+        result = BatchResult.from_response("pr-200", response_body)
+
+        # AI detection
+        self.assertEqual(result.pr_id, 200)
+        self.assertTrue(result.is_ai_assisted)
+        self.assertEqual(result.tools, ["cursor", "claude"])
+        self.assertEqual(result.confidence, 0.95)
+        self.assertEqual(result.usage_category, "authored")
+
+        # Technology detection
+        self.assertEqual(result.primary_language, "python")
+        self.assertEqual(result.tech_languages, ["python", "typescript"])
+        self.assertEqual(result.tech_frameworks, ["django", "react"])
+        self.assertEqual(result.tech_categories, ["backend", "frontend"])
+
+        # Summary
+        self.assertEqual(result.summary_title, "Add dark mode toggle")
+        self.assertEqual(result.summary_description, "Implements dark mode with user preferences.")
+        self.assertEqual(result.summary_type, "feature")
+
+        # Full LLM response stored
+        self.assertIn("ai", result.llm_summary)
+        self.assertIn("tech", result.llm_summary)
+        self.assertIn("summary", result.llm_summary)
+
+    def test_from_response_v5_no_ai_usage(self):
+        """Test parsing v5 response with no AI usage detected."""
+        response_body = {
+            "choices": [
+                {
+                    "message": {
+                        "content": json.dumps(
+                            {
+                                "ai": {
+                                    "is_assisted": False,
+                                    "tools": [],
+                                    "usage_type": None,
+                                    "confidence": 0.1,
+                                },
+                                "tech": {
+                                    "languages": ["go"],
+                                    "frameworks": [],
+                                    "categories": ["backend"],
+                                },
+                                "summary": {
+                                    "title": "Fix memory leak in cache",
+                                    "description": "Resolves OOM issues in production.",
+                                    "type": "bugfix",
+                                },
+                            }
+                        )
+                    }
+                }
+            ]
+        }
+
+        result = BatchResult.from_response("pr-300", response_body)
+
+        self.assertFalse(result.is_ai_assisted)
+        self.assertEqual(result.tools, [])
+        self.assertEqual(result.primary_language, "go")
+        self.assertEqual(result.summary_type, "bugfix")
+
 
 class TestBatchStatus(TestCase):
     """Tests for BatchStatus."""
@@ -168,7 +269,6 @@ class TestGroqBatchProcessor(TestCase):
 
     def test_format_pr_context(self):
         """Test rich PR context formatting."""
-        from apps.metrics.factories import TeamMemberFactory
 
         member = TeamMemberFactory(
             team=self.team,
@@ -412,3 +512,144 @@ class TestGroqBatchProcessor(TestCase):
 
         mock_client.batches.cancel.assert_called_once_with("batch-123")
         self.assertEqual(status.status, "cancelled")
+
+    def test_format_pr_context_with_files(self):
+        """Test PR context includes files changed by category."""
+        pr = PullRequestFactory(team=self.team, body="Fix authentication")
+
+        # Add files in different categories
+        PRFileFactory(
+            team=self.team,
+            pull_request=pr,
+            filename="src/components/Login.tsx",
+            file_category="frontend",
+            additions=50,
+            deletions=10,
+        )
+        PRFileFactory(
+            team=self.team,
+            pull_request=pr,
+            filename="apps/auth/views.py",
+            file_category="backend",
+            additions=30,
+            deletions=5,
+        )
+        PRFileFactory(
+            team=self.team,
+            pull_request=pr,
+            filename="tests/test_auth.py",
+            file_category="test",
+            additions=100,
+            deletions=0,
+        )
+
+        processor = GroqBatchProcessor(api_key="test-key")
+        context = processor._format_pr_context(pr)
+
+        # Verify files section exists
+        self.assertIn("# Files Changed", context)
+        self.assertIn("Login.tsx", context)
+        self.assertIn("views.py", context)
+        self.assertIn("test_auth.py", context)
+
+    def test_format_pr_context_with_commits(self):
+        """Test PR context includes commit messages."""
+        member = TeamMemberFactory(team=self.team, github_username="dev1")
+        pr = PullRequestFactory(team=self.team, author=member, body="Add feature")
+
+        # Add commits with AI disclosure
+        CommitFactory(
+            team=self.team,
+            pull_request=pr,
+            author=member,
+            message="feat: Add login form\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+        )
+        CommitFactory(
+            team=self.team,
+            pull_request=pr,
+            author=member,
+            message="fix: Handle edge case",
+        )
+
+        processor = GroqBatchProcessor(api_key="test-key")
+        context = processor._format_pr_context(pr)
+
+        # Verify commits section with AI disclosure
+        self.assertIn("# Commit Messages", context)
+        self.assertIn("Add login form", context)
+        self.assertIn("Co-Authored-By: Claude", context)
+
+    def test_format_pr_context_with_reviews(self):
+        """Test PR context includes review comments."""
+        author = TeamMemberFactory(team=self.team, github_username="author1")
+        reviewer = TeamMemberFactory(team=self.team, github_username="reviewer1")
+        pr = PullRequestFactory(team=self.team, author=author, body="Refactor module")
+
+        # Add reviews with discussion
+        PRReviewFactory(
+            team=self.team,
+            pull_request=pr,
+            reviewer=reviewer,
+            body="This looks AI-generated. Did you use Cursor for this?",
+            state="CHANGES_REQUESTED",
+        )
+        PRReviewFactory(
+            team=self.team,
+            pull_request=pr,
+            reviewer=reviewer,
+            body="LGTM after changes",
+            state="APPROVED",
+        )
+
+        processor = GroqBatchProcessor(api_key="test-key")
+        context = processor._format_pr_context(pr)
+
+        # Verify reviews section
+        self.assertIn("# Review Comments", context)
+        self.assertIn("Did you use Cursor", context)
+
+    def test_format_pr_context_with_all_data(self):
+        """Test PR context with files, commits, and reviews combined."""
+        author = TeamMemberFactory(team=self.team, github_username="author1")
+        reviewer = TeamMemberFactory(team=self.team, github_username="reviewer1")
+        pr = PullRequestFactory(
+            team=self.team,
+            author=author,
+            title="Add AI-powered search",
+            body="## AI Disclosure\nUsed Cursor with Claude Sonnet for implementation",
+            labels=["feature", "ai-assisted"],
+        )
+
+        # Add file
+        PRFileFactory(team=self.team, pull_request=pr, filename="search.py")
+
+        # Add commit with AI co-author
+        CommitFactory(
+            team=self.team,
+            pull_request=pr,
+            author=author,
+            message="feat: AI search\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+        )
+
+        # Add review
+        PRReviewFactory(
+            team=self.team,
+            pull_request=pr,
+            reviewer=reviewer,
+            body="Great use of AI here!",
+        )
+
+        processor = GroqBatchProcessor(api_key="test-key")
+        context = processor._format_pr_context(pr)
+
+        # Verify all sections present
+        self.assertIn("# PR Metadata", context)
+        self.assertIn("# PR Description", context)
+        self.assertIn("# Files Changed", context)
+        self.assertIn("# Commit Messages", context)
+        self.assertIn("# Review Comments", context)
+
+        # Verify AI disclosure detected in multiple places
+        self.assertIn("Cursor", context)
+        self.assertIn("Claude", context)
+        self.assertIn("ai-assisted", context)

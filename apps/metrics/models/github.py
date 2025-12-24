@@ -198,6 +198,21 @@ class PullRequest(BaseTeamModel):
         help_text="Pattern version used for AI detection (e.g., 1.5.0)",
     )
 
+    # LLM-generated summary (from Groq/Llama analysis)
+    llm_summary = models.JSONField(
+        null=True,
+        blank=True,
+        verbose_name="LLM summary",
+        help_text="AI-generated PR summary with tech detection and description",
+    )
+    llm_summary_version = models.CharField(
+        max_length=10,
+        blank=True,
+        default="",
+        verbose_name="LLM summary version",
+        help_text="Prompt version used for LLM summary (e.g., 5.0.0)",
+    )
+
     # Jira integration
     jira_key = models.CharField(
         max_length=50,

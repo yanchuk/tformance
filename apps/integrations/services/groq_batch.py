@@ -20,7 +20,7 @@ from __future__ import annotations
 import json
 import os
 import tempfile
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -31,6 +31,12 @@ if TYPE_CHECKING:
 
 # Import models for related data queries
 from apps.metrics.models import Commit, PRFile, PRReview
+
+# Import prompts from source of truth
+from apps.metrics.services.llm_prompts import (
+    PR_ANALYSIS_SYSTEM_PROMPT,
+    PROMPT_VERSION,
+)
 
 # Default system prompt for AI detection with rich context
 DEFAULT_SYSTEM_PROMPT = """You analyze pull requests to detect AI tool usage and identify technologies.
@@ -140,7 +146,11 @@ cursor, claude, copilot, cody, devin, gemini, chatgpt, gpt4, aider, windsurf, ta
 
 @dataclass
 class BatchResult:
-    """Result from batch processing a single PR."""
+    """Result from batch processing a single PR.
+
+    Supports both v4 (flat) and v5 (nested) response formats.
+    v5 adds summary field for CTO dashboard display.
+    """
 
     pr_id: int
     is_ai_assisted: bool
@@ -149,13 +159,25 @@ class BatchResult:
     usage_category: str | None = None
     reasoning: str | None = None
     error: str | None = None
-    # Technology detection (v4 prompt)
+    # Technology detection
     primary_language: str | None = None
     tech_categories: list[str] | None = None
+    tech_languages: list[str] = field(default_factory=list)
+    tech_frameworks: list[str] = field(default_factory=list)
+    # PR Summary (v5 prompt)
+    summary_title: str | None = None
+    summary_description: str | None = None
+    summary_type: str | None = None
+    # Raw LLM response for storage
+    llm_summary: dict = field(default_factory=dict)
+    prompt_version: str = PROMPT_VERSION
 
     @classmethod
     def from_response(cls, custom_id: str, response_body: dict) -> BatchResult:
-        """Parse from Groq batch response."""
+        """Parse from Groq batch response.
+
+        Handles both v4 (flat) and v5 (nested) response formats.
+        """
         pr_id = int(custom_id.replace("pr-", ""))
 
         # Check for error
@@ -172,16 +194,13 @@ class BatchResult:
         try:
             content = response_body["choices"][0]["message"]["content"]
             data = json.loads(content)
-            return cls(
-                pr_id=pr_id,
-                is_ai_assisted=data.get("is_ai_assisted", False),
-                tools=data.get("tools", []),
-                confidence=data.get("confidence", 0.0),
-                usage_category=data.get("usage_category"),
-                reasoning=data.get("reasoning"),
-                primary_language=data.get("primary_language"),
-                tech_categories=data.get("tech_categories", []),
-            )
+
+            # Detect v5 nested format vs v4 flat format
+            if "ai" in data and isinstance(data["ai"], dict):
+                return cls._parse_v5_response(pr_id, data)
+            else:
+                return cls._parse_v4_response(pr_id, data)
+
         except (json.JSONDecodeError, KeyError, IndexError) as e:
             return cls(
                 pr_id=pr_id,
@@ -190,6 +209,52 @@ class BatchResult:
                 confidence=0.0,
                 error=f"Failed to parse response: {e}",
             )
+
+    @classmethod
+    def _parse_v4_response(cls, pr_id: int, data: dict) -> BatchResult:
+        """Parse v4 flat response format."""
+        return cls(
+            pr_id=pr_id,
+            is_ai_assisted=data.get("is_ai_assisted", False),
+            tools=data.get("tools", []),
+            confidence=data.get("confidence", 0.0),
+            usage_category=data.get("usage_category"),
+            reasoning=data.get("reasoning"),
+            primary_language=data.get("primary_language"),
+            tech_categories=data.get("tech_categories", []),
+            llm_summary=data,
+        )
+
+    @classmethod
+    def _parse_v5_response(cls, pr_id: int, data: dict) -> BatchResult:
+        """Parse v5 nested response format with ai/tech/summary sections."""
+        ai = data.get("ai", {})
+        tech = data.get("tech", {})
+        summary = data.get("summary", {})
+
+        # Get tech categories and primary language
+        tech_categories = tech.get("categories", [])
+        tech_languages = tech.get("languages", [])
+        primary_language = tech_languages[0] if tech_languages else None
+
+        return cls(
+            pr_id=pr_id,
+            is_ai_assisted=ai.get("is_assisted", False),
+            tools=ai.get("tools", []),
+            confidence=ai.get("confidence", 0.0),
+            usage_category=ai.get("usage_type"),
+            # Technology
+            primary_language=primary_language,
+            tech_categories=tech_categories,
+            tech_languages=tech_languages,
+            tech_frameworks=tech.get("frameworks", []),
+            # Summary
+            summary_title=summary.get("title"),
+            summary_description=summary.get("description"),
+            summary_type=summary.get("type"),
+            # Store full response for llm_summary field
+            llm_summary=data,
+        )
 
 
 @dataclass
@@ -225,17 +290,26 @@ class GroqBatchProcessor:
         api_key: str | None = None,
         model: str = "llama-3.3-70b-versatile",
         system_prompt: str | None = None,
+        use_v5_prompt: bool = True,
     ):
         """Initialize processor.
 
         Args:
             api_key: Groq API key (defaults to GROQ_API_KEY env var)
             model: Model to use for detection
-            system_prompt: Custom system prompt (uses default if not provided)
+            system_prompt: Custom system prompt (uses PR_ANALYSIS_SYSTEM_PROMPT v5 by default)
+            use_v5_prompt: If True, use v5 prompt from llm_prompts.py (default)
         """
         self.client = Groq(api_key=api_key or os.environ.get("GROQ_API_KEY"))
         self.model = model
-        self.system_prompt = system_prompt or DEFAULT_SYSTEM_PROMPT
+        # Use v5 prompt from llm_prompts.py by default
+        if system_prompt:
+            self.system_prompt = system_prompt
+        elif use_v5_prompt:
+            self.system_prompt = PR_ANALYSIS_SYSTEM_PROMPT
+        else:
+            self.system_prompt = DEFAULT_SYSTEM_PROMPT
+        self.prompt_version = PROMPT_VERSION
 
     def _format_pr_context(self, pr: PullRequest) -> str:
         """Format PR with rich context for LLM analysis.

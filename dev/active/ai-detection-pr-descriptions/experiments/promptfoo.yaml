@@ -17,12 +17,18 @@ providers:
         type: json_object
 
 prompts:
-  - file://prompts/v1.md
+  - id: v4
+    raw: |
+      [
+        {"role": "system", "content": "{{system_prompt}}"},
+        {"role": "user", "content": "Analyze this PR description for AI tool usage. Return valid JSON.\n\n{{pr_body}}"}
+      ]
 
 # Default variables (can override per test)
 defaultTest:
   vars:
     pr_body: ""
+    system_prompt: file://prompts/v4-system.txt
 
 # Test Cases
 tests:

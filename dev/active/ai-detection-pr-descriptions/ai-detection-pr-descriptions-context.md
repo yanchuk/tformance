@@ -1,357 +1,197 @@
 # AI Detection via PR Description Analysis - Context
 
-**Last Updated: 2025-12-25 08:30 UTC**
+**Last Updated: 2025-12-25 12:00 UTC**
 
-## Session Summary (2025-12-25 - Technology Detection v4)
+## Session Summary (2025-12-25 - Prompt v5 + LLM Summary Field)
 
 ### What Was Accomplished
-1. **Pattern Version 1.5.0 Committed** (`99789a5`):
-   - GPT/ChatGPT, Warp AI patterns added
-   - Gemini false positives fixed
-   - `ai_detection_version` field added to PullRequest model
-   - Migration 0018 created and applied
 
-2. **Prompt v4 - Technology Detection**:
-   - Updated `DEFAULT_SYSTEM_PROMPT` in `groq_batch.py`
-   - Added Task 2: Technology Detection (primary_language, tech_categories)
-   - Extended language list to 20 languages (SO 2025 Survey data)
-   - Updated `BatchResult` dataclass with new fields
+1. **Prompt v5.0.0 - Comprehensive PR Analysis**:
+   - Created `apps/metrics/services/llm_prompts.py` as **SOURCE OF TRUTH**
+   - Three outputs: AI detection, Technology detection, PR summary
+   - Response schema designed for CTO dashboard display
 
-3. **Versioning System Extended**:
-   - Created `experiments/patterns/tech/v1.0.0.md` for tech patterns
-   - Created `experiments/prompts/v4.md` documenting tech detection
-   - Added AI Detection System section to CLAUDE.md
+2. **New Database Fields (Migration 0019)**:
+   - `llm_summary`: JSONField - Full LLM analysis response
+   - `llm_summary_version`: CharField - Prompt version used
 
-4. **Tests**: 22 Groq batch tests passing
+3. **Repository Languages Feature Complete**:
+   - Added `languages`, `primary_language`, `languages_updated_at` to TrackedRepository
+   - Created `github_repo_languages.py` service
+   - Added Celery tasks: `refresh_repo_languages_task`, `refresh_all_repo_languages_task`
+   - Monthly refresh schedule configured
+   - 16 tests passing
 
-### In Progress: Repo Languages Feature
-**Goal**: Fetch GitHub repo language data to improve LLM accuracy
+4. **Testing Infrastructure**:
+   - `export_prs_to_promptfoo.py` - Export real PRs to promptfoo format
+   - `run_llm_experiment.py` - Compare LLM vs regex detection
+   - Documentation moved to `prd/AI-DETECTION-TESTING.md`
 
-**Plan**:
-1. Add to `TrackedRepository` model:
-   ```python
-   languages = models.JSONField(default=dict)  # {"Python": 150000, ...}
-   primary_language = models.CharField(max_length=50, blank=True)
-   languages_updated_at = models.DateTimeField(null=True)
-   ```
-2. Create Celery task for monthly refresh
-3. Pass top 3-5 languages to LLM prompt
+### Prompt v5 Response Schema
 
-**GitHub API**:
-```bash
-GET /repos/{owner}/{repo}/languages
-# Returns: {"Python": 150000, "JavaScript": 25000, "HTML": 5000}
+```json
+{
+  "ai": {
+    "is_assisted": true,
+    "tools": ["cursor", "claude"],
+    "usage_type": "authored",
+    "confidence": 0.95
+  },
+  "tech": {
+    "languages": ["python", "typescript"],
+    "frameworks": ["django", "react"],
+    "categories": ["backend", "frontend"]
+  },
+  "summary": {
+    "title": "Add dark mode toggle",
+    "description": "Adds user preference for dark/light theme in settings.",
+    "type": "feature"
+  }
+}
 ```
 
-### Files Modified (Uncommitted)
+### IMPORTANT: User Prompt Data
+
+**Current**: Only PR body is passed
+**Required**: Need to pass ALL available PR data to LLM:
+
+```python
+# apps/metrics/services/llm_prompts.py - get_user_prompt() needs enhancement
+
+# Data to pass:
+- pr_title: str               # PR title
+- pr_body: str                # PR description
+- file_count: int             # Number of files changed
+- additions: int              # Lines added
+- deletions: int              # Lines deleted
+- comment_count: int          # Total comments
+- repo_languages: list[str]   # Top 3-5 languages from TrackedRepository
+```
+
+The system prompt already explains how to interpret this data. The user prompt just needs to include it.
+
+### Files Modified This Session
+
 | File | Changes |
 |------|---------|
-| `apps/integrations/services/groq_batch.py` | Prompt v4, BatchResult fields |
-| `apps/integrations/tests/test_groq_batch.py` | Tests still passing |
-| `experiments/prompts/v4.md` | NEW: Tech detection prompt |
-| `experiments/patterns/tech/v1.0.0.md` | NEW: Tech patterns version |
+| `apps/metrics/services/llm_prompts.py` | NEW: Source of truth for prompts |
+| `apps/metrics/models/github.py` | Added llm_summary, llm_summary_version |
+| `apps/metrics/migrations/0019_add_llm_summary.py` | NEW |
+| `apps/integrations/models.py` | Added languages fields (migration 0015) |
+| `apps/integrations/services/github_repo_languages.py` | NEW |
+| `apps/integrations/tasks.py` | Added refresh language tasks |
+| `apps/integrations/tests/test_github_repo_languages.py` | NEW: 16 tests |
+| `apps/metrics/management/commands/export_prs_to_promptfoo.py` | NEW |
+| `apps/metrics/management/commands/run_llm_experiment.py` | NEW |
+| `prd/AI-DETECTION-TESTING.md` | Moved from dev/active |
+| `CLAUDE.md` | Added reference to testing docs |
 
-### Files Already Committed
+### Files Already Committed (Previous Sessions)
+
 - `apps/metrics/services/ai_patterns.py` - v1.5.0
 - `apps/metrics/models/github.py` - ai_detection_version field
 - `apps/metrics/migrations/0018_add_ai_detection_version.py`
-- `apps/integrations/services/github_graphql_sync.py` - stores version
-- `CLAUDE.md` - AI Detection System docs
+- `apps/integrations/services/groq_batch.py` - Prompt v4
+- `dev/active/.../experiments/prompts/v4.md` - Tech detection prompt
 
 ### Next Steps on Restart
-1. **Add languages to TrackedRepository**:
-   ```bash
-   # Check integrations/models.py for TrackedRepository
-   # Add languages, primary_language, languages_updated_at fields
-   # Create migration
+
+1. **Enhance user prompt with ALL PR data**:
+   ```python
+   # In llm_prompts.py, update get_user_prompt() to include:
+   # - additions/deletions (PR size)
+   # - repo languages from TrackedRepository.languages
+   # - comments count
    ```
 
-2. **Create fetch_repo_languages function**:
-   - Use GitHub GraphQL or REST API
-   - Return dict of language -> bytes
+2. **Update GroqBatchProcessor to use new prompts**:
+   ```python
+   # In groq_batch.py, import from llm_prompts.py:
+   from apps.metrics.services.llm_prompts import (
+       PR_ANALYSIS_SYSTEM_PROMPT,
+       PROMPT_VERSION,
+       get_user_prompt,
+   )
+   ```
 
-3. **Create Celery task**:
-   - `refresh_repo_languages_task`
-   - Run monthly via Celery beat
-   - Update TrackedRepository.languages
+3. **Add Celery task for nightly LLM batch**:
+   - Create `queue_prs_for_llm_analysis` task
+   - Create `apply_llm_analysis_results` task
+   - Store results in `llm_summary` field
 
-4. **Update Groq prompt**:
-   - Add "# Repository Languages" section
-   - Limit to top 3-5 languages by percentage
+4. **Update promptfoo tests for v5 schema**
 
-5. **Commit all changes**
+5. **Commit all uncommitted changes**
 
 ### Commands to Run
+
 ```bash
 # Check uncommitted changes
 git status
 
-# Run tests
-.venv/bin/pytest apps/integrations/tests/test_groq_batch.py -v
+# Run language service tests
+.venv/bin/pytest apps/integrations/tests/test_github_repo_languages.py -v
 
-# After adding model fields
-make migrations
-make migrate
+# Check migrations
+make migrations  # Should show no changes
+
+# Run Groq batch tests
+.venv/bin/pytest apps/integrations/tests/test_groq_batch.py -v
 ```
+
+### Prompt Source of Truth
+
+| What | Location | Purpose |
+|------|----------|---------|
+| **Production Prompt** | `apps/metrics/services/llm_prompts.py` | Canonical source |
+| **Version** | `PROMPT_VERSION = "5.0.0"` | Track changes |
+| **Promptfoo Testing** | `experiments/prompts/v5-system.txt` | Copy for testing |
+
+When updating prompts:
+1. Edit `llm_prompts.py` first
+2. Increment `PROMPT_VERSION`
+3. Copy to `prompts/v{N}-system.txt` for promptfoo
+4. Run `npx promptfoo eval`
 
 ---
 
-## Previous Session (2025-12-25 - Pattern Sync Complete)
+## Previous Session (2025-12-25 08:30 - Technology Detection v4)
 
 ### What Was Accomplished
-1. **Created prompt version files** (v2.md, v3.md):
-   - Documents prompt evolution from basic → rich context → files/commits/reviews
-   - Located in `experiments/prompts/`
-
-2. **Pattern Version 1.5.0** - Added patterns for tools LLM detects but regex missed:
-   - **GPT/ChatGPT patterns**: `chatgpt`, `gpt-4`, `gpt-4o`, `gpt-5`, `used openai`
-   - **Warp AI patterns**: `warp ai`, `warp terminal`
-   - **Fixed Gemini false positives**: Changed from broad `\bgemini\b` to specific usage patterns
-     - Now requires context like "used Gemini", "with Gemini", "Gemini helped"
-     - Avoids false positives on "Gemini API", "Gemini SDK"
-
-3. **TDD Tests** - 107 tests passing:
-   - 5 new tests for GPT/ChatGPT patterns
-   - 2 new tests for Warp AI patterns
-   - 4 new tests for improved Gemini patterns (including false positive prevention)
-
-4. **Display Names Added**: chatgpt → "ChatGPT", warp → "Warp AI"
-
-### Files Modified
-| File | Changes |
-|------|---------|
-| `apps/metrics/services/ai_patterns.py` | Version 1.5.0, added 16 new patterns |
-| `apps/metrics/tests/test_ai_detector.py` | Added 11 new tests |
-| `experiments/prompts/v2.md` | NEW: Rich context prompt |
-| `experiments/prompts/v3.md` | NEW: Full data prompt (files/commits/reviews) |
-
-### Known Limitation
-Pattern version not stored on PullRequest model - cannot track which version detected each PR.
-If needed, add: `ai_detection_version = CharField(max_length=10, null=True)`
-
-### Next Steps
-1. **Backfill validation**: Run `--dry-run --limit 50` on Gumroad team
-2. **Phase 3**: Usage categorization + dashboard enhancements
-3. (Optional) Add `ai_detection_version` field to track pattern versions per PR
+1. Pattern Version 1.5.0 Committed (99789a5)
+2. Prompt v4 - Technology Detection added
+3. Versioning system extended with tech patterns
+4. 22 Groq batch tests passing
 
 ---
-
-## Previous Session (2025-12-25 - Pattern Improvements)
-
-### What Was Accomplished
-1. **Enhanced User Prompts with Full PR Data** ✅:
-   - Added files changed (grouped by category: frontend, backend, test, etc.)
-   - Added commit messages (captures Co-Authored-By AI signatures)
-   - Added review comments (captures "Did you use Cursor?" discussions)
-   - TDD implementation with 4 new tests
-
-2. **Updated System Prompt (v3)** ✅:
-   - Documents all input sections (metadata, description, files, commits, reviews)
-   - Explains what to look for in each section
-   - Guides LLM to check commits for AI co-author signatures
-
-3. **Detection Rate Improvement** ✅:
-   - Gumroad: 29.9% (66/221) - up from 24.4%
-   - Antiwork: 43.9% (18/41) - up from 40.9%
-
-4. **Test Coverage** ✅:
-   - 22 tests for GroqBatchProcessor (up from 18)
-   - New tests for files, commits, reviews context formatting
-
-### In Progress: Regex Pattern Updates (TDD RED Phase)
-**Goal**: Update keyword detection patterns based on LLM findings
-
-**Analysis of LLM-detected tools vs regex patterns:**
-| Tool | LLM Count | Regex Status | Action Needed |
-|------|-----------|--------------|---------------|
-| claude | 36 | ✅ Has patterns | - |
-| cursor | 33 | ✅ Has patterns | - |
-| copilot | 11 | ✅ Has patterns | - |
-| devin | 5 | ✅ Has patterns | - |
-| **gpt** | 4 | ❌ Missing | Add GPT/ChatGPT patterns |
-| **gpt-5** | 3 | ❌ Missing | Add GPT-4/5 patterns |
-| **warp ai** | 1 | ❌ Missing | Add Warp terminal AI pattern |
-| gemini | 1 | ⚠️ Too broad | Make pattern more specific |
-
-**Tests Written (TDD RED - all should FAIL):**
-- `apps/metrics/tests/test_ai_detector.py` - 3 new test classes added:
-  - `TestGPTPatterns` - 5 tests for ChatGPT/GPT-4/GPT-5/OpenAI
-  - `TestWarpAIPatterns` - 2 tests for Warp terminal AI
-  - `TestImprovedGeminiPatterns` - 4 tests for specific Gemini patterns
-
-**LLM Output Issues Found:**
-- LLM returns "clause 4.5" (typo for "Claude 4.5") - need normalization
-- LLM returns "none mentioned" - not a valid tool
-- LLM returns varying formats: "gpt", "gpt-5", "chatgpt"
-
-### Next Steps on Restart
-1. Run failing tests: `.venv/bin/pytest apps/metrics/tests/test_ai_detector.py::TestGPTPatterns -v`
-2. Add patterns to `apps/metrics/services/ai_patterns.py`:
-   - GPT/ChatGPT: `chatgpt`, `gpt-4`, `gpt-4o`, `used openai`
-   - Warp: `warp ai`, `warp.*ai`
-   - Gemini: Change from `\bgemini\b` to `used\s+gemini`, `gemini\s+used`
-3. Run tests again to confirm GREEN
-4. (Optional) Add tool name normalization to GroqBatchProcessor
-
-### Files Modified This Session
-| File | Changes |
-|------|---------|
-| `apps/integrations/services/groq_batch.py` | Added `_format_files_section`, `_format_commits_section`, `_format_reviews_section`, updated system prompt |
-| `apps/integrations/tests/test_groq_batch.py` | Added 4 new tests for enhanced context |
-| `apps/metrics/tests/test_ai_detector.py` | Added 11 new tests for GPT, Warp, Gemini patterns |
-
-### Uncommitted Changes
-```bash
-git status  # Check for:
-# - apps/integrations/services/groq_batch.py (enhanced prompts)
-# - apps/integrations/tests/test_groq_batch.py (4 new tests)
-# - apps/metrics/tests/test_ai_detector.py (11 new tests - failing)
-# - dev/active/ai-detection-pr-descriptions/*.md (docs)
-```
-
-### Commands to Run on Restart
-```bash
-# Verify existing tests pass
-.venv/bin/pytest apps/integrations/tests/test_groq_batch.py -v
-
-# Check new pattern tests (should FAIL - TDD RED)
-.venv/bin/pytest apps/metrics/tests/test_ai_detector.py::TestGPTPatterns -v
-.venv/bin/pytest apps/metrics/tests/test_ai_detector.py::TestWarpAIPatterns -v
-.venv/bin/pytest apps/metrics/tests/test_ai_detector.py::TestImprovedGeminiPatterns -v
-```
-
-## Previous Session (2025-12-25 Morning)
-
-## Previous Session (2025-12-24 Late Evening)
-
-### What Was Accomplished
-1. **Groq Batch API Service**: Full implementation with 18 tests
-   - `GroqBatchProcessor` class in `apps/integrations/services/groq_batch.py`
-   - 50% cheaper than real-time API
-   - Rich PR context in prompts (title, author, size, labels, linked issues)
-   - Batch workflow: create file → upload → submit → poll status → apply results
-
-2. **Batch Management Commands**:
-   - `backfill_ai_detection_batch` - Submit, status, and apply batch jobs
-   - Preview mode shows estimated cost ($0.008 for 100 PRs)
-   - Successfully processed 100 Gumroad PRs
-
-3. **Enhanced Prompts** (v2):
-   - System prompt now documents expected input format
-   - User prompt includes rich PR context:
-     - Title, Author, Repository
-     - Size (+additions/-deletions lines)
-     - Labels, Linked Issues
-   - Better detection of AI tools in title/labels
-
-4. **Test Coverage**:
-   - 18 tests for GroqBatchProcessor
-   - Tests for context formatting, batch file creation, status, results
-
-## Previous Session Summary (2025-12-24 Evening)
-
-### What Was Accomplished
-1. **Groq Integration Decision**: Llama 3.3 70B at $0.08/1000 PRs (44x cheaper than Claude)
-2. **Dependencies Added**: `groq`, `litellm`, `posthog` packages installed
-3. **Promptfoo Setup**: Created YAML config with 18 test cases for prompt iteration
-4. **Runbooks Created**: Context-free operation guides for experiments, prompts, repos
-5. **Experiment Runner**: Full implementation with 21 tests
-   - `ExperimentRunner` class for running LLM detection
-   - `run_ai_detection_experiment` management command
-   - Compares LLM vs regex, calculates metrics, exports results
-6. **Tech Stack Finalized**:
-   - Batch API → Groq SDK directly (50% cheaper)
-   - Real-time API → LiteLLM (easy provider switching)
-   - Prompt Testing → Promptfoo (fast iteration)
-   - Analytics → PostHog LLM events
-
-### Key Files Modified This Session
-| File | Changes |
-|------|---------|
-| `pyproject.toml` | Added groq, litellm, posthog dependencies |
-| `experiments/promptfoo.yaml` | NEW: 18 test cases (positive/negative/edge) |
-| `experiments/prompts/v1.md` | Updated system prompt for JSON output |
-| `experiments/default.yaml` | NEW: Default experiment config |
-| `RUNBOOK-EXPERIMENTS.md` | Added Promptfoo workflow section |
-| `llm-detection-architecture.md` | Updated for Groq (was Claude) |
-| `apps/metrics/experiments/runner.py` | NEW: ExperimentRunner (500 lines) |
-| `apps/metrics/experiments/tests/test_runner.py` | NEW: 21 tests |
-| `apps/metrics/management/commands/run_ai_detection_experiment.py` | NEW: CLI |
-
-### Next Step Required
-**Add GROQ_API_KEY to .env:**
-```bash
-echo 'GROQ_API_KEY=your-key-here' >> .env
-```
-Get key from: https://console.groq.com/keys
-
-Then test with:
-```bash
-cd dev/active/ai-detection-pr-descriptions/experiments
-npx promptfoo eval
-```
-
-### No Migrations Needed
-- No model changes in this session
-
-## Previous Session Summary (2025-12-24 Morning)
-
-### What Was Accomplished
-1. **Phase 1 Regex Patterns**: Added 16 new patterns, version 1.4.0
-2. **Validated Detection**: 54/221 PRs (24.4%) would be detected after backfill
-3. **OSS Research**: Found 100 Claude Code PRs across 81 GitHub repos
-4. **False Positive Discovery**: AI product repos (vercel/ai, langchain) match "Gemini" as product, not authoring
-
-### Key Files From Morning Session
-| File | Changes |
-|------|---------|
-| `apps/metrics/services/ai_patterns.py` | Added 6 new patterns (v1.3.0 → v1.4.0) |
-| `apps/metrics/tests/test_ai_detector.py` | Added 8 new tests (88 → 96 total) |
-| `apps/metrics/scripts/fetch_oss_prs.py` | NEW: OSS PR fetcher with tiered repos |
-| `llm-detection-architecture.md` | NEW: Phase 5 LLM design document |
-
-### New Patterns Added (Version 1.4.0)
-```python
-# Claude patterns
-(r"\bclaude\s+code\b", "claude_code"),  # Without hyphen
-(r"\bclaude[- ]?\d+(?:\.\d+)?\b", "claude"),  # claude-4, claude 4
-
-# Cursor patterns
-(r"\bcursor\s+for\b", "cursor"),  # cursor for understanding
-(r"\bcursor\s+autocompletions?\b", "cursor"),  # cursor autocompletions
-(r"\bwritten\s+by\s+cursor\b", "cursor"),  # written by Cursor
-```
-
-### No Migrations Needed
-- No model changes in this session
-- Backfill command needed but not yet created (Phase 4)
-
-### Uncommitted Changes
-Run `git status` to see current state. Key files to commit:
-- `apps/metrics/services/ai_patterns.py`
-- `apps/metrics/tests/test_ai_detector.py`
-- `apps/metrics/scripts/fetch_oss_prs.py`
-- `dev/active/ai-detection-pr-descriptions/*.md`
 
 ## Key Files
 
-| File | Purpose | Lines of Interest |
-|------|---------|-------------------|
-| `apps/metrics/services/ai_patterns.py` | Pattern definitions registry | 77-115 (AI_SIGNATURE_PATTERNS) |
-| `apps/metrics/services/ai_detector.py` | Detection functions | 135-163 (detect_ai_in_text) |
-| `apps/integrations/services/github_graphql_sync.py` | PR sync integration | 239-262 (_detect_pr_ai_involvement) |
-| `apps/metrics/models/github.py` | PullRequest model | `body`, `is_ai_assisted`, `ai_tools_detected` fields |
-| `apps/metrics/tests/test_ai_detector.py` | Existing AI detector tests | Full file |
-| `apps/metrics/scripts/fetch_oss_prs.py` | OSS PR fetcher for training data | Full file |
-| `dev/active/ai-detection-pr-descriptions/llm-detection-architecture.md` | Phase 5 LLM design | Full file |
+| File | Purpose |
+|------|---------|
+| `apps/metrics/services/llm_prompts.py` | **SOURCE OF TRUTH** for LLM prompts |
+| `apps/metrics/services/ai_patterns.py` | Regex patterns (v1.5.0) |
+| `apps/metrics/services/ai_detector.py` | detect_ai_in_text() |
+| `apps/integrations/services/groq_batch.py` | Groq Batch API service |
+| `apps/integrations/services/github_repo_languages.py` | Language fetching |
+| `apps/metrics/experiments/runner.py` | ExperimentRunner class |
+| `prd/AI-DETECTION-TESTING.md` | Testing documentation |
 
 ## Database Schema
 
 ```sql
 -- Key fields in metrics_pullrequest
-body: TEXT                    -- PR description (already stored)
-is_ai_assisted: BOOLEAN       -- Detection result
-ai_tools_detected: JSONB      -- List of tools detected ["cursor", "claude"]
+body: TEXT                    -- PR description
+is_ai_assisted: BOOLEAN       -- Regex detection result
+ai_tools_detected: JSONB      -- List from regex ["cursor", "claude"]
+ai_detection_version: VARCHAR -- Regex pattern version (e.g., "1.5.0")
+llm_summary: JSONB            -- Full LLM analysis (ai, tech, summary)
+llm_summary_version: VARCHAR  -- Prompt version (e.g., "5.0.0")
+
+-- Key fields in integrations_trackedrepository
+languages: JSONB              -- {"Python": 150000, "JavaScript": 25000}
+primary_language: VARCHAR     -- "Python"
+languages_updated_at: DATETIME
 ```
 
 ## Current Detection Flow
@@ -361,161 +201,30 @@ GitHub GraphQL API
        ↓
 _process_pr() / _process_pr_incremental()
        ↓
-_detect_pr_ai_involvement(author_login, title, body)
+Regex: _detect_pr_ai_involvement(author_login, title, body)
        ↓
 detect_ai_author() + detect_ai_in_text()
        ↓
-is_ai_assisted, ai_tools_detected stored on PR
+is_ai_assisted, ai_tools_detected stored
+
+[Future: Nightly Celery Task]
+       ↓
+Groq Batch API with v5 prompt
+       ↓
+llm_summary, llm_summary_version stored
 ```
 
-## Pattern Analysis: Gumroad Data
+## Detection Statistics (Dec 2024)
 
-### AI Disclosure Section Formats Found
+| Team | PRs | AI Detected | Rate |
+|------|-----|-------------|------|
+| Antiwork | 41 | 18 | 43.9% |
+| Cal.com | 199 | 65 | 32.7% |
+| Anthropic | 112 | 34 | 30.4% |
+| Gumroad | 221 | 66 | 29.9% |
+| PostHog | 637 | 17 | 2.7% |
+| Trigger.dev | 145 | 4 | 2.8% |
+| Polar.sh | 194 | 1 | 0.5% |
 
-**Type 1: Simple statement**
-```
-## AI Disclosure
-No AI was used for any part of this contribution.
-```
-
-**Type 2: Tool mention**
-```
-## AI Disclosure
-GitHub Copilot used to brainstorm
-```
-
-**Type 3: Model + Tool**
-```
-### AI Disclosure
-Cursor (Claude 4.5 Sonnet) used for questions etc.
-```
-
-**Type 4: Structured list**
-```
-### AI Disclosure
-- IDE: Cursor
-- Model: Auto
-- Used for: Hints and advice
-```
-
-**Type 5: Detailed explanation**
-```
-## AI Disclosure
-Model: Claude(Sonnet 4.5) via Cursor IDE
-Used for:
-- Codebase exploration
-- Writing test cases
-- Addressing reviewer feedback
-All AI-generated code was manually reviewed...
-```
-
-### Missed Pattern Examples (Actual PRs)
-
-| PR # | Body Snippet | Why Missed |
-|------|--------------|------------|
-| 1635 | "Cursor (Claude 4.5 Sonnet) used for questions" | No pattern for "Cursor (" |
-| 1709 | "Use Cursor(auto-mode) for the initial setup" | No pattern for "Use Cursor" |
-| 1626 | "Cursor (Claude 4.5 Sonnet) used for codebase queries" | Same as 1635 |
-| 1627 | "Used cursor auto mode" | Lowercase "cursor" in sentence |
-| 1684 | "AI was used to extract related code" | No pattern for "AI was used" |
-| 1673 | "AI prompt was generated with Claude Sonnet" | Model name without "Claude Code" |
-| 1656 | "IDE: Cursor, Model: Auto" | Structured format not parsed |
-
-### False Positive Risk Examples
-
-| Text | Should Match? | Risk |
-|------|--------------|------|
-| "Devin added unnecessary tags" | NO | Mentioning past PR by AI agent |
-| "Integrate Claude API" | NO | About product integration |
-| "move cursor to the button" | NO | Mouse cursor, not IDE |
-| "like a cursor in the database" | NO | Database cursor |
-
-## Detection Statistics (Gumroad Team)
-
-### Before Phase 1 (Version 1.1.0)
-```
-Total PRs with body: 221
-Detected in DB: 14 (6.3%)
-```
-
-### After Phase 1 (Version 1.4.0)
-```
-Total PRs with body: 221
-Currently in DB: 14 (6.3%)  # Needs backfill
-Would be detected: 54 (24.4%)  # After backfill
-Improvement: +40 PRs (3.9x increase)
-```
-
-### AI Disclosure Section Analysis
-```
-PRs with "AI Disclosure" section: 150
-- Correctly detected as AI-assisted: 46
-- Correctly NOT detected (negative): 94
-- Ambiguous (need LLM): 10
-```
-
-## OSS Repository Analysis
-
-### Search Results (2025-12-24)
-```bash
-# PRs with Claude Code signature across GitHub
-gh search prs "Generated with Claude Code" --limit 100
-
-# Results: 100 PRs from 81 unique repositories
-Top repos:
-  erimatnor/timescaledb: 5 PRs
-  deeplearning4j/deeplearning4j: 4 PRs
-  sailkit-dev/sailkit: 4 PRs
-  mattermost/docs: 2 PRs
-  mozilla/pdf.js: 1 PR
-```
-
-### False Positive Discovery
-**AI Product Repos (vercel/ai, langchain) have high false positive risk:**
-- "Gemini" pattern matches API product mentions, not AI authoring
-- Need explicit signatures (Co-Authored-By, "Generated with") for these repos
-
-## Decisions Log
-
-| Decision | Choice | Rationale |
-|----------|--------|-----------|
-| Store detection with PR | Keep current approach | Already storing ai_tools_detected on PR |
-| Pattern versioning | Use PATTERNS_VERSION | Enables selective reprocessing |
-| LLM detection | Phase 5 (future) | Start with improved regex first |
-| Backfill approach | Management command | Gives control, dry-run capability |
-
-## Testing Strategy
-
-### Unit Test Cases Needed
-
-1. **New Cursor patterns**: 10+ cases
-2. **Claude model names**: 5+ cases
-3. **Indirect usage**: 5+ cases
-4. **Negative disclosures**: 10+ cases
-5. **AI Disclosure section extraction**: 8+ cases
-6. **False positive prevention**: 10+ cases
-
-### Integration Tests
-
-1. Test `_detect_pr_ai_involvement` with real PR body samples
-2. Test sync flow correctly applies detection
-3. Test backfill command updates existing PRs
-
-### Validation Data
-
-Use actual Gumroad PR bodies for testing:
-- PRs 1626, 1627, 1635, 1655, 1656 → should detect Cursor
-- PRs 1684, 1673 → should detect AI usage
-- PRs with "No AI" → should NOT match
-
-## Related Issues / PRs
-
-- Previous AI detection work: Migration 0012_add_ai_tracking_fields
-- Copilot metrics: apps/integrations/tests/test_copilot_sync.py
-- Bot author detection: detect_ai_author() function
-
-## External References
-
-- [Gumroad AI Disclosure Template](https://github.com/antiwork/gumroad/pull/1673) - PR adding AI prompt template
-- Cursor IDE: https://cursor.sh
-- Claude models: opus, sonnet, haiku naming
+Low rates for PostHog/Polar/Trigger.dev suggest teams don't disclose AI usage.
+LLM detection should catch more nuanced cases.

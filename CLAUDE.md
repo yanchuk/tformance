@@ -14,6 +14,7 @@ All product requirements are in `/prd/`:
 - [SLACK-BOT.md](prd/SLACK-BOT.md) - Bot specification
 - [DASHBOARDS.md](prd/DASHBOARDS.md) - Dashboard views
 - [ONBOARDING.md](prd/ONBOARDING.md) - User flow
+- [AI-DETECTION-TESTING.md](prd/AI-DETECTION-TESTING.md) - AI detection testing tools & workflow
 
 **Read these before implementing features.**
 
