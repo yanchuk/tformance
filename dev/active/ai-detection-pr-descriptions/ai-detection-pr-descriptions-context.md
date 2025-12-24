@@ -1,6 +1,6 @@
 # AI Detection via PR Description Analysis - Context
 
-**Last Updated: 2025-12-24 21:30 UTC (Phase 2 Setup Complete)**
+**Last Updated: 2025-12-24 22:00 UTC (Experiment Runner Complete)**
 
 ## Session Summary (2025-12-24 Evening)
 
@@ -9,7 +9,11 @@
 2. **Dependencies Added**: `groq`, `litellm`, `posthog` packages installed
 3. **Promptfoo Setup**: Created YAML config with 18 test cases for prompt iteration
 4. **Runbooks Created**: Context-free operation guides for experiments, prompts, repos
-5. **Tech Stack Finalized**:
+5. **Experiment Runner**: Full implementation with 21 tests
+   - `ExperimentRunner` class for running LLM detection
+   - `run_ai_detection_experiment` management command
+   - Compares LLM vs regex, calculates metrics, exports results
+6. **Tech Stack Finalized**:
    - Batch API → Groq SDK directly (50% cheaper)
    - Real-time API → LiteLLM (easy provider switching)
    - Prompt Testing → Promptfoo (fast iteration)
@@ -24,6 +28,9 @@
 | `experiments/default.yaml` | NEW: Default experiment config |
 | `RUNBOOK-EXPERIMENTS.md` | Added Promptfoo workflow section |
 | `llm-detection-architecture.md` | Updated for Groq (was Claude) |
+| `apps/metrics/experiments/runner.py` | NEW: ExperimentRunner (500 lines) |
+| `apps/metrics/experiments/tests/test_runner.py` | NEW: 21 tests |
+| `apps/metrics/management/commands/run_ai_detection_experiment.py` | NEW: CLI |
 
 ### Next Step Required
 **Add GROQ_API_KEY to .env:**
