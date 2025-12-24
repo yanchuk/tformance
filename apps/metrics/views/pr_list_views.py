@@ -28,11 +28,12 @@ SORT_FIELDS = {
 }
 
 
-def _get_filters_from_request(request: HttpRequest) -> dict:
+def _get_filters_from_request(request: HttpRequest, default_days: int = 30) -> dict:
     """Extract filter parameters from request GET params.
 
     Args:
         request: The HTTP request object
+        default_days: Default number of days for date range if no date params provided
 
     Returns:
         Dictionary of filter parameters
@@ -54,10 +55,19 @@ def _get_filters_from_request(request: HttpRequest) -> dict:
     # Extract only filters that are present in GET params
     filters = {key: request.GET[key] for key in filter_keys if request.GET.get(key)}
 
-    # Handle 'days' parameter - convert to date_from/date_to
-    # This allows linking from analytics tabs with ?days=7 or ?days=30
+    # Handle multi-select 'tech' filter (can have multiple values)
+    tech_values = request.GET.getlist("tech")
+    if tech_values:
+        filters["tech"] = tech_values
+
+    # Handle date range: explicit dates > days param > default
     days_param = request.GET.get("days")
-    if days_param and not filters.get("date_from"):
+
+    if filters.get("date_from") or filters.get("date_to"):
+        # Use explicit dates as-is
+        pass
+    elif days_param:
+        # Convert days param to date range
         try:
             days = int(days_param)
             if days > 0:
@@ -66,6 +76,11 @@ def _get_filters_from_request(request: HttpRequest) -> dict:
                 filters["date_to"] = today.isoformat()
         except (ValueError, TypeError):
             pass
+    elif default_days > 0:
+        # Apply default date range when no date params provided
+        today = date.today()
+        filters["date_from"] = (today - timedelta(days=default_days)).isoformat()
+        filters["date_to"] = today.isoformat()
 
     return filters
 

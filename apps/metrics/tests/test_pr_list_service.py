@@ -7,6 +7,7 @@ from django.test import TestCase
 from django.utils import timezone
 
 from apps.metrics.factories import (
+    PRFileFactory,
     PRReviewFactory,
     PullRequestFactory,
     TeamFactory,
@@ -450,3 +451,104 @@ class TestPrSizeBuckets(TestCase):
         self.assertEqual(PR_SIZE_BUCKETS["M"], (51, 200))
         self.assertEqual(PR_SIZE_BUCKETS["L"], (201, 500))
         self.assertEqual(PR_SIZE_BUCKETS["XL"], (501, None))
+
+
+class TestTechCategoriesFilter(TestCase):
+    """Tests for technology category filter."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.team = TeamFactory()
+        self.member = TeamMemberFactory(team=self.team)
+
+    def test_filter_by_single_tech_category(self):
+        """Test filtering by a single technology category."""
+        pr1 = PullRequestFactory(team=self.team, author=self.member)
+        pr2 = PullRequestFactory(team=self.team, author=self.member)
+
+        # Add frontend file to pr1
+        PRFileFactory(pull_request=pr1, team=self.team, file_category="frontend")
+        # Add backend file to pr2
+        PRFileFactory(pull_request=pr2, team=self.team, file_category="backend")
+
+        result = get_prs_queryset(self.team, {"tech": ["frontend"]})
+
+        self.assertEqual(result.count(), 1)
+        self.assertEqual(result.first().id, pr1.id)
+
+    def test_filter_by_multiple_tech_categories(self):
+        """Test filtering by multiple technology categories (OR logic)."""
+        pr1 = PullRequestFactory(team=self.team, author=self.member)
+        pr2 = PullRequestFactory(team=self.team, author=self.member)
+        pr3 = PullRequestFactory(team=self.team, author=self.member)
+
+        PRFileFactory(pull_request=pr1, team=self.team, file_category="frontend")
+        PRFileFactory(pull_request=pr2, team=self.team, file_category="backend")
+        PRFileFactory(pull_request=pr3, team=self.team, file_category="config")
+
+        result = get_prs_queryset(self.team, {"tech": ["frontend", "backend"]})
+
+        self.assertEqual(result.count(), 2)
+        result_ids = set(result.values_list("id", flat=True))
+        self.assertEqual(result_ids, {pr1.id, pr2.id})
+
+    def test_empty_tech_filter_returns_all_prs(self):
+        """Test that empty tech filter returns all PRs."""
+        pr1 = PullRequestFactory(team=self.team, author=self.member)
+        pr2 = PullRequestFactory(team=self.team, author=self.member)
+
+        PRFileFactory(pull_request=pr1, team=self.team, file_category="frontend")
+        PRFileFactory(pull_request=pr2, team=self.team, file_category="backend")
+
+        result = get_prs_queryset(self.team, {})
+
+        self.assertEqual(result.count(), 2)
+
+    def test_pr_with_multiple_categories_appears_once(self):
+        """Test that PR with files in multiple categories appears only once."""
+        pr = PullRequestFactory(team=self.team, author=self.member)
+
+        PRFileFactory(pull_request=pr, team=self.team, file_category="frontend", filename="app.tsx")
+        PRFileFactory(pull_request=pr, team=self.team, file_category="backend", filename="views.py")
+        PRFileFactory(pull_request=pr, team=self.team, file_category="test", filename="test_views.py")
+
+        result = get_prs_queryset(self.team, {"tech": ["frontend", "backend"]})
+
+        # Should appear only once despite matching both filters
+        self.assertEqual(result.count(), 1)
+
+    def test_tech_categories_annotation_returns_categories(self):
+        """Test that tech_categories annotation returns list of categories."""
+        pr = PullRequestFactory(team=self.team, author=self.member)
+
+        PRFileFactory(pull_request=pr, team=self.team, file_category="frontend", filename="app.tsx")
+        PRFileFactory(pull_request=pr, team=self.team, file_category="backend", filename="views.py")
+        PRFileFactory(pull_request=pr, team=self.team, file_category="frontend", filename="utils.tsx")
+
+        result = get_prs_queryset(self.team, {}).first()
+
+        # Should have distinct categories
+        self.assertIsNotNone(result.tech_categories)
+        self.assertEqual(set(result.tech_categories), {"frontend", "backend"})
+
+    def test_pr_without_files_has_empty_tech_categories(self):
+        """Test that PR without files has empty tech_categories."""
+        PullRequestFactory(team=self.team, author=self.member)
+
+        result = get_prs_queryset(self.team, {}).first()
+
+        # Should have empty list for tech_categories
+        self.assertEqual(result.tech_categories, [])
+
+    def test_filter_options_includes_tech_categories(self):
+        """Test that get_filter_options returns tech_categories."""
+        PullRequestFactory(team=self.team, author=self.member)
+
+        options = get_filter_options(self.team)
+
+        self.assertIn("tech_categories", options)
+        # Should include all available categories from CATEGORY_CHOICES
+        tech_values = [cat["value"] for cat in options["tech_categories"]]
+        self.assertIn("frontend", tech_values)
+        self.assertIn("backend", tech_values)
+        self.assertIn("javascript", tech_values)

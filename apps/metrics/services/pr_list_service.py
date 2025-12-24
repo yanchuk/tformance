@@ -3,9 +3,10 @@
 from datetime import date, datetime
 from typing import Any
 
-from django.db.models import Avg, Count, Exists, F, OuterRef, Q, QuerySet, Subquery, Sum
+from django.contrib.postgres.aggregates import ArrayAgg
+from django.db.models import Avg, Count, Exists, F, OuterRef, Q, QuerySet, Subquery, Sum, Value
 
-from apps.metrics.models import PRReview, PullRequest
+from apps.metrics.models import PRFile, PRReview, PullRequest
 from apps.teams.models import Team
 
 # PR size buckets: (min_lines, max_lines) - max is inclusive, None means no upper limit
@@ -59,6 +60,17 @@ def get_prs_queryset(team: Team, filters: dict[str, Any]) -> QuerySet[PullReques
         has_author_review=has_only_author_review,
     )
 
+    # Annotate with technology categories from PR files
+    # noqa: TEAM001 - Prefetch through PR which is already team-filtered
+    qs = qs.annotate(
+        tech_categories=ArrayAgg(
+            "files__file_category",
+            distinct=True,
+            filter=~Q(files__file_category="") & Q(files__file_category__isnull=False),
+            default=Value([]),
+        )
+    )
+
     # Filter by repository
     if filters.get("repo"):
         qs = qs.filter(github_repo=filters["repo"])
@@ -106,6 +118,12 @@ def get_prs_queryset(team: Team, filters: dict[str, Any]) -> QuerySet[PullReques
         qs = qs.exclude(jira_key="")
     elif has_jira == "no":
         qs = qs.filter(jira_key="")
+
+    # Filter by technology category (multi-select)
+    tech = filters.get("tech")
+    if tech:
+        tech_list = tech if isinstance(tech, list) else [tech]
+        qs = qs.filter(files__file_category__in=tech_list).distinct()
 
     # Filter by date range (on merged_at)
     if filters.get("date_from"):
@@ -200,6 +218,9 @@ def get_filter_options(team: Team) -> dict[str, Any]:
             ai_tools_set.update(tools)
     ai_tools = sorted(list(ai_tools_set))
 
+    # Get technology categories from PRFile.CATEGORY_CHOICES
+    tech_categories = [{"value": choice[0], "label": choice[1]} for choice in PRFile.CATEGORY_CHOICES if choice[0]]
+
     return {
         "repos": repos,
         "authors": authors,
@@ -207,6 +228,7 @@ def get_filter_options(team: Team) -> dict[str, Any]:
         "ai_tools": ai_tools,
         "size_buckets": PR_SIZE_BUCKETS,
         "states": ["open", "merged", "closed"],
+        "tech_categories": tech_categories,
     }
 
 

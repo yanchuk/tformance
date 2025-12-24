@@ -45,11 +45,14 @@ class TestPrListView(TestCase):
 
     def test_pr_list_shows_prs(self):
         """Test that PR list page shows PRs for the team."""
+        now = timezone.now()
         PullRequestFactory(
             team=self.team,
             author=self.member,
             title="Test PR",
             github_repo="org/repo",
+            state="merged",
+            merged_at=now - timedelta(days=5),
         )
         url = reverse("metrics:pr_list")
 
@@ -60,7 +63,8 @@ class TestPrListView(TestCase):
 
     def test_pr_list_filter_options_in_context(self):
         """Test that filter options are passed to template context."""
-        PullRequestFactory(team=self.team, github_repo="org/repo-a")
+        now = timezone.now()
+        PullRequestFactory(team=self.team, github_repo="org/repo-a", state="merged", merged_at=now - timedelta(days=5))
         url = reverse("metrics:pr_list")
 
         response = self.client.get(url)
@@ -70,8 +74,13 @@ class TestPrListView(TestCase):
 
     def test_pr_list_applies_repo_filter(self):
         """Test that repo filter is applied from GET params."""
-        PullRequestFactory(team=self.team, github_repo="org/repo-a", title="PR A")
-        PullRequestFactory(team=self.team, github_repo="org/repo-b", title="PR B")
+        now = timezone.now()
+        PullRequestFactory(
+            team=self.team, github_repo="org/repo-a", title="PR A", state="merged", merged_at=now - timedelta(days=5)
+        )
+        PullRequestFactory(
+            team=self.team, github_repo="org/repo-b", title="PR B", state="merged", merged_at=now - timedelta(days=5)
+        )
         url = reverse("metrics:pr_list")
 
         response = self.client.get(url, {"repo": "org/repo-a"})
@@ -81,8 +90,13 @@ class TestPrListView(TestCase):
 
     def test_pr_list_applies_ai_filter_yes(self):
         """Test that AI filter is applied from GET params."""
-        PullRequestFactory(team=self.team, is_ai_assisted=True, title="AI PR")
-        PullRequestFactory(team=self.team, is_ai_assisted=False, title="Normal PR")
+        now = timezone.now()
+        PullRequestFactory(
+            team=self.team, is_ai_assisted=True, title="AI PR", state="merged", merged_at=now - timedelta(days=5)
+        )
+        PullRequestFactory(
+            team=self.team, is_ai_assisted=False, title="Normal PR", state="merged", merged_at=now - timedelta(days=5)
+        )
         url = reverse("metrics:pr_list")
 
         response = self.client.get(url, {"ai": "yes"})
@@ -92,11 +106,18 @@ class TestPrListView(TestCase):
 
     def test_pr_list_applies_state_filter(self):
         """Test that state filter is applied from GET params."""
-        PullRequestFactory(team=self.team, state="merged", title="Merged PR")
-        PullRequestFactory(team=self.team, state="open", title="Open PR")
+        now = timezone.now()
+        # Both need merged_at to show up in default 30-day filter
+        PullRequestFactory(team=self.team, state="merged", title="Merged PR", merged_at=now - timedelta(days=5))
+        # Open PRs don't have merged_at, so won't show with default filter
+        # Use explicit date_from/date_to to include open PRs for this test
+        PullRequestFactory(team=self.team, state="open", title="Open PR", pr_created_at=now - timedelta(days=5))
         url = reverse("metrics:pr_list")
 
-        response = self.client.get(url, {"state": "merged"})
+        # Pass explicit dates to include both merged and open PRs
+        date_from = (now - timedelta(days=30)).date().isoformat()
+        date_to = now.date().isoformat()
+        response = self.client.get(url, {"state": "merged", "date_from": date_from, "date_to": date_to})
 
         self.assertContains(response, "Merged PR")
         self.assertNotContains(response, "Open PR")
@@ -127,8 +148,9 @@ class TestPrListView(TestCase):
 
     def test_pr_list_shows_stats(self):
         """Test that aggregate stats are shown."""
-        PullRequestFactory(team=self.team, cycle_time_hours=10)
-        PullRequestFactory(team=self.team, cycle_time_hours=20)
+        now = timezone.now()
+        PullRequestFactory(team=self.team, cycle_time_hours=10, state="merged", merged_at=now - timedelta(days=5))
+        PullRequestFactory(team=self.team, cycle_time_hours=20, state="merged", merged_at=now - timedelta(days=5))
         url = reverse("metrics:pr_list")
 
         response = self.client.get(url)
@@ -138,7 +160,8 @@ class TestPrListView(TestCase):
 
     def test_pr_list_htmx_returns_partial(self):
         """Test that HTMX request returns partial template."""
-        PullRequestFactory(team=self.team, title="Test PR")
+        now = timezone.now()
+        PullRequestFactory(team=self.team, title="Test PR", state="merged", merged_at=now - timedelta(days=5))
         url = reverse("metrics:pr_list")
 
         response = self.client.get(url, HTTP_HX_REQUEST="true")
@@ -149,9 +172,15 @@ class TestPrListView(TestCase):
 
     def test_pr_list_pagination(self):
         """Test that PR list is paginated."""
-        # Create more PRs than fit on one page
+        # Create more PRs than fit on one page (all merged within last 30 days)
+        now = timezone.now()
         for i in range(60):
-            PullRequestFactory(team=self.team, title=f"PR {i}")
+            PullRequestFactory(
+                team=self.team,
+                title=f"PR {i}",
+                state="merged",
+                merged_at=now - timedelta(days=i % 25 + 1),  # Within last 25 days
+            )
         url = reverse("metrics:pr_list")
 
         response = self.client.get(url)
@@ -162,8 +191,14 @@ class TestPrListView(TestCase):
 
     def test_pr_list_page_param(self):
         """Test that page parameter works."""
+        now = timezone.now()
         for i in range(60):
-            PullRequestFactory(team=self.team, title=f"PR {i}")
+            PullRequestFactory(
+                team=self.team,
+                title=f"PR {i}",
+                state="merged",
+                merged_at=now - timedelta(days=i % 25 + 1),
+            )
         url = reverse("metrics:pr_list")
 
         response = self.client.get(url, {"page": "2"})
@@ -187,7 +222,8 @@ class TestPrListTableView(TestCase):
 
     def test_pr_table_returns_partial(self):
         """Test that table endpoint returns partial template."""
-        PullRequestFactory(team=self.team, title="Test PR")
+        now = timezone.now()
+        PullRequestFactory(team=self.team, title="Test PR", state="merged", merged_at=now - timedelta(days=5))
         url = reverse("metrics:pr_list_table")
 
         response = self.client.get(url, HTTP_HX_REQUEST="true")
@@ -197,8 +233,13 @@ class TestPrListTableView(TestCase):
 
     def test_pr_table_applies_filters(self):
         """Test that table partial applies filters from GET params."""
-        PullRequestFactory(team=self.team, github_repo="org/repo-a", title="PR A")
-        PullRequestFactory(team=self.team, github_repo="org/repo-b", title="PR B")
+        now = timezone.now()
+        PullRequestFactory(
+            team=self.team, github_repo="org/repo-a", title="PR A", state="merged", merged_at=now - timedelta(days=5)
+        )
+        PullRequestFactory(
+            team=self.team, github_repo="org/repo-b", title="PR B", state="merged", merged_at=now - timedelta(days=5)
+        )
         url = reverse("metrics:pr_list_table")
 
         response = self.client.get(url, {"repo": "org/repo-a"}, HTTP_HX_REQUEST="true")
@@ -221,7 +262,10 @@ class TestPrListExportView(TestCase):
 
     def test_export_returns_csv(self):
         """Test that export returns CSV file."""
-        PullRequestFactory(team=self.team, author=self.member, title="Test PR")
+        now = timezone.now()
+        PullRequestFactory(
+            team=self.team, author=self.member, title="Test PR", state="merged", merged_at=now - timedelta(days=5)
+        )
         url = reverse("metrics:pr_list_export")
 
         response = self.client.get(url)
@@ -232,11 +276,14 @@ class TestPrListExportView(TestCase):
 
     def test_export_includes_pr_data(self):
         """Test that CSV includes PR data."""
+        now = timezone.now()
         PullRequestFactory(
             team=self.team,
             author=self.member,
             title="Test PR Title",
             github_repo="org/repo",
+            state="merged",
+            merged_at=now - timedelta(days=5),
         )
         url = reverse("metrics:pr_list_export")
 
@@ -249,8 +296,13 @@ class TestPrListExportView(TestCase):
 
     def test_export_applies_filters(self):
         """Test that export applies filters from GET params."""
-        PullRequestFactory(team=self.team, github_repo="org/repo-a", title="PR A")
-        PullRequestFactory(team=self.team, github_repo="org/repo-b", title="PR B")
+        now = timezone.now()
+        PullRequestFactory(
+            team=self.team, github_repo="org/repo-a", title="PR A", state="merged", merged_at=now - timedelta(days=5)
+        )
+        PullRequestFactory(
+            team=self.team, github_repo="org/repo-b", title="PR B", state="merged", merged_at=now - timedelta(days=5)
+        )
         url = reverse("metrics:pr_list_export")
 
         response = self.client.get(url, {"repo": "org/repo-a"})
@@ -262,7 +314,8 @@ class TestPrListExportView(TestCase):
 
     def test_export_has_headers(self):
         """Test that CSV has proper column headers."""
-        PullRequestFactory(team=self.team)
+        now = timezone.now()
+        PullRequestFactory(team=self.team, state="merged", merged_at=now - timedelta(days=5))
         url = reverse("metrics:pr_list_export")
 
         response = self.client.get(url)
@@ -286,10 +339,17 @@ class TestPrListExportView(TestCase):
 
     def test_export_query_count_is_constant(self):
         """Test that export uses select_related to avoid N+1 on author access."""
-        # Create 10 PRs with authors
+        # Create 10 PRs with authors (all merged within last 30 days)
+        now = timezone.now()
         for i in range(10):
             member = TeamMemberFactory(team=self.team, display_name=f"Author{i}")
-            PullRequestFactory(team=self.team, author=member, title=f"PR {i}")
+            PullRequestFactory(
+                team=self.team,
+                author=member,
+                title=f"PR {i}",
+                state="merged",
+                merged_at=now - timedelta(days=i % 25 + 1),
+            )
 
         url = reverse("metrics:pr_list_export")
 
@@ -331,8 +391,13 @@ class TestPrListSorting(TestCase):
 
     def test_sort_by_cycle_time_desc(self):
         """Test sorting by cycle time descending."""
-        PullRequestFactory(team=self.team, title="Fast PR", cycle_time_hours=5)
-        PullRequestFactory(team=self.team, title="Slow PR", cycle_time_hours=50)
+        now = timezone.now()
+        PullRequestFactory(
+            team=self.team, title="Fast PR", cycle_time_hours=5, state="merged", merged_at=now - timedelta(days=5)
+        )
+        PullRequestFactory(
+            team=self.team, title="Slow PR", cycle_time_hours=50, state="merged", merged_at=now - timedelta(days=5)
+        )
         url = reverse("metrics:pr_list")
 
         response = self.client.get(url, {"sort": "cycle_time", "order": "desc"})
@@ -343,8 +408,13 @@ class TestPrListSorting(TestCase):
 
     def test_sort_by_cycle_time_asc(self):
         """Test sorting by cycle time ascending."""
-        PullRequestFactory(team=self.team, title="Fast PR", cycle_time_hours=5)
-        PullRequestFactory(team=self.team, title="Slow PR", cycle_time_hours=50)
+        now = timezone.now()
+        PullRequestFactory(
+            team=self.team, title="Fast PR", cycle_time_hours=5, state="merged", merged_at=now - timedelta(days=5)
+        )
+        PullRequestFactory(
+            team=self.team, title="Slow PR", cycle_time_hours=50, state="merged", merged_at=now - timedelta(days=5)
+        )
         url = reverse("metrics:pr_list")
 
         response = self.client.get(url, {"sort": "cycle_time", "order": "asc"})
@@ -355,8 +425,13 @@ class TestPrListSorting(TestCase):
 
     def test_sort_by_review_time(self):
         """Test sorting by review time."""
-        PullRequestFactory(team=self.team, title="Quick Review", review_time_hours=2)
-        PullRequestFactory(team=self.team, title="Long Review", review_time_hours=48)
+        now = timezone.now()
+        PullRequestFactory(
+            team=self.team, title="Quick Review", review_time_hours=2, state="merged", merged_at=now - timedelta(days=5)
+        )
+        PullRequestFactory(
+            team=self.team, title="Long Review", review_time_hours=48, state="merged", merged_at=now - timedelta(days=5)
+        )
         url = reverse("metrics:pr_list")
 
         response = self.client.get(url, {"sort": "review_time", "order": "desc"})
@@ -366,8 +441,23 @@ class TestPrListSorting(TestCase):
 
     def test_sort_by_lines(self):
         """Test sorting by lines (additions)."""
-        PullRequestFactory(team=self.team, title="Small PR", additions=10, deletions=5)
-        PullRequestFactory(team=self.team, title="Large PR", additions=500, deletions=100)
+        now = timezone.now()
+        PullRequestFactory(
+            team=self.team,
+            title="Small PR",
+            additions=10,
+            deletions=5,
+            state="merged",
+            merged_at=now - timedelta(days=5),
+        )
+        PullRequestFactory(
+            team=self.team,
+            title="Large PR",
+            additions=500,
+            deletions=100,
+            state="merged",
+            merged_at=now - timedelta(days=5),
+        )
         url = reverse("metrics:pr_list")
 
         response = self.client.get(url, {"sort": "lines", "order": "desc"})
@@ -377,8 +467,13 @@ class TestPrListSorting(TestCase):
 
     def test_sort_by_comments(self):
         """Test sorting by comments."""
-        PullRequestFactory(team=self.team, title="No Comments", total_comments=0)
-        PullRequestFactory(team=self.team, title="Many Comments", total_comments=25)
+        now = timezone.now()
+        PullRequestFactory(
+            team=self.team, title="No Comments", total_comments=0, state="merged", merged_at=now - timedelta(days=5)
+        )
+        PullRequestFactory(
+            team=self.team, title="Many Comments", total_comments=25, state="merged", merged_at=now - timedelta(days=5)
+        )
         url = reverse("metrics:pr_list")
 
         response = self.client.get(url, {"sort": "comments", "order": "desc"})
@@ -423,9 +518,16 @@ class TestPrListSorting(TestCase):
 
     def test_sort_with_filters(self):
         """Test that sorting works with filters applied."""
-        PullRequestFactory(team=self.team, title="Fast Merged", state="merged", cycle_time_hours=5)
-        PullRequestFactory(team=self.team, title="Slow Merged", state="merged", cycle_time_hours=50)
-        PullRequestFactory(team=self.team, title="Open PR", state="open", cycle_time_hours=1)
+        now = timezone.now()
+        PullRequestFactory(
+            team=self.team, title="Fast Merged", state="merged", cycle_time_hours=5, merged_at=now - timedelta(days=5)
+        )
+        PullRequestFactory(
+            team=self.team, title="Slow Merged", state="merged", cycle_time_hours=50, merged_at=now - timedelta(days=5)
+        )
+        PullRequestFactory(
+            team=self.team, title="Open PR", state="open", cycle_time_hours=1, pr_created_at=now - timedelta(days=5)
+        )
         url = reverse("metrics:pr_list")
 
         response = self.client.get(url, {"state": "merged", "sort": "cycle_time", "order": "asc"})
@@ -437,8 +539,13 @@ class TestPrListSorting(TestCase):
 
     def test_sort_handles_null_values(self):
         """Test that sorting handles null values (nulls last)."""
-        PullRequestFactory(team=self.team, title="Has Time", cycle_time_hours=10)
-        PullRequestFactory(team=self.team, title="No Time", cycle_time_hours=None)
+        now = timezone.now()
+        PullRequestFactory(
+            team=self.team, title="Has Time", cycle_time_hours=10, state="merged", merged_at=now - timedelta(days=5)
+        )
+        PullRequestFactory(
+            team=self.team, title="No Time", cycle_time_hours=None, state="merged", merged_at=now - timedelta(days=5)
+        )
         url = reverse("metrics:pr_list")
 
         response = self.client.get(url, {"sort": "cycle_time", "order": "desc"})

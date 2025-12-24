@@ -6,9 +6,16 @@
 {% block analytics_content %}
   {% partialdef page-content inline %}
   <div id="page-content" class="min-w-0 overflow-hidden">
-    <!-- Header with title -->
+    <!-- Header with title and export button -->
     <div class="flex justify-between items-center mb-6">
       <h1 class="pg-title">{% trans "Pull Requests" %}</h1>
+      <a href="{% url 'metrics:pr_list_export' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}"
+         class="btn btn-outline btn-sm">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+        </svg>
+        {% trans "Export CSV" %}
+      </a>
     </div>
 
     <!-- Filters Panel -->
@@ -113,6 +120,45 @@
           </select>
         </div>
 
+        <!-- Technology Filter (Multi-select) -->
+        <div class="form-control"
+             x-data="{
+               open: false,
+               selected: [{% for t in filters.tech %}'{{ t }}'{% if not forloop.last %}, {% endif %}{% endfor %}],
+               toggle(val) {
+                 const idx = this.selected.indexOf(val);
+                 if (idx > -1) { this.selected.splice(idx, 1); }
+                 else { this.selected.push(val); }
+               }
+             }">
+          <label class="label">
+            <span class="label-text text-base-content/80">{% trans "Technology" %}</span>
+          </label>
+          <div class="dropdown w-full" :class="{ 'dropdown-open': open }">
+            <div tabindex="0" role="button"
+                 class="select select-bordered select-sm w-full flex items-center justify-between"
+                 @click="open = !open">
+              <span x-text="selected.length ? selected.length + ' selected' : 'All Technologies'"></span>
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
+            <ul tabindex="0" class="dropdown-content menu bg-base-200 rounded-box z-50 w-full p-2 shadow" @click.outside="open = false">
+              {% for cat in filter_options.tech_categories %}
+              <li>
+                <label class="label cursor-pointer justify-start gap-2 py-1">
+                  <input type="checkbox" name="tech" value="{{ cat.value }}"
+                         class="checkbox checkbox-sm checkbox-primary"
+                         :checked="selected.includes('{{ cat.value }}')"
+                         @change="toggle('{{ cat.value }}')">
+                  <span class="label-text">{{ cat.label }}</span>
+                </label>
+              </li>
+              {% endfor %}
+            </ul>
+          </div>
+        </div>
+
         <!-- Has Jira Link Filter -->
         <div class="form-control">
           <label class="label">
@@ -150,13 +196,6 @@
           </button>
           <a href="{% url 'metrics:pr_list' %}" class="btn btn-ghost btn-sm">
             {% trans "Clear" %}
-          </a>
-          <a href="{% url 'metrics:pr_list_export' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}"
-             class="btn btn-outline btn-sm ml-auto">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-            </svg>
-            {% trans "Export CSV" %}
           </a>
         </div>
       </form>

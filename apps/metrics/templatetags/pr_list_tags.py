@@ -70,3 +70,89 @@ def sort_url(context, field):
     query_dict["page"] = "1"
 
     return f"?{query_dict.urlencode()}"
+
+
+# Technology category display mappings
+TECH_ABBREVS = {
+    "frontend": "FE",
+    "backend": "BE",
+    "javascript": "JS",
+    "test": "TS",
+    "docs": "DC",
+    "config": "CF",
+    "other": "OT",
+}
+
+TECH_BADGE_CLASSES = {
+    "frontend": "badge-info",
+    "backend": "badge-success",
+    "javascript": "badge-warning",
+    "test": "badge-secondary",
+    "docs": "badge-ghost",
+    "config": "badge-accent",
+    "other": "badge-ghost",
+}
+
+TECH_DISPLAY_NAMES = {
+    "frontend": "Frontend",
+    "backend": "Backend",
+    "javascript": "JS/TypeScript",
+    "test": "Test",
+    "docs": "Documentation",
+    "config": "Configuration",
+    "other": "Other",
+}
+
+
+@register.filter
+def tech_abbrev(category: str) -> str:
+    """Convert category to 2-letter abbreviation.
+
+    Args:
+        category: File category identifier (e.g., 'frontend', 'backend')
+
+    Returns:
+        Two-letter abbreviation (e.g., 'FE', 'BE')
+
+    Usage:
+        {{ category|tech_abbrev }}
+    """
+    if not category:
+        return ""
+    return TECH_ABBREVS.get(category, category[:2].upper())
+
+
+@register.filter
+def tech_badge_class(category: str) -> str:
+    """Get DaisyUI badge class for category.
+
+    Args:
+        category: File category identifier
+
+    Returns:
+        DaisyUI badge class (e.g., 'badge-info', 'badge-success')
+
+    Usage:
+        <span class="badge {{ category|tech_badge_class }}">...</span>
+    """
+    if not category:
+        return "badge-ghost"
+    return TECH_BADGE_CLASSES.get(category, "badge-ghost")
+
+
+@register.filter
+def tech_display_name(category: str) -> str:
+    """Get full display name for category.
+
+    Args:
+        category: File category identifier
+
+    Returns:
+        Human-readable display name (e.g., 'Frontend', 'Backend')
+
+    Usage:
+        {{ category|tech_display_name }}
+    """
+    if not category:
+        return ""
+    return TECH_DISPLAY_NAMES.get(category, category.title())

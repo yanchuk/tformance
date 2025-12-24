@@ -5,10 +5,10 @@
   <table class="table table-zebra w-full table-fixed">
     <thead>
       <tr>
-        <th class="w-[28%]">{% trans "Title" %}</th>
-        <th class="w-[11%]">{% trans "Repository" %}</th>
-        <th class="w-[9%]">{% trans "Author" %}</th>
-        <th class="w-[6%]">{% trans "State" %}</th>
+        <th class="w-[26%]">{% trans "Title" %}</th>
+        <th class="w-[10%]">{% trans "Repository" %}</th>
+        <th class="w-[8%]">{% trans "Author" %}</th>
+        <th class="w-[5%]">{% trans "State" %}</th>
         <th class="w-[8%] text-right cursor-pointer hover:bg-base-300 select-none"
             hx-get="{% url 'metrics:pr_list_table' %}{% sort_url 'cycle_time' %}"
             hx-target="#pr-table-container"
@@ -25,7 +25,7 @@
           {% trans "Review Time" %}
           {% if sort == 'review_time' %}<span class="ml-1">{% if order == 'asc' %}▲{% else %}▼{% endif %}</span>{% endif %}
         </th>
-        <th class="w-[8%] text-right cursor-pointer hover:bg-base-300 select-none"
+        <th class="w-[7%] text-right cursor-pointer hover:bg-base-300 select-none"
             hx-get="{% url 'metrics:pr_list_table' %}{% sort_url 'lines' %}"
             hx-target="#pr-table-container"
             hx-swap="innerHTML"
@@ -33,15 +33,16 @@
           {% trans "Lines" %}
           {% if sort == 'lines' %}<span class="ml-1">{% if order == 'asc' %}▲{% else %}▼{% endif %}</span>{% endif %}
         </th>
-        <th class="w-[6%] text-right cursor-pointer hover:bg-base-300 select-none"
+        <th class="w-[5%] text-right cursor-pointer hover:bg-base-300 select-none"
             hx-get="{% url 'metrics:pr_list_table' %}{% sort_url 'comments' %}"
             hx-target="#pr-table-container"
             hx-swap="innerHTML"
             hx-push-url="{% sort_url 'comments' %}">
-          {% trans "Comments" %}
+          {% trans "Cmts" %}
           {% if sort == 'comments' %}<span class="ml-1">{% if order == 'asc' %}▲{% else %}▼{% endif %}</span>{% endif %}
         </th>
-        <th class="w-[5%] text-center">{% trans "AI" %}</th>
+        <th class="w-[4%] text-center">{% trans "AI" %}</th>
+        <th class="w-[8%] text-center">{% trans "Tech" %}</th>
         <th class="w-[11%] cursor-pointer hover:bg-base-300 select-none"
             hx-get="{% url 'metrics:pr_list_table' %}{% sort_url 'merged' %}"
             hx-target="#pr-table-container"
@@ -118,6 +119,22 @@
             <span class="text-base-content/50">-</span>
           {% endif %}
         </td>
+        <td class="text-center">
+          {% if pr.tech_categories %}
+            {% with categories=pr.tech_categories|slice:":3" extra=pr.tech_categories|length %}
+              {% for cat in categories %}
+                <span class="badge {{ cat|tech_badge_class }} badge-xs" title="{{ cat|tech_display_name }}">
+                  {{ cat|tech_abbrev }}
+                </span>
+              {% endfor %}
+              {% if extra > 3 %}
+                <span class="badge badge-ghost badge-xs" title="{% for cat in pr.tech_categories %}{{ cat|tech_display_name }}{% if not forloop.last %}, {% endif %}{% endfor %}">+{{ extra|add:"-3" }}</span>
+              {% endif %}
+            {% endwith %}
+          {% else %}
+            <span class="text-base-content/50">-</span>
+          {% endif %}
+        </td>
         <td class="text-sm text-base-content/70">
           {% if pr.merged_at %}
             {{ pr.merged_at|date:"M d, Y" }}
@@ -128,7 +145,7 @@
       </tr>
       {% empty %}
       <tr>
-        <td colspan="10" class="text-center py-8 text-base-content/50">
+        <td colspan="11" class="text-center py-8 text-base-content/50">
           {% trans "No pull requests found." %}
         </td>
       </tr>
