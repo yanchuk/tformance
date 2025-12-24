@@ -248,8 +248,8 @@ class TestGitHubGraphQLFetcherAddCheckRunsToPRs(TestCase):
     def _mock_rate_limit(self, mock_github, remaining=5000):
         """Helper to set up rate limit mock."""
         mock_rate_limit = Mock()
-        mock_rate_limit.core.remaining = remaining
-        mock_rate_limit.core.reset.timestamp.return_value = 1704110400
+        mock_rate_limit.rate.remaining = remaining
+        mock_rate_limit.rate.reset.timestamp.return_value = 1704110400
         mock_github.get_rate_limit.return_value = mock_rate_limit
 
     @patch("github.Github")
@@ -1084,8 +1084,8 @@ class TestGitHubGraphQLFetcherRateLimitMonitoring(TestCase):
 
         # Mock rate limit response
         mock_rate_limit = Mock()
-        mock_rate_limit.core.remaining = 50  # Low remaining
-        mock_rate_limit.core.reset.timestamp.return_value = 1704110400
+        mock_rate_limit.rate.remaining = 50  # Low remaining
+        mock_rate_limit.rate.reset.timestamp.return_value = 1704110400
         mock_github.get_rate_limit.return_value = mock_rate_limit
 
         fetcher = GitHubGraphQLFetcher(token="ghp_test_token")
@@ -1108,8 +1108,8 @@ class TestGitHubGraphQLFetcherRateLimitMonitoring(TestCase):
         mock_github_class.return_value = mock_github
 
         mock_rate_limit = Mock()
-        mock_rate_limit.core.remaining = 4500
-        mock_rate_limit.core.reset.timestamp.return_value = 1704110400
+        mock_rate_limit.rate.remaining = 4500
+        mock_rate_limit.rate.reset.timestamp.return_value = 1704110400
         mock_github.get_rate_limit.return_value = mock_rate_limit
 
         fetcher = GitHubGraphQLFetcher(token="ghp_test_token")
@@ -1130,8 +1130,8 @@ class TestGitHubGraphQLFetcherRateLimitMonitoring(TestCase):
         mock_github_class.return_value = mock_github
 
         mock_rate_limit = Mock()
-        mock_rate_limit.core.remaining = 4500
-        mock_rate_limit.core.reset.timestamp.return_value = 1704110400
+        mock_rate_limit.rate.remaining = 4500
+        mock_rate_limit.rate.reset.timestamp.return_value = 1704110400
         mock_github.get_rate_limit.return_value = mock_rate_limit
 
         fetcher = GitHubGraphQLFetcher(token="ghp_test_token")
@@ -1154,8 +1154,8 @@ class TestGitHubGraphQLFetcherRateLimitMonitoring(TestCase):
 
         # Mock low rate limit (fewer points than PRs)
         mock_rate_limit = Mock()
-        mock_rate_limit.core.remaining = 2  # Only 2 remaining, but we need 3 (2 PRs + 1 repo cache)
-        mock_rate_limit.core.reset.timestamp.return_value = 1704110400
+        mock_rate_limit.rate.remaining = 2  # Only 2 remaining, but we need 3 (2 PRs + 1 repo cache)
+        mock_rate_limit.rate.reset.timestamp.return_value = 1704110400
         mock_github.get_rate_limit.return_value = mock_rate_limit
 
         fetcher = GitHubGraphQLFetcher(token="ghp_test_token")

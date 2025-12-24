@@ -125,8 +125,8 @@ class GitHubGraphQLFetcher:
         rate_limit = gh.get_rate_limit()
         self.api_calls_made += 1
 
-        remaining = rate_limit.core.remaining
-        reset_timestamp = rate_limit.core.reset.timestamp()
+        remaining = rate_limit.rate.remaining
+        reset_timestamp = rate_limit.rate.reset.timestamp()
 
         if remaining < warn_threshold:
             from datetime import datetime
