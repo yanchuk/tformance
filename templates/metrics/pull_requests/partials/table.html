@@ -110,7 +110,9 @@
         <td class="text-center">
           {% with size=pr.additions|pr_size_bucket:pr.deletions %}
             {% if size %}
-              <span class="badge badge-ghost badge-sm cursor-help" title="+{{ pr.additions }}/-{{ pr.deletions }}">{{ size }}</span>
+              <div class="tooltip" data-tip="+{{ pr.additions }}/-{{ pr.deletions }}">
+                <span class="badge badge-ghost badge-sm cursor-help">{{ size }}</span>
+              </div>
             {% else %}
               <span class="text-base-content/50">-</span>
             {% endif %}
