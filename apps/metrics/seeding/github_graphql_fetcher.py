@@ -178,6 +178,28 @@ class GitHubGraphQLFetcher:
         author = node.get("author") or {}
         author_login = author.get("login")
 
+        # Map labels (Phase 2)
+        labels = []
+        for label_node in (node.get("labels") or {}).get("nodes") or []:
+            if label_node and label_node.get("name"):
+                labels.append(label_node.get("name"))
+
+        # Map milestone (Phase 2)
+        milestone = node.get("milestone") or {}
+        milestone_title = milestone.get("title")
+
+        # Map assignees (Phase 2)
+        assignees = []
+        for assignee_node in (node.get("assignees") or {}).get("nodes") or []:
+            if assignee_node and assignee_node.get("login"):
+                assignees.append(assignee_node.get("login"))
+
+        # Map linked issues (Phase 2)
+        linked_issues = []
+        for issue_node in (node.get("closingIssuesReferences") or {}).get("nodes") or []:
+            if issue_node and issue_node.get("number"):
+                linked_issues.append(issue_node.get("number"))
+
         # Map reviews
         reviews = []
         for review_node in (node.get("reviews") or {}).get("nodes") or []:
@@ -263,13 +285,16 @@ class GitHubGraphQLFetcher:
             author_avatar_url=None,
             head_ref=node.get("headRefName", ""),
             base_ref=node.get("baseRefName", "main"),
-            labels=[],  # Not fetched in current query
+            labels=labels,
             jira_key_from_title=None,  # Will be parsed by seeder
             jira_key_from_branch=None,
             reviews=reviews,
             commits=commits,
             files=files,
             check_runs=[],  # Not fetched via GraphQL
+            milestone_title=milestone_title,
+            assignees=assignees,
+            linked_issues=linked_issues,
         )
 
     async def _fetch_prs_async(
@@ -465,8 +490,8 @@ class GitHubGraphQLFetcher:
                     review["submitted_at"] = review["submitted_at"].isoformat()
             # Convert nested datetimes in commits
             for commit in data.get("commits", []):
-                if commit.get("authored_date"):
-                    commit["authored_date"] = commit["authored_date"].isoformat()
+                if commit.get("committed_at"):
+                    commit["committed_at"] = commit["committed_at"].isoformat()
             # Convert nested datetimes in check_runs
             for check_run in data.get("check_runs", []):
                 if check_run.get("started_at"):
@@ -494,8 +519,8 @@ class GitHubGraphQLFetcher:
             # Parse nested datetimes in commits
             commits = []
             for commit_data in pr_data.get("commits", []):
-                if commit_data.get("authored_date"):
-                    commit_data["authored_date"] = datetime.fromisoformat(commit_data["authored_date"])
+                if commit_data.get("committed_at"):
+                    commit_data["committed_at"] = datetime.fromisoformat(commit_data["committed_at"])
                 commits.append(FetchedCommit(**commit_data))
             pr_data["commits"] = commits
             # Parse nested files

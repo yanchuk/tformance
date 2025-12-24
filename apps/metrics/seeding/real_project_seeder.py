@@ -513,6 +513,12 @@ class RealProjectSeeder:
             jira_key=pr_data.jira_key_from_title or pr_data.jira_key_from_branch or "",
             is_ai_assisted=ai_result["is_ai_assisted"],
             ai_tools_detected=ai_result["ai_tools"],
+            # Phase 2 - GitHub metadata
+            is_draft=pr_data.is_draft,
+            labels=pr_data.labels,
+            milestone_title=pr_data.milestone_title or "",
+            assignees=pr_data.assignees,
+            linked_issues=pr_data.linked_issues,
         )
         self._stats.prs_created += 1
         if ai_result["is_ai_assisted"]:

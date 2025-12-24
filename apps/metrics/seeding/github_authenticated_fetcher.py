@@ -168,6 +168,11 @@ class FetchedPRFull:
     jira_key_from_title: str | None = None
     jira_key_from_branch: str | None = None
 
+    # GitHub metadata (Phase 2 - store all data from API)
+    milestone_title: str | None = None
+    assignees: list[str] = field(default_factory=list)
+    linked_issues: list[int] = field(default_factory=list)
+
     @property
     def first_review_at(self) -> datetime | None:
         """Get timestamp of first review."""

@@ -5,6 +5,7 @@ Tests verify the following optimizations:
 1. _get_cached_repo() - Caches repo objects to avoid repeated API calls
 2. _fetch_check_runs_for_commit() - Uses commit SHA directly (1 API call)
 3. _add_check_runs_to_prs() - Parallel fetching using commit SHA from PR
+4. _map_pr() - Maps GraphQL PR nodes to FetchedPRFull with Phase 2 fields
 
 These tests verify the CURRENT behavior of the implementation.
 """
@@ -661,3 +662,302 @@ class TestGitHubGraphQLFetcherAddCheckRunsToPRs(TestCase):
         self.assertEqual(mock_repo.get_commit.call_count, 3)
         # PR 2 should have empty check_runs due to error
         self.assertEqual(len(prs[1].check_runs), 0)
+
+
+class TestGitHubGraphQLFetcherMapPR(TestCase):
+    """Tests for _map_pr() Phase 2 fields (labels, milestone, assignees, linked_issues)."""
+
+    @patch("github.Github")
+    @patch("apps.metrics.seeding.github_graphql_fetcher.GitHubGraphQLClient")
+    def test_maps_labels_from_graphql_nodes(self, mock_client_class, mock_github_class):
+        """Test that labels are extracted from GraphQL labels.nodes."""
+        # Arrange
+        fetcher = GitHubGraphQLFetcher(token="ghp_test_token")
+        node = {
+            "number": 1,
+            "title": "Test PR",
+            "state": "MERGED",
+            "createdAt": "2025-01-01T10:00:00Z",
+            "labels": {
+                "nodes": [
+                    {"name": "bug", "color": "d73a4a"},
+                    {"name": "priority:high", "color": "ff0000"},
+                    {"name": "area:backend", "color": "0e8a16"},
+                ]
+            },
+            "author": {"login": "testuser"},
+        }
+
+        # Act
+        result = fetcher._map_pr(node, "owner/repo")
+
+        # Assert
+        self.assertEqual(result.labels, ["bug", "priority:high", "area:backend"])
+
+    @patch("github.Github")
+    @patch("apps.metrics.seeding.github_graphql_fetcher.GitHubGraphQLClient")
+    def test_handles_empty_labels(self, mock_client_class, mock_github_class):
+        """Test that empty labels list is returned when no labels."""
+        # Arrange
+        fetcher = GitHubGraphQLFetcher(token="ghp_test_token")
+        node = {
+            "number": 1,
+            "title": "Test PR",
+            "state": "OPEN",
+            "createdAt": "2025-01-01T10:00:00Z",
+            "labels": {"nodes": []},
+            "author": {"login": "testuser"},
+        }
+
+        # Act
+        result = fetcher._map_pr(node, "owner/repo")
+
+        # Assert
+        self.assertEqual(result.labels, [])
+
+    @patch("github.Github")
+    @patch("apps.metrics.seeding.github_graphql_fetcher.GitHubGraphQLClient")
+    def test_handles_null_labels(self, mock_client_class, mock_github_class):
+        """Test that empty labels list is returned when labels is null."""
+        # Arrange
+        fetcher = GitHubGraphQLFetcher(token="ghp_test_token")
+        node = {
+            "number": 1,
+            "title": "Test PR",
+            "state": "OPEN",
+            "createdAt": "2025-01-01T10:00:00Z",
+            "labels": None,
+            "author": {"login": "testuser"},
+        }
+
+        # Act
+        result = fetcher._map_pr(node, "owner/repo")
+
+        # Assert
+        self.assertEqual(result.labels, [])
+
+    @patch("github.Github")
+    @patch("apps.metrics.seeding.github_graphql_fetcher.GitHubGraphQLClient")
+    def test_maps_milestone_title(self, mock_client_class, mock_github_class):
+        """Test that milestone title is extracted from GraphQL milestone."""
+        # Arrange
+        fetcher = GitHubGraphQLFetcher(token="ghp_test_token")
+        node = {
+            "number": 1,
+            "title": "Test PR",
+            "state": "MERGED",
+            "createdAt": "2025-01-01T10:00:00Z",
+            "milestone": {
+                "title": "v2.0 Release",
+                "number": 5,
+                "dueOn": "2025-03-01T00:00:00Z",
+            },
+            "author": {"login": "testuser"},
+        }
+
+        # Act
+        result = fetcher._map_pr(node, "owner/repo")
+
+        # Assert
+        self.assertEqual(result.milestone_title, "v2.0 Release")
+
+    @patch("github.Github")
+    @patch("apps.metrics.seeding.github_graphql_fetcher.GitHubGraphQLClient")
+    def test_handles_null_milestone(self, mock_client_class, mock_github_class):
+        """Test that milestone_title is None when no milestone assigned."""
+        # Arrange
+        fetcher = GitHubGraphQLFetcher(token="ghp_test_token")
+        node = {
+            "number": 1,
+            "title": "Test PR",
+            "state": "OPEN",
+            "createdAt": "2025-01-01T10:00:00Z",
+            "milestone": None,
+            "author": {"login": "testuser"},
+        }
+
+        # Act
+        result = fetcher._map_pr(node, "owner/repo")
+
+        # Assert
+        self.assertIsNone(result.milestone_title)
+
+    @patch("github.Github")
+    @patch("apps.metrics.seeding.github_graphql_fetcher.GitHubGraphQLClient")
+    def test_maps_assignees_from_graphql_nodes(self, mock_client_class, mock_github_class):
+        """Test that assignees are extracted from GraphQL assignees.nodes."""
+        # Arrange
+        fetcher = GitHubGraphQLFetcher(token="ghp_test_token")
+        node = {
+            "number": 1,
+            "title": "Test PR",
+            "state": "OPEN",
+            "createdAt": "2025-01-01T10:00:00Z",
+            "assignees": {
+                "nodes": [
+                    {"login": "developer1"},
+                    {"login": "developer2"},
+                ]
+            },
+            "author": {"login": "testuser"},
+        }
+
+        # Act
+        result = fetcher._map_pr(node, "owner/repo")
+
+        # Assert
+        self.assertEqual(result.assignees, ["developer1", "developer2"])
+
+    @patch("github.Github")
+    @patch("apps.metrics.seeding.github_graphql_fetcher.GitHubGraphQLClient")
+    def test_handles_empty_assignees(self, mock_client_class, mock_github_class):
+        """Test that empty assignees list is returned when no assignees."""
+        # Arrange
+        fetcher = GitHubGraphQLFetcher(token="ghp_test_token")
+        node = {
+            "number": 1,
+            "title": "Test PR",
+            "state": "OPEN",
+            "createdAt": "2025-01-01T10:00:00Z",
+            "assignees": {"nodes": []},
+            "author": {"login": "testuser"},
+        }
+
+        # Act
+        result = fetcher._map_pr(node, "owner/repo")
+
+        # Assert
+        self.assertEqual(result.assignees, [])
+
+    @patch("github.Github")
+    @patch("apps.metrics.seeding.github_graphql_fetcher.GitHubGraphQLClient")
+    def test_maps_linked_issues_from_closing_references(self, mock_client_class, mock_github_class):
+        """Test that linked issues are extracted from closingIssuesReferences."""
+        # Arrange
+        fetcher = GitHubGraphQLFetcher(token="ghp_test_token")
+        node = {
+            "number": 1,
+            "title": "Test PR",
+            "state": "MERGED",
+            "createdAt": "2025-01-01T10:00:00Z",
+            "closingIssuesReferences": {
+                "nodes": [
+                    {"number": 42, "title": "Bug in login"},
+                    {"number": 123, "title": "Feature request"},
+                ]
+            },
+            "author": {"login": "testuser"},
+        }
+
+        # Act
+        result = fetcher._map_pr(node, "owner/repo")
+
+        # Assert
+        self.assertEqual(result.linked_issues, [42, 123])
+
+    @patch("github.Github")
+    @patch("apps.metrics.seeding.github_graphql_fetcher.GitHubGraphQLClient")
+    def test_handles_empty_linked_issues(self, mock_client_class, mock_github_class):
+        """Test that empty linked_issues list is returned when none linked."""
+        # Arrange
+        fetcher = GitHubGraphQLFetcher(token="ghp_test_token")
+        node = {
+            "number": 1,
+            "title": "Test PR",
+            "state": "OPEN",
+            "createdAt": "2025-01-01T10:00:00Z",
+            "closingIssuesReferences": {"nodes": []},
+            "author": {"login": "testuser"},
+        }
+
+        # Act
+        result = fetcher._map_pr(node, "owner/repo")
+
+        # Assert
+        self.assertEqual(result.linked_issues, [])
+
+    @patch("github.Github")
+    @patch("apps.metrics.seeding.github_graphql_fetcher.GitHubGraphQLClient")
+    def test_maps_is_draft_field(self, mock_client_class, mock_github_class):
+        """Test that isDraft is mapped to is_draft."""
+        # Arrange
+        fetcher = GitHubGraphQLFetcher(token="ghp_test_token")
+        node_draft = {
+            "number": 1,
+            "title": "WIP: Feature",
+            "state": "OPEN",
+            "createdAt": "2025-01-01T10:00:00Z",
+            "isDraft": True,
+            "author": {"login": "testuser"},
+        }
+        node_ready = {
+            "number": 2,
+            "title": "Ready Feature",
+            "state": "OPEN",
+            "createdAt": "2025-01-01T10:00:00Z",
+            "isDraft": False,
+            "author": {"login": "testuser"},
+        }
+
+        # Act
+        result_draft = fetcher._map_pr(node_draft, "owner/repo")
+        result_ready = fetcher._map_pr(node_ready, "owner/repo")
+
+        # Assert
+        self.assertTrue(result_draft.is_draft)
+        self.assertFalse(result_ready.is_draft)
+
+    @patch("github.Github")
+    @patch("apps.metrics.seeding.github_graphql_fetcher.GitHubGraphQLClient")
+    def test_all_phase2_fields_in_complete_pr(self, mock_client_class, mock_github_class):
+        """Test that all Phase 2 fields are correctly mapped in a complete PR."""
+        # Arrange
+        fetcher = GitHubGraphQLFetcher(token="ghp_test_token")
+        node = {
+            "number": 100,
+            "title": "Fix critical bug",
+            "body": "Fixes #42",
+            "state": "MERGED",
+            "createdAt": "2025-01-01T10:00:00Z",
+            "updatedAt": "2025-01-02T15:00:00Z",
+            "mergedAt": "2025-01-02T14:00:00Z",
+            "additions": 50,
+            "deletions": 20,
+            "isDraft": False,
+            "author": {"login": "developer"},
+            "labels": {
+                "nodes": [
+                    {"name": "bug", "color": "d73a4a"},
+                    {"name": "urgent", "color": "ff0000"},
+                ]
+            },
+            "milestone": {
+                "title": "Sprint 5",
+                "number": 5,
+                "dueOn": None,
+            },
+            "assignees": {
+                "nodes": [
+                    {"login": "developer"},
+                    {"login": "reviewer"},
+                ]
+            },
+            "closingIssuesReferences": {
+                "nodes": [
+                    {"number": 42, "title": "Critical bug"},
+                ]
+            },
+            "reviews": {"nodes": []},
+            "commits": {"nodes": []},
+            "files": {"nodes": []},
+        }
+
+        # Act
+        result = fetcher._map_pr(node, "owner/repo")
+
+        # Assert
+        self.assertFalse(result.is_draft)
+        self.assertEqual(result.labels, ["bug", "urgent"])
+        self.assertEqual(result.milestone_title, "Sprint 5")
+        self.assertEqual(result.assignees, ["developer", "reviewer"])
+        self.assertEqual(result.linked_issues, [42])

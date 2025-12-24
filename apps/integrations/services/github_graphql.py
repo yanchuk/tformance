@@ -32,8 +32,31 @@ FETCH_PRS_BULK_QUERY = gql(
             mergedAt
             additions
             deletions
+            isDraft
             author {
               login
+            }
+            labels(first: 10) {
+              nodes {
+                name
+                color
+              }
+            }
+            milestone {
+              title
+              number
+              dueOn
+            }
+            assignees(first: 10) {
+              nodes {
+                login
+              }
+            }
+            closingIssuesReferences(first: 5) {
+              nodes {
+                number
+                title
+              }
             }
             reviews(first: 25) {
               nodes {
@@ -103,8 +126,31 @@ FETCH_PRS_UPDATED_QUERY = gql(
             mergedAt
             additions
             deletions
+            isDraft
             author {
               login
+            }
+            labels(first: 10) {
+              nodes {
+                name
+                color
+              }
+            }
+            milestone {
+              title
+              number
+              dueOn
+            }
+            assignees(first: 10) {
+              nodes {
+                login
+              }
+            }
+            closingIssuesReferences(first: 5) {
+              nodes {
+                number
+                title
+              }
             }
             reviews(first: 25) {
               nodes {
@@ -170,8 +216,31 @@ FETCH_SINGLE_PR_QUERY = gql(
           mergedAt
           additions
           deletions
+          isDraft
           author {
             login
+          }
+          labels(first: 10) {
+            nodes {
+              name
+              color
+            }
+          }
+          milestone {
+            title
+            number
+            dueOn
+          }
+          assignees(first: 10) {
+            nodes {
+              login
+            }
+          }
+          closingIssuesReferences(first: 5) {
+            nodes {
+              number
+              title
+            }
           }
           reviews(first: 50) {
             nodes {

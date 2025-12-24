@@ -146,6 +146,38 @@ class PullRequest(BaseTeamModel):
         verbose_name="Is hotfix",
         help_text="Whether this is a hotfix PR",
     )
+    is_draft = models.BooleanField(
+        default=False,
+        verbose_name="Is draft",
+        help_text="Whether this PR is a draft",
+    )
+
+    # GitHub metadata (store all data from API)
+    labels = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name="Labels",
+        help_text="List of label names from GitHub",
+    )
+    milestone_title = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        verbose_name="Milestone title",
+        help_text="GitHub milestone title if assigned",
+    )
+    assignees = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name="Assignees",
+        help_text="List of assignee usernames from GitHub",
+    )
+    linked_issues = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name="Linked issues",
+        help_text="List of linked issue numbers from GitHub",
+    )
 
     # AI tracking
     is_ai_assisted = models.BooleanField(
