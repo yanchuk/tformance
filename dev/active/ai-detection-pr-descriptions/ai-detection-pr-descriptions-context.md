@@ -1,17 +1,55 @@
 # AI Detection via PR Description Analysis - Context
 
-**Last Updated: 2025-12-24 18:30 UTC (Phase 1 Complete + OSS Analysis + LLM Architecture)**
+**Last Updated: 2025-12-24 21:30 UTC (Phase 2 Setup Complete)**
 
-## Session Summary (2025-12-24)
+## Session Summary (2025-12-24 Evening)
+
+### What Was Accomplished
+1. **Groq Integration Decision**: Llama 3.3 70B at $0.08/1000 PRs (44x cheaper than Claude)
+2. **Dependencies Added**: `groq`, `litellm`, `posthog` packages installed
+3. **Promptfoo Setup**: Created YAML config with 18 test cases for prompt iteration
+4. **Runbooks Created**: Context-free operation guides for experiments, prompts, repos
+5. **Tech Stack Finalized**:
+   - Batch API → Groq SDK directly (50% cheaper)
+   - Real-time API → LiteLLM (easy provider switching)
+   - Prompt Testing → Promptfoo (fast iteration)
+   - Analytics → PostHog LLM events
+
+### Key Files Modified This Session
+| File | Changes |
+|------|---------|
+| `pyproject.toml` | Added groq, litellm, posthog dependencies |
+| `experiments/promptfoo.yaml` | NEW: 18 test cases (positive/negative/edge) |
+| `experiments/prompts/v1.md` | Updated system prompt for JSON output |
+| `experiments/default.yaml` | NEW: Default experiment config |
+| `RUNBOOK-EXPERIMENTS.md` | Added Promptfoo workflow section |
+| `llm-detection-architecture.md` | Updated for Groq (was Claude) |
+
+### Next Step Required
+**Add GROQ_API_KEY to .env:**
+```bash
+echo 'GROQ_API_KEY=your-key-here' >> .env
+```
+Get key from: https://console.groq.com/keys
+
+Then test with:
+```bash
+cd dev/active/ai-detection-pr-descriptions/experiments
+npx promptfoo eval
+```
+
+### No Migrations Needed
+- No model changes in this session
+
+## Previous Session Summary (2025-12-24 Morning)
 
 ### What Was Accomplished
 1. **Phase 1 Regex Patterns**: Added 16 new patterns, version 1.4.0
 2. **Validated Detection**: 54/221 PRs (24.4%) would be detected after backfill
 3. **OSS Research**: Found 100 Claude Code PRs across 81 GitHub repos
-4. **LLM Architecture**: Designed Phase 5 with batch API + prompt caching ($3.50/1000 PRs)
-5. **False Positive Discovery**: AI product repos (vercel/ai, langchain) match "Gemini" as product, not authoring
+4. **False Positive Discovery**: AI product repos (vercel/ai, langchain) match "Gemini" as product, not authoring
 
-### Key Files Modified
+### Key Files From Morning Session
 | File | Changes |
 |------|---------|
 | `apps/metrics/services/ai_patterns.py` | Added 6 new patterns (v1.3.0 → v1.4.0) |

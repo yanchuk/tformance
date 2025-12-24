@@ -96,6 +96,12 @@
 - [ ] Integrate PostHog LLM analytics for automatic logging
 - [ ] Create management command: `run_ai_detection_experiment`
 
+### 2.5.1 Promptfoo Integration (Fast Prompt Iteration)
+- [x] Create `experiments/promptfoo.yaml` with test cases
+- [x] Update runbook with Promptfoo workflow
+- [ ] Add 20+ test cases covering positive/negative/edge cases
+- [ ] Run initial evaluation: `npx promptfoo eval`
+
 ### 2.6 Runbooks (Documentation for Context-Free Operation)
 - [x] Create `RUNBOOK-EXPERIMENTS.md` - How to run experiments
 - [x] Create `RUNBOOK-PROMPTS.md` - How to modify prompts

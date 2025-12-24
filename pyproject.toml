@@ -44,7 +44,6 @@ dependencies = [
     "dj-stripe>=2.9,<2.11",
     "django-allauth[socialaccount,mfa]>=65.13.0",
     "django-anymail[resend]", # email services (Resend.com)
-    "django-browser-reload",
     "django-celery-beat",
     "django-environ",
     "django-health-check",
@@ -58,7 +57,6 @@ dependencies = [
     "djangorestframework",
     "djangorestframework-api-key",
     "drf-spectacular",
-    "factory-boy>=3.3.3",
     "jira>=3.10.5",
     "psycopg2-binary",
     "pygithub>=2.8.1",
@@ -76,11 +74,15 @@ dependencies = [
     "google-genai>=1.56.0",
     "python-dotenv>=1.2.1",
     "gql[aiohttp]>=4.0.0",
+    "groq>=1.0.0",
+    "litellm>=1.80.11",
 ]
 
 [dependency-groups]
 dev = [
     "channels[daphne]",
+    "django-browser-reload",  # Hot reload for development
+    "factory-boy>=3.3.3",  # Test data factories (also used by seeding)
     "pre-commit",
     "ruff>=0.13.1",
     "pegasus-cli>=0.8",

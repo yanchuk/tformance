@@ -1,0 +1,274 @@
+# Promptfoo Configuration for AI Detection Prompts
+# See RUNBOOK-PROMPTS.md for iteration workflow
+#
+# Quick Start:
+#   cd dev/active/ai-detection-pr-descriptions/experiments
+#   npx promptfoo eval
+#   npx promptfoo view  # Opens browser UI
+
+description: "AI Detection Prompt Evaluation"
+
+providers:
+  - id: groq:llama-3.3-70b-versatile
+    config:
+      temperature: 0
+      max_tokens: 500
+      response_format:
+        type: json_object
+
+prompts:
+  - file://prompts/v1.md
+
+# Default variables (can override per test)
+defaultTest:
+  vars:
+    pr_body: ""
+
+# Test Cases
+tests:
+  # ============================================
+  # POSITIVE: Should detect AI usage
+  # ============================================
+
+  # Explicit tool mentions
+  - description: "Cursor IDE mentioned explicitly"
+    vars:
+      pr_body: |
+        ## Summary
+        Added new feature for user profiles.
+
+        ## AI Disclosure
+        Used Cursor IDE for implementation.
+    assert:
+      - type: is-json
+      - type: javascript
+        value: JSON.parse(output).is_ai_assisted === true
+      - type: javascript
+        value: JSON.parse(output).tools.includes("cursor")
+      - type: javascript
+        value: JSON.parse(output).confidence >= 0.7
+
+  - description: "Claude Code signature"
+    vars:
+      pr_body: |
+        Fix login validation bug.
+
+        🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+        Co-Authored-By: Claude <noreply@anthropic.com>
+    assert:
+      - type: is-json
+      - type: javascript
+        value: JSON.parse(output).is_ai_assisted === true
+      - type: javascript
+        value: JSON.parse(output).tools.includes("claude")
+      - type: javascript
+        value: JSON.parse(output).confidence >= 0.9
+
+  - description: "Copilot usage"
+    vars:
+      pr_body: |
+        ## Changes
+        - Add new API endpoint
+        - Add tests
+
+        ## AI
+        GitHub Copilot was used for autocompletion.
+    assert:
+      - type: is-json
+      - type: javascript
+        value: JSON.parse(output).is_ai_assisted === true
+      - type: javascript
+        value: JSON.parse(output).tools.includes("copilot")
+
+  - description: "Multiple tools mentioned"
+    vars:
+      pr_body: |
+        AI Disclosure: Used Cursor with Claude Sonnet for the implementation,
+        and Copilot for test generation.
+    assert:
+      - type: is-json
+      - type: javascript
+        value: JSON.parse(output).is_ai_assisted === true
+      - type: javascript
+        value: JSON.parse(output).tools.length >= 2
+
+  # Implicit AI usage (in AI Disclosure section)
+  - description: "Implicit 'Used for' in AI Disclosure section"
+    vars:
+      pr_body: |
+        ## Summary
+        Refactored authentication flow.
+
+        ## AI Disclosure
+        Used for brainstorming the approach.
+    assert:
+      - type: is-json
+      - type: javascript
+        value: JSON.parse(output).is_ai_assisted === true
+      - type: javascript
+        value: JSON.parse(output).usage_category === "brainstorm"
+
+  - description: "Gemini usage"
+    vars:
+      pr_body: |
+        Implement new dashboard widget.
+
+        AI: Used Gemini to help debug the rendering issue.
+    assert:
+      - type: is-json
+      - type: javascript
+        value: JSON.parse(output).is_ai_assisted === true
+      - type: javascript
+        value: JSON.parse(output).tools.includes("gemini")
+
+  # ============================================
+  # NEGATIVE: Should NOT detect AI usage
+  # ============================================
+
+  - description: "Explicit 'No AI' denial"
+    vars:
+      pr_body: |
+        ## Changes
+        Bug fix for API timeout.
+
+        ## AI Disclosure
+        No AI was used.
+    assert:
+      - type: is-json
+      - type: javascript
+        value: JSON.parse(output).is_ai_assisted === false
+      - type: javascript
+        value: JSON.parse(output).confidence >= 0.8
+
+  - description: "N/A disclosure"
+    vars:
+      pr_body: |
+        Added unit tests.
+
+        AI Disclosure: N/A
+    assert:
+      - type: is-json
+      - type: javascript
+        value: JSON.parse(output).is_ai_assisted === false
+
+  - description: "None disclosure"
+    vars:
+      pr_body: |
+        ## Summary
+        Updated dependencies.
+
+        ## AI Disclosure
+        None
+    assert:
+      - type: is-json
+      - type: javascript
+        value: JSON.parse(output).is_ai_assisted === false
+
+  - description: "AI as product feature (not authoring)"
+    vars:
+      pr_body: |
+        ## Summary
+        Added Gemini API integration for AI-powered search.
+
+        This PR adds support for Google's Gemini 1.5 model to power
+        our semantic search feature.
+    assert:
+      - type: is-json
+      - type: javascript
+        value: JSON.parse(output).is_ai_assisted === false
+        description: "Building AI features != using AI to code"
+
+  - description: "Claude SDK integration (product feature)"
+    vars:
+      pr_body: |
+        ## Changes
+        - Add Claude SDK dependency
+        - Implement Claude chat endpoint
+        - Add streaming response handling
+
+        This integrates Anthropic's Claude API for our chatbot.
+    assert:
+      - type: is-json
+      - type: javascript
+        value: JSON.parse(output).is_ai_assisted === false
+        description: "Integrating Claude SDK != using Claude to write code"
+
+  - description: "Person named Devin"
+    vars:
+      pr_body: |
+        Follow-up on Devin's previous PR. He mentioned we need
+        to update the auth tokens after the refactor.
+    assert:
+      - type: is-json
+      - type: javascript
+        value: JSON.parse(output).is_ai_assisted === false
+        description: "Devin the person, not Devin the AI"
+
+  - description: "UI cursor mention"
+    vars:
+      pr_body: |
+        Fix: Move cursor to end of input field after paste.
+
+        The text cursor was staying at position 0.
+    assert:
+      - type: is-json
+      - type: javascript
+        value: JSON.parse(output).is_ai_assisted === false
+        description: "Text cursor != Cursor IDE"
+
+  - description: "Database cursor"
+    vars:
+      pr_body: |
+        Optimize pagination with cursor-based approach.
+
+        Replace offset pagination with cursor pagination for better
+        performance on large datasets.
+    assert:
+      - type: is-json
+      - type: javascript
+        value: JSON.parse(output).is_ai_assisted === false
+        description: "Database cursor != Cursor IDE"
+
+  # ============================================
+  # EDGE CASES: Ambiguous scenarios
+  # ============================================
+
+  - description: "Empty body"
+    vars:
+      pr_body: ""
+    assert:
+      - type: is-json
+      - type: javascript
+        value: JSON.parse(output).is_ai_assisted === false
+      - type: javascript
+        value: JSON.parse(output).confidence >= 0.9
+
+  - description: "Body with only whitespace"
+    vars:
+      pr_body: "   \n\n   "
+    assert:
+      - type: is-json
+      - type: javascript
+        value: JSON.parse(output).is_ai_assisted === false
+
+  - description: "Ambiguous - 'helped with' without tool"
+    vars:
+      pr_body: |
+        ## AI Disclosure
+        AI helped with the implementation.
+    assert:
+      - type: is-json
+      - type: javascript
+        value: JSON.parse(output).is_ai_assisted === true
+      - type: javascript
+        value: JSON.parse(output).confidence < 0.9
+        description: "Lower confidence when no specific tool mentioned"
+
+# Output configuration
+outputPath: ./results/promptfoo-results.json
+
+# Evaluation settings
+evaluateOptions:
+  maxConcurrency: 5
+  showProgressBar: true

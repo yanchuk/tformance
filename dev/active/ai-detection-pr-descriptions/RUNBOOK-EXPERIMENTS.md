@@ -9,14 +9,72 @@
 export GROQ_API_KEY="your-key"
 export POSTHOG_API_KEY="your-key"
 
-# 2. Run experiment on sample PRs
+# 2. Run prompt evaluation with Promptfoo (fast iteration)
+cd dev/active/ai-detection-pr-descriptions/experiments
+npx promptfoo eval              # Run all test cases
+npx promptfoo view              # Open browser UI for results
+
+# 3. Run full experiment on production PRs
 python manage.py run_ai_detection_experiment \
   --config experiments/default.yaml \
   --limit 50 \
   --dry-run
 
-# 3. View results in PostHog dashboard
+# 4. View results in PostHog dashboard
 # https://app.posthog.com/project/<id>/llm-analytics
+```
+
+## Prompt Iteration Workflow (Promptfoo)
+
+For quick prompt testing without touching production data:
+
+```bash
+cd dev/active/ai-detection-pr-descriptions/experiments
+
+# 1. Edit prompt
+vim prompts/v2.md
+
+# 2. Update promptfoo.yaml to use new prompt
+# prompts:
+#   - file://prompts/v2.md
+
+# 3. Run evaluation
+npx promptfoo eval
+
+# 4. View side-by-side comparison
+npx promptfoo view
+
+# 5. Compare specific prompt versions
+npx promptfoo eval -p prompts/v1.md prompts/v2.md
+```
+
+### Test Case Structure
+
+Add new test cases to `promptfoo.yaml`:
+
+```yaml
+tests:
+  - description: "Your test description"
+    vars:
+      pr_body: |
+        The PR body text to test...
+    assert:
+      - type: is-json                              # Must return valid JSON
+      - type: javascript
+        value: JSON.parse(output).is_ai_assisted === true   # Expected result
+      - type: javascript
+        value: JSON.parse(output).tools.includes("cursor")  # Tool detection
+      - type: javascript
+        value: JSON.parse(output).confidence >= 0.7         # Confidence threshold
+```
+
+### Adding Real PR Examples
+
+```bash
+# 1. Fetch PRs from a repo
+gh pr list -R antiwork/gumroad --json number,body --limit 10
+
+# 2. Find interesting examples and add to promptfoo.yaml as test cases
 ```
 
 ---
