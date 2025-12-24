@@ -125,6 +125,18 @@
           </select>
         </div>
 
+        <!-- Self-Reviewed Filter -->
+        <div class="form-control">
+          <label class="label">
+            <span class="label-text text-base-content/80">{% trans "Self-Reviewed" %}</span>
+          </label>
+          <select name="self_reviewed" class="select select-bordered select-sm w-full">
+            <option value="">{% trans "All" %}</option>
+            <option value="yes" {% if filters.self_reviewed == 'yes' %}selected{% endif %}>{% trans "Self-Reviewed" %}</option>
+            <option value="no" {% if filters.self_reviewed == 'no' %}selected{% endif %}>{% trans "External Review" %}</option>
+          </select>
+        </div>
+
         <!-- Date From -->
         <div class="form-control">
           <label class="label">

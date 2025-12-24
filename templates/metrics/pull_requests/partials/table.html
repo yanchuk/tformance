@@ -5,15 +5,51 @@
   <table class="table table-zebra w-full table-fixed">
     <thead>
       <tr>
-        <th class="w-[30%]">{% trans "Title" %}</th>
-        <th class="w-[12%]">{% trans "Repository" %}</th>
-        <th class="w-[10%]">{% trans "Author" %}</th>
+        <th class="w-[28%]">{% trans "Title" %}</th>
+        <th class="w-[11%]">{% trans "Repository" %}</th>
+        <th class="w-[9%]">{% trans "Author" %}</th>
         <th class="w-[6%]">{% trans "State" %}</th>
-        <th class="w-[8%] text-right">{% trans "Cycle Time" %}</th>
-        <th class="w-[9%] text-right">{% trans "Review Time" %}</th>
-        <th class="w-[9%] text-right">{% trans "Lines" %}</th>
+        <th class="w-[8%] text-right cursor-pointer hover:bg-base-300 select-none"
+            hx-get="{% url 'metrics:pr_list_table' %}{% sort_url 'cycle_time' %}"
+            hx-target="#pr-table-container"
+            hx-swap="innerHTML"
+            hx-push-url="{% sort_url 'cycle_time' %}">
+          {% trans "Cycle Time" %}
+          {% if sort == 'cycle_time' %}<span class="ml-1">{% if order == 'asc' %}▲{% else %}▼{% endif %}</span>{% endif %}
+        </th>
+        <th class="w-[8%] text-right cursor-pointer hover:bg-base-300 select-none"
+            hx-get="{% url 'metrics:pr_list_table' %}{% sort_url 'review_time' %}"
+            hx-target="#pr-table-container"
+            hx-swap="innerHTML"
+            hx-push-url="{% sort_url 'review_time' %}">
+          {% trans "Review Time" %}
+          {% if sort == 'review_time' %}<span class="ml-1">{% if order == 'asc' %}▲{% else %}▼{% endif %}</span>{% endif %}
+        </th>
+        <th class="w-[8%] text-right cursor-pointer hover:bg-base-300 select-none"
+            hx-get="{% url 'metrics:pr_list_table' %}{% sort_url 'lines' %}"
+            hx-target="#pr-table-container"
+            hx-swap="innerHTML"
+            hx-push-url="{% sort_url 'lines' %}">
+          {% trans "Lines" %}
+          {% if sort == 'lines' %}<span class="ml-1">{% if order == 'asc' %}▲{% else %}▼{% endif %}</span>{% endif %}
+        </th>
+        <th class="w-[6%] text-right cursor-pointer hover:bg-base-300 select-none"
+            hx-get="{% url 'metrics:pr_list_table' %}{% sort_url 'comments' %}"
+            hx-target="#pr-table-container"
+            hx-swap="innerHTML"
+            hx-push-url="{% sort_url 'comments' %}">
+          {% trans "Comments" %}
+          {% if sort == 'comments' %}<span class="ml-1">{% if order == 'asc' %}▲{% else %}▼{% endif %}</span>{% endif %}
+        </th>
         <th class="w-[5%] text-center">{% trans "AI" %}</th>
-        <th class="w-[11%]">{% trans "Merged" %}</th>
+        <th class="w-[11%] cursor-pointer hover:bg-base-300 select-none"
+            hx-get="{% url 'metrics:pr_list_table' %}{% sort_url 'merged' %}"
+            hx-target="#pr-table-container"
+            hx-swap="innerHTML"
+            hx-push-url="{% sort_url 'merged' %}">
+          {% trans "Merged" %}
+          {% if sort == 'merged' %}<span class="ml-1">{% if order == 'asc' %}▲{% else %}▼{% endif %}</span>{% endif %}
+        </th>
       </tr>
     </thead>
     <tbody>
@@ -32,6 +68,9 @@
         <td>
           {% if pr.author %}
             {{ pr.author.display_name }}
+            {% if pr.reviewer_count == 1 and pr.has_author_review %}
+              <span class="badge badge-warning badge-xs ml-1" title="{% trans 'Self-reviewed: Author is the only reviewer' %}">{% trans "Self" %}</span>
+            {% endif %}
           {% else %}
             <span class="text-base-content/50">-</span>
           {% endif %}
@@ -63,6 +102,9 @@
           <span class="text-success">+{{ pr.additions }}</span>
           <span class="text-error">-{{ pr.deletions }}</span>
         </td>
+        <td class="text-right font-mono text-sm">
+          {{ pr.total_comments|default:0 }}
+        </td>
         <td class="text-center">
           {% if pr.is_ai_assisted %}
             <span class="badge badge-primary badge-sm" title="{{ pr.ai_tools_detected|join:', ' }}">
@@ -82,7 +124,7 @@
       </tr>
       {% empty %}
       <tr>
-        <td colspan="9" class="text-center py-8 text-base-content/50">
+        <td colspan="10" class="text-center py-8 text-base-content/50">
           {% trans "No pull requests found." %}
         </td>
       </tr>

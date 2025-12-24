@@ -302,3 +302,243 @@ class TestPrListExportView(TestCase):
             _ = b"".join(response.streaming_content)
 
         self.assertEqual(response.status_code, 200)
+
+
+class TestPrListSorting(TestCase):
+    """Tests for PR list sorting functionality."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.team = TeamFactory()
+        self.user = UserFactory()
+        self.team.members.add(self.user, through_defaults={"role": ROLE_ADMIN})
+        self.member = TeamMemberFactory(team=self.team)
+        self.client = Client()
+        self.client.force_login(self.user)
+
+    def test_default_sort_by_merged_desc(self):
+        """Test that default sort is by merged_at descending."""
+        now = timezone.now()
+        PullRequestFactory(team=self.team, title="Old PR", merged_at=now - timedelta(days=10))
+        PullRequestFactory(team=self.team, title="New PR", merged_at=now - timedelta(days=1))
+        url = reverse("metrics:pr_list")
+
+        response = self.client.get(url)
+
+        prs = list(response.context["prs"])
+        self.assertEqual(prs[0].title, "New PR")
+        self.assertEqual(prs[1].title, "Old PR")
+
+    def test_sort_by_cycle_time_desc(self):
+        """Test sorting by cycle time descending."""
+        PullRequestFactory(team=self.team, title="Fast PR", cycle_time_hours=5)
+        PullRequestFactory(team=self.team, title="Slow PR", cycle_time_hours=50)
+        url = reverse("metrics:pr_list")
+
+        response = self.client.get(url, {"sort": "cycle_time", "order": "desc"})
+
+        prs = list(response.context["prs"])
+        self.assertEqual(prs[0].title, "Slow PR")
+        self.assertEqual(prs[1].title, "Fast PR")
+
+    def test_sort_by_cycle_time_asc(self):
+        """Test sorting by cycle time ascending."""
+        PullRequestFactory(team=self.team, title="Fast PR", cycle_time_hours=5)
+        PullRequestFactory(team=self.team, title="Slow PR", cycle_time_hours=50)
+        url = reverse("metrics:pr_list")
+
+        response = self.client.get(url, {"sort": "cycle_time", "order": "asc"})
+
+        prs = list(response.context["prs"])
+        self.assertEqual(prs[0].title, "Fast PR")
+        self.assertEqual(prs[1].title, "Slow PR")
+
+    def test_sort_by_review_time(self):
+        """Test sorting by review time."""
+        PullRequestFactory(team=self.team, title="Quick Review", review_time_hours=2)
+        PullRequestFactory(team=self.team, title="Long Review", review_time_hours=48)
+        url = reverse("metrics:pr_list")
+
+        response = self.client.get(url, {"sort": "review_time", "order": "desc"})
+
+        prs = list(response.context["prs"])
+        self.assertEqual(prs[0].title, "Long Review")
+
+    def test_sort_by_lines(self):
+        """Test sorting by lines (additions)."""
+        PullRequestFactory(team=self.team, title="Small PR", additions=10, deletions=5)
+        PullRequestFactory(team=self.team, title="Large PR", additions=500, deletions=100)
+        url = reverse("metrics:pr_list")
+
+        response = self.client.get(url, {"sort": "lines", "order": "desc"})
+
+        prs = list(response.context["prs"])
+        self.assertEqual(prs[0].title, "Large PR")
+
+    def test_sort_by_comments(self):
+        """Test sorting by comments."""
+        PullRequestFactory(team=self.team, title="No Comments", total_comments=0)
+        PullRequestFactory(team=self.team, title="Many Comments", total_comments=25)
+        url = reverse("metrics:pr_list")
+
+        response = self.client.get(url, {"sort": "comments", "order": "desc"})
+
+        prs = list(response.context["prs"])
+        self.assertEqual(prs[0].title, "Many Comments")
+
+    def test_invalid_sort_defaults_to_merged(self):
+        """Test that invalid sort field defaults to merged_at."""
+        now = timezone.now()
+        PullRequestFactory(team=self.team, title="Old", merged_at=now - timedelta(days=5))
+        PullRequestFactory(team=self.team, title="New", merged_at=now - timedelta(days=1))
+        url = reverse("metrics:pr_list")
+
+        response = self.client.get(url, {"sort": "invalid_field"})
+
+        # Should fall back to default sort (merged desc)
+        prs = list(response.context["prs"])
+        self.assertEqual(prs[0].title, "New")
+
+    def test_invalid_order_defaults_to_desc(self):
+        """Test that invalid order defaults to desc."""
+        now = timezone.now()
+        PullRequestFactory(team=self.team, title="Old", merged_at=now - timedelta(days=5))
+        PullRequestFactory(team=self.team, title="New", merged_at=now - timedelta(days=1))
+        url = reverse("metrics:pr_list")
+
+        response = self.client.get(url, {"sort": "merged", "order": "invalid"})
+
+        # Should fall back to desc order
+        prs = list(response.context["prs"])
+        self.assertEqual(prs[0].title, "New")
+
+    def test_sort_context_in_response(self):
+        """Test that sort and order are passed to template context."""
+        url = reverse("metrics:pr_list")
+
+        response = self.client.get(url, {"sort": "cycle_time", "order": "asc"})
+
+        self.assertEqual(response.context["sort"], "cycle_time")
+        self.assertEqual(response.context["order"], "asc")
+
+    def test_sort_with_filters(self):
+        """Test that sorting works with filters applied."""
+        PullRequestFactory(team=self.team, title="Fast Merged", state="merged", cycle_time_hours=5)
+        PullRequestFactory(team=self.team, title="Slow Merged", state="merged", cycle_time_hours=50)
+        PullRequestFactory(team=self.team, title="Open PR", state="open", cycle_time_hours=1)
+        url = reverse("metrics:pr_list")
+
+        response = self.client.get(url, {"state": "merged", "sort": "cycle_time", "order": "asc"})
+
+        prs = list(response.context["prs"])
+        self.assertEqual(len(prs), 2)
+        self.assertEqual(prs[0].title, "Fast Merged")
+        self.assertEqual(prs[1].title, "Slow Merged")
+
+    def test_sort_handles_null_values(self):
+        """Test that sorting handles null values (nulls last)."""
+        PullRequestFactory(team=self.team, title="Has Time", cycle_time_hours=10)
+        PullRequestFactory(team=self.team, title="No Time", cycle_time_hours=None)
+        url = reverse("metrics:pr_list")
+
+        response = self.client.get(url, {"sort": "cycle_time", "order": "desc"})
+
+        prs = list(response.context["prs"])
+        # NULL values should be last
+        self.assertEqual(prs[0].title, "Has Time")
+        self.assertEqual(prs[1].title, "No Time")
+
+    def test_table_partial_includes_sort_params(self):
+        """Test that table partial view also applies sorting."""
+        PullRequestFactory(team=self.team, title="Fast PR", cycle_time_hours=5)
+        PullRequestFactory(team=self.team, title="Slow PR", cycle_time_hours=50)
+        url = reverse("metrics:pr_list_table")
+
+        response = self.client.get(url, {"sort": "cycle_time", "order": "asc"}, HTTP_HX_REQUEST="true")
+
+        self.assertEqual(response.context["sort"], "cycle_time")
+        self.assertEqual(response.context["order"], "asc")
+
+
+class TestPrListSelfReviewedFilter(TestCase):
+    """Tests for self-reviewed filter functionality."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        from apps.metrics.factories import PRReviewFactory
+
+        self.team = TeamFactory()
+        self.user = UserFactory()
+        self.team.members.add(self.user, through_defaults={"role": ROLE_ADMIN})
+        self.alice = TeamMemberFactory(team=self.team, display_name="Alice")
+        self.bob = TeamMemberFactory(team=self.team, display_name="Bob")
+        self.client = Client()
+        self.client.force_login(self.user)
+        self.PRReviewFactory = PRReviewFactory
+
+    def test_self_reviewed_filter_yes_returns_self_reviewed_prs(self):
+        """Test that self_reviewed=yes returns only self-reviewed PRs."""
+        from apps.metrics.services.pr_list_service import get_prs_queryset
+
+        # Create a self-reviewed PR (author is the only reviewer)
+        self_reviewed_pr = PullRequestFactory(team=self.team, title="Self Reviewed Unique", author=self.alice)
+        self.PRReviewFactory(team=self.team, pull_request=self_reviewed_pr, reviewer=self.alice)
+
+        # Create a PR with external review
+        external_pr = PullRequestFactory(team=self.team, title="External Review Unique", author=self.alice)
+        self.PRReviewFactory(team=self.team, pull_request=external_pr, reviewer=self.bob)
+
+        # Test via service layer first
+        qs = get_prs_queryset(self.team, {"self_reviewed": "yes"})
+        titles = [pr.title for pr in qs]
+        self.assertIn("Self Reviewed Unique", titles)
+        self.assertNotIn("External Review Unique", titles)
+
+        # Test via view
+        url = reverse("metrics:pr_list")
+        response = self.client.get(url, {"self_reviewed": "yes"})
+
+        self.assertContains(response, "Self Reviewed Unique")
+        self.assertNotContains(response, "External Review Unique")
+
+    def test_self_reviewed_filter_no_returns_external_reviewed_prs(self):
+        """Test that self_reviewed=no returns PRs with external reviews."""
+        # Create a self-reviewed PR
+        self_reviewed_pr = PullRequestFactory(team=self.team, title="Self Reviewed", author=self.alice)
+        self.PRReviewFactory(team=self.team, pull_request=self_reviewed_pr, reviewer=self.alice)
+
+        # Create a PR with external review
+        external_pr = PullRequestFactory(team=self.team, title="External Review", author=self.alice)
+        self.PRReviewFactory(team=self.team, pull_request=external_pr, reviewer=self.bob)
+
+        url = reverse("metrics:pr_list")
+
+        response = self.client.get(url, {"self_reviewed": "no"})
+
+        self.assertNotContains(response, "Self Reviewed")
+        self.assertContains(response, "External Review")
+
+    def test_self_reviewed_badge_displays_for_self_reviewed_prs(self):
+        """Test that self-reviewed PRs show the 'Self' badge."""
+        self_reviewed_pr = PullRequestFactory(team=self.team, title="Self Reviewed PR", author=self.alice)
+        self.PRReviewFactory(team=self.team, pull_request=self_reviewed_pr, reviewer=self.alice)
+
+        url = reverse("metrics:pr_list")
+
+        response = self.client.get(url)
+
+        # Should contain the "Self" badge
+        self.assertContains(response, 'title="Self-reviewed: Author is the only reviewer"')
+
+    def test_pr_with_multiple_reviewers_not_self_reviewed(self):
+        """Test that PR with multiple reviewers is not marked as self-reviewed."""
+        pr = PullRequestFactory(team=self.team, title="Multi Review", author=self.alice)
+        self.PRReviewFactory(team=self.team, pull_request=pr, reviewer=self.alice)
+        self.PRReviewFactory(team=self.team, pull_request=pr, reviewer=self.bob)
+
+        url = reverse("metrics:pr_list")
+
+        response = self.client.get(url, {"self_reviewed": "yes"})
+
+        # Should not match self-reviewed filter
+        self.assertNotContains(response, "Multi Review")

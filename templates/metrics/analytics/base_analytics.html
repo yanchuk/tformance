@@ -127,11 +127,39 @@
     });
   }
 
+  // Update time range button highlighting after HTMX navigation
+  function updateTimeRangeButtons() {
+    const params = new URLSearchParams(window.location.search);
+    const days = parseInt(params.get('days')) || 30;
+
+    document.querySelectorAll('.join a[href^="?days="]').forEach(btn => {
+      const btnHref = btn.getAttribute('href');
+      const btnDays = parseInt(new URLSearchParams(btnHref.split('?')[1]).get('days'));
+
+      if (btnDays === days) {
+        btn.classList.add('btn-primary');
+        btn.classList.remove('btn-ghost');
+      } else {
+        btn.classList.remove('btn-primary');
+        btn.classList.add('btn-ghost');
+      }
+    });
+  }
+
   // Listen for HTMX URL changes
-  document.body.addEventListener('htmx:pushedIntoHistory', updateActiveTab);
-  document.body.addEventListener('htmx:replacedInHistory', updateActiveTab);
+  document.body.addEventListener('htmx:pushedIntoHistory', function() {
+    updateActiveTab();
+    updateTimeRangeButtons();
+  });
+  document.body.addEventListener('htmx:replacedInHistory', function() {
+    updateActiveTab();
+    updateTimeRangeButtons();
+  });
 
   // Also handle browser back/forward
-  window.addEventListener('popstate', updateActiveTab);
+  window.addEventListener('popstate', function() {
+    updateActiveTab();
+    updateTimeRangeButtons();
+  });
 </script>
 {% endblock %}

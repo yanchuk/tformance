@@ -4,6 +4,7 @@ import csv
 from datetime import date, timedelta
 
 from django.core.paginator import Paginator
+from django.db.models import F
 from django.http import HttpRequest, HttpResponse, StreamingHttpResponse
 from django.template.response import TemplateResponse
 
@@ -16,6 +17,15 @@ from apps.teams.decorators import login_and_team_required
 
 # Default page size for PR list
 PAGE_SIZE = 50
+
+# Mapping of sort param names to model fields
+SORT_FIELDS = {
+    "cycle_time": "cycle_time_hours",
+    "review_time": "review_time_hours",
+    "lines": "additions",
+    "comments": "total_comments",
+    "merged": "merged_at",
+}
 
 
 def _get_filters_from_request(request: HttpRequest) -> dict:
@@ -37,6 +47,7 @@ def _get_filters_from_request(request: HttpRequest) -> dict:
         "size",
         "state",
         "has_jira",
+        "self_reviewed",
         "date_from",
         "date_to",
     ]
@@ -60,19 +71,51 @@ def _get_filters_from_request(request: HttpRequest) -> dict:
     return filters
 
 
-def _get_pr_list_context(team, filters: dict, page_number: int = 1) -> dict:
+def _get_sort_from_request(request: HttpRequest) -> tuple[str, str]:
+    """Extract sort parameters from request GET params.
+
+    Args:
+        request: The HTTP request object
+
+    Returns:
+        Tuple of (sort_field, order) with validated values
+    """
+    sort = request.GET.get("sort", "merged")
+    order = request.GET.get("order", "desc")
+
+    # Validate sort field
+    if sort not in SORT_FIELDS:
+        sort = "merged"
+
+    # Validate order
+    if order not in ("asc", "desc"):
+        order = "desc"
+
+    return sort, order
+
+
+def _get_pr_list_context(team, filters: dict, page_number: int = 1, sort: str = "merged", order: str = "desc") -> dict:
     """Get common context data for PR list views.
 
     Args:
         team: The team to filter PRs for
         filters: Dictionary of filter parameters
         page_number: Page number for pagination
+        sort: Field to sort by
+        order: Sort order ('asc' or 'desc')
 
     Returns:
-        Dictionary with prs, page_obj, stats, and filters
+        Dictionary with prs, page_obj, stats, filters, sort, and order
     """
     # Get filtered queryset
-    prs = get_prs_queryset(team, filters).order_by("-merged_at", "-pr_created_at")
+    prs = get_prs_queryset(team, filters)
+
+    # Apply sorting
+    sort_field = SORT_FIELDS.get(sort, "merged_at")
+    if order == "desc":
+        prs = prs.order_by(F(sort_field).desc(nulls_last=True), "-pr_created_at")
+    else:
+        prs = prs.order_by(F(sort_field).asc(nulls_last=True), "-pr_created_at")
 
     # Get aggregate stats
     stats = get_pr_stats(prs)
@@ -86,6 +129,8 @@ def _get_pr_list_context(team, filters: dict, page_number: int = 1) -> dict:
         "page_obj": page_obj,
         "stats": stats,
         "filters": filters,
+        "sort": sort,
+        "order": order,
     }
 
 
@@ -95,9 +140,10 @@ def pr_list(request: HttpRequest) -> HttpResponse:
     team = request.team
     filters = _get_filters_from_request(request)
     page_number = request.GET.get("page", 1)
+    sort, order = _get_sort_from_request(request)
 
     # Get common context
-    context = _get_pr_list_context(team, filters, page_number)
+    context = _get_pr_list_context(team, filters, page_number, sort, order)
 
     # Add page-specific context
     context["active_page"] = "pull_requests"  # For tab highlighting
@@ -126,13 +172,14 @@ def pr_list(request: HttpRequest) -> HttpResponse:
 
 @login_and_team_required
 def pr_list_table(request: HttpRequest) -> HttpResponse:
-    """HTMX partial for PR list table - used for filter/pagination updates."""
+    """HTMX partial for PR list table - used for filter/pagination/sort updates."""
     team = request.team
     filters = _get_filters_from_request(request)
     page_number = request.GET.get("page", 1)
+    sort, order = _get_sort_from_request(request)
 
     # Get common context
-    context = _get_pr_list_context(team, filters, page_number)
+    context = _get_pr_list_context(team, filters, page_number, sort, order)
 
     return TemplateResponse(
         request,

@@ -111,6 +111,44 @@ test.describe('Analytics Pages Tests @analytics', () => {
       await expect(page).toHaveURL(/\?days=7/);
     });
 
+    test('time range button highlighting updates on HTMX click', async ({ page }) => {
+      // Start with default (30d)
+      await page.goto('/app/metrics/analytics/');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForTimeout(500);
+
+      // 30d should be primary (active)
+      await expect(page.getByRole('link', { name: '30d' })).toHaveClass(/btn-primary/);
+      await expect(page.getByRole('link', { name: '7d' })).toHaveClass(/btn-ghost/);
+
+      // Click 7d via HTMX
+      await page.getByRole('link', { name: '7d' }).click();
+      await page.waitForURL(/days=7/);
+      await page.waitForTimeout(300);
+
+      // 7d should now be primary (active), 30d should be ghost
+      await expect(page.getByRole('link', { name: '7d' })).toHaveClass(/btn-primary/);
+      await expect(page.getByRole('link', { name: '30d' })).toHaveClass(/btn-ghost/);
+    });
+
+    test('time range button highlighting updates when switching to 90d', async ({ page }) => {
+      await page.goto('/app/metrics/analytics/?days=7');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForTimeout(500);
+
+      // 7d should be active
+      await expect(page.getByRole('link', { name: '7d' })).toHaveClass(/btn-primary/);
+
+      // Click 90d
+      await page.getByRole('link', { name: '90d' }).click();
+      await page.waitForURL(/days=90/);
+      await page.waitForTimeout(300);
+
+      // 90d should now be active
+      await expect(page.getByRole('link', { name: '90d' })).toHaveClass(/btn-primary/);
+      await expect(page.getByRole('link', { name: '7d' })).toHaveClass(/btn-ghost/);
+    });
+
     test('navigate to Pull Requests via tab', async ({ page }) => {
       await page.goto('/app/metrics/analytics/');
       await page.waitForLoadState('domcontentloaded');
@@ -412,15 +450,106 @@ test.describe('Analytics Pages Tests @analytics', () => {
       await expect(page.getByText('Filters').first()).toBeVisible();
     });
 
-    test('PR table displays with columns', async ({ page }) => {
+    test('PR table displays with columns including Comments', async ({ page }) => {
       await page.goto('/app/metrics/pull-requests/');
       await page.waitForLoadState('domcontentloaded');
       await page.waitForTimeout(500); // Allow table to load
 
-      // Check for table headers
+      // Check for table headers including new Comments column
       await expect(page.getByRole('columnheader', { name: 'Title' })).toBeVisible();
       await expect(page.getByRole('columnheader', { name: 'Author' })).toBeVisible();
-      await expect(page.getByRole('columnheader', { name: 'Repo' })).toBeVisible();
+      await expect(page.getByRole('columnheader', { name: 'Comments' })).toBeVisible();
+    });
+
+    test('sortable columns show cursor pointer on hover', async ({ page }) => {
+      await page.goto('/app/metrics/pull-requests/');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForTimeout(500);
+
+      // Sortable columns should have cursor-pointer class
+      const cycleTimeHeader = page.getByRole('columnheader', { name: /Cycle Time/ });
+      await expect(cycleTimeHeader).toHaveClass(/cursor-pointer/);
+    });
+
+    test('clicking sortable column updates URL with sort params', async ({ page }) => {
+      await page.goto('/app/metrics/pull-requests/');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForTimeout(500);
+
+      // Click Cycle Time column header to sort
+      await page.getByRole('columnheader', { name: /Cycle Time/ }).click();
+      await page.waitForTimeout(300);
+
+      // URL should include sort params
+      await expect(page).toHaveURL(/sort=cycle_time/);
+    });
+
+    test('clicking same column toggles sort order', async ({ page }) => {
+      await page.goto('/app/metrics/pull-requests/?sort=cycle_time&order=desc');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForTimeout(500);
+
+      // Should show descending indicator
+      await expect(page.getByRole('columnheader', { name: /Cycle Time/ })).toContainText('▼');
+
+      // Click again to toggle to ascending
+      await page.getByRole('columnheader', { name: /Cycle Time/ }).click();
+      await page.waitForTimeout(300);
+
+      await expect(page).toHaveURL(/order=asc/);
+      await expect(page.getByRole('columnheader', { name: /Cycle Time/ })).toContainText('▲');
+    });
+
+    test('sort indicator shows on active sort column', async ({ page }) => {
+      await page.goto('/app/metrics/pull-requests/?sort=review_time&order=desc');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForTimeout(500);
+
+      // Review Time should show ▼
+      await expect(page.getByRole('columnheader', { name: /Review Time/ })).toContainText('▼');
+
+      // Other sortable columns should NOT show indicator
+      await expect(page.getByRole('columnheader', { name: /Cycle Time/ })).not.toContainText('▲');
+      await expect(page.getByRole('columnheader', { name: /Cycle Time/ })).not.toContainText('▼');
+    });
+
+    test('sort by Comments column works', async ({ page }) => {
+      await page.goto('/app/metrics/pull-requests/');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForTimeout(500);
+
+      // Click Comments column header
+      await page.getByRole('columnheader', { name: 'Comments' }).click();
+      await page.waitForTimeout(300);
+
+      await expect(page).toHaveURL(/sort=comments/);
+    });
+
+    test('sort by Lines column works', async ({ page }) => {
+      await page.goto('/app/metrics/pull-requests/');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForTimeout(500);
+
+      // Click Lines column header
+      await page.getByRole('columnheader', { name: 'Lines' }).click();
+      await page.waitForTimeout(300);
+
+      await expect(page).toHaveURL(/sort=lines/);
+    });
+
+    test('sorting preserves filters', async ({ page }) => {
+      // Start with a filter applied
+      await page.goto('/app/metrics/pull-requests/?state=merged');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForTimeout(500);
+
+      // Click to sort
+      await page.getByRole('columnheader', { name: /Cycle Time/ }).click();
+      await page.waitForTimeout(300);
+
+      // URL should have both filter and sort params
+      await expect(page).toHaveURL(/state=merged/);
+      await expect(page).toHaveURL(/sort=cycle_time/);
     });
 
     test('stats row displays totals', async ({ page }) => {

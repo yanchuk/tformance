@@ -3,7 +3,7 @@
 from datetime import date, datetime
 from typing import Any
 
-from django.db.models import Avg, Count, F, Q, QuerySet, Sum
+from django.db.models import Avg, Count, Exists, F, OuterRef, Q, QuerySet, Subquery, Sum
 
 from apps.metrics.models import PRReview, PullRequest
 from apps.teams.models import Team
@@ -32,6 +32,7 @@ def get_prs_queryset(team: Team, filters: dict[str, Any]) -> QuerySet[PullReques
             - size: PR size bucket ('XS', 'S', 'M', 'L', 'XL')
             - state: PR state ('open', 'merged', 'closed')
             - has_jira: 'yes' or 'no'
+            - self_reviewed: 'yes' or 'no'
             - date_from: Start date (ISO format string)
             - date_to: End date (ISO format string)
 
@@ -40,6 +41,23 @@ def get_prs_queryset(team: Team, filters: dict[str, Any]) -> QuerySet[PullReques
     """
     # noqa: TEAM001 - Explicit team filter provided
     qs = PullRequest.objects.filter(team=team).select_related("author", "team")
+
+    # Always annotate with is_self_reviewed for display in table
+    # A PR is self-reviewed if it has only one unique reviewer and that reviewer is the author
+    # noqa: TEAM001 - Subquery scoped by pull_request which is already team-filtered
+    unique_reviewer_count = (
+        PRReview.objects.filter(pull_request=OuterRef("pk"))  # noqa: TEAM001
+        .values("pull_request")
+        .annotate(cnt=Count("reviewer", distinct=True))
+        .values("cnt")
+    )
+    has_only_author_review = Exists(
+        PRReview.objects.filter(pull_request=OuterRef("pk"), reviewer=OuterRef("author"))  # noqa: TEAM001
+    )
+    qs = qs.annotate(
+        reviewer_count=Subquery(unique_reviewer_count),
+        has_author_review=has_only_author_review,
+    )
 
     # Filter by repository
     if filters.get("repo"):
@@ -99,6 +117,16 @@ def get_prs_queryset(team: Team, filters: dict[str, Any]) -> QuerySet[PullReques
         date_to = _parse_date(filters["date_to"])
         if date_to:
             qs = qs.filter(merged_at__date__lte=date_to)
+
+    # Filter by self-reviewed status
+    # (annotations are already added at the start of the function)
+    self_reviewed = filters.get("self_reviewed")
+    if self_reviewed == "yes":
+        # Only one unique reviewer AND that reviewer is the author
+        qs = qs.filter(reviewer_count=1, has_author_review=True)
+    elif self_reviewed == "no":
+        # Either no reviews, more than one reviewer, or the single reviewer isn't the author
+        qs = qs.exclude(reviewer_count=1, has_author_review=True)
 
     return qs
 
