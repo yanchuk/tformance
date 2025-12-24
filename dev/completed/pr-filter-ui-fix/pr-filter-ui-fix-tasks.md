@@ -14,3 +14,4 @@
 - [ ] Update old list.html template to match (if still used) - SKIPPED (old template not in use)
 - [x] Test all filters work correctly
 - [x] Run unit tests (20 passed)
+- [x] Adjust table column widths (Title 30%, State 6%)
