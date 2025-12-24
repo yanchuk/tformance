@@ -3,6 +3,7 @@
 from django.test import TestCase
 
 from apps.metrics.templatetags.pr_list_tags import (
+    pr_size_bucket,
     tech_abbrev,
     tech_badge_class,
     tech_display_name,
@@ -123,3 +124,100 @@ class TestTechDisplayNameFilter(TestCase):
     def test_none_returns_empty(self):
         """Test None value returns empty."""
         self.assertEqual(tech_display_name(None), "")
+
+
+class TestPrSizeBucketFilter(TestCase):
+    """Tests for pr_size_bucket template filter."""
+
+    # Edge cases: minimum value for each bucket
+    def test_xs_bucket_minimum_zero_lines(self):
+        """Test XS bucket with 0 total lines."""
+        self.assertEqual(pr_size_bucket(0, 0), "XS")
+
+    def test_s_bucket_minimum_11_lines(self):
+        """Test S bucket with 11 total lines (minimum)."""
+        self.assertEqual(pr_size_bucket(6, 5), "S")
+
+    def test_m_bucket_minimum_51_lines(self):
+        """Test M bucket with 51 total lines (minimum)."""
+        self.assertEqual(pr_size_bucket(30, 21), "M")
+
+    def test_l_bucket_minimum_201_lines(self):
+        """Test L bucket with 201 total lines (minimum)."""
+        self.assertEqual(pr_size_bucket(100, 101), "L")
+
+    def test_xl_bucket_minimum_501_lines(self):
+        """Test XL bucket with 501 total lines (minimum)."""
+        self.assertEqual(pr_size_bucket(300, 201), "XL")
+
+    # Edge cases: maximum value for each bucket
+    def test_xs_bucket_maximum_10_lines(self):
+        """Test XS bucket with 10 total lines (maximum)."""
+        self.assertEqual(pr_size_bucket(5, 5), "XS")
+
+    def test_s_bucket_maximum_50_lines(self):
+        """Test S bucket with 50 total lines (maximum)."""
+        self.assertEqual(pr_size_bucket(25, 25), "S")
+
+    def test_m_bucket_maximum_200_lines(self):
+        """Test M bucket with 200 total lines (maximum)."""
+        self.assertEqual(pr_size_bucket(100, 100), "M")
+
+    def test_l_bucket_maximum_500_lines(self):
+        """Test L bucket with 500 total lines (maximum)."""
+        self.assertEqual(pr_size_bucket(250, 250), "L")
+
+    # Typical values in each bucket
+    def test_xs_bucket_typical_5_lines(self):
+        """Test XS bucket with typical 5 total lines."""
+        self.assertEqual(pr_size_bucket(3, 2), "XS")
+
+    def test_s_bucket_typical_30_lines(self):
+        """Test S bucket with typical 30 total lines."""
+        self.assertEqual(pr_size_bucket(20, 10), "S")
+
+    def test_m_bucket_typical_125_lines(self):
+        """Test M bucket with typical 125 total lines."""
+        self.assertEqual(pr_size_bucket(75, 50), "M")
+
+    def test_l_bucket_typical_350_lines(self):
+        """Test L bucket with typical 350 total lines."""
+        self.assertEqual(pr_size_bucket(200, 150), "L")
+
+    def test_xl_bucket_typical_1000_lines(self):
+        """Test XL bucket with typical 1000 total lines."""
+        self.assertEqual(pr_size_bucket(600, 400), "XL")
+
+    # Special cases
+    def test_zero_additions_and_deletions(self):
+        """Test zero additions and deletions returns XS."""
+        self.assertEqual(pr_size_bucket(0, 0), "XS")
+
+    def test_only_additions_no_deletions(self):
+        """Test only additions with no deletions."""
+        self.assertEqual(pr_size_bucket(100, 0), "M")
+
+    def test_only_deletions_no_additions(self):
+        """Test only deletions with no additions."""
+        self.assertEqual(pr_size_bucket(0, 100), "M")
+
+    # Invalid inputs
+    def test_none_additions_returns_empty(self):
+        """Test None additions returns empty string."""
+        self.assertEqual(pr_size_bucket(None, 10), "")
+
+    def test_none_deletions_returns_empty(self):
+        """Test None deletions returns empty string."""
+        self.assertEqual(pr_size_bucket(10, None), "")
+
+    def test_both_none_returns_empty(self):
+        """Test both None values return empty string."""
+        self.assertEqual(pr_size_bucket(None, None), "")
+
+    def test_negative_additions_returns_empty(self):
+        """Test negative additions returns empty string."""
+        self.assertEqual(pr_size_bucket(-5, 10), "")
+
+    def test_negative_deletions_returns_empty(self):
+        """Test negative deletions returns empty string."""
+        self.assertEqual(pr_size_bucket(10, -5), "")

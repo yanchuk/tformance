@@ -3,6 +3,7 @@
 from django import template
 
 from apps.metrics.services.ai_patterns import get_ai_tool_display_name
+from apps.metrics.services.pr_list_service import calculate_pr_size_bucket
 
 register = template.Library()
 
@@ -156,3 +157,29 @@ def tech_display_name(category: str) -> str:
     if not category:
         return ""
     return TECH_DISPLAY_NAMES.get(category, category.title())
+
+
+@register.filter
+def pr_size_bucket(additions: int | None, deletions: int | None) -> str:
+    """Calculate PR size bucket based on total lines changed.
+
+    Args:
+        additions: Number of lines added
+        deletions: Number of lines deleted
+
+    Returns:
+        Size bucket string: 'XS', 'S', 'M', 'L', or 'XL'
+        Returns empty string for None or negative inputs
+
+    Usage:
+        {{ pr.additions|pr_size_bucket:pr.deletions }}
+    """
+    # Validate inputs
+    if additions is None or deletions is None:
+        return ""
+    if additions < 0 or deletions < 0:
+        return ""
+
+    # Delegate to service layer for bucket calculation
+    total_lines = additions + deletions
+    return calculate_pr_size_bucket(total_lines)

@@ -19,6 +19,34 @@ PR_SIZE_BUCKETS = {
 }
 
 
+def calculate_pr_size_bucket(total_lines: int) -> str:
+    """Calculate PR size bucket based on total lines changed.
+
+    Args:
+        total_lines: Total lines changed (additions + deletions), must be >= 0
+
+    Returns:
+        Size bucket string: 'XS', 'S', 'M', 'L', or 'XL'
+        Returns empty string if total_lines is negative
+
+    Examples:
+        >>> calculate_pr_size_bucket(5)
+        'XS'
+        >>> calculate_pr_size_bucket(100)
+        'M'
+        >>> calculate_pr_size_bucket(1000)
+        'XL'
+    """
+    if total_lines < 0:
+        return ""
+
+    for bucket_name, (min_lines, max_lines) in PR_SIZE_BUCKETS.items():
+        if total_lines >= min_lines and (max_lines is None or total_lines <= max_lines):
+            return bucket_name
+
+    return ""
+
+
 def get_prs_queryset(team: Team, filters: dict[str, Any]) -> QuerySet[PullRequest]:
     """Get filtered queryset of PRs for a team.
 

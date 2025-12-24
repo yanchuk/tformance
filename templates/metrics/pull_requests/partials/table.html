@@ -25,12 +25,12 @@
           {% trans "Review Time" %}
           {% if sort == 'review_time' %}<span class="ml-1">{% if order == 'asc' %}▲{% else %}▼{% endif %}</span>{% endif %}
         </th>
-        <th class="w-[7%] text-right cursor-pointer hover:bg-base-300 select-none"
+        <th class="w-[7%] text-center cursor-pointer hover:bg-base-300 select-none"
             hx-get="{% url 'metrics:pr_list_table' %}{% sort_url 'lines' %}"
             hx-target="#pr-table-container"
             hx-swap="innerHTML"
             hx-push-url="{% sort_url 'lines' %}">
-          {% trans "Lines" %}
+          {% trans "Size" %}
           {% if sort == 'lines' %}<span class="ml-1">{% if order == 'asc' %}▲{% else %}▼{% endif %}</span>{% endif %}
         </th>
         <th class="w-[5%] text-right cursor-pointer hover:bg-base-300 select-none"
@@ -66,16 +66,20 @@
           {% endif %}
         </td>
         <td class="text-sm text-base-content/70">{{ pr.github_repo }}</td>
-        <td>
+        <td class="max-w-[100px]">
           {% if pr.author %}
-            {{ pr.author.display_name }}
-            {% if pr.reviewer_count == 1 and pr.has_author_review %}
-              <span class="badge badge-warning badge-xs ml-1" title="{% trans 'Self-reviewed: Author is the only reviewer' %}">{% trans "Self" %}</span>
-            {% endif %}
+            <div class="flex items-center gap-1">
+              <span class="truncate" title="{{ pr.author.display_name }}">{{ pr.author.display_name }}</span>
+              {% if pr.reviewer_count == 1 and pr.has_author_review %}
+                <span class="badge badge-warning badge-xs flex-shrink-0" title="{% trans 'Self-reviewed: Author is the only reviewer' %}">{% trans "Self" %}</span>
+              {% endif %}
+            </div>
           {% elif pr.is_ai_assisted and pr.ai_tools_detected %}
             {# Bot author without TeamMember - show AI tool name #}
-            <span class="text-primary">{{ pr.ai_tools_detected|ai_tools_display }}</span>
-            <span class="badge badge-secondary badge-xs ml-1" title="{% trans 'AI Bot Author' %}">{% trans "Bot" %}</span>
+            <div class="flex items-center gap-1">
+              <span class="truncate text-primary" title="{{ pr.ai_tools_detected|ai_tools_display }}">{{ pr.ai_tools_detected|ai_tools_display }}</span>
+              <span class="badge badge-secondary badge-xs flex-shrink-0" title="{% trans 'AI Bot Author' %}">{% trans "Bot" %}</span>
+            </div>
           {% else %}
             <span class="text-base-content/50">-</span>
           {% endif %}
@@ -103,9 +107,14 @@
             -
           {% endif %}
         </td>
-        <td class="text-right font-mono text-sm">
-          <span class="text-success">+{{ pr.additions }}</span>
-          <span class="text-error">-{{ pr.deletions }}</span>
+        <td class="text-center">
+          {% with size=pr.additions|pr_size_bucket:pr.deletions %}
+            {% if size %}
+              <span class="badge badge-ghost badge-sm cursor-help" title="+{{ pr.additions }}/-{{ pr.deletions }}">{{ size }}</span>
+            {% else %}
+              <span class="text-base-content/50">-</span>
+            {% endif %}
+          {% endwith %}
         </td>
         <td class="text-right font-mono text-sm">
           {{ pr.total_comments|default:0 }}
