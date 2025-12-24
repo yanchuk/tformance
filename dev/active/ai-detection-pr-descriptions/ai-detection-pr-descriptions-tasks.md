@@ -75,13 +75,16 @@
 - [ ] Write unit tests (mock Groq responses)
 - [ ] Write integration test with real API call (1 PR)
 
-### 2.3 Create Backfill Management Command
-- [ ] Create `apps/metrics/management/commands/backfill_ai_detection.py`
-- [ ] Add `--team` filter option
-- [ ] Add `--dry-run` option (preview changes)
-- [ ] Add `--use-llm` option (use Groq vs regex-only)
-- [ ] Add `--limit` option (max PRs to process)
-- [ ] Show before/after comparison for each changed PR
+### 2.3 Create Backfill Management Command ✅
+- [x] Create `apps/metrics/management/commands/backfill_ai_detection.py`
+- [x] Add `--team` filter option
+- [x] Add `--dry-run` option (preview changes)
+- [x] Add `--use-llm` option (use Groq vs regex-only)
+- [x] Add `--limit` option (max PRs to process)
+- [x] Show before/after comparison for each changed PR
+- [x] Add `--only-undetected` option
+- [x] Add `--verbose` option
+- [x] Categorize changes: new detections, removed, tool-only
 
 ### 2.4 Run Backfill Validation
 - [ ] Run `--dry-run --limit 50` on Gumroad team
