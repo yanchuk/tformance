@@ -39,18 +39,6 @@ You MUST respond with valid JSON only.
 3. **Executive Summary** - CTO-friendly description of what this PR does
 4. **Health Assessment** - Identify friction, risk, and iteration patterns
 
-## Understanding Timestamps
-
-Commits, reviews, and comments include `[+X.Xh]` timestamps showing hours after PR creation:
-- `[+0.5h]` = 30 minutes after PR was opened
-- `[+24.0h]` = 1 day after PR was opened
-- `[+72.0h]` = 3 days after PR was opened
-
-Use timestamps to understand iteration patterns:
-- Commits with large time gaps after reviews indicate rework cycles
-- Quick fixes (e.g., `[+2.5h]` commit after `[+2.0h]` review) show responsive iteration
-- Long delays between review and fix may indicate blockers or context switching
-
 ## AI Detection Rules
 
 **POSITIVE signals** (AI was used):
@@ -316,15 +304,15 @@ def get_user_prompt(
     if repo_languages:
         sections.append(f"Repository languages: {', '.join(repo_languages)}")
 
-    # === Commits (with timestamps if available) ===
+    # === Commit Messages (for AI co-author detection) ===
     if commit_messages:
-        # Limit to last 10 commits
-        msgs = commit_messages[:10]
-        if len(commit_messages) > 10:
-            msgs.append(f"... and {len(commit_messages) - 10} more commits")
-        sections.append("Commits:\n" + "\n".join(f"- {m}" for m in msgs))
+        # Limit to last 5 commits
+        msgs = commit_messages[:5]
+        if len(commit_messages) > 5:
+            msgs.append(f"... and {len(commit_messages) - 5} more commits")
+        sections.append("Recent commits:\n" + "\n".join(f"- {m}" for m in msgs))
 
-    # === Reviewers (v6.1.0) - fallback if no detailed reviews ===
+    # === Reviewers (v6.1.0) ===
     if reviewers:
         # Limit to 5 reviewers
         names_str = ", ".join(reviewers[:5])
@@ -332,16 +320,16 @@ def get_user_prompt(
             names_str += f" (+{len(reviewers) - 5} more)"
         sections.append(f"Reviewers: {names_str}")
 
-    # === Comments (with timestamps if available) ===
+    # === Review Comments (v6.1.0) ===
     if review_comments:
-        # Limit to 5 comments, truncate long ones
+        # Limit to 3 comments, truncate long ones
         truncated = []
-        for comment in review_comments[:5]:
+        for comment in review_comments[:3]:
             if len(comment) > 200:
                 truncated.append(comment[:200] + "...")
             else:
                 truncated.append(comment)
-        sections.append("Comments:\n" + "\n".join(f"- {c}" for c in truncated))
+        sections.append("Review comments:\n" + "\n".join(f"- {c}" for c in truncated))
 
     # === Description ===
     sections.append(f"Description:\n{pr_body}")
