@@ -1,4 +1,4 @@
-"""Insight Rules - trend detection rules for AI adoption and cycle time."""
+"""Insight Rules - trend detection rules for AI adoption, cycle time, benchmarks, and achievements."""
 
 from abc import abstractmethod
 from datetime import date, timedelta
@@ -544,3 +544,154 @@ class UnlinkedPRsRule(InsightRule):
             ]
 
         return []
+
+
+class BenchmarkComparisonRule(InsightRule):
+    """Compare team metrics against industry benchmarks.
+
+    Generates insights when team performance is:
+    - Elite (top 25%): Positive reinforcement
+    - Needs improvement (bottom 10%): Actionable recommendations
+    """
+
+    def evaluate(self, team: Team, target_date: date) -> list[InsightResult]:
+        """Evaluate team against benchmarks and generate insights.
+
+        Args:
+            team: The team to analyze
+            target_date: The date to analyze for
+
+        Returns:
+            List of InsightResult instances (may be empty if no insights found)
+        """
+        from apps.metrics.services import benchmark_service
+
+        insights = []
+
+        # Get cycle time benchmark
+        result = benchmark_service.get_benchmark_for_team(team, "cycle_time", days=30)
+
+        if result.get("team_value") is not None and result.get("percentile") is not None:
+            percentile = result["percentile"]
+            team_value = result["team_value"]
+            benchmark = result.get("benchmark", {})
+
+            # Elite performance (top 25%)
+            if percentile >= 75:
+                insights.append(
+                    InsightResult(
+                        category="comparison",
+                        priority="low",
+                        title=f"Elite performance: Top {100 - percentile}% for cycle time",
+                        description=(
+                            f"Your team's cycle time of {team_value:.1f}h puts you in the "
+                            "elite category compared to industry benchmarks."
+                        ),
+                        metric_type="cycle_time",
+                        metric_value={
+                            "value": float(team_value),
+                            "percentile": percentile,
+                            "benchmark_p50": benchmark.get("p50"),
+                        },
+                        comparison_period="30_days",
+                    )
+                )
+            # Needs improvement (bottom 10%)
+            elif percentile <= 10:
+                p50 = benchmark.get("p50", 0)
+                insights.append(
+                    InsightResult(
+                        category="comparison",
+                        priority="high",
+                        title="Opportunity to improve cycle time",
+                        description=(
+                            f"Your team's cycle time of {team_value:.1f}h is above the "
+                            f"industry median of {p50:.1f}h. Consider smaller PRs or async reviews."
+                        ),
+                        metric_type="cycle_time",
+                        metric_value={
+                            "value": float(team_value),
+                            "percentile": percentile,
+                            "benchmark_p50": p50,
+                        },
+                        comparison_period="30_days",
+                    )
+                )
+
+        return insights
+
+
+class AchievementMilestoneRule(InsightRule):
+    """Detect achievement milestones for AI adoption and PR count.
+
+    Generates insights when team reaches:
+    - AI adoption milestones: 25%, 50%, 75%, 90%
+    - PR count milestones: 50, 100, 250, 500, 1000
+    """
+
+    AI_ADOPTION_MILESTONES = [25, 50, 75, 90]
+    PR_COUNT_MILESTONES = [50, 100, 250, 500, 1000]
+
+    def evaluate(self, team: Team, target_date: date) -> list[InsightResult]:
+        """Evaluate milestones and generate insights.
+
+        Args:
+            team: The team to analyze
+            target_date: The date to analyze for
+
+        Returns:
+            List of InsightResult instances (may be empty if no insights found)
+        """
+        from apps.metrics.models import PullRequest
+
+        insights = []
+
+        # Get all-time stats
+        total_prs = PullRequest.objects.filter(team=team, state="merged").count()
+        ai_prs = PullRequest.objects.filter(team=team, state="merged", is_ai_assisted=True).count()
+
+        if total_prs == 0:
+            return insights
+
+        # AI adoption milestone
+        ai_pct = (ai_prs / total_prs) * 100
+        for milestone in self.AI_ADOPTION_MILESTONES:
+            if ai_pct >= milestone and ai_pct < milestone + 5:
+                insights.append(
+                    InsightResult(
+                        category="action",
+                        priority="low",
+                        title=f"AI adoption milestone: {milestone}% reached!",
+                        description=f"Congratulations! {ai_pct:.0f}% of your PRs are now AI-assisted.",
+                        metric_type="ai_adoption",
+                        metric_value={
+                            "value": float(ai_pct),
+                            "milestone": milestone,
+                            "total_prs": total_prs,
+                            "ai_prs": ai_prs,
+                        },
+                        comparison_period="all_time",
+                    )
+                )
+                break
+
+        # PR count milestone
+        for milestone in self.PR_COUNT_MILESTONES:
+            if total_prs >= milestone and total_prs < milestone + 10:
+                insights.append(
+                    InsightResult(
+                        category="action",
+                        priority="low",
+                        title=f"Milestone: {milestone} PRs merged!",
+                        description=f"Your team has merged {total_prs} pull requests. Keep up the great work!",
+                        metric_type="pr_count",
+                        metric_value={
+                            "value": total_prs,
+                            "milestone": milestone,
+                        },
+                        comparison_period="all_time",
+                    )
+                )
+                break
+
+        return insights

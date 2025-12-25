@@ -66,12 +66,18 @@ def key_metrics_cards(request: HttpRequest) -> HttpResponse:
     prev_start = prev_end - timedelta(days=period_length)
     previous_metrics = dashboard_service.get_key_metrics(request.team, prev_start, prev_end)
 
+    # Get sparkline data (12 weeks of weekly data)
+    sparkline_end = end_date
+    sparkline_start = end_date - timedelta(days=84)  # 12 weeks
+    sparklines = dashboard_service.get_sparkline_data(request.team, sparkline_start, sparkline_end)
+
     return TemplateResponse(
         request,
         "metrics/partials/key_metrics_cards.html",
         {
             "metrics": metrics,
             "previous_metrics": previous_metrics,
+            "sparklines": sparklines,
         },
     )
 
@@ -459,4 +465,83 @@ def survey_response_time_card(request: HttpRequest) -> HttpResponse:
         {
             "metrics": metrics,
         },
+    )
+
+
+# =============================================================================
+# Industry Benchmarks API
+# =============================================================================
+
+
+@login_and_team_required
+def benchmark_data(request: HttpRequest, metric: str) -> HttpResponse:
+    """Get benchmark comparison data for a metric (JSON API).
+
+    Args:
+        metric: One of 'cycle_time', 'review_time', 'pr_count', 'ai_adoption'
+
+    Returns:
+        JSON response with team value, percentile, benchmark data, and interpretation
+    """
+    from django.http import JsonResponse
+
+    from apps.metrics.services import benchmark_service
+
+    valid_metrics = ["cycle_time", "review_time", "pr_count", "ai_adoption", "deployment_freq"]
+    if metric not in valid_metrics:
+        return JsonResponse({"error": f"Invalid metric: {metric}"}, status=400)
+
+    days = int(request.GET.get("days", 30))
+    result = benchmark_service.get_benchmark_for_team(request.team, metric, days)
+
+    # Convert Decimal to float for JSON serialization
+    if result["team_value"] is not None:
+        result["team_value"] = float(result["team_value"])
+
+    return JsonResponse(result)
+
+
+@login_and_team_required
+def benchmark_panel(request: HttpRequest, metric: str) -> HttpResponse:
+    """Render benchmark panel HTML partial for HTMX.
+
+    Args:
+        metric: One of 'cycle_time', 'review_time', 'pr_count', 'ai_adoption'
+
+    Returns:
+        HTML partial with benchmark visualization
+    """
+    from apps.metrics.services import benchmark_service
+
+    valid_metrics = ["cycle_time", "review_time", "pr_count", "ai_adoption", "deployment_freq"]
+    if metric not in valid_metrics:
+        return TemplateResponse(
+            request,
+            "metrics/analytics/trends/benchmark_panel.html",
+            {"benchmark": None, "metric": metric},
+        )
+
+    days = int(request.GET.get("days", 30))
+    result = benchmark_service.get_benchmark_for_team(request.team, metric, days)
+
+    # Convert Decimal to float for display
+    if result["team_value"] is not None:
+        result["team_value"] = float(result["team_value"])
+    if result["benchmarks"]:
+        result["benchmarks"] = {k: float(v) for k, v in result["benchmarks"].items()}
+
+    # Add unit based on metric type
+    unit_map = {
+        "cycle_time": "hours",
+        "review_time": "hours",
+        "pr_count": "PRs/week",
+        "ai_adoption": "%",
+        "deployment_freq": "/week",
+    }
+    result["unit"] = unit_map.get(metric, "")
+
+    return TemplateResponse(
+        request,
+        "metrics/analytics/trends/benchmark_panel.html",
+        {"benchmark": result, "metric": metric},
     )

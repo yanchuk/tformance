@@ -1,0 +1,175 @@
+{% load i18n %}
+{# Wide Trend Chart Partial - Loaded via HTMX #}
+{# Usage: {% include "metrics/analytics/trends/wide_chart.html" %} #}
+
+<div class="p-6">
+  <!-- Chart Header -->
+  <div class="flex justify-between items-center mb-4">
+    <div>
+      <h2 class="text-lg font-semibold text-base-content">{{ metric_display }}</h2>
+      <p class="text-sm text-base-content/60">
+        {{ start_date|date:"M j, Y" }} - {{ end_date|date:"M j, Y" }}
+        <span class="ml-2 badge badge-ghost badge-sm">{{ granularity }}</span>
+      </p>
+    </div>
+    <div class="flex gap-2">
+      <button type="button"
+              class="btn btn-ghost btn-sm"
+              onclick="resetChartZoom('trend-chart')"
+              title="{% trans 'Reset Zoom' %}">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Chart Container (wide aspect ratio) -->
+  <div class="relative w-full overflow-x-auto">
+    <div class="min-w-[800px]" style="height: 360px;">
+      <canvas id="trend-chart"
+              data-chart-type="line"
+              data-metric="{{ metric }}"
+              data-labels="{{ chart_data|safe }}"
+              {% if comparison_data %}data-comparison="{{ comparison_data|safe }}"{% endif %}>
+      </canvas>
+    </div>
+  </div>
+
+  <!-- Zoom/Pan Instructions -->
+  <div class="mt-4 text-center">
+    <p class="text-xs text-base-content/50">
+      <svg xmlns="http://www.w3.org/2000/svg" class="inline h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h8m-4-4v8" />
+      </svg>
+      {% trans "Scroll to zoom, drag to pan" %}
+    </p>
+  </div>
+</div>
+
+<script>
+  // Initialize chart after HTMX swap
+  (function() {
+    const canvas = document.getElementById('trend-chart');
+    if (!canvas) return;
+
+    const chartData = {{ chart_data|safe }};
+    const comparisonData = {{ comparison_data|default:"null"|safe }};
+    const metric = '{{ metric }}';
+
+    // Prepare labels and datasets
+    const labels = chartData.map(d => d.month || d.week);
+    const values = chartData.map(d => d.value);
+
+    const datasets = [{
+      label: getMetricLabel(metric),
+      data: values,
+      borderColor: 'rgb(249, 115, 22)',
+      backgroundColor: 'rgba(249, 115, 22, 0.1)',
+      fill: true,
+      tension: 0.3,
+      pointRadius: 4,
+      pointHoverRadius: 6,
+    }];
+
+    // Add comparison dataset if available
+    if (comparisonData && Array.isArray(comparisonData)) {
+      const compValues = comparisonData.map(d => d.value);
+      datasets.push({
+        label: getMetricLabel(metric) + ' (Last Year)',
+        data: compValues,
+        borderColor: 'rgba(90, 153, 151, 0.7)',
+        backgroundColor: 'rgba(90, 153, 151, 0.1)',
+        fill: true,
+        tension: 0.3,
+        borderDash: [5, 5],
+        pointRadius: 3,
+        pointHoverRadius: 5,
+      });
+    }
+
+    // Create chart with zoom plugin
+    if (window.trendChart) {
+      window.trendChart.destroy();
+    }
+
+    window.trendChart = new Chart(canvas, {
+      type: 'line',
+      data: { labels, datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: {
+          mode: 'index',
+          intersect: false,
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            grid: {
+              color: 'rgba(255, 255, 255, 0.05)',
+            },
+            ticks: {
+              color: 'rgb(204, 201, 192)',
+            },
+          },
+          x: {
+            grid: {
+              color: 'rgba(255, 255, 255, 0.05)',
+            },
+            ticks: {
+              color: 'rgb(204, 201, 192)',
+              maxRotation: 45,
+            },
+          },
+        },
+        plugins: {
+          legend: {
+            display: datasets.length > 1,
+            labels: {
+              color: 'rgb(204, 201, 192)',
+            },
+          },
+          tooltip: {
+            backgroundColor: 'rgba(30, 30, 30, 0.95)',
+            titleColor: 'rgb(204, 201, 192)',
+            bodyColor: 'rgb(204, 201, 192)',
+            borderColor: 'rgba(60, 60, 58, 1)',
+            borderWidth: 1,
+          },
+          zoom: {
+            pan: {
+              enabled: true,
+              mode: 'x',
+            },
+            zoom: {
+              wheel: {
+                enabled: true,
+              },
+              pinch: {
+                enabled: true,
+              },
+              mode: 'x',
+            },
+          },
+        },
+      },
+    });
+
+    function getMetricLabel(metric) {
+      const labels = {
+        'cycle_time': 'Cycle Time (hours)',
+        'review_time': 'Review Time (hours)',
+        'pr_count': 'PRs Merged',
+        'ai_adoption': 'AI Adoption (%)',
+      };
+      return labels[metric] || metric;
+    }
+  })();
+
+  function resetChartZoom(chartId) {
+    if (window.trendChart) {
+      window.trendChart.resetZoom();
+    }
+  }
+</script>

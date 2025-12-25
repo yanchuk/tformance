@@ -1,7 +1,11 @@
 import * as JsCookie from "js-cookie";
 import Chart from 'chart.js/auto';
 import { DashboardCharts as AppDashboardCharts } from './dashboard/dashboard-charts';
+import { createWideTrendChart, resetChartZoom, initTrendCharts } from './dashboard/trend-charts';
+import { createSparkline, initSparklines, reinitSparklines } from './dashboard/sparkline';
 export { AppDashboardCharts as DashboardCharts };
+export { createWideTrendChart, resetChartZoom, initTrendCharts };
+export { createSparkline, initSparklines, reinitSparklines };
 export const Cookies = JsCookie.default;
 
 // Ensure SiteJS global exists
@@ -12,6 +16,8 @@ if (typeof window.SiteJS === 'undefined') {
 // Assign this entry's exports to SiteJS.app
 window.SiteJS.app = {
   DashboardCharts: AppDashboardCharts,
+  TrendCharts: { createWideTrendChart, resetChartZoom, initTrendCharts },
+  Sparklines: { createSparkline, initSparklines, reinitSparklines },
   Cookies: JsCookie.default,
 };
 

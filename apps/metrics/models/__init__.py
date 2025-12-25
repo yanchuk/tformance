@@ -12,9 +12,11 @@ Module Structure:
 - aggregations.py: AIUsageDaily, WeeklyMetrics, ReviewerCorrelation
 - insights.py: DailyInsight
 - deployments.py: Deployment
+- benchmarks.py: IndustryBenchmark
 """
 
 from .aggregations import AIUsageDaily, ReviewerCorrelation, WeeklyMetrics
+from .benchmarks import IndustryBenchmark
 from .deployments import Deployment
 from .github import Commit, PRCheckRun, PRComment, PRFile, PRReview, PullRequest
 from .insights import DailyInsight
@@ -45,4 +47,6 @@ __all__ = [
     "DailyInsight",
     # Deployments
     "Deployment",
+    # Benchmarks
+    "IndustryBenchmark",
 ]

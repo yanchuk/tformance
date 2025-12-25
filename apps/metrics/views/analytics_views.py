@@ -4,7 +4,7 @@ from django.http import HttpRequest, HttpResponse
 from django.template.response import TemplateResponse
 
 from apps.metrics.services import insight_service
-from apps.metrics.view_utils import get_date_range_from_request
+from apps.metrics.view_utils import get_extended_date_range
 from apps.teams.decorators import team_admin_required
 
 
@@ -18,15 +18,20 @@ def _get_analytics_context(request: HttpRequest, active_page: str) -> dict:
     Returns:
         Dictionary with common analytics context
     """
-    days = int(request.GET.get("days", 30))
-    start_date, end_date = get_date_range_from_request(request)
+    # Use extended date range for full preset support
+    date_range = get_extended_date_range(request)
 
     return {
         "active_tab": "metrics",
         "active_page": active_page,
-        "days": days,
-        "start_date": start_date,
-        "end_date": end_date,
+        "days": date_range["days"],
+        "start_date": date_range["start_date"],
+        "end_date": date_range["end_date"],
+        "granularity": date_range["granularity"],
+        "preset": request.GET.get("preset", ""),
+        # For YoY comparison
+        "compare_start": date_range.get("compare_start"),
+        "compare_end": date_range.get("compare_end"),
     }
 
 

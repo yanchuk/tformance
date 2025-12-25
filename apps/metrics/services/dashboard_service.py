@@ -10,7 +10,7 @@ from decimal import Decimal
 
 from django.core.cache import cache
 from django.db.models import Avg, Case, CharField, Count, Q, QuerySet, Sum, Value, When
-from django.db.models.functions import TruncWeek
+from django.db.models.functions import TruncMonth, TruncWeek
 
 from apps.metrics.models import (
     AIUsageDaily,
@@ -1599,4 +1599,323 @@ def get_response_time_metrics(team: Team, start_date: date = None, end_date: dat
         },
         "total_author_responses": len(author_times),
         "total_reviewer_responses": len(reviewer_times),
+    }
+
+
+# =============================================================================
+# Monthly Aggregation Functions (for Trend Charts)
+# =============================================================================
+
+
+def _get_monthly_metric_trend(
+    team: Team, start_date: date, end_date: date, metric_field: str, result_key: str = "avg_metric"
+) -> list[dict]:
+    """Get monthly trend for a given metric field.
+
+    Generic helper to calculate monthly averages for any numeric PR field.
+
+    Args:
+        team: Team instance
+        start_date: Start date (inclusive)
+        end_date: End date (inclusive)
+        metric_field: Name of the PR model field to average
+        result_key: Key name for the aggregated result in the query
+
+    Returns:
+        list of dicts with keys:
+            - month (str): Month in YYYY-MM format
+            - value (float): Average metric value for that month (0.0 if None)
+    """
+    prs = _get_merged_prs_in_range(team, start_date, end_date)
+
+    # Group by month and calculate average metric
+    monthly_data = (
+        prs.annotate(month=TruncMonth("merged_at"))
+        .values("month")
+        .annotate(**{result_key: Avg(metric_field)})
+        .order_by("month")
+    )
+
+    result = []
+    for entry in monthly_data:
+        # Convert datetime to YYYY-MM format for JSON serialization
+        month_str = entry["month"].strftime("%Y-%m") if entry["month"] else None
+        # Convert Decimal to float for JSON serialization
+        value = float(entry[result_key]) if entry[result_key] else 0.0
+        result.append(
+            {
+                "month": month_str,
+                "value": value,
+            }
+        )
+    return result
+
+
+def get_monthly_cycle_time_trend(team: Team, start_date: date, end_date: date) -> list[dict]:
+    """Get cycle time trend by month.
+
+    Args:
+        team: Team instance
+        start_date: Start date (inclusive)
+        end_date: End date (inclusive)
+
+    Returns:
+        list of dicts with keys:
+            - month (str): Month in YYYY-MM format
+            - value (float): Average cycle time in hours for that month
+    """
+    return _get_monthly_metric_trend(team, start_date, end_date, "cycle_time_hours", "avg_cycle_time")
+
+
+def get_monthly_review_time_trend(team: Team, start_date: date, end_date: date) -> list[dict]:
+    """Get review time trend by month.
+
+    Args:
+        team: Team instance
+        start_date: Start date (inclusive)
+        end_date: End date (inclusive)
+
+    Returns:
+        list of dicts with keys:
+            - month (str): Month in YYYY-MM format
+            - value (float): Average review time in hours for that month
+    """
+    return _get_monthly_metric_trend(team, start_date, end_date, "review_time_hours", "avg_review_time")
+
+
+def get_monthly_pr_count(team: Team, start_date: date, end_date: date) -> list[dict]:
+    """Get PR count by month.
+
+    Args:
+        team: Team instance
+        start_date: Start date (inclusive)
+        end_date: End date (inclusive)
+
+    Returns:
+        list of dicts with keys:
+            - month (str): Month in YYYY-MM format
+            - value (int): Number of merged PRs for that month
+    """
+    prs = _get_merged_prs_in_range(team, start_date, end_date)
+
+    # Group by month and count
+    monthly_data = (
+        prs.annotate(month=TruncMonth("merged_at")).values("month").annotate(count=Count("id")).order_by("month")
+    )
+
+    result = []
+    for entry in monthly_data:
+        month_str = entry["month"].strftime("%Y-%m") if entry["month"] else None
+        result.append(
+            {
+                "month": month_str,
+                "value": entry["count"],
+            }
+        )
+    return result
+
+
+def get_monthly_ai_adoption(team: Team, start_date: date, end_date: date) -> list[dict]:
+    """Get AI adoption percentage by month.
+
+    Args:
+        team: Team instance
+        start_date: Start date (inclusive)
+        end_date: End date (inclusive)
+
+    Returns:
+        list of dicts with keys:
+            - month (str): Month in YYYY-MM format
+            - value (float): Percentage of AI-assisted PRs (0.0 to 100.0)
+    """
+    prs = _get_merged_prs_in_range(team, start_date, end_date)
+
+    # Group by month with AI count and total count
+    monthly_data = (
+        prs.annotate(month=TruncMonth("merged_at"))
+        .values("month")
+        .annotate(
+            total=Count("id"),
+            ai_count=Count("id", filter=Q(is_ai_assisted=True)),
+        )
+        .order_by("month")
+    )
+
+    result = []
+    for entry in monthly_data:
+        month_str = entry["month"].strftime("%Y-%m") if entry["month"] else None
+        total = entry["total"]
+        ai_count = entry["ai_count"]
+        pct = round((ai_count / total) * 100, 2) if total > 0 else 0.0
+        result.append(
+            {
+                "month": month_str,
+                "value": pct,
+            }
+        )
+    return result
+
+
+def get_trend_comparison(
+    team: Team,
+    metric: str,
+    current_start: date,
+    current_end: date,
+    compare_start: date,
+    compare_end: date,
+) -> dict:
+    """Get trend comparison between two periods (e.g., YoY).
+
+    Args:
+        team: Team instance
+        metric: Metric name (cycle_time, review_time, pr_count, ai_adoption)
+        current_start: Start of current period
+        current_end: End of current period
+        compare_start: Start of comparison period
+        compare_end: End of comparison period
+
+    Returns:
+        dict with keys:
+            - current: list of monthly data for current period
+            - comparison: list of monthly data for comparison period
+            - change_pct: Percentage change (current avg vs comparison avg)
+    """
+    # Get the appropriate function based on metric
+    metric_functions = {
+        "cycle_time": get_monthly_cycle_time_trend,
+        "review_time": get_monthly_review_time_trend,
+        "pr_count": get_monthly_pr_count,
+        "ai_adoption": get_monthly_ai_adoption,
+    }
+
+    func = metric_functions.get(metric, get_monthly_cycle_time_trend)
+
+    current_data = func(team, current_start, current_end)
+    compare_data = func(team, compare_start, compare_end)
+
+    # Calculate averages for change percentage
+    current_values = [d["value"] for d in current_data if d["value"]]
+    compare_values = [d["value"] for d in compare_data if d["value"]]
+
+    current_avg = sum(current_values) / len(current_values) if current_values else 0
+    compare_avg = sum(compare_values) / len(compare_values) if compare_values else 0
+
+    # Calculate change percentage
+    change_pct = round((current_avg - compare_avg) / compare_avg * 100, 2) if compare_avg > 0 else 0.0
+
+    return {
+        "current": current_data,
+        "comparison": compare_data,
+        "change_pct": change_pct,
+    }
+
+
+# =============================================================================
+# Sparkline Data (for Key Metric Cards)
+# =============================================================================
+
+
+def get_sparkline_data(team: Team, start_date: date, end_date: date) -> dict:
+    """Get sparkline data for key metric cards.
+
+    Returns 12 weeks of data for each metric, along with change percentage
+    and trend direction for display in small inline charts.
+
+    Args:
+        team: Team instance
+        start_date: Start date (inclusive)
+        end_date: End date (inclusive)
+
+    Returns:
+        dict with keys for each metric (prs_merged, cycle_time, ai_adoption, review_time).
+        Each metric contains:
+            - values (list): List of weekly values (up to 12)
+            - change_pct (int): Percentage change from first to last week
+            - trend (str): Direction ("up", "down", or "flat")
+    """
+    prs = _get_merged_prs_in_range(team, start_date, end_date)
+
+    # Get weekly PR counts
+    pr_count_data = (
+        prs.annotate(week=TruncWeek("merged_at")).values("week").annotate(count=Count("id")).order_by("week")
+    )
+    prs_merged_values = [entry["count"] for entry in pr_count_data]
+
+    # Get weekly cycle time averages
+    cycle_time_data = (
+        prs.annotate(week=TruncWeek("merged_at")).values("week").annotate(avg=Avg("cycle_time_hours")).order_by("week")
+    )
+    cycle_time_values = [float(entry["avg"]) if entry["avg"] else 0.0 for entry in cycle_time_data]
+
+    # Get weekly AI adoption percentages
+    ai_adoption_data = (
+        prs.annotate(week=TruncWeek("merged_at"))
+        .values("week")
+        .annotate(
+            total=Count("id"),
+            ai_count=Count("id", filter=Q(is_ai_assisted=True)),
+        )
+        .order_by("week")
+    )
+    ai_adoption_values = [
+        round((entry["ai_count"] / entry["total"]) * 100, 1) if entry["total"] > 0 else 0.0
+        for entry in ai_adoption_data
+    ]
+
+    # Get weekly review time averages
+    review_time_data = (
+        prs.annotate(week=TruncWeek("merged_at")).values("week").annotate(avg=Avg("review_time_hours")).order_by("week")
+    )
+    review_time_values = [float(entry["avg"]) if entry["avg"] else 0.0 for entry in review_time_data]
+
+    def _calculate_change_and_trend(values: list) -> tuple[int, str]:
+        """Calculate change percentage and trend direction from values list."""
+        if len(values) < 2:
+            return 0, "flat"
+
+        first_val = values[0]
+        last_val = values[-1]
+
+        if first_val == 0:
+            if last_val > 0:
+                return 100, "up"
+            return 0, "flat"
+
+        change_pct = int(round(((last_val - first_val) / first_val) * 100))
+
+        if change_pct > 0:
+            trend = "up"
+        elif change_pct < 0:
+            trend = "down"
+        else:
+            trend = "flat"
+
+        return change_pct, trend
+
+    prs_merged_change, prs_merged_trend = _calculate_change_and_trend(prs_merged_values)
+    cycle_time_change, cycle_time_trend = _calculate_change_and_trend(cycle_time_values)
+    ai_adoption_change, ai_adoption_trend = _calculate_change_and_trend(ai_adoption_values)
+    review_time_change, review_time_trend = _calculate_change_and_trend(review_time_values)
+
+    return {
+        "prs_merged": {
+            "values": prs_merged_values,
+            "change_pct": prs_merged_change,
+            "trend": prs_merged_trend,
+        },
+        "cycle_time": {
+            "values": cycle_time_values,
+            "change_pct": cycle_time_change,
+            "trend": cycle_time_trend,
+        },
+        "ai_adoption": {
+            "values": ai_adoption_values,
+            "change_pct": ai_adoption_change,
+            "trend": ai_adoption_trend,
+        },
+        "review_time": {
+            "values": review_time_values,
+            "change_pct": review_time_change,
+            "trend": review_time_trend,
+        },
     }

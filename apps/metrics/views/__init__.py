@@ -13,6 +13,8 @@ from apps.metrics.views.chart_views import (
     ai_detected_metrics_card,
     ai_quality_chart,
     ai_tool_breakdown_chart,
+    benchmark_data,
+    benchmark_panel,
     cicd_pass_rate_card,
     copilot_members_table,
     copilot_metrics_card,
@@ -38,6 +40,7 @@ from apps.metrics.views.chart_views import (
 )
 from apps.metrics.views.dashboard_views import cto_overview, dashboard_redirect, dismiss_insight, home, team_dashboard
 from apps.metrics.views.pr_list_views import pr_list, pr_list_export, pr_list_table
+from apps.metrics.views.trends_views import trend_chart_data, trends_overview, wide_trend_chart
 
 __all__ = [
     "ai_adoption_chart",
@@ -80,4 +83,9 @@ __all__ = [
     "analytics_delivery",
     "analytics_quality",
     "analytics_team",
+    "trends_overview",
+    "trend_chart_data",
+    "wide_trend_chart",
+    "benchmark_data",
+    "benchmark_panel",
 ]

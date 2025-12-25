@@ -57,6 +57,15 @@
           {% trans "Team" %}
         </a>
         <a role="tab"
+           href="{% url 'metrics:trends_overview' %}"
+           class="tab {% if active_page == 'trends' %}tab-active{% endif %}"
+           hx-get="{% url 'metrics:trends_overview' %}?days={{ days }}"
+           hx-target="#page-content"
+           hx-swap="outerHTML"
+           hx-push-url="true">
+          {% trans "Trends" %}
+        </a>
+        <a role="tab"
            href="{% url 'metrics:pr_list' %}"
            class="tab {% if active_page == 'pull_requests' %}tab-active{% endif %}">
           {% trans "Pull Requests" %}
@@ -66,32 +75,7 @@
       <!-- Date Range Filter -->
       <div class="flex gap-2 items-center">
         <span class="text-sm text-base-content/70">{% trans "Time range:" %}</span>
-        <div class="join">
-          <a href="?days=7"
-             class="join-item btn btn-sm {% if days == 7 %}btn-primary{% else %}btn-ghost{% endif %}"
-             hx-get="?days=7"
-             hx-target="#page-content"
-             hx-swap="outerHTML"
-             hx-push-url="true">
-            {% trans "7d" %}
-          </a>
-          <a href="?days=30"
-             class="join-item btn btn-sm {% if days == 30 %}btn-primary{% else %}btn-ghost{% endif %}"
-             hx-get="?days=30"
-             hx-target="#page-content"
-             hx-swap="outerHTML"
-             hx-push-url="true">
-            {% trans "30d" %}
-          </a>
-          <a href="?days=90"
-             class="join-item btn btn-sm {% if days == 90 %}btn-primary{% else %}btn-ghost{% endif %}"
-             hx-get="?days=90"
-             hx-target="#page-content"
-             hx-swap="outerHTML"
-             hx-push-url="true">
-            {% trans "90d" %}
-          </a>
-        </div>
+        {% include "metrics/partials/date_range_picker.html" with days=days start_date=start_date end_date=end_date preset=preset %}
       </div>
     </div>
   </div>

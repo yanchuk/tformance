@@ -1,0 +1,233 @@
+{% load i18n %}
+{# Date Range Picker Component - Yandex Metrika-inspired design #}
+{# Usage: {% include "metrics/partials/date_range_picker.html" with days=days %} #}
+
+<div x-data="dateRangePicker({{ days|default:30 }}, '{{ start_date|default:'' }}', '{{ end_date|default:'' }}', '{{ preset|default:'' }}')"
+     class="flex flex-wrap gap-2 items-center">
+
+  {# Quick Presets #}
+  <div class="join">
+    <button type="button"
+            @click="setDays(7)"
+            :class="{'btn-primary': isActive(7), 'btn-ghost': !isActive(7)}"
+            class="join-item btn btn-sm">
+      {% trans "7d" %}
+    </button>
+    <button type="button"
+            @click="setDays(30)"
+            :class="{'btn-primary': isActive(30), 'btn-ghost': !isActive(30)}"
+            class="join-item btn btn-sm">
+      {% trans "30d" %}
+    </button>
+    <button type="button"
+            @click="setDays(90)"
+            :class="{'btn-primary': isActive(90), 'btn-ghost': !isActive(90)}"
+            class="join-item btn btn-sm">
+      {% trans "90d" %}
+    </button>
+  </div>
+
+  {# Extended Range Presets #}
+  <div class="dropdown dropdown-end">
+    <div tabindex="0"
+         role="button"
+         class="btn btn-sm btn-ghost gap-1"
+         :class="{'btn-primary': isPresetActive()}">
+      <span x-text="getActiveLabel()">{% trans "More" %}</span>
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+      </svg>
+    </div>
+    <ul tabindex="0" class="dropdown-content z-50 menu p-2 shadow-lg bg-base-200 rounded-lg w-52 border border-base-300">
+      <li><a @click="setPreset('this_year')" :class="{'bg-primary/10 text-primary': preset === 'this_year'}">
+        {% trans "This Year" %}
+      </a></li>
+      <li><a @click="setPreset('last_year')" :class="{'bg-primary/10 text-primary': preset === 'last_year'}">
+        {% trans "Last Year" %}
+      </a></li>
+      <li><a @click="setPreset('this_quarter')" :class="{'bg-primary/10 text-primary': preset === 'this_quarter'}">
+        {% trans "This Quarter" %}
+      </a></li>
+      <li><a @click="setPreset('yoy')" :class="{'bg-primary/10 text-primary': preset === 'yoy'}">
+        {% trans "YoY Comparison" %}
+      </a></li>
+      <li class="divider my-1"></li>
+      <li><a @click="showCustom = true; $refs.customModal.showModal()">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+        {% trans "Custom Range" %}
+      </a></li>
+    </ul>
+  </div>
+
+  {# Current Range Display #}
+  <div class="text-sm text-base-content/70 hidden md:block" x-show="showDateRange()">
+    <span x-text="formatDateRange()"></span>
+  </div>
+
+  {# Custom Date Range Modal #}
+  <dialog x-ref="customModal" class="modal">
+    <div class="modal-box bg-base-200">
+      <h3 class="font-bold text-lg mb-4">{% trans "Custom Date Range" %}</h3>
+
+      <div class="grid grid-cols-2 gap-4">
+        <div class="form-control">
+          <label class="label">
+            <span class="label-text">{% trans "Start Date" %}</span>
+          </label>
+          <input type="date"
+                 x-model="customStart"
+                 class="input input-bordered input-sm"
+                 :max="customEnd || today" />
+        </div>
+        <div class="form-control">
+          <label class="label">
+            <span class="label-text">{% trans "End Date" %}</span>
+          </label>
+          <input type="date"
+                 x-model="customEnd"
+                 class="input input-bordered input-sm"
+                 :min="customStart"
+                 :max="today" />
+        </div>
+      </div>
+
+      <p class="text-sm text-base-content/60 mt-2">
+        {% trans "Maximum range: 2 years" %}
+      </p>
+
+      <div class="modal-action">
+        <button type="button"
+                class="btn btn-ghost btn-sm"
+                @click="$refs.customModal.close()">
+          {% trans "Cancel" %}
+        </button>
+        <button type="button"
+                class="btn btn-primary btn-sm"
+                @click="applyCustomRange()"
+                :disabled="!customStart || !customEnd">
+          {% trans "Apply" %}
+        </button>
+      </div>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+      <button>close</button>
+    </form>
+  </dialog>
+</div>
+
+<script>
+  document.addEventListener('alpine:init', () => {
+    Alpine.data('dateRangePicker', (initialDays = 30, initialStart = '', initialEnd = '', initialPreset = '') => ({
+      days: initialDays,
+      preset: initialPreset,
+      customStart: initialStart || '',
+      customEnd: initialEnd || '',
+      showCustom: false,
+      today: new Date().toISOString().split('T')[0],
+
+      init() {
+        // Parse URL params on init
+        const params = new URLSearchParams(window.location.search);
+        if (params.has('days')) {
+          this.days = parseInt(params.get('days'));
+          this.preset = '';
+        }
+        if (params.has('preset')) {
+          this.preset = params.get('preset');
+          this.days = 0;
+        }
+        if (params.has('start') && params.has('end')) {
+          this.customStart = params.get('start');
+          this.customEnd = params.get('end');
+          this.days = 0;
+          this.preset = 'custom';
+        }
+      },
+
+      isActive(d) {
+        return this.days === d && !this.preset;
+      },
+
+      isPresetActive() {
+        return !!this.preset || (this.customStart && this.customEnd);
+      },
+
+      getActiveLabel() {
+        if (this.preset === 'this_year') return '{% trans "This Year" %}';
+        if (this.preset === 'last_year') return '{% trans "Last Year" %}';
+        if (this.preset === 'this_quarter') return '{% trans "This Quarter" %}';
+        if (this.preset === 'yoy') return '{% trans "YoY" %}';
+        if (this.preset === 'custom' || (this.customStart && this.customEnd)) return '{% trans "Custom" %}';
+        return '{% trans "More" %}';
+      },
+
+      showDateRange() {
+        return this.preset || (this.customStart && this.customEnd);
+      },
+
+      formatDateRange() {
+        if (this.customStart && this.customEnd) {
+          return `${this.customStart} - ${this.customEnd}`;
+        }
+        if (this.preset === 'this_year') {
+          const year = new Date().getFullYear();
+          return `Jan 1, ${year} - Today`;
+        }
+        if (this.preset === 'last_year') {
+          const year = new Date().getFullYear() - 1;
+          return `Jan 1, ${year} - Dec 31, ${year}`;
+        }
+        if (this.preset === 'this_quarter') {
+          const now = new Date();
+          const quarter = Math.floor(now.getMonth() / 3);
+          const quarterStart = new Date(now.getFullYear(), quarter * 3, 1);
+          return `${quarterStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - Today`;
+        }
+        return '';
+      },
+
+      setDays(d) {
+        this.days = d;
+        this.preset = '';
+        this.customStart = '';
+        this.customEnd = '';
+        this.navigate(`?days=${d}`);
+      },
+
+      setPreset(p) {
+        this.preset = p;
+        this.days = 0;
+        this.customStart = '';
+        this.customEnd = '';
+        this.navigate(`?preset=${p}`);
+      },
+
+      applyCustomRange() {
+        if (this.customStart && this.customEnd) {
+          this.preset = 'custom';
+          this.days = 0;
+          this.$refs.customModal.close();
+          this.navigate(`?start=${this.customStart}&end=${this.customEnd}`);
+        }
+      },
+
+      navigate(query) {
+        // Use HTMX to update the page content
+        const url = window.location.pathname + query;
+        const target = document.getElementById('page-content');
+        if (target && window.htmx) {
+          htmx.ajax('GET', url, {
+            target: target,
+            swap: 'outerHTML',
+            pushUrl: true
+          });
+        } else {
+          // Fallback to regular navigation
+          window.location.href = url;
+        }
+      }
+    }));
+  });
+</script>

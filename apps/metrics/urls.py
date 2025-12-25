@@ -57,6 +57,13 @@ team_urlpatterns = (
         path("analytics/delivery/", views.analytics_delivery, name="analytics_delivery"),
         path("analytics/quality/", views.analytics_quality, name="analytics_quality"),
         path("analytics/team/", views.analytics_team, name="analytics_team"),
+        # Trends pages
+        path("analytics/trends/", views.trends_overview, name="trends_overview"),
+        path("charts/trend/", views.trend_chart_data, name="chart_trend"),
+        path("charts/wide-trend/", views.wide_trend_chart, name="chart_wide_trend"),
+        # Benchmarks API
+        path("api/benchmarks/<str:metric>/", views.benchmark_data, name="benchmark_data"),
+        path("panels/benchmark/<str:metric>/", views.benchmark_panel, name="benchmark_panel"),
     ],
     "metrics",
 )

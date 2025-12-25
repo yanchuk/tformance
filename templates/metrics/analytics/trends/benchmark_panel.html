@@ -1,0 +1,100 @@
+{% load i18n %}
+{#
+  Benchmark Panel Component
+
+  Shows team's performance against industry benchmarks with:
+  - Percentile bar visualization
+  - Team value and percentile ranking
+  - Human-readable interpretation
+
+  Context variables:
+  - benchmark: dict with team_value, percentile, interpretation, metric_name
+  - benchmark.benchmarks: dict with p25, p50, p75, p90
+#}
+
+<div class="app-card p-4"
+     x-data="{ loading: false }"
+     id="benchmark-panel-{{ metric }}">
+  {% if benchmark and benchmark.has_data %}
+  <div class="space-y-4">
+    <!-- Header -->
+    <div class="flex justify-between items-center">
+      <h3 class="text-sm font-semibold text-base-content">
+        {% trans "Industry Benchmark" %}
+      </h3>
+      <span class="badge badge-ghost text-xs">
+        {{ benchmark.team_size_bucket|title }} teams • {{ benchmark.source }}
+      </span>
+    </div>
+
+    <!-- Percentile Bar -->
+    <div class="relative pt-1">
+      <!-- Percentile markers -->
+      <div class="flex justify-between text-xs text-base-content/50 mb-1">
+        <span>P25</span>
+        <span>P50</span>
+        <span>P75</span>
+        <span>P90</span>
+      </div>
+
+      <!-- Bar background with gradient zones -->
+      <div class="relative h-6 bg-base-300 rounded-full overflow-hidden">
+        <!-- Colored zones -->
+        <div class="absolute inset-0 flex">
+          <div class="w-1/4 bg-error/20"></div>
+          <div class="w-1/4 bg-warning/20"></div>
+          <div class="w-1/4 bg-success/20"></div>
+          <div class="w-1/4 bg-primary/20"></div>
+        </div>
+
+        <!-- Percentile position marker -->
+        <div class="absolute top-0 h-full w-1 bg-primary shadow-lg transform -translate-x-1/2 z-10"
+             style="left: {{ benchmark.percentile }}%;">
+          <div class="absolute -top-6 left-1/2 -translate-x-1/2 whitespace-nowrap">
+            <span class="badge badge-primary badge-sm">
+              P{{ benchmark.percentile }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Zone dividers -->
+        <div class="absolute top-0 h-full w-px bg-base-content/20" style="left: 25%;"></div>
+        <div class="absolute top-0 h-full w-px bg-base-content/20" style="left: 50%;"></div>
+        <div class="absolute top-0 h-full w-px bg-base-content/20" style="left: 75%;"></div>
+      </div>
+
+      <!-- Benchmark values -->
+      <div class="flex justify-between text-xs text-base-content/50 mt-1 font-mono">
+        <span>{{ benchmark.benchmarks.p25 }}</span>
+        <span>{{ benchmark.benchmarks.p50 }}</span>
+        <span>{{ benchmark.benchmarks.p75 }}</span>
+        <span>{{ benchmark.benchmarks.p90 }}</span>
+      </div>
+    </div>
+
+    <!-- Team Value and Interpretation -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pt-2 border-t border-base-300">
+      <div>
+        <span class="text-xs text-base-content/50">{% trans "Your team:" %}</span>
+        <span class="text-lg font-mono font-bold text-base-content ml-2">
+          {{ benchmark.team_value|floatformat:1 }}
+          <span class="text-sm font-normal text-base-content/50">{{ benchmark.unit }}</span>
+        </span>
+      </div>
+      <div class="text-sm text-base-content/70">
+        {{ benchmark.interpretation }}
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <!-- No data state -->
+  <div class="text-center py-6 text-base-content/50">
+    <svg class="w-12 h-12 mx-auto mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+    </svg>
+    <p class="text-sm">{% trans "Not enough data to show benchmarks" %}</p>
+    <p class="text-xs mt-1">{% trans "Benchmarks will appear once you have enough PR activity" %}</p>
+  </div>
+  {% endif %}
+</div>

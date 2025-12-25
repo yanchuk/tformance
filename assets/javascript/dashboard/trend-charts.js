@@ -1,0 +1,225 @@
+'use strict';
+
+/**
+ * Tformance Trend Charts Module
+ *
+ * Provides wide trend charts with zoom/pan capabilities for long-horizon
+ * trend visualization and YoY comparison.
+ */
+
+import Chart from 'chart.js/auto';
+import zoomPlugin from 'chartjs-plugin-zoom';
+import { TformanceChartTheme, getChartDefaults, chartColorPalette } from './chart-theme.js';
+
+// Register zoom plugin
+Chart.register(zoomPlugin);
+
+/**
+ * Metric display configuration
+ */
+const METRIC_CONFIG = {
+  cycle_time: {
+    label: 'Cycle Time',
+    unit: 'hours',
+    color: TformanceChartTheme.colors.primary,
+    format: (v) => `${v.toFixed(1)}h`,
+  },
+  review_time: {
+    label: 'Review Time',
+    unit: 'hours',
+    color: TformanceChartTheme.colors.success,
+    format: (v) => `${v.toFixed(1)}h`,
+  },
+  pr_count: {
+    label: 'PRs Merged',
+    unit: 'count',
+    color: TformanceChartTheme.colors.secondary,
+    format: (v) => Math.round(v).toString(),
+  },
+  ai_adoption: {
+    label: 'AI Adoption',
+    unit: '%',
+    color: TformanceChartTheme.colors.ai,
+    format: (v) => `${v.toFixed(1)}%`,
+  },
+};
+
+/**
+ * Create a wide trend chart with zoom capabilities
+ * @param {HTMLCanvasElement} canvas - Canvas element to render chart
+ * @param {Array} data - Array of {month/week, value} objects
+ * @param {Object} options - Chart options
+ * @returns {Chart} Chart.js instance
+ */
+export function createWideTrendChart(canvas, data, options = {}) {
+  const metric = options.metric || 'cycle_time';
+  const config = METRIC_CONFIG[metric] || METRIC_CONFIG.cycle_time;
+  const comparisonData = options.comparisonData;
+
+  // Prepare labels and values
+  const labels = data.map((d) => d.month || d.week || d.label);
+  const values = data.map((d) => d.value);
+
+  // Build datasets
+  const datasets = [
+    {
+      label: config.label,
+      data: values,
+      borderColor: config.color,
+      backgroundColor: `${config.color}1a`, // 10% opacity
+      fill: true,
+      tension: 0.3,
+      pointRadius: 4,
+      pointHoverRadius: 6,
+      pointBackgroundColor: config.color,
+      pointBorderWidth: 2,
+    },
+  ];
+
+  // Add comparison dataset if provided
+  if (comparisonData && Array.isArray(comparisonData)) {
+    const compValues = comparisonData.map((d) => d.value);
+    datasets.push({
+      label: `${config.label} (Last Year)`,
+      data: compValues,
+      borderColor: `${TformanceChartTheme.colors.muted}b3`, // 70% opacity
+      backgroundColor: `${TformanceChartTheme.colors.muted}1a`,
+      fill: true,
+      tension: 0.3,
+      borderDash: [5, 5],
+      pointRadius: 3,
+      pointHoverRadius: 5,
+    });
+  }
+
+  // Get base chart defaults
+  const defaults = getChartDefaults();
+
+  // Chart configuration
+  const chartConfig = {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      ...defaults,
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: {
+        mode: 'index',
+        intersect: false,
+      },
+      scales: {
+        ...defaults.scales,
+        y: {
+          ...defaults.scales.y,
+          beginAtZero: true,
+          title: {
+            display: true,
+            text: `${config.label} (${config.unit})`,
+            ...defaults.scales.y.title,
+          },
+          ticks: {
+            ...defaults.scales.y.ticks,
+            callback: (value) => config.format(value),
+          },
+        },
+        x: {
+          ...defaults.scales.x,
+          ticks: {
+            ...defaults.scales.x.ticks,
+            maxRotation: 45,
+            autoSkip: true,
+            maxTicksLimit: 12,
+          },
+        },
+      },
+      plugins: {
+        ...defaults.plugins,
+        legend: {
+          display: datasets.length > 1,
+          ...defaults.plugins.legend,
+        },
+        tooltip: {
+          ...defaults.plugins.tooltip,
+          callbacks: {
+            label: (context) => {
+              const value = context.raw;
+              return `${context.dataset.label}: ${config.format(value)}`;
+            },
+          },
+        },
+        zoom: {
+          pan: {
+            enabled: true,
+            mode: 'x',
+            modifierKey: null, // No modifier needed
+          },
+          zoom: {
+            wheel: {
+              enabled: true,
+            },
+            pinch: {
+              enabled: true,
+            },
+            mode: 'x',
+            onZoomComplete: ({ chart }) => {
+              // Update reset button visibility
+              const resetBtn = document.querySelector('[data-chart-reset]');
+              if (resetBtn) {
+                resetBtn.style.display = 'block';
+              }
+            },
+          },
+        },
+      },
+    },
+  };
+
+  return new Chart(canvas, chartConfig);
+}
+
+/**
+ * Reset zoom on a chart
+ * @param {Chart} chart - Chart.js instance
+ */
+export function resetChartZoom(chart) {
+  if (chart && typeof chart.resetZoom === 'function') {
+    chart.resetZoom();
+  }
+}
+
+/**
+ * Initialize trend charts on page load
+ * Automatically finds and initializes charts with data-trend-chart attribute
+ */
+export function initTrendCharts() {
+  const charts = document.querySelectorAll('[data-trend-chart]');
+
+  charts.forEach((canvas) => {
+    const dataAttr = canvas.getAttribute('data-chart-data');
+    const metric = canvas.getAttribute('data-metric');
+    const comparisonAttr = canvas.getAttribute('data-comparison');
+
+    if (dataAttr) {
+      try {
+        const data = JSON.parse(dataAttr);
+        const comparisonData = comparisonAttr ? JSON.parse(comparisonAttr) : null;
+
+        createWideTrendChart(canvas, data, { metric, comparisonData });
+      } catch (e) {
+        console.error('Failed to initialize trend chart:', e);
+      }
+    }
+  });
+}
+
+// Auto-initialize on DOMContentLoaded
+if (typeof document !== 'undefined') {
+  document.addEventListener('DOMContentLoaded', initTrendCharts);
+
+  // Re-initialize after HTMX content swap
+  document.addEventListener('htmx:afterSwap', initTrendCharts);
+}
+
+// Export for global access
+window.createWideTrendChart = createWideTrendChart;
+window.resetChartZoom = resetChartZoom;
