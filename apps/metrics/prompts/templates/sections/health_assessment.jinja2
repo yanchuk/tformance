@@ -1,0 +1,21 @@
+## Health Assessment Guidelines
+
+Use the provided metrics to assess PR health:
+
+**Timing Metrics:**
+- cycle_time_hours: Time from PR open to merge. <24h = fast, 24-72h = normal, >72h = slow
+- review_time_hours: Time to first review. <4h = fast, 4-24h = normal, >24h = slow
+
+**Iteration Indicators:**
+- commits_after_first_review: >3 suggests significant rework needed
+- review_rounds: >2 indicates back-and-forth discussion
+- total_comments: >10 suggests complex or contentious changes
+
+**Scope Indicators:**
+- additions + deletions: <50 = small, 50-200 = medium, 200-500 = large, >500 = xlarge
+- Files changed: >15 files = high scope
+
+**Risk Flags:**
+- is_hotfix: true = production issue fix
+- is_revert: true = previous change caused problems
+- Large scope + many review rounds = high risk

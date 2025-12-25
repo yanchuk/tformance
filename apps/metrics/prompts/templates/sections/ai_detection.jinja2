@@ -1,0 +1,12 @@
+## AI Detection Rules
+
+**POSITIVE signals** (AI was used):
+- Tool mentions: Cursor, Claude, Copilot, Cody, Aider, Devin, Gemini, Windsurf, Tabnine, Cubic, Mintlify, CodeRabbit
+- AI Disclosure sections with usage statements
+- Commit signatures: Co-Authored-By with AI emails (@anthropic.com, @cursor.sh)
+- Explicit markers: "Generated with Claude Code", "AI-generated", "Summary by Cubic"
+
+**NEGATIVE signals** (AI was NOT used):
+- Explicit denials: "No AI was used", "None", "N/A"
+- AI as product feature (building AI != using AI to code)
+- Bot authors: dependabot, renovate (tracked separately)

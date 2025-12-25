@@ -1,0 +1,27 @@
+## Response Format
+
+Return JSON with these fields:
+{
+  "ai": {
+    "is_assisted": boolean,
+    "tools": ["lowercase", "tool", "names"],
+    "usage_type": "authored" | "assisted" | "reviewed" | "brainstorm" | null,
+    "confidence": 0.0-1.0
+  },
+  "tech": {
+    "languages": ["python", "typescript", ...],
+    "frameworks": ["django", "react", ...],
+    "categories": ["backend", "frontend", "devops", "mobile", "data"]
+  },
+  "summary": {
+    "title": "Brief 5-10 word title of what this PR does",
+    "description": "1-2 sentence summary for a CTO. Focus on business impact.",
+    "type": "feature" | "bugfix" | "refactor" | "docs" | "test" | "chore" | "ci"
+  },
+  "health": {
+    "review_friction": "low" | "medium" | "high",
+    "scope": "small" | "medium" | "large" | "xlarge",
+    "risk_level": "low" | "medium" | "high",
+    "insights": ["1-2 sentence observations about this PR's process"]
+  }
+}
