@@ -2,6 +2,7 @@
 
 from unittest.mock import MagicMock, patch
 
+import pytest
 from django.test import TestCase
 
 from apps.metrics.models import (
@@ -38,8 +39,12 @@ class TestGeneratorStats(TestCase):
         self.assertEqual(stats.factory_prs_used, 0)
 
 
+@pytest.mark.slow
 class TestScenarioDataGenerator(TestCase):
-    """Tests for the ScenarioDataGenerator class."""
+    """Tests for the ScenarioDataGenerator class.
+
+    Marked as slow because these tests create full scenario data (members, PRs, reviews, commits).
+    """
 
     def setUp(self):
         """Set up test fixtures."""
@@ -274,8 +279,12 @@ class TestScenarioDataGenerator(TestCase):
         self.assertGreater(stats.factory_prs_used, 0)
 
 
+@pytest.mark.slow
 class TestScenarioDataGeneratorWithBottleneck(TestCase):
-    """Tests for data generator with review-bottleneck scenario."""
+    """Tests for data generator with review-bottleneck scenario.
+
+    Marked as slow because these tests create full scenario data.
+    """
 
     def setUp(self):
         """Set up test fixtures."""

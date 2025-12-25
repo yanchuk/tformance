@@ -100,7 +100,7 @@ class TestRealProjectSeederPRFileCreation(TestCase):
         """Set up test fixtures."""
         self.team = TeamFactory()
         self.config = RealProjectConfig(
-            repo_full_name="test/repo",
+            repos=("test/repo",),
             team_name="Test Team",
             team_slug="test-team",
             max_prs=5,
@@ -179,7 +179,7 @@ class TestRealProjectSeederCheckRunCreation(TestCase):
         """Set up test fixtures."""
         self.team = TeamFactory()
         self.config = RealProjectConfig(
-            repo_full_name="test/repo",
+            repos=("test/repo",),
             team_name="Test Team",
             team_slug="test-team",
             max_prs=5,

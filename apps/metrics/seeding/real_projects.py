@@ -7,11 +7,11 @@ Each project will be seeded as a separate team with real GitHub data.
 Usage:
     from apps.metrics.seeding.real_projects import REAL_PROJECTS, get_project
 
-    config = get_project("posthog")
-    print(config.repo_full_name)  # "posthog/posthog"
+    config = get_project("polar")
+    print(config.repos)  # ["polarsource/polar", "polarsource/polar-adapters", ...]
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 @dataclass(frozen=True)
@@ -19,10 +19,10 @@ class RealProjectConfig:
     """Configuration for a real open source project.
 
     Attributes:
-        repo_full_name: GitHub repository in "owner/repo" format.
+        repos: List of GitHub repositories in "owner/repo" format.
         team_name: Display name for the team.
         team_slug: URL-safe slug for the team.
-        max_prs: Maximum PRs to fetch (default 500).
+        max_prs: Maximum PRs to fetch per repo (default 500).
         max_members: Maximum team members from contributors (default 15).
         days_back: Days of history to fetch (default 90).
         jira_project_key: Synthetic Jira project key (e.g., "POST").
@@ -31,9 +31,9 @@ class RealProjectConfig:
         description: Short description of the project.
     """
 
-    repo_full_name: str
-    team_name: str
-    team_slug: str
+    repos: tuple[str, ...] = field(default_factory=tuple)
+    team_name: str = ""
+    team_slug: str = ""
     max_prs: int = 500
     max_members: int = 15
     days_back: int = 90
@@ -42,49 +42,68 @@ class RealProjectConfig:
     survey_response_rate: float = 0.60
     description: str = ""
 
+    @property
+    def repo_full_name(self) -> str:
+        """Primary repo for backward compatibility."""
+        return self.repos[0] if self.repos else ""
+
 
 # Registry of available real projects
 REAL_PROJECTS: dict[str, RealProjectConfig] = {
     # Full parsing - smaller focused teams for complete picture
-    "gumroad": RealProjectConfig(
-        repo_full_name="antiwork/gumroad",
-        team_name="Gumroad",
-        team_slug="gumroad-demo",
-        max_prs=1000,  # Full parsing
+    "antiwork": RealProjectConfig(
+        repos=(
+            "antiwork/gumroad",
+            "antiwork/flexile",
+            "antiwork/helper",
+        ),
+        team_name="Antiwork",
+        team_slug="antiwork-demo",
+        max_prs=300,  # Per repo limit
         max_members=50,  # All contributors
         days_back=90,
-        jira_project_key="GUM",
+        jira_project_key="ANTI",
         ai_base_adoption_rate=0.50,
         survey_response_rate=0.70,
-        description="E-commerce platform for creators (full team)",
+        description="Antiwork portfolio: Gumroad, Flexile, Helper",
     ),
     "polar": RealProjectConfig(
-        repo_full_name="polarsource/polar",
+        repos=(
+            "polarsource/polar",
+            "polarsource/polar-adapters",
+            "polarsource/polar-python",
+            "polarsource/polar-js",
+        ),
         team_name="Polar.sh",
         team_slug="polar-demo",
-        max_prs=1000,  # Full parsing
+        max_prs=300,  # Per repo limit
         max_members=50,  # All contributors
         days_back=90,
         jira_project_key="POLAR",
         ai_base_adoption_rate=0.45,
         survey_response_rate=0.60,
-        description="Open-source funding platform (full team)",
+        description="Polar platform + SDKs (Python, JS, Adapters)",
     ),
     # Sampled - large active repos
     "posthog": RealProjectConfig(
-        repo_full_name="posthog/posthog",
+        repos=(
+            "PostHog/posthog",  # Main product (Python)
+            "PostHog/posthog.com",  # Website/docs (TypeScript)
+            "PostHog/posthog-js",  # JavaScript SDK
+            "PostHog/posthog-python",  # Python SDK
+        ),
         team_name="PostHog Analytics",
         team_slug="posthog-demo",
-        max_prs=200,  # Sampled - very active repo
-        max_members=25,
+        max_prs=200,  # Sampled - very active repos
+        max_members=50,
         days_back=90,
         jira_project_key="POST",
         ai_base_adoption_rate=0.40,
         survey_response_rate=0.65,
-        description="Open-source product analytics (sampled)",
+        description="Open-source product analytics + SDKs",
     ),
     "fastapi": RealProjectConfig(
-        repo_full_name="tiangolo/fastapi",
+        repos=("tiangolo/fastapi",),
         team_name="FastAPI Team",
         team_slug="fastapi-demo",
         max_prs=300,
@@ -94,6 +113,154 @@ REAL_PROJECTS: dict[str, RealProjectConfig] = {
         ai_base_adoption_rate=0.30,
         survey_response_rate=0.55,
         description="Modern Python web framework",
+    ),
+    # AI-native companies - high signal for AI detection patterns
+    "anthropic": RealProjectConfig(
+        repos=(
+            "anthropics/anthropic-cookbook",
+            "anthropics/anthropic-sdk-python",
+            "anthropics/courses",
+        ),
+        team_name="Anthropic",
+        team_slug="anthropic-demo",
+        max_prs=100,
+        max_members=30,
+        days_back=90,
+        jira_project_key="ANTH",
+        ai_base_adoption_rate=0.80,  # High - AI company
+        survey_response_rate=0.50,
+        description="Anthropic AI - cookbook, SDKs, courses",
+    ),
+    # Active OSS projects with modern teams
+    "calcom": RealProjectConfig(
+        repos=("calcom/cal.com",),
+        team_name="Cal.com",
+        team_slug="calcom-demo",
+        max_prs=150,
+        max_members=50,
+        days_back=90,
+        jira_project_key="CAL",
+        ai_base_adoption_rate=0.35,
+        survey_response_rate=0.55,
+        description="Open source scheduling infrastructure",
+    ),
+    "trigger": RealProjectConfig(
+        repos=("triggerdotdev/trigger.dev",),
+        team_name="Trigger.dev",
+        team_slug="trigger-demo",
+        max_prs=100,
+        max_members=30,
+        days_back=90,
+        jira_project_key="TRIG",
+        ai_base_adoption_rate=0.40,
+        survey_response_rate=0.55,
+        description="Open source background jobs platform",
+    ),
+    # ========== Tier 1: High AI Signal ==========
+    "vercel": RealProjectConfig(
+        repos=(
+            "vercel/ai",  # AI SDK - likely high AI tool usage
+            "vercel/next.js",  # Main framework
+            "vercel/vercel",  # CLI
+        ),
+        team_name="Vercel",
+        team_slug="vercel-demo",
+        max_prs=150,  # Very active repos
+        max_members=50,
+        days_back=90,
+        jira_project_key="VERC",
+        ai_base_adoption_rate=0.45,
+        survey_response_rate=0.55,
+        description="Vercel platform, Next.js, and AI SDK",
+    ),
+    "supabase": RealProjectConfig(
+        repos=(
+            "supabase/supabase",  # Main platform
+            "supabase/realtime",  # Realtime server
+            "supabase/supabase-js",  # JS SDK
+        ),
+        team_name="Supabase",
+        team_slug="supabase-demo",
+        max_prs=150,
+        max_members=50,
+        days_back=90,
+        jira_project_key="SUPA",
+        ai_base_adoption_rate=0.40,
+        survey_response_rate=0.55,
+        description="Open source Firebase alternative",
+    ),
+    "langchain": RealProjectConfig(
+        repos=(
+            "langchain-ai/langchain",  # Python SDK
+            "langchain-ai/langchainjs",  # JS SDK
+        ),
+        team_name="LangChain",
+        team_slug="langchain-demo",
+        max_prs=200,  # Very active
+        max_members=50,
+        days_back=90,
+        jira_project_key="LANG",
+        ai_base_adoption_rate=0.60,  # AI/LLM focused team
+        survey_response_rate=0.50,
+        description="LLM application framework",
+    ),
+    "linear": RealProjectConfig(
+        repos=("linearapp/linear",),
+        team_name="Linear",
+        team_slug="linear-demo",
+        max_prs=100,
+        max_members=30,
+        days_back=90,
+        jira_project_key="LIN",
+        ai_base_adoption_rate=0.45,
+        survey_response_rate=0.60,
+        description="Modern issue tracking",
+    ),
+    # ========== Tier 2: Varied Signal ==========
+    "resend": RealProjectConfig(
+        repos=(
+            "resend/resend-node",  # Node SDK
+            "resend/react-email",  # React Email
+        ),
+        team_name="Resend",
+        team_slug="resend-demo",
+        max_prs=100,
+        max_members=20,
+        days_back=90,
+        jira_project_key="RSND",
+        ai_base_adoption_rate=0.35,
+        survey_response_rate=0.55,
+        description="Developer-first email API",
+    ),
+    "deno": RealProjectConfig(
+        repos=(
+            "denoland/deno",  # Main runtime (Rust)
+            "denoland/fresh",  # Fresh framework
+        ),
+        team_name="Deno",
+        team_slug="deno-demo",
+        max_prs=150,
+        max_members=30,
+        days_back=90,
+        jira_project_key="DENO",
+        ai_base_adoption_rate=0.30,  # Systems programming
+        survey_response_rate=0.50,
+        description="Modern JavaScript/TypeScript runtime",
+    ),
+    "neon": RealProjectConfig(
+        repos=(
+            "neondatabase/neon",  # Core (Rust)
+            "neondatabase/serverless",  # Serverless driver
+        ),
+        team_name="Neon",
+        team_slug="neon-demo",
+        max_prs=100,
+        max_members=30,
+        days_back=90,
+        jira_project_key="NEON",
+        ai_base_adoption_rate=0.35,
+        survey_response_rate=0.55,
+        description="Serverless Postgres",
     ),
 }
 

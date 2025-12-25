@@ -115,6 +115,11 @@ class Command(BaseCommand):
             action="store_true",
             help="Disable local caching entirely (no read/write)",
         )
+        parser.add_argument(
+            "--no-check-runs",
+            action="store_true",
+            help="Skip fetching check runs (faster seeding, less CI/CD data)",
+        )
 
     def handle(self, *args, **options):
         # Check dev dependencies are available
@@ -212,6 +217,9 @@ class Command(BaseCommand):
         checkpoint_file = options.get("checkpoint_file")
         if checkpoint_file and not use_graphql:
             self.stdout.write(f"  Checkpoint file: {checkpoint_file}")
+        skip_check_runs = options.get("no_check_runs", False)
+        if skip_check_runs:
+            self.stdout.write("  Skipping check runs (--no-check-runs)")
         try:
             seeder = RealProjectSeeder(
                 config=config,
@@ -220,6 +228,7 @@ class Command(BaseCommand):
                 checkpoint_file=checkpoint_file,
                 use_graphql=use_graphql,
                 use_cache=use_cache,
+                skip_check_runs=skip_check_runs,
             )
             stats = seeder.seed()
 

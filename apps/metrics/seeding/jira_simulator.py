@@ -275,11 +275,12 @@ class JiraIssueSimulator:
         else:
             status = self.rng.choice(["To Do", "In Progress", "In Review"])
 
-        # Create the issue
+        # Create the issue with unique ID
+        self._issue_counter += 1
         return JiraIssueFactory(
             team=team,
             jira_key=jira_key,
-            jira_id=str(self.rng.randint(10000, 99999)),  # Simulated Jira ID
+            jira_id=str(self._issue_counter),  # Unique sequential ID
             summary=pr.title[:200],  # Limit to 200 chars
             issue_type=issue_type,
             status=status,
