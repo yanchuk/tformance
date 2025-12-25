@@ -101,7 +101,17 @@ apps/metrics/prompts/
 | `validate_llm_response()` | Validate LLM response against schema |
 | `export_promptfoo_config()` | Generate promptfoo.yaml for testing |
 
-**Workflow for modifying prompts:**
+**⚠️ Template Change Rules (REQUIRE USER APPROVAL):**
+
+Before modifying any template file (`system.jinja2`, `user.jinja2`, `sections/*`):
+1. **Explain the change** - Describe what you want to modify and why
+2. **Show the diff** - Present the exact changes you plan to make
+3. **Wait for approval** - Do NOT edit templates until user confirms
+4. **Bump version** - Update `PROMPT_VERSION` in `llm_prompts.py` for any behavioral changes
+
+Templates affect LLM behavior across all PR analysis. Changes can break detection accuracy.
+
+**Workflow for modifying prompts (after approval):**
 1. Edit the relevant template (`system.jinja2`, `user.jinja2`, or `sections/*`)
 2. Run: `python manage.py export_prompts` to regenerate promptfoo config
 3. Test with: `cd dev/active/ai-detection-pr-descriptions/experiments && npx promptfoo eval`
