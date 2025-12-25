@@ -50,9 +50,8 @@ pytest apps/metrics/prompts/tests/test_render.py -k matches_original
 # 5. Regenerate promptfoo config (auto-renders from templates)
 make export-prompts
 
-# 6. Run evaluation
-cd dev/active/ai-detection-pr-descriptions/experiments
-export GROQ_API_KEY="your-key"
+# 6. Run evaluation (GROQ_API_KEY auto-loaded from .env symlink)
+cd dev/completed/ai-detection-pr-descriptions/experiments
 npx promptfoo eval
 npx promptfoo view
 ```
@@ -113,11 +112,8 @@ Stored in `PullRequest.llm_summary` JSONField.
 # Generate config from Python source (DO THIS FIRST!)
 make export-prompts
 
-# Navigate to experiments directory
-cd dev/active/ai-detection-pr-descriptions/experiments
-
-# Set API key (required for each terminal session)
-export GROQ_API_KEY="your-key-here"
+# Navigate to experiments directory (GROQ_API_KEY auto-loaded from .env symlink)
+cd dev/completed/ai-detection-pr-descriptions/experiments
 
 # Run evaluation
 npx promptfoo eval
@@ -145,8 +141,7 @@ python manage.py export_prs_to_promptfoo --format yaml
 ### Run LLM Analysis (Database Population)
 
 ```bash
-# Analyze PRs and store results in database
-export GROQ_API_KEY="your-key-here"
+# Analyze PRs and store results in database (GROQ_API_KEY loaded from .env)
 python manage.py run_llm_analysis --limit 50
 
 # Analyze specific team
@@ -280,8 +275,9 @@ apps/metrics/
     ├── run_llm_analysis.py
     └── backfill_ai_detection.py
 
-dev/active/ai-detection-pr-descriptions/
+dev/completed/ai-detection-pr-descriptions/
 ├── experiments/
+│   ├── .env -> ../../.env      # Symlink for GROQ_API_KEY
 │   ├── promptfoo.yaml          # Auto-generated config (DO NOT EDIT)
 │   ├── prompts/
 │   │   └── v{VERSION}-system.txt  # Auto-generated from templates
@@ -293,7 +289,9 @@ dev/active/ai-detection-pr-descriptions/
 
 ## Environment Variables
 
+Set in `.env` (auto-loaded by promptfoo via symlink in experiments dir):
+
 ```bash
-GROQ_API_KEY=gsk_...           # Required for LLM detection
+GROQ_API_KEY=gsk_...           # Required for LLM detection (in .env)
 POSTHOG_API_KEY=...            # Optional, for tracking LLM calls
 ```

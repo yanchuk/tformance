@@ -63,7 +63,7 @@ Patterns are versioned to enable reprocessing when new patterns are added:
 | File | Purpose |
 |------|---------|
 | `apps/metrics/services/ai_patterns.py` | Active patterns + `PATTERNS_VERSION` |
-| `dev/active/ai-detection-pr-descriptions/experiments/patterns/` | Version history (v1.4.0.md, v1.5.0.md) |
+| `dev/completed/ai-detection-pr-descriptions/experiments/patterns/` | Version history (v1.4.0.md, v1.5.0.md) |
 
 When adding patterns:
 1. Update `AI_SIGNATURE_PATTERNS` in `ai_patterns.py`
@@ -114,7 +114,7 @@ Templates affect LLM behavior across all PR analysis. Changes can break detectio
 **Workflow for modifying prompts (after approval):**
 1. Edit the relevant template (`system.jinja2`, `user.jinja2`, or `sections/*`)
 2. Run: `python manage.py export_prompts` to regenerate promptfoo config
-3. Test with: `cd dev/active/ai-detection-pr-descriptions/experiments && npx promptfoo eval`
+3. Test with: `cd dev/completed/ai-detection-pr-descriptions/experiments && npx promptfoo eval`
 4. Verify equivalence: `pytest apps/metrics/prompts/tests/test_render.py -k matches`
 
 **Version:** Current is `PROMPT_VERSION` in `apps/metrics/services/llm_prompts.py`
@@ -156,9 +156,8 @@ We use [promptfoo](https://promptfoo.dev) for LLM prompt evaluation with multipl
 
 **Running evaluations:**
 ```bash
-cd dev/active/ai-detection-pr-descriptions/experiments
-export GROQ_API_KEY='your-key'
-npx promptfoo eval              # Run all tests
+cd dev/completed/ai-detection-pr-descriptions/experiments
+npx promptfoo eval              # Run all tests (picks up GROQ_API_KEY from .env symlink)
 npx promptfoo eval --filter-pattern "health_"  # Run subset
 npx promptfoo view              # View results in UI
 ```
