@@ -66,6 +66,9 @@ test-django: ## Fallback to Django test runner
 test-django-parallel: ## Fallback to Django parallel tests
 	@uv run manage.py test --parallel --keepdb ${ARGS}
 
+test-quick: ## Run fast tests only (excludes @pytest.mark.slow)
+	@pytest -m "not slow" --reuse-db ${ARGS}
+
 init: setup-env start-bg migrations migrate npm-install-all bootstrap_content install-hooks  ## Quickly get up and running (start containers and bootstrap DB)
 
 install-hooks: ## Install git hooks (pre-push runs tests)
@@ -101,6 +104,9 @@ lint-colors-fix: ## Check templates for hardcoded colors with fix suggestions
 	@uv run python scripts/lint_colors.py templates/ --fix-suggestions
 
 lint: ruff lint-team-isolation lint-colors ## Run all linters (ruff + team isolation + colors)
+
+export-prompts: ## Export LLM prompts and generate promptfoo config
+	@uv run manage.py export_prompts
 
 e2e: ## Run all E2E tests (requires dev server running)
 	@npx playwright test

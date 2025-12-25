@@ -571,12 +571,17 @@ class TestGitHubGraphQLTimeoutError(TestCase):
             self.assertEqual(str(e), error_message)
 
 
+@patch("asyncio.sleep", new_callable=AsyncMock)
 class TestTimeoutHandling(TestCase):
-    """Tests for timeout handling in GraphQL client."""
+    """Tests for timeout handling in GraphQL client.
+
+    Note: asyncio.sleep is mocked at class level to avoid real delays during retry tests.
+    These tests verify that timeout errors are properly raised after retries are exhausted.
+    """
 
     @patch("apps.integrations.services.github_graphql.Client")
     @patch("apps.integrations.services.github_graphql.AIOHTTPTransport")
-    def test_fetch_prs_bulk_raises_timeout_error_on_timeout(self, mock_transport_class, mock_client_class):
+    def test_fetch_prs_bulk_raises_timeout_error_on_timeout(self, mock_transport_class, mock_client_class, mock_sleep):
         """Test that fetch_prs_bulk raises GitHubGraphQLTimeoutError on timeout."""
         # Arrange
         mock_transport = MagicMock()
@@ -596,7 +601,7 @@ class TestTimeoutHandling(TestCase):
 
     @patch("apps.integrations.services.github_graphql.Client")
     @patch("apps.integrations.services.github_graphql.AIOHTTPTransport")
-    def test_fetch_single_pr_raises_timeout_error_on_timeout(self, mock_transport_class, mock_client_class):
+    def test_fetch_single_pr_raises_timeout_error_on_timeout(self, mock_transport_class, mock_client_class, mock_sleep):
         """Test that fetch_single_pr raises GitHubGraphQLTimeoutError on timeout."""
         # Arrange
         mock_transport = MagicMock()
@@ -615,7 +620,9 @@ class TestTimeoutHandling(TestCase):
 
     @patch("apps.integrations.services.github_graphql.Client")
     @patch("apps.integrations.services.github_graphql.AIOHTTPTransport")
-    def test_fetch_org_members_raises_timeout_error_on_timeout(self, mock_transport_class, mock_client_class):
+    def test_fetch_org_members_raises_timeout_error_on_timeout(
+        self, mock_transport_class, mock_client_class, mock_sleep
+    ):
         """Test that fetch_org_members raises GitHubGraphQLTimeoutError on timeout."""
         # Arrange
         mock_transport = MagicMock()
@@ -633,12 +640,16 @@ class TestTimeoutHandling(TestCase):
             asyncio.run(client.fetch_org_members("test-org"))
 
 
+@patch("asyncio.sleep", new_callable=AsyncMock)
 class TestRetryOnTimeout(TestCase):
-    """Tests for retry logic on timeout."""
+    """Tests for retry logic on timeout.
+
+    Note: asyncio.sleep is mocked at class level to avoid real delays during retry tests.
+    """
 
     @patch("apps.integrations.services.github_graphql.Client")
     @patch("apps.integrations.services.github_graphql.AIOHTTPTransport")
-    def test_fetch_prs_bulk_retries_on_timeout(self, mock_transport_class, mock_client_class):
+    def test_fetch_prs_bulk_retries_on_timeout(self, mock_transport_class, mock_client_class, mock_sleep):
         """Test that fetch_prs_bulk retries on timeout before failing."""
         # Arrange
         mock_transport = MagicMock()
@@ -667,7 +678,7 @@ class TestRetryOnTimeout(TestCase):
 
     @patch("apps.integrations.services.github_graphql.Client")
     @patch("apps.integrations.services.github_graphql.AIOHTTPTransport")
-    def test_fetch_prs_bulk_fails_after_max_retries(self, mock_transport_class, mock_client_class):
+    def test_fetch_prs_bulk_fails_after_max_retries(self, mock_transport_class, mock_client_class, mock_sleep):
         """Test that fetch_prs_bulk fails after max retries exceeded."""
         # Arrange
         mock_transport = MagicMock()
@@ -689,7 +700,7 @@ class TestRetryOnTimeout(TestCase):
 
     @patch("apps.integrations.services.github_graphql.Client")
     @patch("apps.integrations.services.github_graphql.AIOHTTPTransport")
-    def test_fetch_single_pr_retries_on_timeout(self, mock_transport_class, mock_client_class):
+    def test_fetch_single_pr_retries_on_timeout(self, mock_transport_class, mock_client_class, mock_sleep):
         """Test that fetch_single_pr retries on timeout before failing."""
         # Arrange
         mock_transport = MagicMock()
@@ -718,7 +729,7 @@ class TestRetryOnTimeout(TestCase):
 
     @patch("apps.integrations.services.github_graphql.Client")
     @patch("apps.integrations.services.github_graphql.AIOHTTPTransport")
-    def test_fetch_single_pr_fails_after_max_retries(self, mock_transport_class, mock_client_class):
+    def test_fetch_single_pr_fails_after_max_retries(self, mock_transport_class, mock_client_class, mock_sleep):
         """Test that fetch_single_pr fails after max retries exceeded."""
         # Arrange
         mock_transport = MagicMock()
@@ -739,7 +750,7 @@ class TestRetryOnTimeout(TestCase):
 
     @patch("apps.integrations.services.github_graphql.Client")
     @patch("apps.integrations.services.github_graphql.AIOHTTPTransport")
-    def test_fetch_org_members_retries_on_timeout(self, mock_transport_class, mock_client_class):
+    def test_fetch_org_members_retries_on_timeout(self, mock_transport_class, mock_client_class, mock_sleep):
         """Test that fetch_org_members retries on timeout before failing."""
         # Arrange
         mock_transport = MagicMock()
@@ -768,7 +779,7 @@ class TestRetryOnTimeout(TestCase):
 
     @patch("apps.integrations.services.github_graphql.Client")
     @patch("apps.integrations.services.github_graphql.AIOHTTPTransport")
-    def test_fetch_org_members_fails_after_max_retries(self, mock_transport_class, mock_client_class):
+    def test_fetch_org_members_fails_after_max_retries(self, mock_transport_class, mock_client_class, mock_sleep):
         """Test that fetch_org_members fails after max retries exceeded."""
         # Arrange
         mock_transport = MagicMock()
@@ -954,9 +965,10 @@ class TestFetchPRsUpdatedSince(TestCase):
         with self.assertRaises(GitHubGraphQLRateLimitError):
             asyncio.run(client.fetch_prs_updated_since("owner", "repo", since))
 
+    @patch("asyncio.sleep", new_callable=AsyncMock)
     @patch("apps.integrations.services.github_graphql.Client")
     @patch("apps.integrations.services.github_graphql.AIOHTTPTransport")
-    def test_fetch_prs_updated_since_retries_on_timeout(self, mock_transport_class, mock_client_class):
+    def test_fetch_prs_updated_since_retries_on_timeout(self, mock_transport_class, mock_client_class, mock_sleep):
         """Test that fetch_prs_updated_since retries on timeout."""
         # Arrange
         mock_transport = MagicMock()

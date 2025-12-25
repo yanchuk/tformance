@@ -14,15 +14,22 @@ from apps.metrics.factories import (
 )
 from apps.metrics.services.llm_prompts import PROMPT_VERSION
 
+# Import tasks at module level for cleaner mocking
+from apps.metrics.tasks import run_all_teams_llm_analysis, run_llm_analysis_batch
 
+
+@patch("apps.metrics.tasks.time.sleep")  # Mock rate limit delays
 class TestRunLLMAnalysisBatchTask(TestCase):
-    """Tests for run_llm_analysis_batch task."""
+    """Tests for run_llm_analysis_batch task.
+
+    Note: time.sleep is mocked at class level to avoid real rate limit delays.
+    """
 
     def setUp(self):
         """Set up test fixtures."""
         self.team = TeamFactory()
 
-    def test_skips_prs_with_current_llm_summary(self):
+    def test_skips_prs_with_current_llm_summary(self, mock_sleep):
         """PRs with current llm_summary version are skipped."""
         # Create PR with current version
         PullRequestFactory(
@@ -31,8 +38,6 @@ class TestRunLLMAnalysisBatchTask(TestCase):
             llm_summary={"ai": {"is_assisted": False}},
             llm_summary_version=PROMPT_VERSION,
         )
-
-        from apps.metrics.tasks import run_llm_analysis_batch
 
         with (
             patch.dict("os.environ", {"GROQ_API_KEY": "test-key"}),
@@ -44,7 +49,7 @@ class TestRunLLMAnalysisBatchTask(TestCase):
         mock_groq.return_value.chat.completions.create.assert_not_called()
         self.assertEqual(result["processed"], 0)
 
-    def test_processes_prs_without_llm_summary(self):
+    def test_processes_prs_without_llm_summary(self, mock_sleep):
         """PRs without llm_summary are processed."""
         pr = PullRequestFactory(
             team=self.team,
@@ -52,8 +57,6 @@ class TestRunLLMAnalysisBatchTask(TestCase):
             llm_summary=None,
             llm_summary_version="",  # Empty string for null-like state
         )
-
-        from apps.metrics.tasks import run_llm_analysis_batch
 
         mock_response = MagicMock()
         mock_response.choices = [
@@ -81,7 +84,7 @@ class TestRunLLMAnalysisBatchTask(TestCase):
         self.assertIsNotNone(pr.llm_summary)
         self.assertEqual(pr.llm_summary_version, PROMPT_VERSION)
 
-    def test_processes_prs_with_outdated_version(self):
+    def test_processes_prs_with_outdated_version(self, mock_sleep):
         """PRs with older llm_summary version are reprocessed."""
         pr = PullRequestFactory(
             team=self.team,
@@ -89,8 +92,6 @@ class TestRunLLMAnalysisBatchTask(TestCase):
             llm_summary={"ai": {"is_assisted": True}},
             llm_summary_version="5.0.0",  # Older version
         )
-
-        from apps.metrics.tasks import run_llm_analysis_batch
 
         mock_response = MagicMock()
         mock_response.choices = [
@@ -117,12 +118,10 @@ class TestRunLLMAnalysisBatchTask(TestCase):
         pr.refresh_from_db()
         self.assertEqual(pr.llm_summary_version, PROMPT_VERSION)
 
-    def test_skips_prs_without_body(self):
+    def test_skips_prs_without_body(self, mock_sleep):
         """PRs with empty body are skipped."""
         PullRequestFactory(team=self.team, body="")
         # Note: body column has NOT NULL constraint, so we only test empty string
-
-        from apps.metrics.tasks import run_llm_analysis_batch
 
         with (
             patch.dict("os.environ", {"GROQ_API_KEY": "test-key"}),
@@ -133,13 +132,11 @@ class TestRunLLMAnalysisBatchTask(TestCase):
         mock_groq.return_value.chat.completions.create.assert_not_called()
         self.assertEqual(result["processed"], 0)
 
-    def test_respects_limit_parameter(self):
+    def test_respects_limit_parameter(self, mock_sleep):
         """Only processes up to limit PRs."""
         # Create 5 PRs
         for _ in range(5):
             PullRequestFactory(team=self.team, body="Test description")
-
-        from apps.metrics.tasks import run_llm_analysis_batch
 
         mock_response = MagicMock()
         mock_response.choices = [
@@ -157,11 +154,9 @@ class TestRunLLMAnalysisBatchTask(TestCase):
         self.assertEqual(result["processed"], 2)
         self.assertEqual(mock_groq.return_value.chat.completions.create.call_count, 2)
 
-    def test_handles_api_errors_gracefully(self):
+    def test_handles_api_errors_gracefully(self, mock_sleep):
         """API errors are caught and counted."""
         PullRequestFactory(team=self.team, body="Test description")
-
-        from apps.metrics.tasks import run_llm_analysis_batch
 
         with (
             patch.dict("os.environ", {"GROQ_API_KEY": "test-key"}),
@@ -173,10 +168,8 @@ class TestRunLLMAnalysisBatchTask(TestCase):
         self.assertEqual(result["processed"], 0)
         self.assertEqual(result["errors"], 1)
 
-    def test_returns_error_without_api_key(self):
+    def test_returns_error_without_api_key(self, mock_sleep):
         """Returns error dict when GROQ_API_KEY not set."""
-        from apps.metrics.tasks import run_llm_analysis_batch
-
         with patch.dict("os.environ", {}, clear=True):
             result = run_llm_analysis_batch(team_id=self.team.id, limit=10)
 
@@ -192,8 +185,6 @@ class TestRunAllTeamsLLMAnalysisTask(TestCase):
         TeamFactory()
         TeamFactory()
 
-        from apps.metrics.tasks import run_all_teams_llm_analysis
-
         with patch("apps.metrics.tasks.run_llm_analysis_batch") as mock_task:
             mock_task.delay = MagicMock()
             result = run_all_teams_llm_analysis()
@@ -202,8 +193,12 @@ class TestRunAllTeamsLLMAnalysisTask(TestCase):
         self.assertEqual(result["teams_dispatched"], 2)
 
 
+@patch("apps.metrics.tasks.time.sleep")  # Mock rate limit delays
 class TestLLMTaskDataExtraction(TestCase):
-    """Tests for v6.1.0 data extraction in run_llm_analysis_batch."""
+    """Tests for v6.1.0 data extraction in run_llm_analysis_batch.
+
+    Note: time.sleep is mocked at class level to avoid real rate limit delays.
+    """
 
     def setUp(self):
         """Set up test fixtures."""
@@ -218,13 +213,11 @@ class TestLLMTaskDataExtraction(TestCase):
         ]
         return mock
 
-    def test_extracts_file_paths_from_pr_files(self):
+    def test_extracts_file_paths_from_pr_files(self, mock_sleep):
         """File paths should be extracted and passed to prompt."""
         pr = PullRequestFactory(team=self.team, body="Test PR", author=self.author)
         PRFileFactory(pull_request=pr, team=self.team, filename="apps/auth/views.py")
         PRFileFactory(pull_request=pr, team=self.team, filename="tests/test_auth.py")
-
-        from apps.metrics.tasks import run_llm_analysis_batch
 
         with (
             patch.dict("os.environ", {"GROQ_API_KEY": "test-key"}),
@@ -241,13 +234,11 @@ class TestLLMTaskDataExtraction(TestCase):
         self.assertIn("apps/auth/views.py", call_kwargs["file_paths"])
         self.assertIn("tests/test_auth.py", call_kwargs["file_paths"])
 
-    def test_extracts_commit_messages_from_commits(self):
+    def test_extracts_commit_messages_from_commits(self, mock_sleep):
         """Commit messages should be extracted and passed to prompt."""
         pr = PullRequestFactory(team=self.team, body="Test PR", author=self.author)
         CommitFactory(pull_request=pr, team=self.team, message="Add login endpoint")
         CommitFactory(pull_request=pr, team=self.team, message="Fix typo")
-
-        from apps.metrics.tasks import run_llm_analysis_batch
 
         with (
             patch.dict("os.environ", {"GROQ_API_KEY": "test-key"}),
@@ -264,15 +255,13 @@ class TestLLMTaskDataExtraction(TestCase):
         self.assertIn("Add login endpoint", call_kwargs["commit_messages"])
         self.assertIn("Fix typo", call_kwargs["commit_messages"])
 
-    def test_extracts_reviewers_from_pr_reviews(self):
+    def test_extracts_reviewers_from_pr_reviews(self, mock_sleep):
         """Reviewer names should be extracted and passed to prompt."""
         pr = PullRequestFactory(team=self.team, body="Test PR", author=self.author)
         reviewer1 = TeamMemberFactory(team=self.team, display_name="Alice Reviewer")
         reviewer2 = TeamMemberFactory(team=self.team, display_name="Bob Reviewer")
         PRReviewFactory(pull_request=pr, team=self.team, reviewer=reviewer1)
         PRReviewFactory(pull_request=pr, team=self.team, reviewer=reviewer2)
-
-        from apps.metrics.tasks import run_llm_analysis_batch
 
         with (
             patch.dict("os.environ", {"GROQ_API_KEY": "test-key"}),
@@ -289,7 +278,7 @@ class TestLLMTaskDataExtraction(TestCase):
         self.assertIn("Alice Reviewer", call_kwargs["reviewers"])
         self.assertIn("Bob Reviewer", call_kwargs["reviewers"])
 
-    def test_extracts_pr_metadata(self):
+    def test_extracts_pr_metadata(self, mock_sleep):
         """PR metadata (milestone, assignees, jira_key) should be passed."""
         PullRequestFactory(
             team=self.team,
@@ -300,8 +289,6 @@ class TestLLMTaskDataExtraction(TestCase):
             linked_issues=[123, 456],
             jira_key="PROJ-1234",
         )
-
-        from apps.metrics.tasks import run_llm_analysis_batch
 
         with (
             patch.dict("os.environ", {"GROQ_API_KEY": "test-key"}),
@@ -317,11 +304,9 @@ class TestLLMTaskDataExtraction(TestCase):
         self.assertEqual(call_kwargs.get("assignees"), ["john", "jane"])
         self.assertEqual(call_kwargs.get("jira_key"), "PROJ-1234")
 
-    def test_extracts_author_name(self):
+    def test_extracts_author_name(self, mock_sleep):
         """Author display name should be passed to prompt."""
         PullRequestFactory(team=self.team, body="Test PR", author=self.author)
-
-        from apps.metrics.tasks import run_llm_analysis_batch
 
         with (
             patch.dict("os.environ", {"GROQ_API_KEY": "test-key"}),
@@ -335,7 +320,7 @@ class TestLLMTaskDataExtraction(TestCase):
         call_kwargs = mock_prompt.call_args[1]
         self.assertEqual(call_kwargs.get("author_name"), "John Developer")
 
-    def test_works_with_no_related_data(self):
+    def test_works_with_no_related_data(self, mock_sleep):
         """Task should work when PR has no files, commits, or reviews."""
         PullRequestFactory(
             team=self.team,
@@ -343,8 +328,6 @@ class TestLLMTaskDataExtraction(TestCase):
             author=None,  # No author
             milestone_title="",  # No milestone
         )
-
-        from apps.metrics.tasks import run_llm_analysis_batch
 
         with (
             patch.dict("os.environ", {"GROQ_API_KEY": "test-key"}),

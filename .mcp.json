@@ -20,6 +20,11 @@
       "args": [
         "@playwright/mcp@latest"
       ]
+    },
+    "promptfoo": {
+      "command": "npx",
+      "args": ["promptfoo@latest", "mcp", "--transport", "stdio"],
+      "description": "Promptfoo MCP server for LLM evaluation and testing"
     }
   }
 }
