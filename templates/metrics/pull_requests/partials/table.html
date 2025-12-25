@@ -122,14 +122,23 @@
           {{ pr.total_comments|default:0 }}
         </td>
         <td class="text-center">
-          {# Uses model property with LLM priority over regex detection #}
-          {% if pr.effective_is_ai_assisted %}
-            <span class="badge badge-primary badge-sm" title="{{ pr.effective_ai_tools|ai_tools_display }}">
-              {% trans "Yes" %}
-            </span>
-          {% else %}
-            <span class="text-base-content/50">-</span>
-          {% endif %}
+          {# AI confidence indicator with signal breakdown tooltip #}
+          {% with level=pr.ai_confidence_score|ai_confidence_level %}
+            {% if level %}
+              <div class="tooltip" data-tip="{{ pr.ai_signals|ai_signals_tooltip }}">
+                <span class="badge {{ level|ai_confidence_badge_class }} badge-sm cursor-help">
+                  {% if level == 'high' %}{% trans "High" %}{% elif level == 'medium' %}{% trans "Med" %}{% else %}{% trans "Low" %}{% endif %}
+                </span>
+              </div>
+            {% elif pr.effective_is_ai_assisted %}
+              {# Fallback for PRs without confidence score but with old detection #}
+              <span class="badge badge-primary badge-sm" title="{{ pr.effective_ai_tools|ai_tools_display }}">
+                {% trans "Yes" %}
+              </span>
+            {% else %}
+              <span class="text-base-content/50">-</span>
+            {% endif %}
+          {% endwith %}
         </td>
         <td class="text-center">
           {# Uses model property with LLM priority over pattern detection #}

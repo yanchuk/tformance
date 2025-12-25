@@ -111,7 +111,12 @@ After OAuth:
 
 **Behind the scenes:**
 - Set up webhooks for selected repos
-- Queue historical data sync (last 90 days)
+- Queue historical data sync (last 12 months) in background
+- User continues to Jira/Slack setup while sync runs
+
+**Sync Indicator:**
+A floating indicator appears in the bottom-right corner showing sync progress.
+Users can click it to view detailed sync status at any time.
 
 ---
 

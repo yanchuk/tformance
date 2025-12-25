@@ -297,3 +297,189 @@ class TestRepoNameFilter(TestCase):
     def test_multiple_slashes_returns_last_segment(self):
         """Test multiple slashes returns last segment only."""
         self.assertEqual(repo_name("org/sub/repo"), "repo")
+
+
+class TestAIConfidenceLevelFilter(TestCase):
+    """Tests for ai_confidence_level template filter."""
+
+    def test_high_confidence_above_threshold(self):
+        """Test score >= 0.5 returns 'high'."""
+        from apps.metrics.templatetags.pr_list_tags import ai_confidence_level
+
+        self.assertEqual(ai_confidence_level(0.5), "high")
+
+    def test_high_confidence_at_max(self):
+        """Test score of 1.0 returns 'high'."""
+        from apps.metrics.templatetags.pr_list_tags import ai_confidence_level
+
+        self.assertEqual(ai_confidence_level(1.0), "high")
+
+    def test_medium_confidence_at_lower_bound(self):
+        """Test score of 0.2 returns 'medium'."""
+        from apps.metrics.templatetags.pr_list_tags import ai_confidence_level
+
+        self.assertEqual(ai_confidence_level(0.2), "medium")
+
+    def test_medium_confidence_typical(self):
+        """Test score of 0.35 returns 'medium'."""
+        from apps.metrics.templatetags.pr_list_tags import ai_confidence_level
+
+        self.assertEqual(ai_confidence_level(0.35), "medium")
+
+    def test_medium_confidence_just_below_high(self):
+        """Test score of 0.49 returns 'medium'."""
+        from apps.metrics.templatetags.pr_list_tags import ai_confidence_level
+
+        self.assertEqual(ai_confidence_level(0.49), "medium")
+
+    def test_low_confidence_positive(self):
+        """Test score of 0.1 returns 'low'."""
+        from apps.metrics.templatetags.pr_list_tags import ai_confidence_level
+
+        self.assertEqual(ai_confidence_level(0.1), "low")
+
+    def test_low_confidence_just_below_medium(self):
+        """Test score of 0.19 returns 'low'."""
+        from apps.metrics.templatetags.pr_list_tags import ai_confidence_level
+
+        self.assertEqual(ai_confidence_level(0.19), "low")
+
+    def test_zero_returns_empty(self):
+        """Test score of 0.0 returns empty string."""
+        from apps.metrics.templatetags.pr_list_tags import ai_confidence_level
+
+        self.assertEqual(ai_confidence_level(0.0), "")
+
+    def test_none_returns_empty(self):
+        """Test None value returns empty string."""
+        from apps.metrics.templatetags.pr_list_tags import ai_confidence_level
+
+        self.assertEqual(ai_confidence_level(None), "")
+
+    def test_decimal_type_supported(self):
+        """Test Decimal type is handled correctly."""
+        from decimal import Decimal
+
+        from apps.metrics.templatetags.pr_list_tags import ai_confidence_level
+
+        self.assertEqual(ai_confidence_level(Decimal("0.5")), "high")
+        self.assertEqual(ai_confidence_level(Decimal("0.25")), "medium")
+        self.assertEqual(ai_confidence_level(Decimal("0.1")), "low")
+
+
+class TestAIConfidenceBadgeClassFilter(TestCase):
+    """Tests for ai_confidence_badge_class template filter."""
+
+    def test_high_returns_success(self):
+        """Test 'high' returns badge-success."""
+        from apps.metrics.templatetags.pr_list_tags import ai_confidence_badge_class
+
+        self.assertEqual(ai_confidence_badge_class("high"), "badge-success")
+
+    def test_medium_returns_warning(self):
+        """Test 'medium' returns badge-warning."""
+        from apps.metrics.templatetags.pr_list_tags import ai_confidence_badge_class
+
+        self.assertEqual(ai_confidence_badge_class("medium"), "badge-warning")
+
+    def test_low_returns_ghost(self):
+        """Test 'low' returns badge-ghost."""
+        from apps.metrics.templatetags.pr_list_tags import ai_confidence_badge_class
+
+        self.assertEqual(ai_confidence_badge_class("low"), "badge-ghost")
+
+    def test_empty_returns_ghost(self):
+        """Test empty string returns badge-ghost."""
+        from apps.metrics.templatetags.pr_list_tags import ai_confidence_badge_class
+
+        self.assertEqual(ai_confidence_badge_class(""), "badge-ghost")
+
+    def test_none_returns_ghost(self):
+        """Test None returns badge-ghost."""
+        from apps.metrics.templatetags.pr_list_tags import ai_confidence_badge_class
+
+        self.assertEqual(ai_confidence_badge_class(None), "badge-ghost")
+
+    def test_unknown_returns_ghost(self):
+        """Test unknown level returns badge-ghost."""
+        from apps.metrics.templatetags.pr_list_tags import ai_confidence_badge_class
+
+        self.assertEqual(ai_confidence_badge_class("unknown"), "badge-ghost")
+
+
+class TestAISignalsTooltipFilter(TestCase):
+    """Tests for ai_signals_tooltip template filter."""
+
+    def test_all_signals_present(self):
+        """Test tooltip with all signal sources active."""
+        from apps.metrics.templatetags.pr_list_tags import ai_signals_tooltip
+
+        signals = {
+            "llm": {"score": 0.4, "is_assisted": True, "tools": ["claude"]},
+            "regex": {"score": 0.2, "is_assisted": True, "tools": ["cursor"]},
+            "commits": {"score": 0.25, "has_ai": True},
+            "reviews": {"score": 0.1, "has_ai": True},
+            "files": {"score": 0.05, "has_ai": True},
+        }
+        tooltip = ai_signals_tooltip(signals)
+        self.assertIn("LLM", tooltip)
+        self.assertIn("Regex", tooltip)
+        self.assertIn("Commits", tooltip)
+        self.assertIn("Reviews", tooltip)
+        self.assertIn("Files", tooltip)
+
+    def test_partial_signals(self):
+        """Test tooltip with only some signals active."""
+        from apps.metrics.templatetags.pr_list_tags import ai_signals_tooltip
+
+        signals = {
+            "llm": {"score": 0.4, "is_assisted": True, "tools": ["claude"]},
+            "regex": {"score": 0.0, "is_assisted": False, "tools": []},
+            "commits": {"score": 0.0, "has_ai": False},
+            "reviews": {"score": 0.0, "has_ai": False},
+            "files": {"score": 0.0, "has_ai": False},
+        }
+        tooltip = ai_signals_tooltip(signals)
+        self.assertIn("LLM", tooltip)
+        self.assertNotIn("Regex", tooltip)
+        self.assertNotIn("Commits", tooltip)
+
+    def test_empty_signals_returns_no_signals(self):
+        """Test empty signals dict returns 'No AI signals'."""
+        from apps.metrics.templatetags.pr_list_tags import ai_signals_tooltip
+
+        self.assertEqual(ai_signals_tooltip({}), "No AI signals")
+
+    def test_none_returns_no_signals(self):
+        """Test None returns 'No AI signals'."""
+        from apps.metrics.templatetags.pr_list_tags import ai_signals_tooltip
+
+        self.assertEqual(ai_signals_tooltip(None), "No AI signals")
+
+    def test_all_zero_scores_returns_no_signals(self):
+        """Test all zero scores returns 'No AI signals'."""
+        from apps.metrics.templatetags.pr_list_tags import ai_signals_tooltip
+
+        signals = {
+            "llm": {"score": 0.0, "is_assisted": False},
+            "regex": {"score": 0.0, "is_assisted": False},
+            "commits": {"score": 0.0, "has_ai": False},
+            "reviews": {"score": 0.0, "has_ai": False},
+            "files": {"score": 0.0, "has_ai": False},
+        }
+        self.assertEqual(ai_signals_tooltip(signals), "No AI signals")
+
+    def test_includes_tools_for_llm(self):
+        """Test LLM signal includes tool names."""
+        from apps.metrics.templatetags.pr_list_tags import ai_signals_tooltip
+
+        signals = {
+            "llm": {"score": 0.4, "is_assisted": True, "tools": ["claude", "cursor"]},
+            "regex": {"score": 0.0, "is_assisted": False, "tools": []},
+            "commits": {"score": 0.0, "has_ai": False},
+            "reviews": {"score": 0.0, "has_ai": False},
+            "files": {"score": 0.0, "has_ai": False},
+        }
+        tooltip = ai_signals_tooltip(signals)
+        self.assertIn("claude", tooltip.lower())
+        self.assertIn("cursor", tooltip.lower())

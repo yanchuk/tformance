@@ -115,6 +115,8 @@ def render_user_prompt(
     review_comments: list[str] | None = None,
     timeline: str | None = None,
     repo_name: str | None = None,
+    commit_co_authors: list[str] | None = None,
+    ai_config_files: list[str] | None = None,
 ) -> str:
     """Render user prompt from Jinja2 template with full PR context.
 
@@ -149,6 +151,8 @@ def render_user_prompt(
         review_comments: List of review comment bodies
         timeline: Pre-formatted timeline string from format_timeline()
         repo_name: Full repository path (e.g., "anthropics/cookbook")
+        commit_co_authors: List of AI co-authors from commits (v7.0.0)
+        ai_config_files: List of AI tool config files modified in PR (v7.0.0)
 
     Returns:
         Formatted user prompt for LLM
@@ -187,6 +191,8 @@ def render_user_prompt(
         review_comments=review_comments,
         timeline=timeline,
         repo_name=repo_name,
+        commit_co_authors=commit_co_authors,
+        ai_config_files=ai_config_files,
     )
 
     # Normalize: strip trailing whitespace from lines

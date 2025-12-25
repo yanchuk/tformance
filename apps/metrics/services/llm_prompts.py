@@ -14,7 +14,11 @@ The hardcoded string is kept here for:
 - Backward compatibility with existing code
 - Export to promptfoo experiments
 
-Version: 6.4.0 (2025-12-25) - Added repo_name context and confidence calibration
+Version: 7.0.0 (2025-12-26) - Enhanced context for better AI detection
+    - Commit messages increased from 5 to 20
+    - Added commit_co_authors field for AI signatures
+    - Review comments increased from 3 to 10
+    - Added ai_config_files field for AI tool config files
 """
 
 from __future__ import annotations
@@ -27,9 +31,10 @@ if TYPE_CHECKING:
     from apps.metrics.models import PullRequest
 
 # Current prompt version - increment when making changes
-PROMPT_VERSION = "6.8.0"
+# v7.0.0: Enhanced context - more commits (20), commit co-authors, more review comments (10), AI config files
+PROMPT_VERSION = "7.0.0"
 
-# Main PR analysis prompt - v6.8.0
+# Main PR analysis prompt - v7.0.0
 PR_ANALYSIS_SYSTEM_PROMPT = """You analyze pull requests to provide comprehensive insights for CTOs.
 You MUST respond with valid JSON only.
 

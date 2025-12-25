@@ -219,3 +219,114 @@ def pr_size_bucket(additions: int | None, deletions: int | None) -> str:
     # Delegate to service layer for bucket calculation
     total_lines = additions + deletions
     return calculate_pr_size_bucket(total_lines)
+
+
+# AI Confidence display mappings
+AI_CONFIDENCE_LEVELS = {
+    "high": (0.5, 1.0),  # Score >= 0.5
+    "medium": (0.2, 0.5),  # Score >= 0.2 and < 0.5
+    "low": (0.001, 0.2),  # Score > 0 and < 0.2
+}
+
+AI_CONFIDENCE_BADGE_CLASSES = {
+    "high": "badge-success",
+    "medium": "badge-warning",
+    "low": "badge-ghost",
+}
+
+
+@register.filter
+def ai_confidence_level(score: float | None) -> str:
+    """Get confidence level label from score.
+
+    Args:
+        score: AI confidence score (0.0 - 1.0)
+
+    Returns:
+        Confidence level: 'high', 'medium', 'low', or '' for no signal
+
+    Usage:
+        {{ pr.ai_confidence_score|ai_confidence_level }}
+    """
+    if score is None or float(score) <= 0:
+        return ""
+
+    score_float = float(score)
+
+    if score_float >= 0.5:
+        return "high"
+    elif score_float >= 0.2:
+        return "medium"
+    else:
+        return "low"
+
+
+@register.filter
+def ai_confidence_badge_class(level: str | None) -> str:
+    """Get DaisyUI badge class for confidence level.
+
+    Args:
+        level: Confidence level ('high', 'medium', 'low')
+
+    Returns:
+        DaisyUI badge class (e.g., 'badge-success', 'badge-warning')
+
+    Usage:
+        <span class="badge {{ level|ai_confidence_badge_class }}">...</span>
+    """
+    if not level:
+        return "badge-ghost"
+    return AI_CONFIDENCE_BADGE_CLASSES.get(level, "badge-ghost")
+
+
+@register.filter
+def ai_signals_tooltip(signals: dict | None) -> str:
+    """Format AI signals breakdown for tooltip display.
+
+    Args:
+        signals: AI signals dict from PullRequest.ai_signals field
+
+    Returns:
+        Human-readable signal breakdown for tooltip
+
+    Usage:
+        data-tip="{{ pr.ai_signals|ai_signals_tooltip }}"
+    """
+    if not signals:
+        return "No AI signals"
+
+    active_signals = []
+
+    # LLM signal
+    llm = signals.get("llm", {})
+    if llm.get("score", 0) > 0:
+        tools = llm.get("tools", [])
+        tool_str = f" ({', '.join(tools)})" if tools else ""
+        active_signals.append(f"LLM{tool_str}")
+
+    # Regex signal
+    regex = signals.get("regex", {})
+    if regex.get("score", 0) > 0:
+        tools = regex.get("tools", [])
+        tool_str = f" ({', '.join(tools)})" if tools else ""
+        active_signals.append(f"Regex{tool_str}")
+
+    # Commit signal
+    commits = signals.get("commits", {})
+    if commits.get("score", 0) > 0:
+        active_signals.append("Commits")
+
+    # Review signal
+    reviews = signals.get("reviews", {})
+    if reviews.get("score", 0) > 0:
+        active_signals.append("Reviews")
+
+    # File signal
+    files = signals.get("files", {})
+    if files.get("score", 0) > 0:
+        active_signals.append("Files")
+
+    if not active_signals:
+        return "No AI signals"
+
+    return ", ".join(active_signals)

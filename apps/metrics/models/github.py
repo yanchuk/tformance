@@ -213,6 +213,39 @@ class PullRequest(BaseTeamModel):
         help_text="Prompt version used for LLM summary (e.g., 5.0.0)",
     )
 
+    # Aggregated AI signals (from commits, reviews, files)
+    has_ai_commits = models.BooleanField(
+        default=False,
+        verbose_name="Has AI commits",
+        help_text="True if any commit has AI co-authors or is_ai_assisted",
+    )
+    has_ai_review = models.BooleanField(
+        default=False,
+        verbose_name="Has AI review",
+        help_text="True if any review is from an AI reviewer",
+    )
+    has_ai_files = models.BooleanField(
+        default=False,
+        verbose_name="Has AI config files",
+        help_text="True if PR modifies AI config files (.cursorrules, CLAUDE.md, etc.)",
+    )
+
+    # Composite AI scoring (Phase 5)
+    ai_confidence_score = models.DecimalField(
+        max_digits=4,
+        decimal_places=3,
+        null=True,
+        blank=True,
+        verbose_name="AI confidence score",
+        help_text="Weighted score (0.000-1.000) combining all AI detection signals",
+    )
+    ai_signals = models.JSONField(
+        default=dict,
+        blank=True,
+        verbose_name="AI signal breakdown",
+        help_text="Detailed breakdown of each detection signal source",
+    )
+
     # Jira integration
     jira_key = models.CharField(
         max_length=50,

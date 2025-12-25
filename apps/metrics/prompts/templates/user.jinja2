@@ -10,7 +10,9 @@
         review_rounds, file_paths, commit_messages, milestone, assignees,
         linked_issues, jira_key, author_name, reviewers, review_comments,
         timeline (pre-formatted timeline string from format_timeline()),
-        repo_name (v6.4.0 - full repo path like "anthropics/cookbook")
+        repo_name (v6.4.0 - full repo path like "anthropics/cookbook"),
+        commit_co_authors (v7.0.0 - list of AI co-authors from commits),
+        ai_config_files (v7.0.0 - list of AI tool config files modified)
 -#}
 {%- set sections = [] -%}
 
@@ -123,17 +125,22 @@
 {%- else -%}
     {#- Fallback to separate sections when timeline not provided -#}
 
-    {#- === Commit Messages === -#}
+    {#- === Commit Messages (v7.0.0: increased from 5 to 20) === -#}
     {%- if commit_messages -%}
-        {%- set msgs = commit_messages[:5] -%}
+        {%- set msgs = commit_messages[:20] -%}
         {%- set commit_lines = [] -%}
         {%- for msg in msgs -%}
             {%- set _ = commit_lines.append("- " ~ msg) -%}
         {%- endfor -%}
-        {%- if commit_messages|length > 5 -%}
-            {%- set _ = commit_lines.append("... and " ~ (commit_messages|length - 5) ~ " more commits") -%}
+        {%- if commit_messages|length > 20 -%}
+            {%- set _ = commit_lines.append("... and " ~ (commit_messages|length - 20) ~ " more commits") -%}
         {%- endif -%}
         {%- set _ = sections.append("Recent commits:\n" ~ commit_lines|join("\n")) -%}
+    {%- endif -%}
+
+    {#- === Commit Co-Authors (v7.0.0: AI signatures from commits) === -#}
+    {%- if commit_co_authors -%}
+        {%- set _ = sections.append("Commit co-authors: " ~ commit_co_authors|join(", ")) -%}
     {%- endif -%}
 
     {#- === Reviewers (v6.1.0) === -#}
@@ -145,18 +152,26 @@
         {%- set _ = sections.append("Reviewers: " ~ names) -%}
     {%- endif -%}
 
-    {#- === Review Comments (v6.1.0) === -#}
+    {#- === Review Comments (v7.0.0: increased from 3 to 10) === -#}
     {%- if review_comments -%}
         {%- set comment_lines = [] -%}
-        {%- for comment in review_comments[:3] -%}
+        {%- for comment in review_comments[:10] -%}
             {%- if comment|length > 200 -%}
                 {%- set _ = comment_lines.append("- " ~ comment[:200] ~ "...") -%}
             {%- else -%}
                 {%- set _ = comment_lines.append("- " ~ comment) -%}
             {%- endif -%}
         {%- endfor -%}
+        {%- if review_comments|length > 10 -%}
+            {%- set _ = comment_lines.append("... and " ~ (review_comments|length - 10) ~ " more comments") -%}
+        {%- endif -%}
         {%- set _ = sections.append("Review comments:\n" ~ comment_lines|join("\n")) -%}
     {%- endif -%}
+{%- endif -%}
+
+{#- === AI Config Files (v7.0.0: files indicating AI tool usage) === -#}
+{%- if ai_config_files -%}
+    {%- set _ = sections.append("AI config files modified: " ~ ai_config_files|join(", ")) -%}
 {%- endif -%}
 
 {#- === Description (always last) === -#}
