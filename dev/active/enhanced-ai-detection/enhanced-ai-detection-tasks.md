@@ -93,45 +93,67 @@
 
 ---
 
-## Phase 3: File Pattern Detection
+## Phase 3: AI Config File Detection
 
-**Goal**: Detect AI tool artifacts from file paths
+**Goal**: Detect PRs that MODIFY AI tool configuration files
+
+**Key Insight**: Directory existing ≠ AI used. File MODIFIED = AI actively configured.
 
 ### 3.1 Database Migration
 - [ ] Add `has_ai_files` BooleanField to PullRequest (in 0022)
 - [ ] Run migration
 
-### 3.2 Pattern Detector
-- [ ] Add `AI_FILE_PATTERNS` to ai_patterns.py
-- [ ] Patterns: `.cursor/`, `.claude/`, `aider.chat/`, `.copilot/`
-- [ ] Add `detect_ai_file_patterns(file_paths) -> dict`
-- [ ] Return matched patterns and file counts
+### 3.2 Config Pattern Definitions
+- [ ] Create `AI_CONFIG_FILES` list in ai_patterns.py:
+  - `.github/copilot-instructions.md` (46 PRs)
+  - `CLAUDE.md` (36 PRs)
+  - `.cursorrules` (36 PRs)
+  - `.cursor/rules/*.mdc`
+  - `.cursor/environment.json`
+  - `.cursor/mcp.json`
+  - `.claude/commands/*.md`
+  - `.aider.conf.yml`
+  - `.coderabbit.yaml`
+  - `.greptile.yaml`
 
-### 3.3 Aggregation Function
-- [ ] Add `aggregate_file_ai_signals(pr_id) -> bool` to ai_signals.py
-- [ ] Query PRFile.filename for PR
-- [ ] Call pattern detector
-- [ ] Return result
+### 3.3 False Positive Exclusions
+- [ ] Create `AI_FILE_EXCLUSIONS` list:
+  - `*cursor-pagination*` (DB concept)
+  - `*/ai/gemini/*` (product code)
+  - `*/langchain*/gemini*` (SDK code)
+  - `*contract-rules*` (business docs)
+  - `*-rules.pro` (Android ProGuard)
 
-### 3.4 Unit Tests (TDD)
-- [ ] `test_detect_cursor_files`
-- [ ] `test_detect_claude_files`
-- [ ] `test_detect_aider_files`
-- [ ] `test_detect_multiple_patterns`
-- [ ] `test_no_patterns_returns_empty`
+### 3.4 Pattern Detector Function
+- [ ] Add `detect_ai_config_files(file_paths) -> dict` to ai_signals.py
+- [ ] Match against AI_CONFIG_FILES
+- [ ] Exclude AI_FILE_EXCLUSIONS
+- [ ] Return {"has_ai_files": bool, "tools": ["cursor", "claude"], "files": [...]}
 
-### 3.5 Backfill Integration
+### 3.5 Unit Tests (TDD)
+- [ ] `test_detect_cursorrules_returns_cursor`
+- [ ] `test_detect_claude_md_returns_claude`
+- [ ] `test_detect_copilot_instructions`
+- [ ] `test_exclude_cursor_pagination`
+- [ ] `test_exclude_gemini_product_code`
+- [ ] `test_detect_multiple_tools`
+- [ ] `test_no_config_files_returns_false`
+
+### 3.6 Backfill Integration
 - [ ] Extend backfill command for files
 - [ ] Test on sample data
 
-### 3.6 Sync Pipeline Integration
+### 3.7 Sync Pipeline Integration
 - [ ] Update file processing in sync
 - [ ] Set `has_ai_files` after file sync
 
-### 3.7 Verification
+### 3.8 Verification
 - [ ] Run backfill
-- [ ] Verify 215+ PRs flagged
-- [ ] Spot-check samples
+- [ ] Verify expected PRs flagged:
+  - copilot-instructions: ~46
+  - CLAUDE.md: ~36
+  - .cursorrules: ~36
+- [ ] Verify NO false positives from cursor-pagination
 
 ---
 

@@ -46,6 +46,19 @@ class TestTechAbbrevFilter(TestCase):
         """Test unknown category falls back to first two uppercase chars."""
         self.assertEqual(tech_abbrev("unknown"), "UN")
 
+    # LLM category abbreviations
+    def test_devops_abbreviation(self):
+        """Test devops LLM category abbreviation."""
+        self.assertEqual(tech_abbrev("devops"), "DO")
+
+    def test_mobile_abbreviation(self):
+        """Test mobile LLM category abbreviation."""
+        self.assertEqual(tech_abbrev("mobile"), "MB")
+
+    def test_data_abbreviation(self):
+        """Test data LLM category abbreviation."""
+        self.assertEqual(tech_abbrev("data"), "DA")
+
     def test_empty_string_returns_empty(self):
         """Test empty string returns empty."""
         self.assertEqual(tech_abbrev(""), "")
@@ -77,6 +90,19 @@ class TestTechBadgeClassFilter(TestCase):
     def test_unknown_category_uses_ghost(self):
         """Test unknown category falls back to badge-ghost."""
         self.assertEqual(tech_badge_class("unknown"), "badge-ghost")
+
+    # LLM category badge classes
+    def test_devops_badge_class(self):
+        """Test devops LLM category badge class."""
+        self.assertEqual(tech_badge_class("devops"), "badge-warning")
+
+    def test_mobile_badge_class(self):
+        """Test mobile LLM category badge class."""
+        self.assertEqual(tech_badge_class("mobile"), "badge-secondary")
+
+    def test_data_badge_class(self):
+        """Test data LLM category badge class."""
+        self.assertEqual(tech_badge_class("data"), "badge-primary")
 
     def test_empty_string_returns_ghost(self):
         """Test empty string returns badge-ghost."""
@@ -117,6 +143,19 @@ class TestTechDisplayNameFilter(TestCase):
     def test_unknown_category_uses_title_case(self):
         """Test unknown category falls back to title case."""
         self.assertEqual(tech_display_name("unknown"), "Unknown")
+
+    # LLM category display names
+    def test_devops_display_name(self):
+        """Test devops LLM category display name."""
+        self.assertEqual(tech_display_name("devops"), "DevOps")
+
+    def test_mobile_display_name(self):
+        """Test mobile LLM category display name."""
+        self.assertEqual(tech_display_name("mobile"), "Mobile")
+
+    def test_data_display_name(self):
+        """Test data LLM category display name."""
+        self.assertEqual(tech_display_name("data"), "Data")
 
     def test_empty_string_returns_empty(self):
         """Test empty string returns empty."""

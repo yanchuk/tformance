@@ -151,12 +151,26 @@ Link `PRReview.is_ai_review` to parent PR for holistic view.
 
 **ICP Benefit**: "Know which PRs were reviewed by AI tools like CodeRabbit, Copilot, or Greptile."
 
-### Phase 3: File Pattern Detection
+### Phase 3: AI Config File Detection
 **Effort: Medium | Impact: Medium | No API calls**
 
-Detect AI tool config files (`.cursor/`, `.claude/`, `aider.chat/`).
+Detect when PRs **modify** AI tool configuration files (not just exist in repo).
 
-**ICP Benefit**: "Detect AI usage from file artifacts left by AI coding assistants."
+**Key Distinction**:
+- `.cursor/` directory exists → Tool is **set up** (weak signal)
+- PR modifies `.cursorrules` → Tool is **actively configured** (strong signal)
+
+**Strong Signal Files** (from actual data):
+| File | PRs | Tool |
+|------|-----|------|
+| `.github/copilot-instructions.md` | 46 | Copilot |
+| `CLAUDE.md` | 36 | Claude Code |
+| `.cursorrules` | 36 | Cursor |
+| `.cursor/rules/*.mdc` | 15-8 | Cursor |
+| `.cursor/mcp.json` | 7 | Cursor |
+| `.claude/commands/*.md` | 7 | Claude Code |
+
+**ICP Benefit**: "See which PRs actively configure AI tools - proof the team is investing in AI workflows."
 
 ### Phase 4: Enhanced LLM Context
 **Effort: Medium | Impact: High | Uses existing LLM quota**
@@ -410,11 +424,48 @@ greptile[bot]
 sourcery-ai[bot]
 ```
 
-### AI File Patterns
+### AI File Patterns (MODIFIED in PR = Strong Signal)
+
+**Strong Signals** - Developer actively configuring AI tools:
 ```
-.cursor/              # Cursor IDE config
-.claude/              # Claude Code config
-aider.chat/           # Aider history
-.copilot/             # Copilot settings
-.coderabbit.yaml      # CodeRabbit config
+# Copilot
+.github/copilot-instructions.md    # 46 PRs - Copilot customization
+
+# Claude Code
+CLAUDE.md                          # 36 PRs - Project rules for Claude
+.claude/                           # Claude commands & config
+.github/workflows/claude*.yml      # Claude automation
+
+# Cursor IDE
+.cursorrules                       # 36 PRs - Cursor project rules
+.cursor/rules/*.mdc                # Custom Cursor rules
+.cursor/environment.json           # Cursor environment
+.cursor/mcp.json                   # Cursor MCP servers
+
+# Other AI Tools
+.aider.conf.yml                    # Aider configuration
+.coderabbit.yaml                   # CodeRabbit config
+.greptile.yaml                     # Greptile config
 ```
+
+**False Positives to Exclude** (keyword matches, not AI config):
+```
+# Database pagination (not AI)
+*cursor-pagination*
+*cursor_pagination*
+
+# Business/Android rules (not AI)
+*contract-rules*
+*consumer-rules.pro
+*proguard-rules.pro
+
+# AI product code (building AI features, not using AI to code)
+*/ai/gemini/*
+*/langchain*/gemini*
+*_sdk/ai/*
+```
+
+**Detection Logic**:
+1. Check if file is in "Strong Signals" list
+2. Exclude if matches "False Positives" patterns
+3. PR modified AI config file = `has_ai_files = True`

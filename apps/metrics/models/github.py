@@ -260,6 +260,76 @@ class PullRequest(BaseTeamModel):
         """Construct GitHub URL for this PR."""
         return f"https://github.com/{self.github_repo}/pull/{self.github_pr_id}"
 
+    @property
+    def effective_tech_categories(self) -> list[str]:
+        """Get technology categories with LLM priority over pattern-based detection.
+
+        Priority order:
+        1. LLM-detected categories from llm_summary.tech.categories (more accurate)
+        2. Pattern-based categories from PRFile annotations (fallback)
+
+        Returns:
+            List of technology category strings (e.g., ['backend', 'frontend', 'devops'])
+        """
+        # Check LLM categories first (higher accuracy)
+        if self.llm_summary:
+            llm_cats = self.llm_summary.get("tech", {}).get("categories", [])
+            if llm_cats:
+                return llm_cats
+
+        # Fallback to pattern-based categories (from annotation or related files)
+        if hasattr(self, "tech_categories") and self.tech_categories:
+            return self.tech_categories
+
+        # Final fallback: aggregate from related PRFile records
+        return list(
+            self.files.exclude(file_category="")
+            .exclude(file_category__isnull=True)
+            .values_list("file_category", flat=True)
+            .distinct()
+        )
+
+    @property
+    def effective_is_ai_assisted(self) -> bool:
+        """Get AI assistance status with LLM priority over regex pattern detection.
+
+        Priority order:
+        1. LLM detection from llm_summary.ai.is_assisted (more accurate, context-aware)
+        2. Regex pattern detection from is_ai_assisted field (fallback)
+
+        Returns:
+            True if AI tools were used in creating this PR
+        """
+        # Check LLM detection first (higher accuracy)
+        if self.llm_summary:
+            ai_data = self.llm_summary.get("ai", {})
+            # Only use LLM result if confidence is reasonable (>= 0.5)
+            if ai_data.get("is_assisted") is not None and ai_data.get("confidence", 0) >= 0.5:
+                return ai_data["is_assisted"]
+
+        # Fallback to regex pattern detection
+        return self.is_ai_assisted
+
+    @property
+    def effective_ai_tools(self) -> list[str]:
+        """Get detected AI tools with LLM priority over regex pattern detection.
+
+        Priority order:
+        1. LLM detection from llm_summary.ai.tools (more accurate)
+        2. Regex pattern detection from ai_tools_detected field (fallback)
+
+        Returns:
+            List of AI tool identifiers (e.g., ['cursor', 'claude', 'copilot'])
+        """
+        # Check LLM detection first (higher accuracy)
+        if self.llm_summary:
+            llm_tools = self.llm_summary.get("ai", {}).get("tools", [])
+            if llm_tools:
+                return llm_tools
+
+        # Fallback to regex pattern detection
+        return self.ai_tools_detected or []
+
 
 class PRReview(BaseTeamModel):
     """

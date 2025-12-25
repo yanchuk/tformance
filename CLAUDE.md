@@ -56,6 +56,20 @@ Follow phases in [IMPLEMENTATION-PLAN.md](prd/IMPLEMENTATION-PLAN.md):
 
 Detects AI tool usage in PRs via regex patterns and LLM analysis.
 
+### LLM Data Priority Rule
+
+**IMPORTANT: Always prioritize LLM-detected data over pattern/regex detection at the model/controller level.**
+
+When displaying or calculating metrics, use the `effective_*` model properties that implement this priority:
+
+| Property | LLM Source | Fallback |
+|----------|------------|----------|
+| `pr.effective_tech_categories` | `llm_summary.tech.categories` | `PRFile.file_category` aggregation |
+| `pr.effective_is_ai_assisted` | `llm_summary.ai.is_assisted` (confidence ≥0.5) | `is_ai_assisted` field |
+| `pr.effective_ai_tools` | `llm_summary.ai.tools` | `ai_tools_detected` field |
+
+**Why:** LLM detection is context-aware and more accurate than regex patterns. Pattern detection exists as fallback for PRs without LLM analysis.
+
 ### Pattern Versioning
 
 Patterns are versioned to enable reprocessing when new patterns are added:

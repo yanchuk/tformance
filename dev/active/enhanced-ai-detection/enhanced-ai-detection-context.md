@@ -218,23 +218,41 @@ print(f'With has_ai_commits: {PullRequest.objects.filter(has_ai_commits=True).co
 
 ## File Patterns Reference
 
-### AI Tool Config Files
-| Pattern | Tool | Confidence |
-|---------|------|------------|
-| `.cursor/` | Cursor IDE | High |
-| `.claude/` | Claude Code | High |
-| `aider.chat/` | Aider | High |
-| `.copilot/` | GitHub Copilot | Medium |
-| `.coderabbit.yaml` | CodeRabbit | High |
-| `.greptile.yaml` | Greptile | High |
+### AI Config Files (Strong Signal - MODIFIED in PR)
 
-### Generated File Patterns (Lower Confidence)
-| Pattern | Indication |
-|---------|------------|
-| `*_generated.*` | Code generation |
-| `auto_*` | Automation |
-| `*.g.dart` | Dart code gen |
-| `*.generated.ts` | TS code gen |
+These files indicate active AI tool configuration:
+
+| Pattern | Tool | PRs Found |
+|---------|------|-----------|
+| `.github/copilot-instructions.md` | Copilot | 46 |
+| `CLAUDE.md` | Claude Code | 36 |
+| `.cursorrules` | Cursor | 36 |
+| `.cursor/rules/*.mdc` | Cursor | 15-8 each |
+| `.cursor/environment.json` | Cursor | 22 |
+| `.cursor/mcp.json` | Cursor | 7 |
+| `.claude/commands/*.md` | Claude Code | 7 |
+| `.github/workflows/claude*.yml` | Claude | 7-8 |
+| `.aider.conf.yml` | Aider | - |
+| `.coderabbit.yaml` | CodeRabbit | - |
+| `.greptile.yaml` | Greptile | - |
+
+### False Positives (Exclude These)
+
+| Pattern | Why Not AI Config |
+|---------|-------------------|
+| `*cursor-pagination*` | Database cursor pagination |
+| `*cursor_pagination*` | Database cursor pagination |
+| `*/ai/gemini/*` | AI product code (not tool) |
+| `*/langchain*/gemini*` | AI SDK code |
+| `*contract-rules*` | Business rules |
+| `*consumer-rules.pro` | Android ProGuard |
+| `*proguard-rules.pro` | Android ProGuard |
+
+### Key Insight
+
+**Directory exists ≠ AI used for this PR**
+- `.cursor/` in repo = Cursor is set up (weak)
+- `.cursorrules` modified in PR = Cursor actively used (strong)
 
 ---
 

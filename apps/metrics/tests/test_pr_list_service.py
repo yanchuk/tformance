@@ -552,3 +552,273 @@ class TestTechCategoriesFilter(TestCase):
         self.assertIn("frontend", tech_values)
         self.assertIn("backend", tech_values)
         self.assertIn("javascript", tech_values)
+
+    def test_filter_options_includes_llm_categories(self):
+        """Test that get_filter_options includes LLM-specific categories."""
+        PullRequestFactory(team=self.team, author=self.member)
+
+        options = get_filter_options(self.team)
+
+        tech_values = [cat["value"] for cat in options["tech_categories"]]
+        # LLM-only categories should be included
+        self.assertIn("devops", tech_values)
+        self.assertIn("mobile", tech_values)
+        self.assertIn("data", tech_values)
+
+    def test_filter_by_llm_category_devops(self):
+        """Test filtering by LLM-only category 'devops'."""
+        pr_devops = PullRequestFactory(
+            team=self.team,
+            author=self.member,
+            llm_summary={"tech": {"categories": ["devops"], "languages": [], "frameworks": []}},
+        )
+        PullRequestFactory(
+            team=self.team,
+            author=self.member,
+            llm_summary={"tech": {"categories": ["backend"], "languages": [], "frameworks": []}},
+        )
+
+        result = get_prs_queryset(self.team, {"tech": ["devops"]})
+
+        self.assertEqual(result.count(), 1)
+        self.assertEqual(result.first().id, pr_devops.id)
+
+    def test_filter_by_llm_category_mobile(self):
+        """Test filtering by LLM-only category 'mobile'."""
+        pr_mobile = PullRequestFactory(
+            team=self.team,
+            author=self.member,
+            llm_summary={"tech": {"categories": ["mobile", "frontend"], "languages": [], "frameworks": []}},
+        )
+        PullRequestFactory(team=self.team, author=self.member)
+
+        result = get_prs_queryset(self.team, {"tech": ["mobile"]})
+
+        self.assertEqual(result.count(), 1)
+        self.assertEqual(result.first().id, pr_mobile.id)
+
+    def test_filter_by_llm_category_data(self):
+        """Test filtering by LLM-only category 'data'."""
+        pr_data = PullRequestFactory(
+            team=self.team,
+            author=self.member,
+            llm_summary={"tech": {"categories": ["data"], "languages": ["python"], "frameworks": ["pandas"]}},
+        )
+        PullRequestFactory(team=self.team, author=self.member)
+
+        result = get_prs_queryset(self.team, {"tech": ["data"]})
+
+        self.assertEqual(result.count(), 1)
+        self.assertEqual(result.first().id, pr_data.id)
+
+    def test_filter_by_shared_category_matches_both_llm_and_pattern(self):
+        """Test filtering by 'frontend' matches both LLM and pattern sources."""
+        # PR with LLM frontend category
+        pr_llm = PullRequestFactory(
+            team=self.team,
+            author=self.member,
+            llm_summary={"tech": {"categories": ["frontend"], "languages": [], "frameworks": []}},
+        )
+        # PR with pattern frontend category (no LLM)
+        pr_pattern = PullRequestFactory(team=self.team, author=self.member)
+        PRFileFactory(pull_request=pr_pattern, team=self.team, file_category="frontend", filename="app.tsx")
+        # PR with neither
+        PullRequestFactory(team=self.team, author=self.member)
+
+        result = get_prs_queryset(self.team, {"tech": ["frontend"]})
+
+        self.assertEqual(result.count(), 2)
+        result_ids = set(result.values_list("id", flat=True))
+        self.assertIn(pr_llm.id, result_ids)
+        self.assertIn(pr_pattern.id, result_ids)
+
+
+class TestEffectiveTechCategories(TestCase):
+    """Tests for PullRequest.effective_tech_categories model property."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.team = TeamFactory()
+        self.member = TeamMemberFactory(team=self.team)
+
+    def test_returns_llm_categories_when_available(self):
+        """Test that LLM categories are prioritized over pattern categories."""
+        pr = PullRequestFactory(
+            team=self.team,
+            author=self.member,
+            llm_summary={"tech": {"categories": ["backend", "devops"], "languages": [], "frameworks": []}},
+        )
+        # Add pattern-based file (should be ignored due to LLM priority)
+        PRFileFactory(pull_request=pr, team=self.team, file_category="frontend", filename="app.tsx")
+
+        result = pr.effective_tech_categories
+
+        self.assertEqual(result, ["backend", "devops"])
+        self.assertNotIn("frontend", result)
+
+    def test_returns_pattern_categories_when_no_llm(self):
+        """Test fallback to pattern-based categories when no LLM summary."""
+        pr = PullRequestFactory(team=self.team, author=self.member, llm_summary=None)
+        PRFileFactory(pull_request=pr, team=self.team, file_category="frontend", filename="app.tsx")
+        PRFileFactory(pull_request=pr, team=self.team, file_category="backend", filename="views.py")
+
+        result = pr.effective_tech_categories
+
+        self.assertEqual(set(result), {"frontend", "backend"})
+
+    def test_returns_pattern_categories_when_llm_tech_empty(self):
+        """Test fallback when LLM summary exists but tech.categories is empty."""
+        pr = PullRequestFactory(
+            team=self.team,
+            author=self.member,
+            llm_summary={"tech": {"categories": [], "languages": ["python"], "frameworks": []}},
+        )
+        PRFileFactory(pull_request=pr, team=self.team, file_category="backend", filename="views.py")
+
+        result = pr.effective_tech_categories
+
+        self.assertEqual(result, ["backend"])
+
+    def test_returns_empty_list_when_no_data(self):
+        """Test returns empty list when no LLM or pattern categories."""
+        pr = PullRequestFactory(team=self.team, author=self.member, llm_summary=None)
+
+        result = pr.effective_tech_categories
+
+        self.assertEqual(result, [])
+
+    def test_uses_annotated_tech_categories_when_available(self):
+        """Test uses annotated tech_categories if present (from service layer)."""
+        pr = PullRequestFactory(team=self.team, author=self.member, llm_summary=None)
+        PRFileFactory(pull_request=pr, team=self.team, file_category="frontend", filename="app.tsx")
+
+        # Simulate annotation from get_prs_queryset
+        pr.tech_categories = ["frontend", "test"]
+
+        result = pr.effective_tech_categories
+
+        # Should use annotated value
+        self.assertEqual(result, ["frontend", "test"])
+
+    def test_llm_only_categories_returned(self):
+        """Test LLM-only categories (devops, mobile, data) are returned correctly."""
+        pr = PullRequestFactory(
+            team=self.team,
+            author=self.member,
+            llm_summary={"tech": {"categories": ["devops", "mobile", "data"], "languages": [], "frameworks": []}},
+        )
+
+        result = pr.effective_tech_categories
+
+        self.assertEqual(result, ["devops", "mobile", "data"])
+
+
+class TestEffectiveAIDetection(TestCase):
+    """Tests for PullRequest.effective_is_ai_assisted and effective_ai_tools properties."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.team = TeamFactory()
+        self.member = TeamMemberFactory(team=self.team)
+
+    def test_effective_is_ai_assisted_prioritizes_llm(self):
+        """Test that LLM AI detection is prioritized over regex."""
+        pr = PullRequestFactory(
+            team=self.team,
+            author=self.member,
+            is_ai_assisted=False,  # Regex says no
+            llm_summary={"ai": {"is_assisted": True, "tools": ["cursor"], "confidence": 0.9}},
+        )
+
+        self.assertTrue(pr.effective_is_ai_assisted)
+
+    def test_effective_is_ai_assisted_llm_false_overrides_regex(self):
+        """Test that LLM can override regex false positive."""
+        pr = PullRequestFactory(
+            team=self.team,
+            author=self.member,
+            is_ai_assisted=True,  # Regex false positive
+            llm_summary={"ai": {"is_assisted": False, "tools": [], "confidence": 0.8}},
+        )
+
+        self.assertFalse(pr.effective_is_ai_assisted)
+
+    def test_effective_is_ai_assisted_falls_back_to_regex(self):
+        """Test fallback to regex when no LLM summary."""
+        pr = PullRequestFactory(
+            team=self.team,
+            author=self.member,
+            is_ai_assisted=True,
+            ai_tools_detected=["copilot"],
+            llm_summary=None,
+        )
+
+        self.assertTrue(pr.effective_is_ai_assisted)
+
+    def test_effective_is_ai_assisted_low_confidence_uses_regex(self):
+        """Test that low LLM confidence falls back to regex."""
+        pr = PullRequestFactory(
+            team=self.team,
+            author=self.member,
+            is_ai_assisted=True,  # Regex says yes
+            llm_summary={"ai": {"is_assisted": False, "tools": [], "confidence": 0.3}},  # Low confidence
+        )
+
+        # Should use regex since LLM confidence is too low
+        self.assertTrue(pr.effective_is_ai_assisted)
+
+    def test_effective_ai_tools_prioritizes_llm(self):
+        """Test that LLM tools are prioritized over regex detected tools."""
+        pr = PullRequestFactory(
+            team=self.team,
+            author=self.member,
+            ai_tools_detected=["copilot"],  # Regex detected
+            llm_summary={"ai": {"is_assisted": True, "tools": ["cursor", "claude"], "confidence": 0.9}},
+        )
+
+        result = pr.effective_ai_tools
+
+        self.assertEqual(result, ["cursor", "claude"])
+        self.assertNotIn("copilot", result)
+
+    def test_effective_ai_tools_falls_back_to_regex(self):
+        """Test fallback to regex detected tools when no LLM."""
+        pr = PullRequestFactory(
+            team=self.team,
+            author=self.member,
+            is_ai_assisted=True,
+            ai_tools_detected=["copilot", "claude_code"],
+            llm_summary=None,
+        )
+
+        result = pr.effective_ai_tools
+
+        self.assertEqual(result, ["copilot", "claude_code"])
+
+    def test_effective_ai_tools_empty_llm_falls_back(self):
+        """Test fallback when LLM tools list is empty."""
+        pr = PullRequestFactory(
+            team=self.team,
+            author=self.member,
+            ai_tools_detected=["copilot"],
+            llm_summary={"ai": {"is_assisted": True, "tools": [], "confidence": 0.9}},
+        )
+
+        result = pr.effective_ai_tools
+
+        # Falls back to regex since LLM tools is empty
+        self.assertEqual(result, ["copilot"])
+
+    def test_effective_ai_tools_returns_empty_when_no_data(self):
+        """Test returns empty list when no AI tools detected anywhere."""
+        pr = PullRequestFactory(
+            team=self.team,
+            author=self.member,
+            is_ai_assisted=False,
+            ai_tools_detected=[],
+            llm_summary=None,
+        )
+
+        result = pr.effective_ai_tools
+
+        self.assertEqual(result, [])

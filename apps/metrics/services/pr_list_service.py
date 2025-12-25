@@ -148,10 +148,18 @@ def get_prs_queryset(team: Team, filters: dict[str, Any]) -> QuerySet[PullReques
         qs = qs.filter(jira_key="")
 
     # Filter by technology category (multi-select)
+    # Searches both pattern-based categories (PRFile.file_category)
+    # and LLM categories (llm_summary.tech.categories)
     tech = filters.get("tech")
     if tech:
         tech_list = tech if isinstance(tech, list) else [tech]
-        qs = qs.filter(files__file_category__in=tech_list).distinct()
+        # Build OR query: match pattern categories OR LLM categories
+        pattern_q = Q(files__file_category__in=tech_list)
+        # For LLM categories, use contains lookup on JSONB array
+        llm_q = Q()
+        for cat in tech_list:
+            llm_q |= Q(llm_summary__tech__categories__contains=[cat])
+        qs = qs.filter(pattern_q | llm_q).distinct()
 
     # Filter by date range (on merged_at)
     if filters.get("date_from"):
@@ -246,8 +254,16 @@ def get_filter_options(team: Team) -> dict[str, Any]:
             ai_tools_set.update(tools)
     ai_tools = sorted(list(ai_tools_set))
 
-    # Get technology categories from PRFile.CATEGORY_CHOICES
+    # Get technology categories - combine pattern-based and LLM categories
+    # Pattern categories from PRFile.CATEGORY_CHOICES
     tech_categories = [{"value": choice[0], "label": choice[1]} for choice in PRFile.CATEGORY_CHOICES if choice[0]]
+    # LLM-only categories (not in PRFile.CATEGORY_CHOICES)
+    llm_only_categories = [
+        {"value": "devops", "label": "DevOps"},
+        {"value": "mobile", "label": "Mobile"},
+        {"value": "data", "label": "Data"},
+    ]
+    tech_categories.extend(llm_only_categories)
 
     return {
         "repos": repos,

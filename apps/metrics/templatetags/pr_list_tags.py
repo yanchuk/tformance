@@ -74,7 +74,10 @@ def sort_url(context, field):
 
 
 # Technology category display mappings
+# Includes both pattern-based categories (from PRFile.file_category)
+# and LLM categories (from llm_summary.tech.categories)
 TECH_ABBREVS = {
+    # Pattern-based categories
     "frontend": "FE",
     "backend": "BE",
     "javascript": "JS",
@@ -82,9 +85,14 @@ TECH_ABBREVS = {
     "docs": "DC",
     "config": "CF",
     "other": "OT",
+    # LLM categories
+    "devops": "DO",
+    "mobile": "MB",
+    "data": "DA",
 }
 
 TECH_BADGE_CLASSES = {
+    # Pattern-based categories
     "frontend": "badge-info",
     "backend": "badge-success",
     "javascript": "badge-warning",
@@ -92,9 +100,14 @@ TECH_BADGE_CLASSES = {
     "docs": "badge-ghost",
     "config": "badge-accent",
     "other": "badge-ghost",
+    # LLM categories
+    "devops": "badge-warning",
+    "mobile": "badge-secondary",
+    "data": "badge-primary",
 }
 
 TECH_DISPLAY_NAMES = {
+    # Pattern-based categories
     "frontend": "Frontend",
     "backend": "Backend",
     "javascript": "JS/TypeScript",
@@ -102,6 +115,10 @@ TECH_DISPLAY_NAMES = {
     "docs": "Documentation",
     "config": "Configuration",
     "other": "Other",
+    # LLM categories
+    "devops": "DevOps",
+    "mobile": "Mobile",
+    "data": "Data",
 }
 
 

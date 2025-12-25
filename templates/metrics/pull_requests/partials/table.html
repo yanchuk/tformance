@@ -122,8 +122,9 @@
           {{ pr.total_comments|default:0 }}
         </td>
         <td class="text-center">
-          {% if pr.is_ai_assisted %}
-            <span class="badge badge-primary badge-sm" title="{{ pr.ai_tools_detected|ai_tools_display }}">
+          {# Uses model property with LLM priority over regex detection #}
+          {% if pr.effective_is_ai_assisted %}
+            <span class="badge badge-primary badge-sm" title="{{ pr.effective_ai_tools|ai_tools_display }}">
               {% trans "Yes" %}
             </span>
           {% else %}
@@ -131,20 +132,23 @@
           {% endif %}
         </td>
         <td class="text-center">
-          {% if pr.tech_categories %}
-            {% with categories=pr.tech_categories|slice:":3" extra=pr.tech_categories|length %}
-              {% for cat in categories %}
-                <span class="badge {{ cat|tech_badge_class }} badge-xs" title="{{ cat|tech_display_name }}">
-                  {{ cat|tech_abbrev }}
-                </span>
-              {% endfor %}
-              {% if extra > 3 %}
-                <span class="badge badge-ghost badge-xs" title="{% for cat in pr.tech_categories %}{{ cat|tech_display_name }}{% if not forloop.last %}, {% endif %}{% endfor %}">+{{ extra|add:"-3" }}</span>
-              {% endif %}
-            {% endwith %}
-          {% else %}
-            <span class="text-base-content/50">-</span>
-          {% endif %}
+          {# Uses model property with LLM priority over pattern detection #}
+          {% with tech_cats=pr.effective_tech_categories %}
+            {% if tech_cats %}
+              {% with categories=tech_cats|slice:":3" extra=tech_cats|length %}
+                {% for cat in categories %}
+                  <span class="badge {{ cat|tech_badge_class }} badge-xs" title="{{ cat|tech_display_name }}">
+                    {{ cat|tech_abbrev }}
+                  </span>
+                {% endfor %}
+                {% if extra > 3 %}
+                  <span class="badge badge-ghost badge-xs" title="{% for cat in tech_cats %}{{ cat|tech_display_name }}{% if not forloop.last %}, {% endif %}{% endfor %}">+{{ extra|add:"-3" }}</span>
+                {% endif %}
+              {% endwith %}
+            {% else %}
+              <span class="text-base-content/50">-</span>
+            {% endif %}
+          {% endwith %}
         </td>
         <td class="text-sm text-base-content/70">
           {% if pr.merged_at %}
