@@ -35,6 +35,9 @@ def get_promptfoo_config(prompt_filename: str) -> dict[str, Any]:
     Returns:
         Dictionary representing promptfoo.yaml configuration
     """
+    # Inline the full system prompt so it's visible in promptfoo UI
+    system_prompt_content = render_system_prompt()
+
     return {
         "description": f"AI Detection Prompt Evaluation (v{PROMPT_VERSION}) - Auto-generated",
         "providers": [
@@ -73,7 +76,8 @@ def get_promptfoo_config(prompt_filename: str) -> dict[str, Any]:
         ],
         "defaultTest": {
             "vars": {
-                "system_prompt": f"file://prompts/{prompt_filename}",
+                # Inline full system prompt for visibility in promptfoo UI
+                "system_prompt": system_prompt_content,
                 "user_prompt": "Analyze this pull request:\n\n(No PR data provided)",
             }
         },

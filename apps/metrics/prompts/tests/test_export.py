@@ -42,10 +42,14 @@ class TestGetPromptfooConfig(TestCase):
         config = get_promptfoo_config("v1.0.0-system.txt")
         self.assertEqual(config["prompts"][0]["id"], f"v{PROMPT_VERSION}")
 
-    def test_default_test_references_prompt_file(self):
-        """Default test should reference the prompt file."""
+    def test_default_test_includes_full_system_prompt(self):
+        """Default test should include full system prompt content (not file reference)."""
         config = get_promptfoo_config("v1.0.0-system.txt")
-        self.assertIn("v1.0.0-system.txt", config["defaultTest"]["vars"]["system_prompt"])
+        system_prompt = config["defaultTest"]["vars"]["system_prompt"]
+        # Should contain key sections of the system prompt
+        self.assertIn("AI Detection", system_prompt)
+        self.assertIn("Technology Detection", system_prompt)
+        self.assertIn("Response Format", system_prompt)
 
     def test_includes_test_cases(self):
         """Should include basic test cases."""
@@ -111,14 +115,16 @@ class TestExportPromptfooConfig(TestCase):
             self.assertIn("providers", config)
             self.assertIn("tests", config)
 
-    def test_config_references_correct_prompt_file(self):
-        """Config should reference the generated prompt file."""
+    def test_config_includes_full_system_prompt(self):
+        """Config should include full system prompt content (for visibility in UI)."""
         with tempfile.TemporaryDirectory() as tmpdir:
             result = export_promptfoo_config(Path(tmpdir))
             content = result["config"].read_text()
             config = yaml.safe_load(content)
-            prompt_ref = config["defaultTest"]["vars"]["system_prompt"]
-            self.assertIn(f"v{PROMPT_VERSION}", prompt_ref)
+            system_prompt = config["defaultTest"]["vars"]["system_prompt"]
+            # Should contain key sections of the system prompt (not file reference)
+            self.assertIn("AI Detection", system_prompt)
+            self.assertIn("Technology Detection", system_prompt)
 
     def test_creates_prompts_subdirectory(self):
         """Should create prompts/ subdirectory."""

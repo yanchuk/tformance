@@ -49,6 +49,31 @@ class GoldenTest:
         pr_body: PR description/body text
         additions: Lines added (default 0)
         deletions: Lines deleted (default 0)
+
+        # Full PR context (matches get_user_prompt parameters)
+        file_count: Number of files changed
+        comment_count: Number of comments
+        repo_languages: Repository languages (e.g., ["Python", "TypeScript"])
+        state: PR state (open, merged, closed)
+        labels: List of label names
+        is_draft: Whether PR is a draft
+        is_hotfix: Whether PR is marked as hotfix
+        is_revert: Whether PR is a revert
+        cycle_time_hours: Time from open to merge
+        review_time_hours: Time from open to first review
+        commits_after_first_review: Number of commits after first review
+        review_rounds: Number of review cycles
+        file_paths: List of changed file paths
+        commit_messages: List of commit messages
+        milestone: Milestone title
+        assignees: List of assignee usernames
+        linked_issues: List of linked issue references
+        jira_key: Jira issue key
+        author_name: PR author's display name
+        reviewers: List of reviewer names
+        review_comments: List of review comment bodies
+
+        # Expectations
         expected_ai_assisted: Expected is_assisted value (None = don't check)
         expected_tools: Expected tools in response (empty = don't check specific tools)
         expected_not_tools: Tools that should NOT be in response
@@ -65,6 +90,29 @@ class GoldenTest:
     pr_body: str = ""
     additions: int = 0
     deletions: int = 0
+
+    # Full PR context (matches get_user_prompt parameters)
+    file_count: int = 0
+    comment_count: int = 0
+    repo_languages: list[str] = field(default_factory=list)
+    state: str = ""
+    labels: list[str] = field(default_factory=list)
+    is_draft: bool = False
+    is_hotfix: bool = False
+    is_revert: bool = False
+    cycle_time_hours: float | None = None
+    review_time_hours: float | None = None
+    commits_after_first_review: int | None = None
+    review_rounds: int | None = None
+    file_paths: list[str] = field(default_factory=list)
+    commit_messages: list[str] = field(default_factory=list)
+    milestone: str | None = None
+    assignees: list[str] = field(default_factory=list)
+    linked_issues: list[str] = field(default_factory=list)
+    jira_key: str | None = None
+    author_name: str | None = None
+    reviewers: list[str] = field(default_factory=list)
+    review_comments: list[str] = field(default_factory=list)
 
     # AI detection expectations
     expected_ai_assisted: bool | None = None
@@ -96,6 +144,19 @@ GOLDEN_TESTS: list[GoldenTest] = [
         category=GoldenTestCategory.POSITIVE,
         pr_title="Add user profile feature",
         pr_body="## Summary\nAdded new feature.\n\n## AI Disclosure\nUsed Cursor IDE for implementation.",
+        # Full PR context for realistic testing
+        file_count=5,
+        additions=180,
+        deletions=12,
+        repo_languages=["Python", "TypeScript"],
+        state="merged",
+        labels=["feature", "user-experience"],
+        file_paths=["apps/users/views.py", "apps/users/models.py", "frontend/src/components/Profile.tsx"],
+        cycle_time_hours=24.5,
+        review_time_hours=4.0,
+        author_name="Alex Developer",
+        reviewers=["Sarah Reviewer"],
+        commit_messages=["Add profile model", "Create profile API endpoint", "Add frontend component"],
         expected_ai_assisted=True,
         expected_tools=["cursor"],
         min_confidence=0.8,
@@ -111,6 +172,19 @@ GOLDEN_TESTS: list[GoldenTest] = [
             "🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\n"
             "Co-Authored-By: Claude <noreply@anthropic.com>"
         ),
+        # Full PR context for realistic testing
+        file_count=2,
+        additions=45,
+        deletions=8,
+        repo_languages=["Python"],
+        state="merged",
+        labels=["bugfix"],
+        file_paths=["apps/auth/validators.py", "apps/auth/tests/test_login.py"],
+        cycle_time_hours=2.5,
+        review_time_hours=1.0,
+        author_name="Bob Engineer",
+        reviewers=["Charlie Lead"],
+        commit_messages=["Fix email validation regex", "Add test cases"],
         expected_ai_assisted=True,
         expected_tools=["claude"],
         min_confidence=0.9,
@@ -122,6 +196,20 @@ GOLDEN_TESTS: list[GoldenTest] = [
         category=GoldenTestCategory.POSITIVE,
         pr_title="Refactor authentication module",
         pr_body="Refactored the auth module with help from GitHub Copilot.\n\nThis change improves security.",
+        # Full PR context for realistic testing
+        file_count=8,
+        additions=320,
+        deletions=150,
+        repo_languages=["Python", "JavaScript"],
+        state="merged",
+        labels=["refactor", "security"],
+        file_paths=["apps/auth/middleware.py", "apps/auth/decorators.py", "apps/auth/utils.py"],
+        cycle_time_hours=48.0,
+        review_time_hours=6.0,
+        review_rounds=2,
+        author_name="Diana Coder",
+        reviewers=["Eve Security", "Frank Backend"],
+        commit_messages=["Extract auth logic", "Add session validation", "Improve token handling"],
         expected_ai_assisted=True,
         expected_tools=["copilot"],
         min_confidence=0.7,
@@ -138,6 +226,25 @@ GOLDEN_TESTS: list[GoldenTest] = [
             "- Claude for architecture review\n\n"
             "Built the new analytics dashboard."
         ),
+        # Full PR context for realistic testing
+        file_count=15,
+        additions=890,
+        deletions=45,
+        repo_languages=["TypeScript", "Python"],
+        state="merged",
+        labels=["feature", "analytics", "frontend"],
+        file_paths=[
+            "frontend/src/pages/Dashboard.tsx",
+            "frontend/src/components/charts/LineChart.tsx",
+            "apps/analytics/views.py",
+        ],
+        cycle_time_hours=72.0,
+        review_time_hours=8.0,
+        review_rounds=3,
+        comment_count=12,
+        author_name="Grace Fullstack",
+        reviewers=["Henry Architect", "Ivy Frontend"],
+        commit_messages=["Initial dashboard layout", "Add chart components", "Connect to backend API"],
         expected_ai_assisted=True,
         expected_tools=["cursor", "claude"],
         min_confidence=0.85,
@@ -149,6 +256,19 @@ GOLDEN_TESTS: list[GoldenTest] = [
         category=GoldenTestCategory.POSITIVE,
         pr_title="Add API rate limiting",
         pr_body="Added rate limiting to API endpoints.\n\nCommit message: aider: Implement rate limiting middleware",
+        # Full PR context for realistic testing
+        file_count=3,
+        additions=120,
+        deletions=5,
+        repo_languages=["Python"],
+        state="merged",
+        labels=["feature", "api"],
+        file_paths=["apps/api/middleware.py", "apps/api/throttling.py", "apps/api/tests/test_rate_limit.py"],
+        cycle_time_hours=16.0,
+        review_time_hours=3.0,
+        author_name="Jack Backend",
+        reviewers=["Kate API"],
+        commit_messages=["aider: Implement rate limiting middleware", "aider: Add tests for throttling"],
         expected_ai_assisted=True,
         expected_tools=["aider"],
         min_confidence=0.8,
@@ -160,6 +280,19 @@ GOLDEN_TESTS: list[GoldenTest] = [
         category=GoldenTestCategory.POSITIVE,
         pr_title="Update payment flow",
         pr_body="Updated payment processing.\n\n## Development\nUsed Windsurf IDE with Codeium for autocomplete.",
+        # Full PR context for realistic testing
+        file_count=6,
+        additions=240,
+        deletions=80,
+        repo_languages=["Python", "JavaScript"],
+        state="merged",
+        labels=["feature", "payments"],
+        file_paths=["apps/payments/checkout.py", "apps/payments/stripe.py", "frontend/src/checkout/Form.tsx"],
+        cycle_time_hours=36.0,
+        review_time_hours=5.0,
+        author_name="Leo Payments",
+        reviewers=["Mike Finance"],
+        commit_messages=["Refactor checkout flow", "Add Stripe webhook handler", "Update frontend form"],
         expected_ai_assisted=True,
         expected_tools=["windsurf"],
         min_confidence=0.75,
@@ -174,6 +307,19 @@ GOLDEN_TESTS: list[GoldenTest] = [
         category=GoldenTestCategory.NEGATIVE,
         pr_title="Fix API timeout",
         pr_body="## Changes\nBug fix.\n\n## AI Disclosure\nNo AI was used.",
+        # Full PR context for realistic testing
+        file_count=2,
+        additions=25,
+        deletions=5,
+        repo_languages=["Python"],
+        state="merged",
+        labels=["bugfix"],
+        file_paths=["apps/api/client.py", "apps/api/tests/test_timeout.py"],
+        cycle_time_hours=4.0,
+        review_time_hours=1.5,
+        author_name="Nina Dev",
+        reviewers=["Oscar Lead"],
+        commit_messages=["Increase timeout to 30s", "Add retry logic"],
         expected_ai_assisted=False,
         notes="Explicit denial should override any false positives",
     ),
@@ -185,6 +331,20 @@ GOLDEN_TESTS: list[GoldenTest] = [
         pr_body=(
             "Added Gemini API integration for AI-powered search.\n\nThis PR adds support for Google's Gemini model."
         ),
+        # Full PR context for realistic testing
+        file_count=7,
+        additions=380,
+        deletions=20,
+        repo_languages=["Python", "TypeScript"],
+        state="merged",
+        labels=["feature", "ai-integration"],
+        file_paths=["apps/ai/gemini.py", "apps/ai/prompts.py", "frontend/src/search/AISearch.tsx"],
+        cycle_time_hours=56.0,
+        review_time_hours=12.0,
+        review_rounds=2,
+        author_name="Pat AI",
+        reviewers=["Quinn ML", "Rosa Backend"],
+        commit_messages=["Add Gemini client", "Implement prompt engineering", "Add search UI"],
         expected_ai_assisted=False,
         expected_not_tools=["gemini"],
         notes="Building AI features != using AI to write code",
@@ -195,6 +355,18 @@ GOLDEN_TESTS: list[GoldenTest] = [
         category=GoldenTestCategory.NEGATIVE,
         pr_title="Minor fix",
         pr_body="",
+        # Full PR context for realistic testing
+        file_count=1,
+        additions=3,
+        deletions=1,
+        repo_languages=["Python"],
+        state="merged",
+        file_paths=["apps/utils/helpers.py"],
+        cycle_time_hours=1.0,
+        review_time_hours=0.5,
+        author_name="Sam Quick",
+        reviewers=["Tina Fast"],
+        commit_messages=["Quick typo fix"],
         expected_ai_assisted=False,
         notes="No evidence = assume no AI",
     ),
@@ -208,6 +380,19 @@ GOLDEN_TESTS: list[GoldenTest] = [
             "## Solution\nAdded null check before accessing user preferences.\n\n"
             "## Testing\nAdded unit test for the edge case."
         ),
+        # Full PR context for realistic testing
+        file_count=3,
+        additions=45,
+        deletions=8,
+        repo_languages=["Java"],
+        state="merged",
+        labels=["bugfix", "production"],
+        file_paths=["src/main/java/UserService.java", "src/test/java/UserServiceTest.java"],
+        cycle_time_hours=8.0,
+        review_time_hours=2.0,
+        author_name="Uma Senior",
+        reviewers=["Victor Staff"],
+        commit_messages=["Add null check for preferences", "Add unit test"],
         expected_ai_assisted=False,
         notes="Standard human-written PR format",
     ),
@@ -220,6 +405,19 @@ GOLDEN_TESTS: list[GoldenTest] = [
             "Added dropdown to select between Claude Opus and Sonnet models.\n\n"
             "Users can now choose which Claude model to use for their queries."
         ),
+        # Full PR context for realistic testing
+        file_count=4,
+        additions=120,
+        deletions=15,
+        repo_languages=["TypeScript", "Python"],
+        state="merged",
+        labels=["feature", "ui"],
+        file_paths=["frontend/src/components/ModelSelector.tsx", "apps/ai/models.py"],
+        cycle_time_hours=24.0,
+        review_time_hours=4.0,
+        author_name="Wendy Product",
+        reviewers=["Xavier UI"],
+        commit_messages=["Add model dropdown component", "Wire up API", "Add Sonnet option"],
         expected_ai_assisted=False,
         expected_not_tools=["claude"],
         notes="Mentioning Claude as a product != using Claude to write code",
@@ -230,6 +428,19 @@ GOLDEN_TESTS: list[GoldenTest] = [
         category=GoldenTestCategory.NEGATIVE,
         pr_title="Update dependencies",
         pr_body="## Changes\nBumped package versions.\n\n## AI Disclosure\nNone",
+        # Full PR context for realistic testing
+        file_count=2,
+        additions=150,
+        deletions=130,
+        repo_languages=["Python"],
+        state="merged",
+        labels=["chore", "dependencies"],
+        file_paths=["requirements.txt", "pyproject.toml"],
+        cycle_time_hours=2.0,
+        review_time_hours=0.5,
+        author_name="Yuki Maintainer",
+        reviewers=["Zack DevOps"],
+        commit_messages=["Bump Django to 5.0", "Update celery"],
         expected_ai_assisted=False,
         notes="'None' in disclosure section = no AI",
     ),
@@ -239,6 +450,19 @@ GOLDEN_TESTS: list[GoldenTest] = [
         category=GoldenTestCategory.NEGATIVE,
         pr_title="Fix typo in README",
         pr_body="## Changes\nFixed spelling error.\n\n## AI Disclosure\nN/A",
+        # Full PR context for realistic testing
+        file_count=1,
+        additions=2,
+        deletions=2,
+        repo_languages=["Markdown"],
+        state="merged",
+        labels=["docs"],
+        file_paths=["README.md"],
+        cycle_time_hours=0.5,
+        review_time_hours=0.2,
+        author_name="Anna Docs",
+        reviewers=["Ben Editor"],
+        commit_messages=["Fix typos in installation section"],
         expected_ai_assisted=False,
         notes="'N/A' in disclosure section = no AI",
     ),
@@ -405,6 +629,173 @@ GOLDEN_TESTS: list[GoldenTest] = [
         expected_ai_assisted=False,
         expected_pr_type="ci",
     ),
+    # -------------------------------------------------------------------------
+    # HEALTH ASSESSMENT CASES: Full PR context with timing metrics
+    # -------------------------------------------------------------------------
+    GoldenTest(
+        id="health_slow_review",
+        description="Large PR with slow review time and multiple rounds",
+        category=GoldenTestCategory.HEALTH,
+        pr_title="Implement user notification system",
+        pr_body=(
+            "## Summary\n"
+            "Added real-time notifications with WebSocket support.\n\n"
+            "## AI Disclosure\n"
+            "Used Cursor for boilerplate code generation.\n\n"
+            "## Changes\n"
+            "- WebSocket server\n"
+            "- React notification component\n"
+            "- Database models for notification queue"
+        ),
+        additions=450,
+        deletions=32,
+        file_count=12,
+        comment_count=18,
+        state="merged",
+        author_name="John Developer",
+        labels=["feature", "backend", "frontend"],
+        cycle_time_hours=96.5,
+        review_time_hours=48.0,
+        commits_after_first_review=5,
+        review_rounds=3,
+        file_paths=[
+            "apps/notifications/models.py",
+            "apps/notifications/consumers.py",
+            "apps/notifications/routing.py",
+            "frontend/src/components/NotificationBell.tsx",
+            "frontend/src/hooks/useWebSocket.ts",
+        ],
+        commit_messages=[
+            "Add notification models",
+            "Implement WebSocket consumer",
+            "Fix review feedback: add rate limiting",
+            "Address review: improve error handling",
+            "🤖 Generated with Cursor",
+        ],
+        repo_languages=["Python", "TypeScript", "JavaScript"],
+        reviewers=["Sarah Tech Lead", "Bob Backend"],
+        review_comments=["Need rate limiting for notifications", "Consider Redis for scalability"],
+        expected_ai_assisted=True,
+        expected_tools=["cursor"],
+        expected_categories=["backend", "frontend"],
+        expected_pr_type="feature",
+        notes="High friction PR: slow review, large scope, multiple rework rounds",
+    ),
+    GoldenTest(
+        id="health_fast_small",
+        description="Small bugfix with fast review and minimal friction",
+        category=GoldenTestCategory.HEALTH,
+        pr_title="Fix null check in payment validation",
+        pr_body=(
+            "## Problem\n"
+            "Payment validation was failing for users without saved cards.\n\n"
+            "## Solution\n"
+            "Added null check before accessing card details.\n\n"
+            "## AI Disclosure\n"
+            "N/A"
+        ),
+        additions=5,
+        deletions=2,
+        file_count=1,
+        comment_count=1,
+        state="merged",
+        author_name="Alice Engineer",
+        labels=["bugfix", "payments"],
+        cycle_time_hours=2.5,
+        review_time_hours=0.5,
+        commits_after_first_review=0,
+        review_rounds=1,
+        file_paths=["apps/payments/validators.py"],
+        commit_messages=["Fix null check in payment validation"],
+        repo_languages=["Python"],
+        reviewers=["Bob Backend"],
+        jira_key="PAY-1234",
+        expected_ai_assisted=False,
+        expected_categories=["backend"],
+        expected_pr_type="bugfix",
+        notes="Low friction PR: small scope, fast review, single round",
+    ),
+    GoldenTest(
+        id="health_hotfix_revert",
+        description="Hotfix after a revert - high risk indicator",
+        category=GoldenTestCategory.HEALTH,
+        pr_title="Hotfix: Restore payment processing after revert",
+        pr_body=(
+            "## Context\n"
+            "Previous PR broke payment processing and was reverted.\n\n"
+            "## Fix\n"
+            "Properly handle edge case in currency conversion.\n\n"
+            "## Testing\n"
+            "Tested with all supported currencies."
+        ),
+        additions=15,
+        deletions=3,
+        file_count=2,
+        comment_count=5,
+        state="merged",
+        author_name="DevOps Engineer",
+        labels=["hotfix", "critical", "payments"],
+        is_hotfix=True,
+        is_revert=False,
+        cycle_time_hours=1.0,
+        review_time_hours=0.25,
+        commits_after_first_review=1,
+        review_rounds=1,
+        file_paths=["apps/payments/currency.py", "apps/payments/tests/test_currency.py"],
+        commit_messages=[
+            "Hotfix: Fix currency conversion edge case",
+            "Add regression test",
+        ],
+        repo_languages=["Python"],
+        reviewers=["CTO", "Backend Lead"],
+        linked_issues=["#1234"],
+        expected_ai_assisted=False,
+        expected_categories=["backend"],
+        expected_pr_type="bugfix",
+        notes="High risk: hotfix after revert, critical path",
+    ),
+    GoldenTest(
+        id="health_draft_wip",
+        description="Draft PR with work in progress - incomplete state",
+        category=GoldenTestCategory.HEALTH,
+        pr_title="WIP: Add GraphQL API layer",
+        pr_body=(
+            "## Draft\n"
+            "Work in progress - not ready for review.\n\n"
+            "## TODO\n"
+            "- [x] Setup GraphQL schema\n"
+            "- [ ] Add resolvers\n"
+            "- [ ] Add authentication\n\n"
+            "Using Claude for schema design."
+        ),
+        additions=200,
+        deletions=0,
+        file_count=5,
+        comment_count=0,
+        state="open",
+        author_name="Junior Dev",
+        labels=["wip", "api"],
+        is_draft=True,
+        cycle_time_hours=None,  # Not merged
+        review_time_hours=None,  # Not reviewed
+        file_paths=[
+            "apps/graphql/schema.py",
+            "apps/graphql/types.py",
+            "apps/graphql/queries.py",
+        ],
+        commit_messages=[
+            "Initial GraphQL setup",
+            "Add user type schema",
+            "aider: Implement query resolvers",
+        ],
+        repo_languages=["Python"],
+        milestone="Q1 2025 Release",
+        expected_ai_assisted=True,
+        expected_tools=["claude", "aider"],
+        expected_categories=["backend"],
+        expected_pr_type="feature",
+        notes="Draft state, multiple AI tools detected (claude mention + aider commit)",
+    ),
 ]
 
 
@@ -478,14 +869,38 @@ def to_promptfoo_test(test: GoldenTest, schema_assertion: dict[str, Any]) -> dic
             }
         )
 
+    # Build vars with all PR context fields
+    vars_dict = {
+        "pr_title": test.pr_title,
+        "pr_body": test.pr_body,
+        "additions": test.additions,
+        "deletions": test.deletions,
+        "file_count": test.file_count,
+        "comment_count": test.comment_count,
+        "repo_languages": test.repo_languages,
+        "state": test.state,
+        "labels": test.labels,
+        "is_draft": test.is_draft,
+        "is_hotfix": test.is_hotfix,
+        "is_revert": test.is_revert,
+        "cycle_time_hours": test.cycle_time_hours,
+        "review_time_hours": test.review_time_hours,
+        "commits_after_first_review": test.commits_after_first_review,
+        "review_rounds": test.review_rounds,
+        "file_paths": test.file_paths,
+        "commit_messages": test.commit_messages,
+        "milestone": test.milestone,
+        "assignees": test.assignees,
+        "linked_issues": test.linked_issues,
+        "jira_key": test.jira_key,
+        "author_name": test.author_name,
+        "reviewers": test.reviewers,
+        "review_comments": test.review_comments,
+    }
+
     return {
         "description": f"[{test.id}] {test.description}",
-        "vars": {
-            "pr_title": test.pr_title,
-            "pr_body": test.pr_body,
-            "additions": test.additions,
-            "deletions": test.deletions,
-        },
+        "vars": vars_dict,
         "assert": assertions,
     }
 
