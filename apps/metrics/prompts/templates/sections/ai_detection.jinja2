@@ -1,5 +1,11 @@
 ## AI Detection Rules
 
+**is_assisted = true** if AI was used in ANY capacity:
+- Code generation (authored, assisted)
+- Code review or feedback (reviewed)
+- Brainstorming or planning (brainstorm)
+Even if code was ultimately "written manually", any AI involvement = is_assisted: true
+
 **POSITIVE signals** (AI was used):
 - Tool mentions: Cursor, Claude, Copilot, Cody, Aider, Devin, Gemini, Windsurf, Tabnine, Cubic, Mintlify, CodeRabbit
 - AI Disclosure sections with usage statements

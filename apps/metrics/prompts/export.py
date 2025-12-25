@@ -42,15 +42,6 @@ def get_promptfoo_config(prompt_filename: str) -> dict[str, Any]:
         "description": f"AI Detection Prompt Evaluation (v{PROMPT_VERSION}) - Auto-generated",
         "providers": [
             {
-                "id": "groq:llama-3.3-70b-versatile",
-                "label": "Llama-3.3-70B",
-                "config": {
-                    "temperature": 0,
-                    "max_tokens": 800,
-                    "response_format": {"type": "json_object"},
-                },
-            },
-            {
                 "id": "groq:openai/gpt-oss-20b",
                 "label": "GPT-OSS-20B",
                 "config": {

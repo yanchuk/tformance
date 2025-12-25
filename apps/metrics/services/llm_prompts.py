@@ -27,7 +27,7 @@ if TYPE_CHECKING:
     from apps.metrics.models import PullRequest
 
 # Current prompt version - increment when making changes
-PROMPT_VERSION = "6.3.1"
+PROMPT_VERSION = "6.3.2"
 
 # Main PR analysis prompt - v6.3.0
 PR_ANALYSIS_SYSTEM_PROMPT = """You analyze pull requests to provide comprehensive insights for CTOs.
@@ -67,6 +67,12 @@ Timeline:
 - Blockers (long gaps between events)
 
 ## AI Detection Rules
+
+**is_assisted = true** if AI was used in ANY capacity:
+- Code generation (authored, assisted)
+- Code review or feedback (reviewed)
+- Brainstorming or planning (brainstorm)
+Even if code was ultimately "written manually", any AI involvement = is_assisted: true
 
 **POSITIVE signals** (AI was used):
 - Tool mentions: Cursor, Claude, Copilot, Cody, Aider, Devin, Gemini, Windsurf, Tabnine, Cubic, Mintlify, CodeRabbit

@@ -329,6 +329,16 @@ class TestAIDetectionRules(TestCase):
         self.assertIn("model selectors", result)
         self.assertIn("LLM integrations", result)
 
+    def test_contains_is_assisted_clarification(self):
+        """Should contain clarification that ANY AI usage = is_assisted: true."""
+        result = render_system_prompt()
+
+        # Must clarify that brainstorming and review usage count as is_assisted
+        self.assertIn("is_assisted = true", result)
+        self.assertIn("Code review or feedback (reviewed)", result)
+        self.assertIn("Brainstorming or planning (brainstorm)", result)
+        self.assertIn("any AI involvement = is_assisted: true", result)
+
 
 class TestUserPromptTemplate(TestCase):
     """Tests for user.jinja2 template existence and structure."""
