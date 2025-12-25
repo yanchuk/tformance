@@ -701,6 +701,10 @@ if POSTHOG_API_KEY:
 
     posthog.project_api_key = POSTHOG_API_KEY
     posthog.host = POSTHOG_HOST
+    # Enable exception autocapture for error tracking
+    posthog.exception_autocapture = True
+    # Disable debug mode in production
+    posthog.debug = DEBUG
 
 
 # Google Gemini AI
