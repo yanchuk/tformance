@@ -34,7 +34,7 @@ static/.vite/
 playwright-report/
 test-results/
 # Git worktrees (separate branches checked out in dev/active/)
-seeding.log
+seeding*.log
 .seeding_checkpoint.json
 .seeding_checkpoint_polar.json
 .seeding_checkpoint_gumroad.json
