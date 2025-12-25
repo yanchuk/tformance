@@ -1,0 +1,419 @@
+{
+  "Infisical/infisical": {
+    "CSS": 13501,
+    "Dockerfile": 1486,
+    "Gherkin": 87168,
+    "HTML": 4426,
+    "JavaScript": 17112,
+    "MDX": 13397,
+    "Makefile": 727,
+    "Nix": 488,
+    "Python": 57743,
+    "Shell": 8492,
+    "Smarty": 5911,
+    "TypeScript": 22746186
+  },
+  "PostHog/posthog": {
+    "ANTLR": 29405,
+    "C": 285,
+    "C++": 698863,
+    "CSS": 5025,
+    "Dockerfile": 24835,
+    "EJS": 4869,
+    "Go": 75649,
+    "HCL": 25883,
+    "HTML": 242521,
+    "JavaScript": 836404,
+    "MDX": 32270,
+    "PLpgSQL": 9521,
+    "Perl": 35898,
+    "Python": 42951004,
+    "Rust": 4998120,
+    "SCSS": 367223,
+    "Shell": 196927,
+    "Smarty": 3208,
+    "TypeScript": 35317040
+  },
+  "PostHog/posthog-js": {
+    "CSS": 36231,
+    "Dockerfile": 599,
+    "HTML": 163594,
+    "JavaScript": 173414,
+    "Shell": 7212,
+    "TypeScript": 11439934,
+    "Vue": 1304
+  },
+  "PostHog/posthog-python": {
+    "Makefile": 2416,
+    "Python": 1317957,
+    "Shell": 1856
+  },
+  "PostHog/posthog.com": {
+    "CSS": 76326,
+    "JavaScript": 962127,
+    "MDX": 5303938,
+    "Python": 94362,
+    "Shell": 955,
+    "TypeScript": 20475621
+  },
+  "anthropics/anthropic-cookbook": {
+    "Dockerfile": 1115,
+    "Jupyter Notebook": 16228300,
+    "Makefile": 1736,
+    "Python": 526669,
+    "Shell": 4649
+  },
+  "anthropics/anthropic-sdk-python": {
+    "Dockerfile": 253,
+    "Python": 1736372,
+    "Ruby": 11,
+    "Shell": 6138
+  },
+  "anthropics/courses": {
+    "Jupyter Notebook": 64635154,
+    "Python": 37302
+  },
+  "antiwork/flexile": {
+    "CSS": 5885,
+    "HTML": 54129,
+    "JavaScript": 115627,
+    "Makefile": 732,
+    "Procfile": 124,
+    "Ruby": 1944543,
+    "SCSS": 3078,
+    "Shell": 4140,
+    "TypeScript": 1576548
+  },
+  "antiwork/gumroad": {
+    "CSS": 8235,
+    "Dockerfile": 8304,
+    "HTML": 1602308,
+    "JavaScript": 26473,
+    "Makefile": 9661,
+    "Ruby": 17174573,
+    "SCSS": 57267,
+    "Shell": 34089,
+    "TypeScript": 3187529
+  },
+  "antiwork/helper": {
+    "CSS": 40464,
+    "JavaScript": 9998,
+    "MDX": 105790,
+    "PLpgSQL": 1060,
+    "Shell": 17890,
+    "TypeScript": 2622109
+  },
+  "calcom/cal.com": {
+    "CSS": 401014,
+    "Dockerfile": 4056,
+    "HTML": 145538,
+    "JavaScript": 77221,
+    "MDX": 1726,
+    "Mermaid": 20716,
+    "PHP": 1254,
+    "PLpgSQL": 58817,
+    "Procfile": 37,
+    "Shell": 14183,
+    "TypeScript": 25905169
+  },
+  "coollabsio/coolify": {
+    "Blade": 1591403,
+    "CSS": 17666,
+    "Dockerfile": 13746,
+    "JavaScript": 46663,
+    "PHP": 5493917,
+    "Shell": 112885
+  },
+  "denoland/deno": {
+    "Astro": 97,
+    "C": 4608,
+    "C++": 1416,
+    "CSS": 6872,
+    "Dockerfile": 257,
+    "HTML": 1555,
+    "JavaScript": 2323996,
+    "Mustache": 272,
+    "Nunjucks": 45,
+    "Python": 214,
+    "Rust": 10037269,
+    "Svelte": 133,
+    "TypeScript": 6315635,
+    "Vento": 52,
+    "WebAssembly": 304
+  },
+  "denoland/fresh": {
+    "CSS": 40495,
+    "HTML": 283,
+    "JavaScript": 345,
+    "TypeScript": 981533
+  },
+  "documenso/documenso": {
+    "CSS": 7960,
+    "Dockerfile": 4825,
+    "JavaScript": 12973,
+    "PLpgSQL": 5293,
+    "Shell": 10850,
+    "TypeScript": 8540113
+  },
+  "dubinc/dub": {
+    "CSS": 2724,
+    "HTML": 457,
+    "JavaScript": 7769,
+    "TypeScript": 10117329
+  },
+  "formbricks/formbricks": {
+    "CSS": 28773,
+    "Dockerfile": 4945,
+    "HTML": 304,
+    "JavaScript": 28554,
+    "MDX": 11296,
+    "PLpgSQL": 8418,
+    "Shell": 96725,
+    "Smarty": 4940,
+    "TypeScript": 9072938
+  },
+  "getlago/lago": {
+    "Dockerfile": 3084,
+    "Go": 157961,
+    "Procfile": 137,
+    "Shell": 18498
+  },
+  "hoppscotch/hoppscotch": {
+    "CSS": 1547,
+    "Dockerfile": 10615,
+    "Go": 21434,
+    "HTML": 2420,
+    "Handlebars": 24416,
+    "JavaScript": 316268,
+    "Nix": 10781,
+    "PLpgSQL": 4718,
+    "Rust": 318551,
+    "SCSS": 41158,
+    "Shell": 1497,
+    "Svelte": 1717,
+    "TypeScript": 5271880,
+    "Vue": 2001913
+  },
+  "langchain-ai/langchain": {
+    "Dockerfile": 1788,
+    "HTML": 1900,
+    "JavaScript": 157,
+    "Jupyter Notebook": 66516,
+    "Makefile": 54731,
+    "Python": 10641527,
+    "Shell": 12661,
+    "XSLT": 7380
+  },
+  "langchain-ai/langchainjs": {
+    "CSS": 8554,
+    "HTML": 423960,
+    "JavaScript": 104217,
+    "Python": 667,
+    "Shell": 23006,
+    "TypeScript": 11954268
+  },
+  "linearapp/linear": {
+    "JavaScript": 4426,
+    "TypeScript": 6240792
+  },
+  "makeplane/plane": {
+    "CSS": 108987,
+    "Dockerfile": 2122,
+    "HTML": 478012,
+    "JavaScript": 7213,
+    "Nix": 315,
+    "Python": 3464234,
+    "Shell": 69675,
+    "TypeScript": 12045572
+  },
+  "neondatabase/neon": {
+    "Awk": 632,
+    "C": 782737,
+    "C#": 678,
+    "Dockerfile": 117935,
+    "Emacs Lisp": 730,
+    "HTML": 1328,
+    "Java": 970,
+    "JavaScript": 15734,
+    "Jsonnet": 19357,
+    "Makefile": 26320,
+    "PLpgSQL": 16888,
+    "Python": 2942776,
+    "RenderScript": 1,
+    "Rust": 11177192,
+    "Shell": 49678,
+    "Swift": 3309,
+    "TLA": 43377
+  },
+  "neondatabase/serverless": {
+    "JavaScript": 296897,
+    "Shell": 2863,
+    "TypeScript": 175045
+  },
+  "novuhq/novu": {
+    "CSS": 61485,
+    "Dockerfile": 19123,
+    "EJS": 2409,
+    "HTML": 10727,
+    "Handlebars": 18479,
+    "JavaScript": 335926,
+    "MDX": 6088,
+    "Python": 216296,
+    "Shell": 16793,
+    "TypeScript": 21361624
+  },
+  "polarsource/polar": {
+    "CSS": 9501,
+    "Dockerfile": 2716,
+    "HCL": 116994,
+    "HTML": 1412,
+    "JavaScript": 116520,
+    "MDX": 85202,
+    "Mako": 572,
+    "Nix": 570,
+    "Python": 6463105,
+    "Ruby": 99,
+    "Shell": 19918,
+    "Swift": 39363,
+    "TypeScript": 4300338
+  },
+  "polarsource/polar-adapters": {
+    "CSS": 399,
+    "JavaScript": 3695,
+    "TypeScript": 269249,
+    "Vue": 74
+  },
+  "polarsource/polar-js": {
+    "JavaScript": 817,
+    "Shell": 691,
+    "TypeScript": 2946619
+  },
+  "polarsource/polar-python": {
+    "Python": 3353169,
+    "Shell": 536
+  },
+  "resend/react-email": {
+    "CSS": 3399,
+    "HTML": 366,
+    "JavaScript": 19037,
+    "MDX": 164438,
+    "TypeScript": 3723499
+  },
+  "resend/resend-node": {
+    "TypeScript": 413783
+  },
+  "supabase/realtime": {
+    "Batchfile": 100,
+    "CSS": 10368,
+    "Dockerfile": 2552,
+    "Elixir": 1495538,
+    "HTML": 28633,
+    "JavaScript": 11003,
+    "Makefile": 3443,
+    "Shell": 4466,
+    "TypeScript": 21810
+  },
+  "supabase/supabase": {
+    "CSS": 143385,
+    "Dockerfile": 4747,
+    "Elixir": 1068,
+    "HTML": 453,
+    "JavaScript": 994366,
+    "MDX": 8969107,
+    "Makefile": 8391,
+    "Mermaid": 1578,
+    "PLpgSQL": 53958,
+    "SCSS": 109003,
+    "Shell": 14814,
+    "TypeScript": 20828555,
+    "Vue": 36102
+  },
+  "supabase/supabase-js": {
+    "CSS": 1679,
+    "HTML": 5968,
+    "JavaScript": 35593,
+    "PLpgSQL": 18822,
+    "TypeScript": 2004918
+  },
+  "tiangolo/fastapi": {
+    "CSS": 25,
+    "HTML": 235,
+    "JavaScript": 1066,
+    "Python": 3650761,
+    "Shell": 513
+  },
+  "triggerdotdev/trigger.dev": {
+    "CSS": 15060,
+    "Dockerfile": 11877,
+    "JavaScript": 55714,
+    "PLpgSQL": 11589,
+    "Python": 8108,
+    "Shell": 31893,
+    "Smarty": 18236,
+    "TypeScript": 10430241
+  },
+  "trycompai/comp": {
+    "CSS": 42369,
+    "Dockerfile": 6950,
+    "JavaScript": 27497,
+    "MDX": 184809,
+    "PLpgSQL": 29154,
+    "Shell": 10971,
+    "TypeScript": 6093166
+  },
+  "twentyhq/twenty": {
+    "CSS": 2422,
+    "Dockerfile": 6346,
+    "HCL": 19327,
+    "HTML": 5104,
+    "JavaScript": 97057,
+    "MDX": 9237174,
+    "Makefile": 2879,
+    "Python": 194079,
+    "Shell": 16859,
+    "TypeScript": 38303364
+  },
+  "vercel/ai": {
+    "CSS": 4415,
+    "HTML": 613,
+    "JavaScript": 37076,
+    "MDX": 2983137,
+    "Svelte": 889,
+    "TypeScript": 9045056,
+    "Vue": 12374
+  },
+  "vercel/next.js": {
+    "Batchfile": 579,
+    "CSS": 525315,
+    "HTML": 2483,
+    "JavaScript": 36507597,
+    "MDX": 343627,
+    "Pug": 49,
+    "Python": 6662,
+    "Rust": 8226749,
+    "SCSS": 8149,
+    "Sass": 302,
+    "Shell": 15235,
+    "TypeScript": 18418173,
+    "WebAssembly": 497
+  },
+  "vercel/vercel": {
+    "CSS": 57675,
+    "Dockerfile": 2396,
+    "EJS": 20637,
+    "Go": 6449,
+    "HTML": 67020,
+    "Handlebars": 141,
+    "JavaScript": 685262,
+    "Marko": 6699,
+    "Python": 48556,
+    "Riot": 886,
+    "Ruby": 4534,
+    "Rust": 36698,
+    "Shell": 102,
+    "Stylus": 23924,
+    "Svelte": 935,
+    "TypeScript": 4435302,
+    "Vue": 12228
+  }
+}

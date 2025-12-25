@@ -1,0 +1,1245 @@
+{
+  "overall_accuracy": 0.554950275885154,
+  "total_files": 185222,
+  "category_metrics": {
+    "other": {
+      "precision": 0.11476393704987997,
+      "recall": 1.0,
+      "f1": 0.20589818747382907,
+      "tp": 1721,
+      "fp": 13275,
+      "fn": 0
+    },
+    "backend": {
+      "precision": 0.6929862617498193,
+      "recall": 0.519364161849711,
+      "f1": 0.5937429013939081,
+      "tp": 28752,
+      "fp": 12738,
+      "fn": 26608
+    },
+    "frontend": {
+      "precision": 0.8453272701789357,
+      "recall": 0.5933841293439881,
+      "f1": 0.6972959085361938,
+      "tp": 54281,
+      "fp": 9932,
+      "fn": 37196
+    },
+    "javascript": {
+      "precision": 0.2905837375911588,
+      "recall": 0.3270892850685278,
+      "f1": 0.30775774072813883,
+      "tp": 9045,
+      "fp": 22082,
+      "fn": 18608
+    },
+    "config": {
+      "precision": 0.3953132422019317,
+      "recall": 0.9972041006523765,
+      "f1": 0.5661803613273867,
+      "tp": 7490,
+      "fp": 11457,
+      "fn": 21
+    },
+    "docs": {
+      "precision": 0.33080459770114945,
+      "recall": 1.0,
+      "f1": 0.4971497667991017,
+      "tp": 1439,
+      "fp": 2911,
+      "fn": 0
+    },
+    "test": {
+      "precision": 0.006040202000198039,
+      "recall": 1.0,
+      "f1": 0.012007874015748033,
+      "tp": 61,
+      "fp": 10038,
+      "fn": 0
+    }
+  },
+  "js_confusion": {
+    "javascript_frontend": 13416,
+    "javascript_javascript": 9045,
+    "javascript_backend": 8666
+  },
+  "repo_stats": {
+    "tiangolo/fastapi": {
+      "total": 1743,
+      "matches": 920,
+      "js_files": 1
+    },
+    "makeplane/plane": {
+      "total": 15195,
+      "matches": 11389,
+      "js_files": 1738
+    },
+    "calcom/cal.com": {
+      "total": 1846,
+      "matches": 1211,
+      "js_files": 448
+    },
+    "triggerdotdev/trigger.dev": {
+      "total": 1131,
+      "matches": 637,
+      "js_files": 308
+    },
+    "PostHog/posthog": {
+      "total": 1525,
+      "matches": 878,
+      "js_files": 93
+    },
+    "documenso/documenso": {
+      "total": 3944,
+      "matches": 2633,
+      "js_files": 790
+    },
+    "coollabsio/coolify": {
+      "total": 5400,
+      "matches": 4276,
+      "js_files": 25
+    },
+    "hoppscotch/hoppscotch": {
+      "total": 3221,
+      "matches": 1584,
+      "js_files": 1115
+    },
+    "formbricks/formbricks": {
+      "total": 14659,
+      "matches": 7403,
+      "js_files": 652
+    },
+    "anthropics/courses": {
+      "total": 51,
+      "matches": 51,
+      "js_files": 0
+    },
+    "anthropics/anthropic-cookbook": {
+      "total": 627,
+      "matches": 210,
+      "js_files": 3
+    },
+    "getlago/lago": {
+      "total": 489,
+      "matches": 263,
+      "js_files": 0
+    },
+    "anthropics/anthropic-sdk-python": {
+      "total": 442,
+      "matches": 304,
+      "js_files": 0
+    },
+    "antiwork/helper": {
+      "total": 314,
+      "matches": 209,
+      "js_files": 114
+    },
+    "antiwork/gumroad": {
+      "total": 1946,
+      "matches": 1523,
+      "js_files": 72
+    },
+    "vercel/next.js": {
+      "total": 196,
+      "matches": 93,
+      "js_files": 42
+    },
+    "novuhq/novu": {
+      "total": 28872,
+      "matches": 17846,
+      "js_files": 3379
+    },
+    "trycompai/comp": {
+      "total": 15710,
+      "matches": 11133,
+      "js_files": 3692
+    },
+    "resend/react-email": {
+      "total": 669,
+      "matches": 194,
+      "js_files": 44
+    },
+    "supabase/supabase": {
+      "total": 200,
+      "matches": 148,
+      "js_files": 24
+    },
+    "dubinc/dub": {
+      "total": 7692,
+      "matches": 4883,
+      "js_files": 78
+    },
+    "supabase/realtime": {
+      "total": 187,
+      "matches": 103,
+      "js_files": 1
+    },
+    "antiwork/flexile": {
+      "total": 25,
+      "matches": 12,
+      "js_files": 1
+    },
+    "Infisical/infisical": {
+      "total": 15796,
+      "matches": 10591,
+      "js_files": 18
+    },
+    "denoland/deno": {
+      "total": 1145,
+      "matches": 437,
+      "js_files": 158
+    },
+    "PostHog/posthog-python": {
+      "total": 226,
+      "matches": 127,
+      "js_files": 0
+    },
+    "neondatabase/serverless": {
+      "total": 26,
+      "matches": 12,
+      "js_files": 10
+    },
+    "supabase/supabase-js": {
+      "total": 229,
+      "matches": 69,
+      "js_files": 48
+    },
+    "PostHog/posthog-js": {
+      "total": 1306,
+      "matches": 391,
+      "js_files": 338
+    },
+    "vercel/ai": {
+      "total": 296,
+      "matches": 197,
+      "js_files": 47
+    },
+    "linearapp/linear": {
+      "total": 491,
+      "matches": 131,
+      "js_files": 124
+    },
+    "polarsource/polar-adapters": {
+      "total": 411,
+      "matches": 285,
+      "js_files": 21
+    },
+    "vercel/vercel": {
+      "total": 163,
+      "matches": 28,
+      "js_files": 33
+    },
+    "langchain-ai/langchainjs": {
+      "total": 186,
+      "matches": 17,
+      "js_files": 48
+    },
+    "twentyhq/twenty": {
+      "total": 55118,
+      "matches": 21011,
+      "js_files": 17056
+    },
+    "polarsource/polar": {
+      "total": 571,
+      "matches": 447,
+      "js_files": 22
+    },
+    "polarsource/polar-js": {
+      "total": 995,
+      "matches": 353,
+      "js_files": 70
+    },
+    "polarsource/polar-python": {
+      "total": 390,
+      "matches": 33,
+      "js_files": 0
+    },
+    "PostHog/posthog.com": {
+      "total": 599,
+      "matches": 500,
+      "js_files": 51
+    },
+    "neondatabase/neon": {
+      "total": 18,
+      "matches": 10,
+      "js_files": 0
+    },
+    "denoland/fresh": {
+      "total": 359,
+      "matches": 127,
+      "js_files": 108
+    },
+    "resend/resend-node": {
+      "total": 637,
+      "matches": 36,
+      "js_files": 355
+    },
+    "langchain-ai/langchain": {
+      "total": 175,
+      "matches": 83,
+      "js_files": 0
+    },
+    "ianchuk-1-test/test": {
+      "total": 1,
+      "matches": 1,
+      "js_files": 0
+    }
+  },
+  "sample_mismatches": [
+    {
+      "file": "add_query_method.patch",
+      "pattern": "other",
+      "llm": "backend",
+      "llm_raw": [
+        "backend"
+      ],
+      "repo": "tiangolo/fastapi"
+    },
+    {
+      "file": "admin/core/constants/seo.ts",
+      "pattern": "javascript",
+      "llm": "frontend",
+      "llm_raw": [
+        "frontend"
+      ],
+      "repo": "makeplane/plane"
+    },
+    {
+      "file": "admin/core/constants/swr-config.ts",
+      "pattern": "javascript",
+      "llm": "frontend",
+      "llm_raw": [
+        "frontend"
+      ],
+      "repo": "makeplane/plane"
+    },
+    {
+      "file": "admin/core/services/api.service.ts",
+      "pattern": "backend",
+      "llm": "frontend",
+      "llm_raw": [
+        "frontend"
+      ],
+      "repo": "makeplane/plane"
+    },
+    {
+      "file": "admin/core/services/api.service.ts",
+      "pattern": "backend",
+      "llm": "javascript",
+      "llm_raw": [
+        "frontend",
+        "backend"
+      ],
+      "repo": "makeplane/plane"
+    },
+    {
+      "file": "admin/core/services/auth.service.ts",
+      "pattern": "backend",
+      "llm": "javascript",
+      "llm_raw": [
+        "frontend",
+        "backend"
+      ],
+      "repo": "makeplane/plane"
+    },
+    {
+      "file": "admin/core/services/auth.service.ts",
+      "pattern": "backend",
+      "llm": "frontend",
+      "llm_raw": [
+        "frontend"
+      ],
+      "repo": "makeplane/plane"
+    },
+    {
+      "file": "admin/core/services/instance.service.ts",
+      "pattern": "backend",
+      "llm": "frontend",
+      "llm_raw": [
+        "frontend"
+      ],
+      "repo": "makeplane/plane"
+    },
+    {
+      "file": "admin/core/services/instance.service.ts",
+      "pattern": "backend",
+      "llm": "javascript",
+      "llm_raw": [
+        "frontend",
+        "backend"
+      ],
+      "repo": "makeplane/plane"
+    },
+    {
+      "file": "admin/core/services/user.service.ts",
+      "pattern": "backend",
+      "llm": "javascript",
+      "llm_raw": [
+        "frontend",
+        "backend"
+      ],
+      "repo": "makeplane/plane"
+    },
+    {
+      "file": "admin/core/services/user.service.ts",
+      "pattern": "backend",
+      "llm": "frontend",
+      "llm_raw": [
+        "frontend"
+      ],
+      "repo": "makeplane/plane"
+    },
+    {
+      "file": "admin/core/services/workspace.service.ts",
+      "pattern": "backend",
+      "llm": "frontend",
+      "llm_raw": [
+        "frontend"
+      ],
+      "repo": "makeplane/plane"
+    },
+    {
+      "file": "admin/core/services/workspace.service.ts",
+      "pattern": "backend",
+      "llm": "javascript",
+      "llm_raw": [
+        "frontend",
+        "backend"
+      ],
+      "repo": "makeplane/plane"
+    },
+    {
+      "file": "admin/core/store/instance.store.ts",
+      "pattern": "frontend",
+      "llm": "javascript",
+      "llm_raw": [
+        "frontend",
+        "backend"
+      ],
+      "repo": "makeplane/plane"
+    },
+    {
+      "file": "admin/core/store/instance.store.ts",
+      "pattern": "frontend",
+      "llm": "javascript",
+      "llm_raw": [
+        "frontend",
+        "backend"
+      ],
+      "repo": "makeplane/plane"
+    },
+    {
+      "file": "admin/core/store/user.store.ts",
+      "pattern": "frontend",
+      "llm": "javascript",
+      "llm_raw": [
+        "frontend",
+        "backend"
+      ],
+      "repo": "makeplane/plane"
+    },
+    {
+      "file": "admin/core/store/workspace.store.ts",
+      "pattern": "frontend",
+      "llm": "javascript",
+      "llm_raw": [
+        "frontend",
+        "backend"
+      ],
+      "repo": "makeplane/plane"
+    },
+    {
+      "file": "admin/Dockerfile.admin",
+      "pattern": "other",
+      "llm": "frontend",
+      "llm_raw": [
+        "frontend"
+      ],
+      "repo": "makeplane/plane"
+    },
+    {
+      "file": "admin/Dockerfile.admin",
+      "pattern": "other",
+      "llm": "backend",
+      "llm_raw": [
+        "backend",
+        "devops"
+      ],
+      "repo": "makeplane/plane"
+    },
+    {
+      "file": "admin/Dockerfile.dev",
+      "pattern": "other",
+      "llm": "frontend",
+      "llm_raw": [
+        "frontend"
+      ],
+      "repo": "makeplane/plane"
+    },
+    {
+      "file": "admin/Dockerfile.dev",
+      "pattern": "other",
+      "llm": "frontend",
+      "llm_raw": [
+        "frontend"
+      ],
+      "repo": "makeplane/plane"
+    },
+    {
+      "file": "admin/.env.example",
+      "pattern": "config",
+      "llm": "backend",
+      "llm_raw": [
+        "devops"
+      ],
+      "repo": "makeplane/plane"
+    },
+    {
+      "file": "admin/.env.example",
+      "pattern": "config",
+      "llm": "backend",
+      "llm_raw": [
+        "backend",
+        "devops",
+        "docs"
+      ],
+      "repo": "makeplane/plane"
+    },
+    {
+      "file": "admin/.eslintrc.js",
+      "pattern": "javascript",
+      "llm": "frontend",
+      "llm_raw": [
+        "frontend"
+      ],
+      "repo": "makeplane/plane"
+    },
+    {
+      "file": "admin/helpers/common.helper.ts",
+      "pattern": "javascript",
+      "llm": "frontend",
+      "llm_raw": [
+        "frontend"
+      ],
+      "repo": "makeplane/plane"
+    },
+    {
+      "file": "admin/next.config.js",
+      "pattern": "javascript",
+      "llm": "frontend",
+      "llm_raw": [
+        "frontend"
+      ],
+      "repo": "makeplane/plane"
+    },
+    {
+      "file": "admin/next.config.js",
+      "pattern": "javascript",
+      "llm": "frontend",
+      "llm_raw": [
+        "frontend",
+        "devops"
+      ],
+      "repo": "makeplane/plane"
+    },
+    {
+      "file": "admin/package.json",
+      "pattern": "config",
+      "llm": "frontend",
+      "llm_raw": [
+        "frontend"
+      ],
+      "repo": "makeplane/plane"
+    },
+    {
+      "file": "admin/package.json",
+      "pattern": "config",
+      "llm": "backend",
+      "llm_raw": [
+        "backend"
+      ],
+      "repo": "makeplane/plane"
+    },
+    {
+      "file": "admin/package.json",
+      "pattern": "config",
+      "llm": "frontend",
+      "llm_raw": [
+        "frontend"
+      ],
+      "repo": "makeplane/plane"
+    },
+    {
+      "file": "admin/package.json",
+      "pattern": "config",
+      "llm": "frontend",
+      "llm_raw": [
+        "frontend"
+      ],
+      "repo": "makeplane/plane"
+    },
+    {
+      "file": "admin/package.json",
+      "pattern": "config",
+      "llm": "frontend",
+      "llm_raw": [
+        "frontend"
+      ],
+      "repo": "makeplane/plane"
+    },
+    {
+      "file": "admin/package.json",
+      "pattern": "config",
+      "llm": "backend",
+      "llm_raw": [
+        "backend",
+        "devops"
+      ],
+      "repo": "makeplane/plane"
+    },
+    {
+      "file": "admin/package.json",
+      "pattern": "config",
+      "llm": "frontend",
+      "llm_raw": [
+        "frontend"
+      ],
+      "repo": "makeplane/plane"
+    },
+    {
+      "file": "admin/package.json",
+      "pattern": "config",
+      "llm": "frontend",
+      "llm_raw": [
+        "frontend"
+      ],
+      "repo": "makeplane/plane"
+    },
+    {
+      "file": "admin/package.json",
+      "pattern": "config",
+      "llm": "backend",
+      "llm_raw": [
+        "backend",
+        "devops"
+      ],
+      "repo": "makeplane/plane"
+    },
+    {
+      "file": "admin/package.json",
+      "pattern": "config",
+      "llm": "frontend",
+      "llm_raw": [
+        "frontend"
+      ],
+      "repo": "makeplane/plane"
+    },
+    {
+      "file": "admin/package.json",
+      "pattern": "config",
+      "llm": "frontend",
+      "llm_raw": [
+        "frontend",
+        "devops"
+      ],
+      "repo": "makeplane/plane"
+    },
+    {
+      "file": "admin/package.json",
+      "pattern": "config",
+      "llm": "frontend",
+      "llm_raw": [
+        "frontend"
+      ],
+      "repo": "makeplane/plane"
+    },
+    {
+      "file": "admin/package.json",
+      "pattern": "config",
+      "llm": "frontend",
+      "llm_raw": [
+        "frontend",
+        "devops"
+      ],
+      "repo": "makeplane/plane"
+    },
+    {
+      "file": "admin/package.json",
+      "pattern": "config",
+      "llm": "frontend",
+      "llm_raw": [
+        "frontend",
+        "devops"
+      ],
+      "repo": "makeplane/plane"
+    },
+    {
+      "file": "admin/package.json",
+      "pattern": "config",
+      "llm": "backend",
+      "llm_raw": [
+        "backend",
+        "devops",
+        "docs"
+      ],
+      "repo": "makeplane/plane"
+    },
+    {
+      "file": "admin/postcss.config.js",
+      "pattern": "javascript",
+      "llm": "frontend",
+      "llm_raw": [
+        "frontend",
+        "devops"
+      ],
+      "repo": "makeplane/plane"
+    },
+    {
+      "file": "admin/tsconfig.json",
+      "pattern": "config",
+      "llm": "frontend",
+      "llm_raw": [
+        "frontend",
+        "devops"
+      ],
+      "repo": "makeplane/plane"
+    },
+    {
+      "file": "admin/tsconfig.json",
+      "pattern": "config",
+      "llm": "frontend",
+      "llm_raw": [
+        "frontend"
+      ],
+      "repo": "makeplane/plane"
+    },
+    {
+      "file": "admin/tsconfig.json",
+      "pattern": "config",
+      "llm": "frontend",
+      "llm_raw": [
+        "frontend"
+      ],
+      "repo": "makeplane/plane"
+    },
+    {
+      "file": "admin/tsconfig.json",
+      "pattern": "config",
+      "llm": "frontend",
+      "llm_raw": [
+        "frontend"
+      ],
+      "repo": "makeplane/plane"
+    },
+    {
+      "file": "AGENTS.md",
+      "pattern": "docs",
+      "llm": "frontend",
+      "llm_raw": [
+        "frontend",
+        "docs"
+      ],
+      "repo": "PostHog/posthog"
+    },
+    {
+      "file": "AGENTS.md",
+      "pattern": "docs",
+      "llm": "frontend",
+      "llm_raw": [
+        "frontend",
+        "docs"
+      ],
+      "repo": "makeplane/plane"
+    },
+    {
+      "file": "AGENTS.md",
+      "pattern": "docs",
+      "llm": "frontend",
+      "llm_raw": [
+        "frontend"
+      ],
+      "repo": "makeplane/plane"
+    },
+    {
+      "file": "AGENTS.md",
+      "pattern": "docs",
+      "llm": "frontend",
+      "llm_raw": [
+        "frontend"
+      ],
+      "repo": "documenso/documenso"
+    },
+    {
+      "file": ".ai/core/application-architecture.md",
+      "pattern": "docs",
+      "llm": "backend",
+      "llm_raw": [
+        "backend",
+        "devops"
+      ],
+      "repo": "coollabsio/coolify"
+    },
+    {
+      "file": ".ai/core/application-architecture.md",
+      "pattern": "docs",
+      "llm": "backend",
+      "llm_raw": [
+        "backend"
+      ],
+      "repo": "coollabsio/coolify"
+    },
+    {
+      "file": ".ai/core/application-architecture.md",
+      "pattern": "docs",
+      "llm": "backend",
+      "llm_raw": [
+        "backend",
+        "devops"
+      ],
+      "repo": "coollabsio/coolify"
+    },
+    {
+      "file": ".ai/core/deployment-architecture.md",
+      "pattern": "docs",
+      "llm": "backend",
+      "llm_raw": [
+        "backend",
+        "docs"
+      ],
+      "repo": "coollabsio/coolify"
+    },
+    {
+      "file": ".ai/core/deployment-architecture.md",
+      "pattern": "docs",
+      "llm": "backend",
+      "llm_raw": [
+        "backend",
+        "devops"
+      ],
+      "repo": "coollabsio/coolify"
+    },
+    {
+      "file": ".ai/core/deployment-architecture.md",
+      "pattern": "docs",
+      "llm": "backend",
+      "llm_raw": [
+        "backend",
+        "devops"
+      ],
+      "repo": "coollabsio/coolify"
+    },
+    {
+      "file": ".ai/core/project-overview.md",
+      "pattern": "docs",
+      "llm": "backend",
+      "llm_raw": [
+        "backend",
+        "devops"
+      ],
+      "repo": "coollabsio/coolify"
+    },
+    {
+      "file": ".ai/core/technology-stack.md",
+      "pattern": "docs",
+      "llm": "backend",
+      "llm_raw": [
+        "backend",
+        "devops"
+      ],
+      "repo": "coollabsio/coolify"
+    },
+    {
+      "file": ".ai/development/development-workflow.md",
+      "pattern": "docs",
+      "llm": "backend",
+      "llm_raw": [
+        "backend",
+        "devops"
+      ],
+      "repo": "coollabsio/coolify"
+    },
+    {
+      "file": ".ai/development/laravel-boost.md",
+      "pattern": "docs",
+      "llm": "backend",
+      "llm_raw": [
+        "backend",
+        "devops"
+      ],
+      "repo": "coollabsio/coolify"
+    },
+    {
+      "file": ".ai/development/testing-patterns.md",
+      "pattern": "docs",
+      "llm": "backend",
+      "llm_raw": [
+        "backend",
+        "devops"
+      ],
+      "repo": "coollabsio/coolify"
+    },
+    {
+      "file": ".ai/features/pgbackrest.md",
+      "pattern": "docs",
+      "llm": "backend",
+      "llm_raw": [
+        "backend"
+      ],
+      "repo": "coollabsio/coolify"
+    },
+    {
+      "file": ".ai/features/pgbackrest.md",
+      "pattern": "docs",
+      "llm": "backend",
+      "llm_raw": [
+        "backend"
+      ],
+      "repo": "coollabsio/coolify"
+    },
+    {
+      "file": ".AI_INSTRUCTIONS_SYNC.md",
+      "pattern": "docs",
+      "llm": "backend",
+      "llm_raw": [
+        "backend",
+        "devops"
+      ],
+      "repo": "coollabsio/coolify"
+    },
+    {
+      "file": ".ai/meta/maintaining-docs.md",
+      "pattern": "docs",
+      "llm": "backend",
+      "llm_raw": [
+        "backend",
+        "devops"
+      ],
+      "repo": "coollabsio/coolify"
+    },
+    {
+      "file": ".ai/meta/sync-guide.md",
+      "pattern": "docs",
+      "llm": "backend",
+      "llm_raw": [
+        "backend",
+        "devops"
+      ],
+      "repo": "coollabsio/coolify"
+    },
+    {
+      "file": "aio/Dockerfile-app",
+      "pattern": "other",
+      "llm": "backend",
+      "llm_raw": [
+        "devops"
+      ],
+      "repo": "makeplane/plane"
+    },
+    {
+      "file": "aio/Dockerfile-app",
+      "pattern": "other",
+      "llm": "backend",
+      "llm_raw": [
+        "devops"
+      ],
+      "repo": "makeplane/plane"
+    },
+    {
+      "file": "aio/Dockerfile-app",
+      "pattern": "other",
+      "llm": "backend",
+      "llm_raw": [
+        "devops",
+        "docs"
+      ],
+      "repo": "makeplane/plane"
+    },
+    {
+      "file": "aio/Dockerfile-app",
+      "pattern": "other",
+      "llm": "backend",
+      "llm_raw": [
+        "backend",
+        "devops"
+      ],
+      "repo": "makeplane/plane"
+    },
+    {
+      "file": "aio/Dockerfile-app",
+      "pattern": "other",
+      "llm": "frontend",
+      "llm_raw": [
+        "frontend"
+      ],
+      "repo": "makeplane/plane"
+    },
+    {
+      "file": "aio/Dockerfile-base-full",
+      "pattern": "other",
+      "llm": "backend",
+      "llm_raw": [
+        "devops"
+      ],
+      "repo": "makeplane/plane"
+    },
+    {
+      "file": "aio/Dockerfile-base-full",
+      "pattern": "other",
+      "llm": "frontend",
+      "llm_raw": [
+        "frontend"
+      ],
+      "repo": "makeplane/plane"
+    },
+    {
+      "file": "aio/Dockerfile-base-slim",
+      "pattern": "other",
+      "llm": "backend",
+      "llm_raw": [
+        "devops"
+      ],
+      "repo": "makeplane/plane"
+    },
+    {
+      "file": "aio/Dockerfile-base-slim",
+      "pattern": "other",
+      "llm": "frontend",
+      "llm_raw": [
+        "frontend"
+      ],
+      "repo": "makeplane/plane"
+    },
+    {
+      "file": "aio/env.sh",
+      "pattern": "backend",
+      "llm": "frontend",
+      "llm_raw": [
+        "frontend"
+      ],
+      "repo": "makeplane/plane"
+    },
+    {
+      "file": "aio-multiport-setup.Caddyfile",
+      "pattern": "other",
+      "llm": "backend",
+      "llm_raw": [
+        "backend",
+        "devops",
+        "data"
+      ],
+      "repo": "hoppscotch/hoppscotch"
+    },
+    {
+      "file": "aio-multiport-setup.Caddyfile",
+      "pattern": "other",
+      "llm": "backend",
+      "llm_raw": [
+        "backend",
+        "devops"
+      ],
+      "repo": "hoppscotch/hoppscotch"
+    },
+    {
+      "file": "aio/nginx.conf",
+      "pattern": "config",
+      "llm": "backend",
+      "llm_raw": [
+        "devops"
+      ],
+      "repo": "makeplane/plane"
+    },
+    {
+      "file": "aio/postgresql.conf",
+      "pattern": "config",
+      "llm": "backend",
+      "llm_raw": [
+        "devops"
+      ],
+      "repo": "makeplane/plane"
+    },
+    {
+      "file": "aio_run.mjs",
+      "pattern": "javascript",
+      "llm": "backend",
+      "llm_raw": [
+        "backend",
+        "devops"
+      ],
+      "repo": "hoppscotch/hoppscotch"
+    },
+    {
+      "file": "aio_run.mjs",
+      "pattern": "javascript",
+      "llm": "backend",
+      "llm_raw": [
+        "backend",
+        "devops"
+      ],
+      "repo": "hoppscotch/hoppscotch"
+    },
+    {
+      "file": "aio-subpath-access.Caddyfile",
+      "pattern": "other",
+      "llm": "backend",
+      "llm_raw": [
+        "backend",
+        "devops"
+      ],
+      "repo": "hoppscotch/hoppscotch"
+    },
+    {
+      "file": "aio-subpath-access.Caddyfile",
+      "pattern": "other",
+      "llm": "backend",
+      "llm_raw": [
+        "backend",
+        "devops",
+        "data"
+      ],
+      "repo": "hoppscotch/hoppscotch"
+    },
+    {
+      "file": "aio/supervisord-app",
+      "pattern": "other",
+      "llm": "backend",
+      "llm_raw": [
+        "devops"
+      ],
+      "repo": "makeplane/plane"
+    },
+    {
+      "file": "aio/supervisord-app",
+      "pattern": "other",
+      "llm": "backend",
+      "llm_raw": [
+        "devops"
+      ],
+      "repo": "makeplane/plane"
+    },
+    {
+      "file": "aio/supervisord-full-base",
+      "pattern": "other",
+      "llm": "backend",
+      "llm_raw": [
+        "devops"
+      ],
+      "repo": "makeplane/plane"
+    },
+    {
+      "file": "aio/supervisord-slim-base",
+      "pattern": "other",
+      "llm": "backend",
+      "llm_raw": [
+        "devops"
+      ],
+      "repo": "makeplane/plane"
+    },
+    {
+      "file": ".ai/patterns/api-and-routing.md",
+      "pattern": "docs",
+      "llm": "backend",
+      "llm_raw": [
+        "backend",
+        "devops"
+      ],
+      "repo": "coollabsio/coolify"
+    },
+    {
+      "file": ".ai/patterns/database-patterns.md",
+      "pattern": "docs",
+      "llm": "backend",
+      "llm_raw": [
+        "backend"
+      ],
+      "repo": "coollabsio/coolify"
+    },
+    {
+      "file": ".ai/patterns/database-patterns.md",
+      "pattern": "docs",
+      "llm": "backend",
+      "llm_raw": [
+        "backend",
+        "devops"
+      ],
+      "repo": "coollabsio/coolify"
+    },
+    {
+      "file": ".ai/patterns/database-patterns.md",
+      "pattern": "docs",
+      "llm": "backend",
+      "llm_raw": [
+        "backend",
+        "devops"
+      ],
+      "repo": "coollabsio/coolify"
+    },
+    {
+      "file": ".ai/patterns/form-components.md",
+      "pattern": "docs",
+      "llm": "backend",
+      "llm_raw": [
+        "backend",
+        "devops"
+      ],
+      "repo": "coollabsio/coolify"
+    },
+    {
+      "file": ".ai/patterns/frontend-patterns.md",
+      "pattern": "docs",
+      "llm": "backend",
+      "llm_raw": [
+        "backend",
+        "devops"
+      ],
+      "repo": "coollabsio/coolify"
+    },
+    {
+      "file": ".ai/patterns/security-patterns.md",
+      "pattern": "docs",
+      "llm": "backend",
+      "llm_raw": [
+        "backend"
+      ],
+      "repo": "coollabsio/coolify"
+    },
+    {
+      "file": ".ai/patterns/security-patterns.md",
+      "pattern": "docs",
+      "llm": "backend",
+      "llm_raw": [
+        "backend",
+        "devops"
+      ],
+      "repo": "coollabsio/coolify"
+    },
+    {
+      "file": ".ai/README.md",
+      "pattern": "docs",
+      "llm": "backend",
+      "llm_raw": [
+        "backend"
+      ],
+      "repo": "coollabsio/coolify"
+    },
+    {
+      "file": ".ai/README.md",
+      "pattern": "docs",
+      "llm": "backend",
+      "llm_raw": [
+        "backend"
+      ],
+      "repo": "coollabsio/coolify"
+    },
+    {
+      "file": ".ai/README.md",
+      "pattern": "docs",
+      "llm": "backend",
+      "llm_raw": [
+        "backend",
+        "devops"
+      ],
+      "repo": "coollabsio/coolify"
+    }
+  ]
+}
