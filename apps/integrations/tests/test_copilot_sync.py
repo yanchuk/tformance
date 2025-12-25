@@ -252,10 +252,17 @@ class TestSyncCopilotMetricsTask(TestCase):
 
 
 class TestSyncAllCopilotMetrics(TestCase):
-    """Tests for sync_all_copilot_metrics Celery task."""
+    """Tests for sync_all_copilot_metrics Celery task.
+
+    Note: These tests mock GitHubIntegration.objects to return only the test's
+    integrations. This prevents flaky failures when running in parallel with
+    other tests that create GitHubIntegration objects.
+    """
 
     def setUp(self):
         """Set up test fixtures using factories."""
+        from apps.integrations.models import GitHubIntegration
+
         # Create multiple teams with GitHub integrations
         self.team1 = TeamFactory()
         self.credential1 = IntegrationCredentialFactory(team=self.team1, provider="github")
@@ -268,10 +275,28 @@ class TestSyncAllCopilotMetrics(TestCase):
         # Create team without GitHub integration
         self.team_no_integration = TeamFactory()
 
+        # Store integration IDs for isolated queryset
+        self.integration_ids = [self.integration1.id, self.integration2.id]
+
+        # Create isolated queryset that only includes this test's integrations
+        self.isolated_qs = GitHubIntegration.objects.filter(id__in=self.integration_ids)
+
+    def _get_isolated_queryset_mock(self):
+        """Return a mock manager that returns only this test's integrations."""
+
+        mock_manager = MagicMock()
+        # Chain .exclude().exclude() to return the isolated queryset
+        mock_manager.exclude.return_value.exclude.return_value = self.isolated_qs
+        return mock_manager
+
     @patch("apps.integrations.tasks.sync_copilot_metrics_task")
-    def test_sync_all_copilot_metrics_dispatches_tasks_for_each_team(self, mock_task):
+    @patch("apps.integrations.tasks.GitHubIntegration.objects")
+    def test_sync_all_copilot_metrics_dispatches_tasks_for_each_team(self, mock_objects, mock_task):
         """Test that sync_all_copilot_metrics dispatches individual tasks for all teams with GitHub."""
         from apps.integrations.tasks import sync_all_copilot_metrics
+
+        # Mock to return only this test's integrations
+        mock_objects.exclude.return_value.exclude.return_value = self.isolated_qs
 
         # Mock the delay method
         mock_delay = MagicMock()
@@ -297,13 +322,14 @@ class TestSyncAllCopilotMetrics(TestCase):
         self.assertEqual(result["teams_dispatched"], 2)
 
     @patch("apps.integrations.tasks.sync_copilot_metrics_task")
-    def test_sync_all_copilot_metrics_handles_empty_team_list(self, mock_task):
+    @patch("apps.integrations.tasks.GitHubIntegration.objects")
+    def test_sync_all_copilot_metrics_handles_empty_team_list(self, mock_objects, mock_task):
         """Test that task handles case where no teams have GitHub integration."""
-        # Delete all GitHub integrations
         from apps.integrations.models import GitHubIntegration
         from apps.integrations.tasks import sync_all_copilot_metrics
 
-        GitHubIntegration.objects.all().delete()
+        # Mock to return empty queryset (no integrations)
+        mock_objects.exclude.return_value.exclude.return_value = GitHubIntegration.objects.none()
 
         # Mock the delay method
         mock_delay = MagicMock()
@@ -321,9 +347,13 @@ class TestSyncAllCopilotMetrics(TestCase):
         self.assertEqual(result["teams_dispatched"], 0)
 
     @patch("apps.integrations.tasks.sync_copilot_metrics_task")
-    def test_sync_all_copilot_metrics_continues_on_individual_dispatch_error(self, mock_task):
+    @patch("apps.integrations.tasks.GitHubIntegration.objects")
+    def test_sync_all_copilot_metrics_continues_on_individual_dispatch_error(self, mock_objects, mock_task):
         """Test that task continues dispatching even if one dispatch fails."""
         from apps.integrations.tasks import sync_all_copilot_metrics
+
+        # Mock to return only this test's integrations
+        mock_objects.exclude.return_value.exclude.return_value = self.isolated_qs
 
         # Mock delay to raise exception for first team only
         mock_delay = MagicMock()
@@ -349,9 +379,13 @@ class TestSyncAllCopilotMetrics(TestCase):
         self.assertEqual(result["teams_dispatched"], 1)
 
     @patch("apps.integrations.tasks.sync_copilot_metrics_task")
-    def test_sync_all_copilot_metrics_returns_correct_counts(self, mock_task):
+    @patch("apps.integrations.tasks.GitHubIntegration.objects")
+    def test_sync_all_copilot_metrics_returns_correct_counts(self, mock_objects, mock_task):
         """Test that task returns dict with teams_dispatched count."""
         from apps.integrations.tasks import sync_all_copilot_metrics
+
+        # Mock to return only this test's integrations
+        mock_objects.exclude.return_value.exclude.return_value = self.isolated_qs
 
         # Mock the delay method
         mock_delay = MagicMock()
