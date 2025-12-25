@@ -1,0 +1,73 @@
+{% comment %}
+PostHog Analytics Initialization
+
+Loads PostHog JS SDK and initializes with:
+- Autocapture for clicks and page views
+- Session recording with input masking
+- User and team identification for authenticated users
+
+Include this partial in base.html after other analytics.
+{% endcomment %}
+{% if POSTHOG_API_KEY %}
+<script>
+!function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="init push capture register register_once register_for_session unregister unregister_for_session getFeatureFlag getFeatureFlagPayload isFeatureEnabled reloadFeatureFlags updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures on onFeatureFlags onSurveys onSessionId getSurveys getActiveMatchingSurveys renderSurvey canRenderSurvey identify setPersonProperties group resetGroups setPersonPropertiesForFlags resetPersonPropertiesForFlags setGroupPropertiesForFlags resetGroupPropertiesForFlags reset get_distinct_id getGroups get_session_id get_session_replay_url alias set_config startSessionRecording stopSessionRecording sessionRecordingStarted captureException loadToolbar get_property getSessionProperty createPersonProfile opt_in_capturing opt_out_capturing has_opted_in_capturing has_opted_out_capturing clear_opt_in_out_capturing debug getPageViewId".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
+
+posthog.init('{{ POSTHOG_API_KEY }}', {
+    api_host: '{{ POSTHOG_HOST }}',
+    person_profiles: 'identified_only',
+    capture_pageview: true,
+    capture_pageleave: true,
+    autocapture: {
+        dom_event_allowlist: ['click', 'submit', 'change'],
+        element_allowlist: ['a', 'button', 'form', 'input', 'select', 'textarea'],
+    },
+    session_recording: {
+        maskAllInputs: true,
+        maskInputOptions: {
+            password: true,
+        },
+        // Exclude sensitive pages from recording
+        recordCrossOriginIframes: false,
+    },
+    // Respect Do Not Track browser setting
+    respect_dnt: true,
+    // Bootstrap feature flags for faster evaluation
+    bootstrap: {
+        featureFlags: {},
+    },
+    loaded: function(posthog) {
+        {% if user.is_authenticated %}
+        // Identify authenticated user
+        posthog.identify('{{ user.id }}', {
+            email: '{{ user.email|escapejs }}',
+            name: '{{ user.get_full_name|escapejs }}',
+            {% if user.date_joined %}
+            signup_date: '{{ user.date_joined|date:"c" }}',
+            {% endif %}
+        });
+        {% if team %}
+        // Associate user with their team (group analytics)
+        posthog.group('team', '{{ team.slug|escapejs }}', {
+            name: '{{ team.name|escapejs }}',
+            {% if team.members %}
+            member_count: {{ team.members.count }},
+            {% endif %}
+        });
+        {% endif %}
+        {% endif %}
+    }
+});
+
+// Exclude certain pages from session recording
+(function() {
+    var excludePaths = ['/accounts/', '/admin/', '/api/', '/__reload__/'];
+    var currentPath = window.location.pathname;
+    for (var i = 0; i < excludePaths.length; i++) {
+        if (currentPath.startsWith(excludePaths[i])) {
+            posthog.stopSessionRecording();
+            break;
+        }
+    }
+})();
+</script>
+{% endif %}

@@ -6,6 +6,7 @@ from django.template.response import TemplateResponse
 from apps.metrics.services import insight_service
 from apps.metrics.view_utils import get_date_range_from_request
 from apps.teams.decorators import team_admin_required
+from apps.utils.analytics import track_event
 
 
 def _get_analytics_context(request: HttpRequest, active_page: str) -> dict:
@@ -39,6 +40,22 @@ def analytics_overview(request: HttpRequest) -> HttpResponse:
     """
     context = _get_analytics_context(request, "overview")
     context["insights"] = insight_service.get_recent_insights(request.team)
+
+    # Track first dashboard view (once per session)
+    if not request.session.get("_posthog_dashboard_viewed"):
+        track_event(
+            request.user,
+            "dashboard_first_view",
+            {"team_slug": request.team.slug},
+        )
+        request.session["_posthog_dashboard_viewed"] = True
+
+    # Track page view
+    track_event(
+        request.user,
+        "analytics_viewed",
+        {"tab": "overview", "date_range": context["days"], "team_slug": request.team.slug},
+    )
 
     # Return partial for HTMX requests
     template = "metrics/analytics/overview.html#page-content" if request.htmx else "metrics/analytics/overview.html"

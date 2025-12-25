@@ -200,6 +200,8 @@ TEMPLATES = [
                 "apps.teams.context_processors.user_teams",
                 # this line can be removed if not using google analytics
                 "apps.web.context_processors.google_analytics_id",
+                # PostHog analytics
+                "apps.web.context_processors.posthog_config",
             ],
             "loaders": _DEFAULT_LOADERS if DEBUG else _CACHED_LOADERS,
             "builtins": [
