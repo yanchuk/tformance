@@ -1,0 +1,821 @@
+{
+  "description": "45 labeled PRs for A/B testing timeline effectiveness on health assessment",
+  "version": "1.0.0",
+  "test_cases": [
+    {
+      "id": "low_friction_01",
+      "category": "low_friction_low_risk",
+      "pr_title": "Fix typo in README",
+      "pr_body": "Fixed a small typo in the installation instructions.",
+      "additions": 2,
+      "deletions": 2,
+      "cycle_time_hours": 4.5,
+      "review_time_hours": 1.0,
+      "commits_after_first_review": 0,
+      "review_rounds": 1,
+      "timeline": "Timeline:\n- [+0.5h] COMMIT: Fix typo in README\n- [+1.0h] REVIEW [APPROVED]: Alice: LGTM\n- [+4.5h] MERGED",
+      "expected_health": {
+        "review_friction": "low",
+        "scope": "small",
+        "risk_level": "low"
+      }
+    },
+    {
+      "id": "low_friction_02",
+      "category": "low_friction_low_risk",
+      "pr_title": "Update dependencies",
+      "pr_body": "Bumped minor versions of test dependencies.",
+      "additions": 15,
+      "deletions": 15,
+      "cycle_time_hours": 6.0,
+      "review_time_hours": 2.0,
+      "commits_after_first_review": 0,
+      "review_rounds": 1,
+      "timeline": "Timeline:\n- [+0.5h] COMMIT: Update pytest to 8.0.1\n- [+2.0h] REVIEW [APPROVED]: Bob: Looks good\n- [+6.0h] MERGED",
+      "expected_health": {
+        "review_friction": "low",
+        "scope": "small",
+        "risk_level": "low"
+      }
+    },
+    {
+      "id": "low_friction_03",
+      "category": "low_friction_low_risk",
+      "pr_title": "Add logging to auth module",
+      "pr_body": "Added debug logging for authentication flow troubleshooting.",
+      "additions": 25,
+      "deletions": 3,
+      "cycle_time_hours": 8.0,
+      "review_time_hours": 3.0,
+      "commits_after_first_review": 0,
+      "review_rounds": 1,
+      "timeline": "Timeline:\n- [+0.5h] COMMIT: Add debug logging to auth\n- [+3.0h] REVIEW [APPROVED]: Carol: Nice addition\n- [+8.0h] MERGED",
+      "expected_health": {
+        "review_friction": "low",
+        "scope": "small",
+        "risk_level": "low"
+      }
+    },
+    {
+      "id": "low_friction_04",
+      "category": "low_friction_low_risk",
+      "pr_title": "Fix button color in dark mode",
+      "pr_body": "The submit button was invisible in dark mode. Fixed contrast.",
+      "additions": 5,
+      "deletions": 2,
+      "cycle_time_hours": 3.0,
+      "review_time_hours": 0.5,
+      "commits_after_first_review": 0,
+      "review_rounds": 1,
+      "timeline": "Timeline:\n- [+0.2h] COMMIT: Fix button color for dark mode\n- [+0.5h] REVIEW [APPROVED]: Dan: Thanks for fixing\n- [+3.0h] MERGED",
+      "expected_health": {
+        "review_friction": "low",
+        "scope": "small",
+        "risk_level": "low"
+      }
+    },
+    {
+      "id": "low_friction_05",
+      "category": "low_friction_low_risk",
+      "pr_title": "Add test for edge case",
+      "pr_body": "Added test for empty input validation.",
+      "additions": 18,
+      "deletions": 0,
+      "cycle_time_hours": 5.0,
+      "review_time_hours": 1.5,
+      "commits_after_first_review": 0,
+      "review_rounds": 1,
+      "timeline": "Timeline:\n- [+0.3h] COMMIT: Add empty input test\n- [+1.5h] REVIEW [APPROVED]: Eve: Good coverage\n- [+5.0h] MERGED",
+      "expected_health": {
+        "review_friction": "low",
+        "scope": "small",
+        "risk_level": "low"
+      }
+    },
+    {
+      "id": "low_friction_06",
+      "category": "low_friction_low_risk",
+      "pr_title": "Remove unused import",
+      "pr_body": "Cleanup: removed unused datetime import.",
+      "additions": 0,
+      "deletions": 1,
+      "cycle_time_hours": 2.0,
+      "review_time_hours": 0.3,
+      "commits_after_first_review": 0,
+      "review_rounds": 1,
+      "timeline": "Timeline:\n- [+0.1h] COMMIT: Remove unused import\n- [+0.3h] REVIEW [APPROVED]: Frank: Clean\n- [+2.0h] MERGED",
+      "expected_health": {
+        "review_friction": "low",
+        "scope": "small",
+        "risk_level": "low"
+      }
+    },
+    {
+      "id": "low_friction_07",
+      "category": "low_friction_low_risk",
+      "pr_title": "Update API docs",
+      "pr_body": "Added missing parameter documentation for /users endpoint.",
+      "additions": 12,
+      "deletions": 2,
+      "cycle_time_hours": 4.0,
+      "review_time_hours": 1.0,
+      "commits_after_first_review": 0,
+      "review_rounds": 1,
+      "timeline": "Timeline:\n- [+0.4h] COMMIT: Document /users endpoint params\n- [+1.0h] REVIEW [APPROVED]: Grace: Clear docs\n- [+4.0h] MERGED",
+      "expected_health": {
+        "review_friction": "low",
+        "scope": "small",
+        "risk_level": "low"
+      }
+    },
+    {
+      "id": "low_friction_08",
+      "category": "low_friction_low_risk",
+      "pr_title": "Fix date format in report",
+      "pr_body": "Changed date format from MM/DD to ISO 8601.",
+      "additions": 3,
+      "deletions": 3,
+      "cycle_time_hours": 5.5,
+      "review_time_hours": 2.0,
+      "commits_after_first_review": 0,
+      "review_rounds": 1,
+      "timeline": "Timeline:\n- [+0.5h] COMMIT: Use ISO 8601 date format\n- [+2.0h] REVIEW [APPROVED]: Henry: Good standardization\n- [+5.5h] MERGED",
+      "expected_health": {
+        "review_friction": "low",
+        "scope": "small",
+        "risk_level": "low"
+      }
+    },
+    {
+      "id": "low_friction_09",
+      "category": "low_friction_low_risk",
+      "pr_title": "Add health check endpoint",
+      "pr_body": "Simple /health endpoint for load balancer.",
+      "additions": 20,
+      "deletions": 0,
+      "cycle_time_hours": 6.0,
+      "review_time_hours": 1.5,
+      "commits_after_first_review": 0,
+      "review_rounds": 1,
+      "timeline": "Timeline:\n- [+0.5h] COMMIT: Add /health endpoint\n- [+1.5h] REVIEW [APPROVED]: Ivy: Standard pattern\n- [+6.0h] MERGED",
+      "expected_health": {
+        "review_friction": "low",
+        "scope": "small",
+        "risk_level": "low"
+      }
+    },
+    {
+      "id": "low_friction_10",
+      "category": "low_friction_low_risk",
+      "pr_title": "Rename variable for clarity",
+      "pr_body": "Renamed 'x' to 'user_count' for readability.",
+      "additions": 8,
+      "deletions": 8,
+      "cycle_time_hours": 3.5,
+      "review_time_hours": 0.8,
+      "commits_after_first_review": 0,
+      "review_rounds": 1,
+      "timeline": "Timeline:\n- [+0.3h] COMMIT: Rename x to user_count\n- [+0.8h] REVIEW [APPROVED]: Jack: Much clearer\n- [+3.5h] MERGED",
+      "expected_health": {
+        "review_friction": "low",
+        "scope": "small",
+        "risk_level": "low"
+      }
+    },
+    {
+      "id": "high_friction_01",
+      "category": "high_friction",
+      "pr_title": "Refactor authentication system",
+      "pr_body": "Major refactor of auth module. Changed from session-based to JWT.",
+      "additions": 450,
+      "deletions": 380,
+      "cycle_time_hours": 168.0,
+      "review_time_hours": 24.0,
+      "commits_after_first_review": 8,
+      "review_rounds": 4,
+      "timeline": "Timeline:\n- [+1.0h] COMMIT: Initial JWT implementation\n- [+24.0h] REVIEW [CHANGES_REQUESTED]: Alice: Need refresh token logic\n- [+26.0h] COMMIT: Add refresh token\n- [+48.0h] REVIEW [CHANGES_REQUESTED]: Alice: Security concern with token storage\n- [+52.0h] COMMIT: Use httpOnly cookies\n- [+72.0h] COMMENT: Bob: What about mobile apps?\n- [+76.0h] COMMIT: Add bearer token support for mobile\n- [+96.0h] REVIEW [CHANGES_REQUESTED]: Carol: Need migration script\n- [+100.0h] COMMIT: Add migration script\n- [+120.0h] REVIEW [APPROVED]: Alice: LGTM now\n- [+168.0h] MERGED",
+      "expected_health": {
+        "review_friction": "high",
+        "scope": "large",
+        "risk_level": "high"
+      }
+    },
+    {
+      "id": "high_friction_02",
+      "category": "high_friction",
+      "pr_title": "Add payment processing",
+      "pr_body": "Integrate Stripe for payment processing.",
+      "additions": 620,
+      "deletions": 45,
+      "cycle_time_hours": 240.0,
+      "review_time_hours": 48.0,
+      "commits_after_first_review": 12,
+      "review_rounds": 5,
+      "timeline": "Timeline:\n- [+2.0h] COMMIT: Basic Stripe integration\n- [+48.0h] REVIEW [CHANGES_REQUESTED]: Dan: PCI compliance issues\n- [+52.0h] COMMIT: Fix card data handling\n- [+72.0h] REVIEW [CHANGES_REQUESTED]: Dan: Need error handling\n- [+76.0h] COMMIT: Add error handling\n- [+96.0h] REVIEW [CHANGES_REQUESTED]: Eve: Webhook signature verification missing\n- [+100.0h] COMMIT: Add webhook verification\n- [+120.0h] COMMENT: Frank: What about refunds?\n- [+124.0h] COMMIT: Add refund support\n- [+144.0h] REVIEW [CHANGES_REQUESTED]: Dan: Test coverage low\n- [+150.0h] COMMIT: Add integration tests\n- [+168.0h] REVIEW [APPROVED]: Dan: Good now\n- [+240.0h] MERGED",
+      "expected_health": {
+        "review_friction": "high",
+        "scope": "xlarge",
+        "risk_level": "high"
+      }
+    },
+    {
+      "id": "high_friction_03",
+      "category": "high_friction",
+      "pr_title": "Redesign database schema",
+      "pr_body": "Normalize tables and add proper indexes.",
+      "additions": 350,
+      "deletions": 280,
+      "cycle_time_hours": 144.0,
+      "review_time_hours": 36.0,
+      "commits_after_first_review": 6,
+      "review_rounds": 3,
+      "timeline": "Timeline:\n- [+1.0h] COMMIT: Initial schema changes\n- [+36.0h] REVIEW [CHANGES_REQUESTED]: Grace: Migration will lock tables\n- [+40.0h] COMMIT: Add online migration strategy\n- [+60.0h] REVIEW [CHANGES_REQUESTED]: Grace: Missing rollback\n- [+64.0h] COMMIT: Add rollback migration\n- [+84.0h] COMMENT: Henry: Tested on staging?\n- [+88.0h] COMMIT: Add staging test results\n- [+108.0h] REVIEW [APPROVED]: Grace: Approved with monitoring\n- [+144.0h] MERGED",
+      "expected_health": {
+        "review_friction": "high",
+        "scope": "large",
+        "risk_level": "high"
+      }
+    },
+    {
+      "id": "high_friction_04",
+      "category": "high_friction",
+      "pr_title": "Implement real-time notifications",
+      "pr_body": "WebSocket-based notification system.",
+      "additions": 520,
+      "deletions": 30,
+      "cycle_time_hours": 192.0,
+      "review_time_hours": 24.0,
+      "commits_after_first_review": 9,
+      "review_rounds": 4,
+      "timeline": "Timeline:\n- [+1.0h] COMMIT: Add WebSocket server\n- [+24.0h] REVIEW [CHANGES_REQUESTED]: Ivy: Need reconnection logic\n- [+28.0h] COMMIT: Add auto-reconnect\n- [+48.0h] REVIEW [CHANGES_REQUESTED]: Ivy: Memory leak in connection pool\n- [+52.0h] COMMIT: Fix connection pool cleanup\n- [+72.0h] COMMENT: Jack: Load tested?\n- [+80.0h] COMMIT: Add load test results\n- [+96.0h] REVIEW [CHANGES_REQUESTED]: Ivy: Need rate limiting\n- [+100.0h] COMMIT: Add rate limiting\n- [+120.0h] REVIEW [APPROVED]: Ivy: LGTM\n- [+192.0h] MERGED",
+      "expected_health": {
+        "review_friction": "high",
+        "scope": "xlarge",
+        "risk_level": "high"
+      }
+    },
+    {
+      "id": "high_friction_05",
+      "category": "high_friction",
+      "pr_title": "Add multi-tenancy support",
+      "pr_body": "Isolate tenant data using row-level security.",
+      "additions": 480,
+      "deletions": 120,
+      "cycle_time_hours": 216.0,
+      "review_time_hours": 48.0,
+      "commits_after_first_review": 10,
+      "review_rounds": 4,
+      "timeline": "Timeline:\n- [+2.0h] COMMIT: Add tenant context middleware\n- [+48.0h] REVIEW [CHANGES_REQUESTED]: Kate: RLS policies missing\n- [+54.0h] COMMIT: Add RLS policies\n- [+72.0h] REVIEW [CHANGES_REQUESTED]: Kate: Cross-tenant query possible\n- [+78.0h] COMMIT: Fix query scoping\n- [+96.0h] COMMENT: Leo: Need tenant switching for admins\n- [+102.0h] COMMIT: Add admin tenant switch\n- [+120.0h] REVIEW [CHANGES_REQUESTED]: Kate: Audit logging needed\n- [+126.0h] COMMIT: Add audit logs\n- [+168.0h] REVIEW [APPROVED]: Kate: Security looks good\n- [+216.0h] MERGED",
+      "expected_health": {
+        "review_friction": "high",
+        "scope": "large",
+        "risk_level": "high"
+      }
+    },
+    {
+      "id": "high_friction_06",
+      "category": "high_friction",
+      "pr_title": "Migrate to TypeScript",
+      "pr_body": "Convert frontend codebase from JavaScript to TypeScript.",
+      "additions": 890,
+      "deletions": 720,
+      "cycle_time_hours": 288.0,
+      "review_time_hours": 72.0,
+      "commits_after_first_review": 15,
+      "review_rounds": 5,
+      "timeline": "Timeline:\n- [+4.0h] COMMIT: Initial TS config\n- [+72.0h] REVIEW [CHANGES_REQUESTED]: Mary: Type definitions incomplete\n- [+80.0h] COMMIT: Add missing types\n- [+96.0h] REVIEW [CHANGES_REQUESTED]: Mary: any types not allowed\n- [+104.0h] COMMIT: Replace any with proper types\n- [+120.0h] REVIEW [CHANGES_REQUESTED]: Nancy: Component props need interfaces\n- [+128.0h] COMMIT: Add prop interfaces\n- [+144.0h] COMMENT: Oscar: What about tests?\n- [+152.0h] COMMIT: Update test types\n- [+168.0h] REVIEW [CHANGES_REQUESTED]: Mary: CI failing\n- [+176.0h] COMMIT: Fix CI config\n- [+240.0h] REVIEW [APPROVED]: Mary: All good\n- [+288.0h] MERGED",
+      "expected_health": {
+        "review_friction": "high",
+        "scope": "xlarge",
+        "risk_level": "high"
+      }
+    },
+    {
+      "id": "high_friction_07",
+      "category": "high_friction",
+      "pr_title": "Add caching layer",
+      "pr_body": "Redis caching for frequently accessed data.",
+      "additions": 280,
+      "deletions": 45,
+      "cycle_time_hours": 120.0,
+      "review_time_hours": 24.0,
+      "commits_after_first_review": 7,
+      "review_rounds": 3,
+      "timeline": "Timeline:\n- [+1.0h] COMMIT: Add Redis client\n- [+24.0h] REVIEW [CHANGES_REQUESTED]: Pat: Cache invalidation missing\n- [+28.0h] COMMIT: Add cache invalidation\n- [+48.0h] REVIEW [CHANGES_REQUESTED]: Pat: TTL too long\n- [+52.0h] COMMIT: Reduce TTL to 5 minutes\n- [+72.0h] COMMENT: Quinn: Fallback when Redis down?\n- [+76.0h] COMMIT: Add graceful degradation\n- [+96.0h] REVIEW [APPROVED]: Pat: Solid implementation\n- [+120.0h] MERGED",
+      "expected_health": {
+        "review_friction": "high",
+        "scope": "medium",
+        "risk_level": "medium"
+      }
+    },
+    {
+      "id": "high_friction_08",
+      "category": "high_friction",
+      "pr_title": "Implement search feature",
+      "pr_body": "Full-text search using Elasticsearch.",
+      "additions": 560,
+      "deletions": 20,
+      "cycle_time_hours": 168.0,
+      "review_time_hours": 36.0,
+      "commits_after_first_review": 8,
+      "review_rounds": 3,
+      "timeline": "Timeline:\n- [+2.0h] COMMIT: Add ES client\n- [+36.0h] REVIEW [CHANGES_REQUESTED]: Rose: Indexing strategy?\n- [+42.0h] COMMIT: Add background indexing\n- [+60.0h] REVIEW [CHANGES_REQUESTED]: Rose: Pagination broken\n- [+66.0h] COMMIT: Fix search pagination\n- [+84.0h] COMMENT: Sam: Fuzzy matching?\n- [+90.0h] COMMIT: Add fuzzy search\n- [+120.0h] REVIEW [APPROVED]: Rose: Works well\n- [+168.0h] MERGED",
+      "expected_health": {
+        "review_friction": "high",
+        "scope": "xlarge",
+        "risk_level": "medium"
+      }
+    },
+    {
+      "id": "high_friction_09",
+      "category": "high_friction",
+      "pr_title": "Add A/B testing framework",
+      "pr_body": "Feature flag system with experiment tracking.",
+      "additions": 380,
+      "deletions": 25,
+      "cycle_time_hours": 144.0,
+      "review_time_hours": 24.0,
+      "commits_after_first_review": 6,
+      "review_rounds": 3,
+      "timeline": "Timeline:\n- [+1.5h] COMMIT: Add feature flag model\n- [+24.0h] REVIEW [CHANGES_REQUESTED]: Tom: Need user cohort support\n- [+30.0h] COMMIT: Add cohort assignment\n- [+48.0h] REVIEW [CHANGES_REQUESTED]: Tom: Analytics integration missing\n- [+54.0h] COMMIT: Add analytics events\n- [+72.0h] COMMENT: Uma: Cache flags client-side?\n- [+78.0h] COMMIT: Add client-side caching\n- [+96.0h] REVIEW [APPROVED]: Tom: Complete solution\n- [+144.0h] MERGED",
+      "expected_health": {
+        "review_friction": "high",
+        "scope": "large",
+        "risk_level": "medium"
+      }
+    },
+    {
+      "id": "high_friction_10",
+      "category": "high_friction",
+      "pr_title": "Implement SSO integration",
+      "pr_body": "SAML and OIDC support for enterprise customers.",
+      "additions": 720,
+      "deletions": 80,
+      "cycle_time_hours": 240.0,
+      "review_time_hours": 48.0,
+      "commits_after_first_review": 11,
+      "review_rounds": 4,
+      "timeline": "Timeline:\n- [+3.0h] COMMIT: Add SAML provider\n- [+48.0h] REVIEW [CHANGES_REQUESTED]: Vera: Security review needed\n- [+56.0h] COMMIT: Address security concerns\n- [+72.0h] REVIEW [CHANGES_REQUESTED]: Vera: OIDC token validation wrong\n- [+80.0h] COMMIT: Fix token validation\n- [+96.0h] COMMENT: Will: Error messages unclear\n- [+104.0h] COMMIT: Improve error messages\n- [+120.0h] REVIEW [CHANGES_REQUESTED]: Vera: Session management issues\n- [+128.0h] COMMIT: Fix session handling\n- [+168.0h] REVIEW [APPROVED]: Vera: Security approved\n- [+240.0h] MERGED",
+      "expected_health": {
+        "review_friction": "high",
+        "scope": "xlarge",
+        "risk_level": "high"
+      }
+    },
+    {
+      "id": "blocker_01",
+      "category": "high_risk_blockers",
+      "pr_title": "Update payment gateway",
+      "pr_body": "Switch from legacy gateway to new provider.",
+      "additions": 180,
+      "deletions": 150,
+      "cycle_time_hours": 336.0,
+      "review_time_hours": 72.0,
+      "commits_after_first_review": 4,
+      "review_rounds": 2,
+      "timeline": "Timeline:\n- [+1.0h] COMMIT: Initial gateway switch\n- [+72.0h] REVIEW [CHANGES_REQUESTED]: Xena: Need production API keys\n- [+168.0h] COMMIT: Waiting for vendor - API keys received\n- [+264.0h] REVIEW [APPROVED]: Xena: Tested in staging\n- [+336.0h] MERGED",
+      "expected_health": {
+        "review_friction": "medium",
+        "scope": "medium",
+        "risk_level": "high"
+      }
+    },
+    {
+      "id": "blocker_02",
+      "category": "high_risk_blockers",
+      "pr_title": "GDPR compliance updates",
+      "pr_body": "Data deletion and export features for GDPR.",
+      "additions": 420,
+      "deletions": 60,
+      "cycle_time_hours": 504.0,
+      "review_time_hours": 168.0,
+      "commits_after_first_review": 5,
+      "review_rounds": 2,
+      "timeline": "Timeline:\n- [+2.0h] COMMIT: Add data export endpoint\n- [+168.0h] REVIEW [CHANGES_REQUESTED]: Legal hold - reviewing with lawyers\n- [+336.0h] COMMIT: Legal approved - add deletion workflow\n- [+408.0h] REVIEW [APPROVED]: Yolanda: Compliant\n- [+504.0h] MERGED",
+      "expected_health": {
+        "review_friction": "medium",
+        "scope": "large",
+        "risk_level": "high"
+      }
+    },
+    {
+      "id": "blocker_03",
+      "category": "high_risk_blockers",
+      "pr_title": "Infrastructure migration",
+      "pr_body": "Move from AWS to GCP.",
+      "additions": 650,
+      "deletions": 580,
+      "cycle_time_hours": 672.0,
+      "review_time_hours": 96.0,
+      "commits_after_first_review": 6,
+      "review_rounds": 2,
+      "timeline": "Timeline:\n- [+4.0h] COMMIT: Initial Terraform for GCP\n- [+96.0h] REVIEW [CHANGES_REQUESTED]: Zack: Cost analysis needed\n- [+240.0h] COMMENT: Finance approved budget\n- [+336.0h] COMMIT: Add monitoring config\n- [+504.0h] REVIEW [APPROVED]: Zack: Ready for migration window\n- [+672.0h] MERGED",
+      "expected_health": {
+        "review_friction": "medium",
+        "scope": "xlarge",
+        "risk_level": "high"
+      }
+    },
+    {
+      "id": "blocker_04",
+      "category": "high_risk_blockers",
+      "pr_title": "Third-party API integration",
+      "pr_body": "Integrate with partner's inventory API.",
+      "additions": 280,
+      "deletions": 20,
+      "cycle_time_hours": 408.0,
+      "review_time_hours": 48.0,
+      "commits_after_first_review": 3,
+      "review_rounds": 2,
+      "timeline": "Timeline:\n- [+1.0h] COMMIT: Add partner API client\n- [+48.0h] REVIEW [CHANGES_REQUESTED]: Amy: Waiting for partner sandbox access\n- [+240.0h] COMMIT: Partner provided credentials - tested\n- [+336.0h] REVIEW [APPROVED]: Amy: Integration verified\n- [+408.0h] MERGED",
+      "expected_health": {
+        "review_friction": "medium",
+        "scope": "medium",
+        "risk_level": "high"
+      }
+    },
+    {
+      "id": "blocker_05",
+      "category": "high_risk_blockers",
+      "pr_title": "Security audit fixes",
+      "pr_body": "Address findings from external security audit.",
+      "additions": 150,
+      "deletions": 80,
+      "cycle_time_hours": 480.0,
+      "review_time_hours": 120.0,
+      "commits_after_first_review": 4,
+      "review_rounds": 2,
+      "timeline": "Timeline:\n- [+2.0h] COMMIT: Fix XSS vulnerabilities\n- [+120.0h] REVIEW [CHANGES_REQUESTED]: Security team reviewing\n- [+288.0h] COMMIT: Address additional findings\n- [+408.0h] REVIEW [APPROVED]: Cleared by security\n- [+480.0h] MERGED",
+      "expected_health": {
+        "review_friction": "medium",
+        "scope": "medium",
+        "risk_level": "high"
+      }
+    },
+    {
+      "id": "blocker_06",
+      "category": "high_risk_blockers",
+      "pr_title": "Database upgrade",
+      "pr_body": "Upgrade PostgreSQL from 12 to 15.",
+      "additions": 45,
+      "deletions": 30,
+      "cycle_time_hours": 360.0,
+      "review_time_hours": 48.0,
+      "commits_after_first_review": 2,
+      "review_rounds": 2,
+      "timeline": "Timeline:\n- [+1.0h] COMMIT: Update PG version in config\n- [+48.0h] REVIEW [CHANGES_REQUESTED]: DBA: Need maintenance window\n- [+264.0h] COMMIT: Scheduled for weekend - added migration scripts\n- [+312.0h] REVIEW [APPROVED]: Ben: Ready for deployment\n- [+360.0h] MERGED",
+      "expected_health": {
+        "review_friction": "low",
+        "scope": "small",
+        "risk_level": "high"
+      }
+    },
+    {
+      "id": "blocker_07",
+      "category": "high_risk_blockers",
+      "pr_title": "Compliance certification prep",
+      "pr_body": "SOC 2 Type II documentation and controls.",
+      "additions": 320,
+      "deletions": 40,
+      "cycle_time_hours": 720.0,
+      "review_time_hours": 168.0,
+      "commits_after_first_review": 5,
+      "review_rounds": 3,
+      "timeline": "Timeline:\n- [+4.0h] COMMIT: Add audit logging\n- [+168.0h] REVIEW [CHANGES_REQUESTED]: Auditor: More documentation needed\n- [+336.0h] COMMIT: Add compliance docs\n- [+504.0h] REVIEW [CHANGES_REQUESTED]: Auditor: Access control gaps\n- [+576.0h] COMMIT: Fix access controls\n- [+648.0h] REVIEW [APPROVED]: Auditor: Compliant\n- [+720.0h] MERGED",
+      "expected_health": {
+        "review_friction": "high",
+        "scope": "large",
+        "risk_level": "high"
+      }
+    },
+    {
+      "id": "blocker_08",
+      "category": "high_risk_blockers",
+      "pr_title": "API versioning implementation",
+      "pr_body": "Add v2 API with breaking changes from v1.",
+      "additions": 480,
+      "deletions": 60,
+      "cycle_time_hours": 288.0,
+      "review_time_hours": 48.0,
+      "commits_after_first_review": 4,
+      "review_rounds": 2,
+      "timeline": "Timeline:\n- [+2.0h] COMMIT: Add v2 routes\n- [+48.0h] REVIEW [CHANGES_REQUESTED]: Client team needs migration guide\n- [+168.0h] COMMIT: Migration guide ready - add deprecation warnings\n- [+240.0h] REVIEW [APPROVED]: Carl: Clients notified\n- [+288.0h] MERGED",
+      "expected_health": {
+        "review_friction": "medium",
+        "scope": "large",
+        "risk_level": "high"
+      }
+    },
+    {
+      "id": "blocker_09",
+      "category": "high_risk_blockers",
+      "pr_title": "License compliance fix",
+      "pr_body": "Replace GPL library with MIT alternative.",
+      "additions": 220,
+      "deletions": 180,
+      "cycle_time_hours": 192.0,
+      "review_time_hours": 24.0,
+      "commits_after_first_review": 3,
+      "review_rounds": 2,
+      "timeline": "Timeline:\n- [+1.0h] COMMIT: Replace license-problematic lib\n- [+24.0h] REVIEW [CHANGES_REQUESTED]: Legal reviewing\n- [+120.0h] COMMIT: Legal approved - update attribution\n- [+168.0h] REVIEW [APPROVED]: Donna: License cleared\n- [+192.0h] MERGED",
+      "expected_health": {
+        "review_friction": "medium",
+        "scope": "medium",
+        "risk_level": "high"
+      }
+    },
+    {
+      "id": "blocker_10",
+      "category": "high_risk_blockers",
+      "pr_title": "Performance optimization",
+      "pr_body": "Critical path optimization before Black Friday.",
+      "additions": 150,
+      "deletions": 90,
+      "cycle_time_hours": 168.0,
+      "review_time_hours": 12.0,
+      "commits_after_first_review": 4,
+      "review_rounds": 2,
+      "timeline": "Timeline:\n- [+0.5h] COMMIT: Optimize database queries\n- [+12.0h] REVIEW [CHANGES_REQUESTED]: Edward: Need load test results\n- [+96.0h] COMMENT: Load testing in progress\n- [+120.0h] COMMIT: Load test passed - add caching\n- [+144.0h] REVIEW [APPROVED]: Edward: Ready for release\n- [+168.0h] MERGED",
+      "expected_health": {
+        "review_friction": "medium",
+        "scope": "medium",
+        "risk_level": "high"
+      }
+    },
+    {
+      "id": "quick_response_01",
+      "category": "quick_response",
+      "pr_title": "Fix login redirect",
+      "pr_body": "Users were redirected to wrong page after login.",
+      "additions": 8,
+      "deletions": 3,
+      "cycle_time_hours": 3.0,
+      "review_time_hours": 0.5,
+      "commits_after_first_review": 1,
+      "review_rounds": 2,
+      "timeline": "Timeline:\n- [+0.2h] COMMIT: Fix redirect URL\n- [+0.5h] REVIEW [CHANGES_REQUESTED]: Fiona: Also fix mobile\n- [+0.8h] COMMIT: Fix mobile redirect\n- [+1.5h] REVIEW [APPROVED]: Fiona: All good\n- [+3.0h] MERGED",
+      "expected_health": {
+        "review_friction": "low",
+        "scope": "small",
+        "risk_level": "low"
+      }
+    },
+    {
+      "id": "quick_response_02",
+      "category": "quick_response",
+      "pr_title": "Update error message",
+      "pr_body": "User-facing error message was too technical.",
+      "additions": 5,
+      "deletions": 5,
+      "cycle_time_hours": 2.5,
+      "review_time_hours": 0.3,
+      "commits_after_first_review": 1,
+      "review_rounds": 2,
+      "timeline": "Timeline:\n- [+0.1h] COMMIT: Update error message\n- [+0.3h] REVIEW [CHANGES_REQUESTED]: George: Add help link\n- [+0.6h] COMMIT: Add help link\n- [+1.0h] REVIEW [APPROVED]: George: Perfect\n- [+2.5h] MERGED",
+      "expected_health": {
+        "review_friction": "low",
+        "scope": "small",
+        "risk_level": "low"
+      }
+    },
+    {
+      "id": "quick_response_03",
+      "category": "quick_response",
+      "pr_title": "Add input validation",
+      "pr_body": "Email field was accepting invalid formats.",
+      "additions": 25,
+      "deletions": 5,
+      "cycle_time_hours": 4.0,
+      "review_time_hours": 1.0,
+      "commits_after_first_review": 1,
+      "review_rounds": 2,
+      "timeline": "Timeline:\n- [+0.3h] COMMIT: Add email regex validation\n- [+1.0h] REVIEW [CHANGES_REQUESTED]: Hannah: Add test case\n- [+1.5h] COMMIT: Add test for validation\n- [+2.5h] REVIEW [APPROVED]: Hannah: Covered\n- [+4.0h] MERGED",
+      "expected_health": {
+        "review_friction": "low",
+        "scope": "small",
+        "risk_level": "low"
+      }
+    },
+    {
+      "id": "quick_response_04",
+      "category": "quick_response",
+      "pr_title": "Fix timezone display",
+      "pr_body": "Dashboard showed UTC instead of local time.",
+      "additions": 12,
+      "deletions": 8,
+      "cycle_time_hours": 3.5,
+      "review_time_hours": 0.8,
+      "commits_after_first_review": 1,
+      "review_rounds": 2,
+      "timeline": "Timeline:\n- [+0.2h] COMMIT: Convert to local timezone\n- [+0.8h] REVIEW [CHANGES_REQUESTED]: Ivan: Handle DST\n- [+1.2h] COMMIT: Handle daylight saving\n- [+2.0h] REVIEW [APPROVED]: Ivan: Works correctly\n- [+3.5h] MERGED",
+      "expected_health": {
+        "review_friction": "low",
+        "scope": "small",
+        "risk_level": "low"
+      }
+    },
+    {
+      "id": "quick_response_05",
+      "category": "quick_response",
+      "pr_title": "Add loading spinner",
+      "pr_body": "Form submission had no visual feedback.",
+      "additions": 18,
+      "deletions": 2,
+      "cycle_time_hours": 2.0,
+      "review_time_hours": 0.4,
+      "commits_after_first_review": 1,
+      "review_rounds": 2,
+      "timeline": "Timeline:\n- [+0.1h] COMMIT: Add loading state\n- [+0.4h] REVIEW [CHANGES_REQUESTED]: Julia: Disable button too\n- [+0.7h] COMMIT: Disable button during load\n- [+1.2h] REVIEW [APPROVED]: Julia: Nice UX\n- [+2.0h] MERGED",
+      "expected_health": {
+        "review_friction": "low",
+        "scope": "small",
+        "risk_level": "low"
+      }
+    },
+    {
+      "id": "quick_response_06",
+      "category": "quick_response",
+      "pr_title": "Fix memory leak",
+      "pr_body": "Event listener not removed on component unmount.",
+      "additions": 6,
+      "deletions": 1,
+      "cycle_time_hours": 1.5,
+      "review_time_hours": 0.3,
+      "commits_after_first_review": 1,
+      "review_rounds": 2,
+      "timeline": "Timeline:\n- [+0.1h] COMMIT: Add cleanup function\n- [+0.3h] REVIEW [CHANGES_REQUESTED]: Kevin: Use useEffect cleanup\n- [+0.5h] COMMIT: Proper useEffect cleanup\n- [+0.8h] REVIEW [APPROVED]: Kevin: Correct pattern\n- [+1.5h] MERGED",
+      "expected_health": {
+        "review_friction": "low",
+        "scope": "small",
+        "risk_level": "low"
+      }
+    },
+    {
+      "id": "quick_response_07",
+      "category": "quick_response",
+      "pr_title": "Update cache TTL",
+      "pr_body": "Cache was stale for too long causing issues.",
+      "additions": 3,
+      "deletions": 3,
+      "cycle_time_hours": 2.0,
+      "review_time_hours": 0.5,
+      "commits_after_first_review": 1,
+      "review_rounds": 2,
+      "timeline": "Timeline:\n- [+0.1h] COMMIT: Reduce TTL to 60s\n- [+0.5h] REVIEW [CHANGES_REQUESTED]: Linda: Add config option\n- [+0.8h] COMMIT: Make TTL configurable\n- [+1.2h] REVIEW [APPROVED]: Linda: Flexible\n- [+2.0h] MERGED",
+      "expected_health": {
+        "review_friction": "low",
+        "scope": "small",
+        "risk_level": "low"
+      }
+    },
+    {
+      "id": "quick_response_08",
+      "category": "quick_response",
+      "pr_title": "Fix null pointer",
+      "pr_body": "Crash when user profile has no avatar.",
+      "additions": 4,
+      "deletions": 1,
+      "cycle_time_hours": 1.0,
+      "review_time_hours": 0.2,
+      "commits_after_first_review": 1,
+      "review_rounds": 2,
+      "timeline": "Timeline:\n- [+0.1h] COMMIT: Add null check\n- [+0.2h] REVIEW [CHANGES_REQUESTED]: Mike: Use optional chaining\n- [+0.3h] COMMIT: Use optional chaining\n- [+0.5h] REVIEW [APPROVED]: Mike: Clean\n- [+1.0h] MERGED",
+      "expected_health": {
+        "review_friction": "low",
+        "scope": "small",
+        "risk_level": "low"
+      }
+    },
+    {
+      "id": "quick_response_09",
+      "category": "quick_response",
+      "pr_title": "Add retry logic",
+      "pr_body": "API calls fail on transient network errors.",
+      "additions": 22,
+      "deletions": 8,
+      "cycle_time_hours": 3.0,
+      "review_time_hours": 0.6,
+      "commits_after_first_review": 1,
+      "review_rounds": 2,
+      "timeline": "Timeline:\n- [+0.2h] COMMIT: Add retry with backoff\n- [+0.6h] REVIEW [CHANGES_REQUESTED]: Nancy: Max 3 retries\n- [+1.0h] COMMIT: Cap at 3 retries\n- [+1.5h] REVIEW [APPROVED]: Nancy: Reasonable\n- [+3.0h] MERGED",
+      "expected_health": {
+        "review_friction": "low",
+        "scope": "small",
+        "risk_level": "low"
+      }
+    },
+    {
+      "id": "quick_response_10",
+      "category": "quick_response",
+      "pr_title": "Fix pagination offset",
+      "pr_body": "Second page was showing same results as first.",
+      "additions": 4,
+      "deletions": 2,
+      "cycle_time_hours": 1.5,
+      "review_time_hours": 0.3,
+      "commits_after_first_review": 1,
+      "review_rounds": 2,
+      "timeline": "Timeline:\n- [+0.1h] COMMIT: Fix offset calculation\n- [+0.3h] REVIEW [CHANGES_REQUESTED]: Oscar: Add test\n- [+0.5h] COMMIT: Add pagination test\n- [+0.8h] REVIEW [APPROVED]: Oscar: Verified\n- [+1.5h] MERGED",
+      "expected_health": {
+        "review_friction": "low",
+        "scope": "small",
+        "risk_level": "low"
+      }
+    },
+    {
+      "id": "hotfix_01",
+      "category": "hotfix",
+      "pr_title": "[HOTFIX] Fix production crash",
+      "pr_body": "Null pointer exception on checkout page.",
+      "additions": 5,
+      "deletions": 1,
+      "is_hotfix": true,
+      "cycle_time_hours": 0.5,
+      "review_time_hours": 0.1,
+      "commits_after_first_review": 0,
+      "review_rounds": 1,
+      "timeline": "Timeline:\n- [+0.1h] COMMIT: Fix null check in checkout\n- [+0.2h] REVIEW [APPROVED]: Paul: Ship it\n- [+0.5h] MERGED",
+      "expected_health": {
+        "review_friction": "low",
+        "scope": "small",
+        "risk_level": "high"
+      }
+    },
+    {
+      "id": "hotfix_02",
+      "category": "hotfix",
+      "pr_title": "[HOTFIX] Fix payment double charge",
+      "pr_body": "Race condition causing duplicate charges.",
+      "additions": 15,
+      "deletions": 5,
+      "is_hotfix": true,
+      "cycle_time_hours": 1.0,
+      "review_time_hours": 0.2,
+      "commits_after_first_review": 0,
+      "review_rounds": 1,
+      "timeline": "Timeline:\n- [+0.1h] COMMIT: Add idempotency key\n- [+0.2h] REVIEW [APPROVED]: Quinn: Critical fix approved\n- [+1.0h] MERGED",
+      "expected_health": {
+        "review_friction": "low",
+        "scope": "small",
+        "risk_level": "high"
+      }
+    },
+    {
+      "id": "hotfix_03",
+      "category": "hotfix",
+      "pr_title": "[HOTFIX] Fix data loss bug",
+      "pr_body": "User data was being deleted on profile update.",
+      "additions": 8,
+      "deletions": 3,
+      "is_hotfix": true,
+      "cycle_time_hours": 0.8,
+      "review_time_hours": 0.15,
+      "commits_after_first_review": 0,
+      "review_rounds": 1,
+      "timeline": "Timeline:\n- [+0.1h] COMMIT: Fix partial update logic\n- [+0.2h] REVIEW [APPROVED]: Rachel: Verified fix\n- [+0.8h] MERGED",
+      "expected_health": {
+        "review_friction": "low",
+        "scope": "small",
+        "risk_level": "high"
+      }
+    },
+    {
+      "id": "hotfix_04",
+      "category": "hotfix",
+      "pr_title": "[HOTFIX] Fix auth bypass",
+      "pr_body": "Admin endpoints accessible without auth.",
+      "additions": 12,
+      "deletions": 2,
+      "is_hotfix": true,
+      "cycle_time_hours": 0.5,
+      "review_time_hours": 0.1,
+      "commits_after_first_review": 0,
+      "review_rounds": 1,
+      "timeline": "Timeline:\n- [+0.1h] COMMIT: Add auth middleware to admin routes\n- [+0.15h] REVIEW [APPROVED]: Security: Deploy immediately\n- [+0.5h] MERGED",
+      "expected_health": {
+        "review_friction": "low",
+        "scope": "small",
+        "risk_level": "high"
+      }
+    },
+    {
+      "id": "hotfix_05",
+      "category": "hotfix",
+      "pr_title": "[HOTFIX] Fix infinite loop",
+      "pr_body": "API endpoint causing 100% CPU.",
+      "additions": 6,
+      "deletions": 4,
+      "is_hotfix": true,
+      "cycle_time_hours": 0.3,
+      "review_time_hours": 0.05,
+      "commits_after_first_review": 0,
+      "review_rounds": 1,
+      "timeline": "Timeline:\n- [+0.05h] COMMIT: Add loop termination condition\n- [+0.1h] REVIEW [APPROVED]: Steve: Servers on fire, merge now\n- [+0.3h] MERGED",
+      "expected_health": {
+        "review_friction": "low",
+        "scope": "small",
+        "risk_level": "high"
+      }
+    }
+  ]
+}

@@ -1,0 +1,1307 @@
+# A/B Comparison: Timeline vs No-Timeline for Health Assessment
+# Uses single provider, compares prompt variations
+# Focus: HEALTH assessment accuracy
+
+description: Timeline A/B Test - Health Assessment Accuracy (17 test cases)
+
+providers:
+  - id: groq:llama-3.3-70b-versatile
+    label: Llama-3.3-70B
+    config:
+      temperature: 0
+      max_tokens: 800
+      response_format:
+        type: json_object
+
+prompts:
+  - id: control
+    label: v6.2 (no timeline)
+    raw: |
+      [
+        {"role": "system", "content": {{system_prompt | dump}}},
+        {"role": "user", "content": {{user_prompt | dump}}}
+      ]
+
+defaultTest:
+  vars:
+    system_prompt: file://prompts/v6.2-no-timeline.txt
+
+tests:
+  # ============================================
+  # LOW FRICTION, LOW RISK PRs (3)
+  # Expected: review_friction=low, scope=small, risk_level=low
+  # ============================================
+  - description: "[control][low_friction_01] Fix typo in README"
+    vars:
+      user_prompt: |
+        Analyze this pull request:
+
+        Title: Fix typo in README
+        Author: Alice Dev
+        State: merged
+
+        Files changed: 1
+        Lines: +2/-2
+        Files: README.md
+
+        Cycle time: 4.5 hours
+        Time to first review: 1.0 hours
+        Commits after first review: 0
+        Review rounds: 1
+
+        Description:
+        Fixed a small typo in the installation instructions.
+    assert:
+      - type: is-json
+      - type: javascript
+        value: JSON.parse(output).health.review_friction === "low"
+        weight: 3
+      - type: javascript
+        value: JSON.parse(output).health.scope === "small"
+        weight: 2
+      - type: javascript
+        value: JSON.parse(output).health.risk_level === "low"
+        weight: 2
+
+  - description: "[treatment][low_friction_01] Fix typo in README (with timeline)"
+    vars:
+      system_prompt: file://prompts/v6.3-with-timeline.txt
+      user_prompt: |
+        Analyze this pull request:
+
+        Title: Fix typo in README
+        Author: Alice Dev
+        State: merged
+
+        Files changed: 1
+        Lines: +2/-2
+        Files: README.md
+
+        Cycle time: 4.5 hours
+        Time to first review: 1.0 hours
+        Commits after first review: 0
+        Review rounds: 1
+
+        Timeline:
+        - [+0.5h] COMMIT: Fix typo in README
+        - [+1.0h] REVIEW [APPROVED]: Alice: LGTM
+        - [+4.5h] MERGED
+
+        Description:
+        Fixed a small typo in the installation instructions.
+    assert:
+      - type: is-json
+      - type: javascript
+        value: JSON.parse(output).health.review_friction === "low"
+        weight: 3
+      - type: javascript
+        value: JSON.parse(output).health.scope === "small"
+        weight: 2
+      - type: javascript
+        value: JSON.parse(output).health.risk_level === "low"
+        weight: 2
+
+  - description: "[control][low_friction_02] Update dependencies"
+    vars:
+      user_prompt: |
+        Analyze this pull request:
+
+        Title: Update dependencies
+        Author: Bob Maintainer
+        State: merged
+
+        Files changed: 2
+        Lines: +15/-15
+        Files: requirements.txt, pyproject.toml
+
+        Cycle time: 6.0 hours
+        Time to first review: 2.0 hours
+        Commits after first review: 0
+        Review rounds: 1
+
+        Description:
+        Bumped minor versions of test dependencies.
+    assert:
+      - type: is-json
+      - type: javascript
+        value: JSON.parse(output).health.review_friction === "low"
+        weight: 3
+      - type: javascript
+        value: JSON.parse(output).health.scope === "small"
+        weight: 2
+      - type: javascript
+        value: JSON.parse(output).health.risk_level === "low"
+        weight: 2
+
+  - description: "[treatment][low_friction_02] Update dependencies (with timeline)"
+    vars:
+      system_prompt: file://prompts/v6.3-with-timeline.txt
+      user_prompt: |
+        Analyze this pull request:
+
+        Title: Update dependencies
+        Author: Bob Maintainer
+        State: merged
+
+        Files changed: 2
+        Lines: +15/-15
+        Files: requirements.txt, pyproject.toml
+
+        Cycle time: 6.0 hours
+        Time to first review: 2.0 hours
+        Commits after first review: 0
+        Review rounds: 1
+
+        Timeline:
+        - [+0.5h] COMMIT: Update pytest to 8.0.1
+        - [+2.0h] REVIEW [APPROVED]: Bob: Looks good
+        - [+6.0h] MERGED
+
+        Description:
+        Bumped minor versions of test dependencies.
+    assert:
+      - type: is-json
+      - type: javascript
+        value: JSON.parse(output).health.review_friction === "low"
+        weight: 3
+      - type: javascript
+        value: JSON.parse(output).health.scope === "small"
+        weight: 2
+      - type: javascript
+        value: JSON.parse(output).health.risk_level === "low"
+        weight: 2
+
+  - description: "[control][low_friction_03] Add logging"
+    vars:
+      user_prompt: |
+        Analyze this pull request:
+
+        Title: Add logging to auth module
+        Author: Carol Dev
+        State: merged
+
+        Files changed: 2
+        Lines: +25/-3
+        Files: apps/auth/service.py, apps/auth/logger.py
+
+        Cycle time: 8.0 hours
+        Time to first review: 3.0 hours
+        Commits after first review: 0
+        Review rounds: 1
+
+        Description:
+        Added debug logging for authentication flow troubleshooting.
+    assert:
+      - type: is-json
+      - type: javascript
+        value: JSON.parse(output).health.review_friction === "low"
+        weight: 3
+      - type: javascript
+        value: JSON.parse(output).health.scope === "small"
+        weight: 2
+      - type: javascript
+        value: JSON.parse(output).health.risk_level === "low"
+        weight: 2
+
+  - description: "[treatment][low_friction_03] Add logging (with timeline)"
+    vars:
+      system_prompt: file://prompts/v6.3-with-timeline.txt
+      user_prompt: |
+        Analyze this pull request:
+
+        Title: Add logging to auth module
+        Author: Carol Dev
+        State: merged
+
+        Files changed: 2
+        Lines: +25/-3
+        Files: apps/auth/service.py, apps/auth/logger.py
+
+        Cycle time: 8.0 hours
+        Time to first review: 3.0 hours
+        Commits after first review: 0
+        Review rounds: 1
+
+        Timeline:
+        - [+0.5h] COMMIT: Add debug logging to auth
+        - [+3.0h] REVIEW [APPROVED]: Carol: Nice addition
+        - [+8.0h] MERGED
+
+        Description:
+        Added debug logging for authentication flow troubleshooting.
+    assert:
+      - type: is-json
+      - type: javascript
+        value: JSON.parse(output).health.review_friction === "low"
+        weight: 3
+      - type: javascript
+        value: JSON.parse(output).health.scope === "small"
+        weight: 2
+      - type: javascript
+        value: JSON.parse(output).health.risk_level === "low"
+        weight: 2
+
+  # ============================================
+  # HIGH FRICTION PRs (3)
+  # Expected: review_friction=high (multiple review rounds)
+  # ============================================
+  - description: "[control][high_friction_01] Auth refactor"
+    vars:
+      user_prompt: |
+        Analyze this pull request:
+
+        Title: Refactor authentication system
+        Author: Diana Architect
+        State: merged
+
+        Files changed: 12
+        Lines: +450/-380
+        Files: apps/auth/middleware.py, apps/auth/jwt.py, apps/auth/session.py
+
+        Cycle time: 168.0 hours
+        Time to first review: 24.0 hours
+        Commits after first review: 8
+        Review rounds: 4
+        Total comments: 15
+
+        Description:
+        Major refactor of auth module. Changed from session-based to JWT.
+    assert:
+      - type: is-json
+      - type: javascript
+        value: JSON.parse(output).health.review_friction === "high"
+        weight: 3
+      - type: javascript
+        value: '["large", "xlarge"].includes(JSON.parse(output).health.scope)'
+        weight: 2
+      - type: javascript
+        value: '["medium", "high"].includes(JSON.parse(output).health.risk_level)'
+        weight: 2
+
+  - description: "[treatment][high_friction_01] Auth refactor (with timeline)"
+    vars:
+      system_prompt: file://prompts/v6.3-with-timeline.txt
+      user_prompt: |
+        Analyze this pull request:
+
+        Title: Refactor authentication system
+        Author: Diana Architect
+        State: merged
+
+        Files changed: 12
+        Lines: +450/-380
+        Files: apps/auth/middleware.py, apps/auth/jwt.py, apps/auth/session.py
+
+        Cycle time: 168.0 hours
+        Time to first review: 24.0 hours
+        Commits after first review: 8
+        Review rounds: 4
+        Total comments: 15
+
+        Timeline:
+        - [+1.0h] COMMIT: Initial JWT implementation
+        - [+24.0h] REVIEW [CHANGES_REQUESTED]: Alice: Need refresh token logic
+        - [+26.0h] COMMIT: Add refresh token
+        - [+48.0h] REVIEW [CHANGES_REQUESTED]: Alice: Security concern with token storage
+        - [+52.0h] COMMIT: Use httpOnly cookies
+        - [+72.0h] COMMENT: Bob: What about mobile apps?
+        - [+76.0h] COMMIT: Add bearer token support for mobile
+        - [+96.0h] REVIEW [CHANGES_REQUESTED]: Carol: Need migration script
+        - [+100.0h] COMMIT: Add migration script
+        - [+120.0h] REVIEW [APPROVED]: Alice: LGTM now
+        - [+168.0h] MERGED
+
+        Description:
+        Major refactor of auth module. Changed from session-based to JWT.
+    assert:
+      - type: is-json
+      - type: javascript
+        value: JSON.parse(output).health.review_friction === "high"
+        weight: 3
+      - type: javascript
+        value: '["large", "xlarge"].includes(JSON.parse(output).health.scope)'
+        weight: 2
+      - type: javascript
+        value: '["medium", "high"].includes(JSON.parse(output).health.risk_level)'
+        weight: 2
+
+  - description: "[control][high_friction_02] Payment integration"
+    vars:
+      user_prompt: |
+        Analyze this pull request:
+
+        Title: Add payment processing
+        Author: Eric Backend
+        State: merged
+
+        Files changed: 15
+        Lines: +620/-45
+        Files: apps/payments/stripe.py, apps/payments/webhooks.py, apps/payments/models.py
+
+        Cycle time: 240.0 hours
+        Time to first review: 48.0 hours
+        Commits after first review: 12
+        Review rounds: 5
+        Total comments: 22
+
+        Description:
+        Integrate Stripe for payment processing.
+    assert:
+      - type: is-json
+      - type: javascript
+        value: JSON.parse(output).health.review_friction === "high"
+        weight: 3
+      - type: javascript
+        value: JSON.parse(output).health.scope === "xlarge"
+        weight: 2
+      - type: javascript
+        value: JSON.parse(output).health.risk_level === "high"
+        weight: 2
+
+  - description: "[treatment][high_friction_02] Payment integration (with timeline)"
+    vars:
+      system_prompt: file://prompts/v6.3-with-timeline.txt
+      user_prompt: |
+        Analyze this pull request:
+
+        Title: Add payment processing
+        Author: Eric Backend
+        State: merged
+
+        Files changed: 15
+        Lines: +620/-45
+        Files: apps/payments/stripe.py, apps/payments/webhooks.py, apps/payments/models.py
+
+        Cycle time: 240.0 hours
+        Time to first review: 48.0 hours
+        Commits after first review: 12
+        Review rounds: 5
+        Total comments: 22
+
+        Timeline:
+        - [+2.0h] COMMIT: Basic Stripe integration
+        - [+48.0h] REVIEW [CHANGES_REQUESTED]: Dan: PCI compliance issues
+        - [+52.0h] COMMIT: Fix card data handling
+        - [+72.0h] REVIEW [CHANGES_REQUESTED]: Dan: Need error handling
+        - [+76.0h] COMMIT: Add error handling
+        - [+96.0h] REVIEW [CHANGES_REQUESTED]: Eve: Webhook signature verification missing
+        - [+100.0h] COMMIT: Add webhook verification
+        - [+120.0h] COMMENT: Frank: What about refunds?
+        - [+124.0h] COMMIT: Add refund support
+        - [+144.0h] REVIEW [CHANGES_REQUESTED]: Dan: Test coverage low
+        - [+150.0h] COMMIT: Add integration tests
+        - [+168.0h] REVIEW [APPROVED]: Dan: Good now
+        - [+240.0h] MERGED
+
+        Description:
+        Integrate Stripe for payment processing.
+    assert:
+      - type: is-json
+      - type: javascript
+        value: JSON.parse(output).health.review_friction === "high"
+        weight: 3
+      - type: javascript
+        value: JSON.parse(output).health.scope === "xlarge"
+        weight: 2
+      - type: javascript
+        value: JSON.parse(output).health.risk_level === "high"
+        weight: 2
+
+  - description: "[control][high_friction_03] Database redesign"
+    vars:
+      user_prompt: |
+        Analyze this pull request:
+
+        Title: Redesign database schema
+        Author: Frank DBA
+        State: merged
+
+        Files changed: 8
+        Lines: +350/-280
+        Files: apps/core/models.py, migrations/0045_normalize_tables.py
+
+        Cycle time: 144.0 hours
+        Time to first review: 36.0 hours
+        Commits after first review: 6
+        Review rounds: 3
+        Total comments: 12
+
+        Description:
+        Normalize tables and add proper indexes.
+    assert:
+      - type: is-json
+      - type: javascript
+        value: JSON.parse(output).health.review_friction === "high"
+        weight: 3
+      - type: javascript
+        value: JSON.parse(output).health.scope === "large"
+        weight: 2
+      - type: javascript
+        value: JSON.parse(output).health.risk_level === "high"
+        weight: 2
+
+  - description: "[treatment][high_friction_03] Database redesign (with timeline)"
+    vars:
+      system_prompt: file://prompts/v6.3-with-timeline.txt
+      user_prompt: |
+        Analyze this pull request:
+
+        Title: Redesign database schema
+        Author: Frank DBA
+        State: merged
+
+        Files changed: 8
+        Lines: +350/-280
+        Files: apps/core/models.py, migrations/0045_normalize_tables.py
+
+        Cycle time: 144.0 hours
+        Time to first review: 36.0 hours
+        Commits after first review: 6
+        Review rounds: 3
+        Total comments: 12
+
+        Timeline:
+        - [+1.0h] COMMIT: Initial schema changes
+        - [+36.0h] REVIEW [CHANGES_REQUESTED]: Grace: Migration will lock tables
+        - [+40.0h] COMMIT: Add online migration strategy
+        - [+60.0h] REVIEW [CHANGES_REQUESTED]: Grace: Missing rollback
+        - [+64.0h] COMMIT: Add rollback migration
+        - [+84.0h] COMMENT: Henry: Tested on staging?
+        - [+88.0h] COMMIT: Add staging test results
+        - [+108.0h] REVIEW [APPROVED]: Grace: Approved with monitoring
+        - [+144.0h] MERGED
+
+        Description:
+        Normalize tables and add proper indexes.
+    assert:
+      - type: is-json
+      - type: javascript
+        value: JSON.parse(output).health.review_friction === "high"
+        weight: 3
+      - type: javascript
+        value: JSON.parse(output).health.scope === "large"
+        weight: 2
+      - type: javascript
+        value: JSON.parse(output).health.risk_level === "high"
+        weight: 2
+
+  # ============================================
+  # HIGH RISK BLOCKER PRs (3)
+  # Expected: risk_level=high (long gaps, external blockers)
+  # ============================================
+  - description: "[control][blocker_01] Payment gateway vendor delay"
+    vars:
+      user_prompt: |
+        Analyze this pull request:
+
+        Title: Update payment gateway
+        Author: Grace Finance
+        State: merged
+
+        Files changed: 6
+        Lines: +180/-150
+        Files: apps/payments/gateway.py, apps/payments/config.py
+
+        Cycle time: 336.0 hours
+        Time to first review: 72.0 hours
+        Commits after first review: 4
+        Review rounds: 2
+
+        Description:
+        Switch from legacy gateway to new provider.
+    assert:
+      - type: is-json
+      - type: javascript
+        value: '["medium", "high"].includes(JSON.parse(output).health.review_friction)'
+        weight: 2
+      - type: javascript
+        value: '["medium", "large"].includes(JSON.parse(output).health.scope)'
+        weight: 2
+      - type: javascript
+        value: JSON.parse(output).health.risk_level === "high"
+        weight: 3
+
+  - description: "[treatment][blocker_01] Payment gateway vendor delay (with timeline)"
+    vars:
+      system_prompt: file://prompts/v6.3-with-timeline.txt
+      user_prompt: |
+        Analyze this pull request:
+
+        Title: Update payment gateway
+        Author: Grace Finance
+        State: merged
+
+        Files changed: 6
+        Lines: +180/-150
+        Files: apps/payments/gateway.py, apps/payments/config.py
+
+        Cycle time: 336.0 hours
+        Time to first review: 72.0 hours
+        Commits after first review: 4
+        Review rounds: 2
+
+        Timeline:
+        - [+1.0h] COMMIT: Initial gateway switch
+        - [+72.0h] REVIEW [CHANGES_REQUESTED]: Xena: Need production API keys
+        - [+168.0h] COMMIT: Waiting for vendor - API keys received
+        - [+264.0h] REVIEW [APPROVED]: Xena: Tested in staging
+        - [+336.0h] MERGED
+
+        Description:
+        Switch from legacy gateway to new provider.
+    assert:
+      - type: is-json
+      - type: javascript
+        value: '["medium", "high"].includes(JSON.parse(output).health.review_friction)'
+        weight: 2
+      - type: javascript
+        value: '["medium", "large"].includes(JSON.parse(output).health.scope)'
+        weight: 2
+      - type: javascript
+        value: JSON.parse(output).health.risk_level === "high"
+        weight: 3
+
+  - description: "[control][blocker_02] GDPR legal hold"
+    vars:
+      user_prompt: |
+        Analyze this pull request:
+
+        Title: GDPR compliance updates
+        Author: Henry Legal
+        State: merged
+
+        Files changed: 10
+        Lines: +420/-60
+        Files: apps/users/gdpr.py, apps/users/export.py, apps/users/deletion.py
+
+        Cycle time: 504.0 hours
+        Time to first review: 168.0 hours
+        Commits after first review: 5
+        Review rounds: 2
+
+        Description:
+        Data deletion and export features for GDPR.
+    assert:
+      - type: is-json
+      - type: javascript
+        value: '["medium", "high"].includes(JSON.parse(output).health.review_friction)'
+        weight: 2
+      - type: javascript
+        value: '["large", "xlarge"].includes(JSON.parse(output).health.scope)'
+        weight: 2
+      - type: javascript
+        value: JSON.parse(output).health.risk_level === "high"
+        weight: 3
+
+  - description: "[treatment][blocker_02] GDPR legal hold (with timeline)"
+    vars:
+      system_prompt: file://prompts/v6.3-with-timeline.txt
+      user_prompt: |
+        Analyze this pull request:
+
+        Title: GDPR compliance updates
+        Author: Henry Legal
+        State: merged
+
+        Files changed: 10
+        Lines: +420/-60
+        Files: apps/users/gdpr.py, apps/users/export.py, apps/users/deletion.py
+
+        Cycle time: 504.0 hours
+        Time to first review: 168.0 hours
+        Commits after first review: 5
+        Review rounds: 2
+
+        Timeline:
+        - [+2.0h] COMMIT: Add data export endpoint
+        - [+168.0h] REVIEW [CHANGES_REQUESTED]: Legal hold - reviewing with lawyers
+        - [+336.0h] COMMIT: Legal approved - add deletion workflow
+        - [+408.0h] REVIEW [APPROVED]: Yolanda: Compliant
+        - [+504.0h] MERGED
+
+        Description:
+        Data deletion and export features for GDPR.
+    assert:
+      - type: is-json
+      - type: javascript
+        value: '["medium", "high"].includes(JSON.parse(output).health.review_friction)'
+        weight: 2
+      - type: javascript
+        value: '["large", "xlarge"].includes(JSON.parse(output).health.scope)'
+        weight: 2
+      - type: javascript
+        value: JSON.parse(output).health.risk_level === "high"
+        weight: 3
+
+  - description: "[control][blocker_03] Infrastructure migration"
+    vars:
+      user_prompt: |
+        Analyze this pull request:
+
+        Title: Infrastructure migration
+        Author: Ivan DevOps
+        State: merged
+
+        Files changed: 20
+        Lines: +650/-580
+        Files: terraform/main.tf, terraform/gcp.tf, kubernetes/deployment.yaml
+
+        Cycle time: 672.0 hours
+        Time to first review: 96.0 hours
+        Commits after first review: 6
+        Review rounds: 2
+
+        Description:
+        Move from AWS to GCP.
+    assert:
+      - type: is-json
+      - type: javascript
+        value: '["medium", "high"].includes(JSON.parse(output).health.review_friction)'
+        weight: 2
+      - type: javascript
+        value: JSON.parse(output).health.scope === "xlarge"
+        weight: 2
+      - type: javascript
+        value: JSON.parse(output).health.risk_level === "high"
+        weight: 3
+
+  - description: "[treatment][blocker_03] Infrastructure migration (with timeline)"
+    vars:
+      system_prompt: file://prompts/v6.3-with-timeline.txt
+      user_prompt: |
+        Analyze this pull request:
+
+        Title: Infrastructure migration
+        Author: Ivan DevOps
+        State: merged
+
+        Files changed: 20
+        Lines: +650/-580
+        Files: terraform/main.tf, terraform/gcp.tf, kubernetes/deployment.yaml
+
+        Cycle time: 672.0 hours
+        Time to first review: 96.0 hours
+        Commits after first review: 6
+        Review rounds: 2
+
+        Timeline:
+        - [+4.0h] COMMIT: Initial Terraform for GCP
+        - [+96.0h] REVIEW [CHANGES_REQUESTED]: Zack: Cost analysis needed
+        - [+240.0h] COMMENT: Finance approved budget
+        - [+336.0h] COMMIT: Add monitoring config
+        - [+504.0h] REVIEW [APPROVED]: Zack: Ready for migration window
+        - [+672.0h] MERGED
+
+        Description:
+        Move from AWS to GCP.
+    assert:
+      - type: is-json
+      - type: javascript
+        value: '["medium", "high"].includes(JSON.parse(output).health.review_friction)'
+        weight: 2
+      - type: javascript
+        value: JSON.parse(output).health.scope === "xlarge"
+        weight: 2
+      - type: javascript
+        value: JSON.parse(output).health.risk_level === "high"
+        weight: 3
+
+  # ============================================
+  # QUICK RESPONSE PRs (3)
+  # Expected: review_friction=low (fast iterations)
+  # ============================================
+  - description: "[control][quick_01] Login redirect fix"
+    vars:
+      user_prompt: |
+        Analyze this pull request:
+
+        Title: Fix login redirect
+        Author: Julia Frontend
+        State: merged
+
+        Files changed: 2
+        Lines: +8/-3
+        Files: apps/auth/views.py, apps/auth/urls.py
+
+        Cycle time: 3.0 hours
+        Time to first review: 0.5 hours
+        Commits after first review: 1
+        Review rounds: 2
+
+        Description:
+        Users were redirected to wrong page after login.
+    assert:
+      - type: is-json
+      - type: javascript
+        value: JSON.parse(output).health.review_friction === "low"
+        weight: 3
+      - type: javascript
+        value: JSON.parse(output).health.scope === "small"
+        weight: 2
+      - type: javascript
+        value: JSON.parse(output).health.risk_level === "low"
+        weight: 2
+
+  - description: "[treatment][quick_01] Login redirect fix (with timeline)"
+    vars:
+      system_prompt: file://prompts/v6.3-with-timeline.txt
+      user_prompt: |
+        Analyze this pull request:
+
+        Title: Fix login redirect
+        Author: Julia Frontend
+        State: merged
+
+        Files changed: 2
+        Lines: +8/-3
+        Files: apps/auth/views.py, apps/auth/urls.py
+
+        Cycle time: 3.0 hours
+        Time to first review: 0.5 hours
+        Commits after first review: 1
+        Review rounds: 2
+
+        Timeline:
+        - [+0.2h] COMMIT: Fix redirect URL
+        - [+0.5h] REVIEW [CHANGES_REQUESTED]: Fiona: Also fix mobile
+        - [+0.8h] COMMIT: Fix mobile redirect
+        - [+1.5h] REVIEW [APPROVED]: Fiona: All good
+        - [+3.0h] MERGED
+
+        Description:
+        Users were redirected to wrong page after login.
+    assert:
+      - type: is-json
+      - type: javascript
+        value: JSON.parse(output).health.review_friction === "low"
+        weight: 3
+      - type: javascript
+        value: JSON.parse(output).health.scope === "small"
+        weight: 2
+      - type: javascript
+        value: JSON.parse(output).health.risk_level === "low"
+        weight: 2
+
+  - description: "[control][quick_02] Error message update"
+    vars:
+      user_prompt: |
+        Analyze this pull request:
+
+        Title: Update error message
+        Author: Kevin UX
+        State: merged
+
+        Files changed: 1
+        Lines: +5/-5
+        Files: apps/core/messages.py
+
+        Cycle time: 2.5 hours
+        Time to first review: 0.3 hours
+        Commits after first review: 1
+        Review rounds: 2
+
+        Description:
+        User-facing error message was too technical.
+    assert:
+      - type: is-json
+      - type: javascript
+        value: JSON.parse(output).health.review_friction === "low"
+        weight: 3
+      - type: javascript
+        value: JSON.parse(output).health.scope === "small"
+        weight: 2
+      - type: javascript
+        value: JSON.parse(output).health.risk_level === "low"
+        weight: 2
+
+  - description: "[treatment][quick_02] Error message update (with timeline)"
+    vars:
+      system_prompt: file://prompts/v6.3-with-timeline.txt
+      user_prompt: |
+        Analyze this pull request:
+
+        Title: Update error message
+        Author: Kevin UX
+        State: merged
+
+        Files changed: 1
+        Lines: +5/-5
+        Files: apps/core/messages.py
+
+        Cycle time: 2.5 hours
+        Time to first review: 0.3 hours
+        Commits after first review: 1
+        Review rounds: 2
+
+        Timeline:
+        - [+0.1h] COMMIT: Update error message
+        - [+0.3h] REVIEW [CHANGES_REQUESTED]: George: Add help link
+        - [+0.6h] COMMIT: Add help link
+        - [+1.0h] REVIEW [APPROVED]: George: Perfect
+        - [+2.5h] MERGED
+
+        Description:
+        User-facing error message was too technical.
+    assert:
+      - type: is-json
+      - type: javascript
+        value: JSON.parse(output).health.review_friction === "low"
+        weight: 3
+      - type: javascript
+        value: JSON.parse(output).health.scope === "small"
+        weight: 2
+      - type: javascript
+        value: JSON.parse(output).health.risk_level === "low"
+        weight: 2
+
+  - description: "[control][quick_03] Input validation"
+    vars:
+      user_prompt: |
+        Analyze this pull request:
+
+        Title: Add input validation
+        Author: Linda Backend
+        State: merged
+
+        Files changed: 2
+        Lines: +25/-5
+        Files: apps/users/validators.py, apps/users/tests/test_validators.py
+
+        Cycle time: 4.0 hours
+        Time to first review: 1.0 hours
+        Commits after first review: 1
+        Review rounds: 2
+
+        Description:
+        Email field was accepting invalid formats.
+    assert:
+      - type: is-json
+      - type: javascript
+        value: JSON.parse(output).health.review_friction === "low"
+        weight: 3
+      - type: javascript
+        value: JSON.parse(output).health.scope === "small"
+        weight: 2
+      - type: javascript
+        value: JSON.parse(output).health.risk_level === "low"
+        weight: 2
+
+  - description: "[treatment][quick_03] Input validation (with timeline)"
+    vars:
+      system_prompt: file://prompts/v6.3-with-timeline.txt
+      user_prompt: |
+        Analyze this pull request:
+
+        Title: Add input validation
+        Author: Linda Backend
+        State: merged
+
+        Files changed: 2
+        Lines: +25/-5
+        Files: apps/users/validators.py, apps/users/tests/test_validators.py
+
+        Cycle time: 4.0 hours
+        Time to first review: 1.0 hours
+        Commits after first review: 1
+        Review rounds: 2
+
+        Timeline:
+        - [+0.3h] COMMIT: Add email regex validation
+        - [+1.0h] REVIEW [CHANGES_REQUESTED]: Hannah: Add test case
+        - [+1.5h] COMMIT: Add test for validation
+        - [+2.5h] REVIEW [APPROVED]: Hannah: Covered
+        - [+4.0h] MERGED
+
+        Description:
+        Email field was accepting invalid formats.
+    assert:
+      - type: is-json
+      - type: javascript
+        value: JSON.parse(output).health.review_friction === "low"
+        weight: 3
+      - type: javascript
+        value: JSON.parse(output).health.scope === "small"
+        weight: 2
+      - type: javascript
+        value: JSON.parse(output).health.risk_level === "low"
+        weight: 2
+
+  # ============================================
+  # HOTFIX PRs (5)
+  # Expected: risk_level=high, review_friction=low
+  # ============================================
+  - description: "[control][hotfix_01] Production crash"
+    vars:
+      user_prompt: |
+        Analyze this pull request:
+
+        Title: [HOTFIX] Fix production crash
+        Author: Mike OnCall
+        State: merged
+        Labels: hotfix, critical
+        Hotfix: Yes
+
+        Files changed: 1
+        Lines: +5/-1
+        Files: apps/checkout/handler.py
+
+        Cycle time: 0.5 hours
+        Time to first review: 0.1 hours
+        Commits after first review: 0
+        Review rounds: 1
+
+        Description:
+        Null pointer exception on checkout page.
+    assert:
+      - type: is-json
+      - type: javascript
+        value: JSON.parse(output).health.review_friction === "low"
+        weight: 2
+      - type: javascript
+        value: JSON.parse(output).health.scope === "small"
+        weight: 2
+      - type: javascript
+        value: JSON.parse(output).health.risk_level === "high"
+        weight: 3
+
+  - description: "[treatment][hotfix_01] Production crash (with timeline)"
+    vars:
+      system_prompt: file://prompts/v6.3-with-timeline.txt
+      user_prompt: |
+        Analyze this pull request:
+
+        Title: [HOTFIX] Fix production crash
+        Author: Mike OnCall
+        State: merged
+        Labels: hotfix, critical
+        Hotfix: Yes
+
+        Files changed: 1
+        Lines: +5/-1
+        Files: apps/checkout/handler.py
+
+        Cycle time: 0.5 hours
+        Time to first review: 0.1 hours
+        Commits after first review: 0
+        Review rounds: 1
+
+        Timeline:
+        - [+0.1h] COMMIT: Fix null check in checkout
+        - [+0.2h] REVIEW [APPROVED]: Paul: Ship it
+        - [+0.5h] MERGED
+
+        Description:
+        Null pointer exception on checkout page.
+    assert:
+      - type: is-json
+      - type: javascript
+        value: JSON.parse(output).health.review_friction === "low"
+        weight: 2
+      - type: javascript
+        value: JSON.parse(output).health.scope === "small"
+        weight: 2
+      - type: javascript
+        value: JSON.parse(output).health.risk_level === "high"
+        weight: 3
+
+  - description: "[control][hotfix_02] Double charge fix"
+    vars:
+      user_prompt: |
+        Analyze this pull request:
+
+        Title: [HOTFIX] Fix payment double charge
+        Author: Nancy Payments
+        State: merged
+        Labels: hotfix, critical, payments
+        Hotfix: Yes
+
+        Files changed: 2
+        Lines: +15/-5
+        Files: apps/payments/processor.py, apps/payments/idempotency.py
+
+        Cycle time: 1.0 hours
+        Time to first review: 0.2 hours
+        Commits after first review: 0
+        Review rounds: 1
+
+        Description:
+        Race condition causing duplicate charges.
+    assert:
+      - type: is-json
+      - type: javascript
+        value: JSON.parse(output).health.review_friction === "low"
+        weight: 2
+      - type: javascript
+        value: JSON.parse(output).health.scope === "small"
+        weight: 2
+      - type: javascript
+        value: JSON.parse(output).health.risk_level === "high"
+        weight: 3
+
+  - description: "[treatment][hotfix_02] Double charge fix (with timeline)"
+    vars:
+      system_prompt: file://prompts/v6.3-with-timeline.txt
+      user_prompt: |
+        Analyze this pull request:
+
+        Title: [HOTFIX] Fix payment double charge
+        Author: Nancy Payments
+        State: merged
+        Labels: hotfix, critical, payments
+        Hotfix: Yes
+
+        Files changed: 2
+        Lines: +15/-5
+        Files: apps/payments/processor.py, apps/payments/idempotency.py
+
+        Cycle time: 1.0 hours
+        Time to first review: 0.2 hours
+        Commits after first review: 0
+        Review rounds: 1
+
+        Timeline:
+        - [+0.1h] COMMIT: Add idempotency key
+        - [+0.2h] REVIEW [APPROVED]: Quinn: Critical fix approved
+        - [+1.0h] MERGED
+
+        Description:
+        Race condition causing duplicate charges.
+    assert:
+      - type: is-json
+      - type: javascript
+        value: JSON.parse(output).health.review_friction === "low"
+        weight: 2
+      - type: javascript
+        value: JSON.parse(output).health.scope === "small"
+        weight: 2
+      - type: javascript
+        value: JSON.parse(output).health.risk_level === "high"
+        weight: 3
+
+  - description: "[control][hotfix_03] Auth bypass"
+    vars:
+      user_prompt: |
+        Analyze this pull request:
+
+        Title: [HOTFIX] Fix auth bypass
+        Author: Oscar Security
+        State: merged
+        Labels: hotfix, security, critical
+        Hotfix: Yes
+
+        Files changed: 2
+        Lines: +12/-2
+        Files: apps/admin/middleware.py, apps/admin/decorators.py
+
+        Cycle time: 0.5 hours
+        Time to first review: 0.1 hours
+        Commits after first review: 0
+        Review rounds: 1
+
+        Description:
+        Admin endpoints accessible without auth.
+    assert:
+      - type: is-json
+      - type: javascript
+        value: JSON.parse(output).health.review_friction === "low"
+        weight: 2
+      - type: javascript
+        value: JSON.parse(output).health.scope === "small"
+        weight: 2
+      - type: javascript
+        value: JSON.parse(output).health.risk_level === "high"
+        weight: 3
+
+  - description: "[treatment][hotfix_03] Auth bypass (with timeline)"
+    vars:
+      system_prompt: file://prompts/v6.3-with-timeline.txt
+      user_prompt: |
+        Analyze this pull request:
+
+        Title: [HOTFIX] Fix auth bypass
+        Author: Oscar Security
+        State: merged
+        Labels: hotfix, security, critical
+        Hotfix: Yes
+
+        Files changed: 2
+        Lines: +12/-2
+        Files: apps/admin/middleware.py, apps/admin/decorators.py
+
+        Cycle time: 0.5 hours
+        Time to first review: 0.1 hours
+        Commits after first review: 0
+        Review rounds: 1
+
+        Timeline:
+        - [+0.1h] COMMIT: Add auth middleware to admin routes
+        - [+0.15h] REVIEW [APPROVED]: Security: Deploy immediately
+        - [+0.5h] MERGED
+
+        Description:
+        Admin endpoints accessible without auth.
+    assert:
+      - type: is-json
+      - type: javascript
+        value: JSON.parse(output).health.review_friction === "low"
+        weight: 2
+      - type: javascript
+        value: JSON.parse(output).health.scope === "small"
+        weight: 2
+      - type: javascript
+        value: JSON.parse(output).health.risk_level === "high"
+        weight: 3
+
+  - description: "[control][hotfix_04] Infinite loop"
+    vars:
+      user_prompt: |
+        Analyze this pull request:
+
+        Title: [HOTFIX] Fix infinite loop
+        Author: Pat DevOps
+        State: merged
+        Labels: hotfix, critical
+        Hotfix: Yes
+
+        Files changed: 1
+        Lines: +6/-4
+        Files: apps/api/handler.py
+
+        Cycle time: 0.3 hours
+        Time to first review: 0.05 hours
+        Commits after first review: 0
+        Review rounds: 1
+
+        Description:
+        API endpoint causing 100% CPU.
+    assert:
+      - type: is-json
+      - type: javascript
+        value: JSON.parse(output).health.review_friction === "low"
+        weight: 2
+      - type: javascript
+        value: JSON.parse(output).health.scope === "small"
+        weight: 2
+      - type: javascript
+        value: JSON.parse(output).health.risk_level === "high"
+        weight: 3
+
+  - description: "[treatment][hotfix_04] Infinite loop (with timeline)"
+    vars:
+      system_prompt: file://prompts/v6.3-with-timeline.txt
+      user_prompt: |
+        Analyze this pull request:
+
+        Title: [HOTFIX] Fix infinite loop
+        Author: Pat DevOps
+        State: merged
+        Labels: hotfix, critical
+        Hotfix: Yes
+
+        Files changed: 1
+        Lines: +6/-4
+        Files: apps/api/handler.py
+
+        Cycle time: 0.3 hours
+        Time to first review: 0.05 hours
+        Commits after first review: 0
+        Review rounds: 1
+
+        Timeline:
+        - [+0.05h] COMMIT: Add loop termination condition
+        - [+0.1h] REVIEW [APPROVED]: Steve: Servers on fire, merge now
+        - [+0.3h] MERGED
+
+        Description:
+        API endpoint causing 100% CPU.
+    assert:
+      - type: is-json
+      - type: javascript
+        value: JSON.parse(output).health.review_friction === "low"
+        weight: 2
+      - type: javascript
+        value: JSON.parse(output).health.scope === "small"
+        weight: 2
+      - type: javascript
+        value: JSON.parse(output).health.risk_level === "high"
+        weight: 3
+
+  - description: "[control][hotfix_05] Data loss prevention"
+    vars:
+      user_prompt: |
+        Analyze this pull request:
+
+        Title: [HOTFIX] Fix data loss bug
+        Author: Quinn Backend
+        State: merged
+        Labels: hotfix, critical
+        Hotfix: Yes
+
+        Files changed: 1
+        Lines: +8/-3
+        Files: apps/users/profile.py
+
+        Cycle time: 0.8 hours
+        Time to first review: 0.15 hours
+        Commits after first review: 0
+        Review rounds: 1
+
+        Description:
+        User data was being deleted on profile update.
+    assert:
+      - type: is-json
+      - type: javascript
+        value: JSON.parse(output).health.review_friction === "low"
+        weight: 2
+      - type: javascript
+        value: JSON.parse(output).health.scope === "small"
+        weight: 2
+      - type: javascript
+        value: JSON.parse(output).health.risk_level === "high"
+        weight: 3
+
+  - description: "[treatment][hotfix_05] Data loss prevention (with timeline)"
+    vars:
+      system_prompt: file://prompts/v6.3-with-timeline.txt
+      user_prompt: |
+        Analyze this pull request:
+
+        Title: [HOTFIX] Fix data loss bug
+        Author: Quinn Backend
+        State: merged
+        Labels: hotfix, critical
+        Hotfix: Yes
+
+        Files changed: 1
+        Lines: +8/-3
+        Files: apps/users/profile.py
+
+        Cycle time: 0.8 hours
+        Time to first review: 0.15 hours
+        Commits after first review: 0
+        Review rounds: 1
+
+        Timeline:
+        - [+0.1h] COMMIT: Fix partial update logic
+        - [+0.2h] REVIEW [APPROVED]: Rachel: Verified fix
+        - [+0.8h] MERGED
+
+        Description:
+        User data was being deleted on profile update.
+    assert:
+      - type: is-json
+      - type: javascript
+        value: JSON.parse(output).health.review_friction === "low"
+        weight: 2
+      - type: javascript
+        value: JSON.parse(output).health.scope === "small"
+        weight: 2
+      - type: javascript
+        value: JSON.parse(output).health.risk_level === "high"
+        weight: 3
+
+outputPath: ./results/ab-timeline-comparison-results.json
+
+evaluateOptions:
+  maxConcurrency: 5
+  showProgressBar: true
