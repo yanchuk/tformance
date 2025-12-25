@@ -52,6 +52,7 @@ jobs:
 
       - name: Run Tests
         env:
+          SECRET_KEY: "test-secret-key-for-ci-only-not-for-production"
           DJANGO_DATABASE_USER: postgres
           DJANGO_DATABASE_PASSWORD: postgres_password
           CELERY_TASK_ALWAYS_EAGER: "true"
