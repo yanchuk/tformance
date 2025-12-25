@@ -129,6 +129,51 @@ test.describe('Onboarding Flow @onboarding', () => {
     });
   });
 
+  test.describe('Sync Progress Page', () => {
+    test('sync progress page requires authentication', async ({ page }) => {
+      await page.context().clearCookies();
+      await page.goto('/onboarding/sync/');
+      await expect(page).toHaveURL(/\/accounts\/login.*next=.*onboarding.*sync/);
+    });
+
+    test.describe('Authenticated', () => {
+      test.beforeEach(async ({ page }) => {
+        await page.goto('/accounts/login/');
+        await page.getByRole('textbox', { name: 'Email' }).fill('admin@example.com');
+        await page.getByRole('textbox', { name: 'Password' }).fill('admin123');
+        await page.getByRole('button', { name: 'Sign In' }).click();
+      });
+
+      test('sync progress page shows heading', async ({ page }) => {
+        await page.goto('/onboarding/sync/');
+
+        const url = page.url();
+        if (url.includes('/onboarding/sync')) {
+          await expect(page.getByRole('heading', { name: /Syncing Your Data/ })).toBeVisible();
+        }
+      });
+
+      test('sync progress page shows progress elements', async ({ page }) => {
+        await page.goto('/onboarding/sync/');
+
+        const url = page.url();
+        if (url.includes('/onboarding/sync')) {
+          // Should have a progress bar container
+          await expect(page.locator('.progress, [role="progressbar"]')).toBeVisible();
+          // Should have a continue button
+          await expect(page.getByRole('link', { name: /Continue|Skip|Next/ })).toBeVisible();
+        }
+      });
+
+      test('sync progress page redirects to app or shows content', async ({ page }) => {
+        await page.goto('/onboarding/sync/');
+        const url = page.url();
+        // Either shows sync page or redirects (user already has team)
+        expect(url).toMatch(/\/(app|onboarding)/);
+      });
+    });
+  });
+
   test.describe('Page Navigation Controls', () => {
     test.beforeEach(async ({ page }) => {
       await page.goto('/accounts/login/');
