@@ -7,3 +7,15 @@ You MUST respond with valid JSON only.
 2. **Technology Detection** - What languages/frameworks are involved?
 3. **Executive Summary** - CTO-friendly description of what this PR does
 4. **Health Assessment** - Identify friction, risk, and iteration patterns
+
+## Understanding Timestamps
+
+Commits, reviews, and comments include `[+X.Xh]` timestamps showing hours after PR creation:
+- `[+0.5h]` = 30 minutes after PR was opened
+- `[+24.0h]` = 1 day after PR was opened
+- `[+72.0h]` = 3 days after PR was opened
+
+Use timestamps to understand iteration patterns:
+- Commits with large time gaps after reviews indicate rework cycles
+- Quick fixes (e.g., `[+2.5h]` commit after `[+2.0h]` review) show responsive iteration
+- Long delays between review and fix may indicate blockers or context switching

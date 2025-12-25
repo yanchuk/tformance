@@ -113,6 +113,8 @@ class GoldenTest:
     author_name: str | None = None
     reviewers: list[str] = field(default_factory=list)
     review_comments: list[str] = field(default_factory=list)
+    reviews: list[str] = field(default_factory=list)  # "[+X.Xh] [STATE] reviewer: body"
+    comments: list[str] = field(default_factory=list)  # "[+X.Xh] author: body"
 
     # AI detection expectations
     expected_ai_assisted: bool | None = None
@@ -674,7 +676,11 @@ GOLDEN_TESTS: list[GoldenTest] = [
         ],
         repo_languages=["Python", "TypeScript", "JavaScript"],
         reviewers=["Sarah Tech Lead", "Bob Backend"],
-        review_comments=[
+        reviews=[
+            "[+48.0h] [CHANGES_REQUESTED] Sarah Tech Lead: Need rate limiting for notifications",
+            "[+72.0h] [APPROVED] Bob Backend: LGTM after fixes",
+        ],
+        comments=[
             "[+48.0h] Sarah Tech Lead: Need rate limiting for notifications",
             "[+50.0h] Bob Backend: Consider Redis for scalability",
         ],
@@ -712,7 +718,8 @@ GOLDEN_TESTS: list[GoldenTest] = [
         commit_messages=["[+0.2h] Fix null check in payment validation"],
         repo_languages=["Python"],
         reviewers=["Bob Backend"],
-        review_comments=["[+0.5h] Bob Backend: LGTM, simple fix"],
+        reviews=["[+0.5h] [APPROVED] Bob Backend: LGTM, simple fix"],
+        comments=["[+0.5h] Bob Backend: LGTM, simple fix"],
         jira_key="PAY-1234",
         expected_ai_assisted=False,
         expected_categories=["backend"],
@@ -752,9 +759,8 @@ GOLDEN_TESTS: list[GoldenTest] = [
         ],
         repo_languages=["Python"],
         reviewers=["CTO", "Backend Lead"],
-        review_comments=[
-            "[+0.25h] CTO: Ship it, we need this ASAP",
-        ],
+        reviews=["[+0.25h] [APPROVED] CTO: Ship it, we need this ASAP"],
+        comments=["[+0.25h] CTO: Ship it, we need this ASAP"],
         linked_issues=["#1234"],
         expected_ai_assisted=False,
         expected_categories=["backend"],
@@ -903,6 +909,8 @@ def to_promptfoo_test(test: GoldenTest, schema_assertion: dict[str, Any]) -> dic
         "author_name": test.author_name,
         "reviewers": test.reviewers,
         "review_comments": test.review_comments,
+        "reviews": test.reviews,
+        "comments": test.comments,
     }
 
     return {

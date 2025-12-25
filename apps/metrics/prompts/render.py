@@ -113,10 +113,12 @@ def render_user_prompt(
     author_name: str | None = None,
     reviewers: list[str] | None = None,
     review_comments: list[str] | None = None,
+    reviews: list[str] | None = None,
+    comments: list[str] | None = None,
 ) -> str:
     """Render user prompt from Jinja2 template with full PR context.
 
-    This is the Jinja-based equivalent of get_user_prompt() in llm_prompts.py.
+    This is the Jinja-based equivalent of build_llm_pr_context() in llm_prompts.py.
     Use this for systematic template-based prompt generation.
 
     Args:
@@ -137,14 +139,16 @@ def render_user_prompt(
         commits_after_first_review: Number of commits after first review
         review_rounds: Number of review cycles
         file_paths: List of changed file paths
-        commit_messages: List of commit messages
+        commit_messages: List of commit messages with [+X.Xh] timestamps
         milestone: Milestone title
         assignees: List of assignee usernames
         linked_issues: List of linked issue references
         jira_key: Jira issue key
         author_name: PR author's display name
-        reviewers: List of reviewer names
-        review_comments: List of review comment bodies
+        reviewers: Fallback list of reviewer names (used if reviews not provided)
+        review_comments: Fallback list of comment bodies (used if comments not provided)
+        reviews: List of "[+X.Xh] [STATE] reviewer: body" strings
+        comments: List of "[+X.Xh] author: body" strings
 
     Returns:
         Formatted user prompt for LLM
@@ -181,6 +185,8 @@ def render_user_prompt(
         author_name=author_name,
         reviewers=reviewers,
         review_comments=review_comments,
+        reviews=reviews,
+        comments=comments,
     )
 
     # Normalize: strip trailing whitespace from lines

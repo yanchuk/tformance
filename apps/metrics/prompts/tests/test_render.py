@@ -271,7 +271,7 @@ class TestRenderUserPrompt(TestCase):
             pr_body="Body",
             commit_messages=["Initial commit", "Fix bug"],
         )
-        self.assertIn("Recent commits:", result)
+        self.assertIn("Commits:", result)
         self.assertIn("- Initial commit", result)
         self.assertIn("- Fix bug", result)
 

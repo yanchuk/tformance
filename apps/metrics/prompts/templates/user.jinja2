@@ -1,14 +1,21 @@
 {#- User Prompt Template for PR Analysis
 
     This template generates the user prompt that accompanies the system prompt.
-    It must produce output identical to get_user_prompt() in llm_prompts.py.
+    It must produce output identical to build_llm_pr_context() in llm_prompts.py.
 
     Context variables (all optional except pr_body):
         pr_title, pr_body, additions, deletions, file_count, comment_count,
         repo_languages, state, labels, is_draft, is_hotfix, is_revert,
         cycle_time_hours, review_time_hours, commits_after_first_review,
-        review_rounds, file_paths, commit_messages, milestone, assignees,
-        linked_issues, jira_key, author_name, reviewers, review_comments
+        review_rounds, file_paths, milestone, assignees,
+        linked_issues, jira_key, author_name
+
+    Timeline data (with [+X.Xh] timestamps relative to PR creation):
+        commit_messages: List of "[+X.Xh] message" strings
+        reviews: List of "[+X.Xh] [STATE] reviewer: body" strings
+        comments: List of "[+X.Xh] author: body" strings
+        reviewers: Fallback simple list of reviewer names
+        review_comments: Fallback simple list of comment bodies
 -#}
 {%- set sections = [] -%}
 
@@ -106,21 +113,28 @@
     {%- set _ = sections.append("Repository languages: " ~ repo_languages|join(", ")) -%}
 {%- endif -%}
 
-{#- === Commit Messages === -#}
+{#- === Commits (with timestamps) === -#}
 {%- if commit_messages -%}
-    {%- set msgs = commit_messages[:5] -%}
+    {%- set msgs = commit_messages[:10] -%}
     {%- set commit_lines = [] -%}
     {%- for msg in msgs -%}
         {%- set _ = commit_lines.append("- " ~ msg) -%}
     {%- endfor -%}
-    {%- if commit_messages|length > 5 -%}
-        {%- set _ = commit_lines.append("... and " ~ (commit_messages|length - 5) ~ " more commits") -%}
+    {%- if commit_messages|length > 10 -%}
+        {%- set _ = commit_lines.append("... and " ~ (commit_messages|length - 10) ~ " more commits") -%}
     {%- endif -%}
-    {%- set _ = sections.append("Recent commits:\n" ~ commit_lines|join("\n")) -%}
+    {%- set _ = sections.append("Commits:\n" ~ commit_lines|join("\n")) -%}
 {%- endif -%}
 
-{#- === Reviewers (v6.1.0) === -#}
-{%- if reviewers -%}
+{#- === Reviews (with timestamps and state) === -#}
+{%- if reviews -%}
+    {%- set review_lines = [] -%}
+    {%- for review in reviews[:5] -%}
+        {%- set _ = review_lines.append("- " ~ review) -%}
+    {%- endfor -%}
+    {%- set _ = sections.append("Reviews:\n" ~ review_lines|join("\n")) -%}
+{%- elif reviewers -%}
+    {#- Fallback to simple reviewer list if no detailed reviews -#}
     {%- set names = reviewers[:5]|join(", ") -%}
     {%- if reviewers|length > 5 -%}
         {%- set names = names ~ " (+" ~ (reviewers|length - 5) ~ " more)" -%}
@@ -128,8 +142,15 @@
     {%- set _ = sections.append("Reviewers: " ~ names) -%}
 {%- endif -%}
 
-{#- === Review Comments (v6.1.0) === -#}
-{%- if review_comments -%}
+{#- === Comments (with timestamps) === -#}
+{%- if comments -%}
+    {%- set comment_lines = [] -%}
+    {%- for comment in comments[:5] -%}
+        {%- set _ = comment_lines.append("- " ~ comment) -%}
+    {%- endfor -%}
+    {%- set _ = sections.append("Comments:\n" ~ comment_lines|join("\n")) -%}
+{%- elif review_comments -%}
+    {#- Fallback to review_comments if no detailed comments -#}
     {%- set comment_lines = [] -%}
     {%- for comment in review_comments[:3] -%}
         {%- if comment|length > 200 -%}
@@ -138,7 +159,7 @@
             {%- set _ = comment_lines.append("- " ~ comment) -%}
         {%- endif -%}
     {%- endfor -%}
-    {%- set _ = sections.append("Review comments:\n" ~ comment_lines|join("\n")) -%}
+    {%- set _ = sections.append("Comments:\n" ~ comment_lines|join("\n")) -%}
 {%- endif -%}
 
 {#- === Description (always last) === -#}
