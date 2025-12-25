@@ -1,103 +1,106 @@
-# AI Detection via PR Description Analysis - Tasks
+# AI Detection PR Descriptions - Tasks
 
-**Last Updated: 2025-12-25**
+**Last Updated**: 2025-12-25
 
-## Status: ✅ COMPLETE
+## Completed
 
-All phases of AI detection via PR descriptions are complete. Moving to dev/completed/.
+### Phase 1: Regex Pattern System
+- [x] AI_SIGNATURE_PATTERNS in ai_patterns.py (v1.9.0)
+- [x] Pattern versioning with PATTERNS_VERSION
+- [x] Pattern changelog documentation
 
----
+### Phase 2: LLM Prompt System
+- [x] Jinja2 template infrastructure
+- [x] System prompt with sections (ai_detection, tech_detection, health_assessment)
+- [x] User prompt with full PR context (25+ variables)
+- [x] Response schema with JSON validation
+- [x] PROMPT_VERSION tracking (now 6.8.0)
 
-## ✅ Phase 1: Regex Pattern Detection (v1.7.0)
+### Phase 3: Golden Test System
+- [x] GoldenTest dataclass with all PR context fields
+- [x] 29 original test cases across 6 categories
+- [x] to_promptfoo_test() conversion function
+- [x] Category filtering helpers
 
-- [x] AI signature patterns for 15+ tools
-- [x] CodeRabbit text patterns (22 patterns)
-- [x] Mintlify agent patterns (3 patterns)
-- [x] 459 PRs detected (20.2% detection rate)
-- [x] 117 tests for ai_detector.py
+### Phase 4: TDD Data Consistency (2025-12-25)
+- [x] Add test_file_count_matches_file_paths TDD test
+- [x] Add test_all_tests_have_repo_name TDD test
+- [x] Fix health_slow_review: expand file_paths to 12
+- [x] Fix health_draft_wip: expand file_paths to 5
+- [x] Add repo_name to all 29 golden tests
+- [x] Add realistic file_paths to edge/tech/type/health tests
+- [x] Verify 29/29 promptfoo tests pass
 
----
+### Phase 5: Extended Test Coverage (2025-12-25)
+- [x] Add 5 new positive tests (cody, coderabbit, devin, tabnine, greptile)
+- [x] Add 5 new negative tests (sdk_version_bump, ai_documentation, llm_test_suite, ai_competitor_analysis, openai_client_library)
+- [x] Add 8 new edge cases (indirect_disclosure, review_comment_ai, ai_typo_false_positive, github_actions_ai, confidence_high/medium/low, multi_tool)
+- [x] Verify TDD consistency tests pass with 46 tests
 
-## ✅ Phase 2: LLM Prompt System (v6.0.0 → v6.3.2)
+### Phase 6: Prompt Refinement (2025-12-25)
+- [x] v6.6.0: Add logical consistency rules (is_assisted ↔ tools)
+- [x] v6.6.0: Add vague mentions rule ("assistance" without context)
+- [x] v6.6.0: Add Security Notice for prompt injection protection
+- [x] v6.7.0: Add CI/CD configuration rule (configuring != using AI)
+- [x] v6.8.0: Clarify PR type definitions (feature vs chore vs ci)
+- [x] Achieve 47/47 tests passing (100%)
 
-### v6.0.0 - Health Assessment
-- [x] System prompt with health assessment guidelines
-- [x] Response schema: ai, tech, summary, health sections
-- [x] get_user_prompt() with 14+ context parameters
-- [x] GroqBatchProcessor for batch LLM processing
+### Phase 7: Promptfoo Integration
+- [x] export_prompts management command
+- [x] Promptfoo YAML generation from golden tests
+- [x] .env symlink for GROQ_API_KEY
+- [x] GPT-OSS-20B config with include_reasoning: false
 
-### v6.1.0 - Additional Metadata
-- [x] Milestone, assignees, linked_issues, jira_key
-- [x] Author name, reviewers, review_comments
+## In Progress
 
-### v6.2.0 - Unified Context Builder
-- [x] build_llm_pr_context() single function
-- [x] Prior AI detection included for LLM confirmation
+None - v6.8.0 is complete and tested
 
-### v6.3.0 - Unified Timeline
-- [x] TimelineEvent dataclass
-- [x] build_timeline() and format_timeline() functions
-- [x] Chronological events: COMMIT, REVIEW, COMMENT, MERGED
-- [x] A/B testing: +5.8% accuracy improvement
+## Backlog
 
-### v6.3.1 - AI Product Feature Detection
-- [x] Clarified AI as product feature vs coding tool
-- [x] Gemini/Claude integration examples
+### Future Enhancements
+- [ ] Add more edge case tests for aider, windsurf patterns
+- [ ] Add tests for commit message AI detection patterns
+- [ ] Add tests for review comment AI mentions
+- [ ] Consider Llama 3.3 70B as primary model (higher quality)
+- [ ] Add adversarial prompt injection test cases
 
-### v6.3.2 - is_assisted Clarification
-- [x] ANY AI usage = is_assisted: true
-- [x] Brainstorm and review usage now correctly detected
-- [x] 28/29 golden tests passing (96.55%)
-
----
-
-## ✅ Phase 3: Jinja2 Template System
-
-- [x] Templates in apps/metrics/prompts/templates/
-- [x] Sections: ai_detection, tech_detection, health_assessment, etc.
-- [x] render_system_prompt() and render_user_prompt()
-- [x] export_promptfoo_config() for automated testing
-- [x] 34 tests for template rendering
-
----
-
-## ✅ Phase 4: Golden Test Suite
-
-- [x] 29 test cases in golden_tests.py
-- [x] Categories: POSITIVE, NEGATIVE, EDGE_CASE, TECH, SUMMARY, HEALTH
-- [x] Timeline data included in test cases
-- [x] Promptfoo export with assertions
-
----
-
-## ✅ Phase 5: Database Integration
-
-- [x] PullRequest.llm_summary JSONField
-- [x] PullRequest.llm_summary_version CharField
-- [x] GIN indexes for JSONB queries (migration 0020)
-- [x] run_llm_analysis management command
-
----
+### Known Limitations (Documented)
+- [ ] Aider patterns may need refinement (only detects "aider:" prefix)
+- [ ] Windsurf/Codeium detection relies on explicit mention
+- [ ] No detection of VS Code Copilot via telemetry
 
 ## Test Commands
 
 ```bash
-# Unit tests
-.venv/bin/pytest apps/metrics/prompts/tests/ -v  # 34 tests
-.venv/bin/pytest apps/metrics/tests/test_llm_prompts.py -v
+# TDD consistency tests
+.venv/bin/pytest apps/metrics/prompts/tests/test_golden_tests.py::TestGoldenTestDataConsistency -v
 
-# Promptfoo evaluation
+# All golden tests
+.venv/bin/pytest apps/metrics/prompts/tests/test_golden_tests.py -v
+
+# Full prompts test suite
+.venv/bin/pytest apps/metrics/prompts/tests/ -v
+
+# Promptfoo evaluation (100% pass rate)
 cd dev/active/ai-detection-pr-descriptions/experiments
-GROQ_API_KEY=... npx promptfoo eval -c promptfoo.yaml  # 28/29 pass
-
-# LLM analysis on PRs
-.venv/bin/python manage.py run_llm_analysis --limit 50
+/bin/bash -c 'export GROQ_API_KEY=$(grep "^GROQ_API_KEY" .env | cut -d= -f2) && npx promptfoo eval -c promptfoo.yaml'
 ```
 
----
+## Session Notes
 
-## Known Limitations
+### 2025-12-25: Extended Testing & Prompt Refinement
 
-1. **neg_ai_as_product test**: Author name "Pat AI" causes false positive
-2. **Aider/Windsurf**: Limited regex patterns (marked as xfail in golden tests)
-3. **Rate limiting**: Groq free tier requires 2s delay between calls
+**Extended Golden Tests**: Added 17 new test cases based on research findings:
+- 5 new AI tools (Cody, CodeRabbit, Devin, Tabnine, Greptile)
+- 5 false positive prevention scenarios (SDK bumps, docs, building AI features)
+- 8 edge cases including confidence calibration and multi-tool detection
+
+**Prompt Improvements**: Fixed 4 issues discovered during testing:
+1. Logical inconsistency (tools detected but is_assisted=false)
+2. False positives on vague words ("assistance" without AI context)
+3. CI/CD configuration falsely detected (configuring coderabbit action != using AI)
+4. PR type classification clarity (feature vs chore vs ci)
+
+**Security**: Added prompt injection guardrails to protect against malicious PR descriptions.
+
+**Final Result**: 47/47 tests passing (100%)

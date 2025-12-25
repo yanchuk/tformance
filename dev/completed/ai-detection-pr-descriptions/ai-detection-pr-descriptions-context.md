@@ -1,97 +1,110 @@
-# AI Detection via PR Description Analysis - Context
+# AI Detection PR Descriptions - Context
 
-**Last Updated: 2025-12-25**
+**Last Updated**: 2025-12-25
 
-## Status: ✅ COMPLETE
+## Current State
 
-This feature is complete and ready for production use.
+### Prompt Version: 6.8.0
 
----
+The LLM prompt system for AI detection is production-ready with:
+- Jinja2 template-based prompt rendering
+- 46 golden test cases (29 original + 17 new) covering all categories
+- TDD data consistency validation
+- Promptfoo evaluation passing **47/47 tests (100%)**
 
-## Final State
+### Recent Session Work (2025-12-25)
 
-### Prompt Version: v6.3.2
+**Extended Golden Tests (17 new cases):**
 
-| Version | Feature |
-|---------|---------|
-| v6.0.0 | Health assessment section |
-| v6.1.0 | Additional PR metadata |
-| v6.2.0 | Unified build_llm_pr_context() |
-| v6.3.0 | Unified timeline (replaced timestamps) |
-| v6.3.1 | AI product feature detection |
-| v6.3.2 | is_assisted clarification for brainstorm/review |
+| Category | New Tests |
+|----------|-----------|
+| POSITIVE | pos_cody_sourcegraph, pos_coderabbit_review, pos_devin_bot_author, pos_tabnine_autocomplete, pos_greptile_codebase |
+| NEGATIVE | neg_sdk_version_bump, neg_ai_documentation, neg_llm_test_suite, neg_ai_competitor_analysis, neg_openai_client_library |
+| EDGE_CASE | edge_indirect_disclosure, edge_review_comment_ai, edge_ai_typo_false_positive, edge_github_actions_ai, confidence_high_signature, confidence_medium_mention, confidence_low_ambiguous, multi_tool_cursor_claude_copilot |
 
-### Test Results
+**Prompt Improvements (v6.5.0 → v6.8.0):**
 
-- **Golden Tests**: 28/29 passing (96.55%)
-- **Unit Tests**: 100+ passing
-- **A/B Timeline Test**: +5.8% accuracy improvement
+1. **v6.6.0 - Logical consistency + vague words + security**
+   - Added: `LOGICAL CONSISTENCY: If is_assisted=false, tools array MUST be empty`
+   - Added: Vague mentions rule ("assistance", "help" without AI context)
+   - Added: Security Notice for prompt injection protection
 
----
+2. **v6.7.0 - CI/CD configuration rule**
+   - Added: CI/CD configuration with AI tools is NOT AI-assisted
+   - Configuring GitHub Actions (coderabbit-ai/action) != using AI to code
 
-## Key Files
+3. **v6.8.0 - PR type definitions**
+   - Clarified: "feature" = product functionality visible to users
+   - Clarified: "chore" = Docker, deps, local dev config
+   - Clarified: "ci" = .github/workflows/, Jenkins, CircleCI
 
-| File | Purpose |
-|------|---------|
-| `apps/metrics/services/llm_prompts.py` | PROMPT_VERSION, get_user_prompt(), build_llm_pr_context(), build_timeline() |
-| `apps/metrics/prompts/` | Jinja2 template system |
-| `apps/metrics/prompts/golden_tests.py` | 29 test cases for LLM evaluation |
-| `apps/metrics/prompts/export.py` | Promptfoo config generation |
-| `apps/metrics/services/ai_patterns.py` | Regex patterns v1.7.0 |
-| `apps/metrics/services/ai_detector.py` | Detection functions |
-| `apps/integrations/services/groq_batch.py` | LLM batch processing |
+## Architecture
 
----
+### Prompt Template System
 
-## Response Schema (v6.3.2)
-
-```json
-{
-  "ai": {
-    "is_assisted": true,
-    "tools": ["claude"],
-    "usage_type": "authored",
-    "confidence": 0.95
-  },
-  "tech": {
-    "languages": ["python", "typescript"],
-    "frameworks": ["django", "react"],
-    "categories": ["backend", "frontend"]
-  },
-  "summary": {
-    "title": "Brief title",
-    "description": "CTO-friendly description",
-    "type": "feature"
-  },
-  "health": {
-    "review_friction": "low",
-    "scope": "medium",
-    "risk_level": "low",
-    "insights": ["Observations about PR process"]
-  }
-}
+```
+apps/metrics/prompts/
+├── templates/
+│   ├── system.jinja2          # Main system prompt
+│   ├── user.jinja2            # User prompt with PR context
+│   └── sections/              # Composable sections
+│       ├── intro.jinja2       # Intro + Security Notice
+│       ├── ai_detection.jinja2
+│       ├── tech_detection.jinja2
+│       ├── health_assessment.jinja2
+│       ├── response_schema.jinja2
+│       ├── definitions.jinja2
+│       └── enums.jinja2
+├── golden_tests.py            # 46 test cases (single source of truth)
+├── render.py                  # Template rendering
+├── export.py                  # Promptfoo YAML generation
+└── tests/                     # TDD tests
 ```
 
----
+### Golden Test Categories
 
-## Database
+| Category | Count | Purpose |
+|----------|-------|---------|
+| POSITIVE | 11 | Should detect AI |
+| NEGATIVE | 12 | Should NOT detect AI |
+| EDGE_CASE | 10 | Boundary cases, confidence calibration |
+| TECH_DETECTION | 4 | Technology categorization |
+| SUMMARY | 5 | PR type classification |
+| HEALTH | 4 | Health assessment |
 
-- `llm_summary`: JSONB field with full analysis
-- `llm_summary_version`: Prompt version string
-- Migration 0020: GIN indexes for JSONB queries
+## Key Decisions
 
----
+1. **repo_name is required** - All golden tests must have repo_name for consistent LLM context
+2. **file_count must match file_paths** - TDD tests enforce this constraint
+3. **Realistic test data** - Tests use believable file paths, author names, timelines
+4. **AI company repos** - vercel/ai, anthropics/cookbook used to test skeptical detection
+5. **Logical consistency** - is_assisted and tools must be consistent (both or neither)
+6. **Prompt injection protection** - Security notice prevents malicious PR descriptions
 
 ## Commands
 
 ```bash
-# Run LLM analysis
-.venv/bin/python manage.py run_llm_analysis --limit 50
+# Run golden tests
+.venv/bin/pytest apps/metrics/prompts/tests/ -v
 
-# Export promptfoo config
+# Regenerate promptfoo config
 .venv/bin/python manage.py export_prompts
 
-# Run promptfoo eval
+# Run LLM evaluation
 cd dev/active/ai-detection-pr-descriptions/experiments
-GROQ_API_KEY=... npx promptfoo eval -c promptfoo.yaml
+GROQ_API_KEY=$(grep "^GROQ_API_KEY" .env | cut -d= -f2) npx promptfoo eval -c promptfoo.yaml
+
+# View results
+npx promptfoo view
 ```
+
+## Integration Points
+
+- `apps/integrations/services/groq_batch.py` - LLM batch processing
+- `apps/integrations/services/github_graphql_sync.py` - PR sync with AI detection
+- `apps/metrics/services/ai_patterns.py` - Regex patterns (v1.9.0)
+- `apps/metrics/services/llm_prompts.py` - PROMPT_VERSION + user prompt builder
+
+## No Migrations Needed
+
+This session only modified test data and prompt templates - no model changes.
