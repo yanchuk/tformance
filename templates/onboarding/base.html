@@ -64,6 +64,53 @@
     </div>
   </div>
 
+  {# Background sync indicator - floating at bottom right #}
+  {% if sync_task_id %}
+  <div id="sync-indicator" class="fixed bottom-4 right-4 z-50">
+    <a href="{% url 'onboarding:sync_progress' %}"
+       class="flex items-center gap-3 bg-base-200 border border-base-300 rounded-lg px-4 py-3 shadow-lg hover:bg-base-300 transition-colors">
+      <div class="relative">
+        <i id="sync-icon" class="fa-solid fa-sync fa-spin text-primary"></i>
+      </div>
+      <div class="text-sm">
+        <div class="font-medium text-base-content">{% translate "Syncing data..." %}</div>
+        <div id="sync-status" class="text-base-content/70">{% translate "Running in background" %}</div>
+      </div>
+    </a>
+  </div>
+  <script>
+  (function() {
+    const taskId = "{{ sync_task_id }}";
+    const progressUrl = '/celery-progress/' + taskId + '/';
+    const indicator = document.getElementById('sync-indicator');
+    const icon = document.getElementById('sync-icon');
+    const status = document.getElementById('sync-status');
+
+    function pollProgress() {
+      fetch(progressUrl)
+        .then(response => response.json())
+        .then(data => {
+          if (data.complete) {
+            icon.classList.remove('fa-spin', 'fa-sync');
+            icon.classList.add('fa-check', 'text-success');
+            status.textContent = 'Sync complete!';
+            // Hide after 5 seconds
+            setTimeout(() => indicator.style.display = 'none', 5000);
+          } else if (data.progress) {
+            const percent = Math.round((data.progress.current / data.progress.total) * 100);
+            status.textContent = percent + '% complete';
+            setTimeout(pollProgress, 2000);
+          } else {
+            setTimeout(pollProgress, 2000);
+          }
+        })
+        .catch(() => setTimeout(pollProgress, 3000));
+    }
+    pollProgress();
+  })();
+  </script>
+  {% endif %}
+
   {# Main content #}
   <div class="max-w-2xl mx-auto px-4 py-12">
     {% if messages %}

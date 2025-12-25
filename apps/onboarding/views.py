@@ -16,15 +16,18 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.signing import BadSignature, Signer
+from django.http import JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
+from django.views.decorators.http import require_POST
 from django_ratelimit.decorators import ratelimit
 
-from apps.integrations.models import GitHubIntegration, IntegrationCredential
+from apps.integrations.models import GitHubIntegration, IntegrationCredential, TrackedRepository
 from apps.integrations.services import github_oauth, member_sync
 from apps.integrations.services.encryption import decrypt, encrypt
 from apps.integrations.services.github_oauth import GitHubOAuthError
+from apps.integrations.tasks import sync_historical_data_task
 from apps.teams.helpers import get_next_unique_team_slug
 from apps.teams.models import Membership, Team
 from apps.teams.roles import ROLE_ADMIN
@@ -311,8 +314,15 @@ def select_repositories(request):
         return redirect("onboarding:start")
 
     if request.method == "POST":
-        # Handle repository selection - for now just skip to next step
-        # This will be implemented when we add the full repo tracking logic
+        # Start sync in background and continue to next step
+        repo_ids = list(TrackedRepository.objects.filter(team=team).values_list("id", flat=True))
+        if repo_ids:
+            # Start background sync task
+            task = sync_historical_data_task.delay(team.id, repo_ids)
+            # Store task_id in session for progress tracking
+            request.session["sync_task_id"] = task.id
+            logger.info(f"Started background sync task {task.id} for team {team.name}")
+
         return redirect("onboarding:connect_jira")
 
     # Fetch repositories (we'll implement this in the template)
@@ -326,6 +336,51 @@ def select_repositories(request):
             "step": 2,
         },
     )
+
+
+@login_required
+def sync_progress(request):
+    """Show sync progress page with Celery progress tracking."""
+    if not request.user.teams.exists():
+        return redirect("onboarding:start")
+
+    team = request.user.teams.first()
+
+    # Get tracked repositories for this team
+    repos = TrackedRepository.objects.filter(team=team).select_related("integration")
+
+    return render(
+        request,
+        "onboarding/sync_progress.html",
+        {
+            "team": team,
+            "repos": repos,
+            "page_title": _("Syncing Data"),
+            "step": 3,
+        },
+    )
+
+
+@login_required
+@require_POST
+def start_sync(request):
+    """Start the historical sync task and return task ID.
+
+    Returns:
+        JSON response with task_id for progress polling
+    """
+    if not request.user.teams.exists():
+        return JsonResponse({"error": "No team found"}, status=400)
+
+    team = request.user.teams.first()
+
+    # Get all tracked repo IDs for this team
+    repo_ids = list(TrackedRepository.objects.filter(team=team).values_list("id", flat=True))
+
+    # Start the Celery task
+    task = sync_historical_data_task.delay(team.id, repo_ids)
+
+    return JsonResponse({"task_id": task.id})
 
 
 @login_required
@@ -347,6 +402,7 @@ def connect_jira(request):
             "team": team,
             "page_title": _("Connect Jira"),
             "step": 3,
+            "sync_task_id": request.session.get("sync_task_id"),
         },
     )
 
@@ -370,6 +426,7 @@ def connect_slack(request):
             "team": team,
             "page_title": _("Connect Slack"),
             "step": 4,
+            "sync_task_id": request.session.get("sync_task_id"),
         },
     )
 
@@ -418,6 +475,9 @@ def onboarding_complete(request):
     # Clear onboarding session data
     request.session.pop(ONBOARDING_SELECTED_ORG_KEY, None)
 
+    # Get sync task info for progress indicator
+    sync_task_id = request.session.get("sync_task_id")
+
     return render(
         request,
         "onboarding/complete.html",
@@ -425,5 +485,6 @@ def onboarding_complete(request):
             "team": team,
             "page_title": _("Setup Complete"),
             "step": 5,
+            "sync_task_id": sync_task_id,
         },
     )

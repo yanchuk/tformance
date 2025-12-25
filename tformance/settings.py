@@ -374,6 +374,23 @@ GITHUB_API_CONFIG = {
     "GRAPHQL_RATE_LIMIT_THRESHOLD": env.int("GITHUB_GRAPHQL_RATE_LIMIT_THRESHOLD", default=100),
 }
 
+# Historical sync configuration for onboarding
+# Controls how much history to fetch when users connect repos
+HISTORICAL_SYNC_CONFIG = {
+    # Number of months of history to sync (default: 12)
+    "HISTORY_MONTHS": env.int("SYNC_HISTORY_MONTHS", default=12),
+    # Number of PRs per LLM batch for AI detection (default: 100)
+    "LLM_BATCH_SIZE": env.int("SYNC_LLM_BATCH_SIZE", default=100),
+    # PRs per page in GraphQL queries (default: 25, optimal for rate limits)
+    "GRAPHQL_PAGE_SIZE": 25,
+    # Maximum retries on transient failures
+    "MAX_RETRIES": env.int("SYNC_MAX_RETRIES", default=3),
+    # Delay between retries in seconds
+    "RETRY_DELAY_SECONDS": env.int("SYNC_RETRY_DELAY", default=30),
+    # Groq batch polling interval in seconds
+    "GROQ_POLL_INTERVAL": env.int("SYNC_GROQ_POLL_INTERVAL", default=5),
+}
+
 # Jira OAuth (Atlassian)
 JIRA_CLIENT_ID = env("JIRA_CLIENT_ID", default="")
 JIRA_CLIENT_SECRET = env("JIRA_CLIENT_SECRET", default="")

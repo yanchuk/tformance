@@ -1,0 +1,156 @@
+{% extends "onboarding/base.html" %}
+{% load i18n %}
+{% load static %}
+{% load django_vite %}
+
+{% block onboarding_content %}
+<div class="app-card p-8">
+  <div class="text-center mb-8">
+    <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
+      <i class="fa-solid fa-sync fa-spin text-2xl text-primary"></i>
+    </div>
+    <h1 class="text-2xl font-semibold mb-2">{% translate "Syncing Your Data" %}</h1>
+    <p class="text-base-content/70">
+      {% translate "We're importing your GitHub history. This usually takes a few minutes." %}
+    </p>
+  </div>
+
+  {# Overall progress bar #}
+  <div class="mb-8">
+    <div class="flex justify-between text-sm mb-2">
+      <span id="progress-message" class="text-base-content/70">{% translate "Starting sync..." %}</span>
+      <span id="progress-percent" class="font-mono text-base-content">0%</span>
+    </div>
+    <div class="w-full bg-base-300 rounded-full h-3">
+      <div id="progress-bar" class="bg-primary h-3 rounded-full transition-all duration-300" style="width: 0%"></div>
+    </div>
+  </div>
+
+  {# Repository list with status #}
+  {% if repos %}
+  <div class="border border-base-300 rounded-lg divide-y divide-base-300 mb-8">
+    {% for repo in repos %}
+    <div class="flex items-center justify-between p-4" id="repo-{{ repo.id }}">
+      <div class="flex items-center gap-3">
+        <i class="fa-brands fa-github text-base-content/50"></i>
+        <span class="font-medium">{{ repo.full_name }}</span>
+      </div>
+      <div class="repo-status">
+        <span class="badge badge-ghost text-base-content/50">
+          <i class="fa-solid fa-clock mr-1"></i>
+          {% translate "Pending" %}
+        </span>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="text-center text-base-content/70 py-8">
+    {% translate "No repositories selected for sync." %}
+  </div>
+  {% endif %}
+
+  {# Actions #}
+  <div id="sync-actions" class="text-center">
+    <p class="text-sm text-base-content/70 mb-4">
+      {% translate "You can safely close this page. The sync will continue in the background." %}
+    </p>
+  </div>
+
+  {# Completion section (hidden by default) #}
+  <div id="sync-complete" class="hidden text-center">
+    <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-success/10 mb-4">
+      <i class="fa-solid fa-check text-2xl text-success"></i>
+    </div>
+    <h2 class="text-xl font-semibold mb-2">{% translate "Sync Complete!" %}</h2>
+    <p class="text-base-content/70 mb-6">
+      {% translate "Your data is ready. Let's continue setting up your team." %}
+    </p>
+    <a href="{% url 'onboarding:connect_jira' %}" class="app-btn-primary">
+      {% translate "Continue" %}
+      <i class="fa-solid fa-arrow-right ml-2"></i>
+    </a>
+  </div>
+</div>
+
+{# Hidden data for JavaScript #}
+<script type="application/json" id="sync-config">
+{
+  "startUrl": "{% url 'onboarding:start_sync' %}",
+  "csrfToken": "{{ csrf_token }}"
+}
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const config = JSON.parse(document.getElementById('sync-config').textContent);
+  const progressBar = document.getElementById('progress-bar');
+  const progressPercent = document.getElementById('progress-percent');
+  const progressMessage = document.getElementById('progress-message');
+  const syncActions = document.getElementById('sync-actions');
+  const syncComplete = document.getElementById('sync-complete');
+
+  // Start the sync task
+  fetch(config.startUrl, {
+    method: 'POST',
+    headers: {
+      'X-CSRFToken': config.csrfToken,
+      'Content-Type': 'application/json'
+    }
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.task_id) {
+      // Poll for progress using celery-progress
+      const progressUrl = '/celery-progress/' + data.task_id + '/';
+      pollProgress(progressUrl);
+    } else {
+      progressMessage.textContent = 'Failed to start sync';
+    }
+  })
+  .catch(error => {
+    console.error('Error starting sync:', error);
+    progressMessage.textContent = 'Error starting sync';
+  });
+
+  function pollProgress(url) {
+    fetch(url)
+      .then(response => response.json())
+      .then(data => {
+        if (data.complete) {
+          // Sync complete
+          progressBar.style.width = '100%';
+          progressPercent.textContent = '100%';
+          progressMessage.textContent = data.result?.message || 'Sync complete!';
+
+          // Show completion UI
+          syncActions.classList.add('hidden');
+          syncComplete.classList.remove('hidden');
+
+          // Stop the spinner
+          document.querySelector('.fa-sync').classList.remove('fa-spin');
+        } else if (data.progress) {
+          // Update progress
+          const percent = Math.round((data.progress.current / data.progress.total) * 100);
+          progressBar.style.width = percent + '%';
+          progressPercent.textContent = percent + '%';
+          if (data.progress.description) {
+            progressMessage.textContent = data.progress.description;
+          }
+
+          // Continue polling
+          setTimeout(() => pollProgress(url), 1000);
+        } else {
+          // No progress yet, keep polling
+          setTimeout(() => pollProgress(url), 1000);
+        }
+      })
+      .catch(error => {
+        console.error('Error polling progress:', error);
+        // Retry after a delay
+        setTimeout(() => pollProgress(url), 2000);
+      });
+  }
+});
+</script>
+{% endblock %}

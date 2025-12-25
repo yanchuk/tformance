@@ -1577,3 +1577,140 @@ def refresh_all_repo_languages_task() -> dict:
         "errors_count": len(errors),
         "errors": errors[:10],  # First 10 errors only
     }
+
+
+# ============================================================================
+# Historical Sync for Onboarding
+# ============================================================================
+
+
+@shared_task(bind=True)
+def sync_historical_data_task(self, team_id: int, repo_ids: list[int]) -> dict:
+    """
+    Sync historical PR data for selected repositories during onboarding.
+
+    This task fetches historical data for newly connected repositories,
+    processes PRs through LLM for AI detection, and reports real-time progress.
+
+    Args:
+        team_id: ID of the team
+        repo_ids: List of TrackedRepository IDs to sync
+
+    Returns:
+        Dict with sync results (status, repos_synced, total_prs)
+    """
+    from django.utils import timezone
+
+    from apps.integrations.services.historical_sync import prioritize_repositories
+    from apps.integrations.services.onboarding_sync import OnboardingSyncService
+    from apps.integrations.signals import (
+        onboarding_sync_completed,
+        onboarding_sync_started,
+        repository_sync_completed,
+    )
+    from apps.teams.models import Team
+
+    try:
+        team = Team.objects.get(id=team_id)
+    except Team.DoesNotExist:
+        logger.error(f"Team with id {team_id} not found")
+        return {"status": "error", "error": f"Team {team_id} not found"}
+
+    repos = TrackedRepository.objects.filter(
+        id__in=repo_ids,
+        team=team,
+    )  # noqa: TEAM001 - IDs from Celery task queue
+
+    if not repos.exists():
+        return {"status": "complete", "repos_synced": 0, "total_prs": 0}
+
+    # Prioritize repos by recent activity
+    sorted_repos = prioritize_repositories(repos)
+
+    total_repos = len(sorted_repos)
+    total_prs = 0
+    failed_repos = 0
+
+    # Get GitHub token from integration
+    try:
+        integration = GitHubIntegration.objects.get(team=team)
+        github_token = integration.credential.access_token
+    except GitHubIntegration.DoesNotExist:
+        logger.error(f"No GitHub integration found for team {team_id}")
+        return {"status": "error", "error": "GitHub integration not configured"}
+    except Exception as e:
+        logger.error(f"Failed to get GitHub token for team {team_id}: {e}")
+        return {"status": "error", "error": "GitHub integration not configured"}
+
+    # Send sync started signal
+    onboarding_sync_started.send(
+        sender=sync_historical_data_task,
+        team_id=team_id,
+        repo_ids=repo_ids,
+    )
+
+    service = OnboardingSyncService(team=team, github_token=github_token)
+
+    for repo in sorted_repos:
+        # Update repo status to syncing
+        repo.sync_status = "syncing"
+        repo.sync_started_at = timezone.now()
+        repo.save(update_fields=["sync_status", "sync_started_at"])
+
+        try:
+            # Define progress callback for celery_progress
+            # Use default argument to capture current repo value (avoids B023 closure issue)
+            def progress_callback(prs_completed: int, prs_total: int, message: str, current_repo=repo):
+                # Update repo progress
+                if prs_total > 0:
+                    current_repo.sync_progress = int((prs_completed / prs_total) * 100)
+                    current_repo.sync_prs_completed = prs_completed
+                    current_repo.sync_prs_total = prs_total
+                    current_repo.save(update_fields=["sync_progress", "sync_prs_completed", "sync_prs_total"])
+
+            # Sync the repository
+            result = service.sync_repository(repo=repo, progress_callback=progress_callback)
+            prs_synced = result.get("prs_synced", 0)
+            total_prs += prs_synced
+
+            # Mark as completed
+            repo.sync_status = "completed"
+            repo.last_sync_at = timezone.now()
+            repo.last_sync_error = None
+            repo.save(update_fields=["sync_status", "last_sync_at", "last_sync_error"])
+
+            # Send repository sync completed signal
+            repository_sync_completed.send(
+                sender=sync_historical_data_task,
+                team_id=team_id,
+                repo_id=repo.id,
+                prs_synced=prs_synced,
+            )
+
+            logger.info(f"Synced {prs_synced} PRs for {repo.full_name}")
+
+        except Exception as e:
+            logger.error(f"Failed to sync {repo.full_name}: {e}")
+            failed_repos += 1
+
+            # Mark as failed
+            repo.sync_status = "failed"
+            repo.last_sync_error = str(e)
+            repo.save(update_fields=["sync_status", "last_sync_error"])
+
+    # Send sync completed signal
+    repos_synced = total_repos - failed_repos
+    onboarding_sync_completed.send(
+        sender=sync_historical_data_task,
+        team_id=team_id,
+        repos_synced=repos_synced,
+        failed_repos=failed_repos,
+        total_prs=total_prs,
+    )
+
+    return {
+        "status": "complete",
+        "repos_synced": repos_synced,
+        "failed_repos": failed_repos,
+        "total_prs": total_prs,
+    }

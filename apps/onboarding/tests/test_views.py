@@ -178,3 +178,107 @@ class SkipOnboardingViewTests(TestCase):
         team = self.user.teams.first()
         membership = Membership.objects.get(team=team, user=self.user)
         self.assertEqual(membership.role, ROLE_ADMIN)
+
+
+class SyncProgressViewTests(TestCase):
+    """Tests for sync_progress view."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        from apps.integrations.factories import GitHubIntegrationFactory, TrackedRepositoryFactory
+
+        self.user = CustomUser.objects.create_user(
+            username="sync_test@example.com",
+            email="sync_test@example.com",
+            password="testpassword123",
+        )
+        self.team = TeamFactory()
+        self.team.members.add(self.user)
+        self.integration = GitHubIntegrationFactory(team=self.team)
+        self.repo = TrackedRepositoryFactory(team=self.team, integration=self.integration)
+
+    def test_redirect_to_login_when_not_authenticated(self):
+        """Test that unauthenticated users are redirected to login."""
+        response = self.client.get(reverse("onboarding:sync_progress"))
+        self.assertRedirects(
+            response,
+            f"{reverse('account_login')}?next={reverse('onboarding:sync_progress')}",
+        )
+
+    def test_redirect_to_start_when_no_team(self):
+        """Test that users without teams are redirected to start."""
+        CustomUser.objects.create_user(
+            username="noteam@example.com",
+            email="noteam@example.com",
+            password="testpassword123",
+        )
+        self.client.login(username="noteam@example.com", password="testpassword123")
+
+        response = self.client.get(reverse("onboarding:sync_progress"))
+
+        self.assertRedirects(response, reverse("onboarding:start"))
+
+    def test_shows_sync_progress_page(self):
+        """Test that sync progress page loads correctly."""
+        self.client.login(username="sync_test@example.com", password="testpassword123")
+
+        response = self.client.get(reverse("onboarding:sync_progress"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "onboarding/sync_progress.html")
+
+    def test_context_contains_team_and_repos(self):
+        """Test that context contains team and repository info."""
+        self.client.login(username="sync_test@example.com", password="testpassword123")
+
+        response = self.client.get(reverse("onboarding:sync_progress"))
+
+        self.assertEqual(response.context["team"], self.team)
+        self.assertIn("repos", response.context)
+
+
+class StartSyncApiViewTests(TestCase):
+    """Tests for start_sync API view."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        from apps.integrations.factories import GitHubIntegrationFactory, TrackedRepositoryFactory
+
+        self.user = CustomUser.objects.create_user(
+            username="api_test@example.com",
+            email="api_test@example.com",
+            password="testpassword123",
+        )
+        self.team = TeamFactory()
+        self.team.members.add(self.user)
+        self.integration = GitHubIntegrationFactory(team=self.team)
+        self.repo = TrackedRepositoryFactory(team=self.team, integration=self.integration)
+
+    def test_requires_authentication(self):
+        """Test that API requires authentication."""
+        response = self.client.post(reverse("onboarding:start_sync"))
+        # Should redirect to login
+        self.assertEqual(response.status_code, 302)
+
+    def test_requires_post_method(self):
+        """Test that API only accepts POST."""
+        self.client.login(username="api_test@example.com", password="testpassword123")
+
+        response = self.client.get(reverse("onboarding:start_sync"))
+
+        self.assertEqual(response.status_code, 405)  # Method not allowed
+
+    def test_returns_task_id(self):
+        """Test that API returns a task ID."""
+        from unittest.mock import patch
+
+        self.client.login(username="api_test@example.com", password="testpassword123")
+
+        with patch("apps.onboarding.views.sync_historical_data_task") as mock_task:
+            mock_task.delay.return_value.id = "test-task-id-123"
+
+            response = self.client.post(reverse("onboarding:start_sync"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("task_id", response.json())
+        self.assertEqual(response.json()["task_id"], "test-task-id-123")
