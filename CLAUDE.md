@@ -1,8 +1,8 @@
-# AI Impact Analytics Platform
+# Tformance - AI Impact Analytics Platform
 
 ## Project Overview
 
-A SaaS platform helping CTOs understand if AI coding tools are actually improving their team's performance. Connects to GitHub, Jira, and Slack to correlate AI usage with delivery metrics.
+Tformance is a SaaS platform helping CTOs understand if AI coding tools are actually improving their team's performance. Connects to GitHub, Jira, and Slack to correlate AI usage with delivery metrics.
 
 ## Documentation
 
@@ -56,11 +56,13 @@ Follow phases in [IMPLEMENTATION-PLAN.md](prd/IMPLEMENTATION-PLAN.md):
 
 Detects AI tool usage in PRs via regex patterns and LLM analysis.
 
+> **Full documentation:** See [AI-DETECTION-TESTING.md](prd/AI-DETECTION-TESTING.md) for workflows, testing tools, and implementation details.
+
 ### LLM Data Priority Rule
 
-**IMPORTANT: Always prioritize LLM-detected data over pattern/regex detection at the model/controller level.**
+**IMPORTANT: Always prioritize LLM-detected data over pattern/regex detection.**
 
-When displaying or calculating metrics, use the `effective_*` model properties that implement this priority:
+Use `effective_*` model properties that implement this priority:
 
 | Property | LLM Source | Fallback |
 |----------|------------|----------|
@@ -68,149 +70,30 @@ When displaying or calculating metrics, use the `effective_*` model properties t
 | `pr.effective_is_ai_assisted` | `llm_summary.ai.is_assisted` (confidence ≥0.5) | `is_ai_assisted` field |
 | `pr.effective_ai_tools` | `llm_summary.ai.tools` | `ai_tools_detected` field |
 
-**Why:** LLM detection is context-aware and more accurate than regex patterns. Pattern detection exists as fallback for PRs without LLM analysis.
-
 ### Pattern Versioning
 
-Patterns are versioned to enable reprocessing when new patterns are added:
-
-| File | Purpose |
-|------|---------|
-| `apps/metrics/services/ai_patterns.py` | Active patterns + `PATTERNS_VERSION` |
-| `dev/completed/ai-detection-pr-descriptions/experiments/patterns/` | Version history (v1.4.0.md, v1.5.0.md) |
-
-When adding patterns:
-1. Update `AI_SIGNATURE_PATTERNS` in `ai_patterns.py`
+When adding new regex patterns:
+1. Update `AI_SIGNATURE_PATTERNS` in `apps/metrics/services/ai_patterns.py`
 2. Increment `PATTERNS_VERSION` (e.g., 1.5.0 → 1.6.0)
-3. Create new version file documenting changes
-4. Run backfill to update historical PRs
+3. Run `python manage.py backfill_ai_detection` to update historical PRs
 
-### LLM Prompt System
+### Prompt Template Changes (REQUIRE APPROVAL)
 
-LLM prompts for AI detection are managed via **Jinja2 templates** for maintainability:
-
-```
-apps/metrics/prompts/
-├── templates/
-│   ├── system.jinja2          # System prompt (composes sections)
-│   ├── user.jinja2            # User prompt with full PR context
-│   └── sections/
-│       ├── ai_detection.jinja2
-│       ├── tech_detection.jinja2
-│       ├── health_assessment.jinja2
-│       ├── response_schema.jinja2
-│       ├── definitions.jinja2
-│       └── enums.jinja2
-├── render.py                   # Template rendering functions
-├── schemas.py                  # JSON Schema for response validation
-└── export.py                   # Promptfoo config generation
-```
-
-**Key Functions:**
-
-| Function | Purpose |
-|----------|---------|
-| `render_system_prompt()` | Render system prompt from templates |
-| `render_user_prompt()` | Render user prompt with full PR context (25+ vars) |
-| `validate_llm_response()` | Validate LLM response against schema |
-| `export_promptfoo_config()` | Generate promptfoo.yaml for testing |
-
-**⚠️ Template Change Rules (REQUIRE USER APPROVAL):**
-
-Before modifying any template file (`system.jinja2`, `user.jinja2`, `sections/*`):
-1. **Explain the change** - Describe what you want to modify and why
-2. **Show the diff** - Present the exact changes you plan to make
-3. **Wait for approval** - Do NOT edit templates until user confirms
-4. **Bump version** - Update `PROMPT_VERSION` in `llm_prompts.py` for any behavioral changes
-
-Templates affect LLM behavior across all PR analysis. Changes can break detection accuracy.
-
-**Workflow for modifying prompts (after approval):**
-1. Edit the relevant template (`system.jinja2`, `user.jinja2`, or `sections/*`)
-2. Run: `python manage.py export_prompts` to regenerate promptfoo config
-3. Test with: `cd dev/completed/ai-detection-pr-descriptions/experiments && npx promptfoo eval`
-4. Verify equivalence: `pytest apps/metrics/prompts/tests/test_render.py -k matches`
-
-**Version:** Current is `PROMPT_VERSION` in `apps/metrics/services/llm_prompts.py`
-
-### Golden Tests
-
-Test cases for LLM evaluation are defined in `apps/metrics/prompts/golden_tests.py`:
-
-```python
-from apps.metrics.prompts import GOLDEN_TESTS, GoldenTest, GoldenTestCategory
-
-# Categories: POSITIVE, NEGATIVE, EDGE_CASE, TECH_DETECTION, SUMMARY, HEALTH
-positive_tests = [t for t in GOLDEN_TESTS if t.category == GoldenTestCategory.POSITIVE]
-```
-
-**Adding a test case:**
-1. Add `GoldenTest(...)` to `golden_tests.py`
-2. Run: `pytest apps/metrics/prompts/tests/ -v`
-3. Export: `python manage.py export_prompts`
-
-**Regex validation tests:** `apps/metrics/prompts/tests/test_golden_regex_validation.py` bridges golden tests to `ai_detector.py` with documented limitations.
+Before modifying any prompt template (`apps/metrics/prompts/templates/*`):
+1. **Explain the change** and show the diff
+2. **Wait for user approval** - templates affect all PR analysis
+3. **Bump version** - Update `PROMPT_VERSION` in `llm_prompts.py`
+4. **Test** - Run `make export-prompts && npx promptfoo eval`
 
 ### Key Files
 
 | File | Purpose |
 |------|---------|
-| `apps/metrics/services/ai_patterns.py` | Regex pattern definitions |
-| `apps/metrics/services/ai_detector.py` | Detection functions |
-| `apps/metrics/services/llm_prompts.py` | Prompt version + user prompt builder |
-| `apps/metrics/prompts/` | Template system + golden tests |
+| `apps/metrics/services/ai_patterns.py` | Regex patterns + `PATTERNS_VERSION` |
+| `apps/metrics/services/llm_prompts.py` | `PROMPT_VERSION` + user prompt builder |
+| `apps/metrics/prompts/templates/` | Jinja2 prompt templates (source of truth) |
 | `apps/metrics/prompts/golden_tests.py` | 29 test cases for LLM evaluation |
-| `apps/metrics/prompts/export.py` | Promptfoo config generation with full context |
-| `apps/integrations/services/groq_batch.py` | LLM batch processing |
-| `apps/integrations/services/github_graphql_sync.py` | PR sync with AI detection |
-
-### Promptfoo Model Comparison
-
-We use [promptfoo](https://promptfoo.dev) for LLM prompt evaluation with multiple models.
-
-**Running evaluations:**
-```bash
-cd dev/completed/ai-detection-pr-descriptions/experiments
-npx promptfoo eval              # Run all tests (picks up GROQ_API_KEY from .env symlink)
-npx promptfoo eval --filter-pattern "health_"  # Run subset
-npx promptfoo view              # View results in UI
-```
-
-**Current models (via Groq):**
-- `groq:llama-3.3-70b-versatile` - Primary model, best quality
-- `groq:openai/gpt-oss-20b` - Faster, cheaper (72% less), good for iteration
-
-**⚠️ CRITICAL: GPT-OSS-20B Configuration**
-
-GPT-OSS-20B outputs "Thinking: ..." text before JSON by default, breaking JSON parsing. **Always set `include_reasoning: false`:**
-
-```yaml
-# In promptfoo.yaml or export.py
-providers:
-  - id: groq:openai/gpt-oss-20b
-    config:
-      include_reasoning: false  # REQUIRED - disables "Thinking:" prefix
-      response_format:
-        type: json_object
-```
-
-Without this, all tests fail with: `"Thinking: " is not valid JSON`
-
-**Full PR Context in Tests:**
-
-Test cases include the complete PR context via `get_user_prompt()` to ensure LLM sees all available data:
-- Title, author, state, labels
-- File paths, additions/deletions
-- Timing: cycle_time_hours, review_time_hours, review_rounds
-- Commits, reviewers, review comments
-- Jira key, milestone, linked issues, etc.
-
-The full context is pre-rendered in `user_prompt` variable so it's visible in promptfoo UI for debugging.
-
-**Regenerating after changes:**
-```bash
-python manage.py export_prompts  # Updates promptfoo.yaml + system prompt
-```
+| `apps/integrations/services/groq_batch.py` | LLM batch processing via Groq |
 
 ## Data Flow
 

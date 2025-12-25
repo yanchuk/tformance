@@ -1,4 +1,4 @@
-# Onboarding Flow
+# Tformance Onboarding Flow
 
 > Part of [PRD Documentation](README.md)
 
@@ -277,7 +277,7 @@ After sync completes:
 ### Welcome Email (Sent immediately)
 
 ```
-Subject: Welcome to [Product] - Your dashboard is ready!
+Subject: Welcome to Tformance - Your dashboard is ready!
 
 Hi {name},
 
@@ -294,13 +294,13 @@ We'll send another email once the initial sync is complete.
 
 Questions? Reply to this email.
 
-– The [Product] Team
+– The Tformance Team
 ```
 
 ### Sync Complete Email (Sent when done)
 
 ```
-Subject: Your [Product] dashboard is ready!
+Subject: Your Tformance dashboard is ready!
 
 Hi {name},
 
@@ -317,5 +317,5 @@ What's next:
 - First leaderboard posts {next_monday} at 9 AM
 - Check the AI Correlation view after collecting survey data
 
-– The [Product] Team
+– The Tformance Team
 ```

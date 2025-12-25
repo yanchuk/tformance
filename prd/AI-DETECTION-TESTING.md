@@ -1,4 +1,4 @@
-# AI Detection Testing & Experimentation
+# Tformance AI Detection Testing & Experimentation
 
 ## Overview
 

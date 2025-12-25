@@ -1,10 +1,10 @@
-# Slack Bot Specification
+# Tformance Slack Bot Specification
 
 > Part of [PRD Documentation](README.md)
 
 ## Bot Identity
 
-- **Name:** [Product Name] Bot
+- **Name:** Tformance Bot
 - **Avatar:** Custom icon (TBD)
 - **Presence:** Always online when service healthy
 
@@ -186,12 +186,12 @@ Set during onboarding, editable in settings.
 
 ```yaml
 display_information:
-  name: [Product Name]
+  name: Tformance
   description: AI Impact Analytics for Engineering Teams
 
 features:
   bot_user:
-    display_name: [Product Name] Bot
+    display_name: Tformance Bot
     always_online: true
 
 oauth_config:

@@ -1,4 +1,4 @@
-# High-Level Implementation Plan
+# Tformance Implementation Plan
 
 > Part of [PRD Documentation](README.md)
 

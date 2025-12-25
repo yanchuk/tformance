@@ -1,4 +1,4 @@
-# Technical Architecture
+# Tformance Technical Architecture
 
 > Part of [PRD Documentation](README.md)
 

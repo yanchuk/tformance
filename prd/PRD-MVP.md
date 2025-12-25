@@ -1,4 +1,4 @@
-# Product Requirements Document: AI Impact Analytics Platform
+# Tformance Product Requirements Document
 
 ## MVP v1.0
 

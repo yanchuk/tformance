@@ -1,6 +1,8 @@
-# Dashboard Views (Chart.js + HTMX)
+# Tformance Dashboard Views (Chart.js + HTMX)
 
 > Part of [PRD Documentation](README.md)
+
+**Current Implementation:** Dashboard functionality lives in `apps/metrics/` with analytics views and chart endpoints. This document describes the specification and current implementation.
 
 ## Overview
 
@@ -228,7 +230,7 @@ CTO-only filters:
 
 **Implementation Pattern:**
 ```html
-<select hx-get="/dashboard/chart-data/" hx-target="#chart-container"
+<select hx-get="/a/{team_slug}/analytics/chart-data/" hx-target="#chart-container"
         hx-include="[name='date_range'],[name='team']">
   <option value="7">Last 7 days</option>
   <option value="30">Last 30 days</option>
@@ -246,7 +248,7 @@ Charts are loaded asynchronously to improve page load time:
 ```html
 <!-- Template -->
 <div id="pr-chart"
-     hx-get="{% url 'dashboard:pr_throughput_chart' team_slug=team.slug %}"
+     hx-get="{% url 'metrics:cycle_time_chart' team_slug=team.slug %}"
      hx-trigger="load"
      hx-swap="innerHTML">
   <span class="loading loading-spinner loading-lg"></span>
@@ -256,18 +258,18 @@ Charts are loaded asynchronously to improve page load time:
 ### Django View Pattern
 
 ```python
-@login_and_team_required
-def pr_throughput_chart(request, team_slug):
-    team = get_team_from_request(request)
-    date_range = request.GET.get('date_range', 30)
+@team_admin_required
+def cycle_time_chart(request, team_slug):
+    team = request.team
+    days = int(request.GET.get('days', 30))
 
-    # Query data
-    data = PullRequest.objects.for_team(team).aggregate_by_day(...)
+    # Query data using team-scoped manager
+    data = get_cycle_time_trend(team, days=days)
 
     # Return partial template with chart data
-    return render(request, 'dashboard/partials/pr_throughput_chart.html', {
+    return render(request, 'metrics/partials/cycle_time_chart.html', {
         'chart_data': json.dumps(data),
-        'chart_id': 'pr-throughput',
+        'chart_id': 'cycle-time',
     })
 ```
 
@@ -308,26 +310,52 @@ def get_visible_members(user, team):
 
 ## File Organization
 
+**Current Implementation** (as of Dec 2025):
+
 ```
-apps/dashboard/
-├── views.py          # Dashboard page views
-├── api_views.py      # Chart data endpoints
-├── services.py       # Data aggregation logic
-├── urls.py           # URL patterns
-└── templates/
-    └── dashboard/
-        ├── cto_overview.html
-        ├── team_dashboard.html
-        ├── individual_dashboard.html
-        ├── ai_correlation.html
-        └── partials/
-            ├── stat_card.html
-            ├── pr_throughput_chart.html
-            ├── cycle_time_chart.html
-            └── ...
+apps/metrics/
+├── views/
+│   ├── __init__.py           # Re-exports all views
+│   ├── analytics_views.py    # Tabbed analytics pages (Overview, AI, Delivery, etc.)
+│   ├── chart_views.py        # HTMX chart endpoints
+│   ├── dashboard_views.py    # Legacy CTO/Team dashboard views
+│   ├── pr_list_views.py      # Pull Requests data explorer
+│   └── trends_views.py       # Trends & benchmarks
+├── services/
+│   ├── dashboard_service.py  # Key metrics, team breakdown
+│   ├── pr_list_service.py    # PR filtering and export
+│   └── benchmark_service.py  # Industry benchmarks (DORA)
+├── urls.py                   # URL patterns (metrics namespace)
+└── templatetags/
+    └── pr_list_tags.py       # Custom template filters
+
+templates/metrics/
+├── analytics/
+│   ├── base_analytics.html   # Tab navigation, date filters
+│   ├── overview.html         # CTO Overview (insights, key metrics)
+│   ├── ai_adoption.html      # AI metrics deep dive
+│   ├── delivery.html         # Cycle time, PR size
+│   ├── quality.html          # Review time, CI/CD
+│   ├── team.html             # Member breakdown, leaderboard
+│   ├── pull_requests.html    # Data explorer with filters
+│   └── trends.html           # Trends & benchmarks
+├── partials/
+│   ├── key_metrics_cards.html
+│   ├── cycle_time_chart.html
+│   ├── ai_adoption_chart.html
+│   ├── team_breakdown_table.html
+│   └── ...                   # 25+ chart/table partials
+├── pull_requests/
+│   ├── list.html             # Full PR list page
+│   └── partials/table.html   # HTMX table partial
+├── cto_overview.html         # Legacy (redirects to analytics)
+└── team_dashboard.html       # Team lead view
 
 assets/javascript/dashboard/
-├── dashboard-charts.js    # Existing Chart.js utilities
-├── chart-init.js          # Chart initialization for HTMX
-└── filters.js             # Filter state management
+├── dashboard-charts.js       # Chart.js utilities (bar, line, cumulative)
+├── chart-theme.js            # Easy Eyes theme colors
+├── trend-charts.js           # Trend visualization
+└── sparkline.js              # Inline sparkline charts
 ```
+
+> **Note:** A future refactoring may extract dashboard functionality into a dedicated `apps/dashboard/` app for better separation of concerns.
