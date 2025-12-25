@@ -7,16 +7,38 @@
 Even if code was ultimately "written manually", any AI involvement = is_assisted: true
 
 **POSITIVE signals** (AI was used):
-- Tool mentions: Cursor, Claude, Copilot, Cody, Aider, Devin, Gemini, Windsurf, Tabnine, Cubic, Mintlify, CodeRabbit
+- Tool mentions: Cursor, Claude, Copilot, Cody, Aider, Devin, Gemini, Windsurf, Tabnine, Cubic, Mintlify, CodeRabbit, Greptile
 - AI Disclosure sections with usage statements
 - Commit signatures: Co-Authored-By with AI emails (@anthropic.com, @cursor.sh)
 - Explicit markers: "Generated with Claude Code", "AI-generated", "Summary by Cubic"
 
 **NEGATIVE signals** (AI was NOT used):
 - Explicit denials: "No AI was used", "None", "N/A"
+- Vague mentions without AI tool context: "assistance", "help", "support"
+  - "Some assistance was received" = could be human help, NOT AI
+  - Only count as AI if paired with tool name or AI-specific context
 - AI as product feature being built (NOT the same as using AI to write code):
   - "Add Gemini API integration" = building product feature, NOT using Gemini as coding tool
   - "Add Claude model selector" = building UI for Claude, NOT using Claude to code
   - Look for: API clients, model selectors, LLM integrations being implemented
   - These PRs BUILD AI features but don't necessarily USE AI to write the code
+- CI/CD configuration with AI tools (NOT the same as using AI to write code):
+  - Configuring GitHub Actions that use AI (coderabbit-ai/action, etc.) = NOT AI-assisted
+  - Adding workflows that WILL use AI for reviews/linting = NOT AI-assisted development
+  - The PR author is writing YAML config, not using AI to write the config
 - Bot authors: dependabot, renovate (tracked separately)
+
+**REPOSITORY CONTEXT:**
+- Repos from anthropic, openai, langchain, vercel/ai: Often BUILD AI products, not USE AI to code
+- SDK dependency bumps (@anthropic-ai/sdk, @openai/api): NOT AI-assisted development
+- Sponsor announcements, documentation updates about AI tools: NOT AI-assisted
+- Look at the Repository field - if it's an AI company's repo, be skeptical of AI tool mentions
+
+**CONFIDENCE CALIBRATION:**
+- Require EXPLICIT EVIDENCE for high confidence (≥0.90)
+- If no tool can be identified (tools: []), confidence MUST be ≤0.80
+- LOGICAL CONSISTENCY: If is_assisted=false, tools array MUST be empty
+- LOGICAL CONSISTENCY: If tools array is non-empty, is_assisted MUST be true
+- Writing style or code structure alone is NOT sufficient evidence
+- Look for: tool names, signatures, co-author emails, disclosure sections with positive statements
+- "Looks like AI wrote this" without explicit mention = low confidence (0.70-0.80)

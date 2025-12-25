@@ -114,6 +114,7 @@ class GoldenTest:
     reviewers: list[str] = field(default_factory=list)
     review_comments: list[str] = field(default_factory=list)
     timeline: str | None = None  # Pre-formatted timeline string from format_timeline()
+    repo_name: str | None = None  # Full repo path (v6.4.0) e.g., "anthropics/cookbook"
 
     # AI detection expectations
     expected_ai_assisted: bool | None = None
@@ -152,7 +153,14 @@ GOLDEN_TESTS: list[GoldenTest] = [
         repo_languages=["Python", "TypeScript"],
         state="merged",
         labels=["feature", "user-experience"],
-        file_paths=["apps/users/views.py", "apps/users/models.py", "frontend/src/components/Profile.tsx"],
+        file_paths=[
+            "apps/users/views.py",
+            "apps/users/models.py",
+            "frontend/src/components/Profile.tsx",
+            "apps/users/serializers.py",
+            "apps/users/urls.py",
+        ],
+        repo_name="acme-corp/webapp",
         cycle_time_hours=24.5,
         review_time_hours=4.0,
         author_name="Alex Developer",
@@ -189,6 +197,7 @@ GOLDEN_TESTS: list[GoldenTest] = [
         state="merged",
         labels=["bugfix"],
         file_paths=["apps/auth/validators.py", "apps/auth/tests/test_login.py"],
+        repo_name="acme-corp/webapp",
         cycle_time_hours=2.5,
         review_time_hours=1.0,
         author_name="Bob Engineer",
@@ -219,7 +228,17 @@ GOLDEN_TESTS: list[GoldenTest] = [
         repo_languages=["Python", "JavaScript"],
         state="merged",
         labels=["refactor", "security"],
-        file_paths=["apps/auth/middleware.py", "apps/auth/decorators.py", "apps/auth/utils.py"],
+        file_paths=[
+            "apps/auth/middleware.py",
+            "apps/auth/decorators.py",
+            "apps/auth/utils.py",
+            "apps/auth/tokens.py",
+            "apps/auth/validators.py",
+            "apps/auth/tests/test_middleware.py",
+            "apps/auth/tests/test_tokens.py",
+            "apps/auth/tests/test_decorators.py",
+        ],
+        repo_name="acme-corp/webapp",
         cycle_time_hours=48.0,
         review_time_hours=6.0,
         review_rounds=2,
@@ -261,8 +280,21 @@ GOLDEN_TESTS: list[GoldenTest] = [
         file_paths=[
             "frontend/src/pages/Dashboard.tsx",
             "frontend/src/components/charts/LineChart.tsx",
+            "frontend/src/components/charts/BarChart.tsx",
+            "frontend/src/components/charts/PieChart.tsx",
+            "frontend/src/components/DashboardHeader.tsx",
+            "frontend/src/components/DatePicker.tsx",
+            "frontend/src/hooks/useAnalytics.ts",
+            "frontend/src/types/analytics.ts",
             "apps/analytics/views.py",
+            "apps/analytics/serializers.py",
+            "apps/analytics/urls.py",
+            "apps/analytics/models.py",
+            "apps/analytics/tests/test_views.py",
+            "apps/analytics/tests/test_models.py",
+            "apps/analytics/tests/test_serializers.py",
         ],
+        repo_name="acme-corp/webapp",
         cycle_time_hours=72.0,
         review_time_hours=8.0,
         review_rounds=3,
@@ -299,6 +331,7 @@ GOLDEN_TESTS: list[GoldenTest] = [
         state="merged",
         labels=["feature", "api"],
         file_paths=["apps/api/middleware.py", "apps/api/throttling.py", "apps/api/tests/test_rate_limit.py"],
+        repo_name="acme-corp/webapp",
         cycle_time_hours=16.0,
         review_time_hours=3.0,
         author_name="Jack Backend",
@@ -329,7 +362,15 @@ GOLDEN_TESTS: list[GoldenTest] = [
         repo_languages=["Python", "JavaScript"],
         state="merged",
         labels=["feature", "payments"],
-        file_paths=["apps/payments/checkout.py", "apps/payments/stripe.py", "frontend/src/checkout/Form.tsx"],
+        file_paths=[
+            "apps/payments/checkout.py",
+            "apps/payments/stripe.py",
+            "apps/payments/webhooks.py",
+            "frontend/src/checkout/Form.tsx",
+            "frontend/src/checkout/PaymentMethod.tsx",
+            "frontend/src/checkout/Summary.tsx",
+        ],
+        repo_name="acme-corp/webapp",
         cycle_time_hours=36.0,
         review_time_hours=5.0,
         author_name="Leo Payments",
@@ -365,6 +406,7 @@ GOLDEN_TESTS: list[GoldenTest] = [
         state="merged",
         labels=["bugfix"],
         file_paths=["apps/api/client.py", "apps/api/tests/test_timeout.py"],
+        repo_name="acme-corp/webapp",
         cycle_time_hours=4.0,
         review_time_hours=1.5,
         author_name="Nina Dev",
@@ -395,7 +437,15 @@ GOLDEN_TESTS: list[GoldenTest] = [
         repo_languages=["Python", "TypeScript"],
         state="merged",
         labels=["feature", "ai-integration"],
-        file_paths=["apps/ai/gemini.py", "apps/ai/prompts.py", "frontend/src/search/AISearch.tsx"],
+        file_paths=[
+            "apps/ai/gemini.py",
+            "apps/ai/prompts.py",
+            "apps/ai/config.py",
+            "apps/ai/tests/test_gemini.py",
+            "frontend/src/search/AISearch.tsx",
+            "frontend/src/search/SearchResults.tsx",
+            "frontend/src/types/search.ts",
+        ],
         cycle_time_hours=56.0,
         review_time_hours=12.0,
         review_rounds=2,
@@ -411,6 +461,7 @@ GOLDEN_TESTS: list[GoldenTest] = [
             "- [+48.0h] REVIEW [APPROVED]: Rosa Backend: LGTM\n"
             "- [+56.0h] MERGED"
         ),
+        repo_name="vercel/ai",  # AI product repo - tests REPOSITORY CONTEXT
         expected_ai_assisted=False,
         expected_not_tools=["gemini"],
         notes="Building AI features != using AI to write code",
@@ -428,6 +479,7 @@ GOLDEN_TESTS: list[GoldenTest] = [
         repo_languages=["Python"],
         state="merged",
         file_paths=["apps/utils/helpers.py"],
+        repo_name="acme-corp/webapp",
         cycle_time_hours=1.0,
         review_time_hours=0.5,
         author_name="Sam Quick",
@@ -453,7 +505,12 @@ GOLDEN_TESTS: list[GoldenTest] = [
         repo_languages=["Java"],
         state="merged",
         labels=["bugfix", "production"],
-        file_paths=["src/main/java/UserService.java", "src/test/java/UserServiceTest.java"],
+        file_paths=[
+            "src/main/java/UserService.java",
+            "src/test/java/UserServiceTest.java",
+            "src/main/java/UserPreferences.java",
+        ],
+        repo_name="enterprise/user-service",
         cycle_time_hours=8.0,
         review_time_hours=2.0,
         author_name="Uma Senior",
@@ -485,7 +542,12 @@ GOLDEN_TESTS: list[GoldenTest] = [
         repo_languages=["TypeScript", "Python"],
         state="merged",
         labels=["feature", "ui"],
-        file_paths=["frontend/src/components/ModelSelector.tsx", "apps/ai/models.py"],
+        file_paths=[
+            "frontend/src/components/ModelSelector.tsx",
+            "frontend/src/types/models.ts",
+            "apps/ai/models.py",
+            "apps/ai/views.py",
+        ],
         cycle_time_hours=24.0,
         review_time_hours=4.0,
         author_name="Wendy Product",
@@ -499,6 +561,7 @@ GOLDEN_TESTS: list[GoldenTest] = [
             "- [+20.0h] COMMIT: Add Sonnet option\n"
             "- [+24.0h] MERGED"
         ),
+        repo_name="anthropics/cookbook",  # Anthropic repo - tests REPOSITORY CONTEXT
         expected_ai_assisted=False,
         expected_not_tools=["claude"],
         notes="Mentioning Claude as a product != using Claude to write code",
@@ -517,6 +580,7 @@ GOLDEN_TESTS: list[GoldenTest] = [
         state="merged",
         labels=["chore", "dependencies"],
         file_paths=["requirements.txt", "pyproject.toml"],
+        repo_name="acme-corp/webapp",
         cycle_time_hours=2.0,
         review_time_hours=0.5,
         author_name="Yuki Maintainer",
@@ -539,6 +603,7 @@ GOLDEN_TESTS: list[GoldenTest] = [
         state="merged",
         labels=["docs"],
         file_paths=["README.md"],
+        repo_name="acme-corp/webapp",
         cycle_time_hours=0.5,
         review_time_hours=0.2,
         author_name="Anna Docs",
@@ -561,6 +626,22 @@ GOLDEN_TESTS: list[GoldenTest] = [
             "Used ChatGPT for initial brainstorming of the architecture. "
             "All code was written manually."
         ),
+        file_count=4,
+        additions=280,
+        deletions=15,
+        repo_languages=["Python"],
+        state="merged",
+        file_paths=[
+            "apps/events/models.py",
+            "apps/events/handlers.py",
+            "apps/events/signals.py",
+            "apps/events/tests/test_events.py",
+        ],
+        repo_name="acme-corp/webapp",
+        cycle_time_hours=32.0,
+        review_time_hours=6.0,
+        author_name="Chris Architect",
+        reviewers=["Dana Lead"],
         expected_ai_assisted=True,  # Still counts as AI-assisted
         expected_tools=["chatgpt"],
         notes="Brainstorming counts but should be usage_type='brainstorm'",
@@ -571,6 +652,17 @@ GOLDEN_TESTS: list[GoldenTest] = [
         category=GoldenTestCategory.EDGE_CASE,
         pr_title="Optimize database queries",
         pr_body="Optimized slow queries.\n\n## AI Disclosure\nCode was reviewed by Claude for potential issues.",
+        file_count=3,
+        additions=45,
+        deletions=120,
+        repo_languages=["Python"],
+        state="merged",
+        file_paths=["apps/reports/queries.py", "apps/reports/views.py", "apps/reports/tests/test_queries.py"],
+        repo_name="acme-corp/webapp",
+        cycle_time_hours=18.0,
+        review_time_hours=3.0,
+        author_name="Eric Optimizer",
+        reviewers=["Fiona DBA"],
         expected_ai_assisted=True,  # Review assistance still counts
         expected_tools=["claude"],
         notes="Review assistance is a form of AI-assisted development",
@@ -586,6 +678,23 @@ GOLDEN_TESTS: list[GoldenTest] = [
             "- Export to PDF (manual implementation)\n\n"
             "Mixed AI and manual work."
         ),
+        file_count=5,
+        additions=310,
+        deletions=25,
+        repo_languages=["Python", "JavaScript"],
+        state="merged",
+        file_paths=[
+            "apps/export/csv_exporter.py",
+            "apps/export/pdf_exporter.py",
+            "apps/export/views.py",
+            "apps/export/tests/test_csv.py",
+            "apps/export/tests/test_pdf.py",
+        ],
+        repo_name="acme-corp/webapp",
+        cycle_time_hours=28.0,
+        review_time_hours=4.0,
+        author_name="Gary Exporter",
+        reviewers=["Helen Data"],
         expected_ai_assisted=True,
         expected_tools=["cursor"],
         notes="Partial AI use still counts as AI-assisted",
@@ -599,6 +708,13 @@ GOLDEN_TESTS: list[GoldenTest] = [
         category=GoldenTestCategory.TECH_DETECTION,
         pr_title="Add user authentication API",
         pr_body="Added Django REST Framework endpoints for user auth.\n\nFiles: views.py, serializers.py, urls.py",
+        file_count=3,
+        additions=180,
+        deletions=10,
+        repo_languages=["Python"],
+        state="merged",
+        file_paths=["apps/auth/views.py", "apps/auth/serializers.py", "apps/auth/urls.py"],
+        repo_name="acme-corp/webapp",
         expected_ai_assisted=False,
         expected_categories=["backend"],
         expected_pr_type="feature",
@@ -612,6 +728,13 @@ GOLDEN_TESTS: list[GoldenTest] = [
             "Implemented dark mode using React context and Tailwind CSS.\n\n"
             "Files: ThemeContext.tsx, App.tsx, tailwind.config.js"
         ),
+        file_count=3,
+        additions=120,
+        deletions=15,
+        repo_languages=["TypeScript", "JavaScript"],
+        state="merged",
+        file_paths=["frontend/src/contexts/ThemeContext.tsx", "frontend/src/App.tsx", "tailwind.config.js"],
+        repo_name="acme-corp/webapp",
         expected_ai_assisted=False,
         expected_categories=["frontend"],
         expected_pr_type="feature",
@@ -625,6 +748,13 @@ GOLDEN_TESTS: list[GoldenTest] = [
             "Added docker-compose.yml for local development environment.\n\n"
             "Includes PostgreSQL, Redis, and the app container."
         ),
+        file_count=3,
+        additions=85,
+        deletions=0,
+        repo_languages=["YAML", "Dockerfile"],
+        state="merged",
+        file_paths=["docker-compose.yml", "Dockerfile", ".dockerignore"],
+        repo_name="acme-corp/webapp",
         expected_ai_assisted=False,
         expected_categories=["devops"],
         expected_pr_type="chore",
@@ -642,6 +772,20 @@ GOLDEN_TESTS: list[GoldenTest] = [
             "- React notification component\n"
             "- Toast animations with Framer Motion"
         ),
+        file_count=6,
+        additions=420,
+        deletions=30,
+        repo_languages=["Python", "TypeScript"],
+        state="merged",
+        file_paths=[
+            "apps/notifications/consumers.py",
+            "apps/notifications/routing.py",
+            "apps/notifications/models.py",
+            "frontend/src/components/Notification.tsx",
+            "frontend/src/hooks/useWebSocket.ts",
+            "frontend/src/components/Toast.tsx",
+        ],
+        repo_name="acme-corp/webapp",
         expected_ai_assisted=False,
         expected_categories=["backend", "frontend"],
         expected_pr_type="feature",
@@ -659,6 +803,13 @@ GOLDEN_TESTS: list[GoldenTest] = [
             "## Root Cause\nMissing null check on optional field.\n\n"
             "## Fix\nAdded null check before accessing payment method."
         ),
+        file_count=2,
+        additions=12,
+        deletions=3,
+        repo_languages=["Java"],
+        state="merged",
+        file_paths=["src/main/java/PaymentService.java", "src/test/java/PaymentServiceTest.java"],
+        repo_name="enterprise/payment-gateway",
         expected_ai_assisted=False,
         expected_pr_type="bugfix",
     ),
@@ -670,6 +821,19 @@ GOLDEN_TESTS: list[GoldenTest] = [
         pr_body=(
             "Extracted user-related logic into dedicated service class.\n\nNo behavior changes, just code organization."
         ),
+        file_count=5,
+        additions=280,
+        deletions=200,
+        repo_languages=["Python"],
+        state="merged",
+        file_paths=[
+            "apps/users/services.py",
+            "apps/users/views.py",
+            "apps/users/utils.py",
+            "apps/users/tests/test_services.py",
+            "apps/core/monolith.py",
+        ],
+        repo_name="acme-corp/webapp",
         expected_ai_assisted=False,
         expected_pr_type="refactor",
     ),
@@ -679,6 +843,13 @@ GOLDEN_TESTS: list[GoldenTest] = [
         category=GoldenTestCategory.SUMMARY,
         pr_title="Update API documentation",
         pr_body="Updated README with new API endpoints.\n\nAdded examples for authentication flow.",
+        file_count=2,
+        additions=85,
+        deletions=12,
+        repo_languages=["Markdown"],
+        state="merged",
+        file_paths=["README.md", "docs/api/authentication.md"],
+        repo_name="acme-corp/webapp",
         expected_ai_assisted=False,
         expected_pr_type="docs",
     ),
@@ -693,6 +864,17 @@ GOLDEN_TESTS: list[GoldenTest] = [
             "- Edge cases for refunds\n"
             "- Mock Stripe API responses"
         ),
+        file_count=3,
+        additions=450,
+        deletions=0,
+        repo_languages=["Python"],
+        state="merged",
+        file_paths=[
+            "apps/payments/tests/test_service.py",
+            "apps/payments/tests/test_refunds.py",
+            "apps/payments/tests/conftest.py",
+        ],
+        repo_name="acme-corp/webapp",
         expected_ai_assisted=False,
         expected_pr_type="test",
     ),
@@ -707,6 +889,13 @@ GOLDEN_TESTS: list[GoldenTest] = [
             "- Build Docker image\n"
             "- Deploy to staging on merge"
         ),
+        file_count=2,
+        additions=95,
+        deletions=0,
+        repo_languages=["YAML"],
+        state="merged",
+        file_paths=[".github/workflows/ci.yml", ".github/workflows/deploy.yml"],
+        repo_name="acme-corp/webapp",
         expected_ai_assisted=False,
         expected_pr_type="ci",
     ),
@@ -743,9 +932,17 @@ GOLDEN_TESTS: list[GoldenTest] = [
             "apps/notifications/models.py",
             "apps/notifications/consumers.py",
             "apps/notifications/routing.py",
+            "apps/notifications/views.py",
+            "apps/notifications/urls.py",
+            "apps/notifications/serializers.py",
+            "apps/notifications/tests/test_models.py",
+            "apps/notifications/tests/test_consumers.py",
             "frontend/src/components/NotificationBell.tsx",
             "frontend/src/hooks/useWebSocket.ts",
+            "frontend/src/types/notifications.ts",
+            "frontend/src/components/NotificationList.tsx",
         ],
+        repo_name="acme-corp/webapp",
         commit_messages=[
             "[+0.5h] Add notification models",
             "[+4.0h] Implement WebSocket consumer",
@@ -802,6 +999,7 @@ GOLDEN_TESTS: list[GoldenTest] = [
         commits_after_first_review=0,
         review_rounds=1,
         file_paths=["apps/payments/validators.py"],
+        repo_name="acme-corp/webapp",
         commit_messages=["[+0.2h] Fix null check in payment validation"],
         repo_languages=["Python"],
         reviewers=["Bob Backend"],
@@ -845,6 +1043,7 @@ GOLDEN_TESTS: list[GoldenTest] = [
         commits_after_first_review=1,
         review_rounds=1,
         file_paths=["apps/payments/currency.py", "apps/payments/tests/test_currency.py"],
+        repo_name="acme-corp/webapp",
         commit_messages=[
             "[+0.1h] Hotfix: Fix currency conversion edge case",
             "[+0.8h] Add regression test",
@@ -895,7 +1094,10 @@ GOLDEN_TESTS: list[GoldenTest] = [
             "apps/graphql/schema.py",
             "apps/graphql/types.py",
             "apps/graphql/queries.py",
+            "apps/graphql/mutations.py",
+            "apps/graphql/tests/__init__.py",
         ],
+        repo_name="acme-corp/webapp",
         commit_messages=[
             "[+1.0h] Initial GraphQL setup",
             "[+8.0h] Add user type schema",
@@ -914,6 +1116,606 @@ GOLDEN_TESTS: list[GoldenTest] = [
         expected_categories=["backend"],
         expected_pr_type="feature",
         notes="Draft state, multiple AI tools detected (claude mention + aider commit)",
+    ),
+    # -------------------------------------------------------------------------
+    # RESEARCH-BASED POSITIVE CASES: Additional AI tools from OSS analysis
+    # -------------------------------------------------------------------------
+    GoldenTest(
+        id="pos_cody_sourcegraph",
+        description="Sourcegraph Cody explicitly mentioned",
+        category=GoldenTestCategory.POSITIVE,
+        pr_title="Add semantic search to codebase",
+        pr_body=(
+            "## Summary\n"
+            "Implemented semantic code search using embeddings.\n\n"
+            "## AI Disclosure\n"
+            "Used Sourcegraph Cody for code navigation and understanding the codebase."
+        ),
+        file_count=4,
+        additions=210,
+        deletions=25,
+        repo_languages=["Python", "TypeScript"],
+        state="merged",
+        file_paths=[
+            "apps/search/semantic.py",
+            "apps/search/embeddings.py",
+            "apps/search/tests/test_semantic.py",
+            "frontend/src/search/SemanticSearch.tsx",
+        ],
+        repo_name="acme-corp/webapp",
+        cycle_time_hours=28.0,
+        review_time_hours=4.0,
+        author_name="Irene Search",
+        reviewers=["Jack ML"],
+        expected_ai_assisted=True,
+        expected_tools=["cody"],
+        min_confidence=0.8,
+        notes="Cody is Sourcegraph's AI coding assistant",
+    ),
+    GoldenTest(
+        id="pos_coderabbit_review",
+        description="CodeRabbit AI review bot mentioned in PR",
+        category=GoldenTestCategory.POSITIVE,
+        pr_title="Implement user preferences API",
+        pr_body=(
+            "## Changes\n"
+            "Added CRUD endpoints for user preferences.\n\n"
+            "## Review\n"
+            "CodeRabbit provided feedback on error handling patterns.\n"
+            "Summary by CodeRabbit: Improved null safety."
+        ),
+        file_count=3,
+        additions=145,
+        deletions=12,
+        repo_languages=["Python"],
+        state="merged",
+        file_paths=[
+            "apps/users/preferences.py",
+            "apps/users/api/preferences.py",
+            "apps/users/tests/test_preferences.py",
+        ],
+        repo_name="acme-corp/webapp",
+        cycle_time_hours=18.0,
+        review_time_hours=2.0,
+        author_name="Kim Backend",
+        reviewers=["coderabbit[bot]", "Lisa Lead"],
+        expected_ai_assisted=True,
+        expected_tools=["coderabbit"],
+        min_confidence=0.85,
+        notes="CodeRabbit is AI code review bot - 'Summary by CodeRabbit' is signature",
+    ),
+    GoldenTest(
+        id="pos_devin_bot_author",
+        description="PR authored by Devin AI bot",
+        category=GoldenTestCategory.POSITIVE,
+        pr_title="Fix deprecated API usage",
+        pr_body=(
+            "This PR updates deprecated API calls to use the new v2 endpoints.\n\n"
+            "Changes made:\n"
+            "- Updated 15 API calls\n"
+            "- Added backwards compatibility layer\n"
+            "- Updated tests"
+        ),
+        file_count=8,
+        additions=320,
+        deletions=180,
+        repo_languages=["Python"],
+        state="merged",
+        labels=["devin", "automated"],
+        file_paths=[
+            "apps/api/v1/client.py",
+            "apps/api/v2/client.py",
+            "apps/api/compat.py",
+            "apps/api/tests/test_v1.py",
+            "apps/api/tests/test_v2.py",
+            "apps/api/tests/test_compat.py",
+            "apps/integrations/github_api.py",
+            "apps/integrations/jira_api.py",
+        ],
+        repo_name="acme-corp/webapp",
+        cycle_time_hours=6.0,
+        review_time_hours=1.0,
+        author_name="devin-ai-integration[bot]",
+        reviewers=["Mike Architect"],
+        expected_ai_assisted=True,
+        expected_tools=["devin"],
+        min_confidence=0.95,
+        notes="Devin AI as PR author - detected via author_name pattern",
+    ),
+    GoldenTest(
+        id="pos_tabnine_autocomplete",
+        description="Tabnine AI autocomplete mentioned",
+        category=GoldenTestCategory.POSITIVE,
+        pr_title="Add form validation helpers",
+        pr_body=(
+            "## Summary\n"
+            "Created reusable validation utilities.\n\n"
+            "## Development Notes\n"
+            "Tabnine Pro helped with boilerplate generation.\n"
+            "Most validation patterns were autocompleted."
+        ),
+        file_count=2,
+        additions=180,
+        deletions=0,
+        repo_languages=["TypeScript"],
+        state="merged",
+        file_paths=[
+            "frontend/src/utils/validation.ts",
+            "frontend/src/utils/validation.test.ts",
+        ],
+        repo_name="acme-corp/webapp",
+        cycle_time_hours=12.0,
+        review_time_hours=2.0,
+        author_name="Nancy Frontend",
+        reviewers=["Oscar UI"],
+        expected_ai_assisted=True,
+        expected_tools=["tabnine"],
+        min_confidence=0.75,
+        notes="Tabnine is AI-powered autocomplete tool",
+    ),
+    GoldenTest(
+        id="pos_greptile_codebase",
+        description="Greptile AI codebase understanding mentioned",
+        category=GoldenTestCategory.POSITIVE,
+        pr_title="Refactor billing module",
+        pr_body=(
+            "## Overview\n"
+            "Major restructuring of billing logic.\n\n"
+            "## Approach\n"
+            "Used Greptile to understand the existing billing flow.\n"
+            "The AI helped identify all the integration points."
+        ),
+        file_count=6,
+        additions=340,
+        deletions=280,
+        repo_languages=["Python"],
+        state="merged",
+        file_paths=[
+            "apps/billing/core.py",
+            "apps/billing/stripe.py",
+            "apps/billing/invoices.py",
+            "apps/billing/subscriptions.py",
+            "apps/billing/tests/test_core.py",
+            "apps/billing/tests/test_stripe.py",
+        ],
+        repo_name="acme-corp/webapp",
+        cycle_time_hours=48.0,
+        review_time_hours=8.0,
+        author_name="Pete Billing",
+        reviewers=["Quinn Finance", "Rita Architect"],
+        expected_ai_assisted=True,
+        expected_tools=["greptile"],
+        min_confidence=0.75,
+        notes="Greptile is AI codebase search/understanding tool",
+    ),
+    # -------------------------------------------------------------------------
+    # FALSE POSITIVE PREVENTION: Cases that should NOT detect AI
+    # -------------------------------------------------------------------------
+    GoldenTest(
+        id="neg_sdk_version_bump",
+        description="Dependabot bumping AI SDK - NOT AI-assisted development",
+        category=GoldenTestCategory.NEGATIVE,
+        pr_title="Bump @anthropic-ai/sdk from 0.29.0 to 0.30.0",
+        pr_body=(
+            "Bumps [@anthropic-ai/sdk](https://github.com/anthropics/anthropic-sdk-typescript) "
+            "from 0.29.0 to 0.30.0.\n\n"
+            "**Release notes**\n"
+            "- Added support for Claude 3.5 Haiku\n"
+            "- Fixed streaming response handling\n\n"
+            "---\n"
+            "Dependabot will resolve any conflicts with this PR."
+        ),
+        file_count=2,
+        additions=15,
+        deletions=15,
+        repo_languages=["TypeScript", "JSON"],
+        state="merged",
+        labels=["dependencies", "javascript"],
+        file_paths=["package.json", "package-lock.json"],
+        repo_name="acme-corp/webapp",
+        cycle_time_hours=1.0,
+        review_time_hours=0.5,
+        author_name="dependabot[bot]",
+        reviewers=["Sam DevOps"],
+        expected_ai_assisted=False,
+        expected_not_tools=["claude"],
+        notes="SDK version bump mentions 'anthropic-ai' but is not AI-assisted coding",
+    ),
+    GoldenTest(
+        id="neg_ai_documentation",
+        description="Documentation about AI features - NOT using AI to code",
+        category=GoldenTestCategory.NEGATIVE,
+        pr_title="Add AI feature documentation",
+        pr_body=(
+            "## Documentation Updates\n\n"
+            "Added user guide for our AI-powered features:\n"
+            "- How to use Claude for document analysis\n"
+            "- Setting up Gemini API keys\n"
+            "- Copilot integration guide\n\n"
+            "This helps users understand our AI capabilities."
+        ),
+        file_count=4,
+        additions=450,
+        deletions=20,
+        repo_languages=["Markdown"],
+        state="merged",
+        labels=["documentation"],
+        file_paths=[
+            "docs/features/ai-overview.md",
+            "docs/features/claude-integration.md",
+            "docs/features/gemini-setup.md",
+            "docs/features/copilot-guide.md",
+        ],
+        repo_name="acme-corp/webapp",
+        cycle_time_hours=8.0,
+        review_time_hours=2.0,
+        author_name="Tina Technical Writer",
+        reviewers=["Uma Product"],
+        expected_ai_assisted=False,
+        expected_not_tools=["claude", "gemini", "copilot"],
+        notes="Writing ABOUT AI tools is not the same as USING AI to write code",
+    ),
+    GoldenTest(
+        id="neg_llm_test_suite",
+        description="Tests for LLM integration - NOT using AI to write tests",
+        category=GoldenTestCategory.NEGATIVE,
+        pr_title="Add comprehensive LLM integration tests",
+        pr_body=(
+            "## Test Coverage\n\n"
+            "Added tests for our Claude and GPT-4 integrations:\n"
+            "- Mock responses for different model behaviors\n"
+            "- Rate limit handling\n"
+            "- Token counting accuracy\n"
+            "- Streaming response tests\n\n"
+            "All tests use mocked API responses."
+        ),
+        file_count=5,
+        additions=680,
+        deletions=0,
+        repo_languages=["Python"],
+        state="merged",
+        labels=["testing", "ai-integration"],
+        file_paths=[
+            "apps/ai/tests/test_claude.py",
+            "apps/ai/tests/test_gpt4.py",
+            "apps/ai/tests/test_rate_limits.py",
+            "apps/ai/tests/test_streaming.py",
+            "apps/ai/tests/conftest.py",
+        ],
+        repo_name="acme-corp/webapp",
+        cycle_time_hours=16.0,
+        review_time_hours=4.0,
+        author_name="Victor QA",
+        reviewers=["Wendy ML"],
+        expected_ai_assisted=False,
+        expected_not_tools=["claude", "gpt4"],
+        notes="Testing LLM integrations != using LLM to write tests",
+    ),
+    GoldenTest(
+        id="neg_ai_competitor_analysis",
+        description="Competitor AI tool analysis - NOT using AI",
+        category=GoldenTestCategory.NEGATIVE,
+        pr_title="Add AI tools comparison feature",
+        pr_body=(
+            "## Feature: AI Tool Comparison Dashboard\n\n"
+            "Lets users compare different AI coding tools:\n"
+            "- Cursor vs Copilot feature comparison\n"
+            "- Claude vs GPT-4 quality metrics\n"
+            "- Cody vs Tabnine pricing table\n\n"
+            "Data sourced from public benchmarks."
+        ),
+        file_count=4,
+        additions=280,
+        deletions=15,
+        repo_languages=["TypeScript", "Python"],
+        state="merged",
+        file_paths=[
+            "frontend/src/pages/AIComparison.tsx",
+            "frontend/src/components/ToolTable.tsx",
+            "apps/comparisons/models.py",
+            "apps/comparisons/views.py",
+        ],
+        repo_name="acme-corp/webapp",
+        cycle_time_hours=32.0,
+        review_time_hours=6.0,
+        author_name="Xavier Product",
+        reviewers=["Yuki Designer"],
+        expected_ai_assisted=False,
+        expected_not_tools=["cursor", "copilot", "claude", "cody", "tabnine"],
+        notes="Building feature ABOUT AI tools != using those tools to code",
+    ),
+    GoldenTest(
+        id="neg_openai_client_library",
+        description="Building OpenAI API client - NOT using AI to code",
+        category=GoldenTestCategory.NEGATIVE,
+        pr_title="Add custom OpenAI client wrapper",
+        pr_body=(
+            "## Custom OpenAI Client\n\n"
+            "Created wrapper around openai package:\n"
+            "- Automatic retry with exponential backoff\n"
+            "- Request/response logging\n"
+            "- Cost tracking per request\n"
+            "- Support for GPT-4, GPT-3.5, and embeddings"
+        ),
+        file_count=4,
+        additions=340,
+        deletions=0,
+        repo_languages=["Python"],
+        state="merged",
+        labels=["feature", "ai-infrastructure"],
+        file_paths=[
+            "apps/ai/openai_client.py",
+            "apps/ai/retry.py",
+            "apps/ai/cost_tracker.py",
+            "apps/ai/tests/test_openai_client.py",
+        ],
+        repo_name="acme-corp/webapp",
+        cycle_time_hours=24.0,
+        review_time_hours=4.0,
+        author_name="Zara Backend",
+        reviewers=["Alex ML"],
+        expected_ai_assisted=False,
+        expected_not_tools=["gpt4", "chatgpt"],
+        notes="Building OpenAI client != using OpenAI to write the client",
+    ),
+    # -------------------------------------------------------------------------
+    # EDGE CASES: Confidence calibration and ambiguous scenarios
+    # -------------------------------------------------------------------------
+    GoldenTest(
+        id="edge_indirect_disclosure",
+        description="Indirect AI mention without specific tool name",
+        category=GoldenTestCategory.EDGE_CASE,
+        pr_title="Implement caching layer",
+        pr_body=(
+            "## Summary\n"
+            "Added Redis-based caching for frequently accessed data.\n\n"
+            "## AI Disclosure\n"
+            "AI was used for initial implementation guidance.\n"
+            "The cache invalidation strategy was refined manually."
+        ),
+        file_count=4,
+        additions=220,
+        deletions=30,
+        repo_languages=["Python"],
+        state="merged",
+        file_paths=[
+            "apps/cache/redis_cache.py",
+            "apps/cache/invalidation.py",
+            "apps/cache/decorators.py",
+            "apps/cache/tests/test_redis.py",
+        ],
+        repo_name="acme-corp/webapp",
+        cycle_time_hours=20.0,
+        review_time_hours=3.0,
+        author_name="Ben Caching",
+        reviewers=["Carol Performance"],
+        expected_ai_assisted=True,  # Still AI-assisted even without tool name
+        expected_tools=[],  # No specific tool identifiable
+        min_confidence=0.0,  # Confidence should be lower without tool name
+        notes="'AI was used' is positive but without tool name = lower confidence",
+    ),
+    GoldenTest(
+        id="edge_review_comment_ai",
+        description="AI tool mentioned only in review comments",
+        category=GoldenTestCategory.EDGE_CASE,
+        pr_title="Add rate limiting middleware",
+        pr_body=(
+            "## Changes\nImplemented token bucket rate limiting.\n\n## Testing\nAdded unit and integration tests."
+        ),
+        file_count=3,
+        additions=180,
+        deletions=10,
+        repo_languages=["Python"],
+        state="merged",
+        file_paths=[
+            "apps/api/rate_limit.py",
+            "apps/api/middleware.py",
+            "apps/api/tests/test_rate_limit.py",
+        ],
+        repo_name="acme-corp/webapp",
+        cycle_time_hours=14.0,
+        review_time_hours=2.0,
+        author_name="Dave Middleware",
+        reviewers=["Eve Security"],
+        review_comments=[
+            "[+2.0h] Eve Security: Did you consider using Cursor for the token bucket algorithm?",
+            "[+2.5h] Dave Middleware: I did use Cursor for the initial impl, forgot to mention.",
+        ],
+        expected_ai_assisted=True,
+        expected_tools=["cursor"],
+        min_confidence=0.7,
+        notes="AI mention in review comments should still be detected",
+    ),
+    GoldenTest(
+        id="edge_ai_typo_false_positive",
+        description="AI in unrelated context - should NOT detect",
+        category=GoldenTestCategory.EDGE_CASE,
+        pr_title="Fix AIFF audio file handling",
+        pr_body=(
+            "## Bug Fix\n"
+            "Fixed parsing of AIFF audio files.\n\n"
+            "The AI metadata header was being read incorrectly.\n"
+            "Also fixed AIFF-C compressed format support."
+        ),
+        file_count=2,
+        additions=45,
+        deletions=12,
+        repo_languages=["Python"],
+        state="merged",
+        labels=["bugfix", "audio"],
+        file_paths=[
+            "apps/media/audio/aiff_parser.py",
+            "apps/media/tests/test_aiff.py",
+        ],
+        repo_name="acme-corp/webapp",
+        cycle_time_hours=6.0,
+        review_time_hours=1.0,
+        author_name="Frank Audio",
+        reviewers=["Grace Media"],
+        expected_ai_assisted=False,
+        notes="'AI' in AIFF context is not about AI coding tools",
+    ),
+    GoldenTest(
+        id="edge_github_actions_ai",
+        description="GitHub Actions with AI-like names - NOT AI-assisted",
+        category=GoldenTestCategory.EDGE_CASE,
+        pr_title="Add AI-powered linting action",
+        pr_body=(
+            "## CI Enhancement\n\n"
+            "Added GitHub Action that uses AI for smart code analysis.\n"
+            "Uses coderabbit-ai/action for automated reviews."
+        ),
+        file_count=2,
+        additions=85,
+        deletions=0,
+        repo_languages=["YAML"],
+        state="merged",
+        labels=["ci", "automation"],
+        file_paths=[
+            ".github/workflows/ai-lint.yml",
+            ".github/workflows/coderabbit.yml",
+        ],
+        repo_name="acme-corp/webapp",
+        cycle_time_hours=4.0,
+        review_time_hours=1.0,
+        author_name="Henry DevOps",
+        reviewers=["Irene CI"],
+        expected_ai_assisted=False,  # Setting up AI action != using AI to code
+        expected_not_tools=["coderabbit"],
+        notes="Configuring AI tools in CI != using AI to write the config",
+    ),
+    # -------------------------------------------------------------------------
+    # CONFIDENCE CALIBRATION CASES: Testing confidence thresholds
+    # -------------------------------------------------------------------------
+    GoldenTest(
+        id="confidence_high_signature",
+        description="Explicit AI signature should have high confidence",
+        category=GoldenTestCategory.EDGE_CASE,
+        pr_title="Add webhook retry logic",
+        pr_body=(
+            "Implemented exponential backoff for failed webhooks.\n\n"
+            "🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\n"
+            "Co-Authored-By: Claude <noreply@anthropic.com>"
+        ),
+        file_count=2,
+        additions=120,
+        deletions=15,
+        repo_languages=["Python"],
+        state="merged",
+        file_paths=["apps/webhooks/retry.py", "apps/webhooks/tests/test_retry.py"],
+        repo_name="acme-corp/webapp",
+        cycle_time_hours=8.0,
+        review_time_hours=1.5,
+        author_name="Julia Webhooks",
+        reviewers=["Kevin Backend"],
+        expected_ai_assisted=True,
+        expected_tools=["claude"],
+        min_confidence=0.90,  # Explicit signature = very high confidence
+        notes="Emoji signature + Co-Authored-By = highest confidence level",
+    ),
+    GoldenTest(
+        id="confidence_medium_mention",
+        description="Casual tool mention should have medium confidence",
+        category=GoldenTestCategory.EDGE_CASE,
+        pr_title="Optimize database queries",
+        pr_body=("Improved query performance for dashboard loading.\n\nCursor helped identify the N+1 query patterns."),
+        file_count=3,
+        additions=80,
+        deletions=45,
+        repo_languages=["Python"],
+        state="merged",
+        file_paths=[
+            "apps/dashboard/queries.py",
+            "apps/dashboard/views.py",
+            "apps/dashboard/tests/test_queries.py",
+        ],
+        repo_name="acme-corp/webapp",
+        cycle_time_hours=12.0,
+        review_time_hours=2.0,
+        author_name="Larry DBA",
+        reviewers=["Mary Perf"],
+        expected_ai_assisted=True,
+        expected_tools=["cursor"],
+        min_confidence=0.70,  # Casual mention = medium confidence
+        notes="Casual mention without formal disclosure = medium confidence",
+    ),
+    GoldenTest(
+        id="confidence_low_ambiguous",
+        description="Ambiguous mention should have low confidence",
+        category=GoldenTestCategory.EDGE_CASE,
+        pr_title="Refactor user service",
+        pr_body=(
+            "## Changes\n"
+            "Extracted user logic into dedicated service.\n\n"
+            "## Notes\n"
+            "Some assistance was received during development."
+        ),
+        file_count=4,
+        additions=200,
+        deletions=150,
+        repo_languages=["Python"],
+        state="merged",
+        file_paths=[
+            "apps/users/service.py",
+            "apps/users/repository.py",
+            "apps/users/views.py",
+            "apps/users/tests/test_service.py",
+        ],
+        repo_name="acme-corp/webapp",
+        cycle_time_hours=24.0,
+        review_time_hours=4.0,
+        author_name="Neil Refactor",
+        reviewers=["Olivia Architect"],
+        expected_ai_assisted=False,  # Too vague - "assistance" doesn't mean AI
+        notes="'Assistance' without AI context is too ambiguous to classify as AI",
+    ),
+    # -------------------------------------------------------------------------
+    # MULTI-TOOL COMBINATION CASES
+    # -------------------------------------------------------------------------
+    GoldenTest(
+        id="multi_tool_cursor_claude_copilot",
+        description="Three AI tools used in same PR",
+        category=GoldenTestCategory.EDGE_CASE,
+        pr_title="Build new reporting module",
+        pr_body=(
+            "## Summary\n"
+            "Complete reporting system for analytics.\n\n"
+            "## AI Tools Used\n"
+            "- Cursor for initial scaffolding and navigation\n"
+            "- Claude for architecture review and code suggestions\n"
+            "- GitHub Copilot for autocomplete during implementation\n\n"
+            "All code was reviewed by team before merge."
+        ),
+        file_count=12,
+        additions=1200,
+        deletions=50,
+        repo_languages=["Python", "TypeScript"],
+        state="merged",
+        labels=["feature", "analytics"],
+        file_paths=[
+            "apps/reports/models.py",
+            "apps/reports/views.py",
+            "apps/reports/serializers.py",
+            "apps/reports/generators.py",
+            "apps/reports/exporters.py",
+            "apps/reports/templates.py",
+            "apps/reports/tests/test_models.py",
+            "apps/reports/tests/test_views.py",
+            "frontend/src/reports/ReportPage.tsx",
+            "frontend/src/reports/ReportChart.tsx",
+            "frontend/src/reports/ExportButton.tsx",
+            "frontend/src/reports/types.ts",
+        ],
+        repo_name="acme-corp/webapp",
+        cycle_time_hours=96.0,
+        review_time_hours=12.0,
+        review_rounds=3,
+        author_name="Paula Fullstack",
+        reviewers=["Quinn Lead", "Rita Architect"],
+        expected_ai_assisted=True,
+        expected_tools=["cursor", "claude", "copilot"],
+        min_confidence=0.90,
+        notes="Multiple tools explicitly listed = high confidence for all",
     ),
 ]
 
@@ -1015,6 +1817,7 @@ def to_promptfoo_test(test: GoldenTest, schema_assertion: dict[str, Any]) -> dic
         "author_name": test.author_name,
         "reviewers": test.reviewers,
         "review_comments": test.review_comments,
+        "repo_name": test.repo_name,
     }
 
     return {

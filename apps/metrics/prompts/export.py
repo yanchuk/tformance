@@ -140,6 +140,7 @@ def _render_user_prompt_from_test(test: GoldenTest) -> str:
         reviewers=test.reviewers if test.reviewers else None,
         review_comments=test.review_comments if test.review_comments else None,
         timeline=test.timeline,
+        repo_name=test.repo_name,
     )
 
 

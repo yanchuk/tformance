@@ -285,6 +285,30 @@ class TestToPromptfooTest(TestCase):
         self.assertEqual(result["vars"]["deletions"], 50)
 
 
+class TestGoldenTestDataConsistency(TestCase):
+    """Tests for data consistency in golden tests."""
+
+    def test_file_count_matches_file_paths(self):
+        """file_count should match len(file_paths) when both are set."""
+        for test in GOLDEN_TESTS:
+            if test.file_count > 0 and test.file_paths:
+                with self.subTest(test_id=test.id):
+                    self.assertEqual(
+                        test.file_count,
+                        len(test.file_paths),
+                        f"{test.id}: file_count={test.file_count} but has {len(test.file_paths)} file_paths",
+                    )
+
+    def test_all_tests_have_repo_name(self):
+        """All tests should have repo_name set for consistent context."""
+        for test in GOLDEN_TESTS:
+            with self.subTest(test_id=test.id):
+                self.assertIsNotNone(
+                    test.repo_name,
+                    f"{test.id}: missing repo_name",
+                )
+
+
 class TestGetTestsByCategory(TestCase):
     """Tests for category filtering functions."""
 

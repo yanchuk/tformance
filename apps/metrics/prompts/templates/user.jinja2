@@ -9,12 +9,16 @@
         cycle_time_hours, review_time_hours, commits_after_first_review,
         review_rounds, file_paths, commit_messages, milestone, assignees,
         linked_issues, jira_key, author_name, reviewers, review_comments,
-        timeline (pre-formatted timeline string from format_timeline())
+        timeline (pre-formatted timeline string from format_timeline()),
+        repo_name (v6.4.0 - full repo path like "anthropics/cookbook")
 -#}
 {%- set sections = [] -%}
 
 {#- === Basic Info === -#}
 {%- set basic_info = [] -%}
+{%- if repo_name -%}
+    {%- set _ = basic_info.append("Repository: " ~ repo_name) -%}
+{%- endif -%}
 {%- if pr_title -%}
     {%- set _ = basic_info.append("Title: " ~ pr_title) -%}
 {%- endif -%}
@@ -71,9 +75,14 @@
     {%- set _ = changes.append("Lines: +" ~ (additions|default(0)) ~ "/-" ~ (deletions|default(0))) -%}
 {%- endif -%}
 {%- if file_paths -%}
-    {%- set paths = file_paths[:20]|join(", ") -%}
-    {%- if file_paths|length > 20 -%}
-        {%- set paths = paths ~ " (+" ~ (file_paths|length - 20) ~ " more)" -%}
+    {#- Show all files if <10, otherwise truncate at 20 -#}
+    {%- if file_paths|length <= 10 -%}
+        {%- set paths = file_paths|join(", ") -%}
+    {%- else -%}
+        {%- set paths = file_paths[:20]|join(", ") -%}
+        {%- if file_paths|length > 20 -%}
+            {%- set paths = paths ~ " (+" ~ (file_paths|length - 20) ~ " more)" -%}
+        {%- endif -%}
     {%- endif -%}
     {%- set _ = changes.append("Files: " ~ paths) -%}
 {%- endif -%}

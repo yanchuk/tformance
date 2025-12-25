@@ -114,6 +114,7 @@ def render_user_prompt(
     reviewers: list[str] | None = None,
     review_comments: list[str] | None = None,
     timeline: str | None = None,
+    repo_name: str | None = None,
 ) -> str:
     """Render user prompt from Jinja2 template with full PR context.
 
@@ -147,6 +148,7 @@ def render_user_prompt(
         reviewers: List of reviewer names
         review_comments: List of review comment bodies
         timeline: Pre-formatted timeline string from format_timeline()
+        repo_name: Full repository path (e.g., "anthropics/cookbook")
 
     Returns:
         Formatted user prompt for LLM
@@ -184,6 +186,7 @@ def render_user_prompt(
         reviewers=reviewers,
         review_comments=review_comments,
         timeline=timeline,
+        repo_name=repo_name,
     )
 
     # Normalize: strip trailing whitespace from lines

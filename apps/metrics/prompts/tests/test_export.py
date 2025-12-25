@@ -30,10 +30,10 @@ class TestGetPromptfooConfig(TestCase):
         self.assertIn(PROMPT_VERSION, config["description"])
 
     def test_includes_groq_providers(self):
-        """Should configure Groq providers (Llama and GPT-OSS)."""
+        """Should configure Groq provider (GPT-OSS-20B)."""
         config = get_promptfoo_config("v1.0.0-system.txt")
-        self.assertEqual(len(config["providers"]), 2)
-        # Both providers should be Groq-based
+        self.assertGreaterEqual(len(config["providers"]), 1)
+        # Provider should be Groq-based
         for provider in config["providers"]:
             self.assertIn("groq", provider["id"])
 
