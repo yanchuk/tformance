@@ -2,180 +2,160 @@
 
 **Last Updated: 2025-12-25**
 
-## Status: ✅ COMPLETE - LLM Outperforms Regex
+## Status: ✅ v1.9.0 COMPLETE - Pattern Improvements Deployed
 
-Batch API with `openai/gpt-oss-20b` model. 2261 PRs analyzed. LLM wins on precision.
-
----
-
-## Key Finding: LLM Has Nuanced Understanding
-
-**The single regex-only detection (PR #1681) reveals LLM superiority:**
-- PR body: "No AI used in this implementation. Copilot used to format PR."
-- **Regex**: Detected "copilot" → `is_ai_assisted: True` (incorrect)
-- **LLM**: `is_assisted: False, usage_type: 'formatting'` (correct)
-
-The LLM understands "AI for formatting" vs "AI for coding" distinction!
+Pattern v1.9.0 implemented, backfilled, and analyzed. 33% reduction in regex FPs.
 
 ---
 
-## Discrepancy Analysis Results (27 LLM-Only + 1 Regex-Only)
+## Session Summary (2025-12-25)
 
-### LLM False Positives (19 of 27)
+### What Was Accomplished
 
-| Category | Count | Examples |
-|----------|-------|----------|
-| **AI as Product** | 6 | PR #41588 "add explain w/ AI", PR #11416 Gemini feature, PR #34454 LangGraph |
-| **LLM Hallucinations** | 5 | PR #43976, #43908, #43891, #43802, #43795 - no AI evidence in body |
-| **Bot/Auto-generated** | 8 | PR #87749 vercel-release-bot, PR #146 Speakeasy SDK, PR #1971 supabase-releaser |
+1. **Implemented v1.9.0 patterns** in `ai_patterns.py`
+2. **Backfilled 5,654 PRs** with new patterns via Django shell
+3. **Ran 10 rounds of analysis** across all 25 OSS repos
+4. **Updated documentation** with v1.9.0 results
 
-### LLM True Positives (Regex Missed) (2 of 27)
+### v1.9.0 Changes Made
 
-| PR | Evidence | Why Regex Missed |
-|----|----------|------------------|
-| **PR #1633** (gumroad) | "### AI Usage\nClaude for markdown formatting" | No pattern for "AI Usage" section header |
-| PR #43767 (PostHog) | Multiple AI tool mentions in body | Ambiguous context |
+| Action | Pattern | Result |
+|--------|---------|--------|
+| Added | greptile bot usernames | +1 detection |
+| Added | greptile text patterns | Context detection |
+| Improved | cubic patterns (commit markers) | Better coverage |
+| **REMOVED** | AI Disclosure headers | **-5 FPs** |
 
-### Regex False Positive (1 of 1)
+### Key Results (4,980 PRs)
 
-| PR | Issue |
-|----|-------|
-| **PR #1681** (gumroad) | "No AI used... Copilot used to format PR" - Regex can't understand negation |
-
----
-
-## Pattern Improvement Opportunities
-
-1. **Add "AI Usage" section header pattern** (from PR #1633):
-   ```regex
-   "### AI Usage" or "## AI Usage" or "AI Disclosure"
-   ```
-
-2. **Handle negation context** (from PR #1681):
-   - Regex fundamentally can't handle "No AI used... Copilot for formatting"
-   - LLM is better here
-
-3. **Avoid AI-product repos**:
-   - `vercel/ai`, `langchain-ai/*`, `posthog (ph-ai features)` cause false positives
-   - Could add repo blocklist for LLM
+| Metric | v1.8.0 | v1.9.0 | Change |
+|--------|--------|--------|--------|
+| **Regex FPs** | 15 | 10 | **-33%** |
+| Agreement Rate | 96.61% | 96.62% | +0.01% |
+| Regex AI Rate | 23.61% | 23.43% | -0.18% |
+| LLM AI Rate | 26.41% | 26.41% | - |
+| Both_AI | 1,161 | 1,157 | -4 |
+| LLM_Only | 154 | 158 | +4 |
 
 ---
 
-## Accuracy Metrics (500 PRs sample from 2261 analyzed)
+## Key Decisions Made This Session
 
-### Detection Accuracy (gpt-oss-20b model)
+### 1. Removed AI Disclosure Header Patterns
+**Why**: Patterns like `"### AI Disclosure"` triggered FPs when followed by "No AI was used".
+Regex cannot understand negation context - LLM handles this correctly.
 
-| Metric | LLM | Regex v1.8.0 | Winner |
-|--------|-----|--------------|--------|
-| Detections | 131 | 135 | - |
-| Estimated TPs | 126 | 124 | LLM |
-| False Positives | 5 | 11 | **LLM** |
-| **Precision** | **94.7%** | 91.9% | **LLM** |
-| Agreement Rate | 96.4% | 96.4% | Tie |
+### 2. Remaining 10 FPs Are Context-Dependent
+All remaining FPs are product/documentation mentions that cannot be fixed with regex:
+- anthropic-cookbook: Claude Code SDK docs
+- PostHog: AI product features
+- FastAPI: Greptile sponsor announcement
+- SDK dependency bumps
 
-### Disagreement Analysis (18 cases)
+**Conclusion**: These require semantic understanding (LLM).
 
-| Category | Count | Analysis |
-|----------|-------|----------|
-| **LLM Only** | 7 | 2 TP (copilot, claude), 5 FP (AI product repos) |
-| **Regex Only** | 11 | **0 TP, 11 FP** (all negation patterns!) |
-
-### Key Finding: Regex Can't Handle Negation
-
-All 11 regex-only detections are FALSE POSITIVES from patterns like:
-- `"AI Disclosure: No AI was used"` - Regex matches header, ignores content
-- `"AI Usage: N/A"` - Same pattern
-- `"AI Disclosure: None"` - Same pattern
-
-**LLM correctly interprets these as `is_assisted: False` with 0.95-1.0 confidence**
+### 3. Detection is Repo-Dependent (User's Observation Confirmed)
+- **High agreement**: dubinc (99.3%), makeplane (83.5%)
+- **LLM advantage**: coollabsio (+10.4%), formbricks (+7.7%)
+- Repos with explicit AI signatures show perfect regex/LLM agreement
+- Repos with implicit AI usage show LLM advantage
 
 ---
 
-## Key Files
+## Files Modified This Session
 
-### Created This Session
-| File | Purpose |
+| File | Changes |
 |------|---------|
-| `apps/metrics/management/commands/run_llm_batch.py` | Batch API for LLM analysis |
-| `experiments/regex_provider.py` | Custom promptfoo provider for regex |
-| `experiments/compare-detection.yaml` | Promptfoo comparison config |
-| `dev/active/regex-vs-llm-comparison/` | Task documentation |
-
-### Key Existing Files
-| File | Purpose |
-|------|---------|
-| `apps/metrics/services/ai_detector.py` | `detect_ai_in_text()` function |
-| `apps/metrics/services/ai_patterns.py` | Pattern definitions v1.7.0 |
-| `apps/integrations/services/groq_batch.py` | `GroqBatchProcessor` class |
+| `apps/metrics/services/ai_patterns.py` | v1.9.0 - Added greptile, improved cubic, removed FP-prone patterns |
+| `dev/active/regex-vs-llm-comparison/RESEARCH-SYNTHESIS.md` | Updated with v1.9.0 results |
+| `dev/active/regex-vs-llm-comparison/regex-vs-llm-comparison-tasks.md` | Marked P0 complete |
+| `dev/active/HANDOFF-NOTES.md` | Updated with session summary |
 
 ---
 
-## Architecture Decisions
+## Backfill Script Used
 
-### 1. Export Pre-computed Results vs Live LLM
+```python
+# Ran in Django shell to backfill all PRs
+from apps.metrics.models import PullRequest
+from apps.metrics.services.ai_detector import detect_ai_in_text
+from apps.metrics.services.ai_patterns import PATTERNS_VERSION
 
-**Decision**: Create `export_results_to_promptfoo` command instead of using promptfoo's live LLM calls.
+prs = PullRequest.objects.all()
+batch_size = 500
+updated = 0
 
-**Rationale**:
-- Groq Batch API is 50% cheaper and much faster
-- Results are already in database from batch processing
-- Promptfoo should compare pre-computed LLM results vs regex
-- No need for live API calls during evaluation
-
-**New command design**:
-```bash
-python manage.py export_results_to_promptfoo --limit 100 --output comparison.json
-# Exports: {pr_id, user_prompt, llm_result, regex_result, expected}
-```
-
-### 2. Model Selection for Batch API
-
-**Decision**: Use `openai/gpt-oss-20b` as default model.
-
-**Supported batch models** (50% discount):
-- `openai/gpt-oss-20b` - GPT-OSS 20B (supports prompt caching)
-- `openai/gpt-oss-120b` - GPT-OSS 120B
-- `llama-3.3-70b-versatile` - Llama 3.3 70B
-- `llama-3.1-8b-instant` - Llama 3.1 8B Instant
-- `meta-llama/llama-4-maverick-17b-128e-instruct` - Llama 4 Maverick
-- `meta-llama/llama-4-scout-17b-16e-instruct` - Llama 4 Scout
-
-**Note**: Batch discount (50%) does NOT stack with prompt caching discount.
-
----
-
-## Commands Reference
-
-```bash
-# Batch LLM Analysis
-python manage.py run_llm_batch --limit 500           # Submit batch
-python manage.py run_llm_batch --status <batch_id>   # Check status
-python manage.py run_llm_batch --results <batch_id>  # Save results
-
-# Comparison (TODO)
-python manage.py export_results_to_promptfoo --limit 100
-
-# Ad-hoc queries
-python manage.py shell -c "..."
+for i in range(0, prs.count(), batch_size):
+    batch = list(prs[i:i+batch_size])
+    for pr in batch:
+        text = f'{pr.title or ""} {pr.body or ""}'
+        result = detect_ai_in_text(text)
+        pr.is_ai_assisted = result['is_ai_assisted']
+        pr.ai_tools_detected = result['ai_tools']
+        pr.ai_detection_version = PATTERNS_VERSION
+    PullRequest.objects.bulk_update(batch, ['is_ai_assisted', 'ai_tools_detected', 'ai_detection_version'])
+    updated += len(batch)
+    print(f'Updated {updated}')
 ```
 
 ---
 
-## Next Steps
+## Remaining 10 Regex FPs (Cannot Fix)
 
-1. **Add "AI Usage" pattern to regex** (quick win from PR #1633)
-2. **Run sample verification (3 rounds of 50)** for precision/recall metrics
-3. **Create export_results_to_promptfoo command**
-4. **Calculate final precision/recall/F1 scores**
-5. **Document cost-benefit recommendation**
+| Repo | PR | Pattern | Why FP |
+|------|-----|---------|--------|
+| documenso | #2305 | ai_generic | "AI features more discoverable" - product |
+| PostHog | #43805 | ai_generic | "AI-first session summarization" - product |
+| PostHog/posthog-js | #2728 | claude | @anthropic-ai/sdk bump - dependency |
+| PostHog/posthog-js | #2734 | claude | AI providers group bump - dependency |
+| anthropics/courses | #104 | claude | "Update to latest Claude models" - docs |
+| anthropics/cookbook | #229 | claude_code | Claude Code SDK - product |
+| anthropics/cookbook | #232 | claude_code+claude | Legacy models - docs |
+| anthropics/cookbook | #260 | claude_code | GitHub Actions workflow - product |
+| neondatabase | #176 | claude_code | Playwright bump with mention |
+| tiangolo/fastapi | #14429 | greptile | Sponsor announcement |
 
 ---
 
-## Uncommitted Changes
+## Commands to Verify State
 
 ```bash
-apps/metrics/management/commands/run_llm_batch.py  # NEW
-dev/active/regex-vs-llm-comparison/                 # NEW
-dev/active/ai-detection-pr-descriptions/experiments/regex_provider.py  # NEW
-dev/active/ai-detection-pr-descriptions/experiments/compare-detection.yaml  # NEW
+# Check database state
+.venv/bin/python manage.py shell -c "
+from apps.metrics.models import PullRequest
+print(f'Total PRs: {PullRequest.objects.count()}')
+print(f'AI-Assisted: {PullRequest.objects.filter(is_ai_assisted=True).count()}')
+print(f'Detection version: {PullRequest.objects.values(\"ai_detection_version\").distinct()}')"
+
+# Run tests
+make test
+
+# View confusion matrix
+.venv/bin/python manage.py shell -c "
+from apps.metrics.models import PullRequest
+qs = PullRequest.objects.exclude(llm_summary__isnull=True)
+regex_only = qs.filter(is_ai_assisted=True).extra(where=[\"(llm_summary->'ai'->>'is_assisted')::boolean = false\"]).count()
+print(f'Regex-only FPs: {regex_only}')"  # Should be 10
 ```
+
+---
+
+## Next Steps (Future Work)
+
+### P1: Additional Pattern Improvements
+- [ ] Add Cursor IDE patterns (+16 expected detections)
+- [ ] Improve Copilot patterns (+27 expected detections)
+
+### P2: LLM Improvements
+- [ ] Set confidence threshold to 0.90 in production
+- [ ] Add "require explicit evidence" to prompt
+
+### P3: Data Expansion
+- [ ] Run Q1-Q3 2025 seeding scripts
+- [ ] Re-analyze with full year data
+
+---
+
+## No Migrations Needed
+
+This session modified regex patterns only. No Django models changed.
