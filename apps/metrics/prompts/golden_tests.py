@@ -113,6 +113,7 @@ class GoldenTest:
     author_name: str | None = None
     reviewers: list[str] = field(default_factory=list)
     review_comments: list[str] = field(default_factory=list)
+    timeline: str | None = None  # Pre-formatted timeline string from format_timeline()
 
     # AI detection expectations
     expected_ai_assisted: bool | None = None
@@ -157,6 +158,14 @@ GOLDEN_TESTS: list[GoldenTest] = [
         author_name="Alex Developer",
         reviewers=["Sarah Reviewer"],
         commit_messages=["Add profile model", "Create profile API endpoint", "Add frontend component"],
+        timeline=(
+            "Timeline:\n"
+            "- [+2.0h] COMMIT: Add profile model\n"
+            "- [+4.0h] REVIEW [APPROVED]: Sarah Reviewer: LGTM\n"
+            "- [+8.0h] COMMIT: Create profile API endpoint\n"
+            "- [+20.0h] COMMIT: Add frontend component\n"
+            "- [+24.5h] MERGED"
+        ),
         expected_ai_assisted=True,
         expected_tools=["cursor"],
         min_confidence=0.8,
@@ -185,6 +194,13 @@ GOLDEN_TESTS: list[GoldenTest] = [
         author_name="Bob Engineer",
         reviewers=["Charlie Lead"],
         commit_messages=["Fix email validation regex", "Add test cases"],
+        timeline=(
+            "Timeline:\n"
+            "- [+0.5h] COMMIT: Fix email validation regex\n"
+            "- [+1.0h] REVIEW [APPROVED]: Charlie Lead: Good catch\n"
+            "- [+2.0h] COMMIT: Add test cases\n"
+            "- [+2.5h] MERGED"
+        ),
         expected_ai_assisted=True,
         expected_tools=["claude"],
         min_confidence=0.9,
@@ -210,6 +226,15 @@ GOLDEN_TESTS: list[GoldenTest] = [
         author_name="Diana Coder",
         reviewers=["Eve Security", "Frank Backend"],
         commit_messages=["Extract auth logic", "Add session validation", "Improve token handling"],
+        timeline=(
+            "Timeline:\n"
+            "- [+4.0h] COMMIT: Extract auth logic\n"
+            "- [+6.0h] REVIEW [CHANGES_REQUESTED]: Eve Security: Need session timeout\n"
+            "- [+12.0h] COMMIT: Add session validation\n"
+            "- [+24.0h] COMMIT: Improve token handling\n"
+            "- [+36.0h] REVIEW [APPROVED]: Frank Backend: Looks good now\n"
+            "- [+48.0h] MERGED"
+        ),
         expected_ai_assisted=True,
         expected_tools=["copilot"],
         min_confidence=0.7,
@@ -245,6 +270,16 @@ GOLDEN_TESTS: list[GoldenTest] = [
         author_name="Grace Fullstack",
         reviewers=["Henry Architect", "Ivy Frontend"],
         commit_messages=["Initial dashboard layout", "Add chart components", "Connect to backend API"],
+        timeline=(
+            "Timeline:\n"
+            "- [+8.0h] COMMIT: Initial dashboard layout\n"
+            "- [+8.5h] REVIEW [CHANGES_REQUESTED]: Henry Architect: Consider lazy loading\n"
+            "- [+24.0h] COMMIT: Add chart components\n"
+            "- [+48.0h] COMMIT: Connect to backend API\n"
+            "- [+60.0h] REVIEW [CHANGES_REQUESTED]: Ivy Frontend: Fix mobile responsive\n"
+            "- [+68.0h] REVIEW [APPROVED]: Henry Architect: Ship it\n"
+            "- [+72.0h] MERGED"
+        ),
         expected_ai_assisted=True,
         expected_tools=["cursor", "claude"],
         min_confidence=0.85,
@@ -269,6 +304,13 @@ GOLDEN_TESTS: list[GoldenTest] = [
         author_name="Jack Backend",
         reviewers=["Kate API"],
         commit_messages=["aider: Implement rate limiting middleware", "aider: Add tests for throttling"],
+        timeline=(
+            "Timeline:\n"
+            "- [+2.0h] COMMIT: aider: Implement rate limiting middleware\n"
+            "- [+3.0h] REVIEW [APPROVED]: Kate API: Clean implementation\n"
+            "- [+12.0h] COMMIT: aider: Add tests for throttling\n"
+            "- [+16.0h] MERGED"
+        ),
         expected_ai_assisted=True,
         expected_tools=["aider"],
         min_confidence=0.8,
@@ -293,6 +335,14 @@ GOLDEN_TESTS: list[GoldenTest] = [
         author_name="Leo Payments",
         reviewers=["Mike Finance"],
         commit_messages=["Refactor checkout flow", "Add Stripe webhook handler", "Update frontend form"],
+        timeline=(
+            "Timeline:\n"
+            "- [+4.0h] COMMIT: Refactor checkout flow\n"
+            "- [+5.0h] REVIEW [APPROVED]: Mike Finance: Payment logic looks solid\n"
+            "- [+18.0h] COMMIT: Add Stripe webhook handler\n"
+            "- [+30.0h] COMMIT: Update frontend form\n"
+            "- [+36.0h] MERGED"
+        ),
         expected_ai_assisted=True,
         expected_tools=["windsurf"],
         min_confidence=0.75,
@@ -320,6 +370,13 @@ GOLDEN_TESTS: list[GoldenTest] = [
         author_name="Nina Dev",
         reviewers=["Oscar Lead"],
         commit_messages=["Increase timeout to 30s", "Add retry logic"],
+        timeline=(
+            "Timeline:\n"
+            "- [+1.0h] COMMIT: Increase timeout to 30s\n"
+            "- [+1.5h] REVIEW [APPROVED]: Oscar Lead: Good fix\n"
+            "- [+3.0h] COMMIT: Add retry logic\n"
+            "- [+4.0h] MERGED"
+        ),
         expected_ai_assisted=False,
         notes="Explicit denial should override any false positives",
     ),
@@ -345,6 +402,15 @@ GOLDEN_TESTS: list[GoldenTest] = [
         author_name="Pat AI",
         reviewers=["Quinn ML", "Rosa Backend"],
         commit_messages=["Add Gemini client", "Implement prompt engineering", "Add search UI"],
+        timeline=(
+            "Timeline:\n"
+            "- [+8.0h] COMMIT: Add Gemini client\n"
+            "- [+12.0h] REVIEW [CHANGES_REQUESTED]: Quinn ML: Add retry logic\n"
+            "- [+24.0h] COMMIT: Implement prompt engineering\n"
+            "- [+40.0h] COMMIT: Add search UI\n"
+            "- [+48.0h] REVIEW [APPROVED]: Rosa Backend: LGTM\n"
+            "- [+56.0h] MERGED"
+        ),
         expected_ai_assisted=False,
         expected_not_tools=["gemini"],
         notes="Building AI features != using AI to write code",
@@ -393,6 +459,13 @@ GOLDEN_TESTS: list[GoldenTest] = [
         author_name="Uma Senior",
         reviewers=["Victor Staff"],
         commit_messages=["Add null check for preferences", "Add unit test"],
+        timeline=(
+            "Timeline:\n"
+            "- [+2.0h] COMMIT: Add null check for preferences\n"
+            "- [+2.0h] REVIEW [APPROVED]: Victor Staff: Clean fix\n"
+            "- [+6.0h] COMMIT: Add unit test\n"
+            "- [+8.0h] MERGED"
+        ),
         expected_ai_assisted=False,
         notes="Standard human-written PR format",
     ),
@@ -418,6 +491,14 @@ GOLDEN_TESTS: list[GoldenTest] = [
         author_name="Wendy Product",
         reviewers=["Xavier UI"],
         commit_messages=["Add model dropdown component", "Wire up API", "Add Sonnet option"],
+        timeline=(
+            "Timeline:\n"
+            "- [+4.0h] COMMIT: Add model dropdown component\n"
+            "- [+4.0h] REVIEW [APPROVED]: Xavier UI: Nice component\n"
+            "- [+12.0h] COMMIT: Wire up API\n"
+            "- [+20.0h] COMMIT: Add Sonnet option\n"
+            "- [+24.0h] MERGED"
+        ),
         expected_ai_assisted=False,
         expected_not_tools=["claude"],
         notes="Mentioning Claude as a product != using Claude to write code",
@@ -678,6 +759,18 @@ GOLDEN_TESTS: list[GoldenTest] = [
             "[+48.0h] Sarah Tech Lead: Need rate limiting for notifications",
             "[+50.0h] Bob Backend: Consider Redis for scalability",
         ],
+        timeline=(
+            "Timeline:\n"
+            "- [+0.5h] COMMIT: Add notification models\n"
+            "- [+4.0h] COMMIT: Implement WebSocket consumer\n"
+            "- [+48.0h] REVIEW [CHANGES_REQUESTED]: Sarah Tech Lead: Need rate limiting\n"
+            "- [+50.0h] COMMENT: Bob Backend: Consider Redis for scalability\n"
+            "- [+52.0h] COMMIT: Fix review feedback: add rate limiting\n"
+            "- [+72.0h] COMMIT: Address review: improve error handling\n"
+            "- [+84.0h] COMMIT: 🤖 Generated with Cursor\n"
+            "- [+90.0h] REVIEW [APPROVED]: Sarah Tech Lead: LGTM\n"
+            "- [+96.5h] MERGED"
+        ),
         expected_ai_assisted=True,
         expected_tools=["cursor"],
         expected_categories=["backend", "frontend"],
@@ -713,6 +806,12 @@ GOLDEN_TESTS: list[GoldenTest] = [
         repo_languages=["Python"],
         reviewers=["Bob Backend"],
         review_comments=["[+0.5h] Bob Backend: LGTM, simple fix"],
+        timeline=(
+            "Timeline:\n"
+            "- [+0.2h] COMMIT: Fix null check in payment validation\n"
+            "- [+0.5h] REVIEW [APPROVED]: Bob Backend: LGTM, simple fix\n"
+            "- [+2.5h] MERGED"
+        ),
         jira_key="PAY-1234",
         expected_ai_assisted=False,
         expected_categories=["backend"],
@@ -755,6 +854,13 @@ GOLDEN_TESTS: list[GoldenTest] = [
         review_comments=[
             "[+0.25h] CTO: Ship it, we need this ASAP",
         ],
+        timeline=(
+            "Timeline:\n"
+            "- [+0.1h] COMMIT: Hotfix: Fix currency conversion edge case\n"
+            "- [+0.25h] REVIEW [APPROVED]: CTO: Ship it, we need this ASAP\n"
+            "- [+0.8h] COMMIT: Add regression test\n"
+            "- [+1.0h] MERGED"
+        ),
         linked_issues=["#1234"],
         expected_ai_assisted=False,
         expected_categories=["backend"],
@@ -795,6 +901,12 @@ GOLDEN_TESTS: list[GoldenTest] = [
             "[+8.0h] Add user type schema",
             "[+24.0h] aider: Implement query resolvers",
         ],
+        timeline=(
+            "Timeline:\n"
+            "- [+1.0h] COMMIT: Initial GraphQL setup\n"
+            "- [+8.0h] COMMIT: Add user type schema\n"
+            "- [+24.0h] COMMIT: aider: Implement query resolvers"
+        ),
         repo_languages=["Python"],
         milestone="Q1 2025 Release",
         expected_ai_assisted=True,
