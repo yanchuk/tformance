@@ -26,7 +26,12 @@ selective reprocessing.
 # =============================================================================
 # This version is stored with AI detections to support selective reprocessing.
 # Increment major version for breaking changes, minor for additions.
-PATTERNS_VERSION = "1.8.0"
+#
+# Version History:
+# - 1.9.0: Added greptile, improved cubic patterns, removed FP-prone ai_disclosure headers
+# - 1.8.0: Added AI Usage/Disclosure section headers
+# - 1.7.0: Initial comprehensive patterns
+PATTERNS_VERSION = "1.9.0"
 
 # =============================================================================
 # AI Reviewer Bots (username-based detection)
@@ -67,6 +72,9 @@ AI_REVIEWER_BOTS: dict[str, str] = {
     "devin-ai[bot]": "devin",
     # ----- Autofix CI -----
     "autofix-ci[bot]": "autofix",
+    # ----- Greptile AI (code review bot) -----
+    "greptile[bot]": "greptile",
+    "greptileai[bot]": "greptile",
 }
 
 # =============================================================================
@@ -180,6 +188,15 @@ AI_SIGNATURE_PATTERNS: list[tuple[str, str]] = [
     (r"\bsummary\s+by\s+cubic\b", "cubic"),
     (r"\bauto-generated\s+(?:description\s+)?by\s+cubic\b", "cubic"),
     (r"\bgenerated\s+by\s+cubic\b", "cubic"),
+    # "This is an auto-generated description by cubic" comment marker
+    (r"auto-generated\s+description\s+by\s+cubic", "cubic"),
+    # "Written for commit" marker used by Cubic
+    (r"written\s+for\s+commit\s+[a-f0-9]+", "cubic"),
+    # "End of auto-generated description by cubic"
+    (r"end\s+of\s+auto-generated\s+description\s+by\s+cubic", "cubic"),
+    # ----- Greptile AI (code review/understanding) -----
+    (r"\bgreptile\b", "greptile"),
+    (r"\bgreptile\.com\b", "greptile"),
     # ----- Devin AI -----
     (r"generated\s+by\s+devin", "devin"),
     (r"created\s+by\s+devin", "devin"),
@@ -199,12 +216,11 @@ AI_SIGNATURE_PATTERNS: list[tuple[str, str]] = [
     (r"\bwith\s+ai\s+assistance\b", "ai_generic"),
     # "AI helped with...", "AI helped to..."
     (r"\bai\s+helped?\s+(?:with|to)\b", "ai_generic"),
-    # ----- AI Disclosure Section Headers ----- (added v1.8.0)
-    # "### AI Usage", "## AI Disclosure", "AI Usage:" etc.
-    (r"#+\s*ai\s+usage\b", "ai_generic"),
-    (r"#+\s*ai\s+disclosure\b", "ai_generic"),
-    (r"\bai\s+usage\s*:", "ai_generic"),
-    (r"\bai\s+disclosure\s*:", "ai_generic"),
+    # ----- AI Disclosure Section Headers -----
+    # NOTE: Header-only patterns (e.g., "### AI Disclosure") were REMOVED in v1.9.0
+    # because they caused false positives when followed by "No AI was used".
+    # Regex cannot understand negation context. LLM handles these cases better.
+    # Only match positive disclosures with clear AI tool mentions.
 ]
 
 # =============================================================================
@@ -247,6 +263,7 @@ AI_CO_AUTHOR_PATTERNS: list[tuple[str, str]] = [
 # Maps AI tool type identifiers to human-friendly display names
 AI_TOOL_DISPLAY_NAMES: dict[str, str] = {
     "cubic": "Cubic AI",
+    "greptile": "Greptile",
     "mintlify": "Mintlify",
     "devin": "Devin AI",
     "coderabbit": "CodeRabbit",
