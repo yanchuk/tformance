@@ -29,13 +29,11 @@ from groq import Groq
 if TYPE_CHECKING:
     from apps.metrics.models import PullRequest
 
-# Import models for related data queries
-from apps.metrics.models import Commit, PRFile, PRReview
-
 # Import prompts from source of truth
 from apps.metrics.services.llm_prompts import (
     PR_ANALYSIS_SYSTEM_PROMPT,
     PROMPT_VERSION,
+    build_llm_pr_context,
 )
 
 # Default system prompt for AI detection with rich context
@@ -323,147 +321,8 @@ class GroqBatchProcessor:
             self.system_prompt = DEFAULT_SYSTEM_PROMPT
         self.prompt_version = PROMPT_VERSION
 
-    def _format_pr_context(self, pr: PullRequest) -> str:
-        """Format PR with rich context for LLM analysis.
-
-        Includes metadata that helps with detection accuracy:
-        - Title often contains AI tool mentions
-        - Size helps identify AI-typical large PRs
-        - Labels may include "ai-generated" tags
-        - Author context for bot detection
-        - Files changed (may reveal AI-typical patterns)
-        - Commit messages (may contain AI co-author signatures)
-        - Review comments (may discuss AI usage)
-        """
-        # Get author username
-        author = "unknown"
-        if pr.author:
-            author = pr.author.github_username or pr.author.display_name or "unknown"
-
-        # Format labels
-        labels = ", ".join(pr.labels) if pr.labels else "none"
-
-        # Format linked issues
-        issues = ", ".join(f"#{i}" for i in pr.linked_issues) if pr.linked_issues else "none"
-
-        # Build structured context
-        context = f"""# PR Metadata
-- Title: {pr.title or "No title"}
-- Author: {author}
-- Repository: {pr.github_repo}
-- Size: +{pr.additions}/-{pr.deletions} lines
-- Labels: {labels}
-- Linked Issues: {issues}
-
-# PR Description
-{pr.body}"""
-
-        # Add files changed section
-        files_section = self._format_files_section(pr)
-        if files_section:
-            context += f"\n\n{files_section}"
-
-        # Add commit messages section
-        commits_section = self._format_commits_section(pr)
-        if commits_section:
-            context += f"\n\n{commits_section}"
-
-        # Add review comments section
-        reviews_section = self._format_reviews_section(pr)
-        if reviews_section:
-            context += f"\n\n{reviews_section}"
-
-        # Add repository languages section (limits LLM language choices)
-        languages_section = self._format_repo_languages_section(pr)
-        if languages_section:
-            context += f"\n\n{languages_section}"
-
-        return context
-
-    def _format_repo_languages_section(self, pr: PullRequest) -> str:
-        """Format repository languages from GitHub API.
-
-        Provides primary language and top languages to constrain LLM choices.
-        """
-        from apps.integrations.models import TrackedRepository
-
-        try:
-            repo = TrackedRepository.objects.get(  # noqa: TEAM001 - Looking up by repo name
-                full_name=pr.github_repo,
-                team=pr.team,
-                is_active=True,
-            )
-        except TrackedRepository.DoesNotExist:
-            return ""
-
-        if not repo.languages:
-            return ""
-
-        # Format top languages (limit to 5)
-        sorted_langs = sorted(repo.languages.items(), key=lambda x: x[1], reverse=True)[:5]
-        if not sorted_langs:
-            return ""
-
-        lines = ["# Repository Languages (from GitHub)"]
-        lines.append(f"- Primary: {repo.primary_language or 'Unknown'}")
-        lines.append(f"- All: {', '.join(lang for lang, _ in sorted_langs)}")
-
-        return "\n".join(lines)
-
-    def _format_files_section(self, pr: PullRequest) -> str:
-        """Format files changed, grouped by category."""
-        files = PRFile.objects.filter(pull_request=pr).order_by("file_category", "filename")[:20]  # noqa: TEAM001
-
-        if not files:
-            return ""
-
-        lines = ["# Files Changed"]
-        for f in files:
-            # Show filename with category hint
-            category = f.file_category or "other"
-            lines.append(f"- [{category}] {f.filename} (+{f.additions}/-{f.deletions})")
-
-        return "\n".join(lines)
-
-    def _format_commits_section(self, pr: PullRequest) -> str:
-        """Format commit messages (may contain AI co-author signatures)."""
-        commits = Commit.objects.filter(pull_request=pr).order_by("-committed_at")[:10]  # noqa: TEAM001
-
-        if not commits:
-            return ""
-
-        lines = ["# Commit Messages"]
-        for c in commits:
-            # Include full message to capture Co-Authored-By lines
-            message = c.message or ""
-            # Truncate very long messages but keep first ~200 chars
-            if len(message) > 200:
-                message = message[:200] + "..."
-            lines.append(f"- {message}")
-
-        return "\n".join(lines)
-
-    def _format_reviews_section(self, pr: PullRequest) -> str:
-        """Format review comments (may discuss AI usage)."""
-        reviews = (
-            PRReview.objects.filter(  # noqa: TEAM001
-                pull_request=pr,
-                body__isnull=False,
-            )
-            .exclude(body="")
-            .order_by("submitted_at")[:5]
-        )
-
-        if not reviews:
-            return ""
-
-        lines = ["# Review Comments"]
-        for r in reviews:
-            reviewer = r.reviewer.github_username if r.reviewer else "unknown"
-            body = r.body[:150] + "..." if len(r.body) > 150 else r.body
-            lines.append(f"- [{r.state}] {reviewer}: {body}")
-
-        return "\n".join(lines)
+    # NOTE: _format_pr_context and helper methods removed in v6.2.0
+    # Now using unified build_llm_pr_context() from llm_prompts.py
 
     def create_batch_file(
         self,
@@ -491,8 +350,8 @@ class GroqBatchProcessor:
                 if not pr.body:
                     continue
 
-                # Format PR with rich context
-                pr_context = self._format_pr_context(pr)
+                # Format PR with unified context builder (includes all PR data)
+                pr_context = build_llm_pr_context(pr)
 
                 request = {
                     "custom_id": f"pr-{pr.id}",
@@ -502,10 +361,7 @@ class GroqBatchProcessor:
                         "model": self.model,
                         "messages": [
                             {"role": "system", "content": self.system_prompt},
-                            {
-                                "role": "user",
-                                "content": f"Analyze this PR for AI tool usage:\n\n{pr_context}",
-                            },
+                            {"role": "user", "content": pr_context},
                         ],
                         "response_format": {"type": "json_object"},
                         "temperature": 0,

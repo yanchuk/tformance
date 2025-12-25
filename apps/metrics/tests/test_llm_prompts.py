@@ -556,6 +556,345 @@ class TestGetUserPromptV61Fields(TestCase):
         self.assertIn("Looks good overall!", prompt)
 
 
+class TestBuildLlmPrContext(TestCase):
+    """Tests for build_llm_pr_context unified function."""
+
+    def setUp(self):
+        """Set up test fixtures using factories."""
+        from apps.metrics.factories import (
+            CommitFactory,
+            PRFileFactory,
+            PRReviewFactory,
+            PullRequestFactory,
+            TeamFactory,
+            TeamMemberFactory,
+        )
+        from apps.metrics.models import PRComment
+
+        self.team = TeamFactory()
+        self.author = TeamMemberFactory(
+            team=self.team,
+            display_name="John Doe",
+            github_username="johndoe",
+        )
+        self.reviewer = TeamMemberFactory(
+            team=self.team,
+            display_name="Jane Smith",
+            github_username="janesmith",
+        )
+        self.pr = PullRequestFactory(
+            team=self.team,
+            github_pr_id=1234,
+            github_repo="acme/backend",
+            title="Add user authentication endpoint",
+            body="Implements JWT auth\n\n🤖 Generated with Claude Code",
+            author=self.author,
+            state="merged",
+            additions=250,
+            deletions=50,
+            is_draft=False,
+            is_hotfix=True,
+            is_revert=False,
+            labels=["feature", "auth"],
+            milestone_title="Q1 2025 Release",
+            assignees=["johndoe", "janesmith"],
+            jira_key="AUTH-123",
+            linked_issues=[100, 101],
+            cycle_time_hours=24.5,
+            review_time_hours=2.0,
+            total_comments=8,
+            commits_after_first_review=3,
+            review_rounds=2,
+        )
+
+        # Create related objects
+        self.file1 = PRFileFactory(
+            team=self.team,
+            pull_request=self.pr,
+            filename="apps/auth/views.py",
+            file_category="backend",
+            additions=120,
+            deletions=20,
+        )
+        self.file2 = PRFileFactory(
+            team=self.team,
+            pull_request=self.pr,
+            filename="apps/auth/tests.py",
+            file_category="test",
+            additions=80,
+            deletions=10,
+        )
+
+        self.commit1 = CommitFactory(
+            team=self.team,
+            pull_request=self.pr,
+            message="Add JWT validation\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+        )
+        self.commit2 = CommitFactory(
+            team=self.team,
+            pull_request=self.pr,
+            message="Add tests for auth flow",
+        )
+
+        self.review = PRReviewFactory(
+            team=self.team,
+            pull_request=self.pr,
+            reviewer=self.reviewer,
+            state="approved",
+            body="LGTM! Nice clean implementation.",
+        )
+
+        # Create a comment
+        PRComment.objects.create(
+            team=self.team,
+            github_comment_id=999,
+            pull_request=self.pr,
+            author=self.reviewer,
+            body="Should we use refresh tokens?",
+            comment_type="issue",
+            comment_created_at=self.pr.pr_created_at,
+        )
+
+    def test_context_includes_pr_number(self):
+        """Context should include PR number."""
+        from apps.metrics.services.llm_prompts import build_llm_pr_context
+
+        context = build_llm_pr_context(self.pr)
+        self.assertIn("PR #1234", context)
+
+    def test_context_includes_title(self):
+        """Context should include PR title."""
+        from apps.metrics.services.llm_prompts import build_llm_pr_context
+
+        context = build_llm_pr_context(self.pr)
+        self.assertIn("Title: Add user authentication endpoint", context)
+
+    def test_context_includes_repository(self):
+        """Context should include repository name."""
+        from apps.metrics.services.llm_prompts import build_llm_pr_context
+
+        context = build_llm_pr_context(self.pr)
+        self.assertIn("Repository: acme/backend", context)
+
+    def test_context_includes_author_with_username(self):
+        """Context should include author name with GitHub username."""
+        from apps.metrics.services.llm_prompts import build_llm_pr_context
+
+        context = build_llm_pr_context(self.pr)
+        self.assertIn("Author: John Doe (@johndoe)", context)
+
+    def test_context_includes_state(self):
+        """Context should include PR state."""
+        from apps.metrics.services.llm_prompts import build_llm_pr_context
+
+        context = build_llm_pr_context(self.pr)
+        self.assertIn("State: merged", context)
+
+    def test_context_includes_hotfix_flag(self):
+        """Context should include hotfix flag when True."""
+        from apps.metrics.services.llm_prompts import build_llm_pr_context
+
+        context = build_llm_pr_context(self.pr)
+        self.assertIn("Hotfix: Yes", context)
+
+    def test_context_includes_labels(self):
+        """Context should include labels."""
+        from apps.metrics.services.llm_prompts import build_llm_pr_context
+
+        context = build_llm_pr_context(self.pr)
+        self.assertIn("Labels: feature, auth", context)
+
+    def test_context_includes_milestone(self):
+        """Context should include milestone."""
+        from apps.metrics.services.llm_prompts import build_llm_pr_context
+
+        context = build_llm_pr_context(self.pr)
+        self.assertIn("Milestone: Q1 2025 Release", context)
+
+    def test_context_includes_jira_key(self):
+        """Context should include Jira key."""
+        from apps.metrics.services.llm_prompts import build_llm_pr_context
+
+        context = build_llm_pr_context(self.pr)
+        self.assertIn("Jira: AUTH-123", context)
+
+    def test_context_includes_linked_issues(self):
+        """Context should include linked issues."""
+        from apps.metrics.services.llm_prompts import build_llm_pr_context
+
+        context = build_llm_pr_context(self.pr)
+        self.assertIn("Linked issues: #100, #101", context)
+
+    def test_context_includes_size(self):
+        """Context should include code size."""
+        from apps.metrics.services.llm_prompts import build_llm_pr_context
+
+        context = build_llm_pr_context(self.pr)
+        self.assertIn("Size: +250/-50 lines", context)
+
+    def test_context_includes_files_with_categories(self):
+        """Context should include files with categories."""
+        from apps.metrics.services.llm_prompts import build_llm_pr_context
+
+        context = build_llm_pr_context(self.pr)
+        self.assertIn("[backend] apps/auth/views.py (+120/-20)", context)
+        self.assertIn("[test] apps/auth/tests.py (+80/-10)", context)
+
+    def test_context_includes_timing_metrics(self):
+        """Context should include timing metrics."""
+        from apps.metrics.services.llm_prompts import build_llm_pr_context
+
+        context = build_llm_pr_context(self.pr)
+        self.assertIn("Cycle time: 24.5 hours", context)
+        self.assertIn("Time to first review: 2.0 hours", context)
+        self.assertIn("Comments: 8", context)
+        self.assertIn("Commits after first review: 3", context)
+        self.assertIn("Review rounds: 2", context)
+
+    def test_context_includes_commits_with_ai_signature(self):
+        """Context should include commit messages with AI signatures."""
+        from apps.metrics.services.llm_prompts import build_llm_pr_context
+
+        context = build_llm_pr_context(self.pr)
+        self.assertIn("Commits:", context)
+        self.assertIn("Co-Authored-By: Claude", context)
+
+    def test_context_includes_reviews(self):
+        """Context should include reviews with state and body."""
+        from apps.metrics.services.llm_prompts import build_llm_pr_context
+
+        context = build_llm_pr_context(self.pr)
+        self.assertIn("Reviews:", context)
+        self.assertIn("[APPROVED] janesmith: LGTM! Nice clean implementation.", context)
+
+    def test_context_includes_comments(self):
+        """Context should include PR comments."""
+        from apps.metrics.services.llm_prompts import build_llm_pr_context
+
+        context = build_llm_pr_context(self.pr)
+        self.assertIn("Comments:", context)
+        self.assertIn("janesmith: Should we use refresh tokens?", context)
+
+    def test_context_includes_description(self):
+        """Context should include PR description with AI markers."""
+        from apps.metrics.services.llm_prompts import build_llm_pr_context
+
+        context = build_llm_pr_context(self.pr)
+        self.assertIn("Description:", context)
+        self.assertIn("Implements JWT auth", context)
+        self.assertIn("🤖 Generated with Claude Code", context)
+
+    def test_context_starts_with_analyze_instruction(self):
+        """Context should start with analysis instruction."""
+        from apps.metrics.services.llm_prompts import build_llm_pr_context
+
+        context = build_llm_pr_context(self.pr)
+        self.assertTrue(context.startswith("Analyze this pull request:"))
+
+
+class TestBuildLlmPrContextEdgeCases(TestCase):
+    """Edge case tests for build_llm_pr_context."""
+
+    def setUp(self):
+        """Set up minimal test PR."""
+        from apps.metrics.factories import PullRequestFactory, TeamFactory
+
+        self.team = TeamFactory()
+        self.pr = PullRequestFactory(
+            team=self.team,
+            github_pr_id=1,
+            github_repo="test/repo",
+            title="",
+            body="",
+            author=None,
+            state="",
+            additions=0,
+            deletions=0,
+            labels=[],
+            milestone_title="",
+            assignees=[],
+            jira_key="",
+            linked_issues=[],
+            cycle_time_hours=None,
+            review_time_hours=None,
+            total_comments=None,
+            commits_after_first_review=None,
+            review_rounds=None,
+        )
+
+    def test_context_handles_empty_body(self):
+        """Context should handle empty PR body gracefully."""
+        from apps.metrics.services.llm_prompts import build_llm_pr_context
+
+        context = build_llm_pr_context(self.pr)
+        # Should not have Description section if body is empty
+        self.assertNotIn("Description:", context)
+
+    def test_context_handles_no_author(self):
+        """Context should handle missing author gracefully."""
+        from apps.metrics.services.llm_prompts import build_llm_pr_context
+
+        context = build_llm_pr_context(self.pr)
+        self.assertNotIn("Author:", context)
+
+    def test_context_handles_no_timing_metrics(self):
+        """Context should omit timing section when all metrics are None."""
+        from apps.metrics.services.llm_prompts import build_llm_pr_context
+
+        context = build_llm_pr_context(self.pr)
+        self.assertNotIn("Cycle time:", context)
+        self.assertNotIn("Time to first review:", context)
+
+    def test_context_handles_empty_labels(self):
+        """Context should omit labels when empty."""
+        from apps.metrics.services.llm_prompts import build_llm_pr_context
+
+        context = build_llm_pr_context(self.pr)
+        self.assertNotIn("Labels:", context)
+
+    def test_context_handles_no_files(self):
+        """Context should handle PR with no files."""
+        from apps.metrics.services.llm_prompts import build_llm_pr_context
+
+        context = build_llm_pr_context(self.pr)
+        self.assertNotIn("Files changed:", context)
+
+    def test_context_handles_no_commits(self):
+        """Context should handle PR with no commits."""
+        from apps.metrics.services.llm_prompts import build_llm_pr_context
+
+        context = build_llm_pr_context(self.pr)
+        self.assertNotIn("Commits:", context)
+
+    def test_context_handles_no_reviews(self):
+        """Context should handle PR with no reviews."""
+        from apps.metrics.services.llm_prompts import build_llm_pr_context
+
+        context = build_llm_pr_context(self.pr)
+        self.assertNotIn("Reviews:", context)
+
+    def test_context_always_includes_pr_number(self):
+        """PR number should always be included."""
+        from apps.metrics.services.llm_prompts import build_llm_pr_context
+
+        context = build_llm_pr_context(self.pr)
+        self.assertIn("PR #1", context)
+
+    def test_context_always_includes_repository(self):
+        """Repository should always be included."""
+        from apps.metrics.services.llm_prompts import build_llm_pr_context
+
+        context = build_llm_pr_context(self.pr)
+        self.assertIn("Repository: test/repo", context)
+
+    def test_context_always_includes_size(self):
+        """Size should always be included even if 0."""
+        from apps.metrics.services.llm_prompts import build_llm_pr_context
+
+        context = build_llm_pr_context(self.pr)
+        self.assertIn("Size: +0/-0 lines", context)
+
+
 class TestSystemPromptV6(TestCase):
     """Tests for v6.0.0 system prompt enhancements."""
 

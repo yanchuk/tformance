@@ -1,13 +1,31 @@
 """LLM prompts for PR analysis.
 
-This is the SOURCE OF TRUTH for all LLM prompts used in PR analysis.
-Update prompts here, then copy to promptfoo experiments for testing.
+The SOURCE OF TRUTH for system prompts is now the Jinja2 templates in:
+    apps/metrics/prompts/templates/
 
-Version: 6.0.0 (2024-12-24) - Enhanced with full PR context and health assessment
+To modify the prompt:
+1. Edit the relevant template in templates/sections/
+2. Run: python -c "from apps.metrics.prompts.render import render_system_prompt; print(render_system_prompt())"
+3. Copy the output to PR_ANALYSIS_SYSTEM_PROMPT below
+4. Verify equivalence: pytest apps/metrics/prompts/tests/test_render.py -k matches_original
+
+The hardcoded string is kept here for:
+- Simple imports without Django setup
+- Backward compatibility with existing code
+- Export to promptfoo experiments
+
+Version: 6.2.0 (2025-12-25) - Unified context builder with ALL PR data
 """
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from apps.metrics.models import PullRequest
+
 # Current prompt version - increment when making changes
-PROMPT_VERSION = "6.1.0"
+PROMPT_VERSION = "6.2.0"
 
 # Main PR analysis prompt - v6.0.0
 PR_ANALYSIS_SYSTEM_PROMPT = """You analyze pull requests to provide comprehensive insights for CTOs.
@@ -282,3 +300,220 @@ def get_user_prompt(
     sections.append(f"Description:\n{pr_body}")
 
     return "Analyze this pull request:\n\n" + "\n\n".join(sections)
+
+
+def build_llm_pr_context(pr: PullRequest) -> str:
+    """Build complete LLM context from a PullRequest object.
+
+    This is the UNIFIED function for formatting PR data for LLM analysis.
+    Use this instead of manually extracting fields.
+
+    Requires prefetched relations for performance:
+        pr = PullRequest.objects.select_related("author").prefetch_related(
+            "files", "commits", "reviews__reviewer", "comments__author"
+        ).get(id=pr_id)
+
+    Sections included:
+        1. PR Metadata - number, title, repo, author, state, timestamps
+        2. Flags - draft, hotfix, revert
+        3. Organization - labels, milestone, assignees, jira, linked issues
+        4. Code Changes - size, files with categories
+        5. Timing Metrics - cycle time, review time, iterations
+        6. Commits - messages with AI co-author signatures
+        7. Reviews - state, reviewer, body
+        8. Comments - PR discussion (may contain AI mentions)
+        9. Repository Languages - from TrackedRepository
+        10. Description - PR body
+
+    Args:
+        pr: PullRequest object with prefetched relations
+
+    Returns:
+        Formatted context string for LLM user prompt
+    """
+    sections = []
+
+    # === 1. PR Metadata ===
+    metadata = []
+    metadata.append(f"PR #{pr.github_pr_id}")
+    if pr.title:
+        metadata.append(f"Title: {pr.title}")
+    metadata.append(f"Repository: {pr.github_repo}")
+
+    # Author with GitHub username
+    if pr.author:
+        author_str = pr.author.display_name or pr.author.github_username or "unknown"
+        if pr.author.github_username and pr.author.display_name:
+            author_str = f"{pr.author.display_name} (@{pr.author.github_username})"
+        metadata.append(f"Author: {author_str}")
+
+    if pr.state:
+        metadata.append(f"State: {pr.state}")
+    if pr.pr_created_at:
+        metadata.append(f"Created: {pr.pr_created_at.strftime('%Y-%m-%d %H:%M UTC')}")
+    if pr.merged_at:
+        metadata.append(f"Merged: {pr.merged_at.strftime('%Y-%m-%d %H:%M UTC')}")
+
+    sections.append("\n".join(metadata))
+
+    # === 2. Flags ===
+    flags = []
+    if pr.is_draft:
+        flags.append("Draft: Yes")
+    if pr.is_hotfix:
+        flags.append("Hotfix: Yes")
+    if pr.is_revert:
+        flags.append("Revert: Yes")
+    if flags:
+        sections.append("\n".join(flags))
+
+    # === 3. Organization ===
+    org = []
+    if pr.labels:
+        org.append(f"Labels: {', '.join(pr.labels)}")
+    if pr.milestone_title:
+        org.append(f"Milestone: {pr.milestone_title}")
+    if pr.assignees:
+        assignees_str = ", ".join(pr.assignees[:10])
+        if len(pr.assignees) > 10:
+            assignees_str += f" (+{len(pr.assignees) - 10} more)"
+        org.append(f"Assignees: {assignees_str}")
+    if pr.jira_key:
+        org.append(f"Jira: {pr.jira_key}")
+    if pr.linked_issues:
+        issues_str = ", ".join(f"#{i}" for i in pr.linked_issues[:10])
+        org.append(f"Linked issues: {issues_str}")
+    if org:
+        sections.append("\n".join(org))
+
+    # === 4. Code Changes ===
+    changes = []
+    changes.append(f"Size: +{pr.additions}/-{pr.deletions} lines")
+
+    # Get files (use prefetched if available)
+    try:
+        files = list(pr.files.all()[:20])
+    except AttributeError:
+        files = []
+
+    if files:
+        changes.append(f"Files changed: {len(files)}")
+        file_lines = []
+        for f in files:
+            category = f.file_category or "other"
+            file_lines.append(f"  - [{category}] {f.filename} (+{f.additions}/-{f.deletions})")
+        changes.append("\n".join(file_lines))
+    if changes:
+        sections.append("\n".join(changes))
+
+    # === 5. Timing Metrics ===
+    timing = []
+    if pr.cycle_time_hours is not None:
+        timing.append(f"Cycle time: {float(pr.cycle_time_hours):.1f} hours")
+    if pr.review_time_hours is not None:
+        timing.append(f"Time to first review: {float(pr.review_time_hours):.1f} hours")
+    if pr.total_comments:
+        timing.append(f"Comments: {pr.total_comments}")
+    if pr.commits_after_first_review:
+        timing.append(f"Commits after first review: {pr.commits_after_first_review}")
+    if pr.review_rounds:
+        timing.append(f"Review rounds: {pr.review_rounds}")
+    if pr.avg_fix_response_hours is not None:
+        timing.append(f"Avg fix response: {float(pr.avg_fix_response_hours):.1f} hours")
+    if timing:
+        sections.append("\n".join(timing))
+
+    # === 6. Commits ===
+    try:
+        commits = list(pr.commits.all().order_by("-committed_at")[:10])
+    except AttributeError:
+        commits = []
+
+    if commits:
+        commit_lines = ["Commits:"]
+        for c in commits:
+            msg = c.message or ""
+            # Truncate but keep Co-Authored-By lines visible
+            if len(msg) > 300:
+                msg = msg[:300] + "..."
+            commit_lines.append(f"- {msg}")
+        sections.append("\n".join(commit_lines))
+
+    # === 7. Reviews ===
+    try:
+        reviews = list(pr.reviews.exclude(body__isnull=True).exclude(body="").order_by("submitted_at")[:5])
+    except AttributeError:
+        reviews = []
+
+    if reviews:
+        review_lines = ["Reviews:"]
+        for r in reviews:
+            reviewer = "unknown"
+            if r.reviewer:
+                reviewer = r.reviewer.github_username or r.reviewer.display_name or "unknown"
+            body = r.body[:200] + "..." if len(r.body) > 200 else r.body
+            state = r.state.upper() if r.state else "COMMENT"
+            review_lines.append(f"- [{state}] {reviewer}: {body}")
+        sections.append("\n".join(review_lines))
+
+    # === 8. Comments (NEW - may contain AI discussion) ===
+    try:
+        comments = list(pr.comments.exclude(body__isnull=True).exclude(body="").order_by("comment_created_at")[:5])
+    except AttributeError:
+        comments = []
+
+    if comments:
+        comment_lines = ["Comments:"]
+        for c in comments:
+            author = "unknown"
+            if c.author:
+                author = c.author.github_username or c.author.display_name or "unknown"
+            body = c.body[:200] + "..." if len(c.body) > 200 else c.body
+            comment_lines.append(f"- {author}: {body}")
+        sections.append("\n".join(comment_lines))
+
+    # === 9. Repository Languages ===
+    repo_languages = _get_repo_languages(pr)
+    if repo_languages:
+        sections.append(repo_languages)
+
+    # === 10. Description ===
+    if pr.body:
+        sections.append(f"Description:\n{pr.body}")
+
+    return "Analyze this pull request:\n\n" + "\n\n".join(sections)
+
+
+def _get_repo_languages(pr: PullRequest) -> str:
+    """Get repository languages from TrackedRepository.
+
+    Args:
+        pr: PullRequest object
+
+    Returns:
+        Formatted string with primary and top languages, or empty string
+    """
+    from apps.integrations.models import TrackedRepository
+
+    try:
+        repo = TrackedRepository.objects.get(  # noqa: TEAM001 - Looking up by repo name
+            full_name=pr.github_repo,
+            team=pr.team,
+            is_active=True,
+        )
+    except TrackedRepository.DoesNotExist:
+        return ""
+
+    if not repo.languages:
+        return ""
+
+    # Format top languages (limit to 5)
+    sorted_langs = sorted(repo.languages.items(), key=lambda x: x[1], reverse=True)[:5]
+    if not sorted_langs:
+        return ""
+
+    lines = ["Repository languages:"]
+    lines.append(f"- Primary: {repo.primary_language or 'Unknown'}")
+    lines.append(f"- All: {', '.join(lang for lang, _ in sorted_langs)}")
+
+    return "\n".join(lines)

@@ -23,7 +23,7 @@ from apps.metrics.models import PullRequest
 from apps.metrics.services.llm_prompts import (
     PR_ANALYSIS_SYSTEM_PROMPT,
     PROMPT_VERSION,
-    get_user_prompt,
+    build_llm_pr_context,
 )
 from apps.teams.models import Team
 
@@ -86,10 +86,10 @@ class Command(BaseCommand):
             # Only process PRs without llm_summary or with older version
             qs = qs.filter(llm_summary__isnull=True) | qs.exclude(llm_summary_version=PROMPT_VERSION)
 
-        # Prefetch related data for v6.1.0 - avoid N+1 queries
+        # Prefetch related data for v6.2.0 - avoid N+1 queries
         prs = list(
             qs.select_related("author")
-            .prefetch_related("files", "commits", "reviews__reviewer")
+            .prefetch_related("files", "commits", "reviews__reviewer", "comments__author")
             .order_by("-pr_created_at")[:limit]
         )
 
@@ -119,39 +119,8 @@ class Command(BaseCommand):
             self.stdout.write(f"\n[{i + 1}/{len(prs)}] PR #{pr.github_pr_id}: {pr.title[:50]}...")
 
             try:
-                # Extract related data (v6.1.0)
-                file_paths = list(pr.files.values_list("filename", flat=True))
-                commit_messages = list(pr.commits.values_list("message", flat=True))
-                reviewers = list(
-                    set(r.reviewer.display_name for r in pr.reviews.all() if r.reviewer and r.reviewer.display_name)
-                )
-
-                # Build user prompt with all available context
-                user_prompt = get_user_prompt(
-                    pr_body=pr.body or "",
-                    pr_title=pr.title or "",
-                    additions=pr.additions or 0,
-                    deletions=pr.deletions or 0,
-                    comment_count=pr.total_comments or 0,
-                    state=pr.state or "",
-                    labels=pr.labels or [],
-                    is_draft=pr.is_draft or False,
-                    is_hotfix=pr.is_hotfix or False,
-                    is_revert=pr.is_revert or False,
-                    cycle_time_hours=pr.cycle_time_hours,
-                    review_time_hours=pr.review_time_hours,
-                    commits_after_first_review=pr.commits_after_first_review,
-                    review_rounds=pr.review_rounds,
-                    # v6.1.0 - Additional context
-                    file_paths=file_paths,
-                    commit_messages=commit_messages,
-                    reviewers=reviewers,
-                    milestone=pr.milestone_title or None,
-                    assignees=pr.assignees or [],
-                    linked_issues=[str(i) for i in pr.linked_issues] if pr.linked_issues else [],
-                    jira_key=pr.jira_key or None,
-                    author_name=pr.author.display_name if pr.author else None,
-                )
+                # Build user prompt with unified context builder (v6.2.0)
+                user_prompt = build_llm_pr_context(pr)
 
                 # Call Groq API
                 response = client.chat.completions.create(

@@ -1,0 +1,521 @@
+# Promptfoo Configuration - v6.2.0 Unified Context Builder
+#
+# Tests AI detection, tech detection, AND health assessment
+# Uses new build_llm_pr_context() format with ALL PR data
+#
+# Run: npx promptfoo eval -c promptfoo-v6.2.yaml
+# View: npx promptfoo view
+
+description: "AI Detection Prompt Evaluation (v6.2) - Unified Context Format"
+
+providers:
+  - id: groq:llama-3.3-70b-versatile
+    config:
+      temperature: 0
+      max_tokens: 800
+      response_format:
+        type: json_object
+
+prompts:
+  - id: v6.2
+    raw: |
+      [
+        {"role": "system", "content": "{{system_prompt}}"},
+        {"role": "user", "content": "{{user_prompt}}"}
+      ]
+
+# Default variables
+defaultTest:
+  vars:
+    system_prompt: file://prompts/v6.2.0-system.txt
+  assert:
+    - type: is-json
+    - type: javascript
+      value: |
+        const r = JSON.parse(output);
+        return typeof r.ai?.is_assisted === 'boolean' &&
+               Array.isArray(r.ai?.tools) &&
+               typeof r.ai?.confidence === 'number';
+
+tests:
+  # ============================================
+  # AI DETECTION TESTS (v6.2 format)
+  # ============================================
+
+  - description: "Claude Code signature - full context"
+    vars:
+      user_prompt: |
+        Analyze this pull request:
+
+        PR #123
+        Title: Fix login validation bug
+        Repository: org/api
+        Author: John Doe (@johndoe)
+        State: merged
+        Created: 2025-01-15 10:00 UTC
+        Merged: 2025-01-15 12:30 UTC
+
+        Size: +50/-10 lines
+        Files changed: 3
+          - [backend] auth/login.py (+30/-5)
+          - [test] tests/test_login.py (+20/-5)
+
+        Cycle time: 2.5 hours
+        Time to first review: 0.5 hours
+
+        Commits:
+        - fix: Validate login inputs properly
+
+        Co-Authored-By: Claude <noreply@anthropic.com>
+
+        Reviews:
+        - [APPROVED] reviewer1: LGTM!
+
+        Description:
+        Fix login validation bug.
+
+        🤖 Generated with [Claude Code](https://claude.com/claude-code)
+    assert:
+      - type: is-json
+      - type: javascript
+        value: JSON.parse(output).ai.is_assisted === true
+      - type: javascript
+        value: JSON.parse(output).ai.tools.includes("claude")
+      - type: javascript
+        value: JSON.parse(output).health.scope === "small"
+      - type: javascript
+        value: JSON.parse(output).health.review_friction === "low"
+
+  - description: "Cursor IDE with high review friction"
+    vars:
+      user_prompt: |
+        Analyze this pull request:
+
+        PR #456
+        Title: Major refactor of auth system
+        Repository: org/api
+        Author: Jane Smith (@janesmith)
+        State: merged
+        Created: 2025-01-10 09:00 UTC
+        Merged: 2025-01-15 09:30 UTC
+
+        Size: +800/-300 lines
+        Files changed: 25
+          - [backend] auth/oauth.py (+200/-100)
+          - [backend] auth/jwt.py (+150/-80)
+          - [test] tests/test_oauth.py (+300/-50)
+
+        Cycle time: 120.5 hours
+        Time to first review: 48.0 hours
+        Commits after first review: 8
+        Review rounds: 4
+
+        Reviews:
+        - [CHANGES_REQUESTED] reviewer1: Needs more tests
+        - [CHANGES_REQUESTED] reviewer1: Please fix the edge cases
+        - [APPROVED] reviewer1: Good now
+
+        Description:
+        Complete refactor of authentication system.
+
+        Used Cursor IDE for implementation.
+    assert:
+      - type: is-json
+      - type: javascript
+        value: JSON.parse(output).ai.is_assisted === true
+      - type: javascript
+        value: JSON.parse(output).ai.tools.includes("cursor")
+      - type: javascript
+        value: |
+          const scope = JSON.parse(output).health.scope;
+          return scope === "large" || scope === "xlarge";
+      - type: javascript
+        value: |
+          // 4 review rounds, 8 commits after review - medium or high friction
+          const friction = JSON.parse(output).health.review_friction;
+          return friction === "medium" || friction === "high";
+
+  - description: "No AI - small quick PR"
+    vars:
+      user_prompt: |
+        Analyze this pull request:
+
+        PR #789
+        Title: Fix typo in README
+        Repository: org/docs
+        Author: Bob Wilson (@bobwilson)
+        State: merged
+        Created: 2025-01-15 14:00 UTC
+        Merged: 2025-01-15 14:30 UTC
+
+        Size: +2/-2 lines
+        Files changed: 1
+          - [docs] README.md (+2/-2)
+
+        Cycle time: 0.5 hours
+        Time to first review: 0.2 hours
+
+        Reviews:
+        - [APPROVED] reviewer1: Thanks!
+
+        Description:
+        Fixed typo in installation instructions.
+    assert:
+      - type: is-json
+      - type: javascript
+        value: JSON.parse(output).ai.is_assisted === false
+      - type: javascript
+        value: JSON.parse(output).health.scope === "small"
+      - type: javascript
+        value: JSON.parse(output).health.risk_level === "low"
+
+  # ============================================
+  # NEW: COMMENT-BASED AI DETECTION
+  # ============================================
+
+  - description: "AI mention in PR comments"
+    vars:
+      user_prompt: |
+        Analyze this pull request:
+
+        PR #1001
+        Title: Add user search feature
+        Repository: org/api
+        Author: Alice Chen (@alicechen)
+        State: merged
+        Created: 2025-01-14 10:00 UTC
+        Merged: 2025-01-15 11:00 UTC
+
+        Size: +150/-20 lines
+        Files changed: 4
+          - [backend] users/search.py (+100/-10)
+          - [test] tests/test_search.py (+50/-10)
+
+        Cycle time: 25.0 hours
+        Time to first review: 3.0 hours
+
+        Reviews:
+        - [APPROVED] reviewer1: Nice implementation!
+
+        Comments:
+        - alicechen: Used Cursor to help with the search algorithm
+        - reviewer1: The AI-generated code looks clean
+
+        Description:
+        Added user search with fuzzy matching.
+    assert:
+      - type: is-json
+      - type: javascript
+        value: JSON.parse(output).ai.is_assisted === true
+      - type: javascript
+        value: JSON.parse(output).ai.tools.includes("cursor")
+
+  - description: "AI discussion in review comments"
+    vars:
+      user_prompt: |
+        Analyze this pull request:
+
+        PR #1002
+        Title: Optimize database queries
+        Repository: org/api
+        Author: Dave Lee (@davelee)
+        State: merged
+        Created: 2025-01-13 09:00 UTC
+        Merged: 2025-01-14 15:00 UTC
+
+        Size: +80/-40 lines
+        Files changed: 3
+          - [backend] db/queries.py (+50/-30)
+          - [test] tests/test_queries.py (+30/-10)
+
+        Cycle time: 30.0 hours
+        Time to first review: 6.0 hours
+
+        Reviews:
+        - [COMMENTED] reviewer1: Did you use any AI tools for this?
+        - [APPROVED] reviewer1: Looks good after clarification
+
+        Comments:
+        - davelee: Yes, I used Claude to help optimize the N+1 queries
+        - reviewer1: That's fine, thanks for confirming
+
+        Description:
+        Optimized slow database queries in user dashboard.
+    assert:
+      - type: is-json
+      - type: javascript
+        value: JSON.parse(output).ai.is_assisted === true
+      - type: javascript
+        value: JSON.parse(output).ai.tools.includes("claude")
+
+  - description: "AI as product feature - edge case"
+    vars:
+      user_prompt: |
+        Analyze this pull request:
+
+        PR #1003
+        Title: Add AI feature to product
+        Repository: org/product
+        Author: Eve Wong (@evewong)
+        State: merged
+        Created: 2025-01-12 11:00 UTC
+        Merged: 2025-01-13 14:00 UTC
+
+        Size: +200/-50 lines
+        Files changed: 5
+
+        Comments:
+        - evewong: This adds AI capabilities to our product
+        - reviewer1: The AI integration looks good
+
+        Description:
+        Added AI-powered recommendations to product catalog.
+        Uses OpenAI API for generating suggestions.
+    assert:
+      - type: is-json
+      # Note: This is an edge case - building AI features != using AI to code
+      # LLM may return either true or false, both are defensible
+      - type: javascript
+        value: |
+          const r = JSON.parse(output);
+          // If AI detected, confidence should be low (ambiguous case)
+          return r.ai.is_assisted === false || r.ai.confidence < 0.8;
+
+  # ============================================
+  # TECHNOLOGY DETECTION TESTS
+  # ============================================
+
+  - description: "Python Django backend PR"
+    vars:
+      user_prompt: |
+        Analyze this pull request:
+
+        PR #2001
+        Title: Add user authentication endpoint
+        Repository: org/api
+        Author: Frank Zhang (@frankzhang)
+        State: merged
+
+        Size: +250/-50 lines
+        Files changed: 5
+          - [backend] apps/auth/views.py (+100/-20)
+          - [backend] apps/auth/serializers.py (+50/-10)
+          - [backend] apps/auth/models.py (+50/-10)
+          - [test] apps/auth/tests.py (+50/-10)
+
+        Repository Languages: Python 85%, TypeScript 15%
+
+        Description:
+        Added Django REST Framework authentication endpoints with JWT tokens.
+    assert:
+      - type: is-json
+      - type: javascript
+        value: JSON.parse(output).tech.languages.includes("python")
+      - type: javascript
+        value: JSON.parse(output).tech.frameworks.includes("django")
+      - type: javascript
+        value: JSON.parse(output).tech.categories.includes("backend")
+
+  - description: "React TypeScript frontend PR"
+    vars:
+      user_prompt: |
+        Analyze this pull request:
+
+        PR #2002
+        Title: Add dark mode toggle
+        Repository: org/frontend
+        Author: Grace Kim (@gracekim)
+        State: merged
+
+        Size: +180/-20 lines
+        Files changed: 4
+          - [frontend] src/components/ThemeToggle.tsx (+60/-5)
+          - [frontend] src/context/ThemeContext.tsx (+80/-10)
+          - [frontend] src/App.tsx (+20/-3)
+          - [frontend] src/styles/theme.css (+20/-2)
+
+        Repository Languages: TypeScript 70%, JavaScript 20%, CSS 10%
+
+        Description:
+        Implemented dark mode toggle with React context and Tailwind CSS.
+    assert:
+      - type: is-json
+      - type: javascript
+        value: JSON.parse(output).tech.languages.includes("typescript")
+      - type: javascript
+        value: JSON.parse(output).tech.frameworks.includes("react")
+      - type: javascript
+        value: JSON.parse(output).tech.categories.includes("frontend")
+
+  # ============================================
+  # HEALTH ASSESSMENT TESTS
+  # ============================================
+
+  - description: "Hotfix PR - high risk"
+    vars:
+      user_prompt: |
+        Analyze this pull request:
+
+        PR #3001
+        Title: HOTFIX: Fix production crash on login
+        Repository: org/api
+        Author: Henry Park (@henrypark)
+        State: merged
+        Created: 2025-01-15 03:00 UTC
+        Merged: 2025-01-15 03:30 UTC
+
+        Flags: hotfix
+
+        Labels: hotfix, critical, production
+
+        Size: +15/-5 lines
+        Files changed: 1
+
+        Cycle time: 0.5 hours
+        Time to first review: 0.1 hours
+
+        Description:
+        Emergency fix for production login crash affecting all users.
+    assert:
+      - type: is-json
+      # Hotfix with small scope - LLM may rate as low/medium/high depending on context
+      - type: javascript
+        value: JSON.parse(output).summary.type === "bugfix"
+
+  - description: "Revert PR - indicates previous issue"
+    vars:
+      user_prompt: |
+        Analyze this pull request:
+
+        PR #3002
+        Title: Revert "Add new payment flow"
+        Repository: org/api
+        Author: Ivy Chen (@ivychen)
+        State: merged
+        Created: 2025-01-14 20:00 UTC
+        Merged: 2025-01-14 21:00 UTC
+
+        Flags: revert
+
+        Labels: revert
+
+        Size: +50/-300 lines
+
+        Cycle time: 1.0 hours
+
+        Description:
+        Reverting the new payment flow as it caused issues in production.
+        This reverts commit abc123.
+    assert:
+      - type: is-json
+      - type: javascript
+        value: JSON.parse(output).health.risk_level === "high" || JSON.parse(output).health.risk_level === "medium"
+      - type: javascript
+        value: JSON.parse(output).health.insights.length > 0
+
+  - description: "Large PR with many iterations - high friction"
+    vars:
+      user_prompt: |
+        Analyze this pull request:
+
+        PR #3003
+        Title: Migrate database to PostgreSQL
+        Repository: org/api
+        Author: Jack Liu (@jackliu)
+        State: merged
+        Created: 2025-01-08 09:00 UTC
+        Merged: 2025-01-15 09:00 UTC
+
+        Size: +1200/-800 lines
+        Files changed: 45
+
+        Cycle time: 168.0 hours
+        Time to first review: 72.0 hours
+        Commits after first review: 12
+        Review rounds: 5
+
+        Reviews:
+        - [CHANGES_REQUESTED] reviewer1: Major concerns about migration strategy
+        - [CHANGES_REQUESTED] reviewer2: Need rollback plan
+        - [CHANGES_REQUESTED] reviewer1: Still some issues
+        - [APPROVED] reviewer1: Finally good
+        - [APPROVED] reviewer2: Approved
+
+        Comments:
+        - jackliu: Updated migration strategy
+        - reviewer1: Thanks, looks better now
+
+        Description:
+        Complete migration from MySQL to PostgreSQL.
+        Updated all models, migrations, and queries.
+    assert:
+      - type: is-json
+      - type: javascript
+        value: |
+          // 2000 lines should be large or xlarge
+          const scope = JSON.parse(output).health.scope;
+          return scope === "large" || scope === "xlarge";
+      - type: javascript
+        value: JSON.parse(output).health.review_friction === "high"
+      - type: javascript
+        value: |
+          // Large migration with many review rounds - medium or high risk
+          const risk = JSON.parse(output).health.risk_level;
+          return risk === "medium" || risk === "high";
+
+  # ============================================
+  # EDGE CASES
+  # ============================================
+
+  - description: "Minimal info PR"
+    vars:
+      user_prompt: |
+        Analyze this pull request:
+
+        PR #4001
+        Title: Update dependencies
+        Repository: org/api
+        State: merged
+
+        Size: +10/-10 lines
+
+        Description:
+        Updated npm packages.
+    assert:
+      - type: is-json
+      - type: javascript
+        value: JSON.parse(output).ai.is_assisted === false
+      - type: javascript
+        value: JSON.parse(output).summary.type === "chore"
+
+  - description: "CI/CD changes"
+    vars:
+      user_prompt: |
+        Analyze this pull request:
+
+        PR #4002
+        Title: Add GitHub Actions workflow
+        Repository: org/api
+        State: merged
+
+        Size: +100/-0 lines
+        Files changed: 2
+          - [config] .github/workflows/ci.yml (+60/-0)
+          - [config] .github/workflows/deploy.yml (+40/-0)
+
+        Description:
+        Added CI/CD pipeline with test, build, and deploy stages.
+    assert:
+      - type: is-json
+      - type: javascript
+        value: JSON.parse(output).summary.type === "ci"
+      - type: javascript
+        value: JSON.parse(output).tech.categories.includes("devops")
+
+# Output configuration
+outputPath: ./results/promptfoo-v6.2-results.json
+
+# Evaluation settings
+evaluateOptions:
+  maxConcurrency: 5
+  showProgressBar: true

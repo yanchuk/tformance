@@ -419,8 +419,9 @@ class TestGroqBatchProcessor(TestCase):
         """Set up test fixtures."""
         self.team = TeamFactory()
 
-    def test_format_pr_context(self):
-        """Test rich PR context formatting."""
+    def test_build_llm_pr_context_integration(self):
+        """Test that build_llm_pr_context produces expected output for batch processing."""
+        from apps.metrics.services.llm_prompts import build_llm_pr_context
 
         member = TeamMemberFactory(
             team=self.team,
@@ -439,12 +440,11 @@ class TestGroqBatchProcessor(TestCase):
             linked_issues=[123, 456],
         )
 
-        processor = GroqBatchProcessor(api_key="test-key")
-        context = processor._format_pr_context(pr)
+        context = build_llm_pr_context(pr)
 
-        # Verify all metadata is included
+        # Verify all metadata is included (new format)
         self.assertIn("Title: Fix bug in AI module", context)
-        self.assertIn("Author: testuser", context)
+        self.assertIn("Test User (@testuser)", context)
         self.assertIn("Repository: org/repo", context)
         self.assertIn("+50/-10 lines", context)
         self.assertIn("bug, ai-generated", context)
@@ -488,9 +488,9 @@ class TestGroqBatchProcessor(TestCase):
             self.assertEqual(first_request["body"]["model"], "llama-3.3-70b-versatile")
             self.assertEqual(first_request["body"]["response_format"], {"type": "json_object"})
 
-            # Verify rich context is in user message
+            # Verify rich context is in user message (v6.2.0 unified format)
             user_content = first_request["body"]["messages"][1]["content"]
-            self.assertIn("# PR Metadata", user_content)
+            self.assertIn("Analyze this pull request:", user_content)
             self.assertIn("Title: Add feature", user_content)
             self.assertIn("+100/-20 lines", user_content)
         finally:
@@ -665,8 +665,10 @@ class TestGroqBatchProcessor(TestCase):
         mock_client.batches.cancel.assert_called_once_with("batch-123")
         self.assertEqual(status.status, "cancelled")
 
-    def test_format_pr_context_with_files(self):
+    def test_build_llm_pr_context_with_files(self):
         """Test PR context includes files changed by category."""
+        from apps.metrics.services.llm_prompts import build_llm_pr_context
+
         pr = PullRequestFactory(team=self.team, body="Fix authentication")
 
         # Add files in different categories
@@ -695,17 +697,18 @@ class TestGroqBatchProcessor(TestCase):
             deletions=0,
         )
 
-        processor = GroqBatchProcessor(api_key="test-key")
-        context = processor._format_pr_context(pr)
+        context = build_llm_pr_context(pr)
 
-        # Verify files section exists
-        self.assertIn("# Files Changed", context)
+        # Verify files section exists (new format)
+        self.assertIn("Files changed:", context)
         self.assertIn("Login.tsx", context)
         self.assertIn("views.py", context)
         self.assertIn("test_auth.py", context)
 
-    def test_format_pr_context_with_commits(self):
+    def test_build_llm_pr_context_with_commits(self):
         """Test PR context includes commit messages."""
+        from apps.metrics.services.llm_prompts import build_llm_pr_context
+
         member = TeamMemberFactory(team=self.team, github_username="dev1")
         pr = PullRequestFactory(team=self.team, author=member, body="Add feature")
 
@@ -723,16 +726,17 @@ class TestGroqBatchProcessor(TestCase):
             message="fix: Handle edge case",
         )
 
-        processor = GroqBatchProcessor(api_key="test-key")
-        context = processor._format_pr_context(pr)
+        context = build_llm_pr_context(pr)
 
-        # Verify commits section with AI disclosure
-        self.assertIn("# Commit Messages", context)
+        # Verify commits section with AI disclosure (new format)
+        self.assertIn("Commits:", context)
         self.assertIn("Add login form", context)
         self.assertIn("Co-Authored-By: Claude", context)
 
-    def test_format_pr_context_with_reviews(self):
+    def test_build_llm_pr_context_with_reviews(self):
         """Test PR context includes review comments."""
+        from apps.metrics.services.llm_prompts import build_llm_pr_context
+
         author = TeamMemberFactory(team=self.team, github_username="author1")
         reviewer = TeamMemberFactory(team=self.team, github_username="reviewer1")
         pr = PullRequestFactory(team=self.team, author=author, body="Refactor module")
@@ -743,25 +747,26 @@ class TestGroqBatchProcessor(TestCase):
             pull_request=pr,
             reviewer=reviewer,
             body="This looks AI-generated. Did you use Cursor for this?",
-            state="CHANGES_REQUESTED",
+            state="changes_requested",
         )
         PRReviewFactory(
             team=self.team,
             pull_request=pr,
             reviewer=reviewer,
             body="LGTM after changes",
-            state="APPROVED",
+            state="approved",
         )
 
-        processor = GroqBatchProcessor(api_key="test-key")
-        context = processor._format_pr_context(pr)
+        context = build_llm_pr_context(pr)
 
-        # Verify reviews section
-        self.assertIn("# Review Comments", context)
+        # Verify reviews section (new format)
+        self.assertIn("Reviews:", context)
         self.assertIn("Did you use Cursor", context)
 
-    def test_format_pr_context_with_all_data(self):
+    def test_build_llm_pr_context_with_all_data(self):
         """Test PR context with files, commits, and reviews combined."""
+        from apps.metrics.services.llm_prompts import build_llm_pr_context
+
         author = TeamMemberFactory(team=self.team, github_username="author1")
         reviewer = TeamMemberFactory(team=self.team, github_username="reviewer1")
         pr = PullRequestFactory(
@@ -791,15 +796,14 @@ class TestGroqBatchProcessor(TestCase):
             body="Great use of AI here!",
         )
 
-        processor = GroqBatchProcessor(api_key="test-key")
-        context = processor._format_pr_context(pr)
+        context = build_llm_pr_context(pr)
 
-        # Verify all sections present
-        self.assertIn("# PR Metadata", context)
-        self.assertIn("# PR Description", context)
-        self.assertIn("# Files Changed", context)
-        self.assertIn("# Commit Messages", context)
-        self.assertIn("# Review Comments", context)
+        # Verify all sections present (new format)
+        self.assertIn("Analyze this pull request:", context)
+        self.assertIn("Description:", context)
+        self.assertIn("Files changed:", context)
+        self.assertIn("Commits:", context)
+        self.assertIn("Reviews:", context)
 
         # Verify AI disclosure detected in multiple places
         self.assertIn("Cursor", context)
