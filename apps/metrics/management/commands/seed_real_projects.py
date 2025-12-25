@@ -28,8 +28,10 @@ NOTE: This command requires development dependencies (factory-boy).
 """
 
 import os
+from datetime import datetime
 
 from django.core.management.base import BaseCommand, CommandError
+from django.utils import timezone
 
 # Guard imports - seeding requires factory-boy (dev dependency)
 try:
@@ -71,17 +73,43 @@ class Command(BaseCommand):
         parser.add_argument(
             "--max-prs",
             type=int,
-            help="Override maximum PRs to fetch",
+            help="Override maximum PRs to fetch (use 0 for unlimited)",
         )
         parser.add_argument(
             "--max-members",
             type=int,
-            help="Override maximum team members",
+            help="Override maximum team members (use 0 for unlimited)",
+        )
+        parser.add_argument(
+            "--no-pr-limit",
+            action="store_true",
+            help="Fetch all PRs (no limit)",
+        )
+        parser.add_argument(
+            "--no-member-limit",
+            action="store_true",
+            help="Include all contributors (no limit)",
         )
         parser.add_argument(
             "--days-back",
             type=int,
-            help="Override number of days of history to fetch",
+            help="Override number of days of history to fetch (ignored if --start-date used)",
+        )
+        parser.add_argument(
+            "--start-date",
+            type=str,
+            help="Start date for PR fetch (YYYY-MM-DD format, e.g., 2025-01-01)",
+        )
+        parser.add_argument(
+            "--end-date",
+            type=str,
+            help="End date for PR fetch (YYYY-MM-DD format, defaults to today)",
+        )
+        parser.add_argument(
+            "--max-files-per-pr",
+            type=int,
+            default=100,
+            help="Maximum files to store per PR (default: 100, use 0 for unlimited)",
         )
         parser.add_argument(
             "--seed",
@@ -183,16 +211,58 @@ class Command(BaseCommand):
         self.stdout.write("=" * 60)
 
         # Apply overrides
-        if options["max_prs"]:
-            config = config.__class__(**{**config.__dict__, "max_prs": options["max_prs"]})
-        if options["max_members"]:
-            config = config.__class__(**{**config.__dict__, "max_members": options["max_members"]})
-        if options["days_back"]:
+        max_prs = config.max_prs
+        max_members = config.max_members
+        max_files_per_pr = options.get("max_files_per_pr", 100)
+
+        # Handle unlimited flags
+        if options.get("no_pr_limit"):
+            max_prs = 100000  # Effectively unlimited
+        elif options["max_prs"] is not None:
+            max_prs = options["max_prs"] if options["max_prs"] > 0 else 100000
+
+        if options.get("no_member_limit"):
+            max_members = 10000  # Effectively unlimited
+        elif options["max_members"] is not None:
+            max_members = options["max_members"] if options["max_members"] > 0 else 10000
+
+        # Parse date range (overrides days_back if provided)
+        start_date = None
+        end_date = None
+        if options.get("start_date"):
+            try:
+                start_date = timezone.make_aware(datetime.strptime(options["start_date"], "%Y-%m-%d"))
+            except ValueError as e:
+                raise CommandError(f"Invalid start-date format: {options['start_date']}. Use YYYY-MM-DD") from e
+
+        if options.get("end_date"):
+            try:
+                end_date = timezone.make_aware(datetime.strptime(options["end_date"], "%Y-%m-%d"))
+            except ValueError as e:
+                raise CommandError(f"Invalid end-date format: {options['end_date']}. Use YYYY-MM-DD") from e
+        elif start_date:
+            # Default end_date to today if start_date is provided
+            end_date = timezone.now()
+
+        # If no date range, use days_back
+        if not start_date and options["days_back"]:
             config = config.__class__(**{**config.__dict__, "days_back": options["days_back"]})
 
-        self.stdout.write(f"  Max PRs: {config.max_prs}")
-        self.stdout.write(f"  Max members: {config.max_members}")
-        self.stdout.write(f"  Days back: {config.days_back}")
+        config = config.__class__(
+            **{
+                **config.__dict__,
+                "max_prs": max_prs,
+                "max_members": max_members,
+            }
+        )
+
+        self.stdout.write(f"  Max PRs: {'unlimited' if max_prs >= 100000 else max_prs}")
+        self.stdout.write(f"  Max members: {'unlimited' if max_members >= 10000 else max_members}")
+        self.stdout.write(f"  Max files per PR: {'unlimited' if max_files_per_pr == 0 else max_files_per_pr}")
+        if start_date:
+            self.stdout.write(f"  Date range: {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}")
+        else:
+            self.stdout.write(f"  Days back: {config.days_back}")
         self.stdout.write(f"  Seed: {options['seed']}")
 
         # Clear if requested
@@ -229,6 +299,9 @@ class Command(BaseCommand):
                 use_graphql=use_graphql,
                 use_cache=use_cache,
                 skip_check_runs=skip_check_runs,
+                max_files_per_pr=max_files_per_pr,
+                start_date=start_date,
+                end_date=end_date,
             )
             stats = seeder.seed()
 

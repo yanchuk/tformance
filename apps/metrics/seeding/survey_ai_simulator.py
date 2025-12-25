@@ -19,8 +19,7 @@ from decimal import Decimal
 from django.db import models
 from django.utils import timezone
 
-from apps.metrics.factories import AIUsageDailyFactory, PRSurveyFactory, PRSurveyReviewFactory
-from apps.metrics.models import TeamMember
+from apps.metrics.models import AIUsageDaily, PRSurvey, PRSurveyReview, TeamMember
 
 from .deterministic import DeterministicRandom
 from .github_authenticated_fetcher import FetchedPRFull
@@ -196,15 +195,17 @@ class SurveyAISimulator:
         response_delay_hours = self.rng.randint(1, 48)
         responded_at = pr.created_at + timedelta(hours=response_delay_hours) if author_responded else None
 
-        # Create the survey
-        survey = PRSurveyFactory(
-            team=team,
+        # Create or update the survey (idempotent for re-runs)
+        survey, _created = PRSurvey.objects.update_or_create(
             pull_request=pr,
-            author=author,
-            author_ai_assisted=is_ai_assisted if author_responded else None,
-            author_responded_at=responded_at,
-            token=None,  # No token needed for seeded data
-            token_expires_at=None,
+            defaults={
+                "team": team,
+                "author": author,
+                "author_ai_assisted": is_ai_assisted if author_responded else None,
+                "author_responded_at": responded_at,
+                "token": None,
+                "token_expires_at": None,
+            },
         )
 
         # Create reviewer responses
@@ -251,14 +252,17 @@ class SurveyAISimulator:
         response_delay_hours = self.rng.randint(1, 72)
         responded_at = survey.created_at + timedelta(hours=response_delay_hours)
 
-        PRSurveyReviewFactory(
-            team=survey.team,
+        # Create or update the review (idempotent for re-runs)
+        PRSurveyReview.objects.update_or_create(
             survey=survey,
             reviewer=reviewer,
-            quality_rating=quality_rating,
-            ai_guess=ai_guess,
-            guess_correct=guess_correct,
-            responded_at=responded_at,
+            defaults={
+                "team": survey.team,
+                "quality_rating": quality_rating,
+                "ai_guess": ai_guess,
+                "guess_correct": guess_correct,
+                "responded_at": responded_at,
+            },
         )
 
     def get_or_create_member_pattern(self, member: TeamMember) -> AIUsagePattern:
@@ -355,16 +359,20 @@ class SurveyAISimulator:
             else Decimal("0")
         )
 
-        return AIUsageDailyFactory(
+        # Create or update the record (idempotent for re-runs)
+        record, _created = AIUsageDaily.objects.update_or_create(
             team=team,
             member=member,
             date=date,
             source=pattern.primary_source,
-            active_hours=active_hours,
-            suggestions_shown=suggestions_shown,
-            suggestions_accepted=suggestions_accepted,
-            acceptance_rate=acceptance_rate,
+            defaults={
+                "active_hours": active_hours,
+                "suggestions_shown": suggestions_shown,
+                "suggestions_accepted": suggestions_accepted,
+                "acceptance_rate": acceptance_rate,
+            },
         )
+        return record
 
     def generate_team_ai_usage(
         self,

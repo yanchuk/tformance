@@ -394,6 +394,9 @@ class GitHubGraphQLFetcher:
                 break
             cursor = page_info.get("endCursor")
 
+            # Small delay between pages to be gentler on the API
+            await asyncio.sleep(0.5)
+
         logger.info(f"GraphQL: Fetched {len(prs)} PRs from {repo_full_name}")
 
         # Fetch check runs via REST fallback if enabled
@@ -455,6 +458,7 @@ class GitHubGraphQLFetcher:
         self,
         repo_full_name: str,
         since: datetime | None = None,
+        until: datetime | None = None,
         max_prs: int = 100,
     ) -> list[FetchedPRFull]:
         """Fetch PRs using GraphQL (sync wrapper).
@@ -465,12 +469,14 @@ class GitHubGraphQLFetcher:
         Args:
             repo_full_name: Repository in "owner/repo" format
             since: Only fetch PRs created after this date
+            until: Only fetch PRs created before this date (for batch imports)
             max_prs: Maximum number of PRs to fetch
 
         Returns:
             List of FetchedPRFull objects
         """
         since_date = since.date() if since else None
+        until_date = until.date() if until else None
 
         # Fetch repo metadata to check if repo has changed (cheap ~1 point query)
         repo_pushed_at = None
@@ -483,6 +489,9 @@ class GitHubGraphQLFetcher:
             cache = PRCache.load(repo_full_name, self.cache_dir)
             if cache and cache.is_valid(since_date, repo_pushed_at=repo_pushed_at):
                 prs = self._deserialize_prs(cache.prs)
+                # Apply until filter for batch imports
+                if until_date:
+                    prs = [pr for pr in prs if pr.created_at.date() <= until_date]
                 # Limit to max_prs
                 prs = prs[:max_prs]
                 print(f"  📦 Loaded {len(prs)} PRs from cache (unchanged since {cache.fetched_at.date()})")
@@ -507,6 +516,10 @@ class GitHubGraphQLFetcher:
                     prs = self._deserialize_prs(cache.prs)
                     print(f"  📦 No updates found, using {len(prs)} cached PRs")
                     logger.info(f"No updated PRs found for {repo_full_name}, using cache")
+
+                # Apply until filter for batch imports
+                if until_date:
+                    prs = [pr for pr in prs if pr.created_at.date() <= until_date]
 
                 # Limit to max_prs
                 prs = prs[:max_prs]
@@ -539,6 +552,13 @@ class GitHubGraphQLFetcher:
             cache.save(self.cache_dir)
             print(f"  💾 Saved {len(prs)} PRs to cache")
             logger.info(f"Saved {len(prs)} PRs to cache for {repo_full_name}")
+
+        # Apply until filter for batch imports (filter by created_at)
+        if until_date and prs:
+            original_count = len(prs)
+            prs = [pr for pr in prs if pr.created_at.date() <= until_date]
+            if len(prs) < original_count:
+                logger.info(f"Filtered to {len(prs)} PRs (created before {until_date})")
 
         return prs
 

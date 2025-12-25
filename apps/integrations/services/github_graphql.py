@@ -16,13 +16,14 @@ logger = logging.getLogger(__name__)
 # - Reduce nested limits for complex queries
 # - See: https://docs.github.com/en/graphql/overview/rate-limits-and-node-limits-for-the-graphql-api
 #
-# Query cost: ~1 point + (25 PRs * 0.1) = ~3.5 points per page
-# Fetches 25 PRs with up to 25 reviews, 50 commits, 50 files each
+# Query cost: ~1 point + (10 PRs * 0.1) = ~2 points per page
+# Fetches 10 PRs with up to 25 reviews, 50 commits, 50 files each
+# Reduced from 25 to 10 PRs per page to prevent timeouts on heavy repos
 FETCH_PRS_BULK_QUERY = gql(
     """
     query($owner: String!, $repo: String!, $cursor: String) {
       repository(owner: $owner, name: $repo) {
-        pullRequests(first: 25, after: $cursor, orderBy: {field: CREATED_AT, direction: DESC}) {
+        pullRequests(first: 10, after: $cursor, orderBy: {field: CREATED_AT, direction: DESC}) {
           nodes {
             number
             title
@@ -108,14 +109,15 @@ FETCH_PRS_BULK_QUERY = gql(
     """
 )
 
-# Query cost: ~1 point + (25 PRs * 0.1) = ~3.5 points per page
-# Fetches 25 PRs ordered by UPDATED_AT for incremental sync
+# Query cost: ~1 point + (10 PRs * 0.1) = ~2 points per page
+# Fetches 10 PRs ordered by UPDATED_AT for incremental sync
 # Uses same reduced limits as bulk query for consistency
+# Reduced from 25 to 10 PRs per page to prevent timeouts on heavy repos
 FETCH_PRS_UPDATED_QUERY = gql(
     """
     query($owner: String!, $repo: String!, $cursor: String) {
       repository(owner: $owner, name: $repo) {
-        pullRequests(first: 25, after: $cursor, orderBy: {field: UPDATED_AT, direction: DESC}) {
+        pullRequests(first: 10, after: $cursor, orderBy: {field: UPDATED_AT, direction: DESC}) {
           nodes {
             number
             title
@@ -365,7 +367,7 @@ class GitHubGraphQLClient:
     def __init__(
         self,
         access_token: str,
-        timeout: int = 60,
+        timeout: int = 90,
         wait_for_reset: bool = True,
         max_wait_seconds: int = 3600,
     ) -> None:
@@ -373,11 +375,11 @@ class GitHubGraphQLClient:
 
         Args:
             access_token: GitHub personal access token or OAuth token
-            timeout: HTTP request timeout in seconds (default: 60)
+            timeout: HTTP request timeout in seconds (default: 90)
             wait_for_reset: If True, wait when rate limit is low instead of raising error
             max_wait_seconds: Maximum seconds to wait for rate limit reset (default: 1 hour)
         """
-        # Set 60-second timeout for complex queries with nested data
+        # Set 90-second timeout for complex queries with nested data
         client_timeout = aiohttp.ClientTimeout(total=timeout)
         self.transport = AIOHTTPTransport(
             url="https://api.github.com/graphql",

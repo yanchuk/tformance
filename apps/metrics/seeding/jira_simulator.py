@@ -20,8 +20,7 @@ from decimal import Decimal
 
 from django.db import models
 
-from apps.metrics.factories import JiraIssueFactory
-from apps.metrics.models import TeamMember
+from apps.metrics.models import JiraIssue, TeamMember
 
 from .deterministic import DeterministicRandom
 from .github_authenticated_fetcher import FetchedPRFull
@@ -275,20 +274,23 @@ class JiraIssueSimulator:
         else:
             status = self.rng.choice(["To Do", "In Progress", "In Review"])
 
-        # Create the issue with unique ID
+        # Create or update the issue (idempotent for re-runs)
         self._issue_counter += 1
-        return JiraIssueFactory(
+        issue, _created = JiraIssue.objects.update_or_create(
             team=team,
             jira_key=jira_key,
-            jira_id=str(self._issue_counter),  # Unique sequential ID
-            summary=pr.title[:200],  # Limit to 200 chars
-            issue_type=issue_type,
-            status=status,
-            story_points=story_points,
-            assignee=assignee,
-            sprint_id=str(sprint.sprint_number),
-            sprint_name=sprint.sprint_name,
-            cycle_time_hours=cycle_time_hours,
-            issue_created_at=pr.created_at,
-            resolved_at=resolved_at,
+            defaults={
+                "jira_id": str(self._issue_counter),
+                "summary": pr.title[:200],
+                "issue_type": issue_type,
+                "status": status,
+                "story_points": story_points,
+                "assignee": assignee,
+                "sprint_id": str(sprint.sprint_number),
+                "sprint_name": sprint.sprint_name,
+                "cycle_time_hours": cycle_time_hours,
+                "issue_created_at": pr.created_at,
+                "resolved_at": resolved_at,
+            },
         )
+        return issue

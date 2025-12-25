@@ -104,6 +104,9 @@ class RealProjectSeeder:
     use_graphql: bool = True  # Use GraphQL by default (10x faster)
     use_cache: bool = True  # Use local cache for fetched PR data
     skip_check_runs: bool = False  # Skip fetching check runs (faster)
+    max_files_per_pr: int = 100  # Limit files per PR (0 = unlimited)
+    start_date: timezone.datetime | None = None  # Override start date for PR fetch
+    end_date: timezone.datetime | None = None  # Override end date for PR fetch
 
     # Internal state
     _rng: DeterministicRandom = field(init=False)
@@ -355,12 +358,19 @@ class RealProjectSeeder:
         Returns:
             List of PR data from all repos.
         """
-        logger.info(
-            f"Fetching up to {self.config.max_prs} PRs per repo from {len(self.config.repos)} repos "
-            f"(last {self.config.days_back} days)..."
-        )
+        # Use explicit date range if provided, otherwise use days_back
+        if self.start_date:
+            since = self.start_date
+            until = self.end_date or timezone.now()
+            date_range_str = f"{since.strftime('%Y-%m-%d')} to {until.strftime('%Y-%m-%d')}"
+        else:
+            since = timezone.now() - timedelta(days=self.config.days_back)
+            until = None
+            date_range_str = f"last {self.config.days_back} days"
 
-        since = timezone.now() - timedelta(days=self.config.days_back)
+        max_prs_str = "unlimited" if self.config.max_prs >= 100000 else str(self.config.max_prs)
+        logger.info(f"Fetching {max_prs_str} PRs per repo from {len(self.config.repos)} repos ({date_range_str})...")
+
         all_prs: list[FetchedPRFull] = []
 
         for repo in self.config.repos:
@@ -368,6 +378,7 @@ class RealProjectSeeder:
             repo_prs = self._fetcher.fetch_prs_with_details(
                 repo,
                 since=since,
+                until=until,
                 max_prs=self.config.max_prs,
             )
             all_prs.extend(repo_prs)
@@ -570,9 +581,18 @@ class RealProjectSeeder:
             pr: PullRequest instance.
             pr_data: Fetched PR data.
         """
+        from apps.metrics.models import PRReview
+
         for review_data in pr_data.reviews:
             reviewer = self._find_member(review_data.reviewer_login, None)
             if not reviewer or reviewer == pr.author:
+                continue
+
+            # Skip if review already exists (same review ID can appear in re-runs)
+            if (
+                review_data.github_review_id
+                and PRReview.objects.filter(team=team, github_review_id=review_data.github_review_id).exists()
+            ):
                 continue
 
             # Detect AI reviewer
@@ -644,7 +664,16 @@ class RealProjectSeeder:
         """
         from apps.metrics.models import PRFile
 
-        for file_data in pr_data.files:
+        # Apply file limit if configured (0 = unlimited)
+        files_to_process = pr_data.files
+        if self.max_files_per_pr > 0:
+            files_to_process = pr_data.files[: self.max_files_per_pr]
+
+        for file_data in files_to_process:
+            # Skip if file already exists for this PR (same file can appear in re-runs)
+            if PRFile.objects.filter(team=team, pull_request=pr, filename=file_data.filename).exists():
+                continue
+
             # Compute changes from additions + deletions (not stored in FetchedFile)
             changes = file_data.additions + file_data.deletions
 

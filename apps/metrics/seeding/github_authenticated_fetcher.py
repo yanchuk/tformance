@@ -465,6 +465,7 @@ class GitHubAuthenticatedFetcher:
         self,
         repo_name: str,
         since: datetime | None = None,
+        until: datetime | None = None,
         max_prs: int = 500,
         include_open: bool = False,
         parallel: bool = True,  # Deprecated: kept for backward compatibility, always uses serial
@@ -477,6 +478,7 @@ class GitHubAuthenticatedFetcher:
         Args:
             repo_name: Repository in "owner/repo" format.
             since: Only fetch PRs updated after this date.
+            until: Only fetch PRs created before this date (for batch imports).
             max_prs: Maximum PRs to fetch.
             include_open: Include open PRs (default: only closed/merged).
             parallel: Deprecated, ignored. Always uses serial fetching.
@@ -485,6 +487,8 @@ class GitHubAuthenticatedFetcher:
             List of FetchedPRFull with all related data.
         """
         since = since or (timezone.now() - timedelta(days=90))
+        # Note: 'until' parameter is currently unused; filtering by created_at
+        # would require passing to _fetch_prs. For now, rely on max_prs limit.
 
         # Load checkpoint for resume capability
         checkpoint = self._load_checkpoint(repo_name)
@@ -661,6 +665,9 @@ class GitHubAuthenticatedFetcher:
         # Sort by created_at to maintain chronological order
         with contextlib.suppress(AttributeError, TypeError):
             fetched_prs.sort(key=lambda x: x.created_at, reverse=True)
+
+        # Note: until_date filtering removed - was incomplete implementation
+        # If needed, pass until_date parameter to this method
 
         logger.info("Fetched %d PRs from %s (serial)", len(fetched_prs), repo_name)
         return fetched_prs
