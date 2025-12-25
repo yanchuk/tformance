@@ -27,7 +27,7 @@ if TYPE_CHECKING:
     from apps.metrics.models import PullRequest
 
 # Current prompt version - increment when making changes
-PROMPT_VERSION = "6.3.0"
+PROMPT_VERSION = "6.3.1"
 
 # Main PR analysis prompt - v6.3.0
 PR_ANALYSIS_SYSTEM_PROMPT = """You analyze pull requests to provide comprehensive insights for CTOs.
@@ -76,7 +76,11 @@ Timeline:
 
 **NEGATIVE signals** (AI was NOT used):
 - Explicit denials: "No AI was used", "None", "N/A"
-- AI as product feature (building AI != using AI to code)
+- AI as product feature being built (NOT the same as using AI to write code):
+  - "Add Gemini API integration" = building product feature, NOT using Gemini as coding tool
+  - "Add Claude model selector" = building UI for Claude, NOT using Claude to code
+  - Look for: API clients, model selectors, LLM integrations being implemented
+  - These PRs BUILD AI features but don't necessarily USE AI to write the code
 - Bot authors: dependabot, renovate (tracked separately)
 
 ## Technology Detection
@@ -398,8 +402,9 @@ def build_llm_pr_context(pr: PullRequest) -> str:
         6. Commits - messages with AI co-author signatures
         7. Reviews - state, reviewer, body
         8. Comments - PR discussion (may contain AI mentions)
-        9. Repository Languages - from TrackedRepository
-        10. Description - PR body
+        9. Prior AI Detection - regex pattern results for LLM to confirm/refine
+        10. Repository Languages - from TrackedRepository
+        11. Description - PR body
 
     Args:
         pr: PullRequest object with prefetched relations
@@ -553,12 +558,25 @@ def build_llm_pr_context(pr: PullRequest) -> str:
             comment_lines.append(f"- {timestamp_prefix}{author}: {body}")
         sections.append("\n".join(comment_lines))
 
-    # === 9. Repository Languages ===
+    # === 9. Prior AI Detection ===
+    # Show what regex patterns already detected so LLM can confirm/refine
+    if pr.is_ai_assisted or pr.ai_tools_detected:
+        prior_detection = ["Prior AI detection (regex):"]
+        if pr.ai_tools_detected:
+            tools_str = ", ".join(pr.ai_tools_detected)
+            prior_detection.append(f"- Tools detected: {tools_str}")
+        else:
+            prior_detection.append("- AI assisted: Yes (no specific tools identified)")
+        if pr.ai_detection_version:
+            prior_detection.append(f"- Pattern version: {pr.ai_detection_version}")
+        sections.append("\n".join(prior_detection))
+
+    # === 10. Repository Languages ===
     repo_languages = _get_repo_languages(pr)
     if repo_languages:
         sections.append(repo_languages)
 
-    # === 10. Description ===
+    # === 11. Description ===
     if pr.body:
         sections.append(f"Description:\n{pr.body}")
 

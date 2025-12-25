@@ -294,6 +294,42 @@ class TestRenderUserPrompt(TestCase):
         self.assertIn("Description:\nThis is the PR description.", result)
 
 
+class TestAIDetectionRules(TestCase):
+    """Tests for AI detection guidance in system prompt."""
+
+    def test_contains_ai_product_feature_guidance(self):
+        """Should contain guidance for AI as product feature vs coding tool."""
+        result = render_system_prompt()
+
+        # Must contain the product feature guidance
+        self.assertIn("AI as product feature being built", result)
+        self.assertIn("NOT the same as using AI to write code", result)
+
+    def test_contains_gemini_product_example(self):
+        """Should contain Gemini product integration example."""
+        result = render_system_prompt()
+
+        # Specific example from the template
+        self.assertIn("Add Gemini API integration", result)
+        self.assertIn("NOT using Gemini as coding tool", result)
+
+    def test_contains_claude_product_example(self):
+        """Should contain Claude product integration example."""
+        result = render_system_prompt()
+
+        # Specific example from the template
+        self.assertIn("Add Claude model selector", result)
+        self.assertIn("NOT using Claude to code", result)
+
+    def test_contains_what_to_look_for(self):
+        """Should contain guidance on what to look for in product feature PRs."""
+        result = render_system_prompt()
+
+        self.assertIn("API clients", result)
+        self.assertIn("model selectors", result)
+        self.assertIn("LLM integrations", result)
+
+
 class TestUserPromptTemplate(TestCase):
     """Tests for user.jinja2 template existence and structure."""
 
