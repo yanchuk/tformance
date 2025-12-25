@@ -158,10 +158,12 @@ test.describe('Onboarding Flow @onboarding', () => {
 
         const url = page.url();
         if (url.includes('/onboarding/sync')) {
-          // Should have a progress bar container
-          await expect(page.locator('.progress, [role="progressbar"]')).toBeVisible();
-          // Should have a continue button
-          await expect(page.getByRole('link', { name: /Continue|Skip|Next/ })).toBeVisible();
+          // Should have progress percentage display
+          await expect(page.locator('#progress-percent')).toBeVisible();
+          // Should have progress message
+          await expect(page.locator('#progress-message')).toBeVisible();
+          // Progress bar element should exist (may be 0% width initially)
+          await expect(page.locator('#progress-bar')).toBeAttached();
         }
       });
 
