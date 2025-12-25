@@ -71,11 +71,7 @@ def aggregate_commit_ai_signals(pr: "PullRequest") -> bool:
         return True
 
     # Check for any commit with non-empty ai_co_authors
-    for commit in commits:
-        if commit.ai_co_authors:  # Non-empty list
-            return True
-
-    return False
+    return any(commit.ai_co_authors for commit in commits)
 
 
 def aggregate_review_ai_signals(pr: "PullRequest") -> bool:
@@ -140,10 +136,7 @@ def detect_ai_config_files(pr: "PullRequest") -> dict:
 
 def _is_excluded_file(filename: str) -> bool:
     """Check if filename matches any exclusion pattern."""
-    for pattern in AI_FILE_EXCLUSIONS:
-        if re.search(pattern, filename, re.IGNORECASE):
-            return True
-    return False
+    return any(re.search(pattern, filename, re.IGNORECASE) for pattern in AI_FILE_EXCLUSIONS)
 
 
 def _detect_tool_from_file(filename: str) -> str | None:
@@ -224,7 +217,7 @@ def calculate_ai_confidence(pr: "PullRequest") -> tuple[float, dict]:
 
     # Calculate weighted score
     total_score = 0.0
-    for key, signal in signals.items():
+    for _key, signal in signals.items():
         total_score += signal["score"]
 
     return total_score, signals
