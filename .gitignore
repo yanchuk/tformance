@@ -41,3 +41,4 @@ seeding.log
 
 # Seeding cache
 .seeding_cache/
+.seeding_checkpoint_*.json
