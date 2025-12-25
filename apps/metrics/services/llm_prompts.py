@@ -14,11 +14,12 @@ The hardcoded string is kept here for:
 - Backward compatibility with existing code
 - Export to promptfoo experiments
 
-Version: 6.2.0 (2025-12-25) - Unified context builder with ALL PR data
+Version: 6.3.0 (2025-12-25) - Unified timeline with chronological events
 """
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime
 from typing import TYPE_CHECKING
 
@@ -26,9 +27,9 @@ if TYPE_CHECKING:
     from apps.metrics.models import PullRequest
 
 # Current prompt version - increment when making changes
-PROMPT_VERSION = "6.2.0"
+PROMPT_VERSION = "6.3.0"
 
-# Main PR analysis prompt - v6.0.0
+# Main PR analysis prompt - v6.3.0
 PR_ANALYSIS_SYSTEM_PROMPT = """You analyze pull requests to provide comprehensive insights for CTOs.
 You MUST respond with valid JSON only.
 
@@ -38,6 +39,32 @@ You MUST respond with valid JSON only.
 2. **Technology Detection** - What languages/frameworks are involved?
 3. **Executive Summary** - CTO-friendly description of what this PR does
 4. **Health Assessment** - Identify friction, risk, and iteration patterns
+
+## Understanding the Timeline
+
+The PR includes a unified **Timeline** showing all events chronologically.
+Timestamps use `[+X.Xh]` format (hours after PR creation):
+
+```
+Timeline:
+- [+0.5h] COMMIT: Add notification models
+- [+48.0h] REVIEW [CHANGES_REQUESTED]: Sarah: Need rate limiting
+- [+52.0h] COMMIT: Fix review feedback
+- [+72.0h] REVIEW [APPROVED]: Bob: LGTM
+- [+96.0h] MERGED
+```
+
+**Event types:**
+- `COMMIT`: Code commit with message
+- `REVIEW [STATE]`: Review with APPROVED/CHANGES_REQUESTED/COMMENTED state
+- `COMMENT`: Discussion comment
+- `MERGED`: PR was merged
+
+**Use the timeline to understand:**
+- Cause-effect patterns (review at +48h → fix commit at +52h)
+- Response times (gap between review and next commit)
+- Iteration intensity (many events in short time = active rework)
+- Blockers (long gaps between events)
 
 ## AI Detection Rules
 
@@ -169,6 +196,20 @@ def _format_timestamp_prefix(timestamp: datetime | None, baseline: datetime | No
     if hours is not None:
         return f"[+{hours}h] "
     return ""
+
+
+def _get_member_display_name(member) -> str:
+    """Get display name for a team member.
+
+    Args:
+        member: TeamMember object or None
+
+    Returns:
+        Display name, GitHub username, or "unknown"
+    """
+    if not member:
+        return "unknown"
+    return member.display_name or member.github_username or "unknown"
 
 
 def get_user_prompt(
@@ -487,9 +528,7 @@ def build_llm_pr_context(pr: PullRequest) -> str:
         review_lines = ["Reviews:"]
         baseline = pr.pr_created_at
         for r in reviews:
-            reviewer = "unknown"
-            if r.reviewer:
-                reviewer = r.reviewer.display_name or r.reviewer.github_username or "unknown"
+            reviewer = _get_member_display_name(r.reviewer)
             body = r.body[:200] + "..." if len(r.body) > 200 else r.body
             state = r.state.upper() if r.state else "COMMENT"
 
@@ -507,9 +546,7 @@ def build_llm_pr_context(pr: PullRequest) -> str:
         comment_lines = ["Comments:"]
         baseline = pr.pr_created_at
         for c in comments:
-            author = "unknown"
-            if c.author:
-                author = c.author.display_name or c.author.github_username or "unknown"
+            author = _get_member_display_name(c.author)
             body = c.body[:200] + "..." if len(c.body) > 200 else c.body
 
             timestamp_prefix = _format_timestamp_prefix(c.comment_created_at, baseline)
@@ -559,5 +596,174 @@ def _get_repo_languages(pr: PullRequest) -> str:
     lines = ["Repository languages:"]
     lines.append(f"- Primary: {repo.primary_language or 'Unknown'}")
     lines.append(f"- All: {', '.join(lang for lang, _ in sorted_langs)}")
+
+    return "\n".join(lines)
+
+
+@dataclass
+class TimelineEvent:
+    """A single event in a PR timeline.
+
+    Attributes:
+        hours_after_pr_created: Hours after PR creation (can be negative if before)
+        event_type: Type of event (COMMIT, REVIEW, COMMENT, MERGED)
+        content: Event content (commit message, review body, comment text, etc.)
+    """
+
+    hours_after_pr_created: float
+    event_type: str
+    content: str
+
+
+def _collect_timeline_events(
+    items,
+    event_type: str,
+    baseline: datetime,
+    get_timestamp,
+    get_content,
+) -> list[TimelineEvent]:
+    """Generic helper to collect timeline events from a queryset.
+
+    Args:
+        items: Queryset or list of objects to process
+        event_type: Type of event (COMMIT, REVIEW, COMMENT)
+        baseline: Baseline timestamp for relative hours calculation
+        get_timestamp: Function to extract timestamp from item
+        get_content: Function to format content from item
+
+    Returns:
+        List of TimelineEvent objects
+    """
+    events = []
+    for item in items:
+        timestamp = get_timestamp(item)
+        if timestamp is None:
+            continue
+
+        hours = calculate_relative_hours(timestamp, baseline)
+        if hours is not None:
+            events.append(
+                TimelineEvent(
+                    hours_after_pr_created=hours,
+                    event_type=event_type,
+                    content=get_content(item),
+                )
+            )
+    return events
+
+
+def build_timeline(pr: PullRequest) -> list[TimelineEvent]:
+    """Build chronological timeline of events from a PullRequest.
+
+    Collects commits, reviews, comments, and merge events into a unified timeline
+    sorted by timestamp.
+
+    Args:
+        pr: PullRequest object with prefetched commits, reviews, comments
+
+    Returns:
+        List of TimelineEvent objects sorted by hours_after_pr_created
+    """
+    events = []
+    baseline = pr.pr_created_at
+
+    # Collect commits
+    try:
+        commits = pr.commits.all()
+    except AttributeError:
+        commits = []
+
+    events.extend(
+        _collect_timeline_events(
+            commits,
+            event_type="COMMIT",
+            baseline=baseline,
+            get_timestamp=lambda c: c.committed_at,
+            get_content=lambda c: c.message or "",
+        )
+    )
+
+    # Collect reviews
+    try:
+        reviews = pr.reviews.all()
+    except AttributeError:
+        reviews = []
+
+    def format_review_content(review):
+        state = review.state.upper() if review.state else "COMMENT"
+        reviewer = _get_member_display_name(review.reviewer)
+        body = review.body or ""
+        return f"[{state}]: {reviewer}: {body}"
+
+    events.extend(
+        _collect_timeline_events(
+            reviews,
+            event_type="REVIEW",
+            baseline=baseline,
+            get_timestamp=lambda r: r.submitted_at,
+            get_content=format_review_content,
+        )
+    )
+
+    # Collect comments
+    try:
+        comments = pr.comments.all()
+    except AttributeError:
+        comments = []
+
+    def format_comment_content(comment):
+        author = _get_member_display_name(comment.author)
+        body = comment.body or ""
+        return f"{author}: {body}"
+
+    events.extend(
+        _collect_timeline_events(
+            comments,
+            event_type="COMMENT",
+            baseline=baseline,
+            get_timestamp=lambda c: c.comment_created_at,
+            get_content=format_comment_content,
+        )
+    )
+
+    # Add MERGED event if PR was merged
+    if pr.merged_at:
+        hours = calculate_relative_hours(pr.merged_at, baseline)
+        if hours is not None:
+            events.append(
+                TimelineEvent(
+                    hours_after_pr_created=hours,
+                    event_type="MERGED",
+                    content="",
+                )
+            )
+
+    # Sort by timestamp
+    events.sort(key=lambda e: e.hours_after_pr_created)
+
+    return events
+
+
+def format_timeline(events: list[TimelineEvent], max_events: int = 15) -> str:
+    """Format timeline events as a human-readable string.
+
+    Args:
+        events: List of TimelineEvent objects
+        max_events: Maximum number of events to include (default 15)
+
+    Returns:
+        Formatted timeline string with "Timeline:\\n" prefix, or empty string if no events
+    """
+    if not events:
+        return ""
+
+    lines = ["Timeline:"]
+
+    # Limit to max_events
+    for event in events[:max_events]:
+        if event.content:
+            lines.append(f"- [+{event.hours_after_pr_created}h] {event.event_type}: {event.content}")
+        else:
+            lines.append(f"- [+{event.hours_after_pr_created}h] {event.event_type}")
 
     return "\n".join(lines)

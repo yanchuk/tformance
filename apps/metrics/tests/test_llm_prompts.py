@@ -1328,3 +1328,279 @@ class TestBuildLlmPrContextTimestamps(TestCase):
 
         if pos_2_5h > 0 and pos_5_0h > 0:
             self.assertLess(pos_2_5h, pos_5_0h, "Comments should be in chronological order")
+
+
+class TestTimelineEvent(TestCase):
+    """Tests for TimelineEvent dataclass."""
+
+    def test_timeline_event_creation(self):
+        """Should create TimelineEvent with all required fields."""
+        from apps.metrics.services.llm_prompts import TimelineEvent
+
+        event = TimelineEvent(
+            hours_after_pr_created=2.5,
+            event_type="COMMIT",
+            content="Initial implementation",
+        )
+
+        self.assertEqual(event.hours_after_pr_created, 2.5)
+        self.assertEqual(event.event_type, "COMMIT")
+        self.assertEqual(event.content, "Initial implementation")
+
+    def test_timeline_event_has_required_fields(self):
+        """TimelineEvent should have hours_after_pr_created, event_type, and content fields."""
+        from apps.metrics.services.llm_prompts import TimelineEvent
+
+        event = TimelineEvent(
+            hours_after_pr_created=0.0,
+            event_type="REVIEW",
+            content="LGTM",
+        )
+
+        self.assertIsInstance(event.hours_after_pr_created, float)
+        self.assertIsInstance(event.event_type, str)
+        self.assertIsInstance(event.content, str)
+
+
+class TestBuildTimeline(TestCase):
+    """Tests for build_timeline function."""
+
+    def setUp(self):
+        """Set up test fixtures using factories."""
+        from datetime import datetime
+
+        from django.utils import timezone
+
+        from apps.metrics.factories import (
+            PullRequestFactory,
+            TeamFactory,
+            TeamMemberFactory,
+        )
+
+        self.team = TeamFactory()
+        self.author = TeamMemberFactory(team=self.team, display_name="Alice")
+        self.reviewer = TeamMemberFactory(team=self.team, display_name="Bob")
+
+        # PR created at 10:00
+        self.pr_created = timezone.make_aware(datetime(2025, 1, 1, 10, 0, 0))
+        self.pr = PullRequestFactory(
+            team=self.team,
+            author=self.author,
+            pr_created_at=self.pr_created,
+            merged_at=None,  # Explicitly set to None to avoid random factory default
+        )
+
+    def test_build_timeline_with_commits_only(self):
+        """Should build timeline with only commits."""
+        from datetime import timedelta
+
+        from apps.metrics.factories import CommitFactory
+        from apps.metrics.services.llm_prompts import build_timeline
+
+        # Create commits at +1h and +3h
+        CommitFactory(
+            team=self.team,
+            pull_request=self.pr,
+            message="First commit",
+            committed_at=self.pr_created + timedelta(hours=1),
+        )
+        CommitFactory(
+            team=self.team,
+            pull_request=self.pr,
+            message="Second commit",
+            committed_at=self.pr_created + timedelta(hours=3),
+        )
+
+        events = build_timeline(self.pr)
+
+        self.assertEqual(len(events), 2)
+        self.assertEqual(events[0].hours_after_pr_created, 1.0)
+        self.assertEqual(events[0].event_type, "COMMIT")
+        self.assertIn("First commit", events[0].content)
+
+        self.assertEqual(events[1].hours_after_pr_created, 3.0)
+        self.assertEqual(events[1].event_type, "COMMIT")
+        self.assertIn("Second commit", events[1].content)
+
+    def test_build_timeline_with_reviews_only(self):
+        """Should build timeline with only reviews."""
+        from datetime import timedelta
+
+        from apps.metrics.factories import PRReviewFactory
+        from apps.metrics.services.llm_prompts import build_timeline
+
+        # Create reviews at +2h and +4h
+        PRReviewFactory(
+            team=self.team,
+            pull_request=self.pr,
+            reviewer=self.reviewer,
+            state="approved",
+            body="LGTM",
+            submitted_at=self.pr_created + timedelta(hours=2),
+        )
+        PRReviewFactory(
+            team=self.team,
+            pull_request=self.pr,
+            reviewer=self.reviewer,
+            state="changes_requested",
+            body="Need tests",
+            submitted_at=self.pr_created + timedelta(hours=4),
+        )
+
+        events = build_timeline(self.pr)
+
+        self.assertEqual(len(events), 2)
+        self.assertEqual(events[0].hours_after_pr_created, 2.0)
+        self.assertEqual(events[0].event_type, "REVIEW")
+        self.assertIn("LGTM", events[0].content)
+
+        self.assertEqual(events[1].hours_after_pr_created, 4.0)
+        self.assertEqual(events[1].event_type, "REVIEW")
+        self.assertIn("Need tests", events[1].content)
+
+    def test_build_timeline_with_comments_only(self):
+        """Should build timeline with only comments."""
+        from datetime import timedelta
+
+        from apps.metrics.factories import PRCommentFactory
+        from apps.metrics.services.llm_prompts import build_timeline
+
+        # Create comments at +1h and +3h
+        PRCommentFactory(
+            team=self.team,
+            pull_request=self.pr,
+            author=self.reviewer,
+            body="Should we add caching?",
+            comment_created_at=self.pr_created + timedelta(hours=1),
+        )
+        PRCommentFactory(
+            team=self.team,
+            pull_request=self.pr,
+            author=self.author,
+            body="Good idea, will add",
+            comment_created_at=self.pr_created + timedelta(hours=3),
+        )
+
+        events = build_timeline(self.pr)
+
+        self.assertEqual(len(events), 2)
+        self.assertEqual(events[0].hours_after_pr_created, 1.0)
+        self.assertEqual(events[0].event_type, "COMMENT")
+        self.assertIn("Should we add caching?", events[0].content)
+
+        self.assertEqual(events[1].hours_after_pr_created, 3.0)
+        self.assertEqual(events[1].event_type, "COMMENT")
+        self.assertIn("Good idea, will add", events[1].content)
+
+    def test_build_timeline_mixed_events_sorted(self):
+        """Should build timeline with mixed events sorted by timestamp."""
+        from datetime import timedelta
+
+        from apps.metrics.factories import CommitFactory, PRCommentFactory, PRReviewFactory
+        from apps.metrics.services.llm_prompts import build_timeline
+
+        # Create events in non-chronological order
+        CommitFactory(
+            team=self.team,
+            pull_request=self.pr,
+            message="Second event (commit)",
+            committed_at=self.pr_created + timedelta(hours=2),
+        )
+        PRCommentFactory(
+            team=self.team,
+            pull_request=self.pr,
+            author=self.reviewer,
+            body="Fourth event (comment)",
+            comment_created_at=self.pr_created + timedelta(hours=4),
+        )
+        PRReviewFactory(
+            team=self.team,
+            pull_request=self.pr,
+            reviewer=self.reviewer,
+            state="approved",
+            body="Third event (review)",
+            submitted_at=self.pr_created + timedelta(hours=3),
+        )
+        CommitFactory(
+            team=self.team,
+            pull_request=self.pr,
+            message="First event (commit)",
+            committed_at=self.pr_created + timedelta(hours=1),
+        )
+
+        events = build_timeline(self.pr)
+
+        # Should be sorted chronologically
+        self.assertEqual(len(events), 4)
+        self.assertEqual(events[0].hours_after_pr_created, 1.0)
+        self.assertIn("First event", events[0].content)
+
+        self.assertEqual(events[1].hours_after_pr_created, 2.0)
+        self.assertIn("Second event", events[1].content)
+
+        self.assertEqual(events[2].hours_after_pr_created, 3.0)
+        self.assertIn("Third event", events[2].content)
+
+        self.assertEqual(events[3].hours_after_pr_created, 4.0)
+        self.assertIn("Fourth event", events[3].content)
+
+    def test_build_timeline_empty_pr(self):
+        """Should return empty list for PR with no events."""
+        from apps.metrics.services.llm_prompts import build_timeline
+
+        events = build_timeline(self.pr)
+
+        self.assertEqual(len(events), 0)
+        self.assertIsInstance(events, list)
+
+
+class TestFormatTimeline(TestCase):
+    """Tests for format_timeline function."""
+
+    def test_format_timeline_basic(self):
+        """Should format timeline events correctly."""
+        from apps.metrics.services.llm_prompts import TimelineEvent, format_timeline
+
+        events = [
+            TimelineEvent(hours_after_pr_created=1.0, event_type="COMMIT", content="Initial commit"),
+            TimelineEvent(hours_after_pr_created=2.5, event_type="REVIEW", content="Looks good!"),
+            TimelineEvent(hours_after_pr_created=3.0, event_type="COMMENT", content="Add tests please"),
+        ]
+
+        formatted = format_timeline(events)
+
+        self.assertIn("[+1.0h] COMMIT: Initial commit", formatted)
+        self.assertIn("[+2.5h] REVIEW: Looks good!", formatted)
+        self.assertIn("[+3.0h] COMMENT: Add tests please", formatted)
+
+    def test_format_timeline_limits_to_15_events(self):
+        """Should limit timeline to 15 events maximum."""
+        from apps.metrics.services.llm_prompts import TimelineEvent, format_timeline
+
+        # Create 20 events
+        events = [
+            TimelineEvent(hours_after_pr_created=float(i), event_type="COMMIT", content=f"Commit {i}")
+            for i in range(20)
+        ]
+
+        formatted = format_timeline(events)
+
+        # Count number of event lines (each starts with "- [+")
+        event_lines = [line for line in formatted.split("\n") if line.startswith("- [+")]
+        self.assertEqual(len(event_lines), 15)
+
+        # Should include first 15 events
+        self.assertIn("Commit 0", formatted)
+        self.assertIn("Commit 14", formatted)
+        # Should NOT include events after 15
+        self.assertNotIn("Commit 15", formatted)
+        self.assertNotIn("Commit 19", formatted)
+
+    def test_format_timeline_empty_list(self):
+        """Should return empty string for empty event list."""
+        from apps.metrics.services.llm_prompts import format_timeline
+
+        formatted = format_timeline([])
+
+        self.assertEqual(formatted, "")
+        self.assertIsInstance(formatted, str)

@@ -7,3 +7,29 @@ You MUST respond with valid JSON only.
 2. **Technology Detection** - What languages/frameworks are involved?
 3. **Executive Summary** - CTO-friendly description of what this PR does
 4. **Health Assessment** - Identify friction, risk, and iteration patterns
+
+## Understanding the Timeline
+
+The PR includes a unified **Timeline** showing all events chronologically.
+Timestamps use `[+X.Xh]` format (hours after PR creation):
+
+```
+Timeline:
+- [+0.5h] COMMIT: Add notification models
+- [+48.0h] REVIEW [CHANGES_REQUESTED]: Sarah: Need rate limiting
+- [+52.0h] COMMIT: Fix review feedback
+- [+72.0h] REVIEW [APPROVED]: Bob: LGTM
+- [+96.0h] MERGED
+```
+
+**Event types:**
+- `COMMIT`: Code commit with message
+- `REVIEW [STATE]`: Review with APPROVED/CHANGES_REQUESTED/COMMENTED state
+- `COMMENT`: Discussion comment
+- `MERGED`: PR was merged
+
+**Use the timeline to understand:**
+- Cause-effect patterns (review at +48h → fix commit at +52h)
+- Response times (gap between review and next commit)
+- Iteration intensity (many events in short time = active rework)
+- Blockers (long gaps between events)

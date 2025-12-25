@@ -8,7 +8,8 @@
         repo_languages, state, labels, is_draft, is_hotfix, is_revert,
         cycle_time_hours, review_time_hours, commits_after_first_review,
         review_rounds, file_paths, commit_messages, milestone, assignees,
-        linked_issues, jira_key, author_name, reviewers, review_comments
+        linked_issues, jira_key, author_name, reviewers, review_comments,
+        timeline (pre-formatted timeline string from format_timeline())
 -#}
 {%- set sections = [] -%}
 
@@ -88,7 +89,8 @@
 {%- if review_time_hours is not none -%}
     {%- set _ = timing.append("Time to first review: " ~ "%.1f"|format(review_time_hours) ~ " hours") -%}
 {%- endif -%}
-{%- if comment_count and comment_count > 0 -%}
+{%- if not timeline and comment_count and comment_count > 0 -%}
+    {#- Only show comment count when timeline not provided (timeline shows actual comments) -#}
     {%- set _ = timing.append("Comments: " ~ comment_count) -%}
 {%- endif -%}
 {%- if commits_after_first_review is not none and commits_after_first_review > 0 -%}
@@ -106,39 +108,46 @@
     {%- set _ = sections.append("Repository languages: " ~ repo_languages|join(", ")) -%}
 {%- endif -%}
 
-{#- === Commit Messages === -#}
-{%- if commit_messages -%}
-    {%- set msgs = commit_messages[:5] -%}
-    {%- set commit_lines = [] -%}
-    {%- for msg in msgs -%}
-        {%- set _ = commit_lines.append("- " ~ msg) -%}
-    {%- endfor -%}
-    {%- if commit_messages|length > 5 -%}
-        {%- set _ = commit_lines.append("... and " ~ (commit_messages|length - 5) ~ " more commits") -%}
-    {%- endif -%}
-    {%- set _ = sections.append("Recent commits:\n" ~ commit_lines|join("\n")) -%}
-{%- endif -%}
+{#- === Timeline (v6.3.0 - unified chronological events) === -#}
+{%- if timeline -%}
+    {%- set _ = sections.append(timeline) -%}
+{%- else -%}
+    {#- Fallback to separate sections when timeline not provided -#}
 
-{#- === Reviewers (v6.1.0) === -#}
-{%- if reviewers -%}
-    {%- set names = reviewers[:5]|join(", ") -%}
-    {%- if reviewers|length > 5 -%}
-        {%- set names = names ~ " (+" ~ (reviewers|length - 5) ~ " more)" -%}
-    {%- endif -%}
-    {%- set _ = sections.append("Reviewers: " ~ names) -%}
-{%- endif -%}
-
-{#- === Review Comments (v6.1.0) === -#}
-{%- if review_comments -%}
-    {%- set comment_lines = [] -%}
-    {%- for comment in review_comments[:3] -%}
-        {%- if comment|length > 200 -%}
-            {%- set _ = comment_lines.append("- " ~ comment[:200] ~ "...") -%}
-        {%- else -%}
-            {%- set _ = comment_lines.append("- " ~ comment) -%}
+    {#- === Commit Messages === -#}
+    {%- if commit_messages -%}
+        {%- set msgs = commit_messages[:5] -%}
+        {%- set commit_lines = [] -%}
+        {%- for msg in msgs -%}
+            {%- set _ = commit_lines.append("- " ~ msg) -%}
+        {%- endfor -%}
+        {%- if commit_messages|length > 5 -%}
+            {%- set _ = commit_lines.append("... and " ~ (commit_messages|length - 5) ~ " more commits") -%}
         {%- endif -%}
-    {%- endfor -%}
-    {%- set _ = sections.append("Review comments:\n" ~ comment_lines|join("\n")) -%}
+        {%- set _ = sections.append("Recent commits:\n" ~ commit_lines|join("\n")) -%}
+    {%- endif -%}
+
+    {#- === Reviewers (v6.1.0) === -#}
+    {%- if reviewers -%}
+        {%- set names = reviewers[:5]|join(", ") -%}
+        {%- if reviewers|length > 5 -%}
+            {%- set names = names ~ " (+" ~ (reviewers|length - 5) ~ " more)" -%}
+        {%- endif -%}
+        {%- set _ = sections.append("Reviewers: " ~ names) -%}
+    {%- endif -%}
+
+    {#- === Review Comments (v6.1.0) === -#}
+    {%- if review_comments -%}
+        {%- set comment_lines = [] -%}
+        {%- for comment in review_comments[:3] -%}
+            {%- if comment|length > 200 -%}
+                {%- set _ = comment_lines.append("- " ~ comment[:200] ~ "...") -%}
+            {%- else -%}
+                {%- set _ = comment_lines.append("- " ~ comment) -%}
+            {%- endif -%}
+        {%- endfor -%}
+        {%- set _ = sections.append("Review comments:\n" ~ comment_lines|join("\n")) -%}
+    {%- endif -%}
 {%- endif -%}
 
 {#- === Description (always last) === -#}
