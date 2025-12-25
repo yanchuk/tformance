@@ -78,7 +78,8 @@ LLM prompts for AI detection are managed via **Jinja2 templates** for maintainab
 ```
 apps/metrics/prompts/
 ├── templates/
-│   ├── system.jinja2          # Main template (composes sections)
+│   ├── system.jinja2          # System prompt (composes sections)
+│   ├── user.jinja2            # User prompt with full PR context
 │   └── sections/
 │       ├── ai_detection.jinja2
 │       ├── tech_detection.jinja2
@@ -95,15 +96,16 @@ apps/metrics/prompts/
 
 | Function | Purpose |
 |----------|---------|
-| `render_system_prompt()` | Render prompt from templates |
+| `render_system_prompt()` | Render system prompt from templates |
+| `render_user_prompt()` | Render user prompt with full PR context (25+ vars) |
 | `validate_llm_response()` | Validate LLM response against schema |
 | `export_promptfoo_config()` | Generate promptfoo.yaml for testing |
 
 **Workflow for modifying prompts:**
-1. Edit the relevant template in `templates/sections/`
+1. Edit the relevant template (`system.jinja2`, `user.jinja2`, or `sections/*`)
 2. Run: `python manage.py export_prompts` to regenerate promptfoo config
 3. Test with: `cd dev/active/ai-detection-pr-descriptions/experiments && npx promptfoo eval`
-4. Verify equivalence: `pytest apps/metrics/prompts/tests/test_render.py -k matches_original`
+4. Verify equivalence: `pytest apps/metrics/prompts/tests/test_render.py -k matches`
 
 **Version:** Current is `PROMPT_VERSION` in `apps/metrics/services/llm_prompts.py`
 
@@ -133,9 +135,59 @@ positive_tests = [t for t in GOLDEN_TESTS if t.category == GoldenTestCategory.PO
 | `apps/metrics/services/ai_detector.py` | Detection functions |
 | `apps/metrics/services/llm_prompts.py` | Prompt version + user prompt builder |
 | `apps/metrics/prompts/` | Template system + golden tests |
-| `apps/metrics/prompts/golden_tests.py` | 24 test cases for LLM evaluation |
+| `apps/metrics/prompts/golden_tests.py` | 29 test cases for LLM evaluation |
+| `apps/metrics/prompts/export.py` | Promptfoo config generation with full context |
 | `apps/integrations/services/groq_batch.py` | LLM batch processing |
 | `apps/integrations/services/github_graphql_sync.py` | PR sync with AI detection |
+
+### Promptfoo Model Comparison
+
+We use [promptfoo](https://promptfoo.dev) for LLM prompt evaluation with multiple models.
+
+**Running evaluations:**
+```bash
+cd dev/active/ai-detection-pr-descriptions/experiments
+export GROQ_API_KEY='your-key'
+npx promptfoo eval              # Run all tests
+npx promptfoo eval --filter-pattern "health_"  # Run subset
+npx promptfoo view              # View results in UI
+```
+
+**Current models (via Groq):**
+- `groq:llama-3.3-70b-versatile` - Primary model, best quality
+- `groq:openai/gpt-oss-20b` - Faster, cheaper (72% less), good for iteration
+
+**⚠️ CRITICAL: GPT-OSS-20B Configuration**
+
+GPT-OSS-20B outputs "Thinking: ..." text before JSON by default, breaking JSON parsing. **Always set `include_reasoning: false`:**
+
+```yaml
+# In promptfoo.yaml or export.py
+providers:
+  - id: groq:openai/gpt-oss-20b
+    config:
+      include_reasoning: false  # REQUIRED - disables "Thinking:" prefix
+      response_format:
+        type: json_object
+```
+
+Without this, all tests fail with: `"Thinking: " is not valid JSON`
+
+**Full PR Context in Tests:**
+
+Test cases include the complete PR context via `get_user_prompt()` to ensure LLM sees all available data:
+- Title, author, state, labels
+- File paths, additions/deletions
+- Timing: cycle_time_hours, review_time_hours, review_rounds
+- Commits, reviewers, review comments
+- Jira key, milestone, linked issues, etc.
+
+The full context is pre-rendered in `user_prompt` variable so it's visible in promptfoo UI for debugging.
+
+**Regenerating after changes:**
+```bash
+python manage.py export_prompts  # Updates promptfoo.yaml + system prompt
+```
 
 ## Data Flow
 
