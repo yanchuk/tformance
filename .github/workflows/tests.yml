@@ -33,6 +33,15 @@ jobs:
           --health-retries 3
         ports:
           - 5432:5432
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 3
+        ports:
+          - 6379:6379
     steps:
       - uses: actions/checkout@v6
 
@@ -56,4 +65,4 @@ jobs:
           DJANGO_DATABASE_USER: postgres
           DJANGO_DATABASE_PASSWORD: postgres_password
           CELERY_TASK_ALWAYS_EAGER: "true"
-        run: uv run pytest
+        run: uv run pytest -n 4
