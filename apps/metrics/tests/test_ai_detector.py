@@ -792,8 +792,11 @@ class TestIndirectAIUsagePatterns(TestCase):
         self.assertFalse(result["is_ai_assisted"])
 
     def test_no_ai_used_not_detected(self):
-        """'No AI used' should NOT detect AI usage."""
-        text = "AI Disclosure: No AI used"
+        """'No AI used' in plain text should NOT detect AI usage."""
+        # Note: "AI Disclosure:" as a section header IS detected (v1.8.0+)
+        # because regex can't understand that "No AI used" negates it.
+        # LLM handles this nuance better (see PR #1681 case study).
+        text = "No AI used in this implementation"
         result = detect_ai_in_text(text)
         self.assertFalse(result["is_ai_assisted"])
 

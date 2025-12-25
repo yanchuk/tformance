@@ -485,7 +485,7 @@ class TestGroqBatchProcessor(TestCase):
             self.assertEqual(first_request["custom_id"], f"pr-{prs[0].id}")
             self.assertEqual(first_request["method"], "POST")
             self.assertEqual(first_request["url"], "/v1/chat/completions")
-            self.assertEqual(first_request["body"]["model"], "llama-3.3-70b-versatile")
+            self.assertEqual(first_request["body"]["model"], "openai/gpt-oss-20b")
             self.assertEqual(first_request["body"]["response_format"], {"type": "json_object"})
 
             # Verify rich context is in user message (v6.2.0 unified format)

@@ -298,7 +298,7 @@ class GroqBatchProcessor:
     def __init__(
         self,
         api_key: str | None = None,
-        model: str = "llama-3.3-70b-versatile",
+        model: str = "openai/gpt-oss-20b",
         system_prompt: str | None = None,
         use_v5_prompt: bool = True,
     ):
@@ -306,7 +306,8 @@ class GroqBatchProcessor:
 
         Args:
             api_key: Groq API key (defaults to GROQ_API_KEY env var)
-            model: Model to use for detection
+            model: Model to use for detection. Defaults to openai/gpt-oss-20b which
+                   supports automatic prompt caching (50% cost savings) and 131K context.
             system_prompt: Custom system prompt (uses PR_ANALYSIS_SYSTEM_PROMPT v5 by default)
             use_v5_prompt: If True, use v5 prompt from llm_prompts.py (default)
         """
@@ -365,7 +366,7 @@ class GroqBatchProcessor:
                         ],
                         "response_format": {"type": "json_object"},
                         "temperature": 0,
-                        "max_tokens": 500,
+                        "max_tokens": 1500,
                     },
                 }
                 f.write(json.dumps(request) + "\n")

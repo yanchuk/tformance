@@ -1,0 +1,23 @@
+# Promptfoo config for viewing comparison results
+# Run: npx promptfoo view --output comparison-results.json
+
+description: "LLM vs Regex AI Detection Comparison"
+
+# This config is for viewing pre-computed results, not running new evaluations
+# The results are already in comparison-results.json
+
+prompts:
+  - "{{user_prompt}}"
+
+providers:
+  # Regex provider (pre-computed results)
+  - id: "python:regex_provider.py"
+    label: "Regex v1.8.0"
+
+  # LLM results are pre-computed in the JSON file
+  # Use the file provider to load them
+  - id: "file://comparison-results.json"
+    label: "LLM (gpt-oss-20b)"
+
+# Test cases loaded from the results file
+tests: "comparison-results.json"

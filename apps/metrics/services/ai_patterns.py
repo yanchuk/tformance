@@ -26,7 +26,7 @@ selective reprocessing.
 # =============================================================================
 # This version is stored with AI detections to support selective reprocessing.
 # Increment major version for breaking changes, minor for additions.
-PATTERNS_VERSION = "1.7.0"
+PATTERNS_VERSION = "1.8.0"
 
 # =============================================================================
 # AI Reviewer Bots (username-based detection)
@@ -199,6 +199,12 @@ AI_SIGNATURE_PATTERNS: list[tuple[str, str]] = [
     (r"\bwith\s+ai\s+assistance\b", "ai_generic"),
     # "AI helped with...", "AI helped to..."
     (r"\bai\s+helped?\s+(?:with|to)\b", "ai_generic"),
+    # ----- AI Disclosure Section Headers ----- (added v1.8.0)
+    # "### AI Usage", "## AI Disclosure", "AI Usage:" etc.
+    (r"#+\s*ai\s+usage\b", "ai_generic"),
+    (r"#+\s*ai\s+disclosure\b", "ai_generic"),
+    (r"\bai\s+usage\s*:", "ai_generic"),
+    (r"\bai\s+disclosure\s*:", "ai_generic"),
 ]
 
 # =============================================================================
