@@ -909,17 +909,17 @@ tests:
       Repository languages: Python, TypeScript, JavaScript
 
       Recent commits:
-      - Add notification models
-      - Implement WebSocket consumer
-      - Fix review feedback: add rate limiting
-      - Address review: improve error handling
-      - 🤖 Generated with Cursor
+      - [+0.5h] Add notification models
+      - [+4.0h] Implement WebSocket consumer
+      - [+52.0h] Fix review feedback: add rate limiting
+      - [+72.0h] Address review: improve error handling
+      - [+84.0h] 🤖 Generated with Cursor
 
       Reviewers: Sarah Tech Lead, Bob Backend
 
       Review comments:
-      - Need rate limiting for notifications
-      - Consider Redis for scalability
+      - [+48.0h] Sarah Tech Lead: Need rate limiting for notifications
+      - [+50.0h] Bob Backend: Consider Redis for scalability
 
       Description:
       ## Summary
@@ -969,9 +969,12 @@ tests:
       Repository languages: Python
 
       Recent commits:
-      - Fix null check in payment validation
+      - [+0.2h] Fix null check in payment validation
 
       Reviewers: Bob Backend
+
+      Review comments:
+      - [+0.5h] Bob Backend: LGTM, simple fix
 
       Description:
       ## Problem
@@ -1017,10 +1020,13 @@ tests:
       Repository languages: Python
 
       Recent commits:
-      - Hotfix: Fix currency conversion edge case
-      - Add regression test
+      - [+0.1h] Hotfix: Fix currency conversion edge case
+      - [+0.8h] Add regression test
 
       Reviewers: CTO, Backend Lead
+
+      Review comments:
+      - [+0.25h] CTO: Ship it, we need this ASAP
 
       Description:
       ## Context
@@ -1060,9 +1066,9 @@ tests:
       Repository languages: Python
 
       Recent commits:
-      - Initial GraphQL setup
-      - Add user type schema
-      - aider: Implement query resolvers
+      - [+1.0h] Initial GraphQL setup
+      - [+8.0h] Add user type schema
+      - [+24.0h] aider: Implement query resolvers
 
       Description:
       ## Draft

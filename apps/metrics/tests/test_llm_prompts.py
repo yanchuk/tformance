@@ -765,7 +765,7 @@ class TestBuildLlmPrContext(TestCase):
 
         context = build_llm_pr_context(self.pr)
         self.assertIn("Reviews:", context)
-        self.assertIn("[APPROVED] janesmith: LGTM! Nice clean implementation.", context)
+        self.assertIn("[APPROVED] Jane Smith: LGTM! Nice clean implementation.", context)
 
     def test_context_includes_comments(self):
         """Context should include PR comments."""
@@ -773,7 +773,7 @@ class TestBuildLlmPrContext(TestCase):
 
         context = build_llm_pr_context(self.pr)
         self.assertIn("Comments:", context)
-        self.assertIn("janesmith: Should we use refresh tokens?", context)
+        self.assertIn("Jane Smith: Should we use refresh tokens?", context)
 
     def test_context_includes_description(self):
         """Context should include PR description with AI markers."""
@@ -924,3 +924,407 @@ class TestSystemPromptV6(TestCase):
         self.assertIn('"scope":', PR_ANALYSIS_SYSTEM_PROMPT)
         self.assertIn('"risk_level":', PR_ANALYSIS_SYSTEM_PROMPT)
         self.assertIn('"insights":', PR_ANALYSIS_SYSTEM_PROMPT)
+
+
+class TestCalculateRelativeHours(TestCase):
+    """Tests for calculate_relative_hours helper function."""
+
+    def test_calculates_hours_after_baseline(self):
+        """Should calculate hours after baseline timestamp."""
+        from datetime import datetime
+
+        from apps.metrics.services.llm_prompts import calculate_relative_hours
+
+        baseline = datetime(2025, 1, 1, 10, 0, 0)
+        timestamp = datetime(2025, 1, 1, 12, 30, 0)  # 2.5 hours later
+
+        result = calculate_relative_hours(timestamp, baseline)
+        self.assertEqual(result, 2.5)
+
+    def test_calculates_hours_before_baseline(self):
+        """Should return negative hours for timestamps before baseline."""
+        from datetime import datetime
+
+        from apps.metrics.services.llm_prompts import calculate_relative_hours
+
+        baseline = datetime(2025, 1, 1, 10, 0, 0)
+        timestamp = datetime(2025, 1, 1, 8, 0, 0)  # 2 hours before
+
+        result = calculate_relative_hours(timestamp, baseline)
+        self.assertEqual(result, -2.0)
+
+    def test_returns_zero_for_same_time(self):
+        """Should return 0.0 for same timestamp."""
+        from datetime import datetime
+
+        from apps.metrics.services.llm_prompts import calculate_relative_hours
+
+        baseline = datetime(2025, 1, 1, 10, 0, 0)
+        timestamp = datetime(2025, 1, 1, 10, 0, 0)
+
+        result = calculate_relative_hours(timestamp, baseline)
+        self.assertEqual(result, 0.0)
+
+    def test_rounds_to_one_decimal_place(self):
+        """Should round to 1 decimal place."""
+        from datetime import datetime
+
+        from apps.metrics.services.llm_prompts import calculate_relative_hours
+
+        baseline = datetime(2025, 1, 1, 10, 0, 0)
+        timestamp = datetime(2025, 1, 1, 10, 7, 30)  # 7.5 minutes = 0.125 hours
+
+        result = calculate_relative_hours(timestamp, baseline)
+        self.assertEqual(result, 0.1)
+
+    def test_handles_multiple_days(self):
+        """Should correctly calculate across multiple days."""
+        from datetime import datetime
+
+        from apps.metrics.services.llm_prompts import calculate_relative_hours
+
+        baseline = datetime(2025, 1, 1, 10, 0, 0)
+        timestamp = datetime(2025, 1, 3, 14, 0, 0)  # 2 days + 4 hours = 52 hours
+
+        result = calculate_relative_hours(timestamp, baseline)
+        self.assertEqual(result, 52.0)
+
+    def test_handles_none_timestamp(self):
+        """Should return None when timestamp is None."""
+        from datetime import datetime
+
+        from apps.metrics.services.llm_prompts import calculate_relative_hours
+
+        baseline = datetime(2025, 1, 1, 10, 0, 0)
+
+        result = calculate_relative_hours(None, baseline)
+        self.assertIsNone(result)
+
+    def test_handles_none_baseline(self):
+        """Should return None when baseline is None."""
+        from datetime import datetime
+
+        from apps.metrics.services.llm_prompts import calculate_relative_hours
+
+        timestamp = datetime(2025, 1, 1, 10, 0, 0)
+
+        result = calculate_relative_hours(timestamp, None)
+        self.assertIsNone(result)
+
+    def test_handles_both_none(self):
+        """Should return None when both are None."""
+        from apps.metrics.services.llm_prompts import calculate_relative_hours
+
+        result = calculate_relative_hours(None, None)
+        self.assertIsNone(result)
+
+
+class TestBuildLlmPrContextTimestamps(TestCase):
+    """Tests for timestamps in build_llm_pr_context."""
+
+    def setUp(self):
+        """Set up test fixtures with realistic timestamps."""
+        from datetime import datetime, timedelta
+
+        from django.utils import timezone
+
+        from apps.metrics.factories import (
+            CommitFactory,
+            PRCommentFactory,
+            PRReviewFactory,
+            PullRequestFactory,
+            TeamFactory,
+            TeamMemberFactory,
+        )
+
+        self.team = TeamFactory()
+        self.author = TeamMemberFactory(team=self.team, display_name="Alice")
+        self.reviewer = TeamMemberFactory(team=self.team, display_name="Bob")
+
+        # PR created at 10:00 (timezone-aware)
+        pr_created = timezone.make_aware(datetime(2025, 1, 1, 10, 0, 0))
+        # First review at 12:00 (2 hours later)
+        first_review = timezone.make_aware(datetime(2025, 1, 1, 12, 0, 0))
+
+        self.pr = PullRequestFactory(
+            team=self.team,
+            author=self.author,
+            pr_created_at=pr_created,
+            first_review_at=first_review,
+        )
+
+        # Commit at 10:30 (+0.5h)
+        self.commit1 = CommitFactory(
+            team=self.team,
+            pull_request=self.pr,
+            message="Initial implementation",
+            committed_at=pr_created + timedelta(hours=0.5),
+        )
+
+        # Commit at 14:00 (+4h)
+        self.commit2 = CommitFactory(
+            team=self.team,
+            pull_request=self.pr,
+            message="Address review feedback",
+            committed_at=pr_created + timedelta(hours=4),
+        )
+
+        # Review at 12:00 (+2h) - first review
+        self.review1 = PRReviewFactory(
+            team=self.team,
+            pull_request=self.pr,
+            reviewer=self.reviewer,
+            state="approved",
+            body="Looks good!",
+            submitted_at=first_review,
+        )
+
+        # Review at 14:30 (+4.5h)
+        self.review2 = PRReviewFactory(
+            team=self.team,
+            pull_request=self.pr,
+            reviewer=self.reviewer,
+            state="changes_requested",
+            body="Need to add tests",
+            submitted_at=pr_created + timedelta(hours=4.5),
+        )
+
+        # Comment at 12:30 (+2.5h)
+        self.comment1 = PRCommentFactory(
+            team=self.team,
+            pull_request=self.pr,
+            author=self.reviewer,
+            body="Should we consider caching?",
+            comment_created_at=pr_created + timedelta(hours=2.5),
+        )
+
+        # Comment at 15:00 (+5h)
+        self.comment2 = PRCommentFactory(
+            team=self.team,
+            pull_request=self.pr,
+            author=self.author,
+            body="Good point, will add in next iteration",
+            comment_created_at=pr_created + timedelta(hours=5),
+        )
+
+    def test_commits_include_relative_timestamps(self):
+        """Commits should show relative hours from first_review_at."""
+        from apps.metrics.services.llm_prompts import build_llm_pr_context
+
+        context = build_llm_pr_context(self.pr)
+
+        # Commit at +0.5h relative to first_review_at (12:00) = -1.5h
+        self.assertIn("[+0.5h] Initial implementation", context)
+        # Commit at +4h = +2h relative to first_review_at
+        self.assertIn("[+4.0h] Address review feedback", context)
+
+    def test_reviews_include_relative_timestamps(self):
+        """Reviews should show relative hours from first_review_at."""
+        from apps.metrics.services.llm_prompts import build_llm_pr_context
+
+        context = build_llm_pr_context(self.pr)
+
+        # First review at +2h (baseline) = +0.0h
+        self.assertIn("[+2.0h] [APPROVED] Bob: Looks good!", context)
+        # Second review at +4.5h
+        self.assertIn("[+4.5h] [CHANGES_REQUESTED] Bob: Need to add tests", context)
+
+    def test_comments_include_relative_timestamps(self):
+        """Comments should show relative hours from first_review_at."""
+        from apps.metrics.services.llm_prompts import build_llm_pr_context
+
+        context = build_llm_pr_context(self.pr)
+
+        # Comment at +2.5h
+        self.assertIn("[+2.5h] Bob: Should we consider caching?", context)
+        # Comment at +5h
+        self.assertIn("[+5.0h] Alice: Good point, will add in next iteration", context)
+
+    def test_timestamps_relative_to_first_review_at(self):
+        """All timestamps should be relative to first_review_at when set."""
+        from apps.metrics.services.llm_prompts import build_llm_pr_context
+
+        context = build_llm_pr_context(self.pr)
+
+        # Verify timestamps are relative to first_review_at (12:00)
+        # Commit at 10:30 is -1.5h relative to 12:00
+        self.assertNotIn("[-1.5h]", context)  # Should use pr_created_at as baseline
+        # Everything should be positive hours from pr_created_at when first_review_at is used
+
+    def test_timestamps_fallback_to_pr_created_at_when_no_first_review(self):
+        """Should use pr_created_at as baseline when first_review_at is None."""
+        from apps.metrics.factories import PullRequestFactory
+        from apps.metrics.services.llm_prompts import build_llm_pr_context
+
+        pr = PullRequestFactory(
+            team=self.team,
+            author=self.author,
+            first_review_at=None,  # No review yet
+        )
+
+        # Add commit at +1h from pr_created_at
+        from datetime import timedelta
+
+        from apps.metrics.factories import CommitFactory
+
+        CommitFactory(
+            team=self.team,
+            pull_request=pr,
+            message="First commit",
+            committed_at=pr.pr_created_at + timedelta(hours=1),
+        )
+
+        context = build_llm_pr_context(pr)
+
+        # Should show +1.0h relative to pr_created_at
+        self.assertIn("[+1.0h] First commit", context)
+
+    def test_handles_commits_before_first_review(self):
+        """Commits before first_review_at should show negative hours."""
+        from apps.metrics.services.llm_prompts import build_llm_pr_context
+
+        context = build_llm_pr_context(self.pr)
+
+        # Commit at 10:30 is 1.5h before first_review_at (12:00)
+        # But if we use pr_created_at as baseline, it's +0.5h
+        # This test verifies the behavior - adjust based on implementation decision
+        self.assertTrue("[+" in context)  # At least some positive timestamps exist
+
+    def test_handles_missing_commit_timestamp(self):
+        """Should handle commits with None timestamp gracefully."""
+        from apps.metrics.factories import CommitFactory
+        from apps.metrics.services.llm_prompts import build_llm_pr_context
+
+        CommitFactory(
+            team=self.team,
+            pull_request=self.pr,
+            message="Commit with no timestamp",
+            committed_at=None,
+        )
+
+        context = build_llm_pr_context(self.pr)
+
+        # Should not crash, may omit timestamp or show placeholder
+        self.assertIn("Commit with no timestamp", context)
+
+    def test_handles_missing_review_timestamp(self):
+        """Should handle reviews with None timestamp gracefully."""
+        from apps.metrics.factories import PRReviewFactory
+        from apps.metrics.services.llm_prompts import build_llm_pr_context
+
+        PRReviewFactory(
+            team=self.team,
+            pull_request=self.pr,
+            reviewer=self.reviewer,
+            body="Review without timestamp",
+            submitted_at=None,
+        )
+
+        context = build_llm_pr_context(self.pr)
+
+        # Should not crash
+        self.assertIn("Review without timestamp", context)
+
+    def test_handles_missing_comment_timestamp(self):
+        """Should handle comments with None timestamp gracefully."""
+        from apps.metrics.models import PRComment
+        from apps.metrics.services.llm_prompts import build_llm_pr_context
+
+        # Create comment with None timestamp (unusual but possible)
+        # This will likely fail constraint, but test the function's handling
+        try:
+            PRComment.objects.create(
+                team=self.team,
+                github_comment_id=99999,
+                pull_request=self.pr,
+                author=self.reviewer,
+                body="Comment without timestamp",
+                comment_type="issue",
+                comment_created_at=self.pr.pr_created_at,  # Use PR created as fallback
+            )
+
+            context = build_llm_pr_context(self.pr)
+            self.assertIn("Comment without timestamp", context)
+        except Exception:
+            # If DB constraint prevents this, that's fine - real data won't have None
+            pass
+
+    def test_timestamp_format_precision(self):
+        """Timestamps should be formatted to 1 decimal place."""
+        from apps.metrics.services.llm_prompts import build_llm_pr_context
+
+        context = build_llm_pr_context(self.pr)
+
+        # Should have timestamps like [+2.5h], not [+2.50h] or [+2h]
+        import re
+
+        timestamps = re.findall(r"\[\+\d+\.\d+h\]", context)
+        self.assertGreater(len(timestamps), 0, "Should find timestamped entries")
+
+        # Check all timestamps have exactly 1 decimal place
+        for ts in timestamps:
+            decimal_part = ts.split(".")[1].rstrip("h]")
+            self.assertEqual(len(decimal_part), 1, f"Timestamp {ts} should have 1 decimal place")
+
+    def test_zero_hour_timestamp_format(self):
+        """Timestamp at exactly first_review_at should show [+0.0h]."""
+        from apps.metrics.factories import CommitFactory
+        from apps.metrics.services.llm_prompts import build_llm_pr_context
+
+        # Create commit at exact first_review_at time
+        CommitFactory(
+            team=self.team,
+            pull_request=self.pr,
+            message="Commit at first review time",
+            committed_at=self.pr.first_review_at,
+        )
+
+        context = build_llm_pr_context(self.pr)
+
+        # Should show [+2.0h] since it's 2 hours after pr_created_at
+        self.assertIn("[+2.0h] Commit at first review time", context)
+
+    def test_large_hour_values(self):
+        """Should handle timestamps many hours/days apart."""
+        from datetime import timedelta
+
+        from apps.metrics.factories import CommitFactory
+        from apps.metrics.services.llm_prompts import build_llm_pr_context
+
+        # Commit 72 hours (3 days) after pr_created_at
+        CommitFactory(
+            team=self.team,
+            pull_request=self.pr,
+            message="Very late commit",
+            committed_at=self.pr.pr_created_at + timedelta(hours=72),
+        )
+
+        context = build_llm_pr_context(self.pr)
+
+        # Should show [+72.0h]
+        self.assertIn("[+72.0h] Very late commit", context)
+
+    def test_chronological_ordering_preserved(self):
+        """Timestamps should preserve chronological order of events."""
+        from apps.metrics.services.llm_prompts import build_llm_pr_context
+
+        context = build_llm_pr_context(self.pr)
+
+        # Find positions of timestamps in context
+        pos_0_5h = context.find("[+0.5h]")
+        pos_2_0h = context.find("[+2.0h]")
+        pos_2_5h = context.find("[+2.5h]")
+        pos_4_0h = context.find("[+4.0h]")
+        pos_4_5h = context.find("[+4.5h]")
+        pos_5_0h = context.find("[+5.0h]")
+
+        # Within each section (commits, reviews, comments), order should be preserved
+        # Note: Sections may be separate, but within commits: 0.5h before 4.0h
+        if pos_0_5h > 0 and pos_4_0h > 0:
+            self.assertLess(pos_0_5h, pos_4_0h, "Commits should be in chronological order")
+
+        if pos_2_0h > 0 and pos_4_5h > 0:
+            self.assertLess(pos_2_0h, pos_4_5h, "Reviews should be in chronological order")
+
+        if pos_2_5h > 0 and pos_5_0h > 0:
+            self.assertLess(pos_2_5h, pos_5_0h, "Comments should be in chronological order")

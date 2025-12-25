@@ -19,6 +19,7 @@ Version: 6.2.0 (2025-12-25) - Unified context builder with ALL PR data
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -134,6 +135,40 @@ python, typescript, javascript, go, rust, java, ruby, php, swift, kotlin, c, cpp
 
 ## Framework Names (lowercase)
 react, nextjs, vue, angular, django, fastapi, flask, express, rails, spring, laravel"""
+
+
+def calculate_relative_hours(timestamp: datetime | None, baseline: datetime | None) -> float | None:
+    """Calculate hours difference between timestamp and baseline.
+
+    Args:
+        timestamp: The timestamp to compare
+        baseline: The baseline timestamp to compare against
+
+    Returns:
+        Hours difference rounded to 1 decimal place, or None if either argument is None
+    """
+    if timestamp is None or baseline is None:
+        return None
+
+    delta = timestamp - baseline
+    hours = delta.total_seconds() / 3600
+    return round(hours, 1)
+
+
+def _format_timestamp_prefix(timestamp: datetime | None, baseline: datetime | None) -> str:
+    """Format timestamp as relative hours prefix for display.
+
+    Args:
+        timestamp: The timestamp to format
+        baseline: The baseline timestamp to compare against
+
+    Returns:
+        Formatted prefix like "[+2.5h] " or empty string if timestamp/baseline is None
+    """
+    hours = calculate_relative_hours(timestamp, baseline)
+    if hours is not None:
+        return f"[+{hours}h] "
+    return ""
 
 
 def get_user_prompt(
@@ -425,18 +460,21 @@ def build_llm_pr_context(pr: PullRequest) -> str:
 
     # === 6. Commits ===
     try:
-        commits = list(pr.commits.all().order_by("-committed_at")[:10])
+        commits = list(pr.commits.all().order_by("committed_at")[:10])
     except AttributeError:
         commits = []
 
     if commits:
         commit_lines = ["Commits:"]
+        baseline = pr.pr_created_at
         for c in commits:
             msg = c.message or ""
             # Truncate but keep Co-Authored-By lines visible
             if len(msg) > 300:
                 msg = msg[:300] + "..."
-            commit_lines.append(f"- {msg}")
+
+            timestamp_prefix = _format_timestamp_prefix(c.committed_at, baseline)
+            commit_lines.append(f"- {timestamp_prefix}{msg}")
         sections.append("\n".join(commit_lines))
 
     # === 7. Reviews ===
@@ -447,13 +485,16 @@ def build_llm_pr_context(pr: PullRequest) -> str:
 
     if reviews:
         review_lines = ["Reviews:"]
+        baseline = pr.pr_created_at
         for r in reviews:
             reviewer = "unknown"
             if r.reviewer:
-                reviewer = r.reviewer.github_username or r.reviewer.display_name or "unknown"
+                reviewer = r.reviewer.display_name or r.reviewer.github_username or "unknown"
             body = r.body[:200] + "..." if len(r.body) > 200 else r.body
             state = r.state.upper() if r.state else "COMMENT"
-            review_lines.append(f"- [{state}] {reviewer}: {body}")
+
+            timestamp_prefix = _format_timestamp_prefix(r.submitted_at, baseline)
+            review_lines.append(f"- {timestamp_prefix}[{state}] {reviewer}: {body}")
         sections.append("\n".join(review_lines))
 
     # === 8. Comments (NEW - may contain AI discussion) ===
@@ -464,12 +505,15 @@ def build_llm_pr_context(pr: PullRequest) -> str:
 
     if comments:
         comment_lines = ["Comments:"]
+        baseline = pr.pr_created_at
         for c in comments:
             author = "unknown"
             if c.author:
-                author = c.author.github_username or c.author.display_name or "unknown"
+                author = c.author.display_name or c.author.github_username or "unknown"
             body = c.body[:200] + "..." if len(c.body) > 200 else c.body
-            comment_lines.append(f"- {author}: {body}")
+
+            timestamp_prefix = _format_timestamp_prefix(c.comment_created_at, baseline)
+            comment_lines.append(f"- {timestamp_prefix}{author}: {body}")
         sections.append("\n".join(comment_lines))
 
     # === 9. Repository Languages ===

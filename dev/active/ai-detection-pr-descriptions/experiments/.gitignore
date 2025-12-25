@@ -1,0 +1,23 @@
+# Promptfoo evaluation results (regenerated on each run)
+results/
+
+# Intermediate model comparison iterations (keep only -final.yaml)
+model-comparison.yaml
+model-comparison-v*.yaml
+model-comparison-simple.yaml
+model-comparison-schema.yaml
+model-comparison-no-reasoning.yaml
+model-comparison-fixed.yaml
+model-comparison-10.yaml
+model-comparison-50-final.yaml
+
+# Deprecated promptfoo configs (keep only promptfoo.yaml)
+promptfoo-*.yaml
+default.yaml
+
+# Test case iterations (keep only test-cases-50-array.json)
+test-cases-10.json
+test-cases-100*.json
+test-cases-100*.yaml
+test-cases-50-full.json
+test-cases-real.json
