@@ -78,6 +78,13 @@ def analytics_ai_adoption(request: HttpRequest) -> HttpResponse:
         request.team, context["start_date"], context["end_date"]
     )
 
+    # Track page view
+    track_event(
+        request.user,
+        "analytics_viewed",
+        {"tab": "ai_adoption", "date_range": context["days"], "team_slug": request.team.slug},
+    )
+
     # Return partial for HTMX requests
     template = (
         "metrics/analytics/ai_adoption.html#page-content" if request.htmx else "metrics/analytics/ai_adoption.html"
@@ -94,6 +101,13 @@ def analytics_delivery(request: HttpRequest) -> HttpResponse:
     """
     context = _get_analytics_context(request, "delivery")
 
+    # Track page view
+    track_event(
+        request.user,
+        "analytics_viewed",
+        {"tab": "delivery", "date_range": context["days"], "team_slug": request.team.slug},
+    )
+
     # Return partial for HTMX requests
     template = "metrics/analytics/delivery.html#page-content" if request.htmx else "metrics/analytics/delivery.html"
     return TemplateResponse(request, template, context)
@@ -108,6 +122,13 @@ def analytics_quality(request: HttpRequest) -> HttpResponse:
     """
     context = _get_analytics_context(request, "quality")
 
+    # Track page view
+    track_event(
+        request.user,
+        "analytics_viewed",
+        {"tab": "quality", "date_range": context["days"], "team_slug": request.team.slug},
+    )
+
     # Return partial for HTMX requests
     template = "metrics/analytics/quality.html#page-content" if request.htmx else "metrics/analytics/quality.html"
     return TemplateResponse(request, template, context)
@@ -121,6 +142,13 @@ def analytics_team(request: HttpRequest) -> HttpResponse:
     Admin-only view.
     """
     context = _get_analytics_context(request, "team")
+
+    # Track page view
+    track_event(
+        request.user,
+        "analytics_viewed",
+        {"tab": "team", "date_range": context["days"], "team_slug": request.team.slug},
+    )
 
     # Return partial for HTMX requests
     template = "metrics/analytics/team.html#page-content" if request.htmx else "metrics/analytics/team.html"
