@@ -21,8 +21,8 @@ from typing import Any
 
 import yaml
 
-from apps.metrics.prompts.golden_tests import GOLDEN_TESTS, to_promptfoo_test
-from apps.metrics.prompts.render import render_system_prompt
+from apps.metrics.prompts.golden_tests import GOLDEN_TESTS, GoldenTest
+from apps.metrics.prompts.render import render_system_prompt, render_user_prompt
 from apps.metrics.services.llm_prompts import PROMPT_VERSION
 
 
@@ -40,16 +40,29 @@ def get_promptfoo_config(prompt_filename: str) -> dict[str, Any]:
         "providers": [
             {
                 "id": "groq:llama-3.3-70b-versatile",
+                "label": "Llama-3.3-70B",
                 "config": {
                     "temperature": 0,
                     "max_tokens": 800,
                     "response_format": {"type": "json_object"},
                 },
-            }
+            },
+            {
+                "id": "groq:openai/gpt-oss-20b",
+                "label": "GPT-OSS-20B",
+                "config": {
+                    "temperature": 0,
+                    "max_tokens": 800,
+                    "include_reasoning": False,  # Disable "Thinking:" prefix
+                    "response_format": {"type": "json_object"},
+                },
+            },
         ],
         "prompts": [
             {
                 "id": f"v{PROMPT_VERSION}",
+                # user_prompt is pre-rendered with all PR context by _render_user_prompt()
+                # This ensures the full context is visible in promptfoo UI
                 "raw": (
                     "[\n"
                     '  {"role": "system", "content": "{{system_prompt}}"},\n'
@@ -61,16 +74,7 @@ def get_promptfoo_config(prompt_filename: str) -> dict[str, Any]:
         "defaultTest": {
             "vars": {
                 "system_prompt": f"file://prompts/{prompt_filename}",
-                "user_prompt": (
-                    "Analyze this pull request:\n\n"
-                    "Title: {{pr_title}}\n"
-                    "Lines: +{{additions}}/-{{deletions}}\n\n"
-                    "Description:\n{{pr_body}}"
-                ),
-                "pr_title": "",
-                "pr_body": "",
-                "additions": 0,
-                "deletions": 0,
+                "user_prompt": "Analyze this pull request:\n\n(No PR data provided)",
             }
         },
         "tests": _get_test_cases_from_golden(),
@@ -85,65 +89,140 @@ def get_promptfoo_config(prompt_filename: str) -> dict[str, Any]:
 def _get_schema_validation_assertion() -> dict[str, Any]:
     """Get a JavaScript assertion that validates response schema.
 
-    Returns a promptfoo assertion that checks:
-    - Response has all required top-level keys (ai, tech, summary, health)
-    - AI object has required fields (is_assisted, tools, confidence)
-    - Confidence is within valid range (0.0-1.0)
-    - Enums contain valid values
+    Returns a promptfoo assertion that checks basic structure.
+    Simple expression (no IIFE) for promptfoo compatibility.
     """
-    # JavaScript code to validate the schema
-    validation_code = """
-(function() {
-    const data = JSON.parse(output);
-
-    // Check required top-level keys
-    const requiredKeys = ['ai', 'tech', 'summary', 'health'];
-    for (const key of requiredKeys) {
-        if (!(key in data)) return false;
-    }
-
-    // Validate AI section
-    const ai = data.ai;
-    if (typeof ai.is_assisted !== 'boolean') return false;
-    if (!Array.isArray(ai.tools)) return false;
-    if (typeof ai.confidence !== 'number') return false;
-    if (ai.confidence < 0 || ai.confidence > 1) return false;
-
-    // Validate Tech section
-    const tech = data.tech;
-    if (!Array.isArray(tech.languages)) return false;
-    if (!Array.isArray(tech.frameworks)) return false;
-    if (!Array.isArray(tech.categories)) return false;
-    const validCategories = ['backend', 'frontend', 'devops', 'mobile', 'data'];
-    for (const cat of tech.categories) {
-        if (!validCategories.includes(cat)) return false;
-    }
-
-    // Validate Summary section
-    const summary = data.summary;
-    if (typeof summary.title !== 'string' || summary.title.length === 0) return false;
-    if (typeof summary.description !== 'string' || summary.description.length === 0) return false;
-    const validTypes = ['feature', 'bugfix', 'refactor', 'docs', 'test', 'chore', 'ci'];
-    if (!validTypes.includes(summary.type)) return false;
-
-    // Validate Health section
-    const health = data.health;
-    const validFriction = ['low', 'medium', 'high'];
-    const validScope = ['small', 'medium', 'large', 'xlarge'];
-    const validRisk = ['low', 'medium', 'high'];
-    if (!validFriction.includes(health.review_friction)) return false;
-    if (!validScope.includes(health.scope)) return false;
-    if (!validRisk.includes(health.risk_level)) return false;
-    if (!Array.isArray(health.insights)) return false;
-
-    return true;
-})()
-""".strip()
-
+    # Simple validation - check required top-level keys exist
     return {
         "type": "javascript",
-        "value": validation_code,
-        "description": "Response matches v6 schema structure",
+        "value": (
+            "typeof JSON.parse(output).ai === 'object' && "
+            "typeof JSON.parse(output).tech === 'object' && "
+            "typeof JSON.parse(output).summary === 'object' && "
+            "typeof JSON.parse(output).health === 'object'"
+        ),
+        "description": "Response has required sections (ai, tech, summary, health)",
+    }
+
+
+def _render_user_prompt_from_test(test: GoldenTest) -> str:
+    """Render the full user prompt for a GoldenTest using Jinja templates.
+
+    This pre-renders the complete prompt with all PR context so it's visible
+    in the promptfoo UI for each test case. Uses render_user_prompt() which
+    is the Jinja-based equivalent of get_user_prompt().
+
+    Args:
+        test: The golden test case
+
+    Returns:
+        Fully rendered user prompt string
+    """
+    return render_user_prompt(
+        pr_body=test.pr_body,
+        pr_title=test.pr_title,
+        file_count=test.file_count,
+        additions=test.additions,
+        deletions=test.deletions,
+        comment_count=test.comment_count,
+        repo_languages=test.repo_languages if test.repo_languages else None,
+        state=test.state,
+        labels=test.labels if test.labels else None,
+        is_draft=test.is_draft,
+        is_hotfix=test.is_hotfix,
+        is_revert=test.is_revert,
+        cycle_time_hours=test.cycle_time_hours,
+        review_time_hours=test.review_time_hours,
+        commits_after_first_review=test.commits_after_first_review,
+        review_rounds=test.review_rounds,
+        file_paths=test.file_paths if test.file_paths else None,
+        commit_messages=test.commit_messages if test.commit_messages else None,
+        milestone=test.milestone,
+        assignees=test.assignees if test.assignees else None,
+        linked_issues=test.linked_issues if test.linked_issues else None,
+        jira_key=test.jira_key,
+        author_name=test.author_name,
+        reviewers=test.reviewers if test.reviewers else None,
+        review_comments=test.review_comments if test.review_comments else None,
+    )
+
+
+def _to_promptfoo_test_with_rendered_prompt(test: GoldenTest, schema_assertion: dict[str, Any]) -> dict[str, Any]:
+    """Convert a GoldenTest to promptfoo test format with pre-rendered user_prompt.
+
+    Args:
+        test: The golden test case
+        schema_assertion: The schema validation assertion to include
+
+    Returns:
+        Dictionary in promptfoo test format with full user_prompt
+    """
+    assertions: list[dict[str, Any]] = [
+        {"type": "is-json"},
+        schema_assertion,
+    ]
+
+    # AI detection assertions
+    if test.expected_ai_assisted is not None:
+        value = "true" if test.expected_ai_assisted else "false"
+        assertions.append(
+            {
+                "type": "javascript",
+                "value": f"JSON.parse(output).ai.is_assisted === {value}",
+            }
+        )
+
+    # Expected tools assertions
+    for tool in test.expected_tools:
+        assertions.append(
+            {
+                "type": "javascript",
+                "value": f'JSON.parse(output).ai.tools.includes("{tool}")',
+            }
+        )
+
+    # Not-expected tools assertions
+    for tool in test.expected_not_tools:
+        assertions.append(
+            {
+                "type": "javascript",
+                "value": f'!JSON.parse(output).ai.tools.includes("{tool}")',
+            }
+        )
+
+    # Confidence threshold assertion
+    if test.min_confidence > 0:
+        assertions.append(
+            {
+                "type": "javascript",
+                "value": f"JSON.parse(output).ai.confidence >= {test.min_confidence}",
+            }
+        )
+
+    # Category assertions
+    for category in test.expected_categories:
+        assertions.append(
+            {
+                "type": "javascript",
+                "value": f'JSON.parse(output).tech.categories.includes("{category}")',
+            }
+        )
+
+    # PR type assertion
+    if test.expected_pr_type:
+        assertions.append(
+            {
+                "type": "javascript",
+                "value": f'JSON.parse(output).summary.type === "{test.expected_pr_type}"',
+            }
+        )
+
+    return {
+        "description": f"[{test.id}] {test.description}",
+        "vars": {
+            "user_prompt": _render_user_prompt_from_test(test),
+        },
+        "assert": assertions,
     }
 
 
@@ -151,13 +230,13 @@ def _get_test_cases_from_golden() -> list[dict[str, Any]]:
     """Generate promptfoo test cases from GOLDEN_TESTS.
 
     Converts all GoldenTest instances to promptfoo format with
-    appropriate assertions for each test's expectations.
+    pre-rendered user prompts showing full PR context.
 
     Returns:
         List of promptfoo test case dictionaries
     """
     schema_assertion = _get_schema_validation_assertion()
-    return [to_promptfoo_test(test, schema_assertion) for test in GOLDEN_TESTS]
+    return [_to_promptfoo_test_with_rendered_prompt(test, schema_assertion) for test in GOLDEN_TESTS]
 
 
 def export_promptfoo_config(output_dir: Path) -> dict[str, Path]:

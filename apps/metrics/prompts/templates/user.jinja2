@@ -1,0 +1,149 @@
+{#- User Prompt Template for PR Analysis
+
+    This template generates the user prompt that accompanies the system prompt.
+    It must produce output identical to get_user_prompt() in llm_prompts.py.
+
+    Context variables (all optional except pr_body):
+        pr_title, pr_body, additions, deletions, file_count, comment_count,
+        repo_languages, state, labels, is_draft, is_hotfix, is_revert,
+        cycle_time_hours, review_time_hours, commits_after_first_review,
+        review_rounds, file_paths, commit_messages, milestone, assignees,
+        linked_issues, jira_key, author_name, reviewers, review_comments
+-#}
+{%- set sections = [] -%}
+
+{#- === Basic Info === -#}
+{%- set basic_info = [] -%}
+{%- if pr_title -%}
+    {%- set _ = basic_info.append("Title: " ~ pr_title) -%}
+{%- endif -%}
+{%- if author_name -%}
+    {%- set _ = basic_info.append("Author: " ~ author_name) -%}
+{%- endif -%}
+{%- if state -%}
+    {%- set _ = basic_info.append("State: " ~ state) -%}
+{%- endif -%}
+{%- if labels -%}
+    {%- set _ = basic_info.append("Labels: " ~ labels|join(", ")) -%}
+{%- endif -%}
+{%- if is_draft -%}
+    {%- set _ = basic_info.append("Draft: Yes") -%}
+{%- endif -%}
+{%- if is_hotfix -%}
+    {%- set _ = basic_info.append("Hotfix: Yes") -%}
+{%- endif -%}
+{%- if is_revert -%}
+    {%- set _ = basic_info.append("Revert: Yes") -%}
+{%- endif -%}
+{%- if basic_info -%}
+    {%- set _ = sections.append(basic_info|join("\n")) -%}
+{%- endif -%}
+
+{#- === Metadata (v6.1.0) === -#}
+{%- set metadata = [] -%}
+{%- if milestone -%}
+    {%- set _ = metadata.append("Milestone: " ~ milestone) -%}
+{%- endif -%}
+{%- if jira_key -%}
+    {%- set _ = metadata.append("Jira: " ~ jira_key) -%}
+{%- endif -%}
+{%- if assignees -%}
+    {%- set names = assignees[:10]|join(", ") -%}
+    {%- if assignees|length > 10 -%}
+        {%- set names = names ~ " (+" ~ (assignees|length - 10) ~ " more)" -%}
+    {%- endif -%}
+    {%- set _ = metadata.append("Assignees: " ~ names) -%}
+{%- endif -%}
+{%- if linked_issues -%}
+    {%- set _ = metadata.append("Linked issues: " ~ linked_issues|join(", ")) -%}
+{%- endif -%}
+{%- if metadata -%}
+    {%- set _ = sections.append(metadata|join("\n")) -%}
+{%- endif -%}
+
+{#- === Code Changes === -#}
+{%- set changes = [] -%}
+{%- if file_count and file_count > 0 -%}
+    {%- set _ = changes.append("Files changed: " ~ file_count) -%}
+{%- endif -%}
+{%- if (additions is defined and additions > 0) or (deletions is defined and deletions > 0) -%}
+    {%- set _ = changes.append("Lines: +" ~ (additions|default(0)) ~ "/-" ~ (deletions|default(0))) -%}
+{%- endif -%}
+{%- if file_paths -%}
+    {%- set paths = file_paths[:20]|join(", ") -%}
+    {%- if file_paths|length > 20 -%}
+        {%- set paths = paths ~ " (+" ~ (file_paths|length - 20) ~ " more)" -%}
+    {%- endif -%}
+    {%- set _ = changes.append("Files: " ~ paths) -%}
+{%- endif -%}
+{%- if changes -%}
+    {%- set _ = sections.append(changes|join("\n")) -%}
+{%- endif -%}
+
+{#- === Timing & Review === -#}
+{%- set timing = [] -%}
+{%- if cycle_time_hours is not none -%}
+    {%- set _ = timing.append("Cycle time: " ~ "%.1f"|format(cycle_time_hours) ~ " hours") -%}
+{%- endif -%}
+{%- if review_time_hours is not none -%}
+    {%- set _ = timing.append("Time to first review: " ~ "%.1f"|format(review_time_hours) ~ " hours") -%}
+{%- endif -%}
+{%- if comment_count and comment_count > 0 -%}
+    {%- set _ = timing.append("Comments: " ~ comment_count) -%}
+{%- endif -%}
+{%- if commits_after_first_review is not none and commits_after_first_review > 0 -%}
+    {%- set _ = timing.append("Commits after first review: " ~ commits_after_first_review) -%}
+{%- endif -%}
+{%- if review_rounds is not none and review_rounds > 0 -%}
+    {%- set _ = timing.append("Review rounds: " ~ review_rounds) -%}
+{%- endif -%}
+{%- if timing -%}
+    {%- set _ = sections.append(timing|join("\n")) -%}
+{%- endif -%}
+
+{#- === Repository Context === -#}
+{%- if repo_languages -%}
+    {%- set _ = sections.append("Repository languages: " ~ repo_languages|join(", ")) -%}
+{%- endif -%}
+
+{#- === Commit Messages === -#}
+{%- if commit_messages -%}
+    {%- set msgs = commit_messages[:5] -%}
+    {%- set commit_lines = [] -%}
+    {%- for msg in msgs -%}
+        {%- set _ = commit_lines.append("- " ~ msg) -%}
+    {%- endfor -%}
+    {%- if commit_messages|length > 5 -%}
+        {%- set _ = commit_lines.append("... and " ~ (commit_messages|length - 5) ~ " more commits") -%}
+    {%- endif -%}
+    {%- set _ = sections.append("Recent commits:\n" ~ commit_lines|join("\n")) -%}
+{%- endif -%}
+
+{#- === Reviewers (v6.1.0) === -#}
+{%- if reviewers -%}
+    {%- set names = reviewers[:5]|join(", ") -%}
+    {%- if reviewers|length > 5 -%}
+        {%- set names = names ~ " (+" ~ (reviewers|length - 5) ~ " more)" -%}
+    {%- endif -%}
+    {%- set _ = sections.append("Reviewers: " ~ names) -%}
+{%- endif -%}
+
+{#- === Review Comments (v6.1.0) === -#}
+{%- if review_comments -%}
+    {%- set comment_lines = [] -%}
+    {%- for comment in review_comments[:3] -%}
+        {%- if comment|length > 200 -%}
+            {%- set _ = comment_lines.append("- " ~ comment[:200] ~ "...") -%}
+        {%- else -%}
+            {%- set _ = comment_lines.append("- " ~ comment) -%}
+        {%- endif -%}
+    {%- endfor -%}
+    {%- set _ = sections.append("Review comments:\n" ~ comment_lines|join("\n")) -%}
+{%- endif -%}
+
+{#- === Description (always last) === -#}
+{%- set _ = sections.append("Description:\n" ~ pr_body) -%}
+
+Analyze this pull request:
+
+{{ sections|join("\n\n") }}

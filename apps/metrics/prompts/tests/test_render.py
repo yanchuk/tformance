@@ -151,3 +151,161 @@ class TestListTemplateSections(TestCase):
         """Results should be sorted alphabetically."""
         result = list_template_sections()
         self.assertEqual(result, sorted(result))
+
+
+class TestRenderUserPrompt(TestCase):
+    """Tests for render_user_prompt function - Jinja-based user prompt rendering."""
+
+    def test_render_user_prompt_exists(self):
+        """render_user_prompt should be importable from render module."""
+        from apps.metrics.prompts.render import render_user_prompt
+
+        self.assertTrue(callable(render_user_prompt))
+
+    def test_returns_string(self):
+        """Should return a non-empty string."""
+        from apps.metrics.prompts.render import render_user_prompt
+
+        result = render_user_prompt(pr_title="Test PR", pr_body="Test body")
+        self.assertIsInstance(result, str)
+        self.assertGreater(len(result), 0)
+
+    def test_matches_get_user_prompt_basic(self):
+        """Output should match get_user_prompt for basic inputs."""
+        from apps.metrics.prompts.render import render_user_prompt
+        from apps.metrics.services.llm_prompts import get_user_prompt
+
+        # Basic test case
+        rendered = render_user_prompt(
+            pr_title="Add new feature",
+            pr_body="This is the description.",
+            additions=100,
+            deletions=50,
+        )
+        expected = get_user_prompt(
+            pr_title="Add new feature",
+            pr_body="This is the description.",
+            additions=100,
+            deletions=50,
+        )
+        self.assertEqual(rendered, expected)
+
+    def test_matches_get_user_prompt_full_context(self):
+        """Output should match get_user_prompt with full PR context."""
+        from apps.metrics.prompts.render import render_user_prompt
+        from apps.metrics.services.llm_prompts import get_user_prompt
+
+        # Full context test case
+        context = {
+            "pr_title": "Fix payment bug",
+            "pr_body": "Fixed null pointer exception",
+            "additions": 10,
+            "deletions": 5,
+            "file_count": 2,
+            "comment_count": 3,
+            "repo_languages": ["Python", "TypeScript"],
+            "state": "merged",
+            "labels": ["bugfix", "urgent"],
+            "is_draft": False,
+            "is_hotfix": True,
+            "is_revert": False,
+            "cycle_time_hours": 24.5,
+            "review_time_hours": 2.0,
+            "commits_after_first_review": 1,
+            "review_rounds": 2,
+            "file_paths": ["apps/payments/views.py", "apps/payments/tests.py"],
+            "commit_messages": ["Fix null check", "Add tests"],
+            "milestone": "Q1 2025",
+            "assignees": ["alice", "bob"],
+            "linked_issues": ["#123"],
+            "jira_key": "PAY-456",
+            "author_name": "John Developer",
+            "reviewers": ["Sarah Tech Lead"],
+            "review_comments": ["LGTM!"],
+        }
+
+        rendered = render_user_prompt(**context)
+        expected = get_user_prompt(**context)
+        self.assertEqual(rendered, expected)
+
+    def test_contains_analyze_header(self):
+        """Should start with 'Analyze this pull request:' header."""
+        from apps.metrics.prompts.render import render_user_prompt
+
+        result = render_user_prompt(pr_title="Test", pr_body="Body")
+        self.assertTrue(result.startswith("Analyze this pull request:"))
+
+    def test_includes_title_when_provided(self):
+        """Should include title in output when provided."""
+        from apps.metrics.prompts.render import render_user_prompt
+
+        result = render_user_prompt(pr_title="My Test Title", pr_body="Body")
+        self.assertIn("Title: My Test Title", result)
+
+    def test_includes_author_when_provided(self):
+        """Should include author in output when provided."""
+        from apps.metrics.prompts.render import render_user_prompt
+
+        result = render_user_prompt(pr_title="Test", pr_body="Body", author_name="Alice Developer")
+        self.assertIn("Author: Alice Developer", result)
+
+    def test_includes_timing_metrics(self):
+        """Should include timing metrics when provided."""
+        from apps.metrics.prompts.render import render_user_prompt
+
+        result = render_user_prompt(
+            pr_title="Test",
+            pr_body="Body",
+            cycle_time_hours=48.5,
+            review_time_hours=4.0,
+        )
+        self.assertIn("Cycle time: 48.5 hours", result)
+        self.assertIn("Time to first review: 4.0 hours", result)
+
+    def test_includes_commit_messages(self):
+        """Should include commit messages when provided."""
+        from apps.metrics.prompts.render import render_user_prompt
+
+        result = render_user_prompt(
+            pr_title="Test",
+            pr_body="Body",
+            commit_messages=["Initial commit", "Fix bug"],
+        )
+        self.assertIn("Recent commits:", result)
+        self.assertIn("- Initial commit", result)
+        self.assertIn("- Fix bug", result)
+
+    def test_includes_reviewers(self):
+        """Should include reviewers when provided."""
+        from apps.metrics.prompts.render import render_user_prompt
+
+        result = render_user_prompt(
+            pr_title="Test",
+            pr_body="Body",
+            reviewers=["Alice", "Bob"],
+        )
+        self.assertIn("Reviewers: Alice, Bob", result)
+
+    def test_includes_description_at_end(self):
+        """Description should be at the end of the output."""
+        from apps.metrics.prompts.render import render_user_prompt
+
+        result = render_user_prompt(pr_title="Test", pr_body="This is the PR description.")
+        self.assertIn("Description:\nThis is the PR description.", result)
+
+
+class TestUserPromptTemplate(TestCase):
+    """Tests for user.jinja2 template existence and structure."""
+
+    def test_user_template_exists(self):
+        """user.jinja2 template should exist."""
+        result = get_template_dir()
+        user_template = result / "user.jinja2"
+        self.assertTrue(user_template.exists(), "user.jinja2 template should exist")
+
+    def test_user_template_is_readable(self):
+        """user.jinja2 template should be readable."""
+        result = get_template_dir()
+        user_template = result / "user.jinja2"
+        content = user_template.read_text()
+        self.assertGreater(len(content), 0)

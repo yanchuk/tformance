@@ -29,11 +29,13 @@ class TestGetPromptfooConfig(TestCase):
         config = get_promptfoo_config("v1.0.0-system.txt")
         self.assertIn(PROMPT_VERSION, config["description"])
 
-    def test_includes_groq_provider(self):
-        """Should configure Groq provider."""
+    def test_includes_groq_providers(self):
+        """Should configure Groq providers (Llama and GPT-OSS)."""
         config = get_promptfoo_config("v1.0.0-system.txt")
-        self.assertEqual(len(config["providers"]), 1)
-        self.assertIn("groq", config["providers"][0]["id"])
+        self.assertEqual(len(config["providers"]), 2)
+        # Both providers should be Groq-based
+        for provider in config["providers"]:
+            self.assertIn("groq", provider["id"])
 
     def test_includes_prompt_with_version(self):
         """Prompt ID should match version."""

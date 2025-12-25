@@ -17,7 +17,7 @@ from apps.metrics.prompts.golden_tests import (
     get_tests_by_category,
     to_promptfoo_test,
 )
-from apps.metrics.prompts.render import render_system_prompt
+from apps.metrics.prompts.render import render_system_prompt, render_user_prompt
 from apps.metrics.prompts.schemas import validate_llm_response
 from apps.metrics.services.llm_prompts import (
     PR_ANALYSIS_SYSTEM_PROMPT,
@@ -34,6 +34,7 @@ __all__ = [
     "get_user_prompt",
     # Rendering
     "render_system_prompt",
+    "render_user_prompt",
     # Validation
     "validate_llm_response",
     # Golden tests
