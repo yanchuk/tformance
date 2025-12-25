@@ -71,24 +71,69 @@ When adding patterns:
 3. Create new version file documenting changes
 4. Run backfill to update historical PRs
 
-### Prompt Versioning (LLM Detection)
+### LLM Prompt System
 
-LLM prompts for AI detection are versioned in files:
+LLM prompts for AI detection are managed via **Jinja2 templates** for maintainability:
 
-| File | Purpose |
-|------|---------|
-| `dev/active/ai-detection-pr-descriptions/experiments/prompts/v1.md` | Basic prompt |
-| `dev/active/ai-detection-pr-descriptions/experiments/prompts/v2.md` | Rich PR context |
-| `dev/active/ai-detection-pr-descriptions/experiments/prompts/v3.md` | Full data (files, commits, reviews) |
+```
+apps/metrics/prompts/
+├── templates/
+│   ├── system.jinja2          # Main template (composes sections)
+│   └── sections/
+│       ├── ai_detection.jinja2
+│       ├── tech_detection.jinja2
+│       ├── health_assessment.jinja2
+│       ├── response_schema.jinja2
+│       ├── definitions.jinja2
+│       └── enums.jinja2
+├── render.py                   # Template rendering functions
+├── schemas.py                  # JSON Schema for response validation
+└── export.py                   # Promptfoo config generation
+```
 
-Active prompt is `DEFAULT_SYSTEM_PROMPT` in `apps/integrations/services/groq_batch.py`.
+**Key Functions:**
+
+| Function | Purpose |
+|----------|---------|
+| `render_system_prompt()` | Render prompt from templates |
+| `validate_llm_response()` | Validate LLM response against schema |
+| `export_promptfoo_config()` | Generate promptfoo.yaml for testing |
+
+**Workflow for modifying prompts:**
+1. Edit the relevant template in `templates/sections/`
+2. Run: `python manage.py export_prompts` to regenerate promptfoo config
+3. Test with: `cd dev/active/ai-detection-pr-descriptions/experiments && npx promptfoo eval`
+4. Verify equivalence: `pytest apps/metrics/prompts/tests/test_render.py -k matches_original`
+
+**Version:** Current is `PROMPT_VERSION` in `apps/metrics/services/llm_prompts.py`
+
+### Golden Tests
+
+Test cases for LLM evaluation are defined in `apps/metrics/prompts/golden_tests.py`:
+
+```python
+from apps.metrics.prompts import GOLDEN_TESTS, GoldenTest, GoldenTestCategory
+
+# Categories: POSITIVE, NEGATIVE, EDGE_CASE, TECH_DETECTION, SUMMARY, HEALTH
+positive_tests = [t for t in GOLDEN_TESTS if t.category == GoldenTestCategory.POSITIVE]
+```
+
+**Adding a test case:**
+1. Add `GoldenTest(...)` to `golden_tests.py`
+2. Run: `pytest apps/metrics/prompts/tests/ -v`
+3. Export: `python manage.py export_prompts`
+
+**Regex validation tests:** `apps/metrics/prompts/tests/test_golden_regex_validation.py` bridges golden tests to `ai_detector.py` with documented limitations.
 
 ### Key Files
 
 | File | Purpose |
 |------|---------|
-| `apps/metrics/services/ai_patterns.py` | Pattern definitions |
+| `apps/metrics/services/ai_patterns.py` | Regex pattern definitions |
 | `apps/metrics/services/ai_detector.py` | Detection functions |
+| `apps/metrics/services/llm_prompts.py` | Prompt version + user prompt builder |
+| `apps/metrics/prompts/` | Template system + golden tests |
+| `apps/metrics/prompts/golden_tests.py` | 24 test cases for LLM evaluation |
 | `apps/integrations/services/groq_batch.py` | LLM batch processing |
 | `apps/integrations/services/github_graphql_sync.py` | PR sync with AI detection |
 
@@ -362,6 +407,14 @@ Note: Vite runs automatically with hot-reload when using `make dev`.
 
 ```bash
 make uv run 'pegasus startapp <app_name> <Model1> <Model2Name>'  # Start a new Django app (models are optional)
+```
+
+### AI Detection Tools
+
+```bash
+make export-prompts                         # Generate promptfoo.yaml from templates
+python manage.py run_llm_analysis --limit 50  # Analyze PRs with LLM
+python manage.py backfill_ai_detection      # Backfill regex detection
 ```
 
 ### Demo Data Seeding
