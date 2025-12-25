@@ -1,7 +1,7 @@
 """
 Factory Boy factories for metrics models.
 
-Usage in tests:
+Basic Usage:
     from apps.metrics.factories import TeamMemberFactory, PullRequestFactory
 
     # Create a single instance
@@ -15,6 +15,62 @@ Usage in tests:
 
     # Build without saving (for unit tests)
     member = TeamMemberFactory.build()
+
+Performance Best Practices:
+--------------------------
+
+1. ALWAYS pass team= to related factories to avoid creating duplicate teams:
+
+   # GOOD - all objects share the same team
+   team = TeamFactory()
+   member = TeamMemberFactory(team=team)
+   pr = PullRequestFactory(team=team, author=member)
+
+   # BAD - each factory creates its own team (3 teams created!)
+   member = TeamMemberFactory()
+   pr = PullRequestFactory()
+
+2. Use create_batch() with explicit team for multiple objects:
+
+   # GOOD - 5 members, 1 team
+   team = TeamFactory()
+   members = TeamMemberFactory.create_batch(5, team=team)
+
+   # BAD - 5 members, 5 teams (SubFactory creates new team each time)
+   members = TeamMemberFactory.create_batch(5)
+
+3. For Django TestCase, use setUpTestData() for class-level sharing:
+
+   class TestSomething(TestCase):
+       @classmethod
+       def setUpTestData(cls):
+           cls.team = TeamFactory()
+           cls.members = TeamMemberFactory.create_batch(5, team=cls.team)
+
+       def test_read_only(self):
+           # Data created once, reused across all test methods
+           assert len(self.members) == 5
+
+4. Pass related objects explicitly instead of letting SubFactory create them:
+
+   # GOOD - explicit control
+   pr = PullRequestFactory(team=team, author=member)
+   review = PRReviewFactory(team=team, pull_request=pr, reviewer=member2)
+
+   # BAD - SubFactory creates new author (new TeamMember + potentially new Team)
+   pr = PullRequestFactory()
+   review = PRReviewFactory(pull_request=pr)
+
+5. Use build() for unit tests that don't need DB:
+
+   # GOOD - no database hit
+   pr = PullRequestFactory.build(title="Test PR")
+   assert detect_ai_patterns(pr.body) == []
+
+   # Avoid create() when you don't need persistence
+   pr = PullRequestFactory.create()  # Unnecessary DB write
+
+See conftest.py for shared fixtures: team_with_members, sample_prs, team_context
 """
 
 import random
@@ -79,7 +135,17 @@ class TeamMemberFactory(DjangoModelFactory):
 
 
 class PullRequestFactory(DjangoModelFactory):
-    """Factory for PullRequest model."""
+    """Factory for PullRequest model.
+
+    Performance: Always pass team= and author= explicitly to avoid creating
+    unnecessary Team and TeamMember objects via SubFactory cascade.
+
+    Example:
+        team = TeamFactory()
+        member = TeamMemberFactory(team=team)
+        pr = PullRequestFactory(team=team, author=member)  # GOOD
+        pr = PullRequestFactory()  # BAD - creates new team + author
+    """
 
     class Meta:
         model = PullRequest
@@ -123,7 +189,17 @@ class PullRequestFactory(DjangoModelFactory):
 
 
 class PRReviewFactory(DjangoModelFactory):
-    """Factory for PRReview model."""
+    """Factory for PRReview model.
+
+    Performance: Pass team=, pull_request=, and reviewer= explicitly.
+    Without these, SubFactory creates new objects for each field.
+
+    Example:
+        team = TeamFactory()
+        pr = PullRequestFactory(team=team, author=member1)
+        review = PRReviewFactory(team=team, pull_request=pr, reviewer=member2)  # GOOD
+        review = PRReviewFactory()  # BAD - creates team, PR, author, reviewer
+    """
 
     class Meta:
         model = PRReview

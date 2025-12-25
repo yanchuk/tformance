@@ -1,4 +1,29 @@
-"""Root pytest fixtures for tformance project."""
+"""Root pytest fixtures for tformance project.
+
+Performance-Optimized Fixtures
+------------------------------
+When writing tests, prefer using these shared fixtures over creating your own
+test data in setUp(). This reduces database operations and speeds up tests.
+
+Key Fixtures:
+- team: Basic team fixture
+- team_with_members: Team with 5 members
+- team_context: Sets team in context var, cleans up after test
+- authenticated_team_client: Logged-in client with team access
+- sample_prs: 10 PRs with reviews and commits
+
+For Django TestCase with Class-Level Sharing:
+Use setUpTestData() for class-level shared data:
+
+    class TestSomething(TestCase):
+        @classmethod
+        def setUpTestData(cls):
+            cls.team = TeamFactory()
+            cls.members = TeamMemberFactory.create_batch(5, team=cls.team)
+
+        def test_read_only_operation(self):
+            assert len(self.members) == 5
+"""
 
 import pytest
 from django.test import Client
@@ -49,7 +74,7 @@ def admin_client(admin_user):
 @pytest.fixture
 def team(db):
     """Create a team for testing."""
-    from apps.teams.factories import TeamFactory
+    from apps.metrics.factories import TeamFactory
 
     return TeamFactory()
 
@@ -68,3 +93,129 @@ def team_member(team):
     from apps.metrics.factories import TeamMemberFactory
 
     return TeamMemberFactory(team=team)
+
+
+# =============================================================================
+# Performance-Optimized Fixtures
+# =============================================================================
+
+
+@pytest.fixture
+def team_with_members(db):
+    """Create a team with 5 members for testing.
+
+    Returns:
+        tuple: (team, list of 5 TeamMember instances)
+
+    Usage:
+        def test_something(team_with_members):
+            team, members = team_with_members
+            assert len(members) == 5
+    """
+    from apps.metrics.factories import TeamFactory, TeamMemberFactory
+
+    team = TeamFactory()
+    members = TeamMemberFactory.create_batch(5, team=team)
+    return team, members
+
+
+@pytest.fixture
+def team_context(team):
+    """Set team in context for the duration of the test.
+
+    This fixture sets the current team context (used by for_team manager)
+    and automatically cleans up after the test.
+
+    Usage:
+        def test_team_scoped_query(team_context):
+            # team context is set, for_team manager will work
+            prs = PullRequest.for_team.all()
+    """
+    from apps.teams.context import set_current_team, unset_current_team
+
+    token = set_current_team(team)
+    yield team
+    unset_current_team(token)
+
+
+@pytest.fixture
+def authenticated_team_client(team, user, db):
+    """Create an authenticated client with team membership.
+
+    Creates a user with team admin access and returns a logged-in client.
+
+    Returns:
+        tuple: (client, team, user)
+
+    Usage:
+        def test_authenticated_view(authenticated_team_client):
+            client, team, user = authenticated_team_client
+            response = client.get(f'/a/{team.slug}/dashboard/')
+            assert response.status_code == 200
+    """
+    from apps.teams.models import Membership
+    from apps.teams.roles import ROLE_ADMIN
+
+    # Create team membership for user
+    Membership.objects.create(team=team, user=user, role=ROLE_ADMIN)
+
+    test_client = Client()
+    test_client.force_login(user)
+    return test_client, team, user
+
+
+@pytest.fixture
+def sample_prs(db):
+    """Create 10 PRs with reviews and commits for testing.
+
+    Returns:
+        dict with keys:
+        - team: Team instance
+        - members: list of 3 TeamMember instances
+        - prs: list of 10 PullRequest instances
+        - reviews: list of PRReview instances (1 per PR)
+        - commits: list of Commit instances (2-5 per PR)
+
+    Usage:
+        def test_pr_metrics(sample_prs):
+            assert len(sample_prs['prs']) == 10
+    """
+    from apps.metrics.factories import (
+        CommitFactory,
+        PRReviewFactory,
+        PullRequestFactory,
+        TeamFactory,
+        TeamMemberFactory,
+    )
+
+    team = TeamFactory()
+    members = TeamMemberFactory.create_batch(3, team=team)
+
+    # Create 10 PRs distributed across members
+    prs = []
+    for i in range(10):
+        author = members[i % 3]
+        prs.append(PullRequestFactory(team=team, author=author))
+
+    # Create 1 review per PR
+    reviews = []
+    for pr in prs:
+        # Select a reviewer that isn't the author
+        possible_reviewers = [m for m in members if m != pr.author]
+        reviewer = possible_reviewers[0] if possible_reviewers else members[0]
+        reviews.append(PRReviewFactory(team=team, pull_request=pr, reviewer=reviewer))
+
+    # Create 2-5 commits per PR
+    commits = []
+    for pr in prs:
+        num_commits = 2 + (pr.github_pr_id % 4)  # 2-5 commits deterministically
+        for _ in range(num_commits):
+            commits.append(CommitFactory(team=team, pull_request=pr, author=pr.author))
+
+    return {
+        "team": team,
+        "members": members,
+        "prs": prs,
+        "reviews": reviews,
+        "commits": commits,
+    }
