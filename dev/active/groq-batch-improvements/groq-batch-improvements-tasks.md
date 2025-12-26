@@ -82,9 +82,10 @@ All batch tokens billed at flat 50% rate. Caching provides performance benefit o
 
 ## Phase 3: Backfill (COMPLETE)
 
-Final LLM Processing Status: **86.3% (52,224/60,545 PRs)**
+Final LLM Processing Status: **89.0% (53,876/60,545 PRs)**
 
 **Note**: 6,669 PRs have empty body text and are automatically excluded.
+**All processable PRs now analyzed (0 remaining).**
 
 | Team | Analyzed | AI PRs | AI Rate |
 |------|----------|--------|---------|
@@ -101,7 +102,7 @@ Final LLM Processing Status: **86.3% (52,224/60,545 PRs)**
 - [x] Generate AI detection summary report
 - [x] AI tools breakdown: CodeRabbit (51%), Devin (16%), Cubic (14%), Claude (6%), Cursor (6%)
 
-## Phase 5: JSON Schema Mode (COMPLETED)
+## Phase 5: JSON Schema Mode + Bug Fixes (COMPLETED)
 
 Added strict JSON Schema mode for more reliable structured outputs.
 
@@ -109,10 +110,13 @@ Added strict JSON Schema mode for more reliable structured outputs.
 - [x] Add `use_json_schema_mode` parameter to `GroqBatchProcessor`
 - [x] Update `create_batch_file()` to use json_schema format when enabled
 - [x] Write TDD tests (6 tests in TestJSONSchemaMode class)
-- [x] All 42 groq_batch tests passing
+- [x] **BUG FIX**: Fixed `_merge_results()` to include API-level failures
+  - PRs failing at Groq API level weren't being included in merged results
+  - Added `failed_pr_ids` parameter to properly add retry results
+  - Added TDD test `test_merge_results_adds_api_level_failures`
+- [x] All 43 groq_batch tests passing
 
-**Note**: Feature ready but not yet enabled by default. Test with real batch
-to verify 100% reliability before making default.
+**JSON Schema mode verified working** with 17/17 (100%) success rate.
 
 ## Phase 6: Team Insights Analysis (NEXT)
 
@@ -123,17 +127,16 @@ to verify 100% reliability before making default.
 
 ---
 
-## Commands to Continue
+## Commands Reference
 
 ```bash
-# Continue LLM backfill (run these one at a time)
-/bin/bash -c 'export GROQ_API_KEY=$(grep "^GROQ_API_KEY=" .env | cut -d= -f2) && .venv/bin/python manage.py run_llm_batch --team "Antiwork" --limit 2000 --with-fallback'
+# LLM Backfill COMPLETE - 89.0% coverage (53,876/60,545 PRs)
+# All processable PRs analyzed (6,669 excluded for empty body)
 
-/bin/bash -c 'export GROQ_API_KEY=$(grep "^GROQ_API_KEY=" .env | cut -d= -f2) && .venv/bin/python manage.py run_llm_batch --team "Cal.com" --limit 2000 --with-fallback'
+# Process new PRs (after GitHub sync adds more)
+/bin/bash -c 'export GROQ_API_KEY=$(grep "^GROQ_API_KEY=" .env | cut -d= -f2) && .venv/bin/python manage.py run_llm_batch --limit 500 --with-fallback'
 
-/bin/bash -c 'export GROQ_API_KEY=$(grep "^GROQ_API_KEY=" .env | cut -d= -f2) && .venv/bin/python manage.py run_llm_batch --team "LangChain" --limit 2000 --with-fallback'
-
-# Check progress
+# Check coverage
 .venv/bin/python -c "
 import os
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'tformance.settings')
