@@ -265,6 +265,291 @@
             font-family: 'JetBrains Mono', monospace;
         }
 
+        /* Detection Comparison Section */
+        .comparison-section {
+            background: linear-gradient(135deg, rgba(90, 153, 151, 0.1) 0%, rgba(249, 115, 22, 0.05) 100%);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 2.5rem;
+            margin: 3rem 0;
+        }
+
+        .comparison-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .comparison-header h2 {
+            border: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .comparison-icon {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, var(--secondary) 0%, var(--primary) 100%);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+
+        .comparison-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+
+        .comparison-stat {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+            border: 1px solid var(--border);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .comparison-stat::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--primary);
+        }
+
+        .comparison-stat.success::before { background: var(--success); }
+        .comparison-stat.secondary::before { background: var(--secondary); }
+        .comparison-stat.purple::before { background: var(--purple); }
+
+        .comparison-stat-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            font-family: 'JetBrains Mono', monospace;
+            line-height: 1;
+        }
+
+        .comparison-stat-label {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin-top: 0.5rem;
+        }
+
+        .comparison-stat-sublabel {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            opacity: 0.7;
+            margin-top: 0.25rem;
+        }
+
+        .method-cards {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            gap: 1.5rem;
+            margin: 2rem 0;
+            align-items: stretch;
+        }
+
+        @media (max-width: 900px) {
+            .method-cards { grid-template-columns: 1fr; }
+            .method-vs { display: none; }
+        }
+
+        .method-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+
+        .method-card-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .method-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+        }
+
+        .method-icon.regex { background: rgba(249, 115, 22, 0.2); }
+        .method-icon.llm { background: rgba(168, 85, 247, 0.2); }
+
+        .method-card-title {
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        .method-card-subtitle {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .method-card-value {
+            font-size: 2rem;
+            font-weight: 700;
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--primary);
+        }
+
+        .method-card-rate {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        .method-vs {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .method-vs-circle {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: var(--bg-main);
+            border: 2px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .tool-comparison-table {
+            width: 100%;
+            margin: 1.5rem 0;
+        }
+
+        .tool-comparison-table th {
+            background: transparent;
+            border-bottom: 2px solid var(--border);
+            padding: 1rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+        }
+
+        .tool-comparison-table td {
+            padding: 0.875rem 1rem;
+        }
+
+        .tool-comparison-table tr:hover {
+            background: rgba(249, 115, 22, 0.05);
+        }
+
+        .tool-name {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .tool-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .delta-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .delta-badge.positive {
+            background: rgba(34, 197, 94, 0.15);
+            color: var(--success);
+        }
+
+        .delta-badge.negative {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--error);
+        }
+
+        .agreement-bar {
+            position: relative;
+            height: 8px;
+            background: var(--border);
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 0.5rem 0;
+        }
+
+        .agreement-bar-fill {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+
+        .key-insight-card {
+            background: linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(90, 153, 151, 0.1) 100%);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        .key-insight-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            color: var(--success);
+            font-weight: 600;
+        }
+
+        .key-insight-list {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .key-insight-list li {
+            padding: 0.5rem 0;
+            padding-left: 1.5rem;
+            position: relative;
+            color: var(--text);
+        }
+
+        .key-insight-list li::before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: var(--success);
+            font-weight: bold;
+        }
+
+        .key-insight-list strong {
+            color: var(--primary);
+        }
+
         footer {
             text-align: center;
             padding: 2rem;
@@ -458,39 +743,259 @@
             </table>
         </section>
 
+        <!-- DETECTION METHOD COMPARISON - STANDALONE SECTION -->
+        <section class="comparison-section">
+            <div class="comparison-header">
+                <div class="comparison-icon">🔬</div>
+                <div>
+                    <h2>Detection Method Comparison</h2>
+                    <p style="color: var(--text-muted); margin-top: 0.25rem;">Regex patterns vs LLM semantic analysis — validating our AI detection accuracy</p>
+                </div>
+            </div>
+
+            <!-- Agreement Stats -->
+            <div class="comparison-stats">
+                <div class="comparison-stat success">
+                    <div class="comparison-stat-value" style="color: var(--success);">96.1%</div>
+                    <div class="comparison-stat-label">Agreement Rate</div>
+                    <div class="agreement-bar">
+                        <div class="agreement-bar-fill" style="width: 96.1%; background: var(--success);"></div>
+                    </div>
+                </div>
+                <div class="comparison-stat secondary">
+                    <div class="comparison-stat-value" style="color: var(--secondary);">51,800</div>
+                    <div class="comparison-stat-label">PRs with Matching Results</div>
+                    <div class="comparison-stat-sublabel">Both methods agree</div>
+                </div>
+                <div class="comparison-stat purple">
+                    <div class="comparison-stat-value" style="color: var(--purple);">+1,718</div>
+                    <div class="comparison-stat-label">Additional AI PRs Found</div>
+                    <div class="comparison-stat-sublabel">LLM catches what regex misses</div>
+                </div>
+                <div class="comparison-stat">
+                    <div class="comparison-stat-value">53,876</div>
+                    <div class="comparison-stat-label">PRs Analyzed</div>
+                    <div class="comparison-stat-sublabel">89.0% of dataset</div>
+                </div>
+            </div>
+
+            <!-- Method Cards -->
+            <div class="method-cards">
+                <div class="method-card">
+                    <div class="method-card-header">
+                        <div class="method-icon regex">⚡</div>
+                        <div>
+                            <div class="method-card-title">Regex Pattern Detection</div>
+                            <div class="method-card-subtitle">25+ patterns • Instant • Rule-based</div>
+                        </div>
+                    </div>
+                    <div class="method-card-value">10,626</div>
+                    <div class="method-card-rate">AI-assisted PRs detected (17.2%)</div>
+                    <ul style="margin-top: 1rem; padding-left: 1.25rem; color: var(--text-muted); font-size: 0.85rem;">
+                        <li>Exact signature matching</li>
+                        <li>Known tool footprints (CodeRabbit, Devin, etc.)</li>
+                        <li>Fast, deterministic results</li>
+                    </ul>
+                </div>
+
+                <div class="method-vs">
+                    <div class="method-vs-circle">VS</div>
+                </div>
+
+                <div class="method-card">
+                    <div class="method-card-header">
+                        <div class="method-icon llm">🧠</div>
+                        <div>
+                            <div class="method-card-title">LLM Semantic Analysis</div>
+                            <div class="method-card-subtitle">Llama 3.3 70B • Groq Batch API</div>
+                        </div>
+                    </div>
+                    <div class="method-card-value" style="color: var(--purple);">11,540</div>
+                    <div class="method-card-rate">AI-assisted PRs detected (21.4%)</div>
+                    <ul style="margin-top: 1rem; padding-left: 1.25rem; color: var(--text-muted); font-size: 0.85rem;">
+                        <li>Context-aware understanding</li>
+                        <li>Catches implicit AI mentions</li>
+                        <li>Tool disambiguation (GPT-4 via Cursor → Cursor)</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Tool Comparison Table -->
+            <h3 style="margin-top: 2rem; margin-bottom: 1rem;">Tool Detection by Method</h3>
+            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1rem;">
+                Comparing how each method detects specific AI tools. Green delta = LLM finds more; Red delta = Regex finds more (often over-matching).
+            </p>
+
+            <table class="tool-comparison-table">
+                <thead>
+                    <tr>
+                        <th>AI Tool</th>
+                        <th style="text-align: right;">Regex</th>
+                        <th style="text-align: right;">LLM</th>
+                        <th style="text-align: right;">Delta</th>
+                        <th>Insight</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>
+                            <span class="tool-name">
+                                <span class="tool-dot" style="background: #F97316;"></span>
+                                CodeRabbit
+                            </span>
+                        </td>
+                        <td class="mono" style="text-align: right;">5,431</td>
+                        <td class="mono" style="text-align: right;">5,891</td>
+                        <td style="text-align: right;"><span class="delta-badge positive">+460</span></td>
+                        <td style="color: var(--text-muted); font-size: 0.85rem;">LLM catches bot mentions in comments</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <span class="tool-name">
+                                <span class="tool-dot" style="background: #eab308;"></span>
+                                Devin
+                            </span>
+                        </td>
+                        <td class="mono" style="text-align: right;">1,706</td>
+                        <td class="mono" style="text-align: right;">1,743</td>
+                        <td style="text-align: right;"><span class="delta-badge positive">+37</span></td>
+                        <td style="color: var(--text-muted); font-size: 0.85rem;">Strong pattern coverage</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <span class="tool-name">
+                                <span class="tool-dot" style="background: #d97706;"></span>
+                                Cubic
+                            </span>
+                        </td>
+                        <td class="mono" style="text-align: right;">1,490</td>
+                        <td class="mono" style="text-align: right;">1,590</td>
+                        <td style="text-align: right;"><span class="delta-badge positive">+100</span></td>
+                        <td style="color: var(--text-muted); font-size: 0.85rem;">LLM understands "cubic" in context</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <span class="tool-name">
+                                <span class="tool-dot" style="background: #a855f7;"></span>
+                                Claude
+                            </span>
+                        </td>
+                        <td class="mono" style="text-align: right;">412</td>
+                        <td class="mono" style="text-align: right;">724</td>
+                        <td style="text-align: right;"><span class="delta-badge positive">+312</span></td>
+                        <td style="color: var(--text-muted); font-size: 0.85rem;"><strong>+76%</strong> — catches indirect refs</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <span class="tool-name">
+                                <span class="tool-dot" style="background: #5a9997;"></span>
+                                Cursor
+                            </span>
+                        </td>
+                        <td class="mono" style="text-align: right;">499</td>
+                        <td class="mono" style="text-align: right;">702</td>
+                        <td style="text-align: right;"><span class="delta-badge positive">+203</span></td>
+                        <td style="color: var(--text-muted); font-size: 0.85rem;"><strong>+41%</strong> — IDE mentions</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <span class="tool-name">
+                                <span class="tool-dot" style="background: #60a5fa;"></span>
+                                Greptile
+                            </span>
+                        </td>
+                        <td class="mono" style="text-align: right;">7</td>
+                        <td class="mono" style="text-align: right;">459</td>
+                        <td style="text-align: right;"><span class="delta-badge positive">+452</span></td>
+                        <td style="color: var(--text-muted); font-size: 0.85rem;"><strong>65x more!</strong> Regex pattern gap</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <span class="tool-name">
+                                <span class="tool-dot" style="background: #22c55e;"></span>
+                                Copilot
+                            </span>
+                        </td>
+                        <td class="mono" style="text-align: right;">204</td>
+                        <td class="mono" style="text-align: right;">403</td>
+                        <td style="text-align: right;"><span class="delta-badge positive">+199</span></td>
+                        <td style="color: var(--text-muted); font-size: 0.85rem;"><strong>2x</strong> — implicit mentions</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <span class="tool-name">
+                                <span class="tool-dot" style="background: #8a8880;"></span>
+                                ChatGPT
+                            </span>
+                        </td>
+                        <td class="mono" style="text-align: right;">471</td>
+                        <td class="mono" style="text-align: right;">238</td>
+                        <td style="text-align: right;"><span class="delta-badge negative">-233</span></td>
+                        <td style="color: var(--text-muted); font-size: 0.85rem;">LLM reassigns to specific tools</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <!-- Key Insights -->
+            <div class="key-insight-card">
+                <div class="key-insight-header">
+                    <span>💡</span>
+                    <span>Key Insights from Method Comparison</span>
+                </div>
+                <ul class="key-insight-list">
+                    <li><strong>96.1% agreement</strong> validates both detection methods produce consistent results</li>
+                    <li>LLM catches <strong>1,718 additional AI-assisted PRs</strong> (3.2%) that regex patterns miss entirely</li>
+                    <li><strong>Greptile detection improved 65x</strong> — major regex pattern gap identified and fixed via LLM feedback</li>
+                    <li>LLM correctly reassigns generic "ChatGPT" to specific tools (e.g., "GPT-4 via Cursor" → Cursor)</li>
+                    <li>Human-directed AI tools (Claude, Cursor, Copilot) have the largest detection gaps — developers don't always mention them explicitly</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- METHODOLOGY - SIMPLIFIED -->
         <section class="methodology">
             <h2>Methodology</h2>
 
-            <h3>Data Collection</h3>
-            <ul>
-                <li><strong>Source:</strong> GitHub GraphQL API with authenticated access</li>
-                <li><strong>Teams:</strong> 26 open source project teams</li>
-                <li><strong>Date Range:</strong> January 1, 2025 - December 25, 2025</li>
-                <li><strong>PR Fields:</strong> Title, body, comments, commits, reviews, files changed</li>
-            </ul>
+            <div class="two-col" style="margin: 1.5rem 0;">
+                <div>
+                    <h3>Data Collection</h3>
+                    <ul>
+                        <li><strong>Source:</strong> GitHub GraphQL API with authenticated access</li>
+                        <li><strong>Teams:</strong> 26 open source project teams</li>
+                        <li><strong>Date Range:</strong> January 1 - December 25, 2025</li>
+                        <li><strong>PR Fields:</strong> Title, body, comments, commits, reviews, files</li>
+                    </ul>
+                </div>
+                <div>
+                    <h3>Metrics Definitions</h3>
+                    <ul>
+                        <li><strong>Cycle Time:</strong> Hours from PR creation to merge</li>
+                        <li><strong>Review Time:</strong> Hours from PR creation to first review</li>
+                        <li><strong>PR Size:</strong> Total lines added + deleted</li>
+                        <li><strong>Impact Delta:</strong> (AI metric - Non-AI metric) / Non-AI × 100</li>
+                    </ul>
+                </div>
+            </div>
 
-            <h3>AI Detection Methods</h3>
-            <ul>
-                <li><strong>LLM Detection:</strong> Groq Batch API with Llama 3.3 70B model analyzes PR content</li>
-                <li><strong>Pattern Detection:</strong> 25+ regex patterns match known AI tool signatures</li>
-                <li><strong>Tool Attribution:</strong> Extracted from PR descriptions, commit messages, and comments</li>
-            </ul>
-
-            <h3>Metrics Definitions</h3>
-            <ul>
-                <li><strong>Cycle Time:</strong> Hours from PR creation to merge</li>
-                <li><strong>Review Time:</strong> Hours from PR creation to first review</li>
-                <li><strong>PR Size:</strong> Total lines added + deleted</li>
-                <li><strong>Impact Delta:</strong> (AI metric - Non-AI metric) / Non-AI metric × 100</li>
-            </ul>
-
-            <h3>Data Quality</h3>
-            <ul>
-                <li><strong>Total PRs:</strong> 60,545</li>
-                <li><strong>LLM Analyzed:</strong> 52,224 (86.3%)</li>
-                <li><strong>Empty Body PRs:</strong> 6,669 (11%) - excluded from LLM analysis</li>
-                <li><strong>Teams with 50+ PRs:</strong> 26</li>
-            </ul>
+            <div class="two-col" style="margin: 1.5rem 0;">
+                <div>
+                    <h3>AI Detection Methods</h3>
+                    <ul>
+                        <li><strong>LLM Detection:</strong> Groq Batch API with Llama 3.3 70B model</li>
+                        <li><strong>Pattern Detection:</strong> 25+ regex patterns for known AI signatures</li>
+                        <li><strong>Tool Attribution:</strong> Extracted from PR descriptions, commits, comments</li>
+                    </ul>
+                </div>
+                <div>
+                    <h3>Data Quality</h3>
+                    <ul>
+                        <li><strong>Total PRs:</strong> 60,545</li>
+                        <li><strong>LLM Analyzed:</strong> 53,876 (89.0%)</li>
+                        <li><strong>Empty Body PRs:</strong> 6,669 (11%) — excluded from LLM</li>
+                        <li><strong>Teams with 50+ PRs:</strong> 26</li>
+                    </ul>
+                </div>
+            </div>
         </section>
 
         <footer>
