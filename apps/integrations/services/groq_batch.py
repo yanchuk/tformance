@@ -36,6 +36,101 @@ from apps.metrics.services.llm_prompts import (
     build_llm_pr_context,
 )
 
+
+def get_strict_schema() -> dict:
+    """Get a Groq-compatible JSON Schema for strict mode.
+
+    Strict mode requires:
+    - All properties must be in 'required' array
+    - additionalProperties: false at all levels
+    - No null union types (["string", "null"])
+
+    See: https://console.groq.com/docs/structured-outputs
+
+    Returns:
+        JSON Schema dict compatible with Groq's strict mode
+    """
+    return {
+        "type": "object",
+        "required": ["ai", "tech", "summary", "health"],
+        "additionalProperties": False,
+        "properties": {
+            "ai": {
+                "type": "object",
+                "required": ["is_assisted", "tools", "usage_type", "confidence"],
+                "additionalProperties": False,
+                "properties": {
+                    "is_assisted": {"type": "boolean"},
+                    "tools": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                    },
+                    "usage_type": {
+                        "type": "string",
+                        "enum": ["authored", "assisted", "reviewed", "brainstorm", "none"],
+                    },
+                    "confidence": {"type": "number"},
+                },
+            },
+            "tech": {
+                "type": "object",
+                "required": ["languages", "frameworks", "categories"],
+                "additionalProperties": False,
+                "properties": {
+                    "languages": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                    },
+                    "frameworks": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                    },
+                    "categories": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                    },
+                },
+            },
+            "summary": {
+                "type": "object",
+                "required": ["title", "description", "type"],
+                "additionalProperties": False,
+                "properties": {
+                    "title": {"type": "string"},
+                    "description": {"type": "string"},
+                    "type": {
+                        "type": "string",
+                        "enum": ["feature", "bugfix", "refactor", "docs", "test", "chore", "ci"],
+                    },
+                },
+            },
+            "health": {
+                "type": "object",
+                "required": ["review_friction", "scope", "risk_level", "insights"],
+                "additionalProperties": False,
+                "properties": {
+                    "review_friction": {
+                        "type": "string",
+                        "enum": ["low", "medium", "high"],
+                    },
+                    "scope": {
+                        "type": "string",
+                        "enum": ["small", "medium", "large", "xlarge"],
+                    },
+                    "risk_level": {
+                        "type": "string",
+                        "enum": ["low", "medium", "high"],
+                    },
+                    "insights": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                    },
+                },
+            },
+        },
+    }
+
+
 # Default system prompt for AI detection with rich context
 DEFAULT_SYSTEM_PROMPT = """You analyze pull requests to detect AI tool usage and identify technologies.
 You MUST respond with valid JSON only.
@@ -321,6 +416,7 @@ class GroqBatchProcessor:
         model: str | None = None,
         system_prompt: str | None = None,
         use_v5_prompt: bool = True,
+        use_json_schema_mode: bool = False,
     ):
         """Initialize processor.
 
@@ -330,9 +426,13 @@ class GroqBatchProcessor:
                    Use FALLBACK_MODEL (llama-3.3-70b-versatile) for higher reliability.
             system_prompt: Custom system prompt (uses PR_ANALYSIS_SYSTEM_PROMPT v5 by default)
             use_v5_prompt: If True, use v5 prompt from llm_prompts.py (default)
+            use_json_schema_mode: If True, use strict JSON Schema mode for guaranteed
+                schema compliance. Only works with GPT-OSS 20B/120B models.
+                See: https://console.groq.com/docs/structured-outputs
         """
         self.client = Groq(api_key=api_key or os.environ.get("GROQ_API_KEY"))
         self.model = model or self.DEFAULT_MODEL
+        self.use_json_schema_mode = use_json_schema_mode
         # Use v5 prompt from llm_prompts.py by default
         if system_prompt:
             self.system_prompt = system_prompt
@@ -374,6 +474,22 @@ class GroqBatchProcessor:
                 # Format PR with unified context builder (includes all PR data)
                 pr_context = build_llm_pr_context(pr)
 
+                # Choose response format based on mode
+                if self.use_json_schema_mode:
+                    # Strict JSON Schema mode - guarantees schema compliance
+                    # Only works with GPT-OSS 20B/120B models
+                    response_format = {
+                        "type": "json_schema",
+                        "json_schema": {
+                            "name": "pr_analysis",
+                            "strict": True,
+                            "schema": get_strict_schema(),
+                        },
+                    }
+                else:
+                    # Standard JSON Object mode - valid JSON but no schema enforcement
+                    response_format = {"type": "json_object"}
+
                 request = {
                     "custom_id": f"pr-{pr.id}",
                     "method": "POST",
@@ -384,7 +500,7 @@ class GroqBatchProcessor:
                             {"role": "system", "content": self.system_prompt},
                             {"role": "user", "content": pr_context},
                         ],
-                        "response_format": {"type": "json_object"},
+                        "response_format": response_format,
                         "temperature": 0,
                         "max_tokens": 1500,
                     },

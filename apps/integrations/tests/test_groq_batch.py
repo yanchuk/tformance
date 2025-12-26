@@ -994,3 +994,124 @@ class TestFallbackMethods(TestCase):
         """Test initializing processor uses DEFAULT_MODEL by default."""
         processor = GroqBatchProcessor(api_key="test-key")
         self.assertEqual(processor.model, GroqBatchProcessor.DEFAULT_MODEL)
+
+
+class TestJSONSchemaMode(TestCase):
+    """Tests for JSON Schema mode support (strict structured outputs).
+
+    JSON Schema mode can improve reliability from ~96% to ~100% by
+    constraining model output at the token level.
+
+    See: https://console.groq.com/docs/structured-outputs
+    """
+
+    def test_get_strict_schema_returns_valid_schema(self):
+        """Test that get_strict_schema() returns a Groq-compatible schema."""
+        from apps.integrations.services.groq_batch import get_strict_schema
+
+        schema = get_strict_schema()
+
+        # Must have required top-level keys for Groq
+        self.assertIn("type", schema)
+        self.assertEqual(schema["type"], "object")
+        self.assertIn("properties", schema)
+        self.assertIn("required", schema)
+
+        # Strict mode requires additionalProperties: false
+        self.assertEqual(schema.get("additionalProperties"), False)
+
+    def test_strict_schema_has_all_required_fields(self):
+        """Test that strict schema has all fields required (no optional fields)."""
+        from apps.integrations.services.groq_batch import get_strict_schema
+
+        schema = get_strict_schema()
+
+        # All top-level properties must be in required array
+        required = set(schema.get("required", []))
+        properties = set(schema.get("properties", {}).keys())
+        self.assertEqual(required, properties)
+
+    def test_strict_schema_no_null_types(self):
+        """Test that strict schema doesn't use null union types.
+
+        Groq strict mode requires explicit types, not ["string", "null"].
+        usage_type in our schema needs special handling.
+        """
+        from apps.integrations.services.groq_batch import get_strict_schema
+
+        schema = get_strict_schema()
+
+        def check_no_null_unions(obj, path=""):
+            """Recursively check for null union types."""
+            if isinstance(obj, dict):
+                if "type" in obj and isinstance(obj["type"], list) and "null" in obj["type"]:
+                    self.fail(f"Found null union type at {path}: {obj['type']}")
+                for key, value in obj.items():
+                    check_no_null_unions(value, f"{path}.{key}")
+            elif isinstance(obj, list):
+                for i, item in enumerate(obj):
+                    check_no_null_unions(item, f"{path}[{i}]")
+
+        check_no_null_unions(schema)
+
+    def test_processor_with_json_schema_mode(self):
+        """Test that processor can be configured to use JSON Schema mode."""
+        processor = GroqBatchProcessor(
+            api_key="test-key",
+            use_json_schema_mode=True,
+        )
+        self.assertTrue(processor.use_json_schema_mode)
+
+    @patch("apps.integrations.services.groq_batch.Groq")
+    def test_batch_file_uses_json_schema_format(self, mock_groq_class):
+        """Test that batch file uses json_schema response_format when enabled."""
+        import json
+        import tempfile
+
+        mock_client = MagicMock()
+        mock_groq_class.return_value = mock_client
+
+        team = TeamFactory()
+        member = TeamMemberFactory(team=team)
+        pr = PullRequestFactory(
+            team=team,
+            author=member,
+            body="Test PR",
+            title="Test",
+        )
+
+        processor = GroqBatchProcessor(
+            api_key="test-key",
+            use_json_schema_mode=True,
+        )
+
+        with tempfile.NamedTemporaryFile(suffix=".jsonl", delete=False) as f:
+            batch_file = processor.create_batch_file([pr], output_path=f.name)
+
+            with open(batch_file) as bf:
+                request = json.loads(bf.readline())
+
+            # Should use json_schema format instead of json_object
+            response_format = request["body"]["response_format"]
+            self.assertEqual(response_format["type"], "json_schema")
+            self.assertIn("json_schema", response_format)
+            self.assertTrue(response_format["json_schema"].get("strict"))
+
+    def test_strict_schema_matches_v6_structure(self):
+        """Test that strict schema produces v6-compatible responses."""
+        from apps.integrations.services.groq_batch import get_strict_schema
+
+        schema = get_strict_schema()
+
+        # Should have all 4 v6 sections
+        properties = schema.get("properties", {})
+        self.assertIn("ai", properties)
+        self.assertIn("tech", properties)
+        self.assertIn("summary", properties)
+        self.assertIn("health", properties)
+
+        # AI section should have required fields
+        ai_props = properties["ai"]["properties"]
+        self.assertIn("is_assisted", ai_props)
+        self.assertIn("tools", ai_props)
+        self.assertIn("confidence", ai_props)
