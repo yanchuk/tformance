@@ -56,7 +56,7 @@
     {% for pr in prs %}
       {# Each PR uses its own tbody with Alpine scope for expand/collapse #}
       <tbody x-data="{ expanded: false }">
-      <tr class="cursor-pointer hover:bg-base-200/50 transition-colors" :class="{ 'border-b-0': expanded }">
+      <tr @click="expanded = !expanded" class="cursor-pointer hover:bg-base-200/50 transition-colors" :class="{ 'border-b-0': expanded }">
         <td class="max-w-xs">
           <div class="flex items-center gap-2">
             {# Expand/collapse indicator #}
@@ -201,7 +201,7 @@
           x-transition:leave-start="opacity-100"
           x-transition:leave-end="opacity-0"
           class="bg-base-200/30">
-        <td colspan="11" class="p-0">
+        <td colspan="11" class="px-4 py-3 border-t border-base-300">
           {% include 'metrics/pull_requests/partials/expanded_row.html' with pr=pr %}
         </td>
       </tr>
