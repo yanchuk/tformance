@@ -1,208 +1,56 @@
 # Session Handoff Notes
 
-**Last Updated: 2025-12-26 23:30 UTC**
+**Last Updated: 2025-12-27 00:15 UTC**
 
-## Current Session: GitHub Pages Research Report Enhancement
+## Current Session: GitHub Pages Research Report - COMPLETE
 
 ### What Was Done
 
-1. **Added Statistical Confidence Section** (COMMITTED)
-   - Sample size: 53,876 PRs with 95% CI of ±0.35%
-   - Std Dev 25.3% between teams (high variance)
-   - Chi-square test for team structure: p < 0.0001
-   - Documented limitations (selection bias, detection bias, team confounding, survivorship)
-   - Distribution insight: median 13.6% vs mean 23%
+1. **Always-Visible TOC Sidebar** (COMMITTED - 36d07d0)
+   - Fixed left sidebar (220px) always visible on wide screens
+   - Numbered sections (01-15) with elegant typography
+   - Grouped into Overview, Findings, Data, Context categories
+   - Mobile toggle for screens < 1200px
+   - Scroll spy highlights current section
+   - Added `#industry` link to TOC
 
-2. **Added "About This Research" Section** (COMMITTED)
-   - Methodology explanation (GitHub GraphQL → LLM → regex)
-   - What we don't analyze (file contents, private repos, hidden AI)
-   - Disclaimer about independent research
+2. **Industry Context Updated with 2025 Data** (COMMITTED - 36d07d0)
+   - JetBrains 2025: 85% regularly use AI for coding (was 73% 2024)
+   - JetBrains 2025: 62% use AI coding assistant/agent
+   - JetBrains 2025: 88% save 1+ hour/week, 19% save 8+ hours
+   - Updated sources to link JetBrains 2025 report
+   - Removed outdated 2024 references
 
-3. **Added Overall 2025 Trend Chart** (COMMITTED)
-   - Shows 9.4% (Jan) → 30.7% (July) → 23.2% (Dec)
-   - +147% YoY growth visualization
+3. **Previously Completed This Session:**
+   - Statistical Confidence Section (CI, std dev, chi-square, limitations)
+   - About This Research Section (methodology, disclaimers)
+   - Overall 2025 Trend Chart (9.4% → 30.7% → 23.2%)
+   - Action Items CTA (6 recommendations)
 
-4. **Added Action Items CTA** (COMMITTED)
-   - 6 actionable recommendations for engineering leaders
-   - tformance product CTA
+### Latest Commit
+```
+36d07d0 Add always-visible TOC sidebar + JetBrains 2025 data
+```
 
-5. **Table of Contents - PARTIALLY COMPLETE** (NOT COMMITTED)
-   - CSS added for sticky sidebar TOC
-   - TOC HTML added with links
-   - **NEEDS**: IDs added to sections (only #about, #stats, #trend-2025, #takeaways done)
-   - **NEEDS**: JavaScript for scroll spy
-   - **NEEDS**: IDs for remaining sections:
-     - `#summary` - Executive Summary (line ~880)
-     - `#tools` - AI Tool Evolution (line ~911)
-     - `#by-team` - AI Adoption by Team (line ~941)
-     - `#impact` - AI Impact on Metrics (line ~956)
-     - `#monthly` - Monthly Adoption Trends (line ~976)
-     - `#data` - Complete Team Data (line ~989)
-     - `#detection` - Detection Method Comparison (line ~1015)
-     - `#correlations` - AI Adoption Correlations (need to find)
-     - `#methodology` - Methodology (need to find)
-     - `#action` - Action Items (need to find)
+### Key Industry Data Used
 
-### User's Pending Request: Critical Review
+| Source | Stat | Description |
+|--------|------|-------------|
+| Our Report | 21.4% | Detected AI mentions in OSS PRs |
+| Stack Overflow 2025 | 84% | Using or planning to use AI |
+| Stack Overflow 2025 | 51% | Professional devs using AI daily |
+| JetBrains 2025 | 85% | Regularly use AI for coding |
+| JetBrains 2025 | 62% | Use AI coding assistant/agent |
+| JetBrains 2025 | 88% | Save 1+ hour/week |
 
-User asked to:
-> "I want you to be a rational critic, Your task is to review our report from a side and find easy to debate points. Check if our review correlates with public info and other reports on this topic (don't forget Stack Overflow report)."
-
-**TODO**: Compare findings to:
-- Stack Overflow Developer Survey 2024/2025
-- GitHub Octoverse report
-- JetBrains Developer Ecosystem Survey
-- Other industry AI adoption reports
-
-### Key Files Modified
-
-| File | Status | Changes |
-|------|--------|---------|
-| `docs/index.html` | UNCOMMITTED | TOC CSS, TOC HTML, section IDs (partial) |
-| `docs/index.html` | COMMITTED | Statistical Confidence, About, 2025 Trend, Action Items |
-
-### Uncommitted Changes
+### Verify Changes
 
 ```bash
-git status --short docs/index.html
-# M docs/index.html  (TOC additions - partial)
-```
-
-### Last Commit
-```
-2ec1e76 Add statistical confidence section and Action Items CTA
-```
-
----
-
-## How to Continue: TOC Implementation
-
-### 1. Add remaining section IDs
-
-Find and add IDs to these sections in `docs/index.html`:
-
-```html
-<!-- Around line 880 -->
-<section id="summary">
-    <h2>Executive Summary</h2>
-
-<!-- Around line 911 -->
-<section id="tools">
-    <h2>AI Tool Evolution (2025)</h2>
-
-<!-- Around line 941 -->
-<section id="by-team">
-    <h2>AI Adoption by Team</h2>
-
-<!-- Around line 956 -->
-<section id="impact">
-    <h2>AI Impact on Metrics</h2>
-
-<!-- Around line 976 -->
-<section id="monthly">
-    <h2>Monthly Adoption Trends by Team</h2>
-
-<!-- Around line 989 -->
-<section id="data">
-    <h2>Complete Team Data</h2>
-
-<!-- Around line 1015 -->
-<section id="detection" class="comparison-section">
-
-<!-- Find and add -->
-<section id="correlations">
-    <h2>AI Adoption Correlations</h2>
-
-<section id="methodology">
-    <h2>Methodology</h2>
-
-<section id="action" class="cta-section">
-```
-
-### 2. Add scroll spy JavaScript
-
-Add before `</body>`:
-
-```javascript
-// TOC toggle for mobile
-function toggleToc() {
-    document.getElementById('toc').classList.toggle('show');
-}
-
-// Scroll spy for TOC highlighting
-document.addEventListener('DOMContentLoaded', function() {
-    const sections = document.querySelectorAll('section[id]');
-    const tocLinks = document.querySelectorAll('.toc-container a');
-
-    function highlightToc() {
-        let current = '';
-        sections.forEach(section => {
-            const sectionTop = section.offsetTop;
-            if (scrollY >= sectionTop - 200) {
-                current = section.getAttribute('id');
-            }
-        });
-
-        tocLinks.forEach(link => {
-            link.classList.remove('active');
-            if (link.getAttribute('href') === '#' + current) {
-                link.classList.add('active');
-            }
-        });
-    }
-
-    window.addEventListener('scroll', highlightToc);
-    highlightToc();
-});
-```
-
-### 3. Commit TOC changes
-
-```bash
-git add docs/index.html
-git commit -m "Add sticky table of contents with scroll spy
-
-- Fixed left sidebar TOC on wide screens
-- Mobile toggle button shows/hides TOC
-- Scroll spy highlights current section
-- 14 sections linked for easy navigation"
-```
-
----
-
-## Critical Review TODO
-
-Compare our findings with public reports:
-
-| Our Finding | Check Against |
-|-------------|---------------|
-| 21.4% AI adoption | SO 2024: 76% use AI tools |
-| CodeRabbit dominant | Check market share reports |
-| Focused teams = higher adoption | Academic research on team size |
-| Review time -31%, Cycle time +42% | Industry productivity studies |
-
-**Key debate points to address:**
-1. Our 21% vs SO's 76% - different populations (OSS explicit mention vs any use)
-2. Detection bias - only capturing disclosed usage
-3. OSS vs enterprise patterns may differ
-4. Selection bias - popular projects only
-
----
-
-## No Migrations Needed
-
-Only frontend/docs changes. No Django code modified this session.
-
----
-
-## Test Commands
-
-```bash
-# Check dev server
-curl -s http://localhost:8000/ | head -1
-
-# Verify GitHub Pages (after push)
+# View GitHub Pages (after push)
 open https://yanchuk.github.io/tformance/
+
+# Or locally
+open docs/index.html
 ```
 
 ---
@@ -215,4 +63,10 @@ open https://yanchuk.github.io/tformance/
 | OSS Expansion (100 projects) | Phase 1 seeding done |
 | Groq Batch Improvements | COMPLETE |
 | Trends Dashboard | COMPLETE |
-| GitHub Pages Report | IN PROGRESS (TOC partial) |
+| GitHub Pages Report | **COMPLETE** |
+
+---
+
+## No Migrations Needed
+
+Only frontend/docs changes. No Django code modified this session.
