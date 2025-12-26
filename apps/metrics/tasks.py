@@ -245,3 +245,41 @@ def run_all_teams_llm_analysis(limit_per_team: int = 50) -> dict:
 
     logger.info(f"Dispatched LLM analysis tasks for {teams_dispatched} teams")
     return {"teams_dispatched": teams_dispatched}
+
+
+@shared_task
+def cleanup_old_metrics_data(days: int = 365) -> dict:
+    """Clean up old time-series data to optimize storage.
+
+    Removes AIUsageDaily records older than the retention period.
+    Run monthly to prevent unbounded table growth.
+
+    Args:
+        days: Retention period in days (default: 365)
+
+    Returns:
+        Dictionary with deletion counts
+    """
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    from apps.metrics.models import AIUsageDaily, WeeklyMetrics
+
+    cutoff_date = timezone.now().date() - timedelta(days=days)
+    results = {}
+
+    # Clean AIUsageDaily (daily Copilot/Cursor metrics)
+    # noqa: TEAM001 - intentional cross-team cleanup for data retention
+    ai_deleted, _ = AIUsageDaily.objects.filter(date__lt=cutoff_date).delete()  # noqa: TEAM001
+    results["aiusagedaily_deleted"] = ai_deleted
+    logger.info(f"Deleted {ai_deleted} AIUsageDaily records older than {cutoff_date}")
+
+    # Clean WeeklyMetrics (2 year retention)
+    weekly_cutoff = timezone.now().date() - timedelta(days=730)
+    # noqa: TEAM001 - intentional cross-team cleanup for data retention
+    weekly_deleted, _ = WeeklyMetrics.objects.filter(week_start__lt=weekly_cutoff).delete()  # noqa: TEAM001
+    results["weeklymetrics_deleted"] = weekly_deleted
+    logger.info(f"Deleted {weekly_deleted} WeeklyMetrics records older than {weekly_cutoff}")
+
+    return results

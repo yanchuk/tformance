@@ -642,6 +642,11 @@ SCHEDULED_TASKS = {
         "schedule": schedules.crontab(minute=0, hour=5),  # 5 AM UTC (after GitHub/Jira syncs)
         "expire_seconds": 60 * 60 * 2,  # 2 hour expiry
     },
+    "cleanup-old-metrics-monthly": {
+        "task": "apps.metrics.tasks.cleanup_old_metrics_data",
+        "schedule": schedules.crontab(minute=0, hour=2, day_of_month=1),  # 1st of month 2 AM UTC
+        "expire_seconds": 60 * 60,  # 1 hour expiry
+    },
 }
 
 # Channels / Daphne setup
