@@ -162,7 +162,13 @@ build-api-client:  ## Update the JavaScript API client code.
 		-g typescript-fetch \
 		-o /local/
 
-.PHONY: help
+.PHONY: help dev django celery start stop restart start-bg healthcheck \
+        test test-serial test-slow test-coverage test-fresh test-django test-quick \
+        e2e e2e-smoke e2e-auth e2e-dashboard e2e-ui e2e-report \
+        migrations migrate shell dbshell init install-hooks \
+        ruff ruff-format ruff-lint lint lint-team-isolation lint-team-isolation-all lint-colors \
+        npm-install npm-install-all npm-uninstall npm-build npm-dev npm-type-check \
+        uv uv-sync upgrade build-api-client bootstrap_content export-prompts setup-env
 .DEFAULT_GOAL := help
 
 help:
