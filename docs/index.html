@@ -1,6 +1,15 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
+    <script>
+        // Theme detection - runs before page renders to prevent flash
+        (function() {
+            const stored = localStorage.getItem('theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const theme = stored || (prefersDark ? 'dark' : 'light');
+            document.documentElement.setAttribute('data-theme', theme);
+        })();
+    </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Impact on Software Engineering - 2025 OSS Analysis</title>
@@ -1009,18 +1018,40 @@
         // Register datalabels plugin
         Chart.register(ChartDataLabels);
 
-        // Theme toggle
-        function toggleTheme() {
-            const html = document.documentElement;
-            const currentTheme = html.getAttribute('data-theme');
-            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-            html.setAttribute('data-theme', newTheme);
-            document.getElementById('theme-icon').textContent = newTheme === 'dark' ? '☀️' : '🌙';
-            document.getElementById('theme-label').textContent = newTheme === 'dark' ? 'Light' : 'Dark';
+        // Theme management
+        function getSystemTheme() {
+            return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
 
-            // Update chart colors
+        function getCurrentTheme() {
+            return document.documentElement.getAttribute('data-theme') || getSystemTheme();
+        }
+
+        function applyTheme(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+            document.getElementById('theme-icon').textContent = theme === 'dark' ? '☀️' : '🌙';
+            document.getElementById('theme-label').textContent = theme === 'dark' ? 'Light' : 'Dark';
             updateChartColors();
         }
+
+        function toggleTheme() {
+            const currentTheme = getCurrentTheme();
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            localStorage.setItem('theme', newTheme);
+            applyTheme(newTheme);
+        }
+
+        // Listen for system theme changes (only applies if no manual preference)
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+            if (!localStorage.getItem('theme')) {
+                applyTheme(e.matches ? 'dark' : 'light');
+            }
+        });
+
+        // Initialize theme UI on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            applyTheme(getCurrentTheme());
+        });
 
         function getColors() {
             const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
