@@ -97,7 +97,7 @@
             transition: background 0.3s, color 0.3s;
         }
 
-        .container { max-width: 1400px; margin: 0 auto; }
+        .report-content { max-width: 1400px; margin: 0 auto; }
 
         header {
             text-align: center;
@@ -393,7 +393,7 @@
            ======================================== */
 
         /* Base container - Desktop with sidebar visible */
-        .container {
+        .report-content {
             margin-left: 260px; /* 220px sidebar + 40px gap */
             margin-right: 2rem; /* Match body padding for consistency */
             padding-left: 0;
@@ -404,7 +404,7 @@
 
         /* Large Desktop (1440px+) */
         @media (min-width: 1440px) {
-            .container {
+            .report-content {
                 margin-left: 260px;
                 margin-right: 2rem;
                 padding-right: 2rem;
@@ -414,7 +414,7 @@
 
         /* Extra Large Desktop (1600px+) */
         @media (min-width: 1600px) {
-            .container {
+            .report-content {
                 margin-left: 280px;
                 margin-right: 2rem;
                 padding-right: 2rem;
@@ -424,7 +424,7 @@
 
         /* Medium Desktop (1200-1439px) - Sidebar visible, tighter layout */
         @media (min-width: 1200px) and (max-width: 1439px) {
-            .container {
+            .report-content {
                 margin-left: 250px;
                 margin-right: 2rem;
                 padding-right: 2rem;
@@ -478,7 +478,7 @@
                 transform: translateX(0);
             }
 
-            .container {
+            .report-content {
                 margin-left: 0;
                 padding-left: 2.5rem;
                 padding-right: 2.5rem;
@@ -517,7 +517,7 @@
                 padding: 1.5rem 1rem;
             }
 
-            .container {
+            .report-content {
                 padding-left: 1rem;
                 padding-right: 1rem;
             }
@@ -735,7 +735,7 @@
                 padding: 0.75rem;
             }
 
-            .container {
+            .report-content {
                 padding-left: 0.75rem;
                 padding-right: 0.75rem;
             }
@@ -1322,7 +1322,7 @@
     </nav>
     <button class="toc-toggle" id="toc-toggle" onclick="toggleToc()" title="Table of Contents">☰</button>
 
-    <div class="container">
+    <div class="report-content">
         <header>
             <button class="theme-toggle" onclick="toggleTheme()">
                 <span id="theme-icon">☀️</span>
