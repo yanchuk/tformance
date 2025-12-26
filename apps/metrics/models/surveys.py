@@ -104,7 +104,9 @@ class PRSurvey(BaseTeamModel):
         indexes = [
             models.Index(fields=["pull_request"], name="pr_survey_pr_idx"),
             models.Index(fields=["author", "author_ai_assisted"], name="pr_survey_author_ai_idx"),
-            models.Index(fields=["author_responded_at"], name="pr_survey_responded_idx"),
+            # Removed: pr_survey_responded_idx (0 uses) - replaced with composite
+            # Added composite index for team+date dashboard queries (reduce seq scans)
+            models.Index(fields=["team", "created_at"], name="pr_survey_team_created_idx"),
         ]
 
     def __str__(self):

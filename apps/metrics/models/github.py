@@ -1290,7 +1290,7 @@ class Commit(BaseTeamModel):
             )
         ]
         indexes = [
-            models.Index(fields=["github_repo", "committed_at"], name="commit_repo_date_idx"),
+            # Removed: commit_repo_date_idx (1 use, 16MB)
             models.Index(fields=["author", "committed_at"], name="commit_author_date_idx"),
             models.Index(fields=["pull_request"], name="commit_pr_idx"),
         ]

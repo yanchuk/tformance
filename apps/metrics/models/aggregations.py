@@ -79,9 +79,10 @@ class AIUsageDaily(BaseTeamModel):
             )
         ]
         indexes = [
-            models.Index(fields=["date"], name="ai_usage_date_idx"),
+            # Keep only the heavily-used index (1.6M uses)
+            # Removed: ai_usage_date_idx (4K uses, 13MB)
+            # Removed: ai_usage_source_date_idx (487 uses, 15MB)
             models.Index(fields=["member", "date"], name="ai_usage_member_date_idx"),
-            models.Index(fields=["source", "date"], name="ai_usage_source_date_idx"),
         ]
 
     def __str__(self):
@@ -212,7 +213,8 @@ class WeeklyMetrics(BaseTeamModel):
             )
         ]
         indexes = [
-            models.Index(fields=["week_start"], name="weekly_metrics_week_idx"),
+            # Removed: weekly_metrics_week_idx (3 uses, 1.7MB)
+            # Keep the member+week index (260K uses)
             models.Index(fields=["member", "week_start"], name="weekly_metrics_member_week_idx"),
         ]
 
