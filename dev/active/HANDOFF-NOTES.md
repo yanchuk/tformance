@@ -1,153 +1,104 @@
 # Session Handoff Notes
 
-**Last Updated: 2025-12-26 18:30 UTC**
+**Last Updated: 2025-12-26 21:00 UTC**
 
-## Session Goal
+## Current Session: AI Regex Pattern Improvements ✅ COMPLETE
 
-Parse PRs from 25 OSS projects for 2025 (Jan 1 - Dec 25), process with LLM, and display AI trends in UI.
+### What Was Done
+1. **Analyzed LLM vs Regex gap** - Found 1,717 PRs where LLM detected AI but regex missed
+2. **Added new patterns** using TDD Red-Green approach:
+   - **Replexica AI** (i18n tool): 5 signature patterns + 2 bot usernames
+   - **CodeRabbit author**: 3 patterns for docstrings/PRs created by CR bot
+   - **Mintlify Writer**: 1 pattern (skipped mintlify.com to avoid FP)
+3. **Fixed .claude/settings.local.json** - Removed malformed quote and exposed API key
+4. **Documented LLM-to-regex methodology** for research purposes
+5. **Ran full backfill** on 60,964 PRs
 
-## Current State - LLM Processing Complete
+### Results
+
+| Metric | Before | After | Change |
+|--------|--------|-------|--------|
+| LLM-only gap | 1,717 | 1,668 | **-49 (2.9%)** |
+| Regex detections | ~11,828 | 12,388 | +560 |
+
+**Tool Detections:**
+- Replexica: 430 PRs (mostly Cal.com @LingoDotDev translations)
+- CodeRabbit: 6,884 PRs (includes new author patterns)
+- Mintlify: 13 PRs (conservative Writer-only pattern)
+
+### Key Files Modified
+- `apps/metrics/services/ai_patterns.py` - Added 9 new patterns, version 1.9.0 → 2.0.0
+- `apps/metrics/tests/test_ai_detector.py` - Added 12 new tests (129 total, all passing)
+- `dev/active/improve-ai-regex-patterns/` - Full task documentation with results
+
+### Pattern Changes Summary
+```python
+# New bot usernames (AI_REVIEWER_BOTS)
+"replexica[bot]": "replexica"
+"lingodotdev[bot]": "replexica"
+
+# New signature patterns (AI_SIGNATURE_PATTERNS)
+(r"\bdocstrings?\s+generation\s+was\s+requested\b", "coderabbit")
+(r"\bcoderabbit\s+cannot\s+perform\s+edits\b", "coderabbit")
+(r"\bgenerated\s+by\s+coderabbit\b", "coderabbit")
+(r"\bmintlify\s+writer\b", "mintlify")
+(r"\breplexica\s+ai\b", "replexica")
+(r"\breplexica\.com\b", "replexica")
+(r"\breplexica\s+localization\s+engine\b", "replexica")
+(r"\@replexica\b", "replexica")
+(r"\@lingodotdev\b", "replexica")
+
+# New display name
+"replexica": "Replexica AI"
+```
+
+### Analysis: Further Regex Improvements Not Practical
+
+Investigated top missed tools - **all are implicit LLM detections** without text markers:
+- Greptile (455): Team inference (PostHog 86%, Twenty 12%), no explicit mentions
+- Copilot/Claude/Cursor: Code style inference, no text markers
+- CodeRabbit: Detection from review comments, not PR body
+
+**Conclusion**: The 1,668 LLM-only gap represents genuine LLM value - contextual detection that regex cannot do.
+
+### Next Steps
+- [x] Commit changes to git
+- [ ] Move `dev/active/improve-ai-regex-patterns/` to `dev/completed/`
+
+### Research Notes: LLM-to-Regex Discovery
+Documented in `dev/active/improve-ai-regex-patterns/improve-ai-regex-patterns-context.md`:
+- LLM helps discover patterns, but ~70% are implicit (no text markers)
+- Only ~30% of LLM detections can be converted to regex
+- Validates hybrid approach: LLM for discovery, regex for explicit patterns
+
+---
+
+## Previous Session: OSS Expansion (25 → 100 Projects)
+
+### What Was Done
+1. Researched and added 75 new OSS product companies to seeding config
+2. Organized 100 projects into 20 industry categories for benchmarking
+3. Added `industry` field and helper functions to `real_projects.py`
+4. Provided parallel seeding commands with 2 PATs
+5. **Phase 1 seeding (26-50) is running** in user's terminals
+
+### Key File Modified
+`apps/metrics/seeding/real_projects.py`:
+- Added `industry` field to `RealProjectConfig` dataclass
+- Added `INDUSTRIES` dict with 20 categories
+- Added 75 new project configs (now 100 total)
+- Added helper functions: `get_projects_by_industry()`, `list_industries()`, `get_industry_display_name()`
+
+---
+
+## LLM Processing Status
 
 | Metric | Value |
 |--------|-------|
-| Total PRs in DB | 60,545 |
-| With LLM Summary | 52,224 (86.3%) |
-| Empty Body PRs | 6,669 (excluded from analysis) |
-| AI-Assisted PRs | 11,051 (21.2% of analyzed) |
-| Date Range | 2025-01-01 to 2025-12-25 |
-
----
-
-## AI Detection Summary Generated
-
-### Top AI Tools Detected
-1. **CodeRabbit** - 5,643 PRs (51.1%) - AI code review bot
-2. **Devin** - 1,718 PRs (15.5%) - Autonomous AI developer
-3. **Cubic** - 1,571 PRs (14.2%)
-4. **Claude** - 665 PRs (6.0%)
-5. **Cursor** - 648 PRs (5.9%)
-6. **Copilot** - 396 PRs (3.6%)
-
-### Teams by AI Adoption Rate
-| Team | Total | Analyzed | AI PRs | Rate |
-|------|-------|----------|--------|------|
-| Plane | 1,717 | 1,524 | 1,322 | 86.7% |
-| Dub | 1,354 | 894 | 750 | 83.9% |
-| Antiwork | 4,144 | 3,935 | 2,429 | 61.7% |
-| Formbricks | 1,669 | 1,553 | 828 | 53.3% |
-| Trigger.dev | 1,054 | 811 | 368 | 45.4% |
-| Cal.com | 5,670 | 5,515 | 2,292 | 41.6% |
-
----
-
-## COMPLETED: Analytics Insights Generation
-
-**Full Report**: `dev/active/AI-INSIGHTS-REPORT-2025.md`
-
-### Key Findings
-
-| Metric | AI Impact | Interpretation |
-|--------|-----------|----------------|
-| **Review Time** | -31% faster | AI code is easier/faster to review |
-| **Cycle Time** | +42% longer | Teams tackle more complex tasks with AI |
-| **PR Size** | -17% smaller | AI enables atomic, focused changes |
-
-### AI Tool Market Share
-1. CodeRabbit (53.5%) - Review Bot
-2. Devin (17.9%) - Autonomous Agent
-3. Cubic (12.8%) - Autonomous Agent
-4. Claude (4.9%) - LLM Assistant
-5. Cursor (4.7%) - AI IDE
-
-### Team Analysis Completed
-- [x] Plane (86.7% AI) - Bot-heavy, smaller PRs
-- [x] Antiwork (61.7% AI) - Best outcomes, mixed tool strategy
-- [x] Cal.com (41.6% AI) - Agent-heavy, larger PRs
-- [x] PostHog (6.7% AI) - Emerging adopter, fast reviews
-- [x] Vercel (2.1% AI) - Minimal adoption
-
-### CTO Insights
-1. **Mixed tool strategy wins** - Teams using bot + IDE + LLM show best outcomes
-2. **Review velocity is consistent win** - 6/8 teams show faster reviews
-3. **Autonomous agents create larger PRs** - Devin/Cubic need more oversight
-4. **40-60% AI adoption is sweet spot** - Best balance of velocity and quality
-
----
-
-## Uncommitted Changes
-
-```
-M apps/metrics/seeding/real_project_seeder.py
-M apps/metrics/seeding/survey_ai_simulator.py
-M dev/active/HANDOFF-NOTES.md
-M dev/active/groq-batch-improvements/groq-batch-improvements-context.md
-M package-lock.json
-M package.json
-M tformance/settings.py
-?? dev/active/ai-detection-pr-descriptions/
-?? dev/active/db-performance-celery/
-```
-
----
-
-## Commands for Next Session
-
-### 1. Monthly Insights Query
-```bash
-.venv/bin/python -c "
-import os
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'tformance.settings')
-import django
-django.setup()
-from apps.metrics.models import PullRequest
-from django.db.models import Count, Avg, Q
-from django.db.models.functions import TruncMonth
-
-team_slug = 'plane-demo'  # Change per team
-qs = PullRequest.objects.filter(
-    team__slug=team_slug,
-    pr_created_at__year=2025
-).exclude(llm_summary__isnull=True).exclude(llm_summary={}).annotate(
-    month=TruncMonth('pr_created_at')
-).values('month').annotate(
-    total=Count('id'),
-    ai_count=Count('id', filter=Q(llm_summary__ai__is_assisted=True)),
-    avg_cycle=Avg('cycle_time_hours'),
-    avg_review=Avg('review_time_hours')
-).order_by('month')
-
-for row in qs:
-    pct = row['ai_count']/row['total']*100 if row['total'] else 0
-    cycle = row['avg_cycle'] or 0
-    review = row['avg_review'] or 0
-    print(f\"{row['month'].strftime('%Y-%m')}: {row['total']:4} PRs, {pct:5.1f}% AI, cycle: {cycle:6.1f}h, review: {review:6.1f}h\")
-"
-```
-
-### 2. Check Empty Body Exclusion
-```bash
-.venv/bin/python -c "
-import os
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'tformance.settings')
-import django
-django.setup()
-from apps.metrics.models import PullRequest
-from django.db.models import Q
-
-total = PullRequest.objects.count()
-empty = PullRequest.objects.filter(Q(body__isnull=True) | Q(body='')).count()
-with_llm = PullRequest.objects.exclude(llm_summary__isnull=True).exclude(llm_summary={}).count()
-print(f'Total: {total:,}')
-print(f'Empty body: {empty:,} ({empty/total*100:.1f}%)')
-print(f'With LLM: {with_llm:,}')
-print(f'Expected max analyzable: {total - empty:,}')
-"
-```
-
-### 3. Continue LLM Batch if Needed
-```bash
-/bin/bash -c 'export GROQ_API_KEY=$(grep "^GROQ_API_KEY=" .env | cut -d= -f2) && .venv/bin/python manage.py run_llm_batch --team "TEAM_NAME" --limit 2000 --with-fallback'
-```
+| Total PRs in DB | 63,403+ |
+| With LLM Summary | 53,876 (85%+) |
+| AI-Assisted PRs | ~11,500 |
+| LLM-only gap | 1,717 (target: reduce with new patterns) |
 
 ---
 
@@ -155,11 +106,77 @@ print(f'Expected max analyzable: {total - empty:,}')
 
 | Task | Location | Status |
 |------|----------|--------|
-| groq-batch-improvements | dev/active/ | Phase 4 COMPLETE |
-| Team Insights Analysis | AI-INSIGHTS-REPORT-2025.md | **COMPLETE** |
-| db-performance-celery | dev/active/ | Documentation done |
+| **improve-ai-regex-patterns** | dev/active/ | Patterns added, backfill pending |
+| oss-expansion | dev/active/ | Phase 1 seeding running |
+| groq-batch-improvements | dev/active/ | Complete |
 | trends-benchmarks-dashboard | dev/active/ | Phases 1-5 complete |
-| posthog-analytics | dev/active/ | In progress |
+
+---
+
+## Uncommitted Changes
+
+```bash
+# Check current status
+git status --short
+
+# Expected modified files:
+M apps/metrics/services/ai_patterns.py
+M apps/metrics/tests/test_ai_detector.py
+M dev/active/HANDOFF-NOTES.md
+M dev/active/improve-ai-regex-patterns/
+```
+
+---
+
+## Commands for Next Session
+
+### 1. Verify Tests Pass
+```bash
+.venv/bin/pytest apps/metrics/tests/test_ai_detector.py -v
+# Expected: 129 tests pass
+```
+
+### 2. Run Backfill
+```bash
+# Check if force flag needed
+python manage.py backfill_ai_detection --help
+
+# Run backfill
+python manage.py backfill_ai_detection
+```
+
+### 3. Verify Gap Reduction
+```bash
+python manage.py shell -c "
+from apps.metrics.models import PullRequest
+from django.db.models import Q
+llm_only = PullRequest.objects.filter(
+    llm_summary__ai__is_assisted=True,
+    llm_summary__ai__confidence__gte=0.5,
+    is_ai_assisted=False
+).count()
+print(f'LLM-only gap: {llm_only}')
+# Was: 1,717 - Should be lower after backfill
+"
+```
+
+### 4. Commit Changes
+```bash
+git add apps/metrics/services/ai_patterns.py apps/metrics/tests/test_ai_detector.py
+git commit -m "Add Replexica, CodeRabbit author, Mintlify Writer patterns (v2.0.0)
+
+Pattern improvements based on LLM gap analysis:
+- Replexica AI: 5 signature patterns + 2 bot usernames
+- CodeRabbit: 3 author patterns (docstrings, cannot edit)
+- Mintlify: 1 pattern (Writer only, skip FP-prone .com)
+
+Tests: 129 pass (+12 new)
+Version: 1.9.0 → 2.0.0
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
+```
 
 ---
 
@@ -172,21 +189,12 @@ Only service-layer code changes. Dev server should work immediately.
 ## Test Commands
 
 ```bash
-# Verify dev server
-curl -s http://localhost:8000/ | head -1
-
-# Run groq batch tests
-.venv/bin/pytest apps/integrations/tests/test_groq_batch.py -v
+# AI detector tests
+.venv/bin/pytest apps/metrics/tests/test_ai_detector.py -v
 
 # Full test suite
 make test
+
+# Dev server check
+curl -s http://localhost:8000/ | head -1
 ```
-
----
-
-## Environment Notes
-
-- GROQ_API_KEY in .env for LLM batch processing
-- Dev server running on localhost:8000
-- Docker/PostgreSQL required for database access
-- Empty body PRs (6,669) are automatically excluded by LLM batch processor

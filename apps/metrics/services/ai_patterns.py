@@ -28,10 +28,11 @@ selective reprocessing.
 # Increment major version for breaking changes, minor for additions.
 #
 # Version History:
+# - 2.0.0: Added Replexica i18n AI, CodeRabbit author patterns, Mintlify Writer
 # - 1.9.0: Added greptile, improved cubic patterns, removed FP-prone ai_disclosure headers
 # - 1.8.0: Added AI Usage/Disclosure section headers
 # - 1.7.0: Initial comprehensive patterns
-PATTERNS_VERSION = "1.9.0"
+PATTERNS_VERSION = "2.0.0"
 
 # =============================================================================
 # AI Reviewer Bots (username-based detection)
@@ -75,6 +76,9 @@ AI_REVIEWER_BOTS: dict[str, str] = {
     # ----- Greptile AI (code review bot) -----
     "greptile[bot]": "greptile",
     "greptileai[bot]": "greptile",
+    # ----- Replexica AI (i18n/translation) -----
+    "replexica[bot]": "replexica",
+    "lingodotdev[bot]": "replexica",  # Replexica rebrand
 }
 
 # =============================================================================
@@ -149,10 +153,15 @@ AI_SIGNATURE_PATTERNS: list[tuple[str, str]] = [
     (r"\bsummary\s+by\s+coderabbit\b", "coderabbit"),
     (r"\bcoderabbit\.ai\b", "coderabbit"),
     (r"\bby\s+coderabbit\b", "coderabbit"),
+    # CodeRabbit-authored PRs (docstring generation, etc.)
+    (r"\bdocstrings?\s+generation\s+was\s+requested\b", "coderabbit"),
+    (r"\bcoderabbit\s+cannot\s+perform\s+edits\b", "coderabbit"),
+    (r"\bgenerated\s+by\s+coderabbit\b", "coderabbit"),
     # ----- Mintlify (docs agent) -----
     (r"\bcreated\s+by\s+mintlify\b", "mintlify"),
     (r"\bmintlify\s+agent\b", "mintlify"),
     (r"\bgenerated\s+by\s+mintlify\b", "mintlify"),
+    (r"\bmintlify\s+writer\b", "mintlify"),
     # ----- Windsurf -----
     (r"generated\s+by\s+windsurf", "windsurf"),
     (r"windsurf\s+ai", "windsurf"),
@@ -202,6 +211,12 @@ AI_SIGNATURE_PATTERNS: list[tuple[str, str]] = [
     (r"created\s+by\s+devin", "devin"),
     (r"devin\.ai", "devin"),
     (r"devin\s+ai", "devin"),
+    # ----- Replexica AI (i18n/translation) -----
+    (r"\breplexica\s+ai\b", "replexica"),
+    (r"\breplexica\.com\b", "replexica"),
+    (r"\breplexica\s+localization\s+engine\b", "replexica"),
+    (r"\@replexica\b", "replexica"),
+    (r"\@lingodotdev\b", "replexica"),  # Replexica rebrand
     # ----- Generic AI indicators -----
     (r"ai[- ]?generated", "ai_generic"),
     (r"ai[- ]?assisted", "ai_generic"),
@@ -266,6 +281,7 @@ AI_TOOL_DISPLAY_NAMES: dict[str, str] = {
     "greptile": "Greptile",
     "mintlify": "Mintlify",
     "devin": "Devin AI",
+    "replexica": "Replexica AI",
     "coderabbit": "CodeRabbit",
     "copilot": "Copilot",
     "dependabot": "Dependabot",
