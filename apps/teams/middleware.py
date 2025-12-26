@@ -1,5 +1,6 @@
 import contextlib
 
+from django.http import Http404
 from django.utils.functional import SimpleLazyObject
 
 from apps.teams.context import set_current_team, unset_current_team
@@ -9,7 +10,11 @@ from apps.teams.models import Membership
 
 def _get_team(request, view_kwargs):
     if not hasattr(request, "_cached_team"):
-        team = get_team_for_request(request, view_kwargs)
+        try:
+            team = get_team_for_request(request, view_kwargs)
+        except Http404:
+            # Team doesn't exist - cache None to allow error pages to render
+            team = None
         if team:
             request.session["team"] = team.id
         request._cached_team = team
