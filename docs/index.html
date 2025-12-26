@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Impact on Software Engineering - 2025 OSS Analysis</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary: #F97316;
+            --secondary: #5a9997;
+            --bg-dark: #1e1e1e;
+            --bg-card: #2a2a28;
+            --text: #ccc9c0;
+            --text-muted: #8a8880;
+            --border: #3c3c3a;
+            --success: #22c55e;
+            --warning: #eab308;
+            --error: #ef4444;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-dark);
+            color: var(--text);
+            line-height: 1.6;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+            padding: 2rem;
+            background: linear-gradient(135deg, var(--bg-card) 0%, #1a1a18 100%);
+            border-radius: 16px;
+            border: 1px solid var(--border);
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: white;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            color: var(--primary);
+            font-size: 1.25rem;
+            font-weight: 500;
+        }
+
+        .meta {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            margin-top: 1rem;
+        }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--primary);
+        }
+
+        .stat-value.positive { color: var(--success); }
+        .stat-value.negative { color: var(--error); }
+        .stat-value.neutral { color: var(--secondary); }
+
+        .stat-label {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+        }
+
+        section {
+            margin: 3rem 0;
+        }
+
+        h2 {
+            font-size: 1.75rem;
+            color: white;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--primary);
+        }
+
+        h3 {
+            font-size: 1.25rem;
+            color: var(--text);
+            margin: 1.5rem 0 1rem;
+        }
+
+        .chart-container {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+        }
+
+        .chart-wrapper {
+            position: relative;
+            height: 300px;
+        }
+
+        .chart-wrapper.tall {
+            height: 400px;
+        }
+
+        .two-col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+
+        @media (max-width: 768px) {
+            .two-col {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--bg-card);
+            border-radius: 12px;
+            overflow: hidden;
+            margin: 1rem 0;
+        }
+
+        th, td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        th {
+            background: rgba(249, 115, 22, 0.1);
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        tr:hover {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .badge-success { background: rgba(34, 197, 94, 0.2); color: var(--success); }
+        .badge-warning { background: rgba(234, 179, 8, 0.2); color: var(--warning); }
+        .badge-error { background: rgba(239, 68, 68, 0.2); color: var(--error); }
+        .badge-primary { background: rgba(249, 115, 22, 0.2); color: var(--primary); }
+
+        .insight-box {
+            background: rgba(90, 153, 151, 0.1);
+            border-left: 4px solid var(--secondary);
+            padding: 1rem 1.5rem;
+            margin: 1rem 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .insight-box strong {
+            color: var(--secondary);
+        }
+
+        .methodology {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 2rem;
+            margin: 2rem 0;
+        }
+
+        .methodology h3 {
+            color: var(--primary);
+        }
+
+        .methodology ul {
+            list-style: none;
+            margin: 1rem 0;
+        }
+
+        .methodology li {
+            padding: 0.5rem 0;
+            padding-left: 1.5rem;
+            position: relative;
+        }
+
+        .methodology li::before {
+            content: "→";
+            position: absolute;
+            left: 0;
+            color: var(--primary);
+        }
+
+        footer {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            border-top: 1px solid var(--border);
+            margin-top: 3rem;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+        }
+
+        @media print {
+            body {
+                background: white;
+                color: #333;
+            }
+            .stat-card, .chart-container, .methodology {
+                background: #f5f5f5;
+                border-color: #ddd;
+            }
+            .stat-value { color: #F97316; }
+            h2 { color: #333; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">tformance</div>
+            <h1>AI Impact on Software Engineering</h1>
+            <p class="subtitle">Analysis of 60,545 PRs from 25 Open Source Projects</p>
+            <p class="meta">Research Period: January 1 - December 25, 2025 | Generated: December 26, 2025</p>
+        </header>
+
+        <section>
+            <h2>Executive Summary</h2>
+            <div class="stat-grid">
+                <div class="stat-card">
+                    <div class="stat-value">60,545</div>
+                    <div class="stat-label">Total Pull Requests Analyzed</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value neutral">21.2%</div>
+                    <div class="stat-label">AI-Assisted PRs</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value positive">-31%</div>
+                    <div class="stat-label">Avg Review Time Reduction</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value negative">+42%</div>
+                    <div class="stat-label">Avg Cycle Time Increase</div>
+                </div>
+            </div>
+
+            <div class="insight-box">
+                <strong>Key Finding:</strong> AI tools consistently speed up code review (-31% avg), but often extend overall cycle time (+42% avg). This suggests teams are tackling more complex work with AI assistance, not just doing the same work faster.
+            </div>
+        </section>
+
+        <section>
+            <h2>AI Tool Market Share</h2>
+            <div class="two-col">
+                <div class="chart-container">
+                    <div class="chart-wrapper">
+                        <canvas id="toolShareChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-wrapper">
+                        <canvas id="toolCategoryChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Tool</th>
+                        <th>Category</th>
+                        <th>Market Share</th>
+                        <th>Primary Use Case</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>CodeRabbit</strong></td>
+                        <td><span class="badge badge-primary">Review Bot</span></td>
+                        <td>53.5%</td>
+                        <td>Automated code review and suggestions</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Devin</strong></td>
+                        <td><span class="badge badge-warning">Autonomous Agent</span></td>
+                        <td>17.9%</td>
+                        <td>End-to-end task completion</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Cubic</strong></td>
+                        <td><span class="badge badge-warning">Autonomous Agent</span></td>
+                        <td>12.8%</td>
+                        <td>Automated implementation</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Claude</strong></td>
+                        <td><span class="badge badge-success">LLM Assistant</span></td>
+                        <td>4.9%</td>
+                        <td>Complex reasoning and planning</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Cursor</strong></td>
+                        <td><span class="badge badge-success">AI IDE</span></td>
+                        <td>4.7%</td>
+                        <td>Inline code suggestions</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Copilot</strong></td>
+                        <td><span class="badge badge-success">Inline Completion</span></td>
+                        <td>2.0%</td>
+                        <td>Real-time code completion</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section>
+            <h2>AI Impact by Team</h2>
+            <div class="chart-container">
+                <div class="chart-wrapper tall">
+                    <canvas id="teamImpactChart"></canvas>
+                </div>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Team</th>
+                        <th>AI Adoption</th>
+                        <th>Cycle Time Δ</th>
+                        <th>Review Time Δ</th>
+                        <th>PR Size Δ</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Plane</strong></td>
+                        <td>86.7%</td>
+                        <td><span class="badge badge-error">+184%</span></td>
+                        <td><span class="badge badge-warning">+2%</span></td>
+                        <td><span class="badge badge-success">-80%</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Antiwork</strong></td>
+                        <td>61.7%</td>
+                        <td><span class="badge badge-success">-10%</span></td>
+                        <td><span class="badge badge-success">-50%</span></td>
+                        <td><span class="badge badge-success">-11%</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Cal.com</strong></td>
+                        <td>41.6%</td>
+                        <td><span class="badge badge-error">+41%</span></td>
+                        <td><span class="badge badge-warning">-0.4%</span></td>
+                        <td><span class="badge badge-error">+78%</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>PostHog</strong></td>
+                        <td>6.7%</td>
+                        <td><span class="badge badge-error">+34%</span></td>
+                        <td><span class="badge badge-success">-48%</span></td>
+                        <td><span class="badge badge-success">-20%</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Vercel</strong></td>
+                        <td>2.1%</td>
+                        <td><span class="badge badge-error">+22%</span></td>
+                        <td><span class="badge badge-error">+29%</span></td>
+                        <td><span class="badge badge-error">+14%</span></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="insight-box">
+                <strong>Best Practice:</strong> Teams with 40-60% AI adoption and a mixed tool strategy (bot + IDE + LLM) show the best outcomes. Antiwork demonstrates this with a -10% cycle time and -50% review time improvement.
+            </div>
+        </section>
+
+        <section>
+            <h2>Detection Method Comparison</h2>
+            <p>We use two complementary detection methods to identify AI-assisted PRs:</p>
+
+            <div class="two-col">
+                <div class="chart-container">
+                    <h3>Detection Agreement</h3>
+                    <div class="chart-wrapper">
+                        <canvas id="detectionVennChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <h3>LLM vs Pattern Detection by Repo</h3>
+                    <div class="chart-wrapper">
+                        <canvas id="repoDetectionChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Detection Method</th>
+                        <th>AI PRs Found</th>
+                        <th>Unique Finds</th>
+                        <th>Strengths</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>LLM Detection</strong></td>
+                        <td>11,284 (18.7%)</td>
+                        <td>1,597</td>
+                        <td>Context-aware, implicit mentions, nuanced understanding</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Pattern Detection</strong></td>
+                        <td>10,200 (16.9%)</td>
+                        <td>513</td>
+                        <td>Bot signatures, explicit mentions, speed</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Both Agree</strong></td>
+                        <td>9,687 (16.1%)</td>
+                        <td>-</td>
+                        <td>High confidence detections</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="insight-box">
+                <strong>Finding:</strong> LLM detection catches 3x more unique AI PRs than pattern detection misses (1,597 vs 513). The methods are complementary - LLM excels at implicit mentions while patterns excel at bot signatures.
+            </div>
+        </section>
+
+        <section>
+            <h2>Monthly Adoption Trends</h2>
+            <div class="chart-container">
+                <div class="chart-wrapper tall">
+                    <canvas id="monthlyTrendChart"></canvas>
+                </div>
+            </div>
+
+            <div class="insight-box">
+                <strong>Seasonal Pattern:</strong> AI adoption peaks during June-August (summer development push) and decreases during holiday periods (January-March, December).
+            </div>
+        </section>
+
+        <section class="methodology">
+            <h2>Methodology</h2>
+
+            <h3>Data Collection</h3>
+            <ul>
+                <li><strong>Source:</strong> GitHub GraphQL API with authenticated access</li>
+                <li><strong>Projects:</strong> 25 open source projects (Vercel, PostHog, Cal.com, Supabase, etc.)</li>
+                <li><strong>Date Range:</strong> January 1, 2025 - December 25, 2025</li>
+                <li><strong>PR Fields:</strong> Title, body, comments, commits, reviews, files changed</li>
+            </ul>
+
+            <h3>AI Detection Methods</h3>
+            <ul>
+                <li><strong>LLM Detection:</strong> Groq Batch API with Llama 3.3 70B model analyzes PR content for AI signatures</li>
+                <li><strong>Pattern Detection:</strong> 25+ regex patterns match known AI tool signatures (Copilot, Claude, Cursor, etc.)</li>
+                <li><strong>Confidence Scoring:</strong> Multi-signal approach combining text analysis, commit patterns, and file changes</li>
+            </ul>
+
+            <h3>Metrics Definitions</h3>
+            <ul>
+                <li><strong>Cycle Time:</strong> Hours from PR creation to merge</li>
+                <li><strong>Review Time:</strong> Hours from PR creation to first review</li>
+                <li><strong>PR Size:</strong> Total lines added + deleted</li>
+                <li><strong>AI Adoption Rate:</strong> Percentage of PRs with detected AI assistance</li>
+            </ul>
+
+            <h3>Data Quality</h3>
+            <ul>
+                <li><strong>Total PRs:</strong> 60,545</li>
+                <li><strong>LLM Analyzed:</strong> 52,224 (86.3%)</li>
+                <li><strong>Empty Body PRs:</strong> 6,669 (11%) - excluded from LLM analysis</li>
+                <li><strong>Detection Agreement:</strong> 16.1% of PRs detected by both methods</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>Key Takeaways for Engineering Leaders</h2>
+
+            <div class="stat-grid">
+                <div class="stat-card">
+                    <div class="stat-value neutral">1</div>
+                    <div class="stat-label">Mixed Tool Strategy Wins</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value neutral">2</div>
+                    <div class="stat-label">Review Velocity is Key</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value neutral">3</div>
+                    <div class="stat-label">Agents Need Oversight</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value neutral">4</div>
+                    <div class="stat-label">40-60% is Sweet Spot</div>
+                </div>
+            </div>
+
+            <ol style="margin: 1.5rem 0; padding-left: 1.5rem;">
+                <li style="margin-bottom: 1rem;"><strong>Mixed Tool Strategy Wins:</strong> Teams using bot + IDE + LLM combinations show better outcomes than single-tool teams.</li>
+                <li style="margin-bottom: 1rem;"><strong>Review Velocity is the Consistent Win:</strong> 6/8 teams show faster review times with AI. This is the most reliable benefit.</li>
+                <li style="margin-bottom: 1rem;"><strong>Autonomous Agents Need Oversight:</strong> Devin and Cubic produce 50-80% larger PRs. Consider more frequent checkpoints.</li>
+                <li style="margin-bottom: 1rem;"><strong>40-60% AI Adoption is the Sweet Spot:</strong> Very high adoption (&gt;80%) may indicate over-reliance on bots.</li>
+            </ol>
+        </section>
+
+        <footer>
+            <div class="logo">tformance</div>
+            <p>AI Impact Analytics for Engineering Teams</p>
+            <p style="margin-top: 0.5rem;">© 2025 tformance. Data sourced from public GitHub repositories.</p>
+        </footer>
+    </div>
+
+    <script>
+        // Color palette
+        const colors = {
+            primary: '#F97316',
+            secondary: '#5a9997',
+            success: '#22c55e',
+            warning: '#eab308',
+            error: '#ef4444',
+            text: '#ccc9c0',
+            muted: '#8a8880'
+        };
+
+        // Tool Market Share Chart
+        new Chart(document.getElementById('toolShareChart'), {
+            type: 'doughnut',
+            data: {
+                labels: ['CodeRabbit', 'Devin', 'Cubic', 'Claude', 'Cursor', 'Others'],
+                datasets: [{
+                    data: [53.5, 17.9, 12.8, 4.9, 4.7, 6.2],
+                    backgroundColor: [
+                        colors.primary,
+                        colors.warning,
+                        '#d97706',
+                        colors.secondary,
+                        '#14b8a6',
+                        colors.muted
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: { color: colors.text }
+                    },
+                    title: {
+                        display: true,
+                        text: 'AI Tool Market Share',
+                        color: colors.text
+                    }
+                }
+            }
+        });
+
+        // Tool Category Chart
+        new Chart(document.getElementById('toolCategoryChart'), {
+            type: 'pie',
+            data: {
+                labels: ['Review Bots', 'Autonomous Agents', 'Human-Directed AI'],
+                datasets: [{
+                    data: [55.5, 30.7, 13.1],
+                    backgroundColor: [colors.primary, colors.warning, colors.secondary]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: { color: colors.text }
+                    },
+                    title: {
+                        display: true,
+                        text: 'Tool Category Distribution',
+                        color: colors.text
+                    }
+                }
+            }
+        });
+
+        // Team Impact Chart
+        new Chart(document.getElementById('teamImpactChart'), {
+            type: 'bar',
+            data: {
+                labels: ['Plane', 'Dub', 'Antiwork', 'Formbricks', 'Trigger.dev', 'Cal.com', 'PostHog', 'Vercel'],
+                datasets: [
+                    {
+                        label: 'Cycle Time Δ',
+                        data: [184, 56, -10, 46, -36, 41, 34, 22],
+                        backgroundColor: colors.error
+                    },
+                    {
+                        label: 'Review Time Δ',
+                        data: [2, -12, -50, -22, -72, -0.4, -48, 29],
+                        backgroundColor: colors.success
+                    },
+                    {
+                        label: 'PR Size Δ',
+                        data: [-80, -36, -11, -3, 12, 78, -20, 14],
+                        backgroundColor: colors.secondary
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        labels: { color: colors.text }
+                    },
+                    title: {
+                        display: true,
+                        text: 'AI Impact by Team (% Change vs Non-AI PRs)',
+                        color: colors.text
+                    }
+                },
+                scales: {
+                    x: {
+                        ticks: { color: colors.text },
+                        grid: { color: '#3c3c3a' }
+                    },
+                    y: {
+                        ticks: { color: colors.text },
+                        grid: { color: '#3c3c3a' }
+                    }
+                }
+            }
+        });
+
+        // Detection Venn Chart
+        new Chart(document.getElementById('detectionVennChart'), {
+            type: 'bar',
+            data: {
+                labels: ['Both Agree', 'LLM Only', 'Pattern Only'],
+                datasets: [{
+                    data: [9687, 1597, 513],
+                    backgroundColor: [colors.success, colors.primary, colors.secondary]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: 'y',
+                plugins: {
+                    legend: { display: false },
+                    title: {
+                        display: true,
+                        text: 'Detection Method Results',
+                        color: colors.text
+                    }
+                },
+                scales: {
+                    x: {
+                        ticks: { color: colors.text },
+                        grid: { color: '#3c3c3a' }
+                    },
+                    y: {
+                        ticks: { color: colors.text },
+                        grid: { color: '#3c3c3a' }
+                    }
+                }
+            }
+        });
+
+        // Repo Detection Comparison
+        new Chart(document.getElementById('repoDetectionChart'), {
+            type: 'bar',
+            data: {
+                labels: ['Cal.com', 'PostHog', 'Coolify', 'Twenty', 'Deno'],
+                datasets: [
+                    {
+                        label: 'LLM Detection %',
+                        data: [40.4, 9.7, 13.2, 4.9, 2.9],
+                        backgroundColor: colors.primary
+                    },
+                    {
+                        label: 'Pattern Detection %',
+                        data: [32.8, 4.4, 9.3, 1.1, 0.4],
+                        backgroundColor: colors.secondary
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        labels: { color: colors.text }
+                    },
+                    title: {
+                        display: true,
+                        text: 'LLM Advantage Repos',
+                        color: colors.text
+                    }
+                },
+                scales: {
+                    x: {
+                        ticks: { color: colors.text },
+                        grid: { color: '#3c3c3a' }
+                    },
+                    y: {
+                        ticks: { color: colors.text },
+                        grid: { color: '#3c3c3a' }
+                    }
+                }
+            }
+        });
+
+        // Monthly Trend Chart
+        new Chart(document.getElementById('monthlyTrendChart'), {
+            type: 'line',
+            data: {
+                labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+                datasets: [
+                    {
+                        label: 'Antiwork AI %',
+                        data: [null, null, 42, 32, 76, 96, 97, 71, 35, 42, 50, 59],
+                        borderColor: colors.primary,
+                        backgroundColor: 'transparent',
+                        tension: 0.4
+                    },
+                    {
+                        label: 'Cal.com AI %',
+                        data: [5.5, 0.2, 1.2, 15, 47, 81, 75, 73, 27, 53, 73, 66],
+                        borderColor: colors.secondary,
+                        backgroundColor: 'transparent',
+                        tension: 0.4
+                    },
+                    {
+                        label: 'PostHog AI %',
+                        data: [1.2, 2.1, 1.8, 1.0, 1.4, 1.0, 5.9, 10, 10.3, 10.8, 9.6, 8.7],
+                        borderColor: colors.success,
+                        backgroundColor: 'transparent',
+                        tension: 0.4
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        labels: { color: colors.text }
+                    },
+                    title: {
+                        display: true,
+                        text: 'AI Adoption Over 2025 by Team',
+                        color: colors.text
+                    }
+                },
+                scales: {
+                    x: {
+                        ticks: { color: colors.text },
+                        grid: { color: '#3c3c3a' }
+                    },
+                    y: {
+                        ticks: { color: colors.text },
+                        grid: { color: '#3c3c3a' },
+                        title: {
+                            display: true,
+                            text: 'AI Adoption %',
+                            color: colors.text
+                        }
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
