@@ -1111,6 +1111,40 @@
                 <strong>Key Insight:</strong> Larger PRs correlate with higher AI usage — XL PRs (501+ lines) show 26.0% AI adoption vs 17.8% for XS PRs (0-10 lines). This is a <strong>46% relative increase</strong>. AI tools may enable developers to tackle larger changes confidently, or larger changes benefit more from AI assistance.
             </div>
 
+            <!-- By Team Structure -->
+            <h3 style="margin-top: 2rem;">By Team Structure</h3>
+            <p style="color: var(--text-muted); margin-bottom: 1rem;">
+                Does team composition affect AI adoption? We measured "concentration" — what % of PRs come from the top 5 contributors.
+            </p>
+            <div class="chart-container" style="background: var(--bg-card); margin-bottom: 1rem;">
+                <div class="chart-wrapper">
+                    <canvas id="teamStructureChart"></canvas>
+                </div>
+            </div>
+            <div class="two-col" style="margin-top: 1rem;">
+                <div class="insight-box" style="background: rgba(34, 197, 94, 0.1); border-color: var(--success);">
+                    <strong>Focused Teams (70%+ concentration):</strong>
+                    <ul>
+                        <li>Dub — 94.3% concentration, <strong>83.9% AI</strong></li>
+                        <li>Trigger.dev — 76.0%, <strong>45.7% AI</strong></li>
+                        <li>Formbricks — 70.3%, <strong>50.5% AI</strong></li>
+                    </ul>
+                    <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.5rem;">~66 contributors avg, 29.2% AI adoption</p>
+                </div>
+                <div class="insight-box" style="background: rgba(99, 102, 241, 0.1); border-color: var(--indigo);">
+                    <strong>Distributed Teams (&lt;40% concentration):</strong>
+                    <ul>
+                        <li>PostHog — 18.7% concentration, <strong>7.5% AI</strong></li>
+                        <li>LangChain — 30.5%, <strong>4.2% AI</strong></li>
+                        <li>Supabase — 31.5%, <strong>12.0% AI</strong></li>
+                    </ul>
+                    <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.5rem;">~452 contributors avg, 19.2% AI adoption</p>
+                </div>
+            </div>
+            <div class="insight-box" style="background: rgba(249, 115, 22, 0.1); border-color: var(--primary); margin-top: 1rem;">
+                <strong>Key Insight:</strong> Focused teams show <strong>52% higher AI adoption</strong> (29.2% vs 19.2%) than distributed open-source projects. Core teams can establish AI tool workflows, share knowledge, and standardize practices. Large contributor bases with occasional contributors have less consistent tooling.
+            </div>
+
             <!-- Recommendation -->
             <div class="key-insight-card" style="margin-top: 2.5rem; border-left: 4px solid var(--success);">
                 <h3>💡 Recommendation: Explicit AI Disclosure in PRs</h3>
@@ -1945,6 +1979,56 @@
                         align: 'top',
                         color: colors.text,
                         font: { weight: 'bold' },
+                        formatter: (v) => v.toFixed(1) + '%'
+                    }
+                },
+                scales: {
+                    x: { ticks: { color: colors.text }, grid: { color: colors.grid } },
+                    y: { ticks: { color: colors.text }, grid: { color: colors.grid }, max: 35 }
+                }
+            }
+        });
+
+        // Team Structure Chart
+        const teamStructureData = [
+            { level: 'High (70%+)', teams: 9, ai_pct: 29.2, contributors: 66 },
+            { level: 'Medium (40-70%)', teams: 9, ai_pct: 22.4, contributors: 255 },
+            { level: 'Low (<40%)', teams: 7, ai_pct: 19.2, contributors: 452 }
+        ];
+
+        charts.teamStructure = new Chart(document.getElementById('teamStructureChart'), {
+            type: 'bar',
+            data: {
+                labels: teamStructureData.map(d => d.level),
+                datasets: [{
+                    label: 'AI Adoption %',
+                    data: teamStructureData.map(d => d.ai_pct),
+                    backgroundColor: ['rgba(34, 197, 94, 0.7)', 'rgba(234, 179, 8, 0.7)', 'rgba(99, 102, 241, 0.7)'],
+                    borderColor: ['#22c55e', '#eab308', '#6366f1'],
+                    borderWidth: 1,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    title: { display: true, text: 'AI Adoption by Team Concentration (% PRs from Top 5)', color: colors.text },
+                    tooltip: {
+                        callbacks: {
+                            afterLabel: (ctx) => {
+                                const d = teamStructureData[ctx.dataIndex];
+                                return `${d.teams} teams, ~${d.contributors} contributors avg`;
+                            }
+                        }
+                    },
+                    datalabels: {
+                        display: true,
+                        anchor: 'end',
+                        align: 'top',
+                        color: colors.text,
+                        font: { weight: 'bold', size: 14 },
                         formatter: (v) => v.toFixed(1) + '%'
                     }
                 },
