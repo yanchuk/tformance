@@ -1,128 +1,70 @@
 # Session Handoff Notes
 
-**Last Updated: 2025-12-27 00:15 UTC**
+**Last Updated: 2025-12-26 19:00 UTC**
 
-## Current Status: Research Report Complete
+## Current Status: Trends URL Parameter Fix Complete
 
-### All Tasks Completed
+### Just Completed: Trends Dashboard URL Parameter Persistence
 
-The AI Coding Impact Research Report is now complete with all 6 review checks passed.
+Fixed issues where URL parameters weren't being updated when user changed settings on the Trends dashboard.
 
 ---
 
 ## Completed Work
 
-### 1. Comprehensive Report Review ✅ (Commit: `92859f0`)
+### 1. Trends URL Parameters Fix
 
-All 6 review checks completed:
+**Problem**: When changing granularity (weekly/monthly) or date presets (This Year, etc.), the URL wasn't updating, making it impossible to bookmark or share specific views.
 
-#### 1.1 Sanity Check ✅
-- Verified all sections logically ordered
-- Fixed contradictions (Lago→GrowthBook at 0% adoption)
-- Executive summary matches detailed findings
+**Solution**: Updated Alpine.js components to use `history.pushState()` before making HTMX requests.
 
-#### 1.2 Data Validation ✅
-Statistics validated against DB for original 51 teams:
-- Teams with faster review times: 33/51 → **35/50** (corrected)
-- Team at 0%: "Lago" → **"GrowthBook"** (Lago not in 51-team set)
-- Plane adoption: 87.3% → **85.6%** (DB verified)
-- Cal.com pattern: "0.2% Feb → 80.6% Jun" → **"22.9% Jan → 78.8% Jun"**
-- Formbricks Dec: 8% → **1%**
-- Monthly trend Jan: 7.9% → **8.3%**
-- Monthly trend Peak: 19.1% → **16.8%**
-- Monthly trend Dec: 15.5% → **14.6%**
-- YoY Growth: +96% → **+76%**
+**Files Modified**:
+- `templates/metrics/analytics/trends.html` - Added `updateUrlAndChart()` function
+- `templates/metrics/partials/date_range_picker.html` - Refactored `navigate()` to preserve params
 
-#### 1.3 Legal Check ✅
-- Disclaimer language adequate
-- Trademark attributions present (GitHub®, Jira®, Slack®)
-- "Not professional advice" language present
-- Data limitation disclosures complete
+**Tests Added**: 7 new unit tests in `apps/metrics/tests/test_trends_views.py::TestTrendsURLParameters`
 
-#### 1.4 Senior Analytics Review ✅
-- Statistical methodology sound (mean, median, stddev, IQR)
-- Confidence intervals correctly calculated (12.7% ± 0.19%)
-- Correlation vs causation disclaimers present
-- Selection bias acknowledged (voluntary disclosure)
-- Sample size adequate (117,739 PRs, 51 teams)
+**Playwright Verification**: All 4 scenarios passed:
+1. Monthly button updates URL with `granularity=monthly`
+2. This Year preset updates URL with `preset=this_year`
+3. Weekly button preserves preset, updates `granularity=weekly`
+4. 30d button clears preset, sets `days=30`
 
-#### 1.5 ICP (CTO) Review ✅
-- Key insights at top of report
-- Actionable takeaways clear
-- Structure logical for busy executives
-- CTAs positioned effectively
+### 2. Previous Session: AI Research Report (Already Committed)
 
-#### 1.6 External Source Links ✅
-- Stack Overflow 2025: https://survey.stackoverflow.co/2025/ai ✅
-- JetBrains 2025: https://devecosystem-2025.jetbrains.com/artificial-intelligence ✅
-- Stack Overflow 2024: https://survey.stackoverflow.co/2024/ai ✅
-
-### 2. Previous Session Improvements (Already Committed)
-
-| Commit | Description |
-|--------|-------------|
-| `ed4438a` | Add bullet points and key metrics to report sections |
-| `e277005` | Fix h2 heading font size - larger and bolder |
-| `3664822` | Update research report: theme toggle, 51 teams, h2 consistency |
-| `6ac192e` | Add fixed sidebar TOC and responsive layout |
-
----
-
-## Research Findings Summary (Final - 51 Teams)
-
-| Metric | Value | Notes |
-|--------|-------|-------|
-| Total PRs | 117,739 | From 51 teams with 500+ PRs |
-| AI Adoption | 12.7% ± 0.19% | 95% CI |
-| Cycle Time | -5% | AI-assisted PRs faster |
-| Review Time | -52% | AI-assisted PRs much faster |
-| LLM Analyzed | 89,239 | 75.8% of total |
-| Teams Faster Review | 35/50 | 70% show improvement |
+All 6 review checks completed - report is ready for publication.
 
 ---
 
 ## OSS Expansion Status
 
-**Note:** 62 teams now in DB (was 51), but report uses original 51 teams for data integrity.
+**Note:** OSS expansion seeding is in progress in separate terminals.
 
-If updating report with new teams later:
-1. Ensure all new team PRs have LLM analysis complete
-2. Re-export data: `.venv/bin/python docs/scripts/export_report_data.py`
-3. Update all statistics in report
-4. Re-run comprehensive review process
+See `dev/active/oss-expansion/oss-expansion-tasks.md` for current status.
 
 ---
 
 ## Git Status
 
 ```
-Recent commits:
-92859f0 Fix report data accuracy after comprehensive review
-ed4438a Add bullet points and key metrics to report sections
-e277005 Fix h2 heading font size - larger and bolder
-3664822 Update research report: theme toggle, 51 teams, h2 consistency
+Uncommitted changes:
+- templates/metrics/analytics/trends.html (Alpine.js URL fix)
+- templates/metrics/partials/date_range_picker.html (navigate() refactor)
+- apps/metrics/tests/test_trends_views.py (7 new tests)
+- dev/active/trends-url-parameters/ (new docs)
 ```
-
----
-
-## No Pending Work
-
-The research report is complete and ready for publication.
 
 ---
 
 ## Commands Reference
 
 ```bash
-# View the report
-open docs/index.html
+# Run trends tests
+.venv/bin/pytest apps/metrics/tests/test_trends_views.py -v
 
-# Re-export data (if needed for future updates)
-.venv/bin/python docs/scripts/export_report_data.py
-
-# Check current stats
-cat docs/data/overall_stats.txt
-
-# Run tests
+# Run all tests
 make test
+
+# View trends page
+open http://localhost:8000/app/metrics/analytics/trends/?days=30
 ```

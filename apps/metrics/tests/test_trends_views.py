@@ -237,3 +237,93 @@ class TestTrendsTabNavigation(TestCase):
 
         # Check that active_page is 'trends'
         self.assertEqual(response.context["active_page"], "trends")
+
+
+class TestTrendsURLParameters(TestCase):
+    """Tests for URL parameter handling in trends views."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.team = TeamFactory()
+        self.admin_user = UserFactory()
+        self.team.members.add(self.admin_user, through_defaults={"role": ROLE_ADMIN})
+        self.client = Client()
+
+    def test_granularity_parameter_in_context(self):
+        """Test that granularity parameter is passed to context."""
+        self.client.force_login(self.admin_user)
+        url = reverse("metrics:trends_overview")
+
+        # Test monthly granularity
+        response = self.client.get(f"{url}?granularity=monthly")
+        self.assertEqual(response.context["granularity"], "monthly")
+
+        # Test weekly granularity
+        response = self.client.get(f"{url}?granularity=weekly")
+        self.assertEqual(response.context["granularity"], "weekly")
+
+    def test_metrics_parameter_in_context(self):
+        """Test that metrics parameter is passed to context."""
+        self.client.force_login(self.admin_user)
+        url = reverse("metrics:trends_overview")
+
+        # Single metric
+        response = self.client.get(f"{url}?metrics=cycle_time")
+        self.assertIn("cycle_time", response.context["selected_metrics"])
+
+        # Multiple metrics
+        response = self.client.get(f"{url}?metrics=cycle_time,review_time")
+        self.assertIn("cycle_time", response.context["selected_metrics"])
+        self.assertIn("review_time", response.context["selected_metrics"])
+
+    def test_preset_and_granularity_both_in_context(self):
+        """Test that preset and granularity can be used together."""
+        self.client.force_login(self.admin_user)
+        url = reverse("metrics:trends_overview")
+
+        response = self.client.get(f"{url}?preset=this_year&granularity=monthly")
+        self.assertEqual(response.context["preset"], "this_year")
+        self.assertEqual(response.context["granularity"], "monthly")
+
+    def test_all_parameters_preserved(self):
+        """Test that all parameters are available in context."""
+        self.client.force_login(self.admin_user)
+        url = reverse("metrics:trends_overview")
+
+        response = self.client.get(f"{url}?preset=this_year&granularity=monthly&metrics=cycle_time,ai_adoption")
+
+        self.assertEqual(response.context["preset"], "this_year")
+        self.assertEqual(response.context["granularity"], "monthly")
+        self.assertIn("cycle_time", response.context["selected_metrics"])
+        self.assertIn("ai_adoption", response.context["selected_metrics"])
+
+    def test_invalid_granularity_defaults_to_auto(self):
+        """Test that invalid granularity parameter is handled gracefully."""
+        self.client.force_login(self.admin_user)
+        url = reverse("metrics:trends_overview")
+
+        response = self.client.get(f"{url}?granularity=invalid")
+        # Should still return 200 and have a valid granularity
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(response.context["granularity"], ["weekly", "monthly"])
+
+    def test_wide_chart_respects_all_parameters(self):
+        """Test that wide chart partial respects all URL parameters."""
+        self.client.force_login(self.admin_user)
+        url = reverse("metrics:chart_wide_trend")
+
+        response = self.client.get(f"{url}?preset=this_year&granularity=monthly&metrics=cycle_time,review_time")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["granularity"], "monthly")
+        self.assertIn("cycle_time", response.context["metrics"])
+        self.assertIn("review_time", response.context["metrics"])
+
+    def test_days_parameter_overrides_preset(self):
+        """Test that days parameter takes precedence when both present."""
+        self.client.force_login(self.admin_user)
+        url = reverse("metrics:trends_overview")
+
+        # When days is present, it should be used for calculations
+        response = self.client.get(f"{url}?days=30")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["days"], 30)

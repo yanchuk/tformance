@@ -29,17 +29,31 @@
              } else if (this.selectedMetrics.length < this.maxMetrics) {
                this.selectedMetrics.push(id);
              }
-             this.updateChart();
+             this.updateUrlAndChart();
            },
            setGranularity(g) {
              this.granularity = g;
+             this.updateUrlAndChart();
+           },
+           updateUrlAndChart() {
+             // Build URL with all current parameters
+             const params = new URLSearchParams(window.location.search);
+             params.set('granularity', this.granularity);
+             params.set('metrics', this.selectedMetrics.join(','));
+             const newUrl = window.location.pathname + '?' + params.toString();
+             // Update browser URL without reloading
+             history.pushState({}, '', newUrl);
+             // Update charts via HTMX
              this.updateChart();
            },
            updateChart() {
              const metricsParam = this.selectedMetrics.join(',');
-             htmx.ajax('GET', '{% url 'metrics:chart_wide_trend' %}?metrics=' + metricsParam + '&days={{ days }}&preset={{ preset }}&granularity=' + this.granularity, {target:'#wide-chart-container', swap:'innerHTML'});
+             const params = new URLSearchParams(window.location.search);
+             const days = params.get('days') || '{{ days }}';
+             const preset = params.get('preset') || '{{ preset }}';
+             htmx.ajax('GET', '{% url 'metrics:chart_wide_trend' %}?metrics=' + metricsParam + '&days=' + days + '&preset=' + preset + '&granularity=' + this.granularity, {target:'#wide-chart-container', swap:'innerHTML'});
              if (this.selectedMetrics.length === 1) {
-               htmx.ajax('GET', '{% url 'metrics:benchmark_panel' metric='cycle_time' %}'.replace('cycle_time', this.selectedMetrics[0]) + '?days={{ days }}', {target:'#benchmark-panel-container', swap:'innerHTML'});
+               htmx.ajax('GET', '{% url 'metrics:benchmark_panel' metric='cycle_time' %}'.replace('cycle_time', this.selectedMetrics[0]) + '?days=' + days, {target:'#benchmark-panel-container', swap:'innerHTML'});
              }
            }
          }">

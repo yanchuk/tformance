@@ -193,7 +193,7 @@
         this.preset = '';
         this.customStart = '';
         this.customEnd = '';
-        this.navigate(`?days=${d}`);
+        this.navigate({days: d});
       },
 
       setPreset(p) {
@@ -201,7 +201,7 @@
         this.days = 0;
         this.customStart = '';
         this.customEnd = '';
-        this.navigate(`?preset=${p}`);
+        this.navigate({preset: p});
       },
 
       applyCustomRange() {
@@ -209,19 +209,42 @@
           this.preset = 'custom';
           this.days = 0;
           this.$refs.customModal.close();
-          this.navigate(`?start=${this.customStart}&end=${this.customEnd}`);
+          this.navigate({start: this.customStart, end: this.customEnd});
         }
       },
 
-      navigate(query) {
-        // Use HTMX to update the page content
-        const url = window.location.pathname + query;
+      navigate(newParams) {
+        // Preserve existing params like granularity and metrics
+        const params = new URLSearchParams(window.location.search);
+
+        // Clear conflicting date params when setting new ones
+        if (newParams.days) {
+          params.delete('preset');
+          params.delete('start');
+          params.delete('end');
+          params.set('days', newParams.days);
+        } else if (newParams.preset) {
+          params.delete('days');
+          params.delete('start');
+          params.delete('end');
+          params.set('preset', newParams.preset);
+        } else if (newParams.start && newParams.end) {
+          params.delete('days');
+          params.delete('preset');
+          params.set('start', newParams.start);
+          params.set('end', newParams.end);
+        }
+
+        // Build URL with preserved params
+        const url = window.location.pathname + '?' + params.toString();
         const target = document.getElementById('page-content');
         if (target && window.htmx) {
+          // Update browser URL first
+          history.pushState({}, '', url);
+          // Then update content via HTMX
           htmx.ajax('GET', url, {
             target: target,
-            swap: 'outerHTML',
-            pushUrl: true
+            swap: 'outerHTML'
           });
         } else {
           // Fallback to regular navigation
