@@ -225,6 +225,47 @@
         .badge-primary { background: rgba(249, 115, 22, 0.2); color: var(--primary); }
         .badge-purple { background: rgba(168, 85, 247, 0.2); color: var(--purple); }
 
+        /* Table Pagination */
+        .table-pagination {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            margin-top: 1rem;
+            padding: 0.75rem;
+            background: var(--bg-card);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        .pagination-btn {
+            padding: 0.5rem 1rem;
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+
+        .pagination-btn:hover:not(:disabled) {
+            border-color: var(--primary);
+            color: var(--primary);
+            background: rgba(249, 115, 22, 0.1);
+        }
+
+        .pagination-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .pagination-info {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
         .insight-box {
             background: rgba(90, 153, 151, 0.1);
             border-left: 4px solid var(--secondary);
@@ -1261,6 +1302,64 @@
         .logo { font-size: 1.5rem; font-weight: 700; color: var(--primary); margin-bottom: 0.5rem; }
         .mono { font-family: 'JetBrains Mono', monospace; }
 
+        /* Reading Progress Bar */
+        .reading-progress {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 0%;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            z-index: 1000;
+            transition: width 0.1s ease-out;
+        }
+
+        /* Back to Top Button */
+        .back-to-top {
+            position: fixed;
+            right: 2rem;
+            bottom: 2rem;
+            width: 48px;
+            height: 48px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 50%;
+            cursor: pointer;
+            z-index: 100;
+            color: var(--text);
+            font-size: 1.25rem;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(20px);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .back-to-top.visible {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .back-to-top:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 24px rgba(249, 115, 22, 0.3);
+        }
+
+        @media (max-width: 768px) {
+            .back-to-top {
+                right: 1rem;
+                bottom: 5rem; /* Above mobile TOC toggle */
+                width: 44px;
+                height: 44px;
+            }
+        }
+
         @media print {
             body { background: white; color: #333; }
             .stat-card, .chart-container, .methodology, .takeaway-card { background: #f5f5f5; border-color: #ddd; }
@@ -1269,6 +1368,12 @@
     </style>
 </head>
 <body>
+    <!-- Reading Progress Bar -->
+    <div class="reading-progress" id="reading-progress"></div>
+
+    <!-- Back to Top Button -->
+    <button class="back-to-top" id="back-to-top" aria-label="Back to top">↑</button>
+
     <!-- Table of Contents - Always Visible Sidebar -->
     <nav class="toc-sidebar" id="toc">
         <div class="toc-brand">tformance</div>
@@ -1678,6 +1783,13 @@
                 <tbody id="teamTableBody">
                 </tbody>
             </table>
+
+            <!-- Table Pagination -->
+            <div class="table-pagination" id="teamTablePagination">
+                <button class="pagination-btn" id="prevPage" onclick="changePage(-1)">← Prev</button>
+                <span class="pagination-info" id="pageInfo">Page 1 of 3</span>
+                <button class="pagination-btn" id="nextPage" onclick="changePage(1)">Next →</button>
+            </div>
         </section>
 
         <!-- DETECTION METHOD COMPARISON - STANDALONE SECTION -->
@@ -3294,12 +3406,21 @@
             }
         });
 
-        // Populate table using DOM methods (safer than innerHTML)
+        // Table Pagination Config
+        const ROWS_PER_PAGE = 20;
+        let currentPage = 1;
+        const totalPages = Math.ceil(teamData.length / ROWS_PER_PAGE);
+
+        // Populate table with pagination
         function populateTable() {
             const tbody = document.getElementById('teamTableBody');
             tbody.textContent = ''; // Clear safely
 
-            teamData.forEach(t => {
+            const start = (currentPage - 1) * ROWS_PER_PAGE;
+            const end = start + ROWS_PER_PAGE;
+            const pageData = teamData.slice(start, end);
+
+            pageData.forEach(t => {
                 const tr = document.createElement('tr');
 
                 const tdTeam = document.createElement('td');
@@ -3353,7 +3474,21 @@
 
                 tbody.appendChild(tr);
             });
+
+            updatePaginationControls();
         }
+
+        function updatePaginationControls() {
+            document.getElementById('pageInfo').textContent = `Page ${currentPage} of ${totalPages}`;
+            document.getElementById('prevPage').disabled = currentPage === 1;
+            document.getElementById('nextPage').disabled = currentPage === totalPages;
+        }
+
+        function changePage(delta) {
+            currentPage = Math.max(1, Math.min(totalPages, currentPage + delta));
+            populateTable();
+        }
+        window.changePage = changePage;
 
         populateTable();
 
@@ -3417,6 +3552,31 @@
 
         window.addEventListener('scroll', highlightToc);
         highlightToc();
+
+        // Reading Progress Bar
+        const progressBar = document.getElementById('reading-progress');
+        function updateProgress() {
+            const scrollTop = window.scrollY;
+            const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+            const progress = (scrollTop / docHeight) * 100;
+            progressBar.style.width = progress + '%';
+        }
+        window.addEventListener('scroll', updateProgress);
+        updateProgress();
+
+        // Back to Top Button
+        const backToTop = document.getElementById('back-to-top');
+        function toggleBackToTop() {
+            if (window.scrollY > 400) {
+                backToTop.classList.add('visible');
+            } else {
+                backToTop.classList.remove('visible');
+            }
+        }
+        window.addEventListener('scroll', toggleBackToTop);
+        backToTop.addEventListener('click', () => {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
     </script>
 </body>
 </html>
