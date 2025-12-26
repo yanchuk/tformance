@@ -959,6 +959,43 @@
                     <li>Human-directed AI tools (Claude, Cursor, Copilot) have the largest detection gaps — developers don't always mention them explicitly</li>
                 </ul>
             </div>
+
+            <!-- Per-Team Detection Comparison -->
+            <h3 style="margin-top: 2.5rem; margin-bottom: 1rem;">Detection Improvement by Team</h3>
+            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1rem;">
+                How much more AI usage does LLM detect compared to regex patterns? Positive = LLM finds more, Negative = Regex over-matches.
+            </p>
+
+            <div class="chart-container" style="background: var(--bg-card);">
+                <div class="chart-wrapper tall">
+                    <canvas id="teamDetectionChart"></canvas>
+                </div>
+            </div>
+
+            <div class="two-col" style="margin-top: 1.5rem;">
+                <div class="insight-box" style="background: rgba(34, 197, 94, 0.1); border-color: var(--success);">
+                    <strong style="color: var(--success);">Biggest LLM Improvements:</strong>
+                    <ul style="margin-top: 0.5rem; padding-left: 1.25rem; font-size: 0.9rem;">
+                        <li><strong>Deno</strong> — +408% more AI PRs detected</li>
+                        <li><strong>Twenty CRM</strong> — +360% improvement</li>
+                        <li><strong>PostHog</strong> — +200% (312 more PRs)</li>
+                        <li><strong>Cal.com</strong> — +476 additional AI PRs</li>
+                    </ul>
+                </div>
+                <div class="insight-box" style="background: rgba(239, 68, 68, 0.1); border-color: var(--error);">
+                    <strong style="color: var(--error);">Regex Over-Matching:</strong>
+                    <ul style="margin-top: 0.5rem; padding-left: 1.25rem; font-size: 0.9rem;">
+                        <li><strong>Vercel</strong> — Regex found 135 more (likely false positives)</li>
+                        <li><strong>LangChain</strong> — Regex found 50 more</li>
+                        <li>LLM more conservative with ambiguous mentions</li>
+                    </ul>
+                </div>
+            </div>
+
+            <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 1rem; font-style: italic;">
+                Note: Teams with low AI usage show high percentage improvements but small absolute numbers.
+                High-adoption teams like Plane (87%) show near-parity between methods.
+            </p>
         </section>
 
         <!-- METHODOLOGY - SIMPLIFIED -->
@@ -1401,6 +1438,94 @@
                 scales: {
                     x: { ticks: { color: colors.text }, grid: { color: colors.grid } },
                     y: { ticks: { color: colors.text }, grid: { color: colors.grid }, title: { display: true, text: 'AI Adoption %', color: colors.text } }
+                }
+            }
+        });
+
+        // Team Detection Comparison: LLM vs Regex
+        const teamDetectionData = [
+            { team: 'Cal.com', llm: 2336, regex: 1860, delta: 476, pctChange: 25.6 },
+            { team: 'PostHog', llm: 468, regex: 156, delta: 312, pctChange: 200.0 },
+            { team: 'Twenty CRM', llm: 267, regex: 58, delta: 209, pctChange: 360.3 },
+            { team: 'Deno', llm: 66, regex: 13, delta: 53, pctChange: 407.7 },
+            { team: 'Antiwork', llm: 2473, regex: 2429, delta: 44, pctChange: 1.8 },
+            { team: 'Neon', llm: 71, regex: 36, delta: 35, pctChange: 97.2 },
+            { team: 'Polar.sh', llm: 295, regex: 265, delta: 30, pctChange: 11.3 },
+            { team: 'Plane', llm: 1318, regex: 1322, delta: -4, pctChange: -0.3 },
+            { team: 'Trigger.dev', llm: 217, regex: 238, delta: -21, pctChange: -8.8 },
+            { team: 'LangChain', llm: 164, regex: 214, delta: -50, pctChange: -23.4 },
+            { team: 'Vercel', llm: 114, regex: 249, delta: -135, pctChange: -54.2 }
+        ];
+
+        charts.teamDetection = new Chart(document.getElementById('teamDetectionChart'), {
+            type: 'bar',
+            data: {
+                labels: teamDetectionData.map(t => t.team),
+                datasets: [{
+                    label: 'LLM Improvement (+) / Regex Over-Match (-)',
+                    data: teamDetectionData.map(t => t.delta),
+                    backgroundColor: teamDetectionData.map(t =>
+                        t.delta > 0 ? 'rgba(34, 197, 94, 0.8)' : 'rgba(239, 68, 68, 0.8)'
+                    ),
+                    borderColor: teamDetectionData.map(t =>
+                        t.delta > 0 ? '#22c55e' : '#ef4444'
+                    ),
+                    borderWidth: 1,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    title: {
+                        display: true,
+                        text: 'Additional AI PRs Detected: LLM vs Regex',
+                        color: colors.text,
+                        font: { size: 14 }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(ctx) {
+                                const t = teamDetectionData[ctx.dataIndex];
+                                const sign = t.delta > 0 ? '+' : '';
+                                return [
+                                    `Delta: ${sign}${t.delta} PRs (${sign}${t.pctChange.toFixed(1)}%)`,
+                                    `LLM: ${t.llm} AI PRs`,
+                                    `Regex: ${t.regex} AI PRs`
+                                ];
+                            }
+                        }
+                    },
+                    datalabels: {
+                        display: true,
+                        anchor: function(ctx) {
+                            return teamDetectionData[ctx.dataIndex].delta >= 0 ? 'end' : 'start';
+                        },
+                        align: function(ctx) {
+                            return teamDetectionData[ctx.dataIndex].delta >= 0 ? 'right' : 'left';
+                        },
+                        color: colors.text,
+                        font: { weight: 'bold', size: 11 },
+                        formatter: function(value, ctx) {
+                            const t = teamDetectionData[ctx.dataIndex];
+                            const sign = value > 0 ? '+' : '';
+                            return `${sign}${value} (${sign}${t.pctChange.toFixed(0)}%)`;
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        ticks: { color: colors.text },
+                        grid: { color: colors.grid },
+                        title: { display: true, text: 'Additional AI PRs Detected', color: colors.text }
+                    },
+                    y: {
+                        ticks: { color: colors.text },
+                        grid: { color: colors.grid }
+                    }
                 }
             }
         });
