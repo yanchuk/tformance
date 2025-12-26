@@ -298,11 +298,11 @@ class SurveyAISimulator:
         member: TeamMember,
         start_date: timezone.datetime,
         end_date: timezone.datetime,
-    ) -> list:
-        """Generate daily AI usage records for a team member.
+    ) -> list[AIUsageDaily]:
+        """Generate daily AI usage records for a team member (in-memory).
 
-        Creates records for workdays only (Mon-Fri) with consistent
-        patterns per member but daily variation.
+        Creates record objects for workdays only (Mon-Fri) with consistent
+        patterns per member but daily variation. Records are NOT saved to DB.
 
         Args:
             team: Team model instance.
@@ -311,7 +311,7 @@ class SurveyAISimulator:
             end_date: End of date range.
 
         Returns:
-            List of created AIUsageDaily instances.
+            List of unsaved AIUsageDaily instances.
         """
         pattern = self.get_or_create_member_pattern(member)
         records = []
@@ -320,21 +320,21 @@ class SurveyAISimulator:
         while current_date <= end_date:
             # Skip weekends and some workdays (vacation, meetings, etc. - 85% work rate)
             if current_date.weekday() < 5 and self.rng.random() < 0.85:  # Mon-Fri, 85% of workdays
-                record = self._create_daily_usage(team, member, current_date.date(), pattern)
+                record = self._build_daily_usage(team, member, current_date.date(), pattern)
                 records.append(record)
 
             current_date += timedelta(days=1)
 
         return records
 
-    def _create_daily_usage(
+    def _build_daily_usage(
         self,
         team: models.Model,
         member: TeamMember,
         date,
         pattern: AIUsagePattern,
-    ):
-        """Create a single day's AI usage record.
+    ) -> AIUsageDaily:
+        """Build a single day's AI usage record (in-memory, not saved).
 
         Args:
             team: Team model instance.
@@ -343,7 +343,7 @@ class SurveyAISimulator:
             pattern: Member's AI usage pattern.
 
         Returns:
-            Created AIUsageDaily instance.
+            Unsaved AIUsageDaily instance.
         """
         # Add daily variation (0.7-1.3x base values)
         variation = self.rng.uniform(0.7, 1.3)
@@ -359,20 +359,17 @@ class SurveyAISimulator:
             else Decimal("0")
         )
 
-        # Create or update the record (idempotent for re-runs)
-        record, _created = AIUsageDaily.objects.update_or_create(
+        # Build record without saving (for bulk insert)
+        return AIUsageDaily(
             team=team,
             member=member,
             date=date,
             source=pattern.primary_source,
-            defaults={
-                "active_hours": active_hours,
-                "suggestions_shown": suggestions_shown,
-                "suggestions_accepted": suggestions_accepted,
-                "acceptance_rate": acceptance_rate,
-            },
+            active_hours=active_hours,
+            suggestions_shown=suggestions_shown,
+            suggestions_accepted=suggestions_accepted,
+            acceptance_rate=acceptance_rate,
         )
-        return record
 
     def generate_team_ai_usage(
         self,
@@ -380,22 +377,60 @@ class SurveyAISimulator:
         members: list[TeamMember],
         start_date: timezone.datetime,
         end_date: timezone.datetime,
-    ) -> list:
-        """Generate AI usage records for all team members.
+        batch_size: int = 5000,
+    ) -> int:
+        """Generate AI usage records for all team members using bulk insert.
+
+        Uses bulk_create with update_conflicts for 10-50x faster seeding.
 
         Args:
             team: Team model instance.
             members: List of TeamMember instances.
             start_date: Start of date range.
             end_date: End of date range.
+            batch_size: Number of records per bulk insert (default 5000).
 
         Returns:
-            List of all created AIUsageDaily instances.
+            Total number of records created/updated.
         """
-        all_records = []
+        all_records: list[AIUsageDaily] = []
+        total_created = 0
+
         for member in members:
             # Only some members use AI tools
             if self.rng.random() < self.config.ai_base_adoption_rate:
                 records = self.generate_ai_usage_for_member(team, member, start_date, end_date)
                 all_records.extend(records)
-        return all_records
+
+                # Bulk insert when batch is full
+                if len(all_records) >= batch_size:
+                    total_created += self._bulk_upsert_ai_usage(all_records)
+                    all_records = []
+
+        # Insert remaining records
+        if all_records:
+            total_created += self._bulk_upsert_ai_usage(all_records)
+
+        return total_created
+
+    def _bulk_upsert_ai_usage(self, records: list[AIUsageDaily]) -> int:
+        """Bulk insert/update AI usage records.
+
+        Uses PostgreSQL ON CONFLICT DO UPDATE for idempotent upserts.
+
+        Args:
+            records: List of AIUsageDaily instances to insert/update.
+
+        Returns:
+            Number of records processed.
+        """
+        if not records:
+            return 0
+
+        AIUsageDaily.objects.bulk_create(
+            records,
+            update_conflicts=True,
+            unique_fields=["team", "member", "date", "source"],
+            update_fields=["active_hours", "suggestions_shown", "suggestions_accepted", "acceptance_rate"],
+        )
+        return len(records)

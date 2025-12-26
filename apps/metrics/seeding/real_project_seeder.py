@@ -19,8 +19,9 @@ from datetime import timedelta
 from decimal import Decimal
 from typing import Any
 
-from django.db import transaction
+from django.db import models, transaction
 from django.db.models import Avg, Sum
+from django.db.models.functions import TruncWeek
 from django.utils import timezone
 
 from apps.metrics.factories import (
@@ -31,7 +32,6 @@ from apps.metrics.factories import (
     PullRequestFactory,
     TeamFactory,
     TeamMemberFactory,
-    WeeklyMetricsFactory,
 )
 from apps.metrics.models import PullRequest, TeamMember, WeeklyMetrics
 from apps.metrics.services.ai_detector import detect_ai_in_text, detect_ai_reviewer, parse_co_authors
@@ -825,113 +825,132 @@ class RealProjectSeeder:
         start_date = timezone.now() - timedelta(days=self.config.days_back)
         end_date = timezone.now()
 
-        records = self._survey_simulator.generate_team_ai_usage(
+        # Returns count directly (uses bulk_create internally)
+        self._stats.ai_usage_records = self._survey_simulator.generate_team_ai_usage(
             team=team,
             members=members,
             start_date=start_date,
             end_date=end_date,
         )
-        self._stats.ai_usage_records = len(records)
 
         logger.info(f"Created {self._stats.ai_usage_records} AI usage records")
 
     def _calculate_weekly_metrics(self, team: Team):
-        """Calculate and store weekly metrics aggregates.
+        """Calculate and store weekly metrics aggregates using bulk operations.
+
+        Optimized version that pre-fetches data and uses bulk_create.
 
         Args:
             team: Team instance.
         """
-        logger.info("Calculating weekly metrics...")
+        from apps.metrics.models import Commit
 
-        members = TeamMember.objects.filter(team=team, is_active=True)
+        logger.info("Calculating weekly metrics (bulk)...")
 
-        for member in members:
-            self._calculate_member_weekly_metrics(team, member)
-
-        logger.info(f"Created {self._stats.weekly_metrics_created} weekly metrics records")
-
-    def _calculate_member_weekly_metrics(self, team: Team, member: TeamMember):
-        """Calculate weekly metrics for a single member.
-
-        Args:
-            team: Team instance.
-            member: TeamMember instance.
-        """
         # Get date range
         end_date = timezone.now().date()
         start_date = end_date - timedelta(days=self.config.days_back)
+        week_start_date = start_date - timedelta(days=start_date.weekday())
 
-        # Calculate week start (Monday)
-        current_week_start = start_date - timedelta(days=start_date.weekday())
-
-        while current_week_start <= end_date:
-            week_end = current_week_start + timedelta(days=6)
-
-            # Get PRs merged this week by this member
-            week_prs = PullRequest.objects.filter(
+        # Pre-fetch all PR data grouped by author and week
+        pr_stats = (
+            PullRequest.objects.filter(
                 team=team,
-                author=member,
                 state="merged",
-                merged_at__date__gte=current_week_start,
-                merged_at__date__lte=week_end,
+                merged_at__date__gte=week_start_date,
+                merged_at__date__lte=end_date,
             )
+            .values("author_id")
+            .annotate(
+                week_start=TruncWeek("merged_at"),
+                prs_merged=models.Count("id"),
+                avg_cycle=Avg("cycle_time_hours"),
+                avg_review=Avg("review_time_hours"),
+                ai_assisted=models.Count("id", filter=models.Q(is_ai_assisted=True)),
+            )
+        )
 
-            if not week_prs.exists():
-                current_week_start += timedelta(days=7)
-                continue
+        # Build lookup: (author_id, week_start) -> pr_stats
+        pr_lookup: dict[tuple, dict] = {}
+        for stat in pr_stats:
+            key = (stat["author_id"], stat["week_start"].date() if stat["week_start"] else None)
+            if key[1]:  # Only if week_start is valid
+                pr_lookup[key] = stat
 
-            # Calculate aggregates
-            prs_merged = week_prs.count()
-            avg_cycle = week_prs.aggregate(avg=Avg("cycle_time_hours"))["avg"]
-            avg_review = week_prs.aggregate(avg=Avg("review_time_hours"))["avg"]
-
-            # Get commits
-            from apps.metrics.models import Commit
-
-            week_commits = Commit.objects.filter(
+        # Pre-fetch commit data grouped by author and week
+        commit_stats = (
+            Commit.objects.filter(
                 team=team,
-                author=member,
-                committed_at__date__gte=current_week_start,
-                committed_at__date__lte=week_end,
+                committed_at__date__gte=week_start_date,
+                committed_at__date__lte=end_date,
             )
-            commits_count = week_commits.count()
-            lines_stats = week_commits.aggregate(
-                added=Sum("additions"),
-                deleted=Sum("deletions"),
+            .values("author_id")
+            .annotate(
+                week_start=TruncWeek("committed_at"),
+                commits_count=models.Count("id"),
+                lines_added=Sum("additions"),
+                lines_deleted=Sum("deletions"),
             )
+        )
 
-            # Check for existing record
-            existing = WeeklyMetrics.objects.filter(
-                team=team,
-                member=member,
-                week_start=current_week_start,
-            ).first()
+        # Build lookup: (author_id, week_start) -> commit_stats
+        commit_lookup: dict[tuple, dict] = {}
+        for stat in commit_stats:
+            key = (stat["author_id"], stat["week_start"].date() if stat["week_start"] else None)
+            if key[1]:
+                commit_lookup[key] = stat
 
-            if existing:
-                # Update existing
-                existing.prs_merged = prs_merged
-                existing.avg_cycle_time_hours = avg_cycle
-                existing.avg_review_time_hours = avg_review
-                existing.commits_count = commits_count
-                existing.lines_added = lines_stats["added"] or 0
-                existing.lines_removed = lines_stats["deleted"] or 0
-                existing.save()
-            else:
-                # Create new
-                WeeklyMetricsFactory(
-                    team=team,
-                    member=member,
-                    week_start=current_week_start,
-                    prs_merged=prs_merged,
-                    avg_cycle_time_hours=avg_cycle,
-                    avg_review_time_hours=avg_review,
-                    commits_count=commits_count,
-                    lines_added=lines_stats["added"] or 0,
-                    lines_removed=lines_stats["deleted"] or 0,
-                )
-                self._stats.weekly_metrics_created += 1
+        # Build all WeeklyMetrics objects
+        metrics_to_create: list[WeeklyMetrics] = []
+        members = TeamMember.objects.filter(team=team, is_active=True)
 
-            current_week_start += timedelta(days=7)
+        for member in members:
+            current_week = week_start_date
+            while current_week <= end_date:
+                pr_key = (member.id, current_week)
+                commit_key = (member.id, current_week)
+
+                pr_data = pr_lookup.get(pr_key)
+                commit_data = commit_lookup.get(commit_key)
+
+                # Only create if there's any data
+                if pr_data or commit_data:
+                    metrics_to_create.append(
+                        WeeklyMetrics(
+                            team=team,
+                            member=member,
+                            week_start=current_week,
+                            prs_merged=pr_data["prs_merged"] if pr_data else 0,
+                            avg_cycle_time_hours=pr_data["avg_cycle"] if pr_data else None,
+                            avg_review_time_hours=pr_data["avg_review"] if pr_data else None,
+                            ai_assisted_prs=pr_data["ai_assisted"] if pr_data else 0,
+                            commits_count=commit_data["commits_count"] if commit_data else 0,
+                            lines_added=commit_data["lines_added"] or 0 if commit_data else 0,
+                            lines_removed=commit_data["lines_deleted"] or 0 if commit_data else 0,
+                        )
+                    )
+
+                current_week += timedelta(days=7)
+
+        # Bulk upsert
+        if metrics_to_create:
+            WeeklyMetrics.objects.bulk_create(
+                metrics_to_create,
+                update_conflicts=True,
+                unique_fields=["team", "member", "week_start"],
+                update_fields=[
+                    "prs_merged",
+                    "avg_cycle_time_hours",
+                    "avg_review_time_hours",
+                    "ai_assisted_prs",
+                    "commits_count",
+                    "lines_added",
+                    "lines_removed",
+                ],
+            )
+            self._stats.weekly_metrics_created = len(metrics_to_create)
+
+        logger.info(f"Created {self._stats.weekly_metrics_created} weekly metrics records")
 
     def _generate_insights(self, team: Team):
         """Generate daily insights for the team.

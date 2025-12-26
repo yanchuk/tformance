@@ -561,6 +561,35 @@ CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
 # Run tasks synchronously in tests (no broker needed)
 CELERY_TASK_ALWAYS_EAGER = env.bool("CELERY_TASK_ALWAYS_EAGER", default=False)
 
+# Celery worker optimization
+CELERY_WORKER_PREFETCH_MULTIPLIER = 4  # Batch task fetching
+CELERY_TASK_ACKS_LATE = True  # Acknowledge after task completion (reliability)
+CELERY_WORKER_MAX_TASKS_PER_CHILD = 100  # Restart workers periodically (memory leaks)
+CELERY_TASK_SOFT_TIME_LIMIT = 300  # 5 min soft limit
+CELERY_TASK_TIME_LIMIT = 600  # 10 min hard limit
+
+# Task routing for production (separate queues for different workload types)
+# Usage: celery -A tformance worker -Q sync -c 8 --pool=gevent
+#        celery -A tformance worker -Q compute -c 4 --pool=prefork
+CELERY_TASK_ROUTES = {
+    # IO-bound tasks (API calls) -> 'sync' queue with gevent pool
+    "apps.integrations.tasks.sync_repository_task": {"queue": "sync"},
+    "apps.integrations.tasks.sync_repository_initial_task": {"queue": "sync"},
+    "apps.integrations.tasks.sync_all_repositories_task": {"queue": "sync"},
+    "apps.integrations.tasks.sync_github_members_task": {"queue": "sync"},
+    "apps.integrations.tasks.sync_jira_project_task": {"queue": "sync"},
+    "apps.integrations.tasks.sync_copilot_metrics_task": {"queue": "sync"},
+    "apps.integrations.tasks.fetch_pr_complete_data_task": {"queue": "sync"},
+    # LLM tasks (rate limited) -> 'llm' queue
+    "apps.metrics.tasks.run_llm_analysis_batch": {"queue": "llm"},
+    "apps.metrics.tasks.run_all_teams_llm_analysis": {"queue": "llm"},
+    # CPU-bound tasks (aggregation) -> 'compute' queue with prefork pool
+    "apps.metrics.tasks.compute_team_insights": {"queue": "compute"},
+    "apps.metrics.tasks.compute_all_team_insights": {"queue": "compute"},
+    "apps.integrations.tasks.aggregate_team_weekly_metrics_task": {"queue": "compute"},
+    "apps.integrations.tasks.aggregate_all_teams_weekly_metrics_task": {"queue": "compute"},
+}
+
 # Add tasks to this dict and run `python manage.py bootstrap_celery_tasks` to create them
 SCHEDULED_TASKS = {
     "test-celerybeat": {
