@@ -195,6 +195,115 @@
 
         .insight-box strong { color: var(--secondary); }
 
+        /* Table of Contents */
+        .toc-container {
+            position: fixed;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 200px;
+            max-height: 80vh;
+            overflow-y: auto;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1rem;
+            z-index: 100;
+            font-size: 0.75rem;
+        }
+
+        .toc-container h3 {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            margin: 0 0 0.75rem 0;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .toc-container ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .toc-container li {
+            margin: 0.25rem 0;
+        }
+
+        .toc-container a {
+            color: var(--text-muted);
+            text-decoration: none;
+            display: block;
+            padding: 0.35rem 0.5rem;
+            border-radius: 4px;
+            transition: all 0.2s;
+            border-left: 2px solid transparent;
+        }
+
+        .toc-container a:hover {
+            color: var(--text);
+            background: rgba(249, 115, 22, 0.1);
+        }
+
+        .toc-container a.active {
+            color: var(--primary);
+            background: rgba(249, 115, 22, 0.15);
+            border-left-color: var(--primary);
+            font-weight: 500;
+        }
+
+        .toc-toggle {
+            display: none;
+            position: fixed;
+            left: 1rem;
+            bottom: 1rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 50%;
+            width: 48px;
+            height: 48px;
+            cursor: pointer;
+            z-index: 101;
+            color: var(--text);
+            font-size: 1.25rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        .toc-toggle:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        @media (max-width: 1600px) {
+            .toc-container {
+                left: 0.5rem;
+                width: 180px;
+                font-size: 0.7rem;
+            }
+        }
+
+        @media (max-width: 1400px) {
+            .toc-container {
+                display: none;
+            }
+            .toc-container.show {
+                display: block;
+                left: 1rem;
+                top: auto;
+                bottom: 5rem;
+                transform: none;
+                max-height: 60vh;
+                width: 220px;
+            }
+            .toc-toggle {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+        }
+
         .takeaway-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -579,6 +688,28 @@
     </style>
 </head>
 <body>
+    <!-- Table of Contents -->
+    <nav class="toc-container" id="toc">
+        <h3>Contents</h3>
+        <ul>
+            <li><a href="#about">About This Research</a></li>
+            <li><a href="#stats">Statistical Confidence</a></li>
+            <li><a href="#trend-2025">2025 Adoption Trend</a></li>
+            <li><a href="#takeaways">Key Takeaways</a></li>
+            <li><a href="#summary">Executive Summary</a></li>
+            <li><a href="#tools">AI Tool Evolution</a></li>
+            <li><a href="#by-team">Adoption by Team</a></li>
+            <li><a href="#impact">AI Impact on Metrics</a></li>
+            <li><a href="#monthly">Monthly Trends</a></li>
+            <li><a href="#data">Complete Team Data</a></li>
+            <li><a href="#detection">Detection Methods</a></li>
+            <li><a href="#correlations">Correlations</a></li>
+            <li><a href="#methodology">Methodology</a></li>
+            <li><a href="#action">Action Items</a></li>
+        </ul>
+    </nav>
+    <button class="toc-toggle" id="toc-toggle" onclick="toggleToc()" title="Table of Contents">☰</button>
+
     <div class="container">
         <header>
             <button class="theme-toggle" onclick="toggleTheme()">
@@ -592,7 +723,7 @@
         </header>
 
         <!-- ABOUT THIS RESEARCH -->
-        <section class="about-research" style="background: linear-gradient(135deg, rgba(249, 115, 22, 0.1), rgba(90, 153, 151, 0.1)); border: 1px solid var(--border); border-radius: 16px; padding: 2rem; margin-bottom: 2rem;">
+        <section id="about" class="about-research" style="background: linear-gradient(135deg, rgba(249, 115, 22, 0.1), rgba(90, 153, 151, 0.1)); border: 1px solid var(--border); border-radius: 16px; padding: 2rem; margin-bottom: 2rem;">
             <h2>About This Research</h2>
             <p style="font-size: 1.1rem; margin-bottom: 1.5rem;">
                 This is a <strong>meta-analysis of ~54,000 pull requests</strong> from 28 open source projects throughout 2025, attempting to understand real-world AI coding tool adoption patterns and their impact on engineering metrics.
@@ -625,7 +756,7 @@
         </section>
 
         <!-- STATISTICAL CONFIDENCE -->
-        <section class="statistical-confidence" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 2rem; margin-bottom: 2rem;">
+        <section id="stats" class="statistical-confidence" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 2rem; margin-bottom: 2rem;">
             <h2>📊 Statistical Confidence</h2>
             <p style="color: var(--text-muted); margin-bottom: 1.5rem;">
                 How confident can we be in these findings? Here's a transparency breakdown of our statistical validity.
@@ -686,7 +817,7 @@
         </section>
 
         <!-- OVERALL AI ADOPTION TREND 2025 -->
-        <section>
+        <section id="trend-2025">
             <h2>AI Adoption Trend — 2025</h2>
             <p style="color: var(--text-muted); margin-bottom: 1rem;">
                 Overall AI-assisted PR rate across all 28 teams throughout 2025. Shows the growth trajectory from early adoption to mainstream usage.
@@ -720,7 +851,7 @@
         </section>
 
         <!-- KEY TAKEAWAYS - AT TOP -->
-        <section>
+        <section id="takeaways">
             <h2>Key Takeaways for Engineering Leaders</h2>
             <div class="takeaway-grid">
                 <div class="takeaway-card">
@@ -746,7 +877,7 @@
             </div>
         </section>
 
-        <section>
+        <section id="summary">
             <h2>Executive Summary</h2>
             <div class="stat-grid">
                 <div class="stat-card">
@@ -777,7 +908,7 @@
         </section>
 
         <!-- TOOL TRENDS OVER TIME - NEW SECTION -->
-        <section>
+        <section id="tools">
             <h2>AI Tool Evolution (2025)</h2>
             <p style="color: var(--text-muted); margin-bottom: 1rem;">Monthly trend of AI tool usage across all teams. Shows dramatic market shift throughout the year.</p>
 
@@ -807,7 +938,7 @@
             </div>
         </section>
 
-        <section>
+        <section id="by-team">
             <h2>AI Adoption by Team</h2>
             <p style="color: var(--text-muted); margin-bottom: 1rem;">All 26 teams with 50+ analyzed PRs in 2025, sorted by AI adoption rate.</p>
 
@@ -822,7 +953,7 @@
             </div>
         </section>
 
-        <section>
+        <section id="impact">
             <h2>AI Impact on Metrics</h2>
             <p style="color: var(--text-muted); margin-bottom: 1rem;">Comparing AI-assisted PRs vs non-AI PRs within each team. Green = AI improved metric, Red = AI increased metric.</p>
 
@@ -842,7 +973,7 @@
             </div>
         </section>
 
-        <section>
+        <section id="monthly">
             <h2>Monthly Adoption Trends by Team</h2>
             <div class="chart-container">
                 <div class="chart-wrapper tall">
@@ -855,7 +986,7 @@
             </div>
         </section>
 
-        <section>
+        <section id="data">
             <h2>Complete Team Data</h2>
 
             <div class="download-links">
@@ -881,7 +1012,7 @@
         </section>
 
         <!-- DETECTION METHOD COMPARISON - STANDALONE SECTION -->
-        <section class="comparison-section">
+        <section id="detection" class="comparison-section">
             <div class="comparison-header">
                 <div class="comparison-icon">🔬</div>
                 <div>
@@ -1139,7 +1270,7 @@
         </section>
 
         <!-- AI ADOPTION CORRELATIONS -->
-        <section class="correlations">
+        <section id="correlations" class="correlations">
             <h2>AI Adoption Correlations</h2>
             <p style="color: var(--text-muted); margin-bottom: 1.5rem;">
                 Analyzing 53,876 LLM-processed PRs to understand where AI tools are used most.
@@ -1297,7 +1428,7 @@
         </section>
 
         <!-- METHODOLOGY - SIMPLIFIED -->
-        <section class="methodology">
+        <section id="methodology" class="methodology">
             <h2>Methodology</h2>
 
             <div class="two-col" style="margin: 1.5rem 0;">
@@ -1344,7 +1475,7 @@
         </section>
 
         <!-- ACTION ITEMS FOR YOUR TEAM -->
-        <section class="cta-section" style="background: linear-gradient(135deg, rgba(249, 115, 22, 0.15), rgba(34, 197, 94, 0.1)); border: 2px solid var(--primary); border-radius: 16px; padding: 2.5rem; margin-top: 2rem;">
+        <section id="action" class="cta-section" style="background: linear-gradient(135deg, rgba(249, 115, 22, 0.15), rgba(34, 197, 94, 0.1)); border: 2px solid var(--primary); border-radius: 16px; padding: 2.5rem; margin-top: 2rem;">
             <h2 style="text-align: center; margin-bottom: 0.5rem;">🎯 Action Items for Your Team</h2>
             <p style="text-align: center; color: var(--text-muted); margin-bottom: 2rem;">Based on our findings, here's what engineering leaders should evaluate in their own teams.</p>
 
@@ -2323,6 +2454,36 @@
         }
 
         populateTable();
+
+        // TOC toggle for mobile
+        function toggleToc() {
+            document.getElementById('toc').classList.toggle('show');
+        }
+        window.toggleToc = toggleToc;
+
+        // Scroll spy for TOC highlighting
+        const sections = document.querySelectorAll('section[id]');
+        const tocLinks = document.querySelectorAll('.toc-container a');
+
+        function highlightToc() {
+            let current = '';
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                if (scrollY >= sectionTop - 200) {
+                    current = section.getAttribute('id');
+                }
+            });
+
+            tocLinks.forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('href') === '#' + current) {
+                    link.classList.add('active');
+                }
+            });
+        }
+
+        window.addEventListener('scroll', highlightToc);
+        highlightToc();
     </script>
 </body>
 </html>
