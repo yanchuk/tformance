@@ -1,102 +1,165 @@
 # Session Handoff Notes
 
-**Last Updated: 2025-12-26 18:05 UTC**
+**Last Updated: 2025-12-26 21:00 UTC**
 
-## Current Session: OSS Expansion Seeding
+## Current Session: Research Report Data Update & UX Improvements
 
-### Active Work
+### Completed This Session
 
-**2 Terminal processes running seeding:**
+1. **OSS Data Expansion** ✅
+   - Updated report with 51 teams (was 26), 117,739 PRs (was 60,545)
+   - Created `docs/scripts/export_report_data.py` for reproducible data exports
+   - **Key finding reversed**: AI cycle time now -5% (was +42%)
+   - Review time improvement: -52% (was -31%)
+   - **Committed**: `ef7e2a2` "Update research report with expanded OSS dataset"
 
-| Terminal | Current | Phase | Status |
-|----------|---------|-------|--------|
-| T1 | growthbook | Phase 1 | 🔄 2 left (growthbook, huly) |
-| T2 | openreplay | Phase 2 | 🔄 24 left |
+2. **Team Selector Changed to Dropdowns** ✅
+   - Changed from checkbox grid (26 teams) to 5 dropdown selects
+   - Scales better for 51+ teams
+   - Each dropdown allows selecting one team
 
-### Database Stats
+3. **UX Improvements** ✅
+   - Reading progress bar (gradient at top)
+   - Back-to-top floating button (appears after 400px scroll)
+   - Table pagination (20 teams per page, 3 pages total)
+   - **Committed**: `bdd3e08` "Add UX improvements for long report"
 
-| Metric | Value |
-|--------|-------|
-| **Total PRs** | 99,445 |
-| **Total Teams** | 54 |
-| **Phase 1** | ~23/25 done |
-| **Phase 2** | ~2/50 done |
-
-### Key Discovery This Session
-
-**LLM processing is NOT automatic!**
-
-The `seed_real_projects` command only:
-1. Fetches PR data from GitHub GraphQL
-2. Creates Team, TeamMember, PullRequest records
-3. Simulates Jira/surveys
-
-**LLM analysis must be run separately:**
-```bash
-export GROQ_API_KEY=$(grep "^GROQ_API_KEY=" .env | cut -d= -f2)
-.venv/bin/python manage.py run_llm_batch --team "TeamName" --limit 2000 --with-fallback
-```
+4. **Sortable Team Table** ✅
+   - Converted to Alpine.js component
+   - Click column headers to sort ascending/descending
+   - Sort indicator (▲/▼) shows current state
+   - **Committed**: `620cee3` "Add sortable columns to team table"
 
 ---
 
-## When T1 Finishes Phase 1 (huly)
+## UNFINISHED WORK - Next Session Must Complete
 
-Run this command in Terminal 1:
+### 1. Section Title Font Consistency
 
-```bash
-export GITHUB_SEEDING_TOKENS="PAT_1"
-for project in ollama openwebui lobechat continue jan portainer netdata grafana traefik spree bagisto payload keystone rocketchat zulip appflowy logseq silverbullet nocodb baserow illa keycloak casdoor surrealdb questdb; do
-  .venv/bin/python manage.py seed_real_projects --project "$project" --start-date 2025-01-01 --no-pr-limit --no-member-limit --no-check-runs --checkpoint-file ".checkpoint_p2_t1.json"
-done
-```
+**Issue**: Some section h2 titles may not have consistent font size
+**File**: `docs/index.html`
+**Fix needed**: Ensure all h2 in main sections use `font-size: 1.75rem`
 
----
+### 2. Monthly Team Selector Fixes
 
-## After All Seeding Completes
+**Issue**: Default selected teams in dropdowns don't show in chart initially
+**File**: `docs/index.html` (JavaScript section around line 2700-2800)
+**Fix needed**:
+- Sort teams alphabetically in dropdown options
+- Ensure default selections render in chart on page load
+- Check `updateMonthlyChart()` is called after initialization
 
-### 1. Check which teams need LLM analysis
-```bash
-psql -d tformance -c "SELECT t.name, COUNT(pr.id) as prs FROM teams_team t JOIN metrics_pullrequest pr ON pr.team_id = t.id WHERE pr.llm_summary IS NULL GROUP BY t.name ORDER BY COUNT(pr.id) DESC"
-```
+**Current dropdown default values** (need to match chart init):
+- Antiwork, Cal.com, Dub, Plane, Trigger.dev
 
-### 2. Run LLM batch for each team
-```bash
-export GROQ_API_KEY=$(grep "^GROQ_API_KEY=" .env | cut -d= -f2)
-.venv/bin/python manage.py run_llm_batch --team "TeamName" --limit 2000 --with-fallback
-```
+### 3. Team Table Data Verification
 
----
-
-## Previous Session: Report Improvements (UNCOMMITTED)
-
-`docs/index.html` has uncommitted changes from previous session:
-- Disclosures, CTAs, legal notes, team filter
-- See commit command in `dev/active/report-improvements/` if needed
+**Issue**: Verify all 51 teams from `team_summary.csv` appear in table
+**File**: `docs/index.html` - look for `teamData` array
+**Data source**: `docs/data/team_summary.csv` (51 teams)
+**Fix needed**: If mismatch, update `teamData` JavaScript array
 
 ---
 
-## Files Modified (OSS Expansion)
+## Key Files Modified
 
 | File | Changes |
 |------|---------|
-| `apps/metrics/seeding/real_projects.py` | 100 project configs, industry field, helper functions |
-| `dev/active/oss-expansion/oss-expansion-context.md` | Updated with current progress |
-| `dev/active/oss-expansion/oss-expansion-tasks.md` | Updated task status |
+| `docs/index.html` | All report updates, UX features, Alpine.js table |
+| `docs/scripts/export_report_data.py` | NEW - Data export script |
+| `docs/data/team_summary.csv` | Updated with 51 teams |
+| `docs/data/monthly_trends.csv` | Updated with 51 teams |
+| `docs/data/ai_tools_monthly.csv` | Updated tool usage |
+| `docs/data/overall_stats.txt` | NEW - Stats reference |
+
+---
+
+## Git Status
+
+```
+3 commits ahead of origin/main:
+- ef7e2a2 Update research report with expanded OSS dataset (51 teams, 117K PRs)
+- bdd3e08 Add UX improvements for long report
+- 620cee3 Add sortable columns to team table using Alpine.js
+```
+
+### Uncommitted Changes
+
+Check for any remaining changes:
+```bash
+git -C /Users/yanchuk/Documents/GitHub/tformance status
+```
+
+---
+
+## Commands for Next Session
+
+```bash
+# View the report in browser
+open docs/index.html
+
+# Check teamData array has all 51 teams
+grep -A5 "const teamData" docs/index.html | head -20
+
+# Find monthly chart initialization
+grep -n "updateMonthlyChart" docs/index.html
+
+# Run data export (if refreshing data)
+.venv/bin/python docs/scripts/export_report_data.py
+```
+
+---
+
+## Data Export Script Usage
+
+```bash
+# Generate fresh CSV files from database
+cd /Users/yanchuk/Documents/GitHub/tformance
+.venv/bin/python docs/scripts/export_report_data.py
+
+# Output:
+# - docs/data/team_summary.csv
+# - docs/data/monthly_trends.csv
+# - docs/data/ai_tools_monthly.csv
+# - docs/data/overall_stats.txt
+```
+
+Configuration in script:
+- `MIN_PRS_THRESHOLD = 500` (teams must have 500+ PRs)
+- `YEAR = 2025`
+
+---
+
+## Research Findings Summary
+
+| Metric | 26 Teams (Old) | 51 Teams (New) | Change |
+|--------|---------------|----------------|--------|
+| Total PRs | 60,545 | 117,739 | +94% |
+| AI Adoption | 21.4% | 12.7% | More conservative |
+| Cycle Time | +42% (slower) | **-5% (faster)** | **REVERSED** |
+| Review Time | -31% | -52% | Stronger benefit |
+| CI Width | ±0.35% | ±0.19% | Tighter confidence |
+
+**Key Insight**: The original finding that AI slowed cycle time was a small-sample artifact. With 2x the data, AI-assisted PRs show 5% faster delivery.
 
 ---
 
 ## No Migrations Needed
 
-Only seeding config changes. No Django model changes this session.
+No Django model changes this session.
 
 ---
 
-## Summary of Sessions
+## Summary
 
-| Session | Status |
-|---------|--------|
-| OSS Expansion (100 projects) | **IN PROGRESS** - seeding running |
-| Report Improvements | COMPLETE (uncommitted) |
-| Research Report Critical Review | COMPLETE |
-| GitHub Pages Report | COMPLETE |
-| Groq Batch Improvements | COMPLETE |
+| Task | Status |
+|------|--------|
+| OSS data expansion (51 teams, 117K PRs) | ✅ COMMITTED |
+| Team selector → 5 dropdowns | ✅ COMMITTED |
+| Reading progress bar | ✅ COMMITTED |
+| Back-to-top button | ✅ COMMITTED |
+| Table pagination (20/page) | ✅ COMMITTED |
+| Sortable table columns | ✅ COMMITTED |
+| Section title fonts | 🔄 NEEDS CHECK |
+| Monthly chart default selection | 🔄 NEEDS FIX |
+| Verify all 51 teams in table | 🔄 NEEDS VERIFY |
