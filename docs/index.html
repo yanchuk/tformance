@@ -591,6 +591,134 @@
             <p class="meta">Research Period: January 1 - December 25, 2025 | Generated: December 26, 2025</p>
         </header>
 
+        <!-- ABOUT THIS RESEARCH -->
+        <section class="about-research" style="background: linear-gradient(135deg, rgba(249, 115, 22, 0.1), rgba(90, 153, 151, 0.1)); border: 1px solid var(--border); border-radius: 16px; padding: 2rem; margin-bottom: 2rem;">
+            <h2>About This Research</h2>
+            <p style="font-size: 1.1rem; margin-bottom: 1.5rem;">
+                This is a <strong>meta-analysis of ~54,000 pull requests</strong> from 28 open source projects throughout 2025, attempting to understand real-world AI coding tool adoption patterns and their impact on engineering metrics.
+            </p>
+
+            <div class="two-col" style="gap: 2rem;">
+                <div>
+                    <h3 style="margin-bottom: 0.75rem;">How It Works</h3>
+                    <ol style="padding-left: 1.25rem; color: var(--text-muted);">
+                        <li style="margin-bottom: 0.5rem;">We fetch PR metadata (title, description, comments, commits) via GitHub GraphQL API</li>
+                        <li style="margin-bottom: 0.5rem;">Each PR is analyzed by LLM (Groq Batch API) to detect AI tool mentions and classify the work</li>
+                        <li style="margin-bottom: 0.5rem;">Pattern matching (25+ regex patterns) provides secondary detection</li>
+                        <li style="margin-bottom: 0.5rem;">We correlate AI usage with delivery metrics (cycle time, review time, PR size)</li>
+                    </ol>
+                </div>
+                <div>
+                    <h3 style="margin-bottom: 0.75rem;">What We Don't Analyze</h3>
+                    <ul style="padding-left: 1.25rem; color: var(--text-muted);">
+                        <li style="margin-bottom: 0.5rem;">❌ Actual file contents or code quality</li>
+                        <li style="margin-bottom: 0.5rem;">❌ Private/enterprise repositories</li>
+                        <li style="margin-bottom: 0.5rem;">❌ AI usage without disclosure (hidden adoption)</li>
+                        <li style="margin-bottom: 0.5rem;">❌ Copilot suggestions accepted without mention</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="insight-box" style="background: rgba(234, 179, 8, 0.15); border-color: var(--warning); margin-top: 1.5rem;">
+                <strong>⚠️ Important Disclaimer:</strong> This is an independent research project, not a peer-reviewed study. While we strive for accuracy, our detection methods have limitations — we can only identify AI usage that developers explicitly disclose. The findings represent <em>detected</em> AI adoption, not total AI adoption. Use these insights as directional guidance, not definitive conclusions.
+            </div>
+        </section>
+
+        <!-- STATISTICAL CONFIDENCE -->
+        <section class="statistical-confidence" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 2rem; margin-bottom: 2rem;">
+            <h2>📊 Statistical Confidence</h2>
+            <p style="color: var(--text-muted); margin-bottom: 1.5rem;">
+                How confident can we be in these findings? Here's a transparency breakdown of our statistical validity.
+            </p>
+
+            <div class="stat-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+                <div class="stat-card" style="text-align: center;">
+                    <div class="stat-value" style="color: var(--success);">53,876</div>
+                    <div class="stat-label">PRs Analyzed</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted);">Large sample size</div>
+                </div>
+                <div class="stat-card" style="text-align: center;">
+                    <div class="stat-value" style="color: var(--success);">±0.35%</div>
+                    <div class="stat-label">95% Confidence Interval</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted);">For overall 21.4% adoption</div>
+                </div>
+                <div class="stat-card" style="text-align: center;">
+                    <div class="stat-value" style="color: var(--warning);">25.3%</div>
+                    <div class="stat-label">Standard Deviation</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted);">Between teams (high variance)</div>
+                </div>
+                <div class="stat-card" style="text-align: center;">
+                    <div class="stat-value" style="color: var(--success);">p &lt; 0.0001</div>
+                    <div class="stat-label">Team Structure Test</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted);">Chi-square significance</div>
+                </div>
+            </div>
+
+            <div class="two-col" style="gap: 2rem; margin-top: 1.5rem;">
+                <div class="insight-box" style="background: rgba(34, 197, 94, 0.1); border-color: var(--success);">
+                    <strong>✅ What We Can Confidently Say:</strong>
+                    <ul style="margin-top: 0.5rem; padding-left: 1.25rem; color: var(--text-muted);">
+                        <li>Overall detected AI adoption is <strong>21.4% ± 0.35%</strong> (95% CI)</li>
+                        <li>Focused teams have statistically significant higher adoption (p &lt; 0.0001)</li>
+                        <li>There's massive variance between teams (0% to 87%)</li>
+                        <li>Median adoption (13.6%) is much lower than mean (23%) — a few high-adoption teams skew the average</li>
+                    </ul>
+                </div>
+                <div class="insight-box" style="background: rgba(234, 179, 8, 0.15); border-color: var(--warning);">
+                    <strong>⚠️ Limitations to Consider:</strong>
+                    <ul style="margin-top: 0.5rem; padding-left: 1.25rem; color: var(--text-muted);">
+                        <li><strong>Selection bias:</strong> These are popular OSS projects, not a random sample</li>
+                        <li><strong>Detection bias:</strong> We only capture disclosed AI usage</li>
+                        <li><strong>Team confounding:</strong> Language/framework correlations overlap with team identity</li>
+                        <li><strong>Survivorship:</strong> Only analyzing active, successful projects</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div style="margin-top: 1.5rem; padding: 1rem; background: rgba(90, 153, 151, 0.1); border-radius: 8px;">
+                <strong style="color: var(--secondary);">📈 Distribution Insight:</strong>
+                <span style="color: var(--text-muted);">
+                    Team AI adoption ranges from 0% (Lago) to 87.3% (Plane). The interquartile range is <strong>4.0% – 38.0%</strong>,
+                    meaning half of teams fall within this wide range. Aggregate stats (like "21.4% overall") hide enormous
+                    project-to-project differences — your team could reasonably be anywhere from 0% to 90%.
+                </span>
+            </div>
+        </section>
+
+        <!-- OVERALL AI ADOPTION TREND 2025 -->
+        <section>
+            <h2>AI Adoption Trend — 2025</h2>
+            <p style="color: var(--text-muted); margin-bottom: 1rem;">
+                Overall AI-assisted PR rate across all 28 teams throughout 2025. Shows the growth trajectory from early adoption to mainstream usage.
+            </p>
+            <div class="chart-container" style="background: var(--bg-card);">
+                <div class="chart-wrapper">
+                    <canvas id="overallTrendChart"></canvas>
+                </div>
+            </div>
+            <div class="stat-grid" style="margin-top: 1.5rem;">
+                <div class="stat-card">
+                    <div class="stat-value" style="color: var(--text-muted);">9.4%</div>
+                    <div class="stat-label">January 2025</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value positive">30.7%</div>
+                    <div class="stat-label">Peak (July 2025)</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value neutral">23.2%</div>
+                    <div class="stat-label">December 2025</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value positive">+147%</div>
+                    <div class="stat-label">YoY Growth (Jan→Dec)</div>
+                </div>
+            </div>
+            <div class="insight-box" style="margin-top: 1rem;">
+                <strong>Trend Analysis:</strong> AI adoption grew rapidly in H1 2025, peaking at 30.7% in July. The slight decline in H2 may reflect: (1) seasonal variations, (2) teams settling into stable AI workflows, or (3) detection limitations as AI usage becomes more normalized and less explicitly mentioned.
+            </div>
+        </section>
+
         <!-- KEY TAKEAWAYS - AT TOP -->
         <section>
             <h2>Key Takeaways for Engineering Leaders</h2>
@@ -1215,6 +1343,50 @@
             </div>
         </section>
 
+        <!-- ACTION ITEMS FOR YOUR TEAM -->
+        <section class="cta-section" style="background: linear-gradient(135deg, rgba(249, 115, 22, 0.15), rgba(34, 197, 94, 0.1)); border: 2px solid var(--primary); border-radius: 16px; padding: 2.5rem; margin-top: 2rem;">
+            <h2 style="text-align: center; margin-bottom: 0.5rem;">🎯 Action Items for Your Team</h2>
+            <p style="text-align: center; color: var(--text-muted); margin-bottom: 2rem;">Based on our findings, here's what engineering leaders should evaluate in their own teams.</p>
+
+            <div class="takeaway-grid" style="margin-bottom: 2rem;">
+                <div class="takeaway-card">
+                    <h4>📊 Measure Your Baseline</h4>
+                    <p>Do you know your team's current AI adoption rate? Without measurement, you can't improve. Start tracking AI usage in PRs — even informal surveys help.</p>
+                </div>
+                <div class="takeaway-card">
+                    <h4>📝 Add AI Disclosure to PR Template</h4>
+                    <p>High-adoption teams explicitly disclose AI usage. Add an "## AI Usage" section to your PR template. Even "No AI used" is valuable data.</p>
+                </div>
+                <div class="takeaway-card">
+                    <h4>🔧 Diversify Your Tool Stack</h4>
+                    <p>Top performers use a mix of bots (CodeRabbit), IDEs (Cursor), and LLMs (Claude). Single-tool teams show worse outcomes than multi-tool teams.</p>
+                </div>
+                <div class="takeaway-card">
+                    <h4>⚖️ Target 40-60% Adoption</h4>
+                    <p>Very high adoption (>80%) correlates with longer cycle times. The sweet spot appears to be balanced usage where AI augments rather than replaces human judgment.</p>
+                </div>
+                <div class="takeaway-card">
+                    <h4>🔍 Watch Review Velocity</h4>
+                    <p>AI-assisted PRs typically get reviewed faster (-31% avg). If your team isn't seeing this benefit, investigate the quality of AI-generated code.</p>
+                </div>
+                <div class="takeaway-card">
+                    <h4>👥 Consider Team Structure</h4>
+                    <p>Focused teams (small core) show 52% higher AI adoption. If you have many occasional contributors, AI tool standardization may be harder.</p>
+                </div>
+            </div>
+
+            <div style="background: var(--bg-card); border-radius: 12px; padding: 2rem; text-align: center;">
+                <h3 style="margin-bottom: 0.75rem;">Want These Insights for Your Team?</h3>
+                <p style="color: var(--text-muted); margin-bottom: 1.5rem;">
+                    <strong>tformance</strong> connects to your GitHub, Jira, and Slack to automatically measure AI adoption, correlate with delivery metrics, and surface actionable insights — no manual tracking required.
+                </p>
+                <div style="display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap;">
+                    <a href="https://tformance.com" style="background: var(--primary); color: white; padding: 0.75rem 1.5rem; border-radius: 8px; text-decoration: none; font-weight: 600;">Get Started →</a>
+                    <a href="mailto:contact@tformance.com" style="background: var(--bg-main); color: var(--text); padding: 0.75rem 1.5rem; border-radius: 8px; text-decoration: none; font-weight: 500; border: 1px solid var(--border);">Request Demo</a>
+                </div>
+            </div>
+        </section>
+
         <footer>
             <div class="logo">tformance</div>
             <p>AI Impact Analytics for Engineering Teams</p>
@@ -1348,6 +1520,56 @@
         };
 
         const colors = getColors();
+
+        // Overall AI Adoption Trend 2025
+        const overallTrendData = {
+            months: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+            prs: [3518, 3037, 3905, 4185, 3719, 3983, 4609, 4377, 5114, 5611, 5317, 6499],
+            ai_pct: [9.4, 12.2, 17.5, 18.9, 22.8, 28.0, 30.7, 28.3, 18.1, 20.2, 22.1, 23.2]
+        };
+
+        charts.overallTrend = new Chart(document.getElementById('overallTrendChart'), {
+            type: 'line',
+            data: {
+                labels: overallTrendData.months,
+                datasets: [{
+                    label: 'AI Adoption %',
+                    data: overallTrendData.ai_pct,
+                    borderColor: '#F97316',
+                    backgroundColor: 'rgba(249, 115, 22, 0.1)',
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 6,
+                    pointBackgroundColor: '#F97316'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    title: { display: true, text: 'Overall AI-Assisted PR Rate Across All Teams', color: colors.text, font: { size: 14 } },
+                    tooltip: {
+                        callbacks: {
+                            afterLabel: (ctx) => `${overallTrendData.prs[ctx.dataIndex].toLocaleString()} total PRs`
+                        }
+                    },
+                    datalabels: {
+                        display: true,
+                        anchor: 'end',
+                        align: 'top',
+                        color: colors.text,
+                        font: { weight: 'bold', size: 11 },
+                        formatter: (v) => v.toFixed(1) + '%'
+                    }
+                },
+                scales: {
+                    x: { ticks: { color: colors.text }, grid: { color: colors.grid } },
+                    y: { ticks: { color: colors.text }, grid: { color: colors.grid }, min: 0, max: 40, title: { display: true, text: 'AI Adoption %', color: colors.text } }
+                }
+            }
+        });
+
         const months = Object.keys(toolTrends);
         const toolColors = {
             'coderabbit': '#F97316',
