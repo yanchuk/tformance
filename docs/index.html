@@ -110,9 +110,6 @@
         }
 
         .theme-toggle {
-            position: absolute;
-            top: 1rem;
-            right: 1rem;
             background: var(--bg-main);
             border: 1px solid var(--border);
             border-radius: 8px;
@@ -122,10 +119,14 @@
             font-family: inherit;
             display: flex;
             align-items: center;
+            justify-content: center;
             gap: 0.5rem;
+            width: 100%;
+            margin: 1rem 0;
+            font-size: 0.75rem;
         }
 
-        .theme-toggle:hover { border-color: var(--primary); }
+        .theme-toggle:hover { border-color: var(--primary); background: rgba(249, 115, 22, 0.08); }
 
         h1 { font-size: 2.5rem; font-weight: 700; margin-bottom: 0.5rem; }
         .subtitle { color: var(--primary); font-size: 1.25rem; font-weight: 500; }
@@ -1398,6 +1399,11 @@
         <div class="toc-brand">tformance</div>
         <div class="toc-subtitle">Research Report 2025</div>
 
+        <button class="theme-toggle" onclick="toggleTheme()">
+            <span id="theme-icon">☀️</span>
+            <span id="theme-label">Light</span>
+        </button>
+
         <div class="toc-section-label">Overview</div>
         <ul>
             <li><a href="#about"><span class="toc-number">01</span>About This Research</a></li>
@@ -1448,10 +1454,6 @@
 
     <div class="report-content">
         <header>
-            <button class="theme-toggle" onclick="toggleTheme()">
-                <span id="theme-icon">☀️</span>
-                <span id="theme-label">Light</span>
-            </button>
             <div class="logo">tformance</div>
             <h1>AI Impact on Software Engineering</h1>
             <p class="subtitle">Analysis of 117,739 PRs from 51 Open Source Teams</p>
@@ -1460,7 +1462,7 @@
 
         <!-- ABOUT THIS RESEARCH -->
         <section id="about" class="about-research" style="background: linear-gradient(135deg, rgba(249, 115, 22, 0.1), rgba(90, 153, 151, 0.1)); border: 1px solid var(--border); border-radius: 16px; padding: 2rem; margin-bottom: 2rem;">
-            <h2 style="font-size: 1.75rem; margin-bottom: 1rem;">About This Research</h2>
+            <h2>About This Research</h2>
             <p style="font-size: 1rem; margin-bottom: 1.5rem;">
                 This is a <strong>meta-analysis of 117,739 pull requests</strong> from 51 open source teams throughout 2025, attempting to understand real-world AI coding tool adoption patterns and their impact on engineering metrics.
             </p>
@@ -1828,19 +1830,19 @@
                                 <td>
                                     <span x-show="t.cycle_delta !== null"
                                           :class="'badge ' + (t.cycle_delta < 0 ? 'badge-success' : 'badge-error')"
-                                          x-text="(t.cycle_delta > 0 ? '+' : '') + t.cycle_delta.toFixed(0) + '%'"></span>
+                                          x-text="t.cycle_delta !== null ? (t.cycle_delta > 0 ? '+' : '') + t.cycle_delta.toFixed(0) + '%' : ''"></span>
                                     <span x-show="t.cycle_delta === null">-</span>
                                 </td>
                                 <td>
                                     <span x-show="t.review_delta !== null"
                                           :class="'badge ' + (t.review_delta < 0 ? 'badge-success' : 'badge-error')"
-                                          x-text="(t.review_delta > 0 ? '+' : '') + t.review_delta.toFixed(0) + '%'"></span>
+                                          x-text="t.review_delta !== null ? (t.review_delta > 0 ? '+' : '') + t.review_delta.toFixed(0) + '%' : ''"></span>
                                     <span x-show="t.review_delta === null">-</span>
                                 </td>
                                 <td>
                                     <span x-show="t.size_delta !== null"
                                           :class="'badge ' + (t.size_delta < 0 ? 'badge-success' : 'badge-warning')"
-                                          x-text="(t.size_delta > 0 ? '+' : '') + t.size_delta.toFixed(0) + '%'"></span>
+                                          x-text="t.size_delta !== null ? (t.size_delta > 0 ? '+' : '') + t.size_delta.toFixed(0) + '%' : ''"></span>
                                     <span x-show="t.size_delta === null">-</span>
                                 </td>
                             </tr>
@@ -2154,67 +2156,6 @@
                 <strong>Key Insight:</strong> Mobile development shows highest AI adoption (42.4%), though sample size is smaller (118 PRs). Test-related PRs at 33% suggest AI is heavily used for test generation. DevOps lowest at 15.6%.
             </div>
 
-            <!-- By Programming Language -->
-            <h3 style="margin-top: 2rem;">By Programming Language</h3>
-            <div class="chart-container" style="background: var(--bg-card); margin-bottom: 1rem;">
-                <div class="chart-wrapper tall">
-                    <canvas id="languageChart"></canvas>
-                </div>
-            </div>
-            <div class="two-col" style="margin-top: 1rem;">
-                <div class="insight-box" style="background: rgba(34, 197, 94, 0.1); border-color: var(--success);">
-                    <strong style="color: var(--success);">Highest AI Adoption:</strong>
-                    <ul>
-                        <li><strong>Ruby</strong> — 63.8% (1,758 PRs) ⚠️</li>
-                        <li><strong>HTML</strong> — 55.6% (54 PRs)</li>
-                        <li><strong>CSS</strong> — 41.2% (153 PRs)</li>
-                        <li><strong>SQL</strong> — 38.6% (321 PRs)</li>
-                    </ul>
-                </div>
-                <div class="insight-box" style="background: rgba(239, 68, 68, 0.1); border-color: var(--error);">
-                    <strong style="color: var(--error);">Lowest AI Adoption:</strong>
-                    <ul>
-                        <li><strong>C</strong> — 0.0% (184 PRs)</li>
-                        <li><strong>Elixir</strong> — 0.9% (327 PRs)</li>
-                        <li><strong>Rust</strong> — 2.4% (2,740 PRs) ✓</li>
-                        <li><strong>HCL</strong> — 4.7% (491 PRs)</li>
-                    </ul>
-                </div>
-            </div>
-            <div class="insight-box" style="background: rgba(249, 115, 22, 0.1); border-color: var(--primary); margin-top: 1rem;">
-                <strong>⚠️ Caveat — Team Confounding:</strong> Language correlations are influenced by team culture. Ruby's 63.8% is driven by Antiwork (93% of Ruby PRs, 65.7% AI adoption). TypeScript varies wildly: Plane 87%, Antiwork 61%, Vercel 2.5%. <strong>Rust is more reliable</strong> — consistently low across multiple teams (Neon 1.1%, Deno 3.5%, PostHog 4.0%).
-            </div>
-
-            <!-- By Framework -->
-            <h3 style="margin-top: 2rem;">By Framework</h3>
-            <div class="chart-container" style="background: var(--bg-card); margin-bottom: 1rem;">
-                <div class="chart-wrapper tall">
-                    <canvas id="frameworkChart"></canvas>
-                </div>
-            </div>
-            <div class="two-col" style="margin-top: 1rem;">
-                <div class="insight-box" style="background: rgba(34, 197, 94, 0.1); border-color: var(--success);">
-                    <strong style="color: var(--success);">Highest AI Adoption:</strong>
-                    <ul>
-                        <li><strong>Rails</strong> — 64.4% (1,617 PRs)</li>
-                        <li><strong>tRPC</strong> — 58.8% (767 PRs)</li>
-                        <li><strong>Playwright</strong> — 50.5% (210 PRs)</li>
-                        <li><strong>Prisma</strong> — 50.4% (395 PRs)</li>
-                        <li><strong>Django</strong> — 44.9% (693 PRs)</li>
-                    </ul>
-                </div>
-                <div class="insight-box" style="background: rgba(239, 68, 68, 0.1); border-color: var(--error);">
-                    <strong style="color: var(--error);">Lowest AI Adoption:</strong>
-                    <ul>
-                        <li><strong>Svelte</strong> — 0.4% (233 PRs)</li>
-                        <li><strong>Hono</strong> — 0.7% (276 PRs)</li>
-                        <li><strong>Nuxt</strong> — 1.2% (242 PRs)</li>
-                        <li><strong>Remix</strong> — 3.9% (233 PRs)</li>
-                        <li><strong>FastAPI</strong> — 5.3% (623 PRs)</li>
-                    </ul>
-                </div>
-            </div>
-
             <!-- By PR Size -->
             <h3 style="margin-top: 2rem;">By PR Size</h3>
             <div class="chart-container" style="background: var(--bg-card); margin-bottom: 1rem;">
@@ -2455,7 +2396,7 @@
 
         <!-- ACTION ITEMS FOR YOUR TEAM -->
         <section id="action" class="cta-section" style="background: linear-gradient(135deg, rgba(249, 115, 22, 0.15), rgba(34, 197, 94, 0.1)); border: 2px solid var(--primary); border-radius: 16px; padding: 2.5rem; margin-top: 2rem;">
-            <h2 style="text-align: center; margin-bottom: 0.5rem;">🎯 Action Items for Your Team</h2>
+            <h2>🎯 Action Items for Your Team</h2>
             <p style="text-align: center; color: var(--text-muted); margin-bottom: 2rem;">Based on our findings, here's what engineering leaders should evaluate in their own teams.</p>
 
             <div class="takeaway-grid" style="margin-bottom: 2rem;">
@@ -2607,34 +2548,59 @@
             });
         }
 
-        // Team data
+        // Team data (51 teams from team_summary.csv)
         const teamData = [
-            {"team": "Plane", "total": 1698, "ai_pct": 87.3, "cycle_delta": 185.4, "review_delta": 2.2, "size_delta": -80.3},
-            {"team": "Dub", "total": 895, "ai_pct": 83.9, "cycle_delta": 55.9, "review_delta": -12.3, "size_delta": -35.8},
-            {"team": "Antiwork", "total": 3964, "ai_pct": 61.9, "cycle_delta": -8.5, "review_delta": -50.2, "size_delta": -11.8},
-            {"team": "Formbricks", "total": 1661, "ai_pct": 50.5, "cycle_delta": 40.9, "review_delta": -26.3, "size_delta": -18.0},
-            {"team": "Trigger.dev", "total": 827, "ai_pct": 45.6, "cycle_delta": -38.2, "review_delta": -71.7, "size_delta": 10.2},
-            {"team": "Cal.com", "total": 5565, "ai_pct": 41.6, "cycle_delta": 40.2, "review_delta": -2.4, "size_delta": 76.3},
-            {"team": "Resend", "total": 888, "ai_pct": 40.4, "cycle_delta": -72.0, "review_delta": -96.3, "size_delta": -62.9},
-            {"team": "Gumroad", "total": 220, "ai_pct": 29.5, "cycle_delta": 10.5, "review_delta": -51.8, "size_delta": 549.3},
-            {"team": "Infisical", "total": 1677, "ai_pct": 24.2, "cycle_delta": 50.3, "review_delta": 64.0, "size_delta": -37.3},
-            {"team": "Anthropic", "total": 233, "ai_pct": 22.7, "cycle_delta": -90.2, "review_delta": -87.1, "size_delta": 66.6},
-            {"team": "Hoppscotch", "total": 434, "ai_pct": 17.3, "cycle_delta": -27.0, "review_delta": -6.7, "size_delta": 46.9},
-            {"team": "Novu", "total": 2155, "ai_pct": 17.2, "cycle_delta": -47.1, "review_delta": -52.6, "size_delta": -28.5},
-            {"team": "Coolify", "total": 1158, "ai_pct": 13.6, "cycle_delta": -83.7, "review_delta": -89.8, "size_delta": -43.6},
-            {"team": "Comp AI", "total": 1636, "ai_pct": 13.5, "cycle_delta": -79.7, "review_delta": -87.8, "size_delta": -3.9},
-            {"team": "Supabase", "total": 2758, "ai_pct": 12.0, "cycle_delta": 61.9, "review_delta": 52.0, "size_delta": -80.2},
-            {"team": "PostHog", "total": 6188, "ai_pct": 6.8, "cycle_delta": 34.8, "review_delta": -49.4, "size_delta": -21.3},
-            {"team": "Twenty CRM", "total": 4590, "ai_pct": 5.7, "cycle_delta": 68.7, "review_delta": -0.6, "size_delta": 25.3},
-            {"team": "Polar.sh", "total": 2011, "ai_pct": 5.0, "cycle_delta": -75.7, "review_delta": -92.3, "size_delta": -67.5},
-            {"team": "LangChain", "total": 3878, "ai_pct": 4.2, "cycle_delta": 80.3, "review_delta": -16.2, "size_delta": -37.0},
-            {"team": "Documenso", "total": 415, "ai_pct": 3.9, "cycle_delta": 36.5, "review_delta": 138.7, "size_delta": -22.0},
-            {"team": "Deno", "total": 2214, "ai_pct": 2.9, "cycle_delta": 91.0, "review_delta": -3.2, "size_delta": -77.0},
-            {"team": "Vercel", "total": 5487, "ai_pct": 2.1, "cycle_delta": 21.7, "review_delta": 29.5, "size_delta": 14.0},
-            {"team": "Linear", "total": 246, "ai_pct": 2.0, "cycle_delta": -80.9, "review_delta": -99.2, "size_delta": -98.3},
-            {"team": "FastAPI", "total": 783, "ai_pct": 1.7, "cycle_delta": -33.9, "review_delta": -64.9, "size_delta": 445.6},
-            {"team": "Neon", "total": 1988, "ai_pct": 0.9, "cycle_delta": 105.3, "review_delta": 63.9, "size_delta": 216.4},
-            {"team": "Lago", "total": 121, "ai_pct": 0.0, "cycle_delta": null, "review_delta": null, "size_delta": null}
+            {"team": "Plane", "total": 1717, "ai_pct": 85.6, "cycle_delta": 75, "review_delta": -14, "size_delta": -88},
+            {"team": "Appsmith", "total": 1431, "ai_pct": 77.1, "cycle_delta": 72, "review_delta": -50, "size_delta": -79},
+            {"team": "Erxes", "total": 557, "ai_pct": 70.4, "cycle_delta": -14, "review_delta": null, "size_delta": -88},
+            {"team": "Antiwork", "total": 4144, "ai_pct": 56.6, "cycle_delta": -9, "review_delta": -59, "size_delta": 4},
+            {"team": "Dub", "total": 1354, "ai_pct": 56.0, "cycle_delta": 22, "review_delta": -37, "size_delta": -63},
+            {"team": "Formbricks", "total": 1669, "ai_pct": 46.9, "cycle_delta": 34, "review_delta": -23, "size_delta": -58},
+            {"team": "Cal.com", "total": 5669, "ai_pct": 40.3, "cycle_delta": 5, "review_delta": -1, "size_delta": -25},
+            {"team": "Resend", "total": 974, "ai_pct": 36.8, "cycle_delta": -66, "review_delta": -96, "size_delta": -66},
+            {"team": "Trigger.dev", "total": 1054, "ai_pct": 35.5, "cycle_delta": -6, "review_delta": -57, "size_delta": 21},
+            {"team": "AFFiNE", "total": 3426, "ai_pct": 33.6, "cycle_delta": 61, "review_delta": -27, "size_delta": -31},
+            {"team": "OpenReplay", "total": 1122, "ai_pct": 21.2, "cycle_delta": -93, "review_delta": -99, "size_delta": -81},
+            {"team": "Infisical", "total": 1694, "ai_pct": 20.5, "cycle_delta": 34, "review_delta": 68, "size_delta": -54},
+            {"team": "Novu", "total": 2175, "ai_pct": 13.5, "cycle_delta": -39, "review_delta": -26, "size_delta": -82},
+            {"team": "Comp AI", "total": 1699, "ai_pct": 12.9, "cycle_delta": -83, "review_delta": -94, "size_delta": -4},
+            {"team": "Supabase", "total": 2926, "ai_pct": 10.9, "cycle_delta": 86, "review_delta": 83, "size_delta": -84},
+            {"team": "LobeChat", "total": 2710, "ai_pct": 9.9, "cycle_delta": -75, "review_delta": -99, "size_delta": -40},
+            {"team": "Coolify", "total": 1177, "ai_pct": 9.3, "cycle_delta": -85, "review_delta": -96, "size_delta": -46},
+            {"team": "SigNoz", "total": 1800, "ai_pct": 7.9, "cycle_delta": 87, "review_delta": 295, "size_delta": -12},
+            {"team": "n8n", "total": 6124, "ai_pct": 6.4, "cycle_delta": 116, "review_delta": -43, "size_delta": -73},
+            {"team": "Chatwoot", "total": 530, "ai_pct": 6.0, "cycle_delta": 83, "review_delta": -46, "size_delta": -84},
+            {"team": "Excalidraw", "total": 724, "ai_pct": 5.1, "cycle_delta": 327, "review_delta": -65, "size_delta": 102},
+            {"team": "Ghost", "total": 3583, "ai_pct": 4.9, "cycle_delta": 178, "review_delta": 116, "size_delta": -9},
+            {"team": "Directus", "total": 990, "ai_pct": 4.0, "cycle_delta": 4, "review_delta": -38, "size_delta": 354},
+            {"team": "Vercel", "total": 6167, "ai_pct": 4.0, "cycle_delta": -7, "review_delta": -6, "size_delta": -55},
+            {"team": "LangChain", "total": 5358, "ai_pct": 4.0, "cycle_delta": 72, "review_delta": 1, "size_delta": -47},
+            {"team": "Flowise", "total": 703, "ai_pct": 4.0, "cycle_delta": -37, "review_delta": -24, "size_delta": -69},
+            {"team": "Mattermost", "total": 2916, "ai_pct": 3.9, "cycle_delta": 75, "review_delta": 119, "size_delta": -17},
+            {"team": "Polar.sh", "total": 3261, "ai_pct": 2.6, "cycle_delta": -58, "review_delta": -92, "size_delta": -77},
+            {"team": "Open WebUI", "total": 3310, "ai_pct": 2.6, "cycle_delta": 158, "review_delta": -94, "size_delta": -68},
+            {"team": "PostHog Analytics", "total": 6367, "ai_pct": 2.5, "cycle_delta": 11, "review_delta": -17, "size_delta": 51},
+            {"team": "Budibase", "total": 1275, "ai_pct": 2.4, "cycle_delta": 20, "review_delta": 33, "size_delta": 3},
+            {"team": "Hyperswitch", "total": 2432, "ai_pct": 1.8, "cycle_delta": 78, "review_delta": -23, "size_delta": -64},
+            {"team": "Activepieces", "total": 3135, "ai_pct": 1.7, "cycle_delta": 14, "review_delta": -60, "size_delta": 106},
+            {"team": "Outline", "total": 1515, "ai_pct": 1.7, "cycle_delta": -29, "review_delta": -95, "size_delta": 655},
+            {"team": "Zitadel", "total": 1103, "ai_pct": 1.5, "cycle_delta": 69, "review_delta": 127, "size_delta": -84},
+            {"team": "Dify", "total": 5156, "ai_pct": 1.4, "cycle_delta": -23, "review_delta": -17, "size_delta": -10},
+            {"team": "Twenty CRM", "total": 5217, "ai_pct": 1.2, "cycle_delta": 86, "review_delta": -69, "size_delta": 10},
+            {"team": "Strapi", "total": 1120, "ai_pct": 1.1, "cycle_delta": -37, "review_delta": -71, "size_delta": -59},
+            {"team": "Ollama", "total": 1598, "ai_pct": 0.9, "cycle_delta": -88, "review_delta": 266, "size_delta": -77},
+            {"team": "Documenso", "total": 513, "ai_pct": 0.8, "cycle_delta": -100, "review_delta": null, "size_delta": -97},
+            {"team": "FastAPI Team", "total": 916, "ai_pct": 0.8, "cycle_delta": -51, "review_delta": -66, "size_delta": 436},
+            {"team": "Saleor", "total": 1402, "ai_pct": 0.6, "cycle_delta": -32, "review_delta": 7, "size_delta": -81},
+            {"team": "Neon", "total": 2176, "ai_pct": 0.6, "cycle_delta": -2, "review_delta": -90, "size_delta": -81},
+            {"team": "Deno", "total": 2664, "ai_pct": 0.5, "cycle_delta": 20, "review_delta": 24, "size_delta": -86},
+            {"team": "Webstudio", "total": 664, "ai_pct": 0.5, "cycle_delta": null, "review_delta": 401, "size_delta": -5},
+            {"team": "Matomo", "total": 697, "ai_pct": 0.4, "cycle_delta": 285, "review_delta": 159, "size_delta": -9},
+            {"team": "Plausible", "total": 905, "ai_pct": 0.2, "cycle_delta": 44, "review_delta": 172, "size_delta": -29},
+            {"team": "ToolJet", "total": 2555, "ai_pct": 0.2, "cycle_delta": null, "review_delta": -99, "size_delta": -66},
+            {"team": "Huly", "total": 2072, "ai_pct": 0.0, "cycle_delta": 649, "review_delta": 1756, "size_delta": -82},
+            {"team": "Penpot", "total": 2090, "ai_pct": 0.0, "cycle_delta": -91, "review_delta": -89, "size_delta": -100},
+            {"team": "GrowthBook", "total": 1203, "ai_pct": 0.0, "cycle_delta": null, "review_delta": null, "size_delta": null}
         ];
 
         // Tool trends data
@@ -2964,8 +2930,11 @@
         // Default teams to show (highest adoption teams)
         const defaultTeams = ["Plane", "Appsmith", "Antiwork", "Dub", "Formbricks"];
 
-        // Populate team dropdowns
+        // Populate team dropdowns (sorted alphabetically)
         function populateTeamDropdowns() {
+            // Sort teams alphabetically
+            const sortedTeams = [...allTeamsMonthlyData].sort((a, b) => a.team.localeCompare(b.team));
+
             for (let i = 1; i <= 5; i++) {
                 const select = document.getElementById('teamSelect' + i);
                 // Add empty option
@@ -2973,8 +2942,8 @@
                 emptyOpt.value = '';
                 emptyOpt.textContent = '-- Select Team --';
                 select.appendChild(emptyOpt);
-                // Add all teams
-                allTeamsMonthlyData.forEach(function(team) {
+                // Add all teams (sorted)
+                sortedTeams.forEach(function(team) {
                     const opt = document.createElement('option');
                     opt.value = team.team;
                     opt.textContent = team.team;
@@ -3042,8 +3011,9 @@
             charts.monthlyTrend.update();
         }
 
-        // Initialize team dropdowns
+        // Initialize team dropdowns and update chart with defaults
         populateTeamDropdowns();
+        updateMonthlyChart();
 
         // Team Detection Comparison: LLM vs Regex
         const teamDetectionData = [
@@ -3222,157 +3192,6 @@
                 scales: {
                     x: { ticks: { color: colors.text }, grid: { color: colors.grid } },
                     y: { ticks: { color: colors.text }, grid: { color: colors.grid }, max: 50 }
-                }
-            }
-        });
-
-        // Language Chart (horizontal bar)
-        const languageData = [
-            { lang: 'Ruby', prs: 1758, ai_pct: 63.8 },
-            { lang: 'HTML', prs: 54, ai_pct: 55.6 },
-            { lang: 'CSS', prs: 153, ai_pct: 41.2 },
-            { lang: 'SQL', prs: 321, ai_pct: 38.6 },
-            { lang: 'SCSS', prs: 68, ai_pct: 35.3 },
-            { lang: 'Bash', prs: 98, ai_pct: 31.6 },
-            { lang: 'Go', prs: 180, ai_pct: 28.3 },
-            { lang: 'JSON', prs: 308, ai_pct: 27.3 },
-            { lang: 'TypeScript', prs: 32885, ai_pct: 26.0 },
-            { lang: 'Markdown', prs: 609, ai_pct: 21.2 },
-            { lang: 'JavaScript', prs: 16161, ai_pct: 19.8 },
-            { lang: 'PHP', prs: 698, ai_pct: 19.5 },
-            { lang: 'YAML', prs: 1238, ai_pct: 16.0 },
-            { lang: 'Python', prs: 6868, ai_pct: 10.9 },
-            { lang: 'MDX', prs: 1370, ai_pct: 10.4 },
-            { lang: 'HCL', prs: 491, ai_pct: 4.7 },
-            { lang: 'Rust', prs: 2740, ai_pct: 2.4 },
-            { lang: 'Elixir', prs: 327, ai_pct: 0.9 },
-            { lang: 'C', prs: 184, ai_pct: 0.0 }
-        ];
-
-        charts.language = new Chart(document.getElementById('languageChart'), {
-            type: 'bar',
-            data: {
-                labels: languageData.map(d => d.lang),
-                datasets: [{
-                    label: 'AI Adoption %',
-                    data: languageData.map(d => d.ai_pct),
-                    backgroundColor: languageData.map(d =>
-                        d.ai_pct > 30 ? 'rgba(34, 197, 94, 0.7)' :
-                        d.ai_pct > 10 ? 'rgba(234, 179, 8, 0.7)' :
-                        'rgba(239, 68, 68, 0.7)'
-                    ),
-                    borderColor: languageData.map(d =>
-                        d.ai_pct > 30 ? '#22c55e' :
-                        d.ai_pct > 10 ? '#eab308' :
-                        '#ef4444'
-                    ),
-                    borderWidth: 1,
-                    borderRadius: 4
-                }]
-            },
-            options: {
-                indexAxis: 'y',
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false },
-                    title: { display: true, text: 'AI Adoption by Programming Language', color: colors.text },
-                    tooltip: {
-                        callbacks: {
-                            label: (ctx) => {
-                                const d = languageData[ctx.dataIndex];
-                                return `${d.ai_pct}% AI (${d.prs.toLocaleString()} PRs)`;
-                            }
-                        }
-                    },
-                    datalabels: {
-                        display: true,
-                        anchor: 'end',
-                        align: 'right',
-                        color: colors.text,
-                        font: { size: 10 },
-                        formatter: (v) => v.toFixed(1) + '%'
-                    }
-                },
-                scales: {
-                    x: { ticks: { color: colors.text }, grid: { color: colors.grid }, max: 70 },
-                    y: { ticks: { color: colors.text, font: { size: 11 } }, grid: { color: colors.grid } }
-                }
-            }
-        });
-
-        // Framework Chart (horizontal bar)
-        const frameworkData = [
-            { fw: 'Rails', prs: 1617, ai_pct: 64.4 },
-            { fw: 'tRPC', prs: 767, ai_pct: 58.8 },
-            { fw: 'Playwright', prs: 210, ai_pct: 50.5 },
-            { fw: 'Prisma', prs: 395, ai_pct: 50.4 },
-            { fw: 'Django', prs: 693, ai_pct: 44.9 },
-            { fw: 'Next.js', prs: 8336, ai_pct: 36.3 },
-            { fw: 'React', prs: 19103, ai_pct: 31.2 },
-            { fw: 'NestJS', prs: 394, ai_pct: 28.2 },
-            { fw: 'Livewire', prs: 234, ai_pct: 26.9 },
-            { fw: 'Laravel', prs: 607, ai_pct: 21.1 },
-            { fw: 'Express', prs: 964, ai_pct: 19.5 },
-            { fw: 'Vue', prs: 436, ai_pct: 11.5 },
-            { fw: 'LangChain', prs: 405, ai_pct: 11.1 },
-            { fw: 'GraphQL', prs: 208, ai_pct: 11.1 },
-            { fw: 'FastAPI', prs: 623, ai_pct: 5.3 },
-            { fw: 'Fastify', prs: 268, ai_pct: 5.2 },
-            { fw: 'Remix', prs: 233, ai_pct: 3.9 },
-            { fw: 'Nuxt', prs: 242, ai_pct: 1.2 },
-            { fw: 'Hono', prs: 276, ai_pct: 0.7 },
-            { fw: 'Svelte', prs: 233, ai_pct: 0.4 }
-        ];
-
-        charts.framework = new Chart(document.getElementById('frameworkChart'), {
-            type: 'bar',
-            data: {
-                labels: frameworkData.map(d => d.fw),
-                datasets: [{
-                    label: 'AI Adoption %',
-                    data: frameworkData.map(d => d.ai_pct),
-                    backgroundColor: frameworkData.map(d =>
-                        d.ai_pct > 40 ? 'rgba(34, 197, 94, 0.7)' :
-                        d.ai_pct > 15 ? 'rgba(234, 179, 8, 0.7)' :
-                        'rgba(239, 68, 68, 0.7)'
-                    ),
-                    borderColor: frameworkData.map(d =>
-                        d.ai_pct > 40 ? '#22c55e' :
-                        d.ai_pct > 15 ? '#eab308' :
-                        '#ef4444'
-                    ),
-                    borderWidth: 1,
-                    borderRadius: 4
-                }]
-            },
-            options: {
-                indexAxis: 'y',
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false },
-                    title: { display: true, text: 'AI Adoption by Framework', color: colors.text },
-                    tooltip: {
-                        callbacks: {
-                            label: (ctx) => {
-                                const d = frameworkData[ctx.dataIndex];
-                                return `${d.ai_pct}% AI (${d.prs.toLocaleString()} PRs)`;
-                            }
-                        }
-                    },
-                    datalabels: {
-                        display: true,
-                        anchor: 'end',
-                        align: 'right',
-                        color: colors.text,
-                        font: { size: 10 },
-                        formatter: (v) => v.toFixed(1) + '%'
-                    }
-                },
-                scales: {
-                    x: { ticks: { color: colors.text }, grid: { color: colors.grid }, max: 70 },
-                    y: { ticks: { color: colors.text, font: { size: 11 } }, grid: { color: colors.grid } }
                 }
             }
         });
