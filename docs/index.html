@@ -390,25 +390,26 @@
         /* Main content offset for sidebar */
         .container {
             margin-left: 220px;
-            max-width: calc(1400px - 220px);
+            margin-right: 2rem;
+            max-width: calc(100% - 220px - 4rem);
         }
 
         /* Responsive: Hide sidebar on smaller screens, show toggle */
         .toc-toggle {
             display: none;
             position: fixed;
-            left: 1rem;
-            bottom: 1rem;
+            left: 1.5rem;
+            bottom: 1.5rem;
             background: var(--bg-card);
             border: 1px solid var(--border);
             border-radius: 12px;
-            width: 44px;
-            height: 44px;
+            width: 48px;
+            height: 48px;
             cursor: pointer;
             z-index: 101;
             color: var(--text);
-            font-size: 1.1rem;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            font-size: 1.2rem;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.2);
             transition: all 0.2s ease;
         }
 
@@ -431,7 +432,10 @@
 
             .container {
                 margin-left: 0;
+                padding-left: 2rem;
+                padding-right: 2rem;
                 max-width: 1400px;
+                transition: margin-left 0.3s ease;
             }
 
             .toc-toggle {
@@ -444,6 +448,109 @@
         @media (max-width: 768px) {
             .toc-sidebar {
                 width: 260px;
+            }
+
+            body {
+                padding: 1rem;
+            }
+
+            header {
+                padding: 1.5rem 1rem;
+            }
+
+            h1 {
+                font-size: 1.5rem;
+            }
+
+            .subtitle {
+                font-size: 1rem;
+            }
+
+            .meta {
+                font-size: 0.75rem;
+            }
+
+            /* Mobile theme toggle - icon only, fixed position */
+            .theme-toggle {
+                position: fixed;
+                top: 1rem;
+                right: 1rem;
+                padding: 0.6rem;
+                width: 44px;
+                height: 44px;
+                border-radius: 50%;
+                justify-content: center;
+                z-index: 102;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            }
+
+            .theme-toggle #theme-label {
+                display: none;
+            }
+
+            .theme-toggle #theme-icon {
+                font-size: 1.2rem;
+            }
+
+            /* Make header have no relative positioning to allow fixed toggle */
+            header {
+                position: static;
+            }
+
+            .stat-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 0.75rem;
+            }
+
+            .stat-card {
+                padding: 1rem;
+            }
+
+            .stat-value {
+                font-size: 1.5rem;
+            }
+
+            section {
+                padding: 1rem !important;
+            }
+
+            .two-col, .three-col {
+                grid-template-columns: 1fr;
+            }
+
+            table {
+                font-size: 0.75rem;
+            }
+
+            th, td {
+                padding: 0.5rem 0.75rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            body {
+                padding: 0.75rem;
+            }
+
+            h1 {
+                font-size: 1.25rem;
+            }
+
+            .stat-grid {
+                grid-template-columns: 1fr 1fr;
+                gap: 0.5rem;
+            }
+
+            .stat-value {
+                font-size: 1.25rem;
+            }
+
+            .stat-label {
+                font-size: 0.7rem;
+            }
+
+            .takeaway-grid {
+                grid-template-columns: 1fr;
             }
         }
 
@@ -843,6 +950,14 @@
             <li><a href="#trend-2025"><span class="toc-number">03</span>2025 Adoption Trend</a></li>
             <li><a href="#takeaways"><span class="toc-number">04</span>Key Takeaways</a></li>
         </ul>
+
+        <!-- Quick CTA after Overview -->
+        <div style="margin: 1rem 0; padding: 0.75rem; background: rgba(249, 115, 22, 0.08); border-radius: 6px; border-left: 3px solid var(--primary);">
+            <a href="https://tformance.com" style="display: flex; align-items: center; gap: 0.5rem; color: var(--text); text-decoration: none; font-size: 0.68rem; line-height: 1.4;">
+                <span style="font-size: 1rem;">📊</span>
+                <span><strong style="color: var(--primary);">For Your Team</strong><br><span style="color: var(--text-muted);">Get automated insights</span></span>
+            </a>
+        </div>
 
         <div class="toc-section-label">Findings</div>
         <ul>
