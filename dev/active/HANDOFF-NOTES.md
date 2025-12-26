@@ -1,200 +1,218 @@
 # Session Handoff Notes
 
-**Last Updated: 2025-12-26 21:00 UTC**
+**Last Updated: 2025-12-26 23:30 UTC**
 
-## Current Session: AI Regex Pattern Improvements ✅ COMPLETE
+## Current Session: GitHub Pages Research Report Enhancement
 
 ### What Was Done
-1. **Analyzed LLM vs Regex gap** - Found 1,717 PRs where LLM detected AI but regex missed
-2. **Added new patterns** using TDD Red-Green approach:
-   - **Replexica AI** (i18n tool): 5 signature patterns + 2 bot usernames
-   - **CodeRabbit author**: 3 patterns for docstrings/PRs created by CR bot
-   - **Mintlify Writer**: 1 pattern (skipped mintlify.com to avoid FP)
-3. **Fixed .claude/settings.local.json** - Removed malformed quote and exposed API key
-4. **Documented LLM-to-regex methodology** for research purposes
-5. **Ran full backfill** on 60,964 PRs
 
-### Results
+1. **Added Statistical Confidence Section** (COMMITTED)
+   - Sample size: 53,876 PRs with 95% CI of ±0.35%
+   - Std Dev 25.3% between teams (high variance)
+   - Chi-square test for team structure: p < 0.0001
+   - Documented limitations (selection bias, detection bias, team confounding, survivorship)
+   - Distribution insight: median 13.6% vs mean 23%
 
-| Metric | Before | After | Change |
-|--------|--------|-------|--------|
-| LLM-only gap | 1,717 | 1,668 | **-49 (2.9%)** |
-| Regex detections | ~11,828 | 12,388 | +560 |
+2. **Added "About This Research" Section** (COMMITTED)
+   - Methodology explanation (GitHub GraphQL → LLM → regex)
+   - What we don't analyze (file contents, private repos, hidden AI)
+   - Disclaimer about independent research
 
-**Tool Detections:**
-- Replexica: 430 PRs (mostly Cal.com @LingoDotDev translations)
-- CodeRabbit: 6,884 PRs (includes new author patterns)
-- Mintlify: 13 PRs (conservative Writer-only pattern)
+3. **Added Overall 2025 Trend Chart** (COMMITTED)
+   - Shows 9.4% (Jan) → 30.7% (July) → 23.2% (Dec)
+   - +147% YoY growth visualization
+
+4. **Added Action Items CTA** (COMMITTED)
+   - 6 actionable recommendations for engineering leaders
+   - tformance product CTA
+
+5. **Table of Contents - PARTIALLY COMPLETE** (NOT COMMITTED)
+   - CSS added for sticky sidebar TOC
+   - TOC HTML added with links
+   - **NEEDS**: IDs added to sections (only #about, #stats, #trend-2025, #takeaways done)
+   - **NEEDS**: JavaScript for scroll spy
+   - **NEEDS**: IDs for remaining sections:
+     - `#summary` - Executive Summary (line ~880)
+     - `#tools` - AI Tool Evolution (line ~911)
+     - `#by-team` - AI Adoption by Team (line ~941)
+     - `#impact` - AI Impact on Metrics (line ~956)
+     - `#monthly` - Monthly Adoption Trends (line ~976)
+     - `#data` - Complete Team Data (line ~989)
+     - `#detection` - Detection Method Comparison (line ~1015)
+     - `#correlations` - AI Adoption Correlations (need to find)
+     - `#methodology` - Methodology (need to find)
+     - `#action` - Action Items (need to find)
+
+### User's Pending Request: Critical Review
+
+User asked to:
+> "I want you to be a rational critic, Your task is to review our report from a side and find easy to debate points. Check if our review correlates with public info and other reports on this topic (don't forget Stack Overflow report)."
+
+**TODO**: Compare findings to:
+- Stack Overflow Developer Survey 2024/2025
+- GitHub Octoverse report
+- JetBrains Developer Ecosystem Survey
+- Other industry AI adoption reports
 
 ### Key Files Modified
-- `apps/metrics/services/ai_patterns.py` - Added 9 new patterns, version 1.9.0 → 2.0.0
-- `apps/metrics/tests/test_ai_detector.py` - Added 12 new tests (129 total, all passing)
-- `dev/active/improve-ai-regex-patterns/` - Full task documentation with results
 
-### Pattern Changes Summary
-```python
-# New bot usernames (AI_REVIEWER_BOTS)
-"replexica[bot]": "replexica"
-"lingodotdev[bot]": "replexica"
+| File | Status | Changes |
+|------|--------|---------|
+| `docs/index.html` | UNCOMMITTED | TOC CSS, TOC HTML, section IDs (partial) |
+| `docs/index.html` | COMMITTED | Statistical Confidence, About, 2025 Trend, Action Items |
 
-# New signature patterns (AI_SIGNATURE_PATTERNS)
-(r"\bdocstrings?\s+generation\s+was\s+requested\b", "coderabbit")
-(r"\bcoderabbit\s+cannot\s+perform\s+edits\b", "coderabbit")
-(r"\bgenerated\s+by\s+coderabbit\b", "coderabbit")
-(r"\bmintlify\s+writer\b", "mintlify")
-(r"\breplexica\s+ai\b", "replexica")
-(r"\breplexica\.com\b", "replexica")
-(r"\breplexica\s+localization\s+engine\b", "replexica")
-(r"\@replexica\b", "replexica")
-(r"\@lingodotdev\b", "replexica")
-
-# New display name
-"replexica": "Replexica AI"
-```
-
-### Analysis: Further Regex Improvements Not Practical
-
-Investigated top missed tools - **all are implicit LLM detections** without text markers:
-- Greptile (455): Team inference (PostHog 86%, Twenty 12%), no explicit mentions
-- Copilot/Claude/Cursor: Code style inference, no text markers
-- CodeRabbit: Detection from review comments, not PR body
-
-**Conclusion**: The 1,668 LLM-only gap represents genuine LLM value - contextual detection that regex cannot do.
-
-### Next Steps
-- [x] Commit changes to git
-- [ ] Move `dev/active/improve-ai-regex-patterns/` to `dev/completed/`
-
-### Research Notes: LLM-to-Regex Discovery
-Documented in `dev/active/improve-ai-regex-patterns/improve-ai-regex-patterns-context.md`:
-- LLM helps discover patterns, but ~70% are implicit (no text markers)
-- Only ~30% of LLM detections can be converted to regex
-- Validates hybrid approach: LLM for discovery, regex for explicit patterns
-
----
-
-## Previous Session: OSS Expansion (25 → 100 Projects)
-
-### What Was Done
-1. Researched and added 75 new OSS product companies to seeding config
-2. Organized 100 projects into 20 industry categories for benchmarking
-3. Added `industry` field and helper functions to `real_projects.py`
-4. Provided parallel seeding commands with 2 PATs
-5. **Phase 1 seeding (26-50) is running** in user's terminals
-
-### Key File Modified
-`apps/metrics/seeding/real_projects.py`:
-- Added `industry` field to `RealProjectConfig` dataclass
-- Added `INDUSTRIES` dict with 20 categories
-- Added 75 new project configs (now 100 total)
-- Added helper functions: `get_projects_by_industry()`, `list_industries()`, `get_industry_display_name()`
-
----
-
-## LLM Processing Status
-
-| Metric | Value |
-|--------|-------|
-| Total PRs in DB | 63,403+ |
-| With LLM Summary | 53,876 (85%+) |
-| AI-Assisted PRs | ~11,500 |
-| LLM-only gap | 1,717 (target: reduce with new patterns) |
-
----
-
-## Active Tasks Status
-
-| Task | Location | Status |
-|------|----------|--------|
-| **improve-ai-regex-patterns** | dev/active/ | Patterns added, backfill pending |
-| oss-expansion | dev/active/ | Phase 1 seeding running |
-| groq-batch-improvements | dev/active/ | Complete |
-| trends-benchmarks-dashboard | dev/active/ | Phases 1-5 complete |
-
----
-
-## Uncommitted Changes
+### Uncommitted Changes
 
 ```bash
-# Check current status
-git status --short
+git status --short docs/index.html
+# M docs/index.html  (TOC additions - partial)
+```
 
-# Expected modified files:
-M apps/metrics/services/ai_patterns.py
-M apps/metrics/tests/test_ai_detector.py
-M dev/active/HANDOFF-NOTES.md
-M dev/active/improve-ai-regex-patterns/
+### Last Commit
+```
+2ec1e76 Add statistical confidence section and Action Items CTA
 ```
 
 ---
 
-## Commands for Next Session
+## How to Continue: TOC Implementation
 
-### 1. Verify Tests Pass
-```bash
-.venv/bin/pytest apps/metrics/tests/test_ai_detector.py -v
-# Expected: 129 tests pass
+### 1. Add remaining section IDs
+
+Find and add IDs to these sections in `docs/index.html`:
+
+```html
+<!-- Around line 880 -->
+<section id="summary">
+    <h2>Executive Summary</h2>
+
+<!-- Around line 911 -->
+<section id="tools">
+    <h2>AI Tool Evolution (2025)</h2>
+
+<!-- Around line 941 -->
+<section id="by-team">
+    <h2>AI Adoption by Team</h2>
+
+<!-- Around line 956 -->
+<section id="impact">
+    <h2>AI Impact on Metrics</h2>
+
+<!-- Around line 976 -->
+<section id="monthly">
+    <h2>Monthly Adoption Trends by Team</h2>
+
+<!-- Around line 989 -->
+<section id="data">
+    <h2>Complete Team Data</h2>
+
+<!-- Around line 1015 -->
+<section id="detection" class="comparison-section">
+
+<!-- Find and add -->
+<section id="correlations">
+    <h2>AI Adoption Correlations</h2>
+
+<section id="methodology">
+    <h2>Methodology</h2>
+
+<section id="action" class="cta-section">
 ```
 
-### 2. Run Backfill
-```bash
-# Check if force flag needed
-python manage.py backfill_ai_detection --help
+### 2. Add scroll spy JavaScript
 
-# Run backfill
-python manage.py backfill_ai_detection
+Add before `</body>`:
+
+```javascript
+// TOC toggle for mobile
+function toggleToc() {
+    document.getElementById('toc').classList.toggle('show');
+}
+
+// Scroll spy for TOC highlighting
+document.addEventListener('DOMContentLoaded', function() {
+    const sections = document.querySelectorAll('section[id]');
+    const tocLinks = document.querySelectorAll('.toc-container a');
+
+    function highlightToc() {
+        let current = '';
+        sections.forEach(section => {
+            const sectionTop = section.offsetTop;
+            if (scrollY >= sectionTop - 200) {
+                current = section.getAttribute('id');
+            }
+        });
+
+        tocLinks.forEach(link => {
+            link.classList.remove('active');
+            if (link.getAttribute('href') === '#' + current) {
+                link.classList.add('active');
+            }
+        });
+    }
+
+    window.addEventListener('scroll', highlightToc);
+    highlightToc();
+});
 ```
 
-### 3. Verify Gap Reduction
+### 3. Commit TOC changes
+
 ```bash
-python manage.py shell -c "
-from apps.metrics.models import PullRequest
-from django.db.models import Q
-llm_only = PullRequest.objects.filter(
-    llm_summary__ai__is_assisted=True,
-    llm_summary__ai__confidence__gte=0.5,
-    is_ai_assisted=False
-).count()
-print(f'LLM-only gap: {llm_only}')
-# Was: 1,717 - Should be lower after backfill
-"
+git add docs/index.html
+git commit -m "Add sticky table of contents with scroll spy
+
+- Fixed left sidebar TOC on wide screens
+- Mobile toggle button shows/hides TOC
+- Scroll spy highlights current section
+- 14 sections linked for easy navigation"
 ```
 
-### 4. Commit Changes
-```bash
-git add apps/metrics/services/ai_patterns.py apps/metrics/tests/test_ai_detector.py
-git commit -m "Add Replexica, CodeRabbit author, Mintlify Writer patterns (v2.0.0)
+---
 
-Pattern improvements based on LLM gap analysis:
-- Replexica AI: 5 signature patterns + 2 bot usernames
-- CodeRabbit: 3 author patterns (docstrings, cannot edit)
-- Mintlify: 1 pattern (Writer only, skip FP-prone .com)
+## Critical Review TODO
 
-Tests: 129 pass (+12 new)
-Version: 1.9.0 → 2.0.0
+Compare our findings with public reports:
 
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
+| Our Finding | Check Against |
+|-------------|---------------|
+| 21.4% AI adoption | SO 2024: 76% use AI tools |
+| CodeRabbit dominant | Check market share reports |
+| Focused teams = higher adoption | Academic research on team size |
+| Review time -31%, Cycle time +42% | Industry productivity studies |
 
-Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
-```
+**Key debate points to address:**
+1. Our 21% vs SO's 76% - different populations (OSS explicit mention vs any use)
+2. Detection bias - only capturing disclosed usage
+3. OSS vs enterprise patterns may differ
+4. Selection bias - popular projects only
 
 ---
 
 ## No Migrations Needed
 
-Only service-layer code changes. Dev server should work immediately.
+Only frontend/docs changes. No Django code modified this session.
 
 ---
 
 ## Test Commands
 
 ```bash
-# AI detector tests
-.venv/bin/pytest apps/metrics/tests/test_ai_detector.py -v
-
-# Full test suite
-make test
-
-# Dev server check
+# Check dev server
 curl -s http://localhost:8000/ | head -1
+
+# Verify GitHub Pages (after push)
+open https://yanchuk.github.io/tformance/
 ```
+
+---
+
+## Previous Sessions Summary
+
+| Session | Status |
+|---------|--------|
+| AI Regex Pattern v2.0.0 | COMPLETE |
+| OSS Expansion (100 projects) | Phase 1 seeding done |
+| Groq Batch Improvements | COMPLETE |
+| Trends Dashboard | COMPLETE |
+| GitHub Pages Report | IN PROGRESS (TOC partial) |
