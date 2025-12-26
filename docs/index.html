@@ -1574,24 +1574,24 @@
             </div>
             <div class="stat-grid" style="margin-top: 1.5rem;">
                 <div class="stat-card">
-                    <div class="stat-value" style="color: var(--text-muted);">7.9%</div>
+                    <div class="stat-value" style="color: var(--text-muted);">8.3%</div>
                     <div class="stat-label">January 2025</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-value positive">19.1%</div>
+                    <div class="stat-value positive">16.8%</div>
                     <div class="stat-label">Peak (July 2025)</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-value neutral">15.5%</div>
+                    <div class="stat-value neutral">14.6%</div>
                     <div class="stat-label">December 2025</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-value positive">+96%</div>
+                    <div class="stat-value positive">+76%</div>
                     <div class="stat-label">YoY Growth (Jan→Dec)</div>
                 </div>
             </div>
             <div class="insight-box" style="margin-top: 1rem;">
-                <strong>Trend Analysis:</strong> AI adoption grew steadily throughout 2025, peaking at 19.1% in July. With 51 teams in the dataset, we see more variance month-to-month. The dip after July may reflect seasonal patterns or detection limitations as AI usage becomes more normalized.
+                <strong>Trend Analysis:</strong> AI adoption grew steadily throughout 2025, peaking at 16.8% in July. With 51 teams in the dataset, we see variance month-to-month. The dip after July may reflect seasonal patterns or detection limitations as AI usage becomes more normalized.
             </div>
         </section>
 
@@ -1605,7 +1605,7 @@
                 </div>
                 <div class="takeaway-card">
                     <h4><span class="takeaway-number">2</span> Review Velocity is Consistent</h4>
-                    <p>33 out of 51 teams show faster review times with AI assistance. Average improvement: <strong>-52%</strong>. AI-generated code appears easier to review.</p>
+                    <p>35 out of 50 teams (with comparable data) show faster review times with AI assistance. Average improvement: <strong>-52%</strong>. AI-generated code appears easier to review.</p>
                 </div>
                 <div class="takeaway-card">
                     <h4><span class="takeaway-number">3</span> Autonomous Agents Growing Fast</h4>
@@ -1722,7 +1722,7 @@
             </div>
 
             <div class="insight-box">
-                <strong>Adoption Range:</strong> AI adoption varies from 0% (Lago) to 87.3% (Plane). High-adoption teams tend to use review bots (CodeRabbit) extensively.
+                <strong>Adoption Range:</strong> AI adoption varies from 0% (GrowthBook) to 85.6% (Plane). High-adoption teams tend to use review bots (CodeRabbit) extensively.
             </div>
         </section>
 
@@ -1784,7 +1784,7 @@
             </div>
 
             <div class="insight-box">
-                <strong>Patterns:</strong> Cal.com shows most dramatic growth (0.2% Feb → 80.6% Jun). Formbricks shows opposite trend (90% Jan → 8% Dec). Teams experiment heavily then settle on sustainable adoption levels.
+                <strong>Patterns:</strong> Cal.com shows dramatic growth (22.9% Jan → 78.8% Jun). Formbricks shows opposite trend (90% Jan → 1% Dec). Teams experiment heavily then settle on sustainable adoption levels.
             </div>
         </section>
 
@@ -2260,7 +2260,7 @@
                 <div>
                     <h3>AI Detection Methods</h3>
                     <ul>
-                        <li><strong>LLM Detection:</strong> ChatGPT OSS 20B (via Groq Batch API), with Llama 3.3 70B fallback for failures</li>
+                        <li><strong>LLM Detection:</strong> Llama 3.3 70B (via Groq Batch API) for semantic analysis of PR metadata</li>
                         <li><strong>Pattern Detection:</strong> 25+ regex patterns for known AI signatures</li>
                         <li><strong>Tool Attribution:</strong> Extracted from PR descriptions, commits, comments</li>
                         <li><strong>Scope:</strong> Metadata only — file contents not analyzed</li>
