@@ -266,6 +266,25 @@
             font-family: 'JetBrains Mono', monospace;
         }
 
+        /* Sortable Table Headers */
+        .sortable-header {
+            cursor: pointer;
+            user-select: none;
+            transition: background 0.2s, color 0.2s;
+            position: relative;
+        }
+
+        .sortable-header:hover {
+            background: rgba(249, 115, 22, 0.15);
+            color: var(--primary);
+        }
+
+        .sort-indicator {
+            font-size: 0.7rem;
+            margin-left: 0.25rem;
+            opacity: 0.8;
+        }
+
         .insight-box {
             background: rgba(90, 153, 151, 0.1);
             border-left: 4px solid var(--secondary);
@@ -1769,26 +1788,72 @@
                 <a href="data/ai_tools_monthly.csv" class="download-btn" download>🔧 AI Tools by Month (CSV)</a>
             </div>
 
-            <table>
-                <thead>
-                    <tr>
-                        <th>Team</th>
-                        <th>PRs</th>
-                        <th>AI %</th>
-                        <th>Cycle Δ</th>
-                        <th>Review Δ</th>
-                        <th>Size Δ</th>
-                    </tr>
-                </thead>
-                <tbody id="teamTableBody">
-                </tbody>
-            </table>
+            <!-- Alpine.js Sortable Table -->
+            <div x-data="teamTable()" x-init="init()">
+                <table>
+                    <thead>
+                        <tr>
+                            <th @click="sort('team')" class="sortable-header">
+                                Team
+                                <span class="sort-indicator" x-show="sortBy === 'team'" x-text="sortDir === 'asc' ? '▲' : '▼'"></span>
+                            </th>
+                            <th @click="sort('total')" class="sortable-header">
+                                PRs
+                                <span class="sort-indicator" x-show="sortBy === 'total'" x-text="sortDir === 'asc' ? '▲' : '▼'"></span>
+                            </th>
+                            <th @click="sort('ai_pct')" class="sortable-header">
+                                AI %
+                                <span class="sort-indicator" x-show="sortBy === 'ai_pct'" x-text="sortDir === 'asc' ? '▲' : '▼'"></span>
+                            </th>
+                            <th @click="sort('cycle_delta')" class="sortable-header">
+                                Cycle Δ
+                                <span class="sort-indicator" x-show="sortBy === 'cycle_delta'" x-text="sortDir === 'asc' ? '▲' : '▼'"></span>
+                            </th>
+                            <th @click="sort('review_delta')" class="sortable-header">
+                                Review Δ
+                                <span class="sort-indicator" x-show="sortBy === 'review_delta'" x-text="sortDir === 'asc' ? '▲' : '▼'"></span>
+                            </th>
+                            <th @click="sort('size_delta')" class="sortable-header">
+                                Size Δ
+                                <span class="sort-indicator" x-show="sortBy === 'size_delta'" x-text="sortDir === 'asc' ? '▲' : '▼'"></span>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template x-for="t in paginatedData" :key="t.team">
+                            <tr>
+                                <td><strong x-text="t.team"></strong></td>
+                                <td class="mono" x-text="t.total.toLocaleString()"></td>
+                                <td class="mono" x-text="t.ai_pct.toFixed(1) + '%'"></td>
+                                <td>
+                                    <span x-show="t.cycle_delta !== null"
+                                          :class="'badge ' + (t.cycle_delta < 0 ? 'badge-success' : 'badge-error')"
+                                          x-text="(t.cycle_delta > 0 ? '+' : '') + t.cycle_delta.toFixed(0) + '%'"></span>
+                                    <span x-show="t.cycle_delta === null">-</span>
+                                </td>
+                                <td>
+                                    <span x-show="t.review_delta !== null"
+                                          :class="'badge ' + (t.review_delta < 0 ? 'badge-success' : 'badge-error')"
+                                          x-text="(t.review_delta > 0 ? '+' : '') + t.review_delta.toFixed(0) + '%'"></span>
+                                    <span x-show="t.review_delta === null">-</span>
+                                </td>
+                                <td>
+                                    <span x-show="t.size_delta !== null"
+                                          :class="'badge ' + (t.size_delta < 0 ? 'badge-success' : 'badge-warning')"
+                                          x-text="(t.size_delta > 0 ? '+' : '') + t.size_delta.toFixed(0) + '%'"></span>
+                                    <span x-show="t.size_delta === null">-</span>
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
 
-            <!-- Table Pagination -->
-            <div class="table-pagination" id="teamTablePagination">
-                <button class="pagination-btn" id="prevPage" onclick="changePage(-1)">← Prev</button>
-                <span class="pagination-info" id="pageInfo">Page 1 of 3</span>
-                <button class="pagination-btn" id="nextPage" onclick="changePage(1)">Next →</button>
+                <!-- Table Pagination -->
+                <div class="table-pagination">
+                    <button class="pagination-btn" @click="prevPage()" :disabled="currentPage === 1">← Prev</button>
+                    <span class="pagination-info" x-text="'Page ' + currentPage + ' of ' + totalPages"></span>
+                    <button class="pagination-btn" @click="nextPage()" :disabled="currentPage === totalPages">Next →</button>
+                </div>
             </div>
         </section>
 
@@ -3406,91 +3471,73 @@
             }
         });
 
-        // Table Pagination Config
-        const ROWS_PER_PAGE = 20;
-        let currentPage = 1;
-        const totalPages = Math.ceil(teamData.length / ROWS_PER_PAGE);
+        // Alpine.js Sortable Table Component
+        function teamTable() {
+            return {
+                data: [],
+                sortBy: 'ai_pct',
+                sortDir: 'desc',
+                currentPage: 1,
+                perPage: 20,
 
-        // Populate table with pagination
-        function populateTable() {
-            const tbody = document.getElementById('teamTableBody');
-            tbody.textContent = ''; // Clear safely
+                init() {
+                    this.data = [...teamData];
+                    this.sortData();
+                },
 
-            const start = (currentPage - 1) * ROWS_PER_PAGE;
-            const end = start + ROWS_PER_PAGE;
-            const pageData = teamData.slice(start, end);
+                get sortedData() {
+                    return [...this.data].sort((a, b) => {
+                        let aVal = a[this.sortBy];
+                        let bVal = b[this.sortBy];
 
-            pageData.forEach(t => {
-                const tr = document.createElement('tr');
+                        // Handle nulls - push to end
+                        if (aVal === null) return 1;
+                        if (bVal === null) return -1;
 
-                const tdTeam = document.createElement('td');
-                const strong = document.createElement('strong');
-                strong.textContent = t.team;
-                tdTeam.appendChild(strong);
-                tr.appendChild(tdTeam);
+                        // String comparison for team names
+                        if (this.sortBy === 'team') {
+                            return this.sortDir === 'asc'
+                                ? aVal.localeCompare(bVal)
+                                : bVal.localeCompare(aVal);
+                        }
 
-                const tdTotal = document.createElement('td');
-                tdTotal.className = 'mono';
-                tdTotal.textContent = t.total.toLocaleString();
-                tr.appendChild(tdTotal);
+                        // Numeric comparison
+                        return this.sortDir === 'asc' ? aVal - bVal : bVal - aVal;
+                    });
+                },
 
-                const tdAi = document.createElement('td');
-                tdAi.className = 'mono';
-                tdAi.textContent = t.ai_pct.toFixed(1) + '%';
-                tr.appendChild(tdAi);
+                get totalPages() {
+                    return Math.ceil(this.data.length / this.perPage);
+                },
 
-                const tdCycle = document.createElement('td');
-                if (t.cycle_delta !== null) {
-                    const badge = document.createElement('span');
-                    badge.className = 'badge ' + (t.cycle_delta < 0 ? 'badge-success' : 'badge-error');
-                    badge.textContent = (t.cycle_delta > 0 ? '+' : '') + t.cycle_delta.toFixed(0) + '%';
-                    tdCycle.appendChild(badge);
-                } else {
-                    tdCycle.textContent = '-';
+                get paginatedData() {
+                    const start = (this.currentPage - 1) * this.perPage;
+                    return this.sortedData.slice(start, start + this.perPage);
+                },
+
+                sort(column) {
+                    if (this.sortBy === column) {
+                        this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';
+                    } else {
+                        this.sortBy = column;
+                        this.sortDir = column === 'team' ? 'asc' : 'desc';
+                    }
+                    this.currentPage = 1; // Reset to first page on sort
+                },
+
+                sortData() {
+                    // Initial sort handled by getter
+                },
+
+                prevPage() {
+                    if (this.currentPage > 1) this.currentPage--;
+                },
+
+                nextPage() {
+                    if (this.currentPage < this.totalPages) this.currentPage++;
                 }
-                tr.appendChild(tdCycle);
-
-                const tdReview = document.createElement('td');
-                if (t.review_delta !== null) {
-                    const badge = document.createElement('span');
-                    badge.className = 'badge ' + (t.review_delta < 0 ? 'badge-success' : 'badge-error');
-                    badge.textContent = (t.review_delta > 0 ? '+' : '') + t.review_delta.toFixed(0) + '%';
-                    tdReview.appendChild(badge);
-                } else {
-                    tdReview.textContent = '-';
-                }
-                tr.appendChild(tdReview);
-
-                const tdSize = document.createElement('td');
-                if (t.size_delta !== null) {
-                    const badge = document.createElement('span');
-                    badge.className = 'badge ' + (t.size_delta < 0 ? 'badge-success' : 'badge-warning');
-                    badge.textContent = (t.size_delta > 0 ? '+' : '') + t.size_delta.toFixed(0) + '%';
-                    tdSize.appendChild(badge);
-                } else {
-                    tdSize.textContent = '-';
-                }
-                tr.appendChild(tdSize);
-
-                tbody.appendChild(tr);
-            });
-
-            updatePaginationControls();
+            };
         }
-
-        function updatePaginationControls() {
-            document.getElementById('pageInfo').textContent = `Page ${currentPage} of ${totalPages}`;
-            document.getElementById('prevPage').disabled = currentPage === 1;
-            document.getElementById('nextPage').disabled = currentPage === totalPages;
-        }
-
-        function changePage(delta) {
-            currentPage = Math.max(1, Math.min(totalPages, currentPage + delta));
-            populateTable();
-        }
-        window.changePage = changePage;
-
-        populateTable();
 
         // TOC toggle for mobile with overlay
         function toggleToc() {
