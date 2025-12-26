@@ -195,65 +195,165 @@
 
         .insight-box strong { color: var(--secondary); }
 
-        /* Table of Contents */
-        .toc-container {
+        /* Table of Contents - Always Visible Sidebar */
+        .toc-sidebar {
             position: fixed;
-            left: 1rem;
-            top: 50%;
-            transform: translateY(-50%);
-            width: 200px;
-            max-height: 80vh;
-            overflow-y: auto;
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 1rem;
+            left: 0;
+            top: 0;
+            width: 220px;
+            height: 100vh;
+            background: linear-gradient(180deg, var(--bg-card) 0%, rgba(42, 42, 40, 0.98) 100%);
+            border-right: 1px solid var(--border);
+            padding: 2rem 1.25rem;
             z-index: 100;
-            font-size: 0.75rem;
+            overflow-y: auto;
+            overflow-x: hidden;
+            scrollbar-width: thin;
+            scrollbar-color: var(--border) transparent;
         }
 
-        .toc-container h3 {
-            font-size: 0.7rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
+        [data-theme="light"] .toc-sidebar {
+            background: linear-gradient(180deg, #ffffff 0%, #fafafa 100%);
+        }
+
+        .toc-sidebar::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .toc-sidebar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .toc-sidebar::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 2px;
+        }
+
+        .toc-brand {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--primary);
+            letter-spacing: -0.02em;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .toc-brand::before {
+            content: '';
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background: var(--primary);
+            border-radius: 2px;
+        }
+
+        .toc-subtitle {
+            font-size: 0.65rem;
             color: var(--text-muted);
-            margin: 0 0 0.75rem 0;
-            padding-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
             border-bottom: 1px solid var(--border);
         }
 
-        .toc-container ul {
+        .toc-section-label {
+            font-size: 0.6rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-muted);
+            margin: 1.5rem 0 0.75rem 0;
+            opacity: 0.7;
+        }
+
+        .toc-section-label:first-of-type {
+            margin-top: 0;
+        }
+
+        .toc-sidebar ul {
             list-style: none;
             padding: 0;
             margin: 0;
         }
 
-        .toc-container li {
-            margin: 0.25rem 0;
+        .toc-sidebar li {
+            margin: 0;
         }
 
-        .toc-container a {
+        .toc-sidebar a {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
             color: var(--text-muted);
             text-decoration: none;
-            display: block;
-            padding: 0.35rem 0.5rem;
-            border-radius: 4px;
-            transition: all 0.2s;
-            border-left: 2px solid transparent;
+            font-size: 0.72rem;
+            padding: 0.5rem 0.75rem;
+            margin: 0.125rem 0;
+            border-radius: 6px;
+            transition: all 0.15s ease;
+            position: relative;
+            line-height: 1.4;
         }
 
-        .toc-container a:hover {
+        .toc-sidebar a::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 2px;
+            height: 0;
+            background: var(--primary);
+            border-radius: 1px;
+            transition: height 0.2s ease;
+        }
+
+        .toc-sidebar a:hover {
             color: var(--text);
-            background: rgba(249, 115, 22, 0.1);
+            background: rgba(249, 115, 22, 0.08);
+            padding-left: 1rem;
         }
 
-        .toc-container a.active {
+        .toc-sidebar a:hover::before {
+            height: 60%;
+        }
+
+        .toc-sidebar a.active {
             color: var(--primary);
-            background: rgba(249, 115, 22, 0.15);
-            border-left-color: var(--primary);
+            background: rgba(249, 115, 22, 0.12);
             font-weight: 500;
+            padding-left: 1rem;
         }
 
+        .toc-sidebar a.active::before {
+            height: 70%;
+            background: var(--primary);
+        }
+
+        .toc-number {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.6rem;
+            color: var(--text-muted);
+            opacity: 0.5;
+            min-width: 1.25rem;
+        }
+
+        .toc-sidebar a.active .toc-number {
+            color: var(--primary);
+            opacity: 0.8;
+        }
+
+        /* Main content offset for sidebar */
+        .container {
+            margin-left: 220px;
+            max-width: calc(1400px - 220px);
+        }
+
+        /* Responsive: Hide sidebar on smaller screens, show toggle */
         .toc-toggle {
             display: none;
             position: fixed;
@@ -261,46 +361,49 @@
             bottom: 1rem;
             background: var(--bg-card);
             border: 1px solid var(--border);
-            border-radius: 50%;
-            width: 48px;
-            height: 48px;
+            border-radius: 12px;
+            width: 44px;
+            height: 44px;
             cursor: pointer;
             z-index: 101;
             color: var(--text);
-            font-size: 1.25rem;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            font-size: 1.1rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            transition: all 0.2s ease;
         }
 
         .toc-toggle:hover {
             border-color: var(--primary);
             color: var(--primary);
+            transform: scale(1.05);
         }
 
-        @media (max-width: 1600px) {
-            .toc-container {
-                left: 0.5rem;
-                width: 180px;
-                font-size: 0.7rem;
+        @media (max-width: 1200px) {
+            .toc-sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+                box-shadow: 4px 0 24px rgba(0,0,0,0.2);
             }
-        }
 
-        @media (max-width: 1400px) {
-            .toc-container {
-                display: none;
+            .toc-sidebar.show {
+                transform: translateX(0);
             }
-            .toc-container.show {
-                display: block;
-                left: 1rem;
-                top: auto;
-                bottom: 5rem;
-                transform: none;
-                max-height: 60vh;
-                width: 220px;
+
+            .container {
+                margin-left: 0;
+                max-width: 1400px;
             }
+
             .toc-toggle {
                 display: flex;
                 align-items: center;
                 justify-content: center;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .toc-sidebar {
+                width: 260px;
             }
         }
 
@@ -688,24 +791,40 @@
     </style>
 </head>
 <body>
-    <!-- Table of Contents -->
-    <nav class="toc-container" id="toc">
-        <h3>Contents</h3>
+    <!-- Table of Contents - Always Visible Sidebar -->
+    <nav class="toc-sidebar" id="toc">
+        <div class="toc-brand">tformance</div>
+        <div class="toc-subtitle">Research Report 2025</div>
+
+        <div class="toc-section-label">Overview</div>
         <ul>
-            <li><a href="#about">About This Research</a></li>
-            <li><a href="#stats">Statistical Confidence</a></li>
-            <li><a href="#trend-2025">2025 Adoption Trend</a></li>
-            <li><a href="#takeaways">Key Takeaways</a></li>
-            <li><a href="#summary">Executive Summary</a></li>
-            <li><a href="#tools">AI Tool Evolution</a></li>
-            <li><a href="#by-team">Adoption by Team</a></li>
-            <li><a href="#impact">AI Impact on Metrics</a></li>
-            <li><a href="#monthly">Monthly Trends</a></li>
-            <li><a href="#data">Complete Team Data</a></li>
-            <li><a href="#detection">Detection Methods</a></li>
-            <li><a href="#correlations">Correlations</a></li>
-            <li><a href="#methodology">Methodology</a></li>
-            <li><a href="#action">Action Items</a></li>
+            <li><a href="#about"><span class="toc-number">01</span>About This Research</a></li>
+            <li><a href="#stats"><span class="toc-number">02</span>Statistical Confidence</a></li>
+            <li><a href="#trend-2025"><span class="toc-number">03</span>2025 Adoption Trend</a></li>
+            <li><a href="#takeaways"><span class="toc-number">04</span>Key Takeaways</a></li>
+        </ul>
+
+        <div class="toc-section-label">Findings</div>
+        <ul>
+            <li><a href="#summary"><span class="toc-number">05</span>Executive Summary</a></li>
+            <li><a href="#tools"><span class="toc-number">06</span>AI Tool Evolution</a></li>
+            <li><a href="#by-team"><span class="toc-number">07</span>Adoption by Team</a></li>
+            <li><a href="#impact"><span class="toc-number">08</span>AI Impact on Metrics</a></li>
+            <li><a href="#monthly"><span class="toc-number">09</span>Monthly Trends</a></li>
+        </ul>
+
+        <div class="toc-section-label">Data</div>
+        <ul>
+            <li><a href="#data"><span class="toc-number">10</span>Complete Team Data</a></li>
+            <li><a href="#detection"><span class="toc-number">11</span>Detection Methods</a></li>
+            <li><a href="#correlations"><span class="toc-number">12</span>Correlations</a></li>
+        </ul>
+
+        <div class="toc-section-label">Context</div>
+        <ul>
+            <li><a href="#methodology"><span class="toc-number">13</span>Methodology</a></li>
+            <li><a href="#industry"><span class="toc-number">14</span>Industry Context</a></li>
+            <li><a href="#action"><span class="toc-number">15</span>Action Items</a></li>
         </ul>
     </nav>
     <button class="toc-toggle" id="toc-toggle" onclick="toggleToc()" title="Table of Contents">☰</button>
@@ -1471,6 +1590,77 @@
                         <li><strong>Teams with 50+ PRs:</strong> 26</li>
                     </ul>
                 </div>
+            </div>
+        </section>
+
+        <!-- INDUSTRY CONTEXT - COMPARISON WITH OTHER REPORTS -->
+        <section id="industry" class="industry-context" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 2rem; margin-top: 2rem;">
+            <h2>📚 Industry Context</h2>
+            <p style="color: var(--text-muted); margin-bottom: 1.5rem;">
+                How do our findings compare to major developer surveys? Understanding the gap helps contextualize our results.
+            </p>
+
+            <div class="stat-grid" style="grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); margin-bottom: 1.5rem;">
+                <div class="stat-card" style="border-left: 4px solid var(--primary);">
+                    <div class="stat-value" style="font-size: 1.75rem;">21.4%</div>
+                    <div class="stat-label">Our Report (Detected)</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">Explicit AI mentions in OSS PRs</div>
+                </div>
+                <div class="stat-card" style="border-left: 4px solid var(--secondary);">
+                    <div class="stat-value" style="font-size: 1.75rem; color: var(--secondary);">84%</div>
+                    <div class="stat-label">Stack Overflow 2025</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">Using or planning to use AI</div>
+                </div>
+                <div class="stat-card" style="border-left: 4px solid var(--success);">
+                    <div class="stat-value" style="font-size: 1.75rem; color: var(--success);">51%</div>
+                    <div class="stat-label">SO 2025 Daily Users</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">Professional devs using AI daily</div>
+                </div>
+                <div class="stat-card" style="border-left: 4px solid var(--purple);">
+                    <div class="stat-value" style="font-size: 1.75rem; color: var(--purple);">85%</div>
+                    <div class="stat-label">JetBrains 2025</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">Regularly use AI for coding</div>
+                </div>
+            </div>
+
+            <div class="insight-box" style="background: rgba(249, 115, 22, 0.1); border-color: var(--primary);">
+                <strong>Why the Gap?</strong> Our 21.4% represents the <em>floor</em> of AI adoption — only PRs with explicit disclosure. The real rate is likely 2-3x higher:
+                <ul style="margin-top: 0.5rem; padding-left: 1.25rem; color: var(--text-muted);">
+                    <li><strong>Copilot autocomplete</strong> — accepted silently, never mentioned in PRs</li>
+                    <li><strong>ChatGPT research</strong> — used for learning but not disclosed</li>
+                    <li><strong>OSS vs Enterprise</strong> — enterprise teams may have higher adoption with more tooling budget</li>
+                    <li><strong>Detection bias</strong> — our method only catches what developers choose to share</li>
+                </ul>
+            </div>
+
+            <div class="two-col" style="gap: 1.5rem; margin-top: 1.5rem;">
+                <div>
+                    <h3 style="margin-bottom: 0.75rem;">Key Survey Insights (2025)</h3>
+                    <ul style="padding-left: 1.25rem; color: var(--text-muted);">
+                        <li><strong>Trust declining:</strong> Only 33% trust AI outputs (SO 2025), down from 43% in 2024</li>
+                        <li><strong>Productivity claims:</strong> 52% say AI improved productivity (SO 2025)</li>
+                        <li><strong>Time saved:</strong> 88% save 1+ hour/week, 19% save 8+ hours (JetBrains 2025)</li>
+                        <li><strong>Coding assistants:</strong> 62% use AI coding assistant or agent (JetBrains 2025)</li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 style="margin-bottom: 0.75rem;">Our Unique Contribution</h3>
+                    <ul style="padding-left: 1.25rem; color: var(--text-muted);">
+                        <li><strong>Behavioral data</strong> — PR metadata, not self-reported surveys</li>
+                        <li><strong>Tool attribution</strong> — which specific tools are used where</li>
+                        <li><strong>Metric correlation</strong> — AI vs cycle time, review time</li>
+                        <li><strong>Trend analysis</strong> — month-over-month adoption changes</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div style="margin-top: 1.5rem; padding: 1rem; background: rgba(90, 153, 151, 0.1); border-radius: 8px;">
+                <strong style="color: var(--secondary);">📖 Sources:</strong>
+                <span style="color: var(--text-muted);">
+                    <a href="https://survey.stackoverflow.co/2025/ai" target="_blank" style="color: var(--primary);">Stack Overflow 2025</a> •
+                    <a href="https://devecosystem-2025.jetbrains.com/artificial-intelligence" target="_blank" style="color: var(--primary);">JetBrains 2025</a> •
+                    <a href="https://survey.stackoverflow.co/2024/ai" target="_blank" style="color: var(--primary);">Stack Overflow 2024</a> (for trend comparison)
+                </span>
             </div>
         </section>
 
@@ -2463,7 +2653,7 @@
 
         // Scroll spy for TOC highlighting
         const sections = document.querySelectorAll('section[id]');
-        const tocLinks = document.querySelectorAll('.toc-container a');
+        const tocLinks = document.querySelectorAll('.toc-sidebar a');
 
         function highlightToc() {
             let current = '';
