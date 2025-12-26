@@ -77,6 +77,9 @@ export function createSparkline(canvas, values, options = {}) {
         tooltip: {
           enabled: false,
         },
+        datalabels: {
+          display: false, // Never show data labels on sparklines
+        },
       },
       scales: {
         x: {

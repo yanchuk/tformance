@@ -141,6 +141,15 @@ export const TformanceChartTheme = {
   get legend() {
     return getThemeColors().legend;
   },
+
+  // Text colors for data labels - dynamic based on theme
+  get text() {
+    const themeColors = getThemeColors();
+    return {
+      primary: themeColors.axis.titleColor,
+      secondary: themeColors.axis.color,
+    };
+  },
 };
 
 // Color palette for multi-series charts

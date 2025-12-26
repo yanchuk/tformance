@@ -138,6 +138,9 @@ export function createWideTrendChart(canvas, data, options = {}) {
           display: datasets.length > 1,
           ...defaults.plugins.legend,
         },
+        datalabels: {
+          display: false, // Disable data labels for line charts (too cluttered)
+        },
         tooltip: {
           ...defaults.plugins.tooltip,
           callbacks: {
@@ -220,6 +223,149 @@ if (typeof document !== 'undefined') {
   document.addEventListener('htmx:afterSwap', initTrendCharts);
 }
 
+/**
+ * Create a multi-metric comparison chart with dual Y-axes
+ * @param {HTMLCanvasElement} canvas - Canvas element to render chart
+ * @param {Object} chartData - Chart data with labels, datasets, and hasY2Axis
+ * @returns {Chart} Chart.js instance
+ */
+export function createMultiMetricChart(canvas, chartData) {
+  const { labels, datasets, hasY2Axis } = chartData;
+
+  // Build Chart.js datasets from our format
+  const chartDatasets = datasets.map((ds) => ({
+    label: ds.label,
+    data: ds.data,
+    borderColor: ds.color,
+    backgroundColor: `${ds.color}1a`, // 10% opacity
+    fill: false, // No fill for multi-line clarity
+    tension: 0.3,
+    pointRadius: 4,
+    pointHoverRadius: 6,
+    pointBackgroundColor: ds.color,
+    pointBorderWidth: 2,
+    yAxisID: ds.yAxisID,
+  }));
+
+  // Get base chart defaults
+  const defaults = getChartDefaults();
+
+  // Build scales configuration
+  const scales = {
+    ...defaults.scales,
+    x: {
+      ...defaults.scales.x,
+      ticks: {
+        ...defaults.scales.x.ticks,
+        maxRotation: 45,
+        autoSkip: true,
+        maxTicksLimit: 12,
+      },
+    },
+    y: {
+      ...defaults.scales.y,
+      type: 'linear',
+      display: true,
+      position: 'left',
+      beginAtZero: true,
+      title: {
+        display: true,
+        text: 'Hours',
+        ...defaults.scales.y.title,
+      },
+    },
+  };
+
+  // Add secondary Y axis if needed
+  if (hasY2Axis) {
+    scales.y2 = {
+      ...defaults.scales.y,
+      type: 'linear',
+      display: true,
+      position: 'right',
+      beginAtZero: true,
+      grid: {
+        drawOnChartArea: false, // Only show grid for primary axis
+      },
+      title: {
+        display: true,
+        text: 'Count / %',
+        ...defaults.scales.y.title,
+      },
+    };
+  }
+
+  // Chart configuration
+  const chartConfig = {
+    type: 'line',
+    data: { labels, datasets: chartDatasets },
+    options: {
+      ...defaults,
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: {
+        mode: 'index',
+        intersect: false,
+      },
+      scales,
+      plugins: {
+        ...defaults.plugins,
+        legend: {
+          display: true,
+          position: 'top',
+          ...defaults.plugins.legend,
+        },
+        datalabels: {
+          display: false,
+        },
+        tooltip: {
+          ...defaults.plugins.tooltip,
+          callbacks: {
+            label: (context) => {
+              const ds = datasets[context.datasetIndex];
+              const value = context.raw;
+              let formatted;
+              if (ds.unit === 'hours') {
+                formatted = `${value.toFixed(1)}h`;
+              } else if (ds.unit === '%') {
+                formatted = `${value.toFixed(1)}%`;
+              } else {
+                formatted = Math.round(value).toString();
+              }
+              return `${ds.label}: ${formatted}`;
+            },
+          },
+        },
+        zoom: {
+          pan: {
+            enabled: true,
+            mode: 'x',
+            modifierKey: null,
+          },
+          zoom: {
+            wheel: {
+              enabled: true,
+            },
+            pinch: {
+              enabled: true,
+            },
+            mode: 'x',
+            onZoomComplete: ({ chart }) => {
+              const resetBtn = document.querySelector('[data-chart-reset]');
+              if (resetBtn) {
+                resetBtn.style.display = 'block';
+              }
+            },
+          },
+        },
+      },
+    },
+  };
+
+  return new Chart(canvas, chartConfig);
+}
+
 // Export for global access
 window.createWideTrendChart = createWideTrendChart;
+window.createMultiMetricChart = createMultiMetricChart;
 window.resetChartZoom = resetChartZoom;

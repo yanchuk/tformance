@@ -3,6 +3,7 @@
 from django.test import TestCase
 
 from apps.metrics.templatetags.pr_list_tags import (
+    get_item,
     pr_size_bucket,
     repo_name,
     tech_abbrev,
@@ -483,3 +484,54 @@ class TestAISignalsTooltipFilter(TestCase):
         tooltip = ai_signals_tooltip(signals)
         self.assertIn("claude", tooltip.lower())
         self.assertIn("cursor", tooltip.lower())
+
+
+class TestGetItemFilter(TestCase):
+    """Tests for get_item template filter."""
+
+    def test_get_existing_key(self):
+        """Test getting an existing key from dictionary."""
+        data = {"feature": {"name": "Feature", "color": "#F97316"}}
+        self.assertEqual(get_item(data, "feature"), {"name": "Feature", "color": "#F97316"})
+
+    def test_get_nested_value(self):
+        """Test getting a nested value (simulating chained filter calls)."""
+        config = {"feature": {"name": "Feature", "color": "#F97316"}}
+        # First call gets the inner dict
+        inner = get_item(config, "feature")
+        # Second call gets the color
+        self.assertEqual(get_item(inner, "color"), "#F97316")
+
+    def test_missing_key_returns_empty_dict(self):
+        """Test missing key returns empty dict."""
+        data = {"feature": {"name": "Feature"}}
+        self.assertEqual(get_item(data, "nonexistent"), {})
+
+    def test_none_dictionary_returns_empty_dict(self):
+        """Test None dictionary returns empty dict."""
+        self.assertEqual(get_item(None, "key"), {})
+
+    def test_empty_dictionary_returns_empty_dict(self):
+        """Test empty dictionary returns empty dict for any key."""
+        self.assertEqual(get_item({}, "key"), {})
+
+    def test_non_dict_returns_empty_dict(self):
+        """Test non-dict input returns empty dict."""
+        self.assertEqual(get_item("string", "key"), {})
+        self.assertEqual(get_item(123, "key"), {})
+        self.assertEqual(get_item(["list"], "key"), {})
+
+    def test_pr_type_config_usage(self):
+        """Test typical usage with PR type config."""
+        pr_type_config = {
+            "feature": {"name": "Feature", "color": "#F97316"},
+            "bugfix": {"name": "Bugfix", "color": "#F87171"},
+            "unknown": {"name": "Other", "color": "#6B7280"},
+        }
+        # Get the config for a type
+        feature_config = get_item(pr_type_config, "feature")
+        self.assertEqual(feature_config["name"], "Feature")
+        self.assertEqual(feature_config["color"], "#F97316")
+
+        # Get color directly with chained call
+        self.assertEqual(get_item(get_item(pr_type_config, "bugfix"), "color"), "#F87171")

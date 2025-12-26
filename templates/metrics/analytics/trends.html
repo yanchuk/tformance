@@ -2,6 +2,7 @@
 {% load static %}
 {% load i18n %}
 {% load django_vite %}
+{% load pr_list_tags %}
 
 {% block analytics_content %}
 {% partialdef page-content inline %}
@@ -13,33 +14,129 @@
       <p class="text-base-content/70">{% trans "Long-horizon trend analysis with YoY comparison" %}</p>
     </div>
 
-    <!-- Metric Selector -->
-    <div class="flex gap-2 items-center">
-      <span class="text-sm text-base-content/70">{% trans "Metric:" %}</span>
-      <select id="metric-selector"
-              class="select select-sm select-bordered bg-base-200"
-              x-data="{ metric: '{{ default_metric }}' }"
-              x-model="metric"
-              @change="htmx.ajax('GET', '{% url 'metrics:chart_wide_trend' %}?metric=' + metric + '&days={{ days }}&preset={{ preset }}', {target:'#wide-chart-container', swap:'innerHTML'}); htmx.ajax('GET', '{% url 'metrics:benchmark_panel' metric='cycle_time' %}'.replace('cycle_time', metric) + '?days={{ days }}', {target:'#benchmark-panel-container', swap:'innerHTML'})">
+    <!-- Controls Row -->
+    <div class="flex flex-col md:flex-row gap-4 items-start md:items-center"
+         x-data="{
+           selectedMetrics: {{ selected_metrics|safe }},
+           granularity: '{{ granularity }}',
+           maxMetrics: 3,
+           toggleMetric(id) {
+             const idx = this.selectedMetrics.indexOf(id);
+             if (idx > -1) {
+               if (this.selectedMetrics.length > 1) {
+                 this.selectedMetrics.splice(idx, 1);
+               }
+             } else if (this.selectedMetrics.length < this.maxMetrics) {
+               this.selectedMetrics.push(id);
+             }
+             this.updateChart();
+           },
+           setGranularity(g) {
+             this.granularity = g;
+             this.updateChart();
+           },
+           updateChart() {
+             const metricsParam = this.selectedMetrics.join(',');
+             htmx.ajax('GET', '{% url 'metrics:chart_wide_trend' %}?metrics=' + metricsParam + '&days={{ days }}&preset={{ preset }}&granularity=' + this.granularity, {target:'#wide-chart-container', swap:'innerHTML'});
+             if (this.selectedMetrics.length === 1) {
+               htmx.ajax('GET', '{% url 'metrics:benchmark_panel' metric='cycle_time' %}'.replace('cycle_time', this.selectedMetrics[0]) + '?days={{ days }}', {target:'#benchmark-panel-container', swap:'innerHTML'});
+             }
+           }
+         }">
+
+      <!-- Granularity Toggle -->
+      <div class="flex gap-2 items-center">
+        <span class="text-sm text-base-content/70">{% trans "Group by:" %}</span>
+        <div class="join">
+          <button type="button"
+                  @click="setGranularity('weekly')"
+                  :class="{'btn-primary': granularity === 'weekly', 'btn-ghost': granularity !== 'weekly'}"
+                  class="join-item btn btn-sm">
+            {% trans "Weekly" %}
+          </button>
+          <button type="button"
+                  @click="setGranularity('monthly')"
+                  :class="{'btn-primary': granularity === 'monthly', 'btn-ghost': granularity !== 'monthly'}"
+                  class="join-item btn btn-sm">
+            {% trans "Monthly" %}
+          </button>
+        </div>
+      </div>
+
+      <div class="border-l border-base-300 h-6 hidden md:block"></div>
+
+      <!-- Metric Checkboxes -->
+      <div class="flex flex-wrap gap-3 items-center">
+        <span class="text-sm text-base-content/70">{% trans "Compare:" %}</span>
         {% for m in available_metrics %}
-        <option value="{{ m.id }}" {% if m.id == default_metric %}selected{% endif %}>
-          {{ m.name }}
-        </option>
+        <label class="flex items-center gap-1.5 cursor-pointer select-none">
+          <input type="checkbox"
+                 class="checkbox checkbox-sm"
+                 :checked="selectedMetrics.includes('{{ m.id }}')"
+                 @change="toggleMetric('{{ m.id }}')"
+                 :style="selectedMetrics.includes('{{ m.id }}') ? 'border-color: {{ m.color }}; background-color: {{ m.color }}' : ''">
+          <span class="text-sm"
+                :class="selectedMetrics.includes('{{ m.id }}') ? 'text-base-content font-medium' : 'text-base-content/70'">
+            {{ m.name }}
+          </span>
+        </label>
         {% endfor %}
-      </select>
+        <span class="text-xs text-base-content/50 ml-2" x-show="selectedMetrics.length >= maxMetrics">
+          (max 3)
+        </span>
+      </div>
     </div>
   </div>
 
   <!-- Wide Trend Chart Container -->
   <div class="app-card p-0 overflow-hidden">
     <div id="wide-chart-container"
-         hx-get="{% url 'metrics:chart_wide_trend' %}?metric={{ default_metric }}&days={{ days }}&preset={{ preset }}"
+         hx-get="{% url 'metrics:chart_wide_trend' %}?metrics={{ selected_metrics|join:',' }}&days={{ days }}&preset={{ preset }}&granularity={{ granularity }}"
          hx-trigger="load"
          hx-swap="innerHTML">
       <!-- Loading skeleton -->
       <div class="animate-pulse p-6">
         <div class="h-8 bg-base-300 rounded w-1/4 mb-4"></div>
         <div class="h-80 bg-base-300 rounded"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PR Type & Tech Breakdown Charts (side by side on large screens) -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6"
+       x-data="{ granularity: '{{ granularity }}' }"
+       @htmx:afterSwap.window="if ($event.detail.target.id === 'wide-chart-container') {
+         const params = new URLSearchParams($event.detail.requestConfig.path.split('?')[1]);
+         granularity = params.get('granularity') || '{{ granularity }}';
+         htmx.ajax('GET', '{% url 'metrics:chart_pr_type_breakdown' %}?days={{ days }}&granularity=' + granularity, {target:'#pr-type-chart-container', swap:'innerHTML'});
+         htmx.ajax('GET', '{% url 'metrics:chart_tech_breakdown' %}?days={{ days }}&granularity=' + granularity, {target:'#tech-chart-container', swap:'innerHTML'});
+       }">
+
+    <!-- PR Type Breakdown -->
+    <div class="app-card p-0 overflow-hidden">
+      <div id="pr-type-chart-container"
+           hx-get="{% url 'metrics:chart_pr_type_breakdown' %}?days={{ days }}&granularity={{ granularity }}"
+           hx-trigger="load"
+           hx-swap="innerHTML">
+        <!-- Loading skeleton -->
+        <div class="animate-pulse p-6">
+          <div class="h-8 bg-base-300 rounded w-1/4 mb-4"></div>
+          <div class="h-64 bg-base-300 rounded"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Technology Breakdown -->
+    <div class="app-card p-0 overflow-hidden">
+      <div id="tech-chart-container"
+           hx-get="{% url 'metrics:chart_tech_breakdown' %}?days={{ days }}&granularity={{ granularity }}"
+           hx-trigger="load"
+           hx-swap="innerHTML">
+        <!-- Loading skeleton -->
+        <div class="animate-pulse p-6">
+          <div class="h-8 bg-base-300 rounded w-1/4 mb-4"></div>
+          <div class="h-64 bg-base-300 rounded"></div>
+        </div>
       </div>
     </div>
   </div>

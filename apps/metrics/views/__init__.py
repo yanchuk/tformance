@@ -40,7 +40,13 @@ from apps.metrics.views.chart_views import (
 )
 from apps.metrics.views.dashboard_views import cto_overview, dashboard_redirect, dismiss_insight, home, team_dashboard
 from apps.metrics.views.pr_list_views import pr_list, pr_list_export, pr_list_table
-from apps.metrics.views.trends_views import trend_chart_data, trends_overview, wide_trend_chart
+from apps.metrics.views.trends_views import (
+    pr_type_breakdown_chart,
+    tech_breakdown_chart,
+    trend_chart_data,
+    trends_overview,
+    wide_trend_chart,
+)
 
 __all__ = [
     "ai_adoption_chart",
@@ -86,6 +92,8 @@ __all__ = [
     "trends_overview",
     "trend_chart_data",
     "wide_trend_chart",
+    "pr_type_breakdown_chart",
+    "tech_breakdown_chart",
     "benchmark_data",
     "benchmark_panel",
 ]

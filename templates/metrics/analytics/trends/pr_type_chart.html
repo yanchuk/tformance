@@ -1,0 +1,140 @@
+{% load i18n %}
+{% load pr_list_tags %}
+{# PR Type Breakdown Chart Partial - Loaded via HTMX #}
+{# Shows stacked bar chart of PR types over time #}
+
+{# Store chart data as JSON in script tags for safe JavaScript access #}
+{{ chart_data|json_script:"pr-type-chart-data" }}
+
+<div class="p-6">
+  <!-- Chart Header -->
+  <div class="flex justify-between items-center mb-4">
+    <div>
+      <h2 class="text-lg font-semibold text-base-content">{% trans "PR Types Over Time" %}</h2>
+      <p class="text-sm text-base-content/60">
+        {{ start_date|date:"M j, Y" }} - {{ end_date|date:"M j, Y" }}
+        <span class="ml-2 badge badge-ghost badge-sm">{{ granularity }}</span>
+      </p>
+    </div>
+  </div>
+
+  <!-- Chart Container -->
+  <div class="relative w-full">
+    <div style="height: 280px;">
+      <canvas id="pr-type-chart"></canvas>
+    </div>
+  </div>
+
+  <!-- Type Breakdown Summary -->
+  <div class="mt-4 flex flex-wrap gap-3">
+    {% for item in breakdown %}
+    <div class="flex items-center gap-2 text-sm">
+      <span class="w-3 h-3 rounded-full" style="background-color: {{ pr_type_config|get_item:item.type|get_item:'color' }};"></span>
+      <span class="text-base-content/80">{{ pr_type_config|get_item:item.type|get_item:'name' }}</span>
+      <span class="font-mono text-base-content">{{ item.count }}</span>
+      <span class="text-base-content/50">({{ item.percentage }}%)</span>
+    </div>
+    {% empty %}
+    <p class="text-sm text-base-content/60">{% trans "No PR data available for this period" %}</p>
+    {% endfor %}
+  </div>
+</div>
+
+<script>
+  // Initialize PR type chart after HTMX swap
+  (function() {
+    initChart();
+
+    function initChart() {
+      const canvas = document.getElementById('pr-type-chart');
+      if (!canvas) return;
+
+      const chartDataEl = document.getElementById('pr-type-chart-data');
+      if (!chartDataEl) return;
+
+      // Wait for Chart.js to be available
+      if (typeof Chart === 'undefined') {
+        setTimeout(initChart, 100);
+        return;
+      }
+
+      try {
+        const chartData = JSON.parse(chartDataEl.textContent);
+
+        // Destroy existing chart if any
+        const existingChart = Chart.getChart(canvas);
+        if (existingChart) {
+          existingChart.destroy();
+        }
+
+        // Build Chart.js datasets
+        const datasets = chartData.datasets.map(ds => ({
+          label: ds.label,
+          data: ds.data,
+          backgroundColor: ds.color,
+          borderColor: ds.color,
+          borderWidth: 1,
+          borderRadius: 2,
+        }));
+
+        new Chart(canvas, {
+          type: 'bar',
+          data: {
+            labels: chartData.labels,
+            datasets: datasets,
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                display: true,
+                position: 'top',
+                labels: {
+                  boxWidth: 12,
+                  padding: 10,
+                  font: { family: "'DM Sans', sans-serif", size: 11 },
+                },
+              },
+              tooltip: {
+                mode: 'index',
+                intersect: false,
+              },
+              datalabels: {
+                display: false,
+              },
+            },
+            scales: {
+              x: {
+                stacked: true,
+                ticks: {
+                  font: { family: "'DM Sans', sans-serif" },
+                  maxRotation: 45,
+                  autoSkip: true,
+                },
+                grid: {
+                  display: false,
+                },
+              },
+              y: {
+                stacked: true,
+                beginAtZero: true,
+                ticks: {
+                  font: { family: "'JetBrains Mono', monospace" },
+                  precision: 0,
+                },
+                title: {
+                  display: true,
+                  text: '{% trans "PR Count" %}',
+                  font: { family: "'DM Sans', sans-serif" },
+                },
+              },
+            },
+          },
+        });
+      } catch (e) {
+        console.error('Failed to initialize PR type chart:', e);
+      }
+    }
+  })();
+</script>

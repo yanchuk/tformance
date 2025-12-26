@@ -363,6 +363,42 @@ class PullRequest(BaseTeamModel):
         # Fallback to regex pattern detection
         return self.ai_tools_detected or []
 
+    @property
+    def effective_pr_type(self) -> str:
+        """Get PR type from LLM summary or infer from labels.
+
+        Priority order:
+        1. LLM detection from llm_summary.summary.type (most accurate)
+        2. Inferred from labels (bugfix, feature, etc.)
+        3. Default to 'unknown'
+
+        Returns:
+            PR type string: feature, bugfix, refactor, docs, test, chore, ci, unknown
+        """
+        valid_types = {"feature", "bugfix", "refactor", "docs", "test", "chore", "ci"}
+
+        # Check LLM detection first
+        if self.llm_summary:
+            llm_type = self.llm_summary.get("summary", {}).get("type", "")
+            if llm_type in valid_types:
+                return llm_type
+
+        # Infer from labels
+        if self.labels:
+            labels_lower = [label.lower() for label in self.labels]
+            for pr_type in valid_types:
+                if pr_type in labels_lower or pr_type.replace("fix", "") in labels_lower:
+                    return pr_type
+            # Common label patterns
+            if "bug" in labels_lower or "fix" in labels_lower:
+                return "bugfix"
+            if "enhancement" in labels_lower or "feat" in labels_lower:
+                return "feature"
+            if "documentation" in labels_lower:
+                return "docs"
+
+        return "unknown"
+
 
 class PRReview(BaseTeamModel):
     """

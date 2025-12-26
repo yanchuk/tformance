@@ -280,6 +280,28 @@ def ai_confidence_badge_class(level: str | None) -> str:
 
 
 @register.filter
+def get_item(dictionary: dict | None, key: str):
+    """Get item from dictionary by key.
+
+    Useful for accessing nested dict values in templates where dot notation
+    doesn't work (e.g., when keys are dynamic).
+
+    Args:
+        dictionary: Dictionary to access
+        key: Key to look up
+
+    Returns:
+        Value at key, or empty dict if not found/invalid
+
+    Usage:
+        {{ pr_type_config|get_item:item.type|get_item:'color' }}
+    """
+    if isinstance(dictionary, dict):
+        return dictionary.get(key, {})
+    return {}
+
+
+@register.filter
 def ai_signals_tooltip(signals: dict | None) -> str:
     """Format AI signals breakdown for tooltip display.
 

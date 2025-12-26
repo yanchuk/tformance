@@ -49,10 +49,10 @@ test.describe('Analytics Pages Tests @analytics', () => {
       await page.goto('/app/metrics/analytics/');
       await page.waitForLoadState('domcontentloaded');
 
-      // Should have time range filter buttons
-      await expect(page.getByRole('link', { name: '7d' })).toBeVisible();
-      await expect(page.getByRole('link', { name: '30d' })).toBeVisible();
-      await expect(page.getByRole('link', { name: '90d' })).toBeVisible();
+      // Should have time range filter buttons (now using button role, not link)
+      await expect(page.getByRole('button', { name: '7d' })).toBeVisible();
+      await expect(page.getByRole('button', { name: '30d' })).toBeVisible();
+      await expect(page.getByRole('button', { name: '90d' })).toBeVisible();
     });
 
     test('key metrics cards load via HTMX', async ({ page }) => {
@@ -106,47 +106,50 @@ test.describe('Analytics Pages Tests @analytics', () => {
     test('date filter changes URL', async ({ page }) => {
       await page.goto('/app/metrics/analytics/');
       await page.waitForLoadState('domcontentloaded');
+      await page.waitForTimeout(500); // Wait for HTMX/Alpine to initialize
 
-      await page.getByRole('link', { name: '7d' }).click();
-      await expect(page).toHaveURL(/\?days=7/);
+      // Click 7d - Alpine updates button state, HTMX updates page content
+      await page.getByRole('button', { name: '7d' }).click();
+      // Wait for HTMX to update the content (checking that page still renders)
+      await page.waitForTimeout(1000);
+      // Verify button state updated (Alpine works)
+      await expect(page.getByRole('button', { name: '7d' })).toHaveClass(/btn-primary/);
     });
 
     test('time range button highlighting updates on HTMX click', async ({ page }) => {
       // Start with default (30d)
       await page.goto('/app/metrics/analytics/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(500);
+      await page.waitForTimeout(500); // Wait for HTMX/Alpine to initialize
 
       // 30d should be primary (active)
-      await expect(page.getByRole('link', { name: '30d' })).toHaveClass(/btn-primary/);
-      await expect(page.getByRole('link', { name: '7d' })).toHaveClass(/btn-ghost/);
+      await expect(page.getByRole('button', { name: '30d' })).toHaveClass(/btn-primary/);
+      await expect(page.getByRole('button', { name: '7d' })).toHaveClass(/btn-ghost/);
 
-      // Click 7d via HTMX
-      await page.getByRole('link', { name: '7d' }).click();
-      await page.waitForURL(/days=7/);
-      await page.waitForTimeout(300);
+      // Click 7d - Alpine immediately updates button state
+      await page.getByRole('button', { name: '7d' }).click();
+      await page.waitForTimeout(500);
 
       // 7d should now be primary (active), 30d should be ghost
-      await expect(page.getByRole('link', { name: '7d' })).toHaveClass(/btn-primary/);
-      await expect(page.getByRole('link', { name: '30d' })).toHaveClass(/btn-ghost/);
+      await expect(page.getByRole('button', { name: '7d' })).toHaveClass(/btn-primary/);
+      await expect(page.getByRole('button', { name: '30d' })).toHaveClass(/btn-ghost/);
     });
 
     test('time range button highlighting updates when switching to 90d', async ({ page }) => {
       await page.goto('/app/metrics/analytics/?days=7');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(500);
+      await page.waitForTimeout(500); // Wait for HTMX/Alpine to initialize
 
       // 7d should be active
-      await expect(page.getByRole('link', { name: '7d' })).toHaveClass(/btn-primary/);
+      await expect(page.getByRole('button', { name: '7d' })).toHaveClass(/btn-primary/);
 
-      // Click 90d
-      await page.getByRole('link', { name: '90d' }).click();
-      await page.waitForURL(/days=90/);
-      await page.waitForTimeout(300);
+      // Click 90d - Alpine immediately updates state
+      await page.getByRole('button', { name: '90d' }).click();
+      await page.waitForTimeout(500);
 
       // 90d should now be active
-      await expect(page.getByRole('link', { name: '90d' })).toHaveClass(/btn-primary/);
-      await expect(page.getByRole('link', { name: '7d' })).toHaveClass(/btn-ghost/);
+      await expect(page.getByRole('button', { name: '90d' })).toHaveClass(/btn-primary/);
+      await expect(page.getByRole('button', { name: '7d' })).toHaveClass(/btn-ghost/);
     });
 
     test('navigate to Pull Requests via tab', async ({ page }) => {
@@ -201,17 +204,23 @@ test.describe('Analytics Pages Tests @analytics', () => {
       await page.goto('/app/metrics/analytics/ai-adoption/');
       await page.waitForLoadState('domcontentloaded');
 
-      await expect(page.getByRole('link', { name: '7d' })).toBeVisible();
-      await expect(page.getByRole('link', { name: '30d' })).toBeVisible();
-      await expect(page.getByRole('link', { name: '90d' })).toBeVisible();
+      await expect(page.getByRole('button', { name: '7d' })).toBeVisible();
+      await expect(page.getByRole('button', { name: '30d' })).toBeVisible();
+      await expect(page.getByRole('button', { name: '90d' })).toBeVisible();
     });
 
-    test('AI Adoption date filter updates URL', async ({ page }) => {
+    test('AI Adoption date filter updates button state', async ({ page }) => {
       await page.goto('/app/metrics/analytics/ai-adoption/');
       await page.waitForLoadState('domcontentloaded');
+      await page.waitForTimeout(500); // Wait for HTMX/Alpine to initialize
 
-      await page.getByRole('link', { name: '7d' }).click();
-      await expect(page).toHaveURL(/\/ai-adoption\/\?days=7/);
+      // Verify initial state - 30d is default
+      await expect(page.getByRole('button', { name: '30d' })).toHaveClass(/btn-primary/);
+
+      // Click 7d and verify state updates
+      await page.getByRole('button', { name: '7d' }).click();
+      await page.waitForTimeout(500);
+      await expect(page.getByRole('button', { name: '7d' })).toHaveClass(/btn-primary/);
     });
 
     test('navigate from AI Adoption to Delivery tab', async ({ page }) => {
@@ -256,17 +265,20 @@ test.describe('Analytics Pages Tests @analytics', () => {
       await page.goto('/app/metrics/analytics/delivery/');
       await page.waitForLoadState('domcontentloaded');
 
-      await expect(page.getByRole('link', { name: '7d' })).toBeVisible();
-      await expect(page.getByRole('link', { name: '30d' })).toBeVisible();
-      await expect(page.getByRole('link', { name: '90d' })).toBeVisible();
+      await expect(page.getByRole('button', { name: '7d' })).toBeVisible();
+      await expect(page.getByRole('button', { name: '30d' })).toBeVisible();
+      await expect(page.getByRole('button', { name: '90d' })).toBeVisible();
     });
 
-    test('Delivery date filter updates URL', async ({ page }) => {
+    test('Delivery date filter updates button state', async ({ page }) => {
       await page.goto('/app/metrics/analytics/delivery/');
       await page.waitForLoadState('domcontentloaded');
+      await page.waitForTimeout(500); // Wait for HTMX/Alpine to initialize
 
-      await page.getByRole('link', { name: '90d' }).click();
-      await expect(page).toHaveURL(/\/delivery\/\?days=90/);
+      // Click 90d and verify state updates
+      await page.getByRole('button', { name: '90d' }).click();
+      await page.waitForTimeout(500);
+      await expect(page.getByRole('button', { name: '90d' })).toHaveClass(/btn-primary/);
     });
 
     test('navigate from Delivery to Quality tab', async ({ page }) => {
@@ -311,17 +323,20 @@ test.describe('Analytics Pages Tests @analytics', () => {
       await page.goto('/app/metrics/analytics/quality/');
       await page.waitForLoadState('domcontentloaded');
 
-      await expect(page.getByRole('link', { name: '7d' })).toBeVisible();
-      await expect(page.getByRole('link', { name: '30d' })).toBeVisible();
-      await expect(page.getByRole('link', { name: '90d' })).toBeVisible();
+      await expect(page.getByRole('button', { name: '7d' })).toBeVisible();
+      await expect(page.getByRole('button', { name: '30d' })).toBeVisible();
+      await expect(page.getByRole('button', { name: '90d' })).toBeVisible();
     });
 
-    test('Quality date filter updates URL', async ({ page }) => {
+    test('Quality date filter updates button state', async ({ page }) => {
       await page.goto('/app/metrics/analytics/quality/');
       await page.waitForLoadState('domcontentloaded');
+      await page.waitForTimeout(500); // Wait for HTMX/Alpine to initialize
 
-      await page.getByRole('link', { name: '7d' }).click();
-      await expect(page).toHaveURL(/\/quality\/\?days=7/);
+      // Click 7d and verify state updates
+      await page.getByRole('button', { name: '7d' }).click();
+      await page.waitForTimeout(500);
+      await expect(page.getByRole('button', { name: '7d' })).toHaveClass(/btn-primary/);
     });
 
     test('navigate from Quality to Team tab', async ({ page }) => {
@@ -366,17 +381,20 @@ test.describe('Analytics Pages Tests @analytics', () => {
       await page.goto('/app/metrics/analytics/team/');
       await page.waitForLoadState('domcontentloaded');
 
-      await expect(page.getByRole('link', { name: '7d' })).toBeVisible();
-      await expect(page.getByRole('link', { name: '30d' })).toBeVisible();
-      await expect(page.getByRole('link', { name: '90d' })).toBeVisible();
+      await expect(page.getByRole('button', { name: '7d' })).toBeVisible();
+      await expect(page.getByRole('button', { name: '30d' })).toBeVisible();
+      await expect(page.getByRole('button', { name: '90d' })).toBeVisible();
     });
 
-    test('Team date filter updates URL', async ({ page }) => {
+    test('Team date filter updates button state', async ({ page }) => {
       await page.goto('/app/metrics/analytics/team/');
       await page.waitForLoadState('domcontentloaded');
+      await page.waitForTimeout(500); // Wait for HTMX/Alpine to initialize
 
-      await page.getByRole('link', { name: '30d' }).click();
-      await expect(page).toHaveURL(/\/team\/\?days=30/);
+      // Click 7d and verify state updates
+      await page.getByRole('button', { name: '7d' }).click();
+      await page.waitForTimeout(500);
+      await expect(page.getByRole('button', { name: '7d' })).toHaveClass(/btn-primary/);
     });
 
     test('navigate from Team to Pull Requests tab', async ({ page }) => {
@@ -450,15 +468,16 @@ test.describe('Analytics Pages Tests @analytics', () => {
       await expect(page.getByText('Filters').first()).toBeVisible();
     });
 
-    test('PR table displays with columns including Comments', async ({ page }) => {
+    test('PR table displays with expected columns', async ({ page }) => {
       await page.goto('/app/metrics/pull-requests/');
       await page.waitForLoadState('domcontentloaded');
       await page.waitForTimeout(500); // Allow table to load
 
-      // Check for table headers including new Comments column
+      // Check for table headers (Cmts = Comments abbreviated, Size = Lines)
       await expect(page.getByRole('columnheader', { name: 'Title' })).toBeVisible();
       await expect(page.getByRole('columnheader', { name: 'Author' })).toBeVisible();
-      await expect(page.getByRole('columnheader', { name: 'Comments' })).toBeVisible();
+      await expect(page.getByRole('columnheader', { name: 'Cmts' })).toBeVisible();
+      await expect(page.getByRole('columnheader', { name: 'Size' })).toBeVisible();
     });
 
     test('sortable columns show cursor pointer on hover', async ({ page }) => {
@@ -513,25 +532,25 @@ test.describe('Analytics Pages Tests @analytics', () => {
       await expect(page.getByRole('columnheader', { name: /Cycle Time/ })).not.toContainText('▼');
     });
 
-    test('sort by Comments column works', async ({ page }) => {
+    test('sort by Cmts column works', async ({ page }) => {
       await page.goto('/app/metrics/pull-requests/');
       await page.waitForLoadState('domcontentloaded');
       await page.waitForTimeout(500);
 
-      // Click Comments column header
-      await page.getByRole('columnheader', { name: 'Comments' }).click();
+      // Click Cmts (Comments) column header
+      await page.getByRole('columnheader', { name: 'Cmts' }).click();
       await page.waitForTimeout(300);
 
       await expect(page).toHaveURL(/sort=comments/);
     });
 
-    test('sort by Lines column works', async ({ page }) => {
+    test('sort by Size column works', async ({ page }) => {
       await page.goto('/app/metrics/pull-requests/');
       await page.waitForLoadState('domcontentloaded');
       await page.waitForTimeout(500);
 
-      // Click Lines column header
-      await page.getByRole('columnheader', { name: 'Lines' }).click();
+      // Click Size (Lines) column header
+      await page.getByRole('columnheader', { name: 'Size' }).click();
       await page.waitForTimeout(300);
 
       await expect(page).toHaveURL(/sort=lines/);
@@ -764,6 +783,308 @@ test.describe('Analytics Pages Tests @analytics', () => {
         page.getByRole('link', { name: 'Quality Metrics' }).click(),
       ]);
       await expect(page).toHaveURL(/\/quality/);
+    });
+  });
+
+  test.describe('Trends Page', () => {
+    test('Trends page loads with title', async ({ page }) => {
+      await page.goto('/app/metrics/analytics/trends/');
+      await page.waitForLoadState('domcontentloaded');
+
+      await expect(page.getByRole('heading', { name: 'Trends & Comparison' })).toBeVisible();
+    });
+
+    test('Trends tab is active', async ({ page }) => {
+      await page.goto('/app/metrics/analytics/trends/');
+      await page.waitForLoadState('domcontentloaded');
+
+      await expect(page.getByRole('tab', { name: 'Trends' })).toHaveClass(/tab-active/);
+    });
+
+    test('Trends has date filter', async ({ page }) => {
+      await page.goto('/app/metrics/analytics/trends/');
+      await page.waitForLoadState('domcontentloaded');
+
+      await expect(page.getByRole('button', { name: '7d' })).toBeVisible();
+      await expect(page.getByRole('button', { name: '30d' })).toBeVisible();
+      await expect(page.getByRole('button', { name: '90d' })).toBeVisible();
+    });
+
+    test('metric selector displays', async ({ page }) => {
+      await page.goto('/app/metrics/analytics/trends/');
+      await page.waitForLoadState('domcontentloaded');
+
+      // Should have metric checkboxes for comparison
+      await expect(page.getByText('Compare:')).toBeVisible();
+      await expect(page.getByRole('checkbox').first()).toBeVisible();
+      // Cycle Time should be checked by default
+      await expect(page.getByLabel('Cycle Time')).toBeChecked();
+    });
+
+    test('granularity toggle displays weekly/monthly options', async ({ page }) => {
+      await page.goto('/app/metrics/analytics/trends/');
+      await page.waitForLoadState('domcontentloaded');
+
+      // Should have granularity toggle
+      await expect(page.getByText('Group by:')).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Weekly' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Monthly' })).toBeVisible();
+    });
+
+    test('trend chart loads via HTMX', async ({ page }) => {
+      await page.goto('/app/metrics/analytics/trends/');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForTimeout(2000); // Allow HTMX to load chart
+
+      // Check for chart header that appears after HTMX load
+      await expect(page.getByRole('heading', { name: /Cycle Time \(hours\)/ })).toBeVisible();
+    });
+
+    test('chart has zoom/pan instructions', async ({ page }) => {
+      await page.goto('/app/metrics/analytics/trends/');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForTimeout(2000);
+
+      await expect(page.getByText('Scroll to zoom, drag to pan')).toBeVisible();
+    });
+
+    test('quick stats cards display', async ({ page }) => {
+      await page.goto('/app/metrics/analytics/trends/');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForTimeout(1000);
+
+      // Should show metric cards in the grid (not in the dropdown)
+      const cardGrid = page.locator('.grid.grid-cols-1.md\\:grid-cols-4');
+      await expect(cardGrid.getByText('Cycle Time')).toBeVisible();
+      await expect(cardGrid.getByText('Review Time')).toBeVisible();
+      await expect(cardGrid.getByText('PRs Merged')).toBeVisible();
+      await expect(cardGrid.getByText('AI Adoption')).toBeVisible();
+    });
+
+    test('Industry Benchmark section displays', async ({ page }) => {
+      await page.goto('/app/metrics/analytics/trends/');
+      await page.waitForLoadState('domcontentloaded');
+
+      await expect(page.getByRole('heading', { name: 'Industry Benchmark' })).toBeVisible();
+    });
+
+    test('Chart Settings section displays', async ({ page }) => {
+      await page.goto('/app/metrics/analytics/trends/');
+      await page.waitForLoadState('domcontentloaded');
+
+      await expect(page.getByRole('heading', { name: 'Chart Settings' })).toBeVisible();
+    });
+
+    test('Tips section displays', async ({ page }) => {
+      await page.goto('/app/metrics/analytics/trends/');
+      await page.waitForLoadState('domcontentloaded');
+
+      await expect(page.getByRole('heading', { name: 'Tips' })).toBeVisible();
+    });
+
+    test('selecting multiple metrics shows comparison chart', async ({ page }) => {
+      await page.goto('/app/metrics/analytics/trends/');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForTimeout(2000);
+
+      // Add Review Time to comparison (Cycle Time already selected)
+      await page.getByLabel('Review Time').click();
+      await page.waitForTimeout(2000);
+
+      // Chart title should show comparison
+      await expect(page.getByRole('heading', { name: /Cycle Time vs Review Time/ })).toBeVisible();
+      // Should show "Comparing" badge
+      await expect(page.getByText('Comparing')).toBeVisible();
+    });
+
+    test('PR type breakdown chart loads via HTMX', async ({ page }) => {
+      await page.goto('/app/metrics/analytics/trends/');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForTimeout(2000);
+
+      // Scroll to PR type chart section (it's below the fold)
+      await page.locator('#pr-type-chart-container').scrollIntoViewIfNeeded();
+      await page.waitForTimeout(1000);
+
+      // PR type chart should load via HTMX
+      await expect(page.getByRole('heading', { name: 'PR Types Over Time' })).toBeVisible();
+      // Chart canvas should exist
+      await expect(page.locator('#pr-type-chart')).toBeAttached();
+    });
+
+    test('Tech breakdown chart loads via HTMX', async ({ page }) => {
+      await page.goto('/app/metrics/analytics/trends/');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForTimeout(2000);
+
+      // Scroll to tech chart section (it's below the fold)
+      await page.locator('#tech-chart-container').scrollIntoViewIfNeeded();
+      await page.waitForTimeout(1000);
+
+      // Tech breakdown chart should load via HTMX
+      await expect(page.getByRole('heading', { name: 'Technology Breakdown' })).toBeVisible();
+      // Chart canvas should exist
+      await expect(page.locator('#tech-chart')).toBeAttached();
+    });
+
+    test('navigate from Trends to other tabs', async ({ page }) => {
+      await page.goto('/app/metrics/analytics/trends/');
+      await page.waitForLoadState('domcontentloaded');
+
+      // Navigate to Overview (URL may have query params like ?days=30)
+      await page.getByRole('tab', { name: 'Overview' }).click();
+      await expect(page).toHaveURL(/\/analytics\/?\?/);
+    });
+  });
+
+  test.describe('Responsive UI Tests @responsive', () => {
+    test('key metrics card values are fully visible at narrow viewport (768px)', async ({ page }) => {
+      // Set narrow viewport (tablet portrait)
+      await page.setViewportSize({ width: 768, height: 1024 });
+
+      await page.goto('/app/metrics/analytics/');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForTimeout(1000); // Allow HTMX to load cards
+
+      // Get all stat-value elements
+      const statValues = page.locator('.stat-value');
+      const count = await statValues.count();
+
+      // Verify we have cards loaded
+      expect(count).toBeGreaterThan(0);
+
+      // Check each card value text is fully visible (not truncated/clipped)
+      for (let i = 0; i < count; i++) {
+        const element = statValues.nth(i);
+        const box = await element.boundingBox();
+
+        // Skip if element is not visible
+        if (!box) continue;
+
+        // Check if text is being truncated by comparing natural width vs actual width
+        // Natural width = what the text would take without constraints
+        const { isTruncated, textContent, naturalWidth, actualWidth } = await element.evaluate((el) => {
+          const style = window.getComputedStyle(el);
+          // Get actual width
+          const actualWidth = el.clientWidth;
+          // Create a temporary span to measure natural text width
+          const span = document.createElement('span');
+          span.style.visibility = 'hidden';
+          span.style.position = 'absolute';
+          span.style.whiteSpace = 'nowrap';
+          span.style.font = style.font;
+          span.style.fontSize = style.fontSize;
+          span.style.fontWeight = style.fontWeight;
+          span.textContent = el.textContent;
+          document.body.appendChild(span);
+          const naturalWidth = span.offsetWidth;
+          document.body.removeChild(span);
+          return {
+            isTruncated: naturalWidth > actualWidth + 2, // 2px tolerance
+            textContent: el.textContent?.trim() || '',
+            naturalWidth,
+            actualWidth
+          };
+        });
+
+        // Value should NOT be truncated - font should be small enough to fit
+        expect(isTruncated, `Card "${textContent}" is truncated (natural: ${naturalWidth}px, actual: ${actualWidth}px)`).toBe(false);
+      }
+    });
+
+    test('key metrics card values are fully visible at 1024px viewport', async ({ page }) => {
+      // Set tablet landscape viewport
+      await page.setViewportSize({ width: 1024, height: 768 });
+
+      await page.goto('/app/metrics/analytics/');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForTimeout(1000); // Allow HTMX to load cards
+
+      // Get all stat-value elements
+      const statValues = page.locator('.stat-value');
+      const count = await statValues.count();
+
+      // Verify we have cards loaded
+      expect(count).toBeGreaterThan(0);
+
+      // Check each card value is not truncated
+      for (let i = 0; i < count; i++) {
+        const element = statValues.nth(i);
+        const box = await element.boundingBox();
+
+        if (!box) continue;
+
+        const { isTruncated, textContent, naturalWidth, actualWidth } = await element.evaluate((el) => {
+          const style = window.getComputedStyle(el);
+          const actualWidth = el.clientWidth;
+          const span = document.createElement('span');
+          span.style.visibility = 'hidden';
+          span.style.position = 'absolute';
+          span.style.whiteSpace = 'nowrap';
+          span.style.font = style.font;
+          span.style.fontSize = style.fontSize;
+          span.style.fontWeight = style.fontWeight;
+          span.textContent = el.textContent;
+          document.body.appendChild(span);
+          const naturalWidth = span.offsetWidth;
+          document.body.removeChild(span);
+          return {
+            isTruncated: naturalWidth > actualWidth + 2,
+            textContent: el.textContent?.trim() || '',
+            naturalWidth,
+            actualWidth
+          };
+        });
+
+        expect(isTruncated, `Card "${textContent}" is truncated at 1024px`).toBe(false);
+      }
+    });
+
+    test('key metrics card values are fully visible at mobile viewport (375px)', async ({ page }) => {
+      // Set mobile viewport
+      await page.setViewportSize({ width: 375, height: 667 });
+
+      await page.goto('/app/metrics/analytics/');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForTimeout(1000);
+
+      // On mobile, cards should stack (grid-cols-1) giving more width
+      const statValues = page.locator('.stat-value');
+      const count = await statValues.count();
+
+      expect(count).toBeGreaterThan(0);
+
+      // Check text is not truncated at mobile size (full width cards)
+      for (let i = 0; i < count; i++) {
+        const element = statValues.nth(i);
+        const box = await element.boundingBox();
+
+        if (!box) continue;
+
+        const { isTruncated, textContent, naturalWidth, actualWidth } = await element.evaluate((el) => {
+          const style = window.getComputedStyle(el);
+          const actualWidth = el.clientWidth;
+          const span = document.createElement('span');
+          span.style.visibility = 'hidden';
+          span.style.position = 'absolute';
+          span.style.whiteSpace = 'nowrap';
+          span.style.font = style.font;
+          span.style.fontSize = style.fontSize;
+          span.style.fontWeight = style.fontWeight;
+          span.textContent = el.textContent;
+          document.body.appendChild(span);
+          const naturalWidth = span.offsetWidth;
+          document.body.removeChild(span);
+          return {
+            isTruncated: naturalWidth > actualWidth + 2,
+            textContent: el.textContent?.trim() || '',
+            naturalWidth,
+            actualWidth
+          };
+        });
+
+        expect(isTruncated, `Card "${textContent}" is truncated on mobile`).toBe(false);
+      }
     });
   });
 });

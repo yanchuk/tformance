@@ -1,6 +1,10 @@
 'use strict';
 import Chart from 'chart.js/auto';
+import ChartDataLabels from 'chartjs-plugin-datalabels';
 import { TformanceChartTheme, getChartDefaults, getBarStyle } from './chart-theme';
+
+// Register the datalabels plugin globally
+Chart.register(ChartDataLabels);
 
 function listToDict(list) {
   // gpt
@@ -55,6 +59,21 @@ const barChartWithDates = (ctx, start, end, data, label) => {
           display: false
         },
         tooltip: chartDefaults.plugins.tooltip,
+        datalabels: {
+          anchor: 'end',
+          align: 'top',
+          offset: 2,
+          color: TformanceChartTheme.text.primary,
+          font: {
+            size: 10,
+            weight: 'bold',
+          },
+          formatter: (value) => {
+            if (!value || value.y === 0) return '';
+            const num = value.y;
+            return Number.isInteger(num) ? num : num.toFixed(1);
+          },
+        },
       },
       scales: {
         x: {
@@ -126,6 +145,9 @@ const cumulativeChartWithDates = (ctx, start, end, data, label, startValue) => {
           display: false
         },
         tooltip: chartDefaults.plugins.tooltip,
+        datalabels: {
+          display: false, // Disable data labels for line charts (too cluttered)
+        },
       },
       scales: {
         x: {
@@ -199,6 +221,23 @@ const weeklyBarChart = (ctx, data, label, options = {}) => {
           display: false
         },
         tooltip: chartDefaults.plugins.tooltip,
+        datalabels: {
+          anchor: 'end',
+          align: 'top',
+          offset: 2,
+          color: TformanceChartTheme.text.primary,
+          font: {
+            size: 10,
+            weight: 'bold',
+          },
+          formatter: (value) => {
+            // Don't show labels for zero or null values
+            if (!value || value.y === 0) return '';
+            // Format the value - show 1 decimal for floats, integer for whole numbers
+            const num = value.y;
+            return Number.isInteger(num) ? num : num.toFixed(1);
+          },
+        },
       },
       scales: {
         x: {
