@@ -296,6 +296,7 @@
         }
 
         .insight-box strong { color: var(--secondary); }
+        .insight-box ul { list-style-type: disc; margin-left: 0.5rem; }
 
         /* Table of Contents - Always Visible Sidebar */
         .toc-sidebar {
@@ -1473,16 +1474,17 @@
             <div class="two-col" style="gap: 2rem;">
                 <div>
                     <h3 style="margin-bottom: 0.75rem;">How It Works</h3>
-                    <ul style="padding-left: 1.25rem; color: var(--text-muted);">
+                    <ul style="padding-left: 1.25rem; color: var(--text-muted); list-style-type: disc;">
                         <li style="margin-bottom: 0.5rem;">Fetch PR metadata (title, description, comments, commits) via GitHub GraphQL API</li>
-                        <li style="margin-bottom: 0.5rem;">Analyze each PR with LLM (ChatGPT OSS 20B model) to detect AI tool mentions</li>
+                        <li style="margin-bottom: 0.5rem;">Analyze each PR with LLM (Llama 3.3 70B via Groq) to detect AI tool mentions</li>
                         <li style="margin-bottom: 0.5rem;">Pattern matching (25+ regex patterns) provides secondary detection</li>
-                        <li style="margin-bottom: 0.5rem;">Correlate AI usage with delivery metrics (cycle time, review time, PR size)</li>
+                        <li style="margin-bottom: 0.5rem;">Calculate delivery metrics: cycle time, review time, PR size</li>
+                        <li style="margin-bottom: 0.5rem;">Correlate AI usage with delivery metrics using statistical analysis</li>
                     </ul>
                 </div>
                 <div>
                     <h3 style="margin-bottom: 0.75rem;">What We Don't Analyze</h3>
-                    <ul style="padding-left: 1.25rem; color: var(--text-muted);">
+                    <ul style="padding-left: 1.25rem; color: var(--text-muted); list-style-type: disc;">
                         <li style="margin-bottom: 0.5rem;">❌ Actual file contents or code quality</li>
                         <li style="margin-bottom: 0.5rem;">❌ Private/enterprise repositories</li>
                         <li style="margin-bottom: 0.5rem;">❌ AI usage without disclosure (hidden adoption)</li>
@@ -1531,6 +1533,8 @@
                     <strong>✅ What We Can Confidently Say:</strong>
                     <ul style="margin-top: 0.5rem; padding-left: 1.25rem; color: var(--text-muted);">
                         <li>Overall detected AI adoption is <strong>12.7% ± 0.19%</strong> (95% CI)</li>
+                        <li>AI-assisted PRs show <strong>5% faster cycle time</strong> on average</li>
+                        <li>Review time is <strong>52% faster</strong> for AI-assisted PRs</li>
                         <li>Focused teams have statistically significant higher adoption (p &lt; 0.0001)</li>
                         <li>There's massive variance between teams (0% to 86%)</li>
                         <li>Median adoption (4.0%) is much lower than mean (14%) — a few high-adoption teams skew the average</li>
@@ -2882,20 +2886,20 @@
             { team: "Antiwork", data: [null, null, 40.3, 27.7, 74.2, 95.7, 94.5, 66.8, 26.0, 35.9, 39.9, 52.2], color: "#eab308" },
             { team: "Appsmith", data: [85.5, 85.3, 86.7, 84.4, 60.6, 69.2, 59.7, 50.0, 57.1, 59.6, 68.0, 62.9], color: "#6366f1" },
             { team: "Budibase", data: [0.0, 0.0, 0.9, 1.2, 0.0, 2.7, 2.0, 5.2, 1.0, 2.0, 0.9, 14.1], color: "#ec4899" },
-            { team: "Cal.com", data: [22.9, 24.6, 27.3, 14.6, 44.9, 78.8, 58.5, 21.1, 24.9, 49.6, 62.7, 62.0], color: "#14b8a6" },
-            { team: "Chatwoot", data: [null, null, null, null, null, null, null, 9.5, 4.7, 3.6, 8.0, 6.8], color: "#8b5cf6" },
+            { team: "Cal.com", data: [22.9, 24.6, 27.3, 14.6, 44.9, 78.8, 58.5, 21.1, 24.9, 49.6, 62.7, 62.0], color: "#3b82f6" },  // BLUE - volatile pattern
+            { team: "Chatwoot", data: [null, null, null, null, null, null, null, 9.5, 4.7, 3.6, 8.0, 6.8], color: "#06b6d4" },
             { team: "Comp AI", data: [0.0, 64.9, 91.2, 27.4, 0.0, 2.7, 0.0, 1.3, 0.0, 0.0, 1.4, 1.9], color: "#f43f5e" },
-            { team: "Coolify", data: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 3.7, 5.3, 19.9, 28.1, 9.2], color: "#06b6d4" },
+            { team: "Coolify", data: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 3.7, 5.3, 19.9, 28.1, 9.2], color: "#14b8a6" },
             { team: "Deno", data: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.8, 0.7, 0.6, 4.3, 0.0], color: "#10b981" },
             { team: "Dify", data: [3.8, 0.5, 0.2, 0.9, 0.3, 1.3, 0.4, 2.3, 1.6, 0.8, 1.5, 2.9], color: "#a855f7" },
-            { team: "Directus", data: [0.0, 0.0, 0.0, 0.0, 0.0, 3.9, 21.3, 2.0, 0.0, 5.9, 6.5, 3.2], color: "#f59e0b" },
+            { team: "Directus", data: [0.0, 0.0, 0.0, 0.0, 0.0, 3.9, 21.3, 2.0, 0.0, 5.9, 6.5, 3.2], color: "#fbbf24" },
             { team: "Documenso", data: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 2.6, 0.0, 4.2], color: "#84cc16" },
-            { team: "Dub", data: [0.0, 0.0, 0.7, 1.5, 19.7, 96.9, 95.0, 91.6, 94.4, 96.3, 95.7, 92.5], color: "#ef4444" },
+            { team: "Dub", data: [0.0, 0.0, 0.7, 1.5, 19.7, 96.9, 95.0, 91.6, 94.4, 96.3, 95.7, 92.5], color: "#ef4444" },  // RED - explosive growth
             { team: "Erxes", data: [44.2, 35.1, 40.0, 64.0, 58.1, 69.2, 92.0, 87.0, 92.6, 81.3, 82.8, 81.8], color: "#78716c" },
-            { team: "Excalidraw", data: [2.0, 0.0, 0.0, 3.4, 18.2, 14.6, 5.3, 0.0, 0.0, 1.5, 9.3, 3.8], color: "#22c55e" },
+            { team: "Excalidraw", data: [2.0, 0.0, 0.0, 3.4, 18.2, 14.6, 5.3, 0.0, 0.0, 1.5, 9.3, 3.8], color: "#10b981" },
             { team: "FastAPI Team", data: [0.0, 0.0, 1.3, 0.0, 0.0, 0.0, 0.0, 4.5, 2.7, 0.0, 0.0, 1.5], color: "#3b82f6" },
             { team: "Flowise", data: [0.0, 4.1, 1.8, 6.7, 1.3, 0.0, 0.0, 1.8, 13.7, 22.7, 3.0, 3.4], color: "#0ea5e9" },
-            { team: "Formbricks", data: [90.5, 85.1, 59.1, 47.7, 66.4, 85.6, 80.6, 0.0, 2.1, 3.0, 3.7, 1.0], color: "#f97316" },
+            { team: "Formbricks", data: [90.5, 85.1, 59.1, 47.7, 66.4, 85.6, 80.6, 0.0, 2.1, 3.0, 3.7, 1.0], color: "#8b5cf6" },  // PURPLE - decline story
             { team: "Ghost", data: [15.8, 0.0, 0.0, 0.5, 0.4, 0.2, 0.9, 0.6, 5.0, 6.4, 31.2, 22.5], color: "#d946ef" },
             { team: "GrowthBook", data: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], color: "#fbbf24" },
             { team: "Huly", data: [0.6, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], color: "#a3e635" },
@@ -2916,9 +2920,9 @@
             { team: "Plausible", data: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.3, 1.2, 0.0, 0.0], color: "#60a5fa" },
             { team: "Polar.sh", data: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.4, 3.6, 5.9, 5.7, 5.1, 2.8], color: "#c4b5fd" },
             { team: "PostHog Analytics", data: [0.9, 1.0, 0.6, 0.0, 0.0, 1.0, 0.8, 1.0, 0.7, 4.1, 3.6, 4.4], color: "#fb923c" },
-            { team: "Resend", data: [0.0, 0.0, 2.3, 0.6, 0.0, 0.0, 0.0, 37.5, 72.4, 80.7, 83.0, 88.9], color: "#5eead4" },
+            { team: "Resend", data: [0.0, 0.0, 2.3, 0.6, 0.0, 0.0, 0.0, 37.5, 72.4, 80.7, 83.0, 88.9], color: "#22c55e" },  // GREEN - late bloomer
             { team: "Saleor", data: [2.8, 0.0, 0.0, 0.0, 0.0, 0.0, 1.9, 0.0, 1.5, 1.2, 0.0, 0.0], color: "#a5b4fc" },
-            { team: "SigNoz", data: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 2.6, 0.0, 2.6, 11.6, 51.0, 53.3], color: "#86efac" },
+            { team: "SigNoz", data: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 2.6, 0.0, 2.6, 11.6, 51.0, 53.3], color: "#f59e0b" },  // AMBER - Q4 surge
             { team: "Strapi", data: [1.0, 1.1, 0.0, 0.0, 1.9, 0.0, 0.9, 0.0, 3.4, 1.9, 1.1, 1.5], color: "#fca5a5" },
             { team: "Supabase", data: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 3.0, 1.4, 3.0, 1.3, 5.8, 41.7], color: "#67e8f9" },
             { team: "ToolJet", data: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.2, 0.3, 0.0, 0.0, 0.5, 0.6], color: "#d8b4fe" },
@@ -2930,8 +2934,9 @@
             { team: "n8n", data: [0.6, 0.6, 0.0, 0.5, 1.8, 1.6, 1.8, 4.2, 7.5, 11.6, 30.4, 1.8], color: "#e879f9" }
         ];
 
-        // Default teams to show (highest adoption teams)
-        const defaultTeams = ["Plane", "Appsmith", "Antiwork", "Dub", "Formbricks"];
+        // Default teams to show (interesting adoption stories)
+        // Dub: explosive growth, Formbricks: decline, Resend: late bloomer, Cal.com: volatile, SigNoz: Q4 surge
+        const defaultTeams = ["Dub", "Formbricks", "Resend", "Cal.com", "SigNoz"];
 
         // Populate team dropdowns (sorted alphabetically)
         function populateTeamDropdowns() {
