@@ -3,9 +3,7 @@ from django.urls import path
 from . import views
 from .webhooks import slack_interactions
 
-app_name = "integrations"
-
-# Non-team URLs (webhooks, etc.) - no app_name to avoid namespace collision
+# Non-team URLs (webhooks, etc.) - no namespace needed for webhooks
 urlpatterns = [
     path("webhooks/slack/interactions/", slack_interactions.slack_interactions, name="slack_interactions_webhook"),
 ]

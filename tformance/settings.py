@@ -685,6 +685,7 @@ DJSTRIPE_SUBSCRIBER_MODEL = "teams.Team"
 DJSTRIPE_SUBSCRIBER_MODEL_REQUEST_CALLBACK = lambda request: request.team  # noqa E731
 
 SILENCED_SYSTEM_CHECKS = [
+    "djstripe.I001",  # No Stripe API keys - expected in development, Stripe not yet configured
     "djstripe.I002",  # Pegasus uses the same settings as dj-stripe for keys, so don't complain they are here
 ]
 
