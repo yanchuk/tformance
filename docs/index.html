@@ -13,8 +13,48 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Impact on Software Engineering - 2025 OSS Analysis</title>
+
+    <!-- Modern Stack: Tailwind CSS + Alpine.js + Chart.js -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
+
+    <!-- Tailwind Config for Custom Theme -->
+    <script>
+        tailwind.config = {
+            darkMode: ['selector', '[data-theme="dark"]'],
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#F97316',
+                        secondary: '#5a9997',
+                        success: '#22c55e',
+                        warning: '#eab308',
+                        error: '#ef4444',
+                        purple: '#a855f7',
+                        // Dark theme
+                        'dark-bg': '#1e1e1e',
+                        'dark-card': '#2a2a28',
+                        'dark-text': '#ccc9c0',
+                        'dark-muted': '#8a8880',
+                        'dark-border': '#3c3c3a',
+                        // Light theme
+                        'light-bg': '#f8f9fa',
+                        'light-card': '#ffffff',
+                        'light-text': '#1f2937',
+                        'light-muted': '#6b7280',
+                        'light-border': '#e5e7eb',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -826,6 +866,13 @@
             <li><a href="#industry"><span class="toc-number">14</span>Industry Context</a></li>
             <li><a href="#action"><span class="toc-number">15</span>Action Items</a></li>
         </ul>
+
+        <!-- Sidebar CTA -->
+        <div style="margin-top: 2rem; padding: 1rem; background: linear-gradient(135deg, rgba(249, 115, 22, 0.15), rgba(90, 153, 151, 0.1)); border-radius: 8px; border: 1px solid rgba(249, 115, 22, 0.3);">
+            <div style="font-size: 0.7rem; font-weight: 600; color: var(--primary); margin-bottom: 0.5rem;">For Your Team</div>
+            <p style="font-size: 0.65rem; color: var(--text-muted); margin-bottom: 0.75rem; line-height: 1.5;">Get these insights automatically from your GitHub, Jira & Slack.</p>
+            <a href="https://tformance.com" style="display: block; text-align: center; background: var(--primary); color: white; padding: 0.5rem; border-radius: 6px; text-decoration: none; font-size: 0.7rem; font-weight: 600;">Try tformance →</a>
+        </div>
     </nav>
     <button class="toc-toggle" id="toc-toggle" onclick="toggleToc()" title="Table of Contents">☰</button>
 
@@ -845,7 +892,7 @@
         <section id="about" class="about-research" style="background: linear-gradient(135deg, rgba(249, 115, 22, 0.1), rgba(90, 153, 151, 0.1)); border: 1px solid var(--border); border-radius: 16px; padding: 2rem; margin-bottom: 2rem;">
             <h2>About This Research</h2>
             <p style="font-size: 1.1rem; margin-bottom: 1.5rem;">
-                This is a <strong>meta-analysis of ~54,000 pull requests</strong> from 28 open source projects throughout 2025, attempting to understand real-world AI coding tool adoption patterns and their impact on engineering metrics.
+                This is a <strong>meta-analysis of 60,545 pull requests</strong> from 26 open source teams throughout 2025, attempting to understand real-world AI coding tool adoption patterns and their impact on engineering metrics.
             </p>
 
             <div class="two-col" style="gap: 2rem;">
@@ -853,7 +900,7 @@
                     <h3 style="margin-bottom: 0.75rem;">How It Works</h3>
                     <ol style="padding-left: 1.25rem; color: var(--text-muted);">
                         <li style="margin-bottom: 0.5rem;">We fetch PR metadata (title, description, comments, commits) via GitHub GraphQL API</li>
-                        <li style="margin-bottom: 0.5rem;">Each PR is analyzed by LLM (Groq Batch API) to detect AI tool mentions and classify the work</li>
+                        <li style="margin-bottom: 0.5rem;">Each PR is analyzed by LLM (ChatGPT OSS 20B model) to detect AI tool mentions and classify the work</li>
                         <li style="margin-bottom: 0.5rem;">Pattern matching (25+ regex patterns) provides secondary detection</li>
                         <li style="margin-bottom: 0.5rem;">We correlate AI usage with delivery metrics (cycle time, review time, PR size)</li>
                     </ol>
@@ -939,7 +986,7 @@
         <section id="trend-2025">
             <h2>AI Adoption Trend — 2025</h2>
             <p style="color: var(--text-muted); margin-bottom: 1rem;">
-                Overall AI-assisted PR rate across all 28 teams throughout 2025. Shows the growth trajectory from early adoption to mainstream usage.
+                Overall AI-assisted PR rate across all 26 teams throughout 2025. Shows the growth trajectory from early adoption to mainstream usage.
             </p>
             <div class="chart-container" style="background: var(--bg-card);">
                 <div class="chart-wrapper">
@@ -994,6 +1041,15 @@
                     <p>Jan: CodeRabbit had <strong>95%+ share</strong>. Dec: CodeRabbit <strong>36%</strong>, Cubic <strong>21%</strong>, Claude <strong>17%</strong>. The market is fragmenting rapidly.</p>
                 </div>
             </div>
+
+            <!-- Inline CTA after Key Takeaways -->
+            <div style="display: flex; align-items: center; justify-content: space-between; background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.5rem; margin-top: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+                <div style="flex: 1; min-width: 200px;">
+                    <span style="font-size: 0.9rem; color: var(--text);">Want these insights for <strong>your</strong> team?</span>
+                    <span style="font-size: 0.85rem; color: var(--text-muted);"> — Connect GitHub, Jira & Slack to track AI adoption automatically.</span>
+                </div>
+                <a href="https://tformance.com" style="background: var(--primary); color: white; padding: 0.6rem 1.25rem; border-radius: 8px; text-decoration: none; font-size: 0.85rem; font-weight: 600; white-space: nowrap;">Get Started Free →</a>
+            </div>
         </section>
 
         <section id="summary">
@@ -1008,7 +1064,7 @@
                     <div class="stat-label">Teams Analyzed</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-value neutral">21.2%</div>
+                    <div class="stat-value neutral">21.4%</div>
                     <div class="stat-label">AI-Assisted PRs</div>
                 </div>
                 <div class="stat-card">
@@ -1023,6 +1079,14 @@
 
             <div class="insight-box">
                 <strong>Key Finding:</strong> AI tools consistently speed up code review (-31% avg), but often extend overall cycle time (+42% avg). This suggests teams are tackling more complex work with AI assistance, not just doing the same work faster.
+            </div>
+
+            <!-- Causal Disclaimer for +42% -->
+            <div style="background: rgba(234, 179, 8, 0.1); border: 1px solid rgba(234, 179, 8, 0.3); border-radius: 8px; padding: 1rem 1.25rem; margin-top: 1rem; font-size: 0.9rem;">
+                <strong style="color: var(--warning);">⚠️ Correlation ≠ Causation:</strong>
+                <span style="color: var(--text-muted);">
+                    The +42% cycle time finding shows correlation, not causation. We cannot determine if AI slows delivery or if teams choose AI for inherently complex work. Alternative explanations include: more review iterations on AI code, selection bias toward difficult problems, and increased discussion on AI-generated PRs.
+                </span>
             </div>
         </section>
 
@@ -1039,6 +1103,17 @@
 
             <div class="insight-box">
                 <strong>Market Shift:</strong> CodeRabbit dominated early 2025 (95%+ share in Jan-Feb). By Q4, the market fragmented: Cubic emerged as #2 (347 PRs in Nov), Claude and Cursor saw 10x growth. <strong>Human-directed AI tools</strong> (Claude, Cursor, Copilot) grew from 2% to 35% of monthly usage.
+            </div>
+
+            <!-- HIGH RISK DISCLOSURE: Missing Copilot/ChatGPT -->
+            <div style="background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; padding: 1rem 1.25rem; margin: 1rem 0;">
+                <strong style="color: var(--error);">⚠️ Important Context — Hidden Tool Usage:</strong>
+                <p style="color: var(--text-muted); margin-top: 0.5rem; margin-bottom: 0.5rem;">
+                    Our tool rankings reflect <em>disclosed</em> usage patterns in OSS PRs, <strong>not</strong> total market share. Industry surveys show <strong>Copilot (68%)</strong> and <strong>ChatGPT (82%)</strong> dominate actual usage — yet they're nearly absent from our data.
+                </p>
+                <p style="color: var(--text-muted); margin-bottom: 0;">
+                    <strong>Why?</strong> Tools that leave visible artifacts (CodeRabbit bot comments, Devin author attribution) appear dominant because we can detect them. Silent tools (Copilot autocomplete, ChatGPT for research/debugging) are likely <strong>underrepresented by 5-10x</strong>.
+                </p>
             </div>
 
             <div class="two-col">
@@ -1094,6 +1169,34 @@
 
         <section id="monthly">
             <h2>Monthly Adoption Trends by Team</h2>
+            <p style="color: var(--text-muted); margin-bottom: 1rem;">Select teams to compare their AI adoption journey throughout 2025.</p>
+
+            <!-- Team Selector -->
+            <div id="teamSelector" style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; padding: 1rem; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px;">
+                <label style="display: flex; align-items: center; gap: 0.4rem; padding: 0.4rem 0.75rem; background: var(--bg-main); border: 1px solid var(--border); border-radius: 6px; cursor: pointer; font-size: 0.8rem; transition: all 0.15s;">
+                    <input type="checkbox" class="team-checkbox" data-team="Antiwork" checked style="accent-color: #F97316;">
+                    <span style="color: #F97316;">●</span> Antiwork
+                </label>
+                <label style="display: flex; align-items: center; gap: 0.4rem; padding: 0.4rem 0.75rem; background: var(--bg-main); border: 1px solid var(--border); border-radius: 6px; cursor: pointer; font-size: 0.8rem; transition: all 0.15s;">
+                    <input type="checkbox" class="team-checkbox" data-team="Cal.com" checked style="accent-color: #5a9997;">
+                    <span style="color: #5a9997;">●</span> Cal.com
+                </label>
+                <label style="display: flex; align-items: center; gap: 0.4rem; padding: 0.4rem 0.75rem; background: var(--bg-main); border: 1px solid var(--border); border-radius: 6px; cursor: pointer; font-size: 0.8rem; transition: all 0.15s;">
+                    <input type="checkbox" class="team-checkbox" data-team="Plane" checked style="accent-color: #eab308;">
+                    <span style="color: #eab308;">●</span> Plane
+                </label>
+                <label style="display: flex; align-items: center; gap: 0.4rem; padding: 0.4rem 0.75rem; background: var(--bg-main); border: 1px solid var(--border); border-radius: 6px; cursor: pointer; font-size: 0.8rem; transition: all 0.15s;">
+                    <input type="checkbox" class="team-checkbox" data-team="Formbricks" style="accent-color: #a855f7;">
+                    <span style="color: #a855f7;">●</span> Formbricks
+                </label>
+                <label style="display: flex; align-items: center; gap: 0.4rem; padding: 0.4rem 0.75rem; background: var(--bg-main); border: 1px solid var(--border); border-radius: 6px; cursor: pointer; font-size: 0.8rem; transition: all 0.15s;">
+                    <input type="checkbox" class="team-checkbox" data-team="PostHog" style="accent-color: #22c55e;">
+                    <span style="color: #22c55e;">●</span> PostHog
+                </label>
+                <button onclick="selectAllTeams()" style="padding: 0.4rem 0.75rem; background: transparent; border: 1px dashed var(--border); border-radius: 6px; color: var(--text-muted); font-size: 0.75rem; cursor: pointer;">Select All</button>
+                <button onclick="clearAllTeams()" style="padding: 0.4rem 0.75rem; background: transparent; border: 1px dashed var(--border); border-radius: 6px; color: var(--text-muted); font-size: 0.75rem; cursor: pointer;">Clear</button>
+            </div>
+
             <div class="chart-container">
                 <div class="chart-wrapper tall">
                     <canvas id="monthlyTrendChart"></canvas>
@@ -1194,7 +1297,7 @@
                         <div class="method-icon llm">🧠</div>
                         <div>
                             <div class="method-card-title">LLM Semantic Analysis</div>
-                            <div class="method-card-subtitle">GPT OSS 20B + Llama 70B fallback • Groq Batch API</div>
+                            <div class="method-card-subtitle">ChatGPT OSS 20B + Llama 70B fallback • via Groq</div>
                         </div>
                     </div>
                     <div class="method-card-value" style="color: var(--purple);">11,540</div>
@@ -1386,6 +1489,16 @@
                 </ul>
                 <p style="color: var(--text-muted); font-size: 0.9rem;">This validates an iterative approach: LLM finds edge cases → patterns extracted → regex updated → backfill run.</p>
             </div>
+
+            <!-- Mid-content CTA -->
+            <div style="margin-top: 2rem; padding: 1.25rem 1.5rem; background: linear-gradient(90deg, rgba(249, 115, 22, 0.08), rgba(90, 153, 151, 0.08)); border-radius: 10px; display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+                <span style="font-size: 1.25rem;">📊</span>
+                <div style="flex: 1; min-width: 250px;">
+                    <strong style="color: var(--text);">Measure your team's AI adoption</strong>
+                    <span style="color: var(--text-muted);"> — tformance runs this analysis automatically on your repos.</span>
+                </div>
+                <a href="https://tformance.com" style="color: var(--primary); font-weight: 600; text-decoration: none; white-space: nowrap;">Learn more →</a>
+            </div>
         </section>
 
         <!-- AI ADOPTION CORRELATIONS -->
@@ -1575,7 +1688,7 @@
                 <div>
                     <h3>AI Detection Methods</h3>
                     <ul>
-                        <li><strong>LLM Detection:</strong> Groq Batch API — GPT OSS 20B primary, Llama 3.3 70B fallback for failures</li>
+                        <li><strong>LLM Detection:</strong> ChatGPT OSS 20B (via Groq Batch API), with Llama 3.3 70B fallback for failures</li>
                         <li><strong>Pattern Detection:</strong> 25+ regex patterns for known AI signatures</li>
                         <li><strong>Tool Attribution:</strong> Extracted from PR descriptions, commits, comments</li>
                         <li><strong>Scope:</strong> Metadata only — file contents not analyzed</li>
@@ -1623,13 +1736,65 @@
                 </div>
             </div>
 
+            <!-- HIGH RISK: Adoption Gap Comparison Table -->
+            <div style="background: var(--bg-main); border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; margin-bottom: 1.5rem;">
+                <h3 style="margin-bottom: 1rem; font-size: 1rem;">📊 Understanding the 4x Gap: Why Our Data Differs</h3>
+                <table style="font-size: 0.85rem; margin-bottom: 1rem;">
+                    <thead>
+                        <tr>
+                            <th>Metric</th>
+                            <th>Value</th>
+                            <th>What It Measures</th>
+                            <th>Why Different</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong style="color: var(--primary);">Our Report</strong></td>
+                            <td><strong>21.4%</strong></td>
+                            <td>PRs with explicit AI disclosure</td>
+                            <td>Floor — only visible mentions</td>
+                        </tr>
+                        <tr>
+                            <td><strong style="color: var(--secondary);">SO 2025 Daily</strong></td>
+                            <td><strong>51%</strong></td>
+                            <td>Devs using AI daily at work</td>
+                            <td>Self-reported, includes silent use</td>
+                        </tr>
+                        <tr>
+                            <td><strong style="color: var(--secondary);">SO 2025 Total</strong></td>
+                            <td><strong>84%</strong></td>
+                            <td>Using or planning to use</td>
+                            <td>Ceiling — includes "planning"</td>
+                        </tr>
+                        <tr>
+                            <td><strong style="color: var(--purple);">JetBrains 2025</strong></td>
+                            <td><strong>85%</strong></td>
+                            <td>Regularly use AI for coding</td>
+                            <td>Self-reported, all usage types</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div style="display: flex; align-items: flex-start; gap: 1rem; padding: 1rem; background: rgba(90, 153, 151, 0.1); border-radius: 6px;">
+                    <div style="font-size: 2rem;">🧊</div>
+                    <div>
+                        <strong style="color: var(--secondary);">The Iceberg Analogy:</strong>
+                        <p style="color: var(--text-muted); margin: 0.5rem 0 0 0; font-size: 0.85rem;">
+                            Think of AI usage as an iceberg. Our 21.4% is the <strong>visible tip</strong> — PRs where developers explicitly mention AI tools.
+                            The <strong>hidden 80%</strong> includes: Copilot autocomplete (accepted silently), ChatGPT brainstorming (never documented),
+                            and AI-assisted debugging (no trace in PR). Survey data captures the whole iceberg; we only see what surfaces in PR metadata.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
             <div class="insight-box" style="background: rgba(249, 115, 22, 0.1); border-color: var(--primary);">
-                <strong>Why the Gap?</strong> Our 21.4% represents the <em>floor</em> of AI adoption — only PRs with explicit disclosure. The real rate is likely 2-3x higher:
+                <strong>Why This Matters:</strong> Our 21.4% is a <em>conservative floor</em>, not a ceiling. The real AI adoption rate in these teams is likely <strong>40-60%</strong> based on industry benchmarks. Our data shows <em>disclosed, attributable</em> AI usage — valuable for understanding tool-specific patterns, but not total AI penetration.
                 <ul style="margin-top: 0.5rem; padding-left: 1.25rem; color: var(--text-muted);">
-                    <li><strong>Copilot autocomplete</strong> — accepted silently, never mentioned in PRs</li>
-                    <li><strong>ChatGPT research</strong> — used for learning but not disclosed</li>
-                    <li><strong>OSS vs Enterprise</strong> — enterprise teams may have higher adoption with more tooling budget</li>
-                    <li><strong>Detection bias</strong> — our method only catches what developers choose to share</li>
+                    <li><strong>Copilot autocomplete</strong> — 68% of devs use it (SO 2025), but it's rarely mentioned in PRs</li>
+                    <li><strong>ChatGPT research</strong> — 82% use it, but for learning/debugging, not disclosed</li>
+                    <li><strong>OSS disclosure norms</strong> — OSS may have lower disclosure rates than enterprise</li>
+                    <li><strong>Our unique value</strong> — We capture <em>what developers choose to share</em>, showing tool attribution patterns</li>
                 </ul>
             </div>
 
@@ -1711,7 +1876,31 @@
         <footer>
             <div class="logo">tformance</div>
             <p>AI Impact Analytics for Engineering Teams</p>
+            <p style="margin-top: 1rem; padding: 0.75rem 1.25rem; background: rgba(90, 153, 151, 0.1); border-radius: 8px; display: inline-block;">
+                <strong style="color: var(--secondary);">Open to Share:</strong>
+                Feel free to use this data, link to this report, or cite tformance in your articles and research. We'd love to be included in the conversation.
+            </p>
             <p style="margin-top: 0.5rem;">© 2025 tformance. Data sourced from public GitHub repositories.</p>
+            <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.75rem; opacity: 0.7;">
+                GitHub, Copilot, ChatGPT, Claude, Cursor, CodeRabbit, Devin, and other product names mentioned are trademarks of their respective owners. This report is independent research and is not affiliated with or endorsed by any of the companies mentioned.
+            </p>
+
+            <!-- Legal Disclaimers -->
+            <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--border); font-size: 0.7rem; color: var(--text-muted); opacity: 0.6; line-height: 1.6;">
+                <p style="margin-bottom: 0.75rem;"><strong>DISCLAIMER:</strong> This report is provided for informational and educational purposes only. The findings, statistics, and conclusions presented are based on analysis of publicly available data from open source software repositories and may not be representative of private or enterprise codebases.</p>
+
+                <p style="margin-bottom: 0.75rem;"><strong>NO WARRANTY:</strong> The information in this report is provided "as is" without warranty of any kind, express or implied. While we have made reasonable efforts to ensure accuracy, we make no representations or warranties regarding the completeness, reliability, or accuracy of any information contained herein. Detection methodologies may produce false positives or false negatives.</p>
+
+                <p style="margin-bottom: 0.75rem;"><strong>NOT PROFESSIONAL ADVICE:</strong> This report does not constitute investment, legal, business, or professional advice of any kind. Readers should not make decisions solely based on the information presented here. Before making any business or technology decisions, consult with qualified professionals and conduct your own independent analysis appropriate to your circumstances.</p>
+
+                <p style="margin-bottom: 0.75rem;"><strong>DATA LIMITATIONS:</strong> Our sample of 26 open source teams (~60,000 PRs) represents a specific subset of software development activity and may not reflect broader industry patterns. Selection bias exists toward well-maintained, popular projects. Detection rates represent disclosed AI usage only; actual AI tool usage may be significantly higher. The 21.4% detected adoption rate is a floor estimate, not a comprehensive measure.</p>
+
+                <p style="margin-bottom: 0.75rem;"><strong>THIRD-PARTY DATA:</strong> Industry comparison data from Stack Overflow Developer Survey 2025 and JetBrains State of Developer Ecosystem 2025 is used under fair use for research commentary. These surveys measure different populations and methodologies than our behavioral analysis. Direct comparisons should be interpreted with caution.</p>
+
+                <p style="margin-bottom: 0.75rem;"><strong>LIMITATION OF LIABILITY:</strong> In no event shall tformance, its authors, affiliates, or data providers be liable for any direct, indirect, incidental, special, consequential, or punitive damages arising out of or related to your use of or reliance on this report.</p>
+
+                <p style="margin-bottom: 0;"><strong>METHODOLOGY TRANSPARENCY:</strong> Our detection methods (regex pattern matching and LLM analysis) achieved 96.1% agreement on test data, but neither method has been independently validated for false negative rates. The +42% cycle time correlation finding shows association, not causation. Reproduction and peer review of our methodology is welcomed.</p>
+            </div>
         </footer>
     </div>
 
@@ -2155,6 +2344,34 @@
                 }
             }
         });
+
+        // Team selection handlers for Monthly Trends chart
+        function updateMonthlyTrendVisibility() {
+            const checkboxes = document.querySelectorAll('.team-checkbox');
+            checkboxes.forEach((checkbox, index) => {
+                const isVisible = checkbox.checked;
+                charts.monthlyTrend.data.datasets[index].hidden = !isVisible;
+            });
+            charts.monthlyTrend.update();
+        }
+
+        function selectAllTeams() {
+            document.querySelectorAll('.team-checkbox').forEach(cb => cb.checked = true);
+            updateMonthlyTrendVisibility();
+        }
+
+        function clearAllTeams() {
+            document.querySelectorAll('.team-checkbox').forEach(cb => cb.checked = false);
+            updateMonthlyTrendVisibility();
+        }
+
+        // Add event listeners to checkboxes
+        document.querySelectorAll('.team-checkbox').forEach(checkbox => {
+            checkbox.addEventListener('change', updateMonthlyTrendVisibility);
+        });
+
+        // Apply initial visibility (some unchecked by default)
+        updateMonthlyTrendVisibility();
 
         // Team Detection Comparison: LLM vs Regex
         const teamDetectionData = [
