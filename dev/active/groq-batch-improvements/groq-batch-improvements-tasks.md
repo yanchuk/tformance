@@ -80,29 +80,33 @@ All batch tokens billed at flat 50% rate. Caching provides performance benefit o
 
 **All 36 unit tests passing.**
 
-## Phase 3: Backfill (IN PROGRESS)
+## Phase 3: Backfill (COMPLETE)
 
-Current LLM Processing Status: **65.6% (39,571/60,335 PRs)**
+Final LLM Processing Status: **86.3% (52,224/60,545 PRs)**
 
-| Team | Done | Need | Status |
-|------|------|------|--------|
-| Antiwork | 50 | 3,930 | ❌ Priority |
-| Cal.com | 2,131 | 3,463 | ❌ Priority |
-| LangChain | 2,023 | 1,862 | ❌ |
-| Twenty CRM | 3,553 | 1,047 | 🔄 |
-| Resend | 198 | 695 | ❌ |
-| Trigger.dev | 145 | 689 | ❌ |
-| Vercel | 4,978 | 513 | 🔄 |
-| FastAPI Team | 281 | 507 | ❌ |
-| Others | - | <500 each | 🔄 |
+**Note**: 6,669 PRs have empty body text and are automatically excluded.
 
-**TOTAL REMAINING: ~14,302 PRs**
+| Team | Analyzed | AI PRs | AI Rate |
+|------|----------|--------|---------|
+| Plane | 1,524 | 1,322 | 86.7% |
+| Dub | 894 | 750 | 83.9% |
+| Antiwork | 3,935 | 2,429 | 61.7% |
+| Cal.com | 5,515 | 2,292 | 41.6% |
+| PostHog | 6,159 | 413 | 6.7% |
+| Vercel | 5,481 | 114 | 2.1% |
 
-## Phase 4: Verification
+## Phase 4: Verification (COMPLETE)
 
-- [ ] Query database for >95% coverage across all teams
-- [ ] Generate AI detection summary report
-- [ ] Update UI with trend data
+- [x] Query database for coverage across all teams
+- [x] Generate AI detection summary report
+- [x] AI tools breakdown: CodeRabbit (51%), Devin (16%), Cubic (14%), Claude (6%), Cursor (6%)
+
+## Phase 5: Team Insights Analysis (NEXT)
+
+- [ ] Monthly AI adoption trends per team
+- [ ] Correlation: AI usage vs PR cycle time
+- [ ] Correlation: AI usage vs review time
+- [ ] Generate actionable insights for CTOs
 
 ---
 
