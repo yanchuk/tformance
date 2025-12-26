@@ -1,74 +1,90 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Impact on Software Engineering - 2025 OSS Analysis</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
         :root {
             --primary: #F97316;
             --secondary: #5a9997;
-            --bg-dark: #1e1e1e;
+            --success: #22c55e;
+            --warning: #eab308;
+            --error: #ef4444;
+            --purple: #a855f7;
+        }
+
+        [data-theme="dark"] {
+            --bg-main: #1e1e1e;
             --bg-card: #2a2a28;
             --text: #ccc9c0;
             --text-muted: #8a8880;
             --border: #3c3c3a;
-            --success: #22c55e;
-            --warning: #eab308;
-            --error: #ef4444;
+            --grid: #3c3c3a;
         }
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        [data-theme="light"] {
+            --bg-main: #f8f9fa;
+            --bg-card: #ffffff;
+            --text: #1f2937;
+            --text-muted: #6b7280;
+            --border: #e5e7eb;
+            --grid: #e5e7eb;
         }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: var(--bg-dark);
+            background: var(--bg-main);
             color: var(--text);
             line-height: 1.6;
             padding: 2rem;
+            transition: background 0.3s, color 0.3s;
         }
 
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
+        .container { max-width: 1400px; margin: 0 auto; }
 
         header {
             text-align: center;
             margin-bottom: 3rem;
             padding: 2rem;
-            background: linear-gradient(135deg, var(--bg-card) 0%, #1a1a18 100%);
+            background: var(--bg-card);
             border-radius: 16px;
             border: 1px solid var(--border);
+            position: relative;
         }
 
-        h1 {
-            font-size: 2.5rem;
-            font-weight: 700;
-            color: white;
-            margin-bottom: 0.5rem;
+        .theme-toggle {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: var(--bg-main);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 0.5rem 1rem;
+            color: var(--text);
+            cursor: pointer;
+            font-family: inherit;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
         }
 
-        .subtitle {
-            color: var(--primary);
-            font-size: 1.25rem;
-            font-weight: 500;
-        }
+        .theme-toggle:hover { border-color: var(--primary); }
 
-        .meta {
-            color: var(--text-muted);
-            font-size: 0.9rem;
-            margin-top: 1rem;
-        }
+        h1 { font-size: 2.5rem; font-weight: 700; margin-bottom: 0.5rem; }
+        .subtitle { color: var(--primary); font-size: 1.25rem; font-weight: 500; }
+        .meta { color: var(--text-muted); font-size: 0.9rem; margin-top: 1rem; }
 
         .stat-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
             gap: 1.5rem;
             margin: 2rem 0;
         }
@@ -82,7 +98,7 @@
         }
 
         .stat-value {
-            font-size: 2.5rem;
+            font-size: 2.25rem;
             font-weight: 700;
             font-family: 'JetBrains Mono', monospace;
             color: var(--primary);
@@ -92,29 +108,16 @@
         .stat-value.negative { color: var(--error); }
         .stat-value.neutral { color: var(--secondary); }
 
-        .stat-label {
-            color: var(--text-muted);
-            font-size: 0.9rem;
-            margin-top: 0.5rem;
-        }
+        .stat-label { color: var(--text-muted); font-size: 0.85rem; margin-top: 0.5rem; }
 
-        section {
-            margin: 3rem 0;
-        }
-
+        section { margin: 3rem 0; }
         h2 {
             font-size: 1.75rem;
-            color: white;
             margin-bottom: 1rem;
             padding-bottom: 0.5rem;
             border-bottom: 2px solid var(--primary);
         }
-
-        h3 {
-            font-size: 1.25rem;
-            color: var(--text);
-            margin: 1.5rem 0 1rem;
-        }
+        h3 { font-size: 1.25rem; color: var(--text); margin: 1.5rem 0 1rem; }
 
         .chart-container {
             background: var(--bg-card);
@@ -124,26 +127,15 @@
             margin: 1.5rem 0;
         }
 
-        .chart-wrapper {
-            position: relative;
-            height: 300px;
-        }
+        .chart-wrapper { position: relative; height: 300px; }
+        .chart-wrapper.tall { height: 450px; }
+        .chart-wrapper.extra-tall { height: 550px; }
 
-        .chart-wrapper.tall {
-            height: 400px;
-        }
+        .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+        .three-col { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
 
-        .two-col {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1.5rem;
-        }
-
-        @media (max-width: 768px) {
-            .two-col {
-                grid-template-columns: 1fr;
-            }
-        }
+        @media (max-width: 1024px) { .three-col { grid-template-columns: 1fr 1fr; } }
+        @media (max-width: 768px) { .two-col, .three-col { grid-template-columns: 1fr; } }
 
         table {
             width: 100%;
@@ -152,10 +144,11 @@
             border-radius: 12px;
             overflow: hidden;
             margin: 1rem 0;
+            font-size: 0.9rem;
         }
 
         th, td {
-            padding: 1rem;
+            padding: 0.75rem 1rem;
             text-align: left;
             border-bottom: 1px solid var(--border);
         }
@@ -166,22 +159,22 @@
             font-weight: 600;
         }
 
-        tr:hover {
-            background: rgba(255, 255, 255, 0.02);
-        }
+        tr:hover { background: rgba(249, 115, 22, 0.05); }
 
         .badge {
             display: inline-block;
-            padding: 0.25rem 0.75rem;
+            padding: 0.2rem 0.6rem;
             border-radius: 9999px;
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             font-weight: 500;
+            font-family: 'JetBrains Mono', monospace;
         }
 
         .badge-success { background: rgba(34, 197, 94, 0.2); color: var(--success); }
         .badge-warning { background: rgba(234, 179, 8, 0.2); color: var(--warning); }
         .badge-error { background: rgba(239, 68, 68, 0.2); color: var(--error); }
         .badge-primary { background: rgba(249, 115, 22, 0.2); color: var(--primary); }
+        .badge-purple { background: rgba(168, 85, 247, 0.2); color: var(--purple); }
 
         .insight-box {
             background: rgba(90, 153, 151, 0.1);
@@ -191,9 +184,67 @@
             border-radius: 0 8px 8px 0;
         }
 
-        .insight-box strong {
-            color: var(--secondary);
+        .insight-box strong { color: var(--secondary); }
+
+        .takeaway-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem 0;
         }
+
+        .takeaway-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            border-left: 4px solid var(--primary);
+        }
+
+        .takeaway-card h4 {
+            color: var(--primary);
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .takeaway-card p { color: var(--text-muted); font-size: 0.9rem; }
+
+        .takeaway-number {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            background: var(--primary);
+            color: white;
+            border-radius: 50%;
+            font-weight: 700;
+            font-size: 0.9rem;
+        }
+
+        .download-links {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin: 1rem 0;
+        }
+
+        .download-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            text-decoration: none;
+            font-size: 0.85rem;
+        }
+
+        .download-btn:hover { border-color: var(--primary); color: var(--primary); }
 
         .methodology {
             background: var(--bg-card);
@@ -203,26 +254,15 @@
             margin: 2rem 0;
         }
 
-        .methodology h3 {
-            color: var(--primary);
-        }
-
-        .methodology ul {
-            list-style: none;
-            margin: 1rem 0;
-        }
-
-        .methodology li {
-            padding: 0.5rem 0;
-            padding-left: 1.5rem;
-            position: relative;
-        }
-
+        .methodology h3 { color: var(--primary); }
+        .methodology ul { list-style: none; margin: 1rem 0; }
+        .methodology li { padding: 0.5rem 0; padding-left: 1.5rem; position: relative; }
         .methodology li::before {
-            content: "→";
+            content: ">";
             position: absolute;
             left: 0;
             color: var(--primary);
+            font-family: 'JetBrains Mono', monospace;
         }
 
         footer {
@@ -234,42 +274,66 @@
             margin-top: 3rem;
         }
 
-        .logo {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: var(--primary);
-            margin-bottom: 0.5rem;
-        }
+        .logo { font-size: 1.5rem; font-weight: 700; color: var(--primary); margin-bottom: 0.5rem; }
+        .mono { font-family: 'JetBrains Mono', monospace; }
 
         @media print {
-            body {
-                background: white;
-                color: #333;
-            }
-            .stat-card, .chart-container, .methodology {
-                background: #f5f5f5;
-                border-color: #ddd;
-            }
-            .stat-value { color: #F97316; }
-            h2 { color: #333; }
+            body { background: white; color: #333; }
+            .stat-card, .chart-container, .methodology, .takeaway-card { background: #f5f5f5; border-color: #ddd; }
+            .theme-toggle { display: none; }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <header>
+            <button class="theme-toggle" onclick="toggleTheme()">
+                <span id="theme-icon">☀️</span>
+                <span id="theme-label">Light</span>
+            </button>
             <div class="logo">tformance</div>
             <h1>AI Impact on Software Engineering</h1>
-            <p class="subtitle">Analysis of 60,545 PRs from 25 Open Source Projects</p>
+            <p class="subtitle">Analysis of 60,545 PRs from 26 Open Source Teams</p>
             <p class="meta">Research Period: January 1 - December 25, 2025 | Generated: December 26, 2025</p>
         </header>
+
+        <!-- KEY TAKEAWAYS - AT TOP -->
+        <section>
+            <h2>Key Takeaways for Engineering Leaders</h2>
+            <div class="takeaway-grid">
+                <div class="takeaway-card">
+                    <h4><span class="takeaway-number">1</span> Mixed Tool Strategy Wins</h4>
+                    <p>Teams using bot + IDE + LLM combinations show better outcomes than single-tool teams. Antiwork's 61.9% adoption with mixed tools yielded <strong>-8.5% cycle time</strong> and <strong>-50.2% review time</strong>.</p>
+                </div>
+                <div class="takeaway-card">
+                    <h4><span class="takeaway-number">2</span> Review Velocity is Consistent</h4>
+                    <p>15 out of 26 teams show faster review times with AI assistance. Average improvement: <strong>-31%</strong>. AI-generated code appears easier to review.</p>
+                </div>
+                <div class="takeaway-card">
+                    <h4><span class="takeaway-number">3</span> Autonomous Agents Growing Fast</h4>
+                    <p>Cubic went from <strong>0 → 347 PRs/month</strong> (Jan→Nov). Autonomous agents (Devin, Cubic) now represent <strong>30.7%</strong> of all AI tool usage.</p>
+                </div>
+                <div class="takeaway-card">
+                    <h4><span class="takeaway-number">4</span> 40-60% is Sweet Spot</h4>
+                    <p>Very high adoption (>80%) correlates with larger cycle times. Best-performing teams (Antiwork, Trigger.dev) maintain balanced 40-60% AI usage.</p>
+                </div>
+                <div class="takeaway-card">
+                    <h4><span class="takeaway-number">5</span> Tool Diversification Accelerating</h4>
+                    <p>Jan: CodeRabbit had <strong>95%+ share</strong>. Dec: CodeRabbit <strong>36%</strong>, Cubic <strong>21%</strong>, Claude <strong>17%</strong>. The market is fragmenting rapidly.</p>
+                </div>
+            </div>
+        </section>
 
         <section>
             <h2>Executive Summary</h2>
             <div class="stat-grid">
                 <div class="stat-card">
                     <div class="stat-value">60,545</div>
-                    <div class="stat-label">Total Pull Requests Analyzed</div>
+                    <div class="stat-label">Total Pull Requests</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">26</div>
+                    <div class="stat-label">Teams Analyzed</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-value neutral">21.2%</div>
@@ -277,11 +341,11 @@
                 </div>
                 <div class="stat-card">
                     <div class="stat-value positive">-31%</div>
-                    <div class="stat-label">Avg Review Time Reduction</div>
+                    <div class="stat-label">Avg Review Time Change</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-value negative">+42%</div>
-                    <div class="stat-label">Avg Cycle Time Increase</div>
+                    <div class="stat-label">Avg Cycle Time Change</div>
                 </div>
             </div>
 
@@ -290,190 +354,74 @@
             </div>
         </section>
 
+        <!-- TOOL TRENDS OVER TIME - NEW SECTION -->
         <section>
-            <h2>AI Tool Market Share</h2>
+            <h2>AI Tool Evolution (2025)</h2>
+            <p style="color: var(--text-muted); margin-bottom: 1rem;">Monthly trend of AI tool usage across all teams. Shows dramatic market shift throughout the year.</p>
+
+            <div class="chart-container">
+                <div class="chart-wrapper tall">
+                    <canvas id="toolTrendsChart"></canvas>
+                </div>
+            </div>
+
+            <div class="insight-box">
+                <strong>Market Shift:</strong> CodeRabbit dominated early 2025 (95%+ share in Jan-Feb). By Q4, the market fragmented: Cubic emerged as #2 (347 PRs in Nov), Claude and Cursor saw 10x growth. <strong>Human-directed AI tools</strong> (Claude, Cursor, Copilot) grew from 2% to 35% of monthly usage.
+            </div>
+
             <div class="two-col">
                 <div class="chart-container">
+                    <h3>Tool Category Over Time</h3>
+                    <div class="chart-wrapper">
+                        <canvas id="categoryTrendsChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <h3>Current Tool Market Share</h3>
                     <div class="chart-wrapper">
                         <canvas id="toolShareChart"></canvas>
                     </div>
                 </div>
-                <div class="chart-container">
-                    <div class="chart-wrapper">
-                        <canvas id="toolCategoryChart"></canvas>
-                    </div>
-                </div>
             </div>
-
-            <table>
-                <thead>
-                    <tr>
-                        <th>Tool</th>
-                        <th>Category</th>
-                        <th>Market Share</th>
-                        <th>Primary Use Case</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td><strong>CodeRabbit</strong></td>
-                        <td><span class="badge badge-primary">Review Bot</span></td>
-                        <td>53.5%</td>
-                        <td>Automated code review and suggestions</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Devin</strong></td>
-                        <td><span class="badge badge-warning">Autonomous Agent</span></td>
-                        <td>17.9%</td>
-                        <td>End-to-end task completion</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Cubic</strong></td>
-                        <td><span class="badge badge-warning">Autonomous Agent</span></td>
-                        <td>12.8%</td>
-                        <td>Automated implementation</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Claude</strong></td>
-                        <td><span class="badge badge-success">LLM Assistant</span></td>
-                        <td>4.9%</td>
-                        <td>Complex reasoning and planning</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Cursor</strong></td>
-                        <td><span class="badge badge-success">AI IDE</span></td>
-                        <td>4.7%</td>
-                        <td>Inline code suggestions</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Copilot</strong></td>
-                        <td><span class="badge badge-success">Inline Completion</span></td>
-                        <td>2.0%</td>
-                        <td>Real-time code completion</td>
-                    </tr>
-                </tbody>
-            </table>
         </section>
 
         <section>
-            <h2>AI Impact by Team</h2>
+            <h2>AI Adoption by Team</h2>
+            <p style="color: var(--text-muted); margin-bottom: 1rem;">All 26 teams with 50+ analyzed PRs in 2025, sorted by AI adoption rate.</p>
+
             <div class="chart-container">
-                <div class="chart-wrapper tall">
-                    <canvas id="teamImpactChart"></canvas>
+                <div class="chart-wrapper extra-tall">
+                    <canvas id="teamAdoptionChart"></canvas>
                 </div>
             </div>
-
-            <table>
-                <thead>
-                    <tr>
-                        <th>Team</th>
-                        <th>AI Adoption</th>
-                        <th>Cycle Time Δ</th>
-                        <th>Review Time Δ</th>
-                        <th>PR Size Δ</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td><strong>Plane</strong></td>
-                        <td>86.7%</td>
-                        <td><span class="badge badge-error">+184%</span></td>
-                        <td><span class="badge badge-warning">+2%</span></td>
-                        <td><span class="badge badge-success">-80%</span></td>
-                    </tr>
-                    <tr>
-                        <td><strong>Antiwork</strong></td>
-                        <td>61.7%</td>
-                        <td><span class="badge badge-success">-10%</span></td>
-                        <td><span class="badge badge-success">-50%</span></td>
-                        <td><span class="badge badge-success">-11%</span></td>
-                    </tr>
-                    <tr>
-                        <td><strong>Cal.com</strong></td>
-                        <td>41.6%</td>
-                        <td><span class="badge badge-error">+41%</span></td>
-                        <td><span class="badge badge-warning">-0.4%</span></td>
-                        <td><span class="badge badge-error">+78%</span></td>
-                    </tr>
-                    <tr>
-                        <td><strong>PostHog</strong></td>
-                        <td>6.7%</td>
-                        <td><span class="badge badge-error">+34%</span></td>
-                        <td><span class="badge badge-success">-48%</span></td>
-                        <td><span class="badge badge-success">-20%</span></td>
-                    </tr>
-                    <tr>
-                        <td><strong>Vercel</strong></td>
-                        <td>2.1%</td>
-                        <td><span class="badge badge-error">+22%</span></td>
-                        <td><span class="badge badge-error">+29%</span></td>
-                        <td><span class="badge badge-error">+14%</span></td>
-                    </tr>
-                </tbody>
-            </table>
 
             <div class="insight-box">
-                <strong>Best Practice:</strong> Teams with 40-60% AI adoption and a mixed tool strategy (bot + IDE + LLM) show the best outcomes. Antiwork demonstrates this with a -10% cycle time and -50% review time improvement.
+                <strong>Adoption Range:</strong> AI adoption varies from 0% (Lago) to 87.3% (Plane). High-adoption teams tend to use review bots (CodeRabbit) extensively.
             </div>
         </section>
 
         <section>
-            <h2>Detection Method Comparison</h2>
-            <p>We use two complementary detection methods to identify AI-assisted PRs:</p>
+            <h2>AI Impact on Metrics</h2>
+            <p style="color: var(--text-muted); margin-bottom: 1rem;">Comparing AI-assisted PRs vs non-AI PRs within each team. Green = AI improved metric, Red = AI increased metric.</p>
 
             <div class="two-col">
                 <div class="chart-container">
-                    <h3>Detection Agreement</h3>
-                    <div class="chart-wrapper">
-                        <canvas id="detectionVennChart"></canvas>
+                    <h3>Review Time Impact (AI vs Non-AI)</h3>
+                    <div class="chart-wrapper tall">
+                        <canvas id="reviewImpactChart"></canvas>
                     </div>
                 </div>
                 <div class="chart-container">
-                    <h3>LLM vs Pattern Detection by Repo</h3>
-                    <div class="chart-wrapper">
-                        <canvas id="repoDetectionChart"></canvas>
+                    <h3>Cycle Time Impact (AI vs Non-AI)</h3>
+                    <div class="chart-wrapper tall">
+                        <canvas id="cycleImpactChart"></canvas>
                     </div>
                 </div>
-            </div>
-
-            <table>
-                <thead>
-                    <tr>
-                        <th>Detection Method</th>
-                        <th>AI PRs Found</th>
-                        <th>Unique Finds</th>
-                        <th>Strengths</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td><strong>LLM Detection</strong></td>
-                        <td>11,284 (18.7%)</td>
-                        <td>1,597</td>
-                        <td>Context-aware, implicit mentions, nuanced understanding</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Pattern Detection</strong></td>
-                        <td>10,200 (16.9%)</td>
-                        <td>513</td>
-                        <td>Bot signatures, explicit mentions, speed</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Both Agree</strong></td>
-                        <td>9,687 (16.1%)</td>
-                        <td>-</td>
-                        <td>High confidence detections</td>
-                    </tr>
-                </tbody>
-            </table>
-
-            <div class="insight-box">
-                <strong>Finding:</strong> LLM detection catches 3x more unique AI PRs than pattern detection misses (1,597 vs 513). The methods are complementary - LLM excels at implicit mentions while patterns excel at bot signatures.
             </div>
         </section>
 
         <section>
-            <h2>Monthly Adoption Trends</h2>
+            <h2>Monthly Adoption Trends by Team</h2>
             <div class="chart-container">
                 <div class="chart-wrapper tall">
                     <canvas id="monthlyTrendChart"></canvas>
@@ -481,8 +429,33 @@
             </div>
 
             <div class="insight-box">
-                <strong>Seasonal Pattern:</strong> AI adoption peaks during June-August (summer development push) and decreases during holiday periods (January-March, December).
+                <strong>Patterns:</strong> Cal.com shows most dramatic growth (0.2% Feb → 80.6% Jun). Formbricks shows opposite trend (90% Jan → 8% Dec). Teams experiment heavily then settle on sustainable adoption levels.
             </div>
+        </section>
+
+        <section>
+            <h2>Complete Team Data</h2>
+
+            <div class="download-links">
+                <a href="data/team_summary.csv" class="download-btn" download>📊 Team Summary (CSV)</a>
+                <a href="data/monthly_trends.csv" class="download-btn" download>📈 Monthly Trends (CSV)</a>
+                <a href="data/ai_tools_monthly.csv" class="download-btn" download>🔧 AI Tools by Month (CSV)</a>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Team</th>
+                        <th>PRs</th>
+                        <th>AI %</th>
+                        <th>Cycle Δ</th>
+                        <th>Review Δ</th>
+                        <th>Size Δ</th>
+                    </tr>
+                </thead>
+                <tbody id="teamTableBody">
+                </tbody>
+            </table>
         </section>
 
         <section class="methodology">
@@ -491,16 +464,16 @@
             <h3>Data Collection</h3>
             <ul>
                 <li><strong>Source:</strong> GitHub GraphQL API with authenticated access</li>
-                <li><strong>Projects:</strong> 25 open source projects (Vercel, PostHog, Cal.com, Supabase, etc.)</li>
+                <li><strong>Teams:</strong> 26 open source project teams</li>
                 <li><strong>Date Range:</strong> January 1, 2025 - December 25, 2025</li>
                 <li><strong>PR Fields:</strong> Title, body, comments, commits, reviews, files changed</li>
             </ul>
 
             <h3>AI Detection Methods</h3>
             <ul>
-                <li><strong>LLM Detection:</strong> Groq Batch API with Llama 3.3 70B model analyzes PR content for AI signatures</li>
-                <li><strong>Pattern Detection:</strong> 25+ regex patterns match known AI tool signatures (Copilot, Claude, Cursor, etc.)</li>
-                <li><strong>Confidence Scoring:</strong> Multi-signal approach combining text analysis, commit patterns, and file changes</li>
+                <li><strong>LLM Detection:</strong> Groq Batch API with Llama 3.3 70B model analyzes PR content</li>
+                <li><strong>Pattern Detection:</strong> 25+ regex patterns match known AI tool signatures</li>
+                <li><strong>Tool Attribution:</strong> Extracted from PR descriptions, commit messages, and comments</li>
             </ul>
 
             <h3>Metrics Definitions</h3>
@@ -508,7 +481,7 @@
                 <li><strong>Cycle Time:</strong> Hours from PR creation to merge</li>
                 <li><strong>Review Time:</strong> Hours from PR creation to first review</li>
                 <li><strong>PR Size:</strong> Total lines added + deleted</li>
-                <li><strong>AI Adoption Rate:</strong> Percentage of PRs with detected AI assistance</li>
+                <li><strong>Impact Delta:</strong> (AI metric - Non-AI metric) / Non-AI metric × 100</li>
             </ul>
 
             <h3>Data Quality</h3>
@@ -516,38 +489,8 @@
                 <li><strong>Total PRs:</strong> 60,545</li>
                 <li><strong>LLM Analyzed:</strong> 52,224 (86.3%)</li>
                 <li><strong>Empty Body PRs:</strong> 6,669 (11%) - excluded from LLM analysis</li>
-                <li><strong>Detection Agreement:</strong> 16.1% of PRs detected by both methods</li>
+                <li><strong>Teams with 50+ PRs:</strong> 26</li>
             </ul>
-        </section>
-
-        <section>
-            <h2>Key Takeaways for Engineering Leaders</h2>
-
-            <div class="stat-grid">
-                <div class="stat-card">
-                    <div class="stat-value neutral">1</div>
-                    <div class="stat-label">Mixed Tool Strategy Wins</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value neutral">2</div>
-                    <div class="stat-label">Review Velocity is Key</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value neutral">3</div>
-                    <div class="stat-label">Agents Need Oversight</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value neutral">4</div>
-                    <div class="stat-label">40-60% is Sweet Spot</div>
-                </div>
-            </div>
-
-            <ol style="margin: 1.5rem 0; padding-left: 1.5rem;">
-                <li style="margin-bottom: 1rem;"><strong>Mixed Tool Strategy Wins:</strong> Teams using bot + IDE + LLM combinations show better outcomes than single-tool teams.</li>
-                <li style="margin-bottom: 1rem;"><strong>Review Velocity is the Consistent Win:</strong> 6/8 teams show faster review times with AI. This is the most reliable benefit.</li>
-                <li style="margin-bottom: 1rem;"><strong>Autonomous Agents Need Oversight:</strong> Devin and Cubic produce 50-80% larger PRs. Consider more frequent checkpoints.</li>
-                <li style="margin-bottom: 1rem;"><strong>40-60% AI Adoption is the Sweet Spot:</strong> Very high adoption (&gt;80%) may indicate over-reliance on bots.</li>
-            </ol>
         </section>
 
         <footer>
@@ -558,232 +501,356 @@
     </div>
 
     <script>
-        // Color palette
-        const colors = {
-            primary: '#F97316',
-            secondary: '#5a9997',
-            success: '#22c55e',
-            warning: '#eab308',
-            error: '#ef4444',
-            text: '#ccc9c0',
-            muted: '#8a8880'
+        // Register datalabels plugin
+        Chart.register(ChartDataLabels);
+
+        // Theme toggle
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            html.setAttribute('data-theme', newTheme);
+            document.getElementById('theme-icon').textContent = newTheme === 'dark' ? '☀️' : '🌙';
+            document.getElementById('theme-label').textContent = newTheme === 'dark' ? 'Light' : 'Dark';
+
+            // Update chart colors
+            updateChartColors();
+        }
+
+        function getColors() {
+            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            return {
+                primary: '#F97316',
+                secondary: '#5a9997',
+                success: '#22c55e',
+                warning: '#eab308',
+                error: '#ef4444',
+                purple: '#a855f7',
+                text: isDark ? '#ccc9c0' : '#1f2937',
+                muted: isDark ? '#8a8880' : '#6b7280',
+                grid: isDark ? '#3c3c3a' : '#e5e7eb'
+            };
+        }
+
+        let charts = {};
+
+        function updateChartColors() {
+            const colors = getColors();
+            Object.values(charts).forEach(chart => {
+                if (chart.options.scales) {
+                    if (chart.options.scales.x) {
+                        chart.options.scales.x.ticks.color = colors.text;
+                        chart.options.scales.x.grid.color = colors.grid;
+                    }
+                    if (chart.options.scales.y) {
+                        chart.options.scales.y.ticks.color = colors.text;
+                        chart.options.scales.y.grid.color = colors.grid;
+                    }
+                }
+                if (chart.options.plugins && chart.options.plugins.legend) {
+                    chart.options.plugins.legend.labels.color = colors.text;
+                }
+                if (chart.options.plugins && chart.options.plugins.title) {
+                    chart.options.plugins.title.color = colors.text;
+                }
+                chart.update();
+            });
+        }
+
+        // Team data
+        const teamData = [
+            {"team": "Plane", "total": 1698, "ai_pct": 87.3, "cycle_delta": 185.4, "review_delta": 2.2, "size_delta": -80.3},
+            {"team": "Dub", "total": 895, "ai_pct": 83.9, "cycle_delta": 55.9, "review_delta": -12.3, "size_delta": -35.8},
+            {"team": "Antiwork", "total": 3964, "ai_pct": 61.9, "cycle_delta": -8.5, "review_delta": -50.2, "size_delta": -11.8},
+            {"team": "Formbricks", "total": 1661, "ai_pct": 50.5, "cycle_delta": 40.9, "review_delta": -26.3, "size_delta": -18.0},
+            {"team": "Trigger.dev", "total": 827, "ai_pct": 45.6, "cycle_delta": -38.2, "review_delta": -71.7, "size_delta": 10.2},
+            {"team": "Cal.com", "total": 5565, "ai_pct": 41.6, "cycle_delta": 40.2, "review_delta": -2.4, "size_delta": 76.3},
+            {"team": "Resend", "total": 888, "ai_pct": 40.4, "cycle_delta": -72.0, "review_delta": -96.3, "size_delta": -62.9},
+            {"team": "Gumroad", "total": 220, "ai_pct": 29.5, "cycle_delta": 10.5, "review_delta": -51.8, "size_delta": 549.3},
+            {"team": "Infisical", "total": 1677, "ai_pct": 24.2, "cycle_delta": 50.3, "review_delta": 64.0, "size_delta": -37.3},
+            {"team": "Anthropic", "total": 233, "ai_pct": 22.7, "cycle_delta": -90.2, "review_delta": -87.1, "size_delta": 66.6},
+            {"team": "Hoppscotch", "total": 434, "ai_pct": 17.3, "cycle_delta": -27.0, "review_delta": -6.7, "size_delta": 46.9},
+            {"team": "Novu", "total": 2155, "ai_pct": 17.2, "cycle_delta": -47.1, "review_delta": -52.6, "size_delta": -28.5},
+            {"team": "Coolify", "total": 1158, "ai_pct": 13.6, "cycle_delta": -83.7, "review_delta": -89.8, "size_delta": -43.6},
+            {"team": "Comp AI", "total": 1636, "ai_pct": 13.5, "cycle_delta": -79.7, "review_delta": -87.8, "size_delta": -3.9},
+            {"team": "Supabase", "total": 2758, "ai_pct": 12.0, "cycle_delta": 61.9, "review_delta": 52.0, "size_delta": -80.2},
+            {"team": "PostHog", "total": 6188, "ai_pct": 6.8, "cycle_delta": 34.8, "review_delta": -49.4, "size_delta": -21.3},
+            {"team": "Twenty CRM", "total": 4590, "ai_pct": 5.7, "cycle_delta": 68.7, "review_delta": -0.6, "size_delta": 25.3},
+            {"team": "Polar.sh", "total": 2011, "ai_pct": 5.0, "cycle_delta": -75.7, "review_delta": -92.3, "size_delta": -67.5},
+            {"team": "LangChain", "total": 3878, "ai_pct": 4.2, "cycle_delta": 80.3, "review_delta": -16.2, "size_delta": -37.0},
+            {"team": "Documenso", "total": 415, "ai_pct": 3.9, "cycle_delta": 36.5, "review_delta": 138.7, "size_delta": -22.0},
+            {"team": "Deno", "total": 2214, "ai_pct": 2.9, "cycle_delta": 91.0, "review_delta": -3.2, "size_delta": -77.0},
+            {"team": "Vercel", "total": 5487, "ai_pct": 2.1, "cycle_delta": 21.7, "review_delta": 29.5, "size_delta": 14.0},
+            {"team": "Linear", "total": 246, "ai_pct": 2.0, "cycle_delta": -80.9, "review_delta": -99.2, "size_delta": -98.3},
+            {"team": "FastAPI", "total": 783, "ai_pct": 1.7, "cycle_delta": -33.9, "review_delta": -64.9, "size_delta": 445.6},
+            {"team": "Neon", "total": 1988, "ai_pct": 0.9, "cycle_delta": 105.3, "review_delta": 63.9, "size_delta": 216.4},
+            {"team": "Lago", "total": 121, "ai_pct": 0.0, "cycle_delta": null, "review_delta": null, "size_delta": null}
+        ];
+
+        // Tool trends data
+        const toolTrends = {
+            "2025-01": {"coderabbit": 272, "chatgpt": 5, "greptile": 5, "copilot": 4, "cursor": 2, "claude": 0, "devin": 0, "cubic": 0},
+            "2025-02": {"coderabbit": 325, "greptile": 26, "chatgpt": 5, "cursor": 2, "copilot": 2, "claude": 0, "devin": 0, "cubic": 0},
+            "2025-03": {"coderabbit": 560, "devin": 73, "greptile": 16, "chatgpt": 6, "claude": 5, "copilot": 3, "cursor": 0, "cubic": 0},
+            "2025-04": {"coderabbit": 567, "devin": 178, "greptile": 17, "copilot": 13, "chatgpt": 6, "claude": 5, "cursor": 0, "cubic": 0},
+            "2025-05": {"coderabbit": 467, "devin": 222, "cubic": 130, "greptile": 28, "copilot": 15, "claude": 4, "cursor": 0, "chatgpt": 0},
+            "2025-06": {"coderabbit": 611, "cubic": 263, "devin": 195, "greptile": 28, "claude": 22, "cursor": 18, "copilot": 0, "chatgpt": 0},
+            "2025-07": {"coderabbit": 866, "devin": 301, "cubic": 149, "greptile": 53, "copilot": 34, "cursor": 30, "claude": 0, "chatgpt": 0},
+            "2025-08": {"coderabbit": 787, "devin": 215, "cursor": 64, "greptile": 52, "claude": 45, "copilot": 31, "cubic": 0, "chatgpt": 0},
+            "2025-09": {"coderabbit": 289, "devin": 184, "cursor": 98, "claude": 79, "cubic": 68, "greptile": 62, "copilot": 0, "chatgpt": 0},
+            "2025-10": {"coderabbit": 298, "cubic": 295, "claude": 159, "cursor": 157, "devin": 104, "copilot": 74, "greptile": 0, "chatgpt": 0},
+            "2025-11": {"cubic": 347, "coderabbit": 307, "cursor": 150, "claude": 123, "devin": 122, "copilot": 72, "greptile": 0, "chatgpt": 0},
+            "2025-12": {"coderabbit": 528, "cubic": 302, "claude": 249, "cursor": 172, "devin": 141, "copilot": 94, "greptile": 0, "chatgpt": 0}
         };
 
-        // Tool Market Share Chart
-        new Chart(document.getElementById('toolShareChart'), {
+        const colors = getColors();
+        const months = Object.keys(toolTrends);
+        const toolColors = {
+            'coderabbit': '#F97316',
+            'devin': '#eab308',
+            'cubic': '#d97706',
+            'claude': '#a855f7',
+            'cursor': '#5a9997',
+            'copilot': '#22c55e',
+            'greptile': '#60a5fa',
+            'chatgpt': '#8a8880'
+        };
+
+        // Tool Trends Chart
+        charts.toolTrends = new Chart(document.getElementById('toolTrendsChart'), {
+            type: 'line',
+            data: {
+                labels: months.map(m => m.substring(5)),
+                datasets: ['coderabbit', 'devin', 'cubic', 'claude', 'cursor', 'copilot'].map(tool => ({
+                    label: tool.charAt(0).toUpperCase() + tool.slice(1),
+                    data: months.map(m => toolTrends[m][tool] || 0),
+                    borderColor: toolColors[tool],
+                    backgroundColor: 'transparent',
+                    tension: 0.4,
+                    pointRadius: 4
+                }))
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { labels: { color: colors.text } },
+                    title: { display: true, text: 'AI Tool Usage by Month (PRs)', color: colors.text },
+                    datalabels: { display: false }
+                },
+                scales: {
+                    x: { ticks: { color: colors.text }, grid: { color: colors.grid } },
+                    y: { ticks: { color: colors.text }, grid: { color: colors.grid }, title: { display: true, text: 'PRs per Month', color: colors.text } }
+                }
+            }
+        });
+
+        // Category Trends Chart
+        const categoryData = months.map(m => {
+            const d = toolTrends[m];
+            return {
+                bots: d.coderabbit + (d.greptile || 0),
+                agents: d.devin + d.cubic,
+                human: d.claude + d.cursor + d.copilot + (d.chatgpt || 0)
+            };
+        });
+
+        charts.categoryTrends = new Chart(document.getElementById('categoryTrendsChart'), {
+            type: 'bar',
+            data: {
+                labels: months.map(m => m.substring(5)),
+                datasets: [
+                    { label: 'Review Bots', data: categoryData.map(d => d.bots), backgroundColor: '#F97316', stack: 'stack' },
+                    { label: 'Autonomous Agents', data: categoryData.map(d => d.agents), backgroundColor: '#eab308', stack: 'stack' },
+                    { label: 'Human-Directed AI', data: categoryData.map(d => d.human), backgroundColor: '#5a9997', stack: 'stack' }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { labels: { color: colors.text } },
+                    datalabels: { display: false }
+                },
+                scales: {
+                    x: { stacked: true, ticks: { color: colors.text }, grid: { color: colors.grid } },
+                    y: { stacked: true, ticks: { color: colors.text }, grid: { color: colors.grid } }
+                }
+            }
+        });
+
+        // Tool Market Share (current)
+        charts.toolShare = new Chart(document.getElementById('toolShareChart'), {
             type: 'doughnut',
             data: {
-                labels: ['CodeRabbit', 'Devin', 'Cubic', 'Claude', 'Cursor', 'Others'],
+                labels: ['CodeRabbit', 'Devin', 'Cubic', 'Claude', 'Cursor', 'Copilot'],
                 datasets: [{
-                    data: [53.5, 17.9, 12.8, 4.9, 4.7, 6.2],
-                    backgroundColor: [
-                        colors.primary,
-                        colors.warning,
-                        '#d97706',
-                        colors.secondary,
-                        '#14b8a6',
-                        colors.muted
-                    ]
+                    data: [53.5, 17.9, 12.8, 4.9, 4.7, 2.0],
+                    backgroundColor: [toolColors.coderabbit, toolColors.devin, toolColors.cubic, toolColors.claude, toolColors.cursor, toolColors.copilot]
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: {
-                        position: 'right',
-                        labels: { color: colors.text }
-                    },
-                    title: {
-                        display: true,
-                        text: 'AI Tool Market Share',
-                        color: colors.text
-                    }
+                    legend: { position: 'right', labels: { color: colors.text } },
+                    title: { display: true, text: 'Overall Tool Share (2025)', color: colors.text },
+                    datalabels: { display: false }
                 }
             }
         });
 
-        // Tool Category Chart
-        new Chart(document.getElementById('toolCategoryChart'), {
-            type: 'pie',
-            data: {
-                labels: ['Review Bots', 'Autonomous Agents', 'Human-Directed AI'],
-                datasets: [{
-                    data: [55.5, 30.7, 13.1],
-                    backgroundColor: [colors.primary, colors.warning, colors.secondary]
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'right',
-                        labels: { color: colors.text }
-                    },
-                    title: {
-                        display: true,
-                        text: 'Tool Category Distribution',
-                        color: colors.text
-                    }
-                }
-            }
-        });
-
-        // Team Impact Chart
-        new Chart(document.getElementById('teamImpactChart'), {
+        // Team Adoption Chart
+        const sortedTeams = [...teamData].sort((a, b) => b.ai_pct - a.ai_pct);
+        charts.teamAdoption = new Chart(document.getElementById('teamAdoptionChart'), {
             type: 'bar',
             data: {
-                labels: ['Plane', 'Dub', 'Antiwork', 'Formbricks', 'Trigger.dev', 'Cal.com', 'PostHog', 'Vercel'],
-                datasets: [
-                    {
-                        label: 'Cycle Time Δ',
-                        data: [184, 56, -10, 46, -36, 41, 34, 22],
-                        backgroundColor: colors.error
-                    },
-                    {
-                        label: 'Review Time Δ',
-                        data: [2, -12, -50, -22, -72, -0.4, -48, 29],
-                        backgroundColor: colors.success
-                    },
-                    {
-                        label: 'PR Size Δ',
-                        data: [-80, -36, -11, -3, 12, 78, -20, 14],
-                        backgroundColor: colors.secondary
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        labels: { color: colors.text }
-                    },
-                    title: {
-                        display: true,
-                        text: 'AI Impact by Team (% Change vs Non-AI PRs)',
-                        color: colors.text
-                    }
-                },
-                scales: {
-                    x: {
-                        ticks: { color: colors.text },
-                        grid: { color: '#3c3c3a' }
-                    },
-                    y: {
-                        ticks: { color: colors.text },
-                        grid: { color: '#3c3c3a' }
-                    }
-                }
-            }
-        });
-
-        // Detection Venn Chart
-        new Chart(document.getElementById('detectionVennChart'), {
-            type: 'bar',
-            data: {
-                labels: ['Both Agree', 'LLM Only', 'Pattern Only'],
+                labels: sortedTeams.map(t => t.team),
                 datasets: [{
-                    data: [9687, 1597, 513],
-                    backgroundColor: [colors.success, colors.primary, colors.secondary]
+                    label: 'AI Adoption %',
+                    data: sortedTeams.map(t => t.ai_pct),
+                    backgroundColor: sortedTeams.map(t =>
+                        t.ai_pct > 50 ? '#F97316' :
+                        t.ai_pct > 20 ? '#eab308' :
+                        t.ai_pct > 5 ? '#5a9997' : '#8a8880'
+                    ),
+                    borderRadius: 4
                 }]
             },
             options: {
-                responsive: true,
-                maintainAspectRatio: false,
                 indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
                 plugins: {
                     legend: { display: false },
-                    title: {
-                        display: true,
-                        text: 'Detection Method Results',
-                        color: colors.text
+                    datalabels: {
+                        anchor: 'end',
+                        align: 'end',
+                        color: colors.text,
+                        font: { family: "'JetBrains Mono', monospace", size: 10 },
+                        formatter: (v) => v > 0 ? v.toFixed(1) + '%' : ''
                     }
                 },
                 scales: {
-                    x: {
-                        ticks: { color: colors.text },
-                        grid: { color: '#3c3c3a' }
-                    },
-                    y: {
-                        ticks: { color: colors.text },
-                        grid: { color: '#3c3c3a' }
-                    }
+                    x: { max: 100, ticks: { color: colors.text }, grid: { color: colors.grid } },
+                    y: { ticks: { color: colors.text, font: { size: 11 } }, grid: { display: false } }
                 }
             }
         });
 
-        // Repo Detection Comparison
-        new Chart(document.getElementById('repoDetectionChart'), {
+        // Review Impact Chart
+        const reviewData = teamData.filter(t => t.review_delta !== null).sort((a, b) => a.review_delta - b.review_delta).slice(0, 15);
+        charts.reviewImpact = new Chart(document.getElementById('reviewImpactChart'), {
             type: 'bar',
             data: {
-                labels: ['Cal.com', 'PostHog', 'Coolify', 'Twenty', 'Deno'],
-                datasets: [
-                    {
-                        label: 'LLM Detection %',
-                        data: [40.4, 9.7, 13.2, 4.9, 2.9],
-                        backgroundColor: colors.primary
-                    },
-                    {
-                        label: 'Pattern Detection %',
-                        data: [32.8, 4.4, 9.3, 1.1, 0.4],
-                        backgroundColor: colors.secondary
-                    }
-                ]
+                labels: reviewData.map(t => t.team),
+                datasets: [{
+                    label: 'Review Time Change %',
+                    data: reviewData.map(t => t.review_delta),
+                    backgroundColor: reviewData.map(t => t.review_delta < 0 ? '#22c55e' : '#ef4444'),
+                    borderRadius: 4
+                }]
             },
             options: {
+                indexAxis: 'y',
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: {
-                        labels: { color: colors.text }
-                    },
-                    title: {
-                        display: true,
-                        text: 'LLM Advantage Repos',
-                        color: colors.text
+                    legend: { display: false },
+                    datalabels: {
+                        anchor: 'end',
+                        align: (ctx) => ctx.dataset.data[ctx.dataIndex] < 0 ? 'start' : 'end',
+                        color: colors.text,
+                        font: { family: "'JetBrains Mono', monospace", size: 10 },
+                        formatter: (v) => (v > 0 ? '+' : '') + v.toFixed(0) + '%'
                     }
                 },
                 scales: {
-                    x: {
-                        ticks: { color: colors.text },
-                        grid: { color: '#3c3c3a' }
-                    },
-                    y: {
-                        ticks: { color: colors.text },
-                        grid: { color: '#3c3c3a' }
-                    }
+                    x: { ticks: { color: colors.text }, grid: { color: colors.grid } },
+                    y: { ticks: { color: colors.text, font: { size: 10 } }, grid: { display: false } }
                 }
             }
         });
 
-        // Monthly Trend Chart
-        new Chart(document.getElementById('monthlyTrendChart'), {
+        // Cycle Impact Chart
+        const cycleData = teamData.filter(t => t.cycle_delta !== null).sort((a, b) => a.cycle_delta - b.cycle_delta).slice(0, 15);
+        charts.cycleImpact = new Chart(document.getElementById('cycleImpactChart'), {
+            type: 'bar',
+            data: {
+                labels: cycleData.map(t => t.team),
+                datasets: [{
+                    label: 'Cycle Time Change %',
+                    data: cycleData.map(t => t.cycle_delta),
+                    backgroundColor: cycleData.map(t => t.cycle_delta < 0 ? '#22c55e' : '#ef4444'),
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    datalabels: {
+                        anchor: 'end',
+                        align: (ctx) => ctx.dataset.data[ctx.dataIndex] < 0 ? 'start' : 'end',
+                        color: colors.text,
+                        font: { family: "'JetBrains Mono', monospace", size: 10 },
+                        formatter: (v) => (v > 0 ? '+' : '') + v.toFixed(0) + '%'
+                    }
+                },
+                scales: {
+                    x: { ticks: { color: colors.text }, grid: { color: colors.grid } },
+                    y: { ticks: { color: colors.text, font: { size: 10 } }, grid: { display: false } }
+                }
+            }
+        });
+
+        // Monthly Team Trends Chart
+        charts.monthlyTrend = new Chart(document.getElementById('monthlyTrendChart'), {
             type: 'line',
             data: {
                 labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
                 datasets: [
                     {
-                        label: 'Antiwork AI %',
-                        data: [null, null, 42, 32, 76, 96, 97, 71, 35, 42, 50, 59],
-                        borderColor: colors.primary,
+                        label: 'Antiwork',
+                        data: [null, null, 42.7, 32.4, 76.2, 96.4, 97.1, 70.9, 34.9, 42.2, 50.3, 59.1],
+                        borderColor: '#F97316',
                         backgroundColor: 'transparent',
-                        tension: 0.4
+                        tension: 0.4,
+                        pointRadius: 4
                     },
                     {
-                        label: 'Cal.com AI %',
-                        data: [5.5, 0.2, 1.2, 15, 47, 81, 75, 73, 27, 53, 73, 66],
-                        borderColor: colors.secondary,
+                        label: 'Cal.com',
+                        data: [7.7, 0.2, 1.2, 14.9, 46.9, 80.6, 75.3, 73.3, 26.5, 52.7, 72.9, 65.7],
+                        borderColor: '#5a9997',
                         backgroundColor: 'transparent',
-                        tension: 0.4
+                        tension: 0.4,
+                        pointRadius: 4
                     },
                     {
-                        label: 'PostHog AI %',
-                        data: [1.2, 2.1, 1.8, 1.0, 1.4, 1.0, 5.9, 10, 10.3, 10.8, 9.6, 8.7],
-                        borderColor: colors.success,
+                        label: 'Plane',
+                        data: [75.1, 92.3, 93.0, 93.9, 92.8, 85.0, 86.0, 92.9, 87.2, 91.3, 93.8, 79.8],
+                        borderColor: '#eab308',
                         backgroundColor: 'transparent',
-                        tension: 0.4
+                        tension: 0.4,
+                        pointRadius: 4
+                    },
+                    {
+                        label: 'Formbricks',
+                        data: [90.5, 89.3, 58.7, 47.6, 67.0, 86.5, 84.1, 20.6, 11.7, 8.0, 13.8, 8.2],
+                        borderColor: '#a855f7',
+                        backgroundColor: 'transparent',
+                        tension: 0.4,
+                        pointRadius: 4
+                    },
+                    {
+                        label: 'PostHog',
+                        data: [1.2, 2.4, 1.8, 1.0, 1.4, 1.0, 6.2, 10.2, 10.8, 11.0, 9.7, 8.7],
+                        borderColor: '#22c55e',
+                        backgroundColor: 'transparent',
+                        tension: 0.4,
+                        pointRadius: 4
                     }
                 ]
             },
@@ -791,32 +858,79 @@
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: {
-                        labels: { color: colors.text }
-                    },
-                    title: {
-                        display: true,
-                        text: 'AI Adoption Over 2025 by Team',
-                        color: colors.text
-                    }
+                    legend: { labels: { color: colors.text } },
+                    title: { display: true, text: 'AI Adoption Over 2025', color: colors.text },
+                    datalabels: { display: false }
                 },
                 scales: {
-                    x: {
-                        ticks: { color: colors.text },
-                        grid: { color: '#3c3c3a' }
-                    },
-                    y: {
-                        ticks: { color: colors.text },
-                        grid: { color: '#3c3c3a' },
-                        title: {
-                            display: true,
-                            text: 'AI Adoption %',
-                            color: colors.text
-                        }
-                    }
+                    x: { ticks: { color: colors.text }, grid: { color: colors.grid } },
+                    y: { ticks: { color: colors.text }, grid: { color: colors.grid }, title: { display: true, text: 'AI Adoption %', color: colors.text } }
                 }
             }
         });
+
+        // Populate table using DOM methods (safer than innerHTML)
+        function populateTable() {
+            const tbody = document.getElementById('teamTableBody');
+            tbody.textContent = ''; // Clear safely
+
+            teamData.forEach(t => {
+                const tr = document.createElement('tr');
+
+                const tdTeam = document.createElement('td');
+                const strong = document.createElement('strong');
+                strong.textContent = t.team;
+                tdTeam.appendChild(strong);
+                tr.appendChild(tdTeam);
+
+                const tdTotal = document.createElement('td');
+                tdTotal.className = 'mono';
+                tdTotal.textContent = t.total.toLocaleString();
+                tr.appendChild(tdTotal);
+
+                const tdAi = document.createElement('td');
+                tdAi.className = 'mono';
+                tdAi.textContent = t.ai_pct.toFixed(1) + '%';
+                tr.appendChild(tdAi);
+
+                const tdCycle = document.createElement('td');
+                if (t.cycle_delta !== null) {
+                    const badge = document.createElement('span');
+                    badge.className = 'badge ' + (t.cycle_delta < 0 ? 'badge-success' : 'badge-error');
+                    badge.textContent = (t.cycle_delta > 0 ? '+' : '') + t.cycle_delta.toFixed(0) + '%';
+                    tdCycle.appendChild(badge);
+                } else {
+                    tdCycle.textContent = '-';
+                }
+                tr.appendChild(tdCycle);
+
+                const tdReview = document.createElement('td');
+                if (t.review_delta !== null) {
+                    const badge = document.createElement('span');
+                    badge.className = 'badge ' + (t.review_delta < 0 ? 'badge-success' : 'badge-error');
+                    badge.textContent = (t.review_delta > 0 ? '+' : '') + t.review_delta.toFixed(0) + '%';
+                    tdReview.appendChild(badge);
+                } else {
+                    tdReview.textContent = '-';
+                }
+                tr.appendChild(tdReview);
+
+                const tdSize = document.createElement('td');
+                if (t.size_delta !== null) {
+                    const badge = document.createElement('span');
+                    badge.className = 'badge ' + (t.size_delta < 0 ? 'badge-success' : 'badge-warning');
+                    badge.textContent = (t.size_delta > 0 ? '+' : '') + t.size_delta.toFixed(0) + '%';
+                    tdSize.appendChild(badge);
+                } else {
+                    tdSize.textContent = '-';
+                }
+                tr.appendChild(tdSize);
+
+                tbody.appendChild(tr);
+            });
+        }
+
+        populateTable();
     </script>
 </body>
 </html>
