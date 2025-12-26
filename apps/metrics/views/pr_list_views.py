@@ -49,6 +49,9 @@ def _get_filters_from_request(request: HttpRequest, default_days: int = 30) -> d
         "size",
         "state",
         "has_jira",
+        "pr_type",
+        "risk_level",
+        "review_friction",
         "date_from",
         "date_to",
     ]

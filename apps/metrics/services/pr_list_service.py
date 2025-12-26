@@ -18,6 +18,29 @@ PR_SIZE_BUCKETS = {
     "XL": (501, None),
 }
 
+# LLM-based filter options
+PR_TYPES = [
+    ("feature", "Feature"),
+    ("bugfix", "Bug Fix"),
+    ("refactor", "Refactor"),
+    ("docs", "Documentation"),
+    ("test", "Test"),
+    ("chore", "Chore"),
+    ("ci", "CI/CD"),
+]
+
+RISK_LEVELS = [
+    ("low", "Low"),
+    ("medium", "Medium"),
+    ("high", "High"),
+]
+
+FRICTION_LEVELS = [
+    ("low", "Low"),
+    ("medium", "Medium"),
+    ("high", "High"),
+]
+
 
 def calculate_pr_size_bucket(total_lines: int) -> str:
     """Calculate PR size bucket based on total lines changed.
@@ -161,6 +184,18 @@ def get_prs_queryset(team: Team, filters: dict[str, Any]) -> QuerySet[PullReques
             llm_q |= Q(llm_summary__tech__categories__contains=[cat])
         qs = qs.filter(pattern_q | llm_q).distinct()
 
+    # Filter by PR type (from LLM summary)
+    if filters.get("pr_type"):
+        qs = qs.filter(llm_summary__summary__type=filters["pr_type"])
+
+    # Filter by risk level (from LLM summary)
+    if filters.get("risk_level"):
+        qs = qs.filter(llm_summary__health__risk_level=filters["risk_level"])
+
+    # Filter by review friction (from LLM summary)
+    if filters.get("review_friction"):
+        qs = qs.filter(llm_summary__health__review_friction=filters["review_friction"])
+
     # Filter by date range (on merged_at)
     if filters.get("date_from"):
         date_from = _parse_date(filters["date_from"])
@@ -273,6 +308,9 @@ def get_filter_options(team: Team) -> dict[str, Any]:
         "size_buckets": PR_SIZE_BUCKETS,
         "states": ["open", "merged", "closed"],
         "tech_categories": tech_categories,
+        "pr_types": PR_TYPES,
+        "risk_levels": RISK_LEVELS,
+        "friction_levels": FRICTION_LEVELS,
     }
 
 

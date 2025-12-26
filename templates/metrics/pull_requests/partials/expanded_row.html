@@ -1,0 +1,180 @@
+{% load i18n %}
+{% load pr_list_tags %}
+
+{# Expanded PR row content showing LLM summary, health, AI details, and tech stack #}
+<div class="bg-base-200 rounded-lg p-4 my-2">
+  {% if pr|has_llm_summary %}
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+      {# Summary Section #}
+      <div class="space-y-2">
+        <h4 class="text-sm font-semibold text-base-content/80 flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          {% trans "Summary" %}
+        </h4>
+
+        {% with pr_type=pr|llm_pr_type %}
+          {% if pr_type %}
+            <span class="badge {{ pr_type|llm_pr_type_class }} badge-sm">
+              {{ pr_type|llm_pr_type_label }}
+            </span>
+          {% endif %}
+        {% endwith %}
+
+        {% with title=pr|llm_summary_title %}
+          {% if title %}
+            <p class="text-sm font-medium text-base-content">{{ title }}</p>
+          {% endif %}
+        {% endwith %}
+
+        {% with description=pr|llm_summary_description %}
+          {% if description %}
+            <p class="text-sm text-base-content/70">{{ description }}</p>
+          {% endif %}
+        {% endwith %}
+      </div>
+
+      {# Health Assessment Section #}
+      <div class="space-y-2">
+        <h4 class="text-sm font-semibold text-base-content/80 flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+          </svg>
+          {% trans "Health Assessment" %}
+        </h4>
+
+        <div class="flex flex-wrap gap-2">
+          {% with scope=pr|llm_scope %}
+            {% if scope %}
+              <div class="tooltip" data-tip="{% trans 'Scope' %}">
+                <span class="badge {{ scope|scope_class }} badge-sm">
+                  {{ scope|scope_label }}
+                </span>
+              </div>
+            {% endif %}
+          {% endwith %}
+
+          {% with risk=pr|llm_risk_level %}
+            {% if risk %}
+              <div class="tooltip" data-tip="{% trans 'Risk Level' %}">
+                <span class="badge {{ risk|level_class }} badge-sm">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  {{ risk|level_label }}
+                </span>
+              </div>
+            {% endif %}
+          {% endwith %}
+
+          {% with friction=pr|llm_review_friction %}
+            {% if friction %}
+              <div class="tooltip" data-tip="{% trans 'Review Friction' %}">
+                <span class="badge {{ friction|level_class }} badge-sm">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                  </svg>
+                  {{ friction|level_label }}
+                </span>
+              </div>
+            {% endif %}
+          {% endwith %}
+        </div>
+
+        {% with insights=pr|llm_insights %}
+          {% if insights %}
+            <ul class="text-sm text-base-content/70 space-y-1 mt-2">
+              {% for insight in insights %}
+                <li class="flex items-start gap-2">
+                  <span class="text-primary">•</span>
+                  <span>{{ insight }}</span>
+                </li>
+              {% endfor %}
+            </ul>
+          {% endif %}
+        {% endwith %}
+      </div>
+
+      {# AI & Tech Section #}
+      <div class="space-y-3">
+        {# AI Details #}
+        <div class="space-y-2">
+          <h4 class="text-sm font-semibold text-base-content/80 flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            </svg>
+            {% trans "AI Details" %}
+          </h4>
+
+          {% with usage_type=pr|llm_usage_type %}
+            {% if usage_type %}
+              <div class="flex items-center gap-2">
+                <span class="text-xs text-base-content/50">{% trans "Usage:" %}</span>
+                <span class="badge {{ usage_type|usage_type_class }} badge-sm">
+                  {{ usage_type|usage_type_label }}
+                </span>
+              </div>
+            {% endif %}
+          {% endwith %}
+
+          {% with ai_tools=pr|llm_ai_tools %}
+            {% if ai_tools %}
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="text-xs text-base-content/50">{% trans "Tools:" %}</span>
+                <span class="badge badge-primary badge-outline badge-xs">{{ ai_tools|ai_tools_display }}</span>
+              </div>
+            {% endif %}
+          {% endwith %}
+
+          {% with confidence=pr|llm_ai_confidence %}
+            {% if confidence %}
+              <div class="flex items-center gap-2">
+                <span class="text-xs text-base-content/50">{% trans "Confidence:" %}</span>
+                <span class="font-mono text-sm">{{ confidence|floatformat:2 }}</span>
+              </div>
+            {% endif %}
+          {% endwith %}
+        </div>
+
+        {# Tech Stack #}
+        <div class="space-y-2 border-t border-base-300 pt-3">
+          <h4 class="text-sm font-semibold text-base-content/80 flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+            </svg>
+            {% trans "Tech Stack" %}
+          </h4>
+
+          {% with languages=pr|llm_languages %}
+            {% if languages %}
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="text-xs text-base-content/50">{% trans "Languages:" %}</span>
+                <span class="text-sm">{{ languages|format_list:4 }}</span>
+              </div>
+            {% endif %}
+          {% endwith %}
+
+          {% with frameworks=pr|llm_frameworks %}
+            {% if frameworks %}
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="text-xs text-base-content/50">{% trans "Frameworks:" %}</span>
+                <span class="text-sm">{{ frameworks|format_list:4 }}</span>
+              </div>
+            {% endif %}
+          {% endwith %}
+        </div>
+      </div>
+    </div>
+  {% else %}
+    {# Fallback for PRs without LLM data #}
+    <div class="text-center py-4 text-base-content/50">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mx-auto mb-2 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+      </svg>
+      <p class="text-sm">{% trans "LLM analysis pending" %}</p>
+      <p class="text-xs mt-1">{% trans "This PR has not been analyzed yet." %}</p>
+    </div>
+  {% endif %}
+</div>

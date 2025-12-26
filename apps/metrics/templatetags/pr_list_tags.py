@@ -352,3 +352,452 @@ def ai_signals_tooltip(signals: dict | None) -> str:
         return "No AI signals"
 
     return ", ".join(active_signals)
+
+
+# =============================================================================
+# LLM Summary Display Filters
+# =============================================================================
+
+# PR Type display configuration
+PR_TYPE_CONFIG = {
+    "feature": {"label": "Feature", "class": "badge-success", "icon": "sparkles"},
+    "bugfix": {"label": "Bug Fix", "class": "badge-error", "icon": "bug"},
+    "refactor": {"label": "Refactor", "class": "badge-info", "icon": "arrows"},
+    "docs": {"label": "Docs", "class": "badge-ghost", "icon": "book"},
+    "test": {"label": "Test", "class": "badge-secondary", "icon": "check"},
+    "chore": {"label": "Chore", "class": "badge-ghost", "icon": "wrench"},
+    "ci": {"label": "CI/CD", "class": "badge-warning", "icon": "gear"},
+}
+
+# Risk/Friction level display configuration
+LEVEL_CONFIG = {
+    "low": {"label": "Low", "class": "badge-success"},
+    "medium": {"label": "Medium", "class": "badge-warning"},
+    "high": {"label": "High", "class": "badge-error"},
+}
+
+# Scope display configuration
+SCOPE_CONFIG = {
+    "small": {"label": "Small", "class": "badge-success"},
+    "medium": {"label": "Medium", "class": "badge-warning"},
+    "large": {"label": "Large", "class": "badge-error"},
+    "xlarge": {"label": "X-Large", "class": "badge-error"},
+}
+
+# AI Usage Type display configuration
+AI_USAGE_TYPE_CONFIG = {
+    "authored": {"label": "Authored by AI", "class": "badge-primary"},
+    "assisted": {"label": "AI Assisted", "class": "badge-success"},
+    "reviewed": {"label": "AI Reviewed", "class": "badge-info"},
+    "brainstorm": {"label": "Brainstorming", "class": "badge-ghost"},
+}
+
+
+@register.filter
+def llm_pr_type(pr) -> str | None:
+    """Get PR type from LLM summary.
+
+    Args:
+        pr: PullRequest instance
+
+    Returns:
+        PR type string (feature, bugfix, etc.) or None
+
+    Usage:
+        {{ pr|llm_pr_type }}
+    """
+    if not pr.llm_summary:
+        return None
+    summary = pr.llm_summary.get("summary", {})
+    return summary.get("type")
+
+
+@register.filter
+def llm_pr_type_label(pr_type: str | None) -> str:
+    """Get display label for PR type.
+
+    Args:
+        pr_type: PR type string
+
+    Returns:
+        Human-readable label
+
+    Usage:
+        {{ pr|llm_pr_type|llm_pr_type_label }}
+    """
+    if not pr_type:
+        return ""
+    return PR_TYPE_CONFIG.get(pr_type, {}).get("label", pr_type.title())
+
+
+@register.filter
+def llm_pr_type_class(pr_type: str | None) -> str:
+    """Get badge class for PR type.
+
+    Args:
+        pr_type: PR type string
+
+    Returns:
+        DaisyUI badge class
+
+    Usage:
+        <span class="badge {{ pr|llm_pr_type|llm_pr_type_class }}">...</span>
+    """
+    if not pr_type:
+        return "badge-ghost"
+    return PR_TYPE_CONFIG.get(pr_type, {}).get("class", "badge-ghost")
+
+
+@register.filter
+def llm_risk_level(pr) -> str | None:
+    """Get risk level from LLM summary.
+
+    Args:
+        pr: PullRequest instance
+
+    Returns:
+        Risk level (low, medium, high) or None
+
+    Usage:
+        {{ pr|llm_risk_level }}
+    """
+    if not pr.llm_summary:
+        return None
+    health = pr.llm_summary.get("health", {})
+    return health.get("risk_level")
+
+
+@register.filter
+def llm_review_friction(pr) -> str | None:
+    """Get review friction from LLM summary.
+
+    Args:
+        pr: PullRequest instance
+
+    Returns:
+        Friction level (low, medium, high) or None
+
+    Usage:
+        {{ pr|llm_review_friction }}
+    """
+    if not pr.llm_summary:
+        return None
+    health = pr.llm_summary.get("health", {})
+    return health.get("review_friction")
+
+
+@register.filter
+def llm_scope(pr) -> str | None:
+    """Get scope from LLM summary.
+
+    Args:
+        pr: PullRequest instance
+
+    Returns:
+        Scope (small, medium, large, xlarge) or None
+
+    Usage:
+        {{ pr|llm_scope }}
+    """
+    if not pr.llm_summary:
+        return None
+    health = pr.llm_summary.get("health", {})
+    return health.get("scope")
+
+
+@register.filter
+def level_class(level: str | None) -> str:
+    """Get badge class for risk/friction level.
+
+    Args:
+        level: Level string (low, medium, high)
+
+    Returns:
+        DaisyUI badge class
+
+    Usage:
+        <span class="badge {{ pr|llm_risk_level|level_class }}">...</span>
+    """
+    if not level:
+        return "badge-ghost"
+    return LEVEL_CONFIG.get(level, {}).get("class", "badge-ghost")
+
+
+@register.filter
+def level_label(level: str | None) -> str:
+    """Get display label for risk/friction level.
+
+    Args:
+        level: Level string (low, medium, high)
+
+    Returns:
+        Human-readable label
+
+    Usage:
+        {{ pr|llm_risk_level|level_label }}
+    """
+    if not level:
+        return ""
+    return LEVEL_CONFIG.get(level, {}).get("label", level.title())
+
+
+@register.filter
+def scope_class(scope: str | None) -> str:
+    """Get badge class for scope.
+
+    Args:
+        scope: Scope string (small, medium, large, xlarge)
+
+    Returns:
+        DaisyUI badge class
+
+    Usage:
+        <span class="badge {{ pr|llm_scope|scope_class }}">...</span>
+    """
+    if not scope:
+        return "badge-ghost"
+    return SCOPE_CONFIG.get(scope, {}).get("class", "badge-ghost")
+
+
+@register.filter
+def scope_label(scope: str | None) -> str:
+    """Get display label for scope.
+
+    Args:
+        scope: Scope string (small, medium, large, xlarge)
+
+    Returns:
+        Human-readable label
+
+    Usage:
+        {{ pr|llm_scope|scope_label }}
+    """
+    if not scope:
+        return ""
+    return SCOPE_CONFIG.get(scope, {}).get("label", scope.title())
+
+
+@register.filter
+def llm_usage_type(pr) -> str | None:
+    """Get AI usage type from LLM summary.
+
+    Args:
+        pr: PullRequest instance
+
+    Returns:
+        Usage type (authored, assisted, reviewed, brainstorm) or None
+
+    Usage:
+        {{ pr|llm_usage_type }}
+    """
+    if not pr.llm_summary:
+        return None
+    ai = pr.llm_summary.get("ai", {})
+    return ai.get("usage_type")
+
+
+@register.filter
+def usage_type_class(usage_type: str | None) -> str:
+    """Get badge class for AI usage type.
+
+    Args:
+        usage_type: Usage type string
+
+    Returns:
+        DaisyUI badge class
+
+    Usage:
+        <span class="badge {{ pr|llm_usage_type|usage_type_class }}">...</span>
+    """
+    if not usage_type:
+        return "badge-ghost"
+    return AI_USAGE_TYPE_CONFIG.get(usage_type, {}).get("class", "badge-ghost")
+
+
+@register.filter
+def usage_type_label(usage_type: str | None) -> str:
+    """Get display label for AI usage type.
+
+    Args:
+        usage_type: Usage type string
+
+    Returns:
+        Human-readable label
+
+    Usage:
+        {{ pr|llm_usage_type|usage_type_label }}
+    """
+    if not usage_type:
+        return ""
+    return AI_USAGE_TYPE_CONFIG.get(usage_type, {}).get("label", usage_type.title())
+
+
+@register.filter
+def llm_summary_title(pr) -> str | None:
+    """Get LLM-generated title from summary.
+
+    Args:
+        pr: PullRequest instance
+
+    Returns:
+        LLM summary title or None
+
+    Usage:
+        {{ pr|llm_summary_title }}
+    """
+    if not pr.llm_summary:
+        return None
+    summary = pr.llm_summary.get("summary", {})
+    return summary.get("title")
+
+
+@register.filter
+def llm_summary_description(pr) -> str | None:
+    """Get LLM-generated description from summary.
+
+    Args:
+        pr: PullRequest instance
+
+    Returns:
+        LLM summary description or None
+
+    Usage:
+        {{ pr|llm_summary_description }}
+    """
+    if not pr.llm_summary:
+        return None
+    summary = pr.llm_summary.get("summary", {})
+    return summary.get("description")
+
+
+@register.filter
+def llm_insights(pr) -> list | None:
+    """Get health insights from LLM summary.
+
+    Args:
+        pr: PullRequest instance
+
+    Returns:
+        List of insight strings or None
+
+    Usage:
+        {% for insight in pr|llm_insights %}...{% endfor %}
+    """
+    if not pr.llm_summary:
+        return None
+    health = pr.llm_summary.get("health", {})
+    return health.get("insights")
+
+
+@register.filter
+def llm_languages(pr) -> list | None:
+    """Get languages from LLM summary.
+
+    Args:
+        pr: PullRequest instance
+
+    Returns:
+        List of language strings or None
+
+    Usage:
+        {{ pr|llm_languages|join:", " }}
+    """
+    if not pr.llm_summary:
+        return None
+    tech = pr.llm_summary.get("tech", {})
+    return tech.get("languages")
+
+
+@register.filter
+def llm_frameworks(pr) -> list | None:
+    """Get frameworks from LLM summary.
+
+    Args:
+        pr: PullRequest instance
+
+    Returns:
+        List of framework strings or None
+
+    Usage:
+        {{ pr|llm_frameworks|join:", " }}
+    """
+    if not pr.llm_summary:
+        return None
+    tech = pr.llm_summary.get("tech", {})
+    return tech.get("frameworks")
+
+
+@register.filter
+def llm_ai_tools(pr) -> list | None:
+    """Get AI tools from LLM summary.
+
+    Args:
+        pr: PullRequest instance
+
+    Returns:
+        List of AI tool strings or None
+
+    Usage:
+        {{ pr|llm_ai_tools|join:", " }}
+    """
+    if not pr.llm_summary:
+        return None
+    ai = pr.llm_summary.get("ai", {})
+    return ai.get("tools")
+
+
+@register.filter
+def llm_ai_confidence(pr) -> float | None:
+    """Get AI confidence from LLM summary.
+
+    Args:
+        pr: PullRequest instance
+
+    Returns:
+        Confidence score (0.0-1.0) or None
+
+    Usage:
+        {{ pr|llm_ai_confidence|floatformat:2 }}
+    """
+    if not pr.llm_summary:
+        return None
+    ai = pr.llm_summary.get("ai", {})
+    return ai.get("confidence")
+
+
+@register.filter
+def format_list(items: list | None, max_items: int = 5) -> str:
+    """Format a list for display, with ellipsis if too long.
+
+    Args:
+        items: List of strings
+        max_items: Maximum items to show before ellipsis
+
+    Returns:
+        Comma-separated string with optional "..."
+
+    Usage:
+        {{ pr|llm_languages|format_list:3 }}
+    """
+    if not items:
+        return ""
+    if len(items) <= max_items:
+        return ", ".join(str(item).title() for item in items)
+    shown = [str(item).title() for item in items[:max_items]]
+    return f"{', '.join(shown)}, +{len(items) - max_items} more"
+
+
+@register.filter
+def has_llm_summary(pr) -> bool:
+    """Check if PR has LLM summary data.
+
+    Args:
+        pr: PullRequest instance
+
+    Returns:
+        True if llm_summary exists and has content
+
+    Usage:
+        {% if pr|has_llm_summary %}...{% endif %}
+    """
+    return bool(pr.llm_summary)

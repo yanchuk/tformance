@@ -586,7 +586,16 @@ class TestPrListSelfReviewedBadge(TestCase):
 
     def test_self_reviewed_badge_displays_for_self_reviewed_prs(self):
         """Test that self-reviewed PRs show the 'Self' badge."""
-        self_reviewed_pr = PullRequestFactory(team=self.team, title="Self Reviewed PR", author=self.alice)
+        from django.utils import timezone
+
+        # Ensure PR is merged with recent merged_at date to pass default date filter
+        self_reviewed_pr = PullRequestFactory(
+            team=self.team,
+            title="Self Reviewed PR",
+            author=self.alice,
+            state="merged",
+            merged_at=timezone.now(),
+        )
         self.PRReviewFactory(team=self.team, pull_request=self_reviewed_pr, reviewer=self.alice)
 
         url = reverse("metrics:pr_list")
@@ -598,7 +607,16 @@ class TestPrListSelfReviewedBadge(TestCase):
 
     def test_pr_with_multiple_reviewers_not_marked_self_reviewed(self):
         """Test that PR with multiple reviewers does not show Self badge."""
-        pr = PullRequestFactory(team=self.team, title="Multi Review", author=self.alice)
+        from django.utils import timezone
+
+        # Ensure PR is merged with recent merged_at date to pass default date filter
+        pr = PullRequestFactory(
+            team=self.team,
+            title="Multi Review",
+            author=self.alice,
+            state="merged",
+            merged_at=timezone.now(),
+        )
         self.PRReviewFactory(team=self.team, pull_request=pr, reviewer=self.alice)
         self.PRReviewFactory(team=self.team, pull_request=pr, reviewer=self.bob)
 

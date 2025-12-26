@@ -31,6 +31,9 @@
              state: '{{ filters.state|default:"" }}',
              size: '{{ filters.size|default:"" }}',
              has_jira: '{{ filters.has_jira|default:"" }}',
+             pr_type: '{{ filters.pr_type|default:"" }}',
+             risk_level: '{{ filters.risk_level|default:"" }}',
+             review_friction: '{{ filters.review_friction|default:"" }}',
              date_from: '{{ filters.date_from|default:"" }}',
              date_to: '{{ filters.date_to|default:"" }}'
            },
@@ -43,6 +46,9 @@
              state: '{{ filters.state|default:"" }}',
              size: '{{ filters.size|default:"" }}',
              has_jira: '{{ filters.has_jira|default:"" }}',
+             pr_type: '{{ filters.pr_type|default:"" }}',
+             risk_level: '{{ filters.risk_level|default:"" }}',
+             review_friction: '{{ filters.review_friction|default:"" }}',
              date_from: '{{ filters.date_from|default:"" }}',
              date_to: '{{ filters.date_to|default:"" }}'
            },
@@ -56,6 +62,9 @@
                     this.current.state !== this.initial.state ||
                     this.current.size !== this.initial.size ||
                     this.current.has_jira !== this.initial.has_jira ||
+                    this.current.pr_type !== this.initial.pr_type ||
+                    this.current.risk_level !== this.initial.risk_level ||
+                    this.current.review_friction !== this.initial.review_friction ||
                     this.current.date_from !== this.initial.date_from ||
                     this.current.date_to !== this.initial.date_to ||
                     this.techChanged;
@@ -225,6 +234,54 @@
             <option value="no" {% if filters.has_jira == 'no' %}selected{% endif %}>{% trans "No Jira" %}</option>
           </select>
         </div>
+
+        <!-- PR Type Filter (LLM-based) -->
+        {% if filter_options.pr_types %}
+        <div class="form-control">
+          <label class="label">
+            <span class="label-text text-base-content/80">{% trans "PR Type" %}</span>
+          </label>
+          <select name="pr_type" class="select select-bordered select-sm w-full"
+                  x-model="current.pr_type">
+            <option value="">{% trans "All Types" %}</option>
+            {% for value, label in filter_options.pr_types %}
+            <option value="{{ value }}" {% if filters.pr_type == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        {% endif %}
+
+        <!-- Risk Level Filter (LLM-based) -->
+        {% if filter_options.risk_levels %}
+        <div class="form-control">
+          <label class="label">
+            <span class="label-text text-base-content/80">{% trans "Risk Level" %}</span>
+          </label>
+          <select name="risk_level" class="select select-bordered select-sm w-full"
+                  x-model="current.risk_level">
+            <option value="">{% trans "All Risks" %}</option>
+            {% for value, label in filter_options.risk_levels %}
+            <option value="{{ value }}" {% if filters.risk_level == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        {% endif %}
+
+        <!-- Review Friction Filter (LLM-based) -->
+        {% if filter_options.friction_levels %}
+        <div class="form-control">
+          <label class="label">
+            <span class="label-text text-base-content/80">{% trans "Review Friction" %}</span>
+          </label>
+          <select name="review_friction" class="select select-bordered select-sm w-full"
+                  x-model="current.review_friction">
+            <option value="">{% trans "All Levels" %}</option>
+            {% for value, label in filter_options.friction_levels %}
+            <option value="{{ value }}" {% if filters.review_friction == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        {% endif %}
 
         <!-- Date From -->
         <div class="form-control">

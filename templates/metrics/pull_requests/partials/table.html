@@ -53,17 +53,41 @@
         </th>
       </tr>
     </thead>
-    <tbody>
-      {% for pr in prs %}
-      <tr>
-        <td class="max-w-xs truncate">
-          <a href="{{ pr.github_url }}" target="_blank" rel="noopener"
-             class="link link-hover text-primary">
-            {{ pr.title }}
-          </a>
-          {% if pr.jira_key %}
-          <span class="badge badge-ghost badge-sm ml-1">{{ pr.jira_key }}</span>
-          {% endif %}
+    {% for pr in prs %}
+      {# Each PR uses its own tbody with Alpine scope for expand/collapse #}
+      <tbody x-data="{ expanded: false }">
+      <tr class="cursor-pointer hover:bg-base-200/50 transition-colors" :class="{ 'border-b-0': expanded }">
+        <td class="max-w-xs">
+          <div class="flex items-center gap-2">
+            {# Expand/collapse indicator #}
+            <button @click.stop="expanded = !expanded"
+                    class="btn btn-ghost btn-xs btn-square flex-shrink-0"
+                    :class="{ 'rotate-90': expanded }"
+                    title="{% trans 'Click to expand details' %}">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center gap-1 flex-wrap">
+                <a href="{{ pr.github_url }}" target="_blank" rel="noopener"
+                   class="link link-hover text-primary truncate"
+                   @click.stop>
+                  {{ pr.title }}
+                </a>
+                {% with pr_type=pr|llm_pr_type %}
+                  {% if pr_type %}
+                    <span class="badge {{ pr_type|llm_pr_type_class }} badge-xs flex-shrink-0">
+                      {{ pr_type|llm_pr_type_label }}
+                    </span>
+                  {% endif %}
+                {% endwith %}
+                {% if pr.jira_key %}
+                  <span class="badge badge-ghost badge-xs flex-shrink-0">{{ pr.jira_key }}</span>
+                {% endif %}
+              </div>
+            </div>
+          </div>
         </td>
         <td class="text-sm text-base-content/70">{{ pr.github_repo|repo_name }}</td>
         <td class="max-w-[100px]">
@@ -167,14 +191,30 @@
           {% endif %}
         </td>
       </tr>
+      {# Expanded row - shown when clicking the expand button #}
+      <tr x-show="expanded"
+          x-cloak
+          x-transition:enter="transition ease-out duration-200"
+          x-transition:enter-start="opacity-0"
+          x-transition:enter-end="opacity-100"
+          x-transition:leave="transition ease-in duration-150"
+          x-transition:leave-start="opacity-100"
+          x-transition:leave-end="opacity-0"
+          class="bg-base-200/30">
+        <td colspan="11" class="p-0">
+          {% include 'metrics/pull_requests/partials/expanded_row.html' with pr=pr %}
+        </td>
+      </tr>
+      </tbody>
       {% empty %}
+      <tbody>
       <tr>
         <td colspan="11" class="text-center py-8 text-base-content/50">
           {% trans "No pull requests found." %}
         </td>
       </tr>
+      </tbody>
       {% endfor %}
-    </tbody>
   </table>
 </div>
 
