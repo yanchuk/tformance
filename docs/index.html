@@ -996,6 +996,142 @@
                 Note: Teams with low AI usage show high percentage improvements but small absolute numbers.
                 High-adoption teams like Plane (87%) show near-parity between methods.
             </p>
+
+            <!-- LLM-to-Regex Feedback Loop -->
+            <div class="key-insight-card" style="margin-top: 2rem;">
+                <h3>🔄 LLM-to-Regex Feedback Loop</h3>
+                <p>LLM analysis revealed patterns that were then added to regex detection, creating a continuous improvement cycle:</p>
+                <ul style="margin: 1rem 0;">
+                    <li>LLM detected <code>@lingodotdev</code> mentions → added to regex → <strong>430 new Replexica detections</strong></li>
+                    <li>CodeRabbit author patterns identified → <strong>6,884 total detections</strong></li>
+                    <li>Gap reduction: 1,717 → 1,668 (<strong>-49 PRs, 2.9% improvement</strong>)</li>
+                </ul>
+                <p style="color: var(--text-muted); font-size: 0.9rem;">This validates an iterative approach: LLM finds edge cases → patterns extracted → regex updated → backfill run.</p>
+            </div>
+        </section>
+
+        <!-- AI ADOPTION CORRELATIONS -->
+        <section class="correlations">
+            <h2>AI Adoption Correlations</h2>
+            <p style="color: var(--text-muted); margin-bottom: 1.5rem;">
+                Analyzing 53,876 LLM-processed PRs to understand where AI tools are used most.
+            </p>
+
+            <!-- By PR Type -->
+            <h3>By PR Type</h3>
+            <div class="chart-container" style="background: var(--bg-card); margin-bottom: 1rem;">
+                <div class="chart-wrapper">
+                    <canvas id="prTypeChart"></canvas>
+                </div>
+            </div>
+            <div class="insight-box" style="background: rgba(168, 85, 247, 0.1); border-color: var(--purple);">
+                <strong>Key Insight:</strong> Refactors show highest AI adoption (32.8%), suggesting developers leverage AI for code restructuring more than greenfield features. CI/CD work shows lowest adoption (9.9%) — infrastructure-as-code less suited to current AI tools.
+            </div>
+
+            <!-- By Technology Category -->
+            <h3 style="margin-top: 2rem;">By Technology Category</h3>
+            <div class="chart-container" style="background: var(--bg-card); margin-bottom: 1rem;">
+                <div class="chart-wrapper">
+                    <canvas id="techCategoryChart"></canvas>
+                </div>
+            </div>
+            <div class="insight-box" style="background: rgba(34, 197, 94, 0.1); border-color: var(--success);">
+                <strong>Key Insight:</strong> Mobile development shows highest AI adoption (42.4%), though sample size is smaller (118 PRs). Test-related PRs at 33% suggest AI is heavily used for test generation. DevOps lowest at 15.6%.
+            </div>
+
+            <!-- By Programming Language -->
+            <h3 style="margin-top: 2rem;">By Programming Language</h3>
+            <div class="chart-container" style="background: var(--bg-card); margin-bottom: 1rem;">
+                <div class="chart-wrapper tall">
+                    <canvas id="languageChart"></canvas>
+                </div>
+            </div>
+            <div class="two-col" style="margin-top: 1rem;">
+                <div class="insight-box" style="background: rgba(34, 197, 94, 0.1); border-color: var(--success);">
+                    <strong style="color: var(--success);">Highest AI Adoption:</strong>
+                    <ul>
+                        <li><strong>Ruby</strong> — 63.8% (1,758 PRs) ⚠️</li>
+                        <li><strong>HTML</strong> — 55.6% (54 PRs)</li>
+                        <li><strong>CSS</strong> — 41.2% (153 PRs)</li>
+                        <li><strong>SQL</strong> — 38.6% (321 PRs)</li>
+                    </ul>
+                </div>
+                <div class="insight-box" style="background: rgba(239, 68, 68, 0.1); border-color: var(--error);">
+                    <strong style="color: var(--error);">Lowest AI Adoption:</strong>
+                    <ul>
+                        <li><strong>C</strong> — 0.0% (184 PRs)</li>
+                        <li><strong>Elixir</strong> — 0.9% (327 PRs)</li>
+                        <li><strong>Rust</strong> — 2.4% (2,740 PRs) ✓</li>
+                        <li><strong>HCL</strong> — 4.7% (491 PRs)</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="insight-box" style="background: rgba(249, 115, 22, 0.1); border-color: var(--primary); margin-top: 1rem;">
+                <strong>⚠️ Caveat — Team Confounding:</strong> Language correlations are influenced by team culture. Ruby's 63.8% is driven by Antiwork (93% of Ruby PRs, 65.7% AI adoption). TypeScript varies wildly: Plane 87%, Antiwork 61%, Vercel 2.5%. <strong>Rust is more reliable</strong> — consistently low across multiple teams (Neon 1.1%, Deno 3.5%, PostHog 4.0%).
+            </div>
+
+            <!-- By Framework -->
+            <h3 style="margin-top: 2rem;">By Framework</h3>
+            <div class="chart-container" style="background: var(--bg-card); margin-bottom: 1rem;">
+                <div class="chart-wrapper tall">
+                    <canvas id="frameworkChart"></canvas>
+                </div>
+            </div>
+            <div class="two-col" style="margin-top: 1rem;">
+                <div class="insight-box" style="background: rgba(34, 197, 94, 0.1); border-color: var(--success);">
+                    <strong style="color: var(--success);">Highest AI Adoption:</strong>
+                    <ul>
+                        <li><strong>Rails</strong> — 64.4% (1,617 PRs)</li>
+                        <li><strong>tRPC</strong> — 58.8% (767 PRs)</li>
+                        <li><strong>Playwright</strong> — 50.5% (210 PRs)</li>
+                        <li><strong>Prisma</strong> — 50.4% (395 PRs)</li>
+                        <li><strong>Django</strong> — 44.9% (693 PRs)</li>
+                    </ul>
+                </div>
+                <div class="insight-box" style="background: rgba(239, 68, 68, 0.1); border-color: var(--error);">
+                    <strong style="color: var(--error);">Lowest AI Adoption:</strong>
+                    <ul>
+                        <li><strong>Svelte</strong> — 0.4% (233 PRs)</li>
+                        <li><strong>Hono</strong> — 0.7% (276 PRs)</li>
+                        <li><strong>Nuxt</strong> — 1.2% (242 PRs)</li>
+                        <li><strong>Remix</strong> — 3.9% (233 PRs)</li>
+                        <li><strong>FastAPI</strong> — 5.3% (623 PRs)</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- By PR Size -->
+            <h3 style="margin-top: 2rem;">By PR Size</h3>
+            <div class="chart-container" style="background: var(--bg-card); margin-bottom: 1rem;">
+                <div class="chart-wrapper">
+                    <canvas id="prSizeChart"></canvas>
+                </div>
+            </div>
+            <div class="insight-box" style="background: rgba(249, 115, 22, 0.1); border-color: var(--primary);">
+                <strong>Key Insight:</strong> Larger PRs correlate with higher AI usage — XL PRs (501+ lines) show 26.0% AI adoption vs 17.8% for XS PRs (0-10 lines). This is a <strong>46% relative increase</strong>. AI tools may enable developers to tackle larger changes confidently, or larger changes benefit more from AI assistance.
+            </div>
+
+            <!-- Recommendation -->
+            <div class="key-insight-card" style="margin-top: 2.5rem; border-left: 4px solid var(--success);">
+                <h3>💡 Recommendation: Explicit AI Disclosure in PRs</h3>
+                <p>Teams with high AI detection rates (like Antiwork at 61.7%) often have a culture of <strong>explicit AI disclosure</strong> in PR descriptions:</p>
+                <div style="background: var(--bg-card); padding: 1rem; border-radius: 8px; margin: 1rem 0; font-family: 'JetBrains Mono', monospace; font-size: 0.85rem;">
+                    <code style="color: var(--text-muted);">## AI Usage</code><br>
+                    <code>- Used Claude to scaffold the initial component structure</code><br>
+                    <code>- Copilot assisted with test generation</code><br>
+                    <code>- Cursor for refactoring the API layer</code>
+                </div>
+                <p><strong>Benefits for Engineering Leaders:</strong></p>
+                <ul style="margin: 0.5rem 0;">
+                    <li><strong>Accurate measurement</strong> — Know the true AI adoption rate across your team</li>
+                    <li><strong>Knowledge sharing</strong> — Team members learn which tools work for which tasks</li>
+                    <li><strong>Quality insights</strong> — Correlate AI usage with review feedback and bug rates</li>
+                    <li><strong>Onboarding</strong> — New hires learn team AI practices from PR history</li>
+                </ul>
+                <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 1rem;">
+                    Consider adding an "AI Usage" section to your PR template. Even "No AI used" is valuable data.
+                </p>
+            </div>
         </section>
 
         <!-- METHODOLOGY - SIMPLIFIED -->
@@ -1527,6 +1663,294 @@
                         ticks: { color: colors.text },
                         grid: { color: colors.grid }
                     }
+                }
+            }
+        });
+
+        // PR Type Chart
+        const prTypeData = [
+            { type: 'Refactor', prs: 4129, ai_pct: 32.8 },
+            { type: 'Feature', prs: 14264, ai_pct: 26.7 },
+            { type: 'Test', prs: 647, ai_pct: 23.6 },
+            { type: 'Bugfix', prs: 16803, ai_pct: 22.3 },
+            { type: 'Improvement', prs: 266, ai_pct: 16.5 },
+            { type: 'Docs', prs: 5689, ai_pct: 13.2 },
+            { type: 'Chore', prs: 10820, ai_pct: 12.9 },
+            { type: 'CI', prs: 705, ai_pct: 9.9 }
+        ];
+
+        charts.prType = new Chart(document.getElementById('prTypeChart'), {
+            type: 'bar',
+            data: {
+                labels: prTypeData.map(d => d.type),
+                datasets: [{
+                    label: 'AI Adoption %',
+                    data: prTypeData.map(d => d.ai_pct),
+                    backgroundColor: 'rgba(168, 85, 247, 0.7)',
+                    borderColor: '#a855f7',
+                    borderWidth: 1,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    title: { display: true, text: 'AI Adoption by PR Type', color: colors.text },
+                    datalabels: {
+                        display: true,
+                        anchor: 'end',
+                        align: 'top',
+                        color: colors.text,
+                        font: { weight: 'bold' },
+                        formatter: (v) => v.toFixed(1) + '%'
+                    }
+                },
+                scales: {
+                    x: { ticks: { color: colors.text }, grid: { color: colors.grid } },
+                    y: { ticks: { color: colors.text }, grid: { color: colors.grid }, max: 40 }
+                }
+            }
+        });
+
+        // Tech Category Chart
+        const techCategoryData = [
+            { tech: 'Mobile', prs: 118, ai_pct: 42.4 },
+            { tech: 'Test', prs: 697, ai_pct: 33.0 },
+            { tech: 'Frontend', prs: 26848, ai_pct: 27.6 },
+            { tech: 'Docs', prs: 440, ai_pct: 26.8 },
+            { tech: 'Backend', prs: 26318, ai_pct: 20.8 },
+            { tech: 'Data', prs: 754, ai_pct: 17.9 },
+            { tech: 'DevOps', prs: 8457, ai_pct: 15.6 }
+        ];
+
+        charts.techCategory = new Chart(document.getElementById('techCategoryChart'), {
+            type: 'bar',
+            data: {
+                labels: techCategoryData.map(d => d.tech),
+                datasets: [{
+                    label: 'AI Adoption %',
+                    data: techCategoryData.map(d => d.ai_pct),
+                    backgroundColor: 'rgba(34, 197, 94, 0.7)',
+                    borderColor: '#22c55e',
+                    borderWidth: 1,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    title: { display: true, text: 'AI Adoption by Technology Category', color: colors.text },
+                    datalabels: {
+                        display: true,
+                        anchor: 'end',
+                        align: 'top',
+                        color: colors.text,
+                        font: { weight: 'bold' },
+                        formatter: (v) => v.toFixed(1) + '%'
+                    }
+                },
+                scales: {
+                    x: { ticks: { color: colors.text }, grid: { color: colors.grid } },
+                    y: { ticks: { color: colors.text }, grid: { color: colors.grid }, max: 50 }
+                }
+            }
+        });
+
+        // Language Chart (horizontal bar)
+        const languageData = [
+            { lang: 'Ruby', prs: 1758, ai_pct: 63.8 },
+            { lang: 'HTML', prs: 54, ai_pct: 55.6 },
+            { lang: 'CSS', prs: 153, ai_pct: 41.2 },
+            { lang: 'SQL', prs: 321, ai_pct: 38.6 },
+            { lang: 'SCSS', prs: 68, ai_pct: 35.3 },
+            { lang: 'Bash', prs: 98, ai_pct: 31.6 },
+            { lang: 'Go', prs: 180, ai_pct: 28.3 },
+            { lang: 'JSON', prs: 308, ai_pct: 27.3 },
+            { lang: 'TypeScript', prs: 32885, ai_pct: 26.0 },
+            { lang: 'Markdown', prs: 609, ai_pct: 21.2 },
+            { lang: 'JavaScript', prs: 16161, ai_pct: 19.8 },
+            { lang: 'PHP', prs: 698, ai_pct: 19.5 },
+            { lang: 'YAML', prs: 1238, ai_pct: 16.0 },
+            { lang: 'Python', prs: 6868, ai_pct: 10.9 },
+            { lang: 'MDX', prs: 1370, ai_pct: 10.4 },
+            { lang: 'HCL', prs: 491, ai_pct: 4.7 },
+            { lang: 'Rust', prs: 2740, ai_pct: 2.4 },
+            { lang: 'Elixir', prs: 327, ai_pct: 0.9 },
+            { lang: 'C', prs: 184, ai_pct: 0.0 }
+        ];
+
+        charts.language = new Chart(document.getElementById('languageChart'), {
+            type: 'bar',
+            data: {
+                labels: languageData.map(d => d.lang),
+                datasets: [{
+                    label: 'AI Adoption %',
+                    data: languageData.map(d => d.ai_pct),
+                    backgroundColor: languageData.map(d =>
+                        d.ai_pct > 30 ? 'rgba(34, 197, 94, 0.7)' :
+                        d.ai_pct > 10 ? 'rgba(234, 179, 8, 0.7)' :
+                        'rgba(239, 68, 68, 0.7)'
+                    ),
+                    borderColor: languageData.map(d =>
+                        d.ai_pct > 30 ? '#22c55e' :
+                        d.ai_pct > 10 ? '#eab308' :
+                        '#ef4444'
+                    ),
+                    borderWidth: 1,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    title: { display: true, text: 'AI Adoption by Programming Language', color: colors.text },
+                    tooltip: {
+                        callbacks: {
+                            label: (ctx) => {
+                                const d = languageData[ctx.dataIndex];
+                                return `${d.ai_pct}% AI (${d.prs.toLocaleString()} PRs)`;
+                            }
+                        }
+                    },
+                    datalabels: {
+                        display: true,
+                        anchor: 'end',
+                        align: 'right',
+                        color: colors.text,
+                        font: { size: 10 },
+                        formatter: (v) => v.toFixed(1) + '%'
+                    }
+                },
+                scales: {
+                    x: { ticks: { color: colors.text }, grid: { color: colors.grid }, max: 70 },
+                    y: { ticks: { color: colors.text, font: { size: 11 } }, grid: { color: colors.grid } }
+                }
+            }
+        });
+
+        // Framework Chart (horizontal bar)
+        const frameworkData = [
+            { fw: 'Rails', prs: 1617, ai_pct: 64.4 },
+            { fw: 'tRPC', prs: 767, ai_pct: 58.8 },
+            { fw: 'Playwright', prs: 210, ai_pct: 50.5 },
+            { fw: 'Prisma', prs: 395, ai_pct: 50.4 },
+            { fw: 'Django', prs: 693, ai_pct: 44.9 },
+            { fw: 'Next.js', prs: 8336, ai_pct: 36.3 },
+            { fw: 'React', prs: 19103, ai_pct: 31.2 },
+            { fw: 'NestJS', prs: 394, ai_pct: 28.2 },
+            { fw: 'Livewire', prs: 234, ai_pct: 26.9 },
+            { fw: 'Laravel', prs: 607, ai_pct: 21.1 },
+            { fw: 'Express', prs: 964, ai_pct: 19.5 },
+            { fw: 'Vue', prs: 436, ai_pct: 11.5 },
+            { fw: 'LangChain', prs: 405, ai_pct: 11.1 },
+            { fw: 'GraphQL', prs: 208, ai_pct: 11.1 },
+            { fw: 'FastAPI', prs: 623, ai_pct: 5.3 },
+            { fw: 'Fastify', prs: 268, ai_pct: 5.2 },
+            { fw: 'Remix', prs: 233, ai_pct: 3.9 },
+            { fw: 'Nuxt', prs: 242, ai_pct: 1.2 },
+            { fw: 'Hono', prs: 276, ai_pct: 0.7 },
+            { fw: 'Svelte', prs: 233, ai_pct: 0.4 }
+        ];
+
+        charts.framework = new Chart(document.getElementById('frameworkChart'), {
+            type: 'bar',
+            data: {
+                labels: frameworkData.map(d => d.fw),
+                datasets: [{
+                    label: 'AI Adoption %',
+                    data: frameworkData.map(d => d.ai_pct),
+                    backgroundColor: frameworkData.map(d =>
+                        d.ai_pct > 40 ? 'rgba(34, 197, 94, 0.7)' :
+                        d.ai_pct > 15 ? 'rgba(234, 179, 8, 0.7)' :
+                        'rgba(239, 68, 68, 0.7)'
+                    ),
+                    borderColor: frameworkData.map(d =>
+                        d.ai_pct > 40 ? '#22c55e' :
+                        d.ai_pct > 15 ? '#eab308' :
+                        '#ef4444'
+                    ),
+                    borderWidth: 1,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    title: { display: true, text: 'AI Adoption by Framework', color: colors.text },
+                    tooltip: {
+                        callbacks: {
+                            label: (ctx) => {
+                                const d = frameworkData[ctx.dataIndex];
+                                return `${d.ai_pct}% AI (${d.prs.toLocaleString()} PRs)`;
+                            }
+                        }
+                    },
+                    datalabels: {
+                        display: true,
+                        anchor: 'end',
+                        align: 'right',
+                        color: colors.text,
+                        font: { size: 10 },
+                        formatter: (v) => v.toFixed(1) + '%'
+                    }
+                },
+                scales: {
+                    x: { ticks: { color: colors.text }, grid: { color: colors.grid }, max: 70 },
+                    y: { ticks: { color: colors.text, font: { size: 11 } }, grid: { color: colors.grid } }
+                }
+            }
+        });
+
+        // PR Size Chart
+        const prSizeData = [
+            { size: 'XS (0-10)', prs: 12683, ai_pct: 17.8 },
+            { size: 'S (11-50)', prs: 12008, ai_pct: 20.3 },
+            { size: 'M (51-200)', prs: 12362, ai_pct: 21.3 },
+            { size: 'L (201-500)', prs: 6955, ai_pct: 23.6 },
+            { size: 'XL (501+)', prs: 9868, ai_pct: 26.0 }
+        ];
+
+        charts.prSize = new Chart(document.getElementById('prSizeChart'), {
+            type: 'bar',
+            data: {
+                labels: prSizeData.map(d => d.size),
+                datasets: [{
+                    label: 'AI Adoption %',
+                    data: prSizeData.map(d => d.ai_pct),
+                    backgroundColor: 'rgba(249, 115, 22, 0.7)',
+                    borderColor: '#f97316',
+                    borderWidth: 1,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    title: { display: true, text: 'AI Adoption by PR Size (Lines Changed)', color: colors.text },
+                    datalabels: {
+                        display: true,
+                        anchor: 'end',
+                        align: 'top',
+                        color: colors.text,
+                        font: { weight: 'bold' },
+                        formatter: (v) => v.toFixed(1) + '%'
+                    }
+                },
+                scales: {
+                    x: { ticks: { color: colors.text }, grid: { color: colors.grid } },
+                    y: { ticks: { color: colors.text }, grid: { color: colors.grid }, max: 35 }
                 }
             }
         });
