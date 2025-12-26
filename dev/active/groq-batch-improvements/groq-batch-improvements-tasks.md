@@ -1,11 +1,44 @@
 # Groq Batch Improvements - Tasks
 
-Last Updated: 2025-12-26
+Last Updated: 2025-12-26 18:00
 
 ## Summary
 
 **Decision**: Implement Option B - 20B with 70B batch fallback
 **Both passes use Batch API** to maintain 50% discount
+**BUG FIX**: Fixed error detection to read from Groq error file (was only checking parse errors)
+
+## Model Comparison Results (Dec 2025)
+
+Tested 25 PRs across 3 models to determine optimal fallback:
+
+| Model | JSON Success | Avg Latency | Batch Input | Batch Output |
+|-------|--------------|-------------|-------------|--------------|
+| GPT OSS 20B | 96% (24/25) | 1252ms | $0.0375/1M | $0.15/1M |
+| GPT OSS 120B | 100% (25/25) | 2219ms | $0.075/1M | $0.30/1M |
+| Llama 3.3 70B | 100% (25/25) | 839ms | $0.295/1M | $0.395/1M |
+
+### Why Llama 3.3 70B (not GPT OSS 120B)?
+
+Both achieve 100% JSON reliability, but:
+- **Speed**: Llama 3.3 is 2.6x faster (839ms vs 2219ms)
+- **Cost diff**: Only $0.02 per 1000 PRs (~8% savings)
+- **Architecture**: Llama 3.3 70B dense vs GPT OSS 120B MoE (5.1B active)
+
+### Cost Per 1000 PRs
+
+```
+Pass 1 (GPT OSS 20B): $0.22
+Pass 2 (Llama 3.3 70B, 4% failures): $0.04
+────────────────────────────────────────
+Total with Llama fallback: $0.26
+Total with GPT 120B fallback: $0.24 (saves $0.02)
+```
+
+### Batch vs Caching
+
+Per Groq docs: "The batch discount does not stack with prompt caching discounts."
+All batch tokens billed at flat 50% rate. Caching provides performance benefit only.
 
 ## Phase 0: Investigation (COMPLETED)
 
@@ -21,96 +54,77 @@ Last Updated: 2025-12-26
 
 ### Modified `apps/integrations/services/groq_batch.py`
 
-- [x] Add class constants for models:
+- [x] Add class constants for models
+- [x] Add `_wait_for_completion()` method
+- [x] Add `_get_failed_pr_ids()` method
+- [x] Add `_merge_results()` method
+- [x] Add `submit_batch_with_fallback()` method
+- [x] **BUG FIX**: Update `submit_batch_with_fallback()` to check error file:
   ```python
-  DEFAULT_MODEL = "openai/gpt-oss-20b"
-  FALLBACK_MODEL = "llama-3.3-70b-versatile"
+  # Now properly combines error file failures + parse errors
+  error_file_failed = self._get_failed_pr_ids(stats["first_batch_id"])
+  parse_error_failed = [r.pr_id for r in first_results if r.error]
+  failed_pr_ids = list(set(error_file_failed + parse_error_failed))
   ```
-
-- [x] Add `_wait_for_completion(batch_id, poll_interval=30)` method:
-  - Poll `get_status()` until `is_complete`
-  - Return results from `get_results()`
-
-- [x] Add `_get_failed_pr_ids(batch_id)` method:
-  - Download error file
-  - Parse JSONL and extract pr-{id} custom_ids
-  - Return list of integer PR IDs
-
-- [x] Add `_merge_results(first_results, retry_results)` method:
-  - Keep successful results from first pass
-  - Replace failed results with retry results
-  - Return combined list
-
-- [x] Add `submit_batch_with_fallback(prs, poll_interval=30)` method:
-  - Returns tuple of (results, stats)
-  - Stats include: first_batch_id, retry_batch_id, first_pass_failures, final_failures
-
-- [x] Update `__init__()` to accept optional `model` parameter
 
 ### Modified `apps/metrics/management/commands/run_llm_batch.py`
 
 - [x] Add `--with-fallback` argument
-- [x] Add `_submit_batch_with_fallback()` method
-- [x] Add `_save_results()` method for saving results to DB
 - [x] Add progress logging for both passes
 
-## Phase 2: Testing (IN PROGRESS)
+## Phase 2: Testing (COMPLETED)
 
-- [x] Write unit tests for `_merge_results()` (3 tests)
-- [x] Write unit tests for `_get_failed_pr_ids()` (2 tests)
-- [x] Write unit tests for `_wait_for_completion()` (1 test)
-- [x] Write unit tests for model constants and init (3 tests)
-- [ ] **NEXT**: Test with small batch (10 PRs) with `--with-fallback`
-- [ ] Verify both batches appear in Groq dashboard
-- [ ] Check failure rate drops to <2% after retry
+- [x] Write unit tests for all new methods
+- [x] Test with real batches - **VERIFIED WORKING**
+- [x] Cal.com batch: 41 failures detected, all 41 retried successfully
 
 **All 36 unit tests passing.**
 
-## Phase 3: Backfill
+## Phase 3: Backfill (IN PROGRESS)
 
-After implementation verified:
+Current LLM Processing Status: **65.6% (39,571/60,335 PRs)**
 
-- [ ] Run backfill for Cal.com (~4,147 unprocessed)
-- [ ] Run backfill for Antiwork (~3,083 unprocessed)
-- [ ] Run backfill for PostHog Analytics (~3,045 unprocessed)
-- [ ] Run backfill for remaining teams
+| Team | Done | Need | Status |
+|------|------|------|--------|
+| Antiwork | 50 | 3,930 | ❌ Priority |
+| Cal.com | 2,131 | 3,463 | ❌ Priority |
+| LangChain | 2,023 | 1,862 | ❌ |
+| Twenty CRM | 3,553 | 1,047 | 🔄 |
+| Resend | 198 | 695 | ❌ |
+| Trigger.dev | 145 | 689 | ❌ |
+| Vercel | 4,978 | 513 | 🔄 |
+| FastAPI Team | 281 | 507 | ❌ |
+| Others | - | <500 each | 🔄 |
+
+**TOTAL REMAINING: ~14,302 PRs**
 
 ## Phase 4: Verification
 
 - [ ] Query database for >95% coverage across all teams
-- [ ] Verify Groq dashboard shows low failure rate
-- [ ] Spot check llm_summary quality
+- [ ] Generate AI detection summary report
+- [ ] Update UI with trend data
 
 ---
 
-## Key Technical Notes
+## Commands to Continue
 
-### Error File Structure
-```json
-{
-  "custom_id": "pr-26313",
-  "response": {
-    "status_code": 400,
-    "body": {
-      "error": {
-        "message": "Failed to validate JSON",
-        "code": "json_validate_failed"
-      }
-    }
-  }
-}
-```
-
-### Groq API for Error Files
-```python
-from groq import Groq
-client = Groq()
-batch = client.batches.retrieve(batch_id)
-error_content = client.files.content(batch.error_file_id)
-lines = error_content.text().strip().split('\n')
-```
-
-### Test Command (READY TO RUN)
 ```bash
-GROQ_API_KEY=$GROQ_API_KEY .venv/bin/python manage.py run_llm_batch --limit 10 --with-fallback
+# Continue LLM backfill (run these one at a time)
+/bin/bash -c 'export GROQ_API_KEY=$(grep "^GROQ_API_KEY=" .env | cut -d= -f2) && .venv/bin/python manage.py run_llm_batch --team "Antiwork" --limit 2000 --with-fallback'
+
+/bin/bash -c 'export GROQ_API_KEY=$(grep "^GROQ_API_KEY=" .env | cut -d= -f2) && .venv/bin/python manage.py run_llm_batch --team "Cal.com" --limit 2000 --with-fallback'
+
+/bin/bash -c 'export GROQ_API_KEY=$(grep "^GROQ_API_KEY=" .env | cut -d= -f2) && .venv/bin/python manage.py run_llm_batch --team "LangChain" --limit 2000 --with-fallback'
+
+# Check progress
+.venv/bin/python -c "
+import os
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'tformance.settings')
+import django
+django.setup()
+from apps.metrics.models import PullRequest
+total = PullRequest.objects.count()
+with_llm = PullRequest.objects.exclude(llm_summary__isnull=True).exclude(llm_summary={}).count()
+print(f'LLM: {with_llm:,}/{total:,} ({with_llm/total*100:.1f}%)')
+"
 ```

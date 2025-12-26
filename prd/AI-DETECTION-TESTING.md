@@ -98,11 +98,57 @@ Stored in `PullRequest.llm_summary` JSONField.
 - **Version tracking**: `ai_detection_version` field on PullRequest model
 - **Patterns**: 100+ regex patterns covering Cursor, Claude, Copilot, etc.
 
-### 2. LLM-Based Detection (In Development)
-- **Provider**: Groq (llama-3.3-70b-versatile) - $0.08/1000 PRs
+### 2. LLM-Based Detection (Production)
+- **Provider**: Groq with two-pass batch processing
 - **Prompt**: `apps/metrics/services/llm_prompts.py`
 - **Batch API**: `apps/integrations/services/groq_batch.py`
 - **Stored in**: `PullRequest.llm_summary`, `llm_summary_version`
+
+#### Two-Pass Batch Processing
+
+| Pass | Model | Purpose | Success Rate |
+|------|-------|---------|--------------|
+| 1 | `openai/gpt-oss-20b` | Cheap first pass | ~96% |
+| 2 | `llama-3.3-70b-versatile` | Fallback for failures | 100% |
+
+Both passes use Batch API for 50% discount.
+
+#### Model Comparison (Dec 2025 Testing)
+
+| Model | JSON Success | Avg Latency | Batch Input | Batch Output |
+|-------|--------------|-------------|-------------|--------------|
+| GPT OSS 20B | 96% | 1252ms | $0.0375/1M | $0.15/1M |
+| GPT OSS 120B | 100% | 2219ms | $0.075/1M | $0.30/1M |
+| Llama 3.3 70B | 100% | 839ms | $0.295/1M | $0.395/1M |
+
+**Why Llama 3.3 70B for fallback (not GPT OSS 120B)?**
+- Same 100% reliability
+- 2.6x faster (839ms vs 2219ms)
+- Minimal cost difference ($0.02 per 1000 PRs)
+
+#### Cost Per 1000 PRs
+
+```
+Pass 1 (GPT OSS 20B, all 1000 PRs):
+  Input:  2.56M × $0.0375 = $0.096
+  Output: 0.84M × $0.15   = $0.126
+  Subtotal:                 $0.22
+
+Pass 2 (Llama 3.3 70B, ~40 failures):
+  Input:  0.10M × $0.295  = $0.030
+  Output: 0.03M × $0.395  = $0.013
+  Subtotal:                 $0.04
+────────────────────────────────────
+TOTAL:                      $0.26 per 1000 PRs
+```
+
+#### Batch vs Caching Note
+
+Per [Groq docs](https://console.groq.com/docs/batch#what-is-batch-processing):
+> The batch discount does not stack with prompt caching discounts.
+> All batch tokens are billed at the 50% batch rate regardless of cache status.
+
+Caching shown in dashboard is for **performance only** (faster processing), not additional cost savings.
 
 ## Testing Tools
 

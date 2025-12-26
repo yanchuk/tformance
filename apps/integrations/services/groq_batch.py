@@ -296,8 +296,22 @@ class GroqBatchProcessor:
     """Process PRs using Groq's batch API for 50% cost savings."""
 
     # Model constants for two-pass processing
-    # DEFAULT_MODEL: Cheap but ~5-20% JSON failures
-    # FALLBACK_MODEL: More expensive but 98%+ reliable
+    #
+    # Model Comparison (Dec 2025, 25 PRs tested):
+    # | Model              | JSON Success | Latency | Cost/1M input |
+    # |--------------------|--------------|---------|---------------|
+    # | GPT OSS 20B        | 96%          | 1252ms  | $0.0375       |
+    # | GPT OSS 120B (MoE) | 100%         | 2219ms  | $0.075        |
+    # | Llama 3.3 70B      | 100%         | 839ms   | $0.295        |
+    #
+    # Why Llama 3.3 70B over GPT OSS 120B for fallback?
+    # - Same 100% reliability
+    # - 2.6x faster (839ms vs 2219ms)
+    # - Only $0.02 more per 1000 PRs
+    # - Dense 70B params vs MoE 5.1B active (better instruction following)
+    #
+    # Note: Batch discount (50%) does NOT stack with caching discount.
+    # See: https://console.groq.com/docs/batch#what-is-batch-processing
     DEFAULT_MODEL = "openai/gpt-oss-20b"
     FALLBACK_MODEL = "llama-3.3-70b-versatile"
 
@@ -628,8 +642,11 @@ class GroqBatchProcessor:
             on_progress,
         )
 
-        # Count failures
-        failed_pr_ids = [r.pr_id for r in first_results if r.error]
+        # Count failures - check error file for actual failures
+        # Note: Errors in r.error are parse errors, error file has request failures
+        error_file_failed = self._get_failed_pr_ids(stats["first_batch_id"])
+        parse_error_failed = [r.pr_id for r in first_results if r.error]
+        failed_pr_ids = list(set(error_file_failed + parse_error_failed))
         stats["first_pass_failures"] = len(failed_pr_ids)
 
         if not failed_pr_ids:
@@ -659,7 +676,10 @@ class GroqBatchProcessor:
         # Merge results
         merged_results = self._merge_results(first_results, retry_results)
 
-        # Count final failures
-        stats["final_failures"] = len([r for r in merged_results if r.error])
+        # Count final failures - check both error file and parse errors
+        retry_error_file_failed = retry_processor._get_failed_pr_ids(stats["retry_batch_id"])
+        retry_parse_errors = [r.pr_id for r in merged_results if r.error]
+        final_failed = list(set(retry_error_file_failed + retry_parse_errors))
+        stats["final_failures"] = len(final_failed)
 
         return merged_results, stats
