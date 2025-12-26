@@ -1,32 +1,35 @@
 {% load i18n %}
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-  <!-- Total Suggestions -->
-  <div class="stat bg-base-100 shadow rounded-lg">
-    <div class="stat-title">{% trans "Total Suggestions" %}</div>
-    <div class="stat-value text-primary">{{ metrics.total_suggestions|default:0 }}</div>
-    <div class="stat-desc truncate">{% trans "Copilot suggestions shown" %}</div>
-  </div>
-
-  <!-- Total Accepted -->
-  <div class="stat bg-base-100 shadow rounded-lg">
-    <div class="stat-title">{% trans "Total Accepted" %}</div>
-    <div class="stat-value text-secondary">{{ metrics.total_accepted|default:0 }}</div>
-    <div class="stat-desc truncate">{% trans "Suggestions accepted by team" %}</div>
-  </div>
-
-  <!-- Acceptance Rate -->
-  <div class="stat bg-base-100 shadow rounded-lg">
-    <div class="stat-title">{% trans "Acceptance Rate" %}</div>
-    <div class="stat-value text-accent">
-      {% if metrics.acceptance_rate %}{{ metrics.acceptance_rate|floatformat:1 }}%{% else %}-{% endif %}
+{% if metrics.total_suggestions or metrics.active_users %}
+<div class="grid grid-cols-2 gap-4">
+  <!-- Acceptance Rate - Primary metric -->
+  <div class="stat bg-base-200 rounded-lg p-4">
+    <div class="stat-title text-xs">{% trans "Acceptance Rate" %}</div>
+    <div class="stat-value text-2xl text-primary">
+      {% if metrics.acceptance_rate %}{{ metrics.acceptance_rate|floatformat:0 }}%{% else %}–{% endif %}
     </div>
-    <div class="stat-desc truncate">{% trans "Of suggestions shown" %}</div>
   </div>
 
   <!-- Active Users -->
-  <div class="stat bg-base-100 shadow rounded-lg">
-    <div class="stat-title">{% trans "Active Users" %}</div>
-    <div class="stat-value text-info">{{ metrics.active_users|default:0 }}</div>
-    <div class="stat-desc truncate">{% trans "Team members using Copilot" %}</div>
+  <div class="stat bg-base-200 rounded-lg p-4">
+    <div class="stat-title text-xs">{% trans "Active Users" %}</div>
+    <div class="stat-value text-2xl">{{ metrics.active_users|default:0 }}</div>
+  </div>
+
+  <!-- Total Suggestions -->
+  <div class="stat bg-base-200 rounded-lg p-4">
+    <div class="stat-title text-xs">{% trans "Suggestions" %}</div>
+    <div class="stat-value text-2xl text-base-content/80">{{ metrics.total_suggestions|default:0|floatformat:0 }}</div>
+  </div>
+
+  <!-- Total Accepted -->
+  <div class="stat bg-base-200 rounded-lg p-4">
+    <div class="stat-title text-xs">{% trans "Accepted" %}</div>
+    <div class="stat-value text-2xl text-base-content/80">{{ metrics.total_accepted|default:0|floatformat:0 }}</div>
   </div>
 </div>
+{% else %}
+<div class="text-center py-8 text-base-content/60">
+  <p class="text-sm">{% trans "No Copilot data available" %}</p>
+  <p class="text-xs mt-1">{% trans "Connect GitHub Copilot to see usage metrics" %}</p>
+</div>
+{% endif %}

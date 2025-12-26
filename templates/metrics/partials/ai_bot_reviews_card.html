@@ -1,26 +1,23 @@
 {% load i18n %}
-<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-  <!-- Total Reviews -->
-  <div class="stat bg-base-100 shadow rounded-lg">
-    <div class="stat-title">{% trans "Total Reviews" %}</div>
-    <div class="stat-value text-base-content">{{ metrics.total_reviews|default:0 }}</div>
-    <div class="stat-desc truncate">{% trans "All reviews in period" %}</div>
+<div class="grid grid-cols-3 gap-4 mb-4">
+  <!-- Bot Review Rate - Primary metric -->
+  <div class="stat bg-base-200 rounded-lg p-4">
+    <div class="stat-title text-xs">{% trans "Bot Rate" %}</div>
+    <div class="stat-value text-2xl text-primary">
+      {% if metrics.ai_review_pct %}{{ metrics.ai_review_pct|floatformat:0 }}%{% else %}0%{% endif %}
+    </div>
   </div>
 
   <!-- AI Bot Reviews -->
-  <div class="stat bg-base-100 shadow rounded-lg">
-    <div class="stat-title">{% trans "AI Bot Reviews" %}</div>
-    <div class="stat-value text-secondary">{{ metrics.ai_reviews|default:0 }}</div>
-    <div class="stat-desc truncate">{% trans "From automated reviewers" %}</div>
+  <div class="stat bg-base-200 rounded-lg p-4">
+    <div class="stat-title text-xs">{% trans "Bot Reviews" %}</div>
+    <div class="stat-value text-2xl text-base-content/80">{{ metrics.ai_reviews|default:0 }}</div>
   </div>
 
-  <!-- AI Review % -->
-  <div class="stat bg-base-100 shadow rounded-lg">
-    <div class="stat-title">{% trans "Bot Review Rate" %}</div>
-    <div class="stat-value text-accent">
-      {% if metrics.ai_review_pct %}{{ metrics.ai_review_pct|floatformat:1 }}%{% else %}0%{% endif %}
-    </div>
-    <div class="stat-desc truncate">{% trans "Of all reviews" %}</div>
+  <!-- Total Reviews -->
+  <div class="stat bg-base-200 rounded-lg p-4">
+    <div class="stat-title text-xs">{% trans "Total" %}</div>
+    <div class="stat-value text-2xl text-base-content/80">{{ metrics.total_reviews|default:0 }}</div>
   </div>
 </div>
 
