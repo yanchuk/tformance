@@ -1,0 +1,12 @@
+Report Statistics - Generated 2025-12-26T19:15:02.778545
+==================================================
+
+Teams: 51
+Total PRs: 117,739
+AI-Assisted PRs: 14,962
+AI Adoption Rate: 12.7%
+LLM Analyzed: 89,239 (75.8%)
+
+Metric Changes (AI vs Non-AI):
+  Cycle Time: -5%
+  Review Time: -52%
