@@ -200,6 +200,8 @@ TEMPLATES = [
                 "apps.teams.context_processors.user_teams",
                 # this line can be removed if not using google analytics
                 "apps.web.context_processors.google_analytics_id",
+                # PostHog analytics
+                "apps.web.context_processors.posthog_config",
             ],
             "loaders": _DEFAULT_LOADERS if DEBUG else _CACHED_LOADERS,
             "builtins": [
@@ -716,6 +718,10 @@ if POSTHOG_API_KEY:
 
     posthog.project_api_key = POSTHOG_API_KEY
     posthog.host = POSTHOG_HOST
+    # Enable exception autocapture for error tracking
+    posthog.exception_autocapture = True
+    # Disable debug mode in production
+    posthog.debug = DEBUG
 
 
 # Google Gemini AI

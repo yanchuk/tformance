@@ -9,6 +9,7 @@ from django.db.models.signals import post_delete, pre_save
 from django.dispatch import receiver
 
 from apps.users.models import CustomUser
+from apps.utils.analytics import identify_user, track_event
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +32,14 @@ def handle_sign_up(request, user, **kwargs):
     # or subscribe them to your mailing list.
     # This example notifies the admins, in case you want to keep track of sign ups
     _notify_admins_of_signup(user)
+
+    # Track signup in PostHog
+    # Determine signup method from sociallogin if available
+    sociallogin = kwargs.get("sociallogin")
+    method = sociallogin.account.provider if sociallogin else "email"
+
+    identify_user(user)
+    track_event(user, "user_signed_up", {"method": method})
 
 
 @receiver(email_confirmed)

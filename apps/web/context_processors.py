@@ -34,3 +34,19 @@ def google_analytics_id(request):
         }
     else:
         return {}
+
+
+def posthog_config(request):
+    """
+    Adds PostHog configuration to all requests.
+
+    Exposes POSTHOG_API_KEY and POSTHOG_HOST for the JS SDK initialization.
+    Only exposes values if POSTHOG_API_KEY is configured.
+    """
+    posthog_api_key = getattr(settings, "POSTHOG_API_KEY", "")
+    if posthog_api_key:
+        return {
+            "POSTHOG_API_KEY": posthog_api_key,
+            "POSTHOG_HOST": getattr(settings, "POSTHOG_HOST", "https://us.i.posthog.com"),
+        }
+    return {}

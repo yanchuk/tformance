@@ -65,6 +65,7 @@
     {% if GOOGLE_ANALYTICS_ID %}
         {% include 'web/components/google_analytics.html' %}
     {% endif %}
+    {% include 'web/components/posthog_init.html' %}
     {% vite_asset 'assets/javascript/site.js' %}
     {% vite_hmr_client %}
     <script>__cssFramework = 'tailwind';</script>

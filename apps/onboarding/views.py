@@ -31,6 +31,7 @@ from apps.integrations.tasks import sync_historical_data_task
 from apps.teams.helpers import get_next_unique_team_slug
 from apps.teams.models import Membership, Team
 from apps.teams.roles import ROLE_ADMIN
+from apps.utils.analytics import group_identify, track_event
 
 logger = logging.getLogger(__name__)
 
@@ -288,6 +289,23 @@ def _create_team_from_org(request, org: dict):
         request.session.pop(ONBOARDING_TOKEN_KEY, None)
         request.session.pop(ONBOARDING_ORGS_KEY, None)
 
+        # Track GitHub connection and team creation in PostHog
+        group_identify(team)
+        track_event(
+            request.user,
+            "github_connected",
+            {
+                "org_name": org["login"],
+                "member_count": team.members.count(),
+                "team_slug": team.slug,
+            },
+        )
+        track_event(
+            request.user,
+            "onboarding_step_completed",
+            {"step": "github", "team_slug": team.slug},
+        )
+
         messages.success(request, _("Team '{}' created successfully!").format(team_name))
         return redirect("onboarding:select_repos")
 
@@ -323,6 +341,12 @@ def select_repositories(request):
             request.session["sync_task_id"] = task.id
             logger.info(f"Started background sync task {task.id} for team {team.name}")
 
+        # Track step completion
+        track_event(
+            request.user,
+            "onboarding_step_completed",
+            {"step": "repos", "team_slug": team.slug},
+        )
         return redirect("onboarding:connect_jira")
 
     # Fetch repositories (we'll implement this in the template)
@@ -392,7 +416,12 @@ def connect_jira(request):
     team = request.user.teams.first()
 
     if request.method == "POST":
-        # Skip Jira for now
+        # Track skip (Jira connection tracking would go in the OAuth callback)
+        track_event(
+            request.user,
+            "onboarding_skipped",
+            {"step": "jira", "team_slug": team.slug},
+        )
         return redirect("onboarding:connect_slack")
 
     return render(
@@ -416,7 +445,12 @@ def connect_slack(request):
     team = request.user.teams.first()
 
     if request.method == "POST":
-        # Skip Slack for now
+        # Track skip (Slack connection tracking would go in the OAuth callback)
+        track_event(
+            request.user,
+            "onboarding_skipped",
+            {"step": "slack", "team_slug": team.slug},
+        )
         return redirect("onboarding:complete")
 
     return render(
@@ -457,6 +491,14 @@ def skip_onboarding(request):
     request.session.pop(ONBOARDING_ORGS_KEY, None)
     request.session.pop(ONBOARDING_SELECTED_ORG_KEY, None)
 
+    # Track onboarding skip in PostHog
+    group_identify(team)
+    track_event(
+        request.user,
+        "onboarding_skipped",
+        {"step": "github", "team_slug": team.slug, "reason": "skip_button"},
+    )
+
     messages.success(
         request,
         _("Team '{}' created! Connect GitHub from Integrations to unlock all features.").format(team_name),
@@ -477,6 +519,13 @@ def onboarding_complete(request):
 
     # Get sync task info for progress indicator
     sync_task_id = request.session.get("sync_task_id")
+
+    # Track onboarding completion
+    track_event(
+        request.user,
+        "onboarding_completed",
+        {"team_slug": team.slug},
+    )
 
     return render(
         request,

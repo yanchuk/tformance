@@ -14,6 +14,7 @@ from apps.metrics.services.pr_list_service import (
     get_prs_queryset,
 )
 from apps.teams.decorators import login_and_team_required
+from apps.utils.analytics import track_event
 
 # Default page size for PR list
 PAGE_SIZE = 50
@@ -218,6 +219,18 @@ def pr_list_export(request: HttpRequest) -> HttpResponse:
 
     # Get filtered queryset (no pagination for export)
     prs = get_prs_queryset(team, filters).order_by("-merged_at", "-pr_created_at")
+
+    # Track export event
+    track_event(
+        request.user,
+        "pr_list_exported",
+        {
+            "format": "csv",
+            "row_count": prs.count(),
+            "has_filters": bool(filters),
+            "team_slug": team.slug,
+        },
+    )
 
     # CSV headers
     headers = [

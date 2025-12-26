@@ -354,9 +354,10 @@ class TestPrListExportView(TestCase):
         url = reverse("metrics:pr_list_export")
 
         # Get the response and consume streaming content to trigger queries
-        # Expected: 8 queries (session, user, team, membership, session update, PR query)
-        # The PR query uses select_related for author - so NO N+1 (would be 18 with N+1)
-        with self.assertNumQueries(8):
+        # Expected: 11 queries (session, user, team, membership, COUNT for analytics,
+        # analytics membership+team, session update, PR query)
+        # The PR query uses select_related for author - so NO N+1 (would be 18+ with N+1)
+        with self.assertNumQueries(11):
             response = self.client.get(url)
             # Must consume streaming content to trigger actual DB queries
             _ = b"".join(response.streaming_content)
