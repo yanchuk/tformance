@@ -1,102 +1,93 @@
 # Session Handoff Notes
 
-**Last Updated: 2025-12-27 06:00 UTC**
+**Last Updated: 2025-12-26 18:05 UTC**
 
-## Current Session: Report Improvements COMPLETE
+## Current Session: OSS Expansion Seeding
 
-### All Tasks Completed (UNCOMMITTED - 228 lines added)
+### Active Work
 
-#### 1. HIGH Risk Fixes
-- ✅ Phase 1.1: Copilot/ChatGPT disclosure box in AI Tool Evolution section
-- ✅ Phase 1.2: Adoption gap comparison table with iceberg analogy
-- ✅ Data inconsistencies fixed (28→26 teams, 21.2%→21.4%)
+**2 Terminal processes running seeding:**
 
-#### 2. MEDIUM Risk Fixes
-- ✅ Phase 2.1: Cycle time causal disclaimer (+42% correlation vs causation)
+| Terminal | Current | Phase | Status |
+|----------|---------|-------|--------|
+| T1 | growthbook | Phase 1 | 🔄 2 left (growthbook, huly) |
+| T2 | openreplay | Phase 2 | 🔄 24 left |
 
-#### 3. CTAs Added
-- ✅ Sidebar CTA at bottom of table of contents
-- ✅ Inline CTA after Key Takeaways section
-- ✅ Mid-content CTA after Detection Methods section
+### Database Stats
 
-#### 4. Interactive Features
-- ✅ Team selection filter for Monthly Adoption Trends chart
-- ✅ Checkboxes for 5 teams (Antiwork, Cal.com, Plane, Formbricks, PostHog)
-- ✅ Select All / Clear All buttons with JS handlers
+| Metric | Value |
+|--------|-------|
+| **Total PRs** | 99,445 |
+| **Total Teams** | 54 |
+| **Phase 1** | ~23/25 done |
+| **Phase 2** | ~2/50 done |
 
-#### 5. Legal/Footer Updates
-- ✅ "Open to Share" citation note
-- ✅ Trademark disclaimer
-- ✅ Comprehensive legal disclaimers (7 sections):
-  - General disclaimer (informational purposes)
-  - No warranty
-  - Not professional advice
-  - Data limitations
-  - Third-party data attribution
-  - Limitation of liability
-  - Methodology transparency
+### Key Discovery This Session
 
-#### 6. Tech Stack Modernization
-- ✅ Added Tailwind CSS CDN (`cdn.tailwindcss.com`)
-- ✅ Added Alpine.js CDN
-- ✅ Custom Tailwind config with project colors
-- ✅ Dark mode support via `[data-theme="dark"]` selector
+**LLM processing is NOT automatic!**
 
-#### 7. Other Updates
-- ✅ LLM model name: "Groq Batch API" → "ChatGPT OSS 20B model"
+The `seed_real_projects` command only:
+1. Fetches PR data from GitHub GraphQL
+2. Creates Team, TeamMember, PullRequest records
+3. Simulates Jira/surveys
 
-### Commit Command
-
+**LLM analysis must be run separately:**
 ```bash
-# Commit all report improvements
-git add docs/index.html dev/active/HANDOFF-NOTES.md
-git commit -m "Complete report improvements: disclosures, CTAs, legal, modern stack
-
-HIGH Risk Fixes:
-- Add Copilot/ChatGPT hidden tool usage disclosure
-- Add adoption gap comparison table with iceberg analogy
-- Fix data inconsistencies (28→26 teams, standardize 21.4%)
-
-MEDIUM Risk Fixes:
-- Add cycle time causal disclaimer (+42% correlation vs causation)
-
-New Features:
-- Add 3 CTA blocks (sidebar, inline, mid-content)
-- Add team selection filter for Monthly Trends chart
-- Interactive checkboxes with Select/Clear All
-
-Legal/Footer:
-- Add 'Open to Share' citation note
-- Add trademark disclaimer
-- Add comprehensive legal disclaimers (7 sections)
-
-Tech Stack:
-- Add Tailwind CSS CDN for utility classes
-- Add Alpine.js CDN for interactivity
-- Custom Tailwind config matching project theme
-
-Other:
-- Update LLM model name to ChatGPT OSS 20B
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-
-Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
+export GROQ_API_KEY=$(grep "^GROQ_API_KEY=" .env | cut -d= -f2)
+.venv/bin/python manage.py run_llm_batch --team "TeamName" --limit 2000 --with-fallback
 ```
 
-### Verify Changes
+---
+
+## When T1 Finishes Phase 1 (huly)
+
+Run this command in Terminal 1:
 
 ```bash
-# Open report in browser
-open docs/index.html
-
-# Things to verify:
-# 1. Theme toggle still works (dark/light)
-# 2. Monthly Trends team filter checkboxes work
-# 3. Legal disclaimers visible at bottom
-# 4. CTAs visible in sidebar and body
-# 5. Data shows "26 teams" and "21.4%" consistently
-# 6. Cycle time disclaimer visible after +42% stat
+export GITHUB_SEEDING_TOKENS="PAT_1"
+for project in ollama openwebui lobechat continue jan portainer netdata grafana traefik spree bagisto payload keystone rocketchat zulip appflowy logseq silverbullet nocodb baserow illa keycloak casdoor surrealdb questdb; do
+  .venv/bin/python manage.py seed_real_projects --project "$project" --start-date 2025-01-01 --no-pr-limit --no-member-limit --no-check-runs --checkpoint-file ".checkpoint_p2_t1.json"
+done
 ```
+
+---
+
+## After All Seeding Completes
+
+### 1. Check which teams need LLM analysis
+```bash
+psql -d tformance -c "SELECT t.name, COUNT(pr.id) as prs FROM teams_team t JOIN metrics_pullrequest pr ON pr.team_id = t.id WHERE pr.llm_summary IS NULL GROUP BY t.name ORDER BY COUNT(pr.id) DESC"
+```
+
+### 2. Run LLM batch for each team
+```bash
+export GROQ_API_KEY=$(grep "^GROQ_API_KEY=" .env | cut -d= -f2)
+.venv/bin/python manage.py run_llm_batch --team "TeamName" --limit 2000 --with-fallback
+```
+
+---
+
+## Previous Session: Report Improvements (UNCOMMITTED)
+
+`docs/index.html` has uncommitted changes from previous session:
+- Disclosures, CTAs, legal notes, team filter
+- See commit command in `dev/active/report-improvements/` if needed
+
+---
+
+## Files Modified (OSS Expansion)
+
+| File | Changes |
+|------|---------|
+| `apps/metrics/seeding/real_projects.py` | 100 project configs, industry field, helper functions |
+| `dev/active/oss-expansion/oss-expansion-context.md` | Updated with current progress |
+| `dev/active/oss-expansion/oss-expansion-tasks.md` | Updated task status |
+
+---
+
+## No Migrations Needed
+
+Only seeding config changes. No Django model changes this session.
 
 ---
 
@@ -104,25 +95,8 @@ open docs/index.html
 
 | Session | Status |
 |---------|--------|
-| Report Improvements (All Phases) | **COMPLETE** (uncommitted) |
+| OSS Expansion (100 projects) | **IN PROGRESS** - seeding running |
+| Report Improvements | COMPLETE (uncommitted) |
 | Research Report Critical Review | COMPLETE |
 | GitHub Pages Report | COMPLETE |
-| AI Regex Pattern v2.0.0 | COMPLETE |
 | Groq Batch Improvements | COMPLETE |
-| Trends Dashboard | COMPLETE |
-
----
-
-## No Migrations Needed
-
-Only `docs/index.html` modified. No Django code changes.
-
-## Tech Stack Added
-
-The report now includes:
-- **Tailwind CSS** (CDN) - Utility-first CSS, consistent with main project
-- **Alpine.js** (CDN) - Lightweight JS framework for interactivity
-- **Chart.js** - Already present, unchanged
-- **Custom Tailwind Config** - Project colors, dark mode support
-
-This makes future maintenance easier by allowing Tailwind utility classes alongside the existing CSS variables.

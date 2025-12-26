@@ -1,6 +1,6 @@
 # OSS Expansion - Tasks
 
-**Last Updated**: 2025-12-26 17:00 UTC
+**Last Updated**: 2025-12-26 18:05 UTC
 
 ---
 
@@ -20,20 +20,22 @@
 
 ## In Progress
 
-- [ ] Seed Phase 1 projects (26-50) - **Currently running in 2 terminals**
-  - Terminal 1: chatwoot → growthbook, huly (12 projects)
-  - Terminal 2: erxes → webstudio (13 projects)
+- [~] Seed Phase 1 projects (26-50) - **~23/25 done**
+  - Terminal 1: growthbook 🔄, huly ⏳ (last 2 remaining)
+  - Terminal 2: ✅ COMPLETE (all 13 done)
+
+- [~] Seed Phase 2 projects (51-100) - **Started on T2**
+  - Terminal 2: umami ✅, openreplay 🔄, 23 more pending
 
 ---
 
 ## Pending
 
-### Phase 2 Seeding
-- [ ] Seed Phase 2 projects (51-100) after Phase 1 completes
-  - Terminal 1: ollama → questdb (25 projects)
-  - Terminal 2: umami → erpnext (25 projects)
+### Phase 2 Seeding (T1 - starts after Phase 1)
+- [ ] Run T1 Phase 2 command when huly finishes:
+  - ollama → questdb (25 projects)
 
-### LLM Analysis
+### LLM Analysis (SEPARATE STEP - not automatic!)
 - [ ] Run `run_llm_batch` on all Phase 1 teams
 - [ ] Run `run_llm_batch` on all Phase 2 teams
 
