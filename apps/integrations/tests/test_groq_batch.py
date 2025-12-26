@@ -809,3 +809,188 @@ class TestGroqBatchProcessor(TestCase):
         self.assertIn("Cursor", context)
         self.assertIn("Claude", context)
         self.assertIn("ai-assisted", context)
+
+
+class TestFallbackMethods(TestCase):
+    """Tests for two-pass fallback batch processing methods."""
+
+    def test_merge_results_no_failures(self):
+        """Test merging when first pass has no failures."""
+        processor = GroqBatchProcessor(api_key="test-key")
+
+        first_results = [
+            BatchResult(pr_id=1, is_ai_assisted=True, tools=["cursor"], confidence=0.9),
+            BatchResult(pr_id=2, is_ai_assisted=False, tools=[], confidence=0.1),
+        ]
+        retry_results = []  # No retries needed
+
+        merged = processor._merge_results(first_results, retry_results)
+
+        self.assertEqual(len(merged), 2)
+        self.assertEqual(merged[0].pr_id, 1)
+        self.assertTrue(merged[0].is_ai_assisted)
+        self.assertEqual(merged[1].pr_id, 2)
+
+    def test_merge_results_replaces_failures(self):
+        """Test that failures are replaced with retry results."""
+        processor = GroqBatchProcessor(api_key="test-key")
+
+        first_results = [
+            BatchResult(pr_id=1, is_ai_assisted=True, tools=["cursor"], confidence=0.9),
+            BatchResult(pr_id=2, is_ai_assisted=False, tools=[], confidence=0.0, error="JSON validation failed"),
+            BatchResult(pr_id=3, is_ai_assisted=False, tools=[], confidence=0.0, error="Max tokens exceeded"),
+        ]
+        retry_results = [
+            BatchResult(pr_id=2, is_ai_assisted=True, tools=["claude"], confidence=0.95),
+            BatchResult(pr_id=3, is_ai_assisted=False, tools=[], confidence=0.2),
+        ]
+
+        merged = processor._merge_results(first_results, retry_results)
+
+        self.assertEqual(len(merged), 3)
+        # First result unchanged
+        self.assertEqual(merged[0].pr_id, 1)
+        self.assertIsNone(merged[0].error)
+        # Second result replaced with retry
+        self.assertEqual(merged[1].pr_id, 2)
+        self.assertIsNone(merged[1].error)
+        self.assertEqual(merged[1].tools, ["claude"])
+        # Third result replaced with retry
+        self.assertEqual(merged[2].pr_id, 3)
+        self.assertIsNone(merged[2].error)
+        self.assertEqual(merged[2].confidence, 0.2)
+
+    def test_merge_results_keeps_error_if_retry_also_fails(self):
+        """Test that if retry also fails, error is kept."""
+        processor = GroqBatchProcessor(api_key="test-key")
+
+        first_results = [
+            BatchResult(pr_id=1, is_ai_assisted=False, tools=[], confidence=0.0, error="JSON validation failed"),
+        ]
+        retry_results = [
+            BatchResult(pr_id=1, is_ai_assisted=False, tools=[], confidence=0.0, error="Still failed"),
+        ]
+
+        merged = processor._merge_results(first_results, retry_results)
+
+        self.assertEqual(len(merged), 1)
+        # Retry result replaces original (even if still an error)
+        self.assertEqual(merged[0].error, "Still failed")
+
+    @patch("apps.integrations.services.groq_batch.Groq")
+    def test_get_failed_pr_ids_from_error_file(self, mock_groq_class):
+        """Test extracting failed PR IDs from error file."""
+        mock_client = MagicMock()
+        mock_groq_class.return_value = mock_client
+
+        # Mock batch with error file
+        mock_batch = MagicMock()
+        mock_batch.id = "batch-123"
+        mock_batch.status = "completed"
+        mock_batch.request_counts.total = 5
+        mock_batch.request_counts.completed = 3
+        mock_batch.request_counts.failed = 2
+        mock_batch.output_file_id = "output-file"
+        mock_batch.error_file_id = "error-file-123"
+        mock_client.batches.retrieve.return_value = mock_batch
+
+        # Mock error file content
+        error_jsonl = "\n".join(
+            [
+                '{"custom_id": "pr-100", "response": {"status_code": 400, '
+                '"body": {"error": {"message": "JSON validation failed"}}}}',
+                '{"custom_id": "pr-200", "response": {"status_code": 400, '
+                '"body": {"error": {"message": "Max tokens exceeded"}}}}',
+            ]
+        )
+        mock_response = MagicMock()
+        mock_response.text.return_value = error_jsonl
+        mock_client.files.content.return_value = mock_response
+
+        processor = GroqBatchProcessor(api_key="test-key")
+        failed_ids = processor._get_failed_pr_ids("batch-123")
+
+        self.assertEqual(len(failed_ids), 2)
+        self.assertIn(100, failed_ids)
+        self.assertIn(200, failed_ids)
+
+    @patch("apps.integrations.services.groq_batch.Groq")
+    def test_get_failed_pr_ids_no_error_file(self, mock_groq_class):
+        """Test getting failed IDs when no error file exists."""
+        mock_client = MagicMock()
+        mock_groq_class.return_value = mock_client
+
+        mock_batch = MagicMock()
+        mock_batch.status = "completed"
+        mock_batch.request_counts.total = 5
+        mock_batch.request_counts.completed = 5
+        mock_batch.request_counts.failed = 0
+        mock_batch.output_file_id = "output-file"
+        mock_batch.error_file_id = None  # No errors
+        mock_client.batches.retrieve.return_value = mock_batch
+
+        processor = GroqBatchProcessor(api_key="test-key")
+        failed_ids = processor._get_failed_pr_ids("batch-123")
+
+        self.assertEqual(failed_ids, [])
+
+    @patch("time.sleep")
+    @patch("apps.integrations.services.groq_batch.Groq")
+    def test_wait_for_completion_polls_until_done(self, mock_groq_class, mock_sleep):
+        """Test that _wait_for_completion polls until batch is complete."""
+        mock_client = MagicMock()
+        mock_groq_class.return_value = mock_client
+
+        # First call: in_progress, second call: completed
+        in_progress_batch = MagicMock()
+        in_progress_batch.id = "batch-123"
+        in_progress_batch.status = "in_progress"
+        in_progress_batch.request_counts.total = 2
+        in_progress_batch.request_counts.completed = 1
+        in_progress_batch.request_counts.failed = 0
+        in_progress_batch.output_file_id = None
+        in_progress_batch.error_file_id = None
+
+        completed_batch = MagicMock()
+        completed_batch.id = "batch-123"
+        completed_batch.status = "completed"
+        completed_batch.request_counts.total = 2
+        completed_batch.request_counts.completed = 2
+        completed_batch.request_counts.failed = 0
+        completed_batch.output_file_id = "output-file"
+        completed_batch.error_file_id = None
+
+        # Need 3 responses: 1 for in_progress, 1 for completed (exit loop), 1 for get_results
+        mock_client.batches.retrieve.side_effect = [in_progress_batch, completed_batch, completed_batch]
+
+        # Mock results
+        results_jsonl = (
+            '{"custom_id": "pr-1", "response": {"body": {"choices": [{"message": '
+            '{"content": "{\\"is_ai_assisted\\": true, \\"tools\\": [], \\"confidence\\": 0.8}"}}]}}}'
+        )
+        mock_response = MagicMock()
+        mock_response.text.return_value = results_jsonl
+        mock_client.files.content.return_value = mock_response
+
+        processor = GroqBatchProcessor(api_key="test-key")
+        results = processor._wait_for_completion("batch-123", poll_interval=5)
+
+        # Should have polled twice, plus one call for get_results
+        self.assertEqual(mock_client.batches.retrieve.call_count, 3)
+        mock_sleep.assert_called_once_with(5)
+        self.assertEqual(len(results), 1)
+
+    def test_model_constants(self):
+        """Test that model constants are defined correctly."""
+        self.assertEqual(GroqBatchProcessor.DEFAULT_MODEL, "openai/gpt-oss-20b")
+        self.assertEqual(GroqBatchProcessor.FALLBACK_MODEL, "llama-3.3-70b-versatile")
+
+    def test_init_with_custom_model(self):
+        """Test initializing processor with custom model."""
+        processor = GroqBatchProcessor(api_key="test-key", model="custom-model")
+        self.assertEqual(processor.model, "custom-model")
+
+    def test_init_with_default_model(self):
+        """Test initializing processor uses DEFAULT_MODEL by default."""
+        processor = GroqBatchProcessor(api_key="test-key")
+        self.assertEqual(processor.model, GroqBatchProcessor.DEFAULT_MODEL)

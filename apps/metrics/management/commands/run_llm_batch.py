@@ -6,16 +6,24 @@ Much faster for large batches (500+ PRs).
 Usage:
     python manage.py run_llm_batch --limit 500
     python manage.py run_llm_batch --limit 500 --poll  # Submit and wait for results
+    python manage.py run_llm_batch --limit 500 --with-fallback  # Two-pass with auto-retry
     python manage.py run_llm_batch --status batch_abc123  # Check status
     python manage.py run_llm_batch --results batch_abc123  # Download and save results
 
-Workflow:
+Workflow (standard):
     1. Submit: python manage.py run_llm_batch --limit 500
        -> Returns batch_id
     2. Poll: python manage.py run_llm_batch --status <batch_id>
        -> Check progress (usually 1-5 minutes)
     3. Save: python manage.py run_llm_batch --results <batch_id>
        -> Downloads results and saves to database
+
+Workflow (two-pass with fallback):
+    python manage.py run_llm_batch --limit 500 --with-fallback
+    -> Pass 1: Cheap model (openai/gpt-oss-20b) for 80-95% success
+    -> Pass 2: Retry failures with better model (llama-3.3-70b-versatile)
+    -> Both passes use Batch API for 50% discount
+    -> Results automatically saved to database
 """
 
 import time
@@ -65,6 +73,11 @@ class Command(BaseCommand):
             action="store_true",
             help="Show what would be processed without submitting",
         )
+        parser.add_argument(
+            "--with-fallback",
+            action="store_true",
+            help="Use two-pass processing: cheap model first, retry failures with better model",
+        )
 
     def handle(self, *args, **options):
         import os
@@ -95,6 +108,7 @@ class Command(BaseCommand):
         team_name = options.get("team")
         poll = options.get("poll", False)
         dry_run = options.get("dry_run", False)
+        with_fallback = options.get("with_fallback", False)
 
         # Query PRs without LLM analysis
         qs = (
@@ -134,7 +148,12 @@ class Command(BaseCommand):
                 self.stdout.write(f"  ... and {len(prs) - 10} more")
             return
 
-        # Submit batch
+        # Use fallback mode if requested
+        if with_fallback:
+            self._submit_batch_with_fallback(processor, prs)
+            return
+
+        # Submit batch (standard mode)
         self.stdout.write("\nSubmitting batch to Groq...")
         try:
             batch_id = processor.submit_batch(prs)
@@ -150,6 +169,69 @@ class Command(BaseCommand):
 
         except Exception as e:
             self.stderr.write(self.style.ERROR(f"Failed to submit batch: {e}"))
+
+    def _submit_batch_with_fallback(self, processor: GroqBatchProcessor, prs: list):
+        """Submit batch with two-pass processing: cheap model + retry with better model."""
+        self.stdout.write("\n=== Two-Pass Batch Processing ===")
+        self.stdout.write(f"Pass 1 model: {processor.DEFAULT_MODEL} (cheap)")
+        self.stdout.write(f"Pass 2 model: {processor.FALLBACK_MODEL} (reliable)")
+        self.stdout.write(f"Total PRs: {len(prs)}")
+
+        def on_progress(status):
+            self.stdout.write(
+                f"  {status.completed_requests}/{status.total_requests} ({status.progress_pct:.1f}%) - {status.status}"
+            )
+
+        try:
+            self.stdout.write("\n--- Pass 1: Submitting with cheap model ---")
+            results, stats = processor.submit_batch_with_fallback(
+                prs,
+                poll_interval=30,
+                on_progress=on_progress,
+            )
+
+            # Log results
+            self.stdout.write(f"\n{'=' * 50}")
+            self.stdout.write(f"Pass 1 batch ID: {stats['first_batch_id']}")
+            self.stdout.write(f"Pass 1 failures: {stats['first_pass_failures']}")
+
+            if stats["retry_batch_id"]:
+                self.stdout.write(f"\n--- Pass 2: Retried {stats['first_pass_failures']} failures ---")
+                self.stdout.write(f"Pass 2 batch ID: {stats['retry_batch_id']}")
+
+            self.stdout.write(f"\nFinal failures: {stats['final_failures']}")
+
+            # Save results to database
+            self._save_results(results)
+
+        except Exception as e:
+            self.stderr.write(self.style.ERROR(f"Failed: {e}"))
+
+    def _save_results(self, results: list):
+        """Save batch results to database."""
+        success_count = 0
+        error_count = 0
+
+        for result in results:
+            if result.error:
+                self.stdout.write(self.style.WARNING(f"  PR {result.pr_id}: {result.error}"))
+                error_count += 1
+                continue
+
+            try:
+                pr = PullRequest.objects.get(id=result.pr_id)  # noqa: TEAM001
+                pr.llm_summary = result.llm_summary
+                pr.llm_summary_version = result.prompt_version
+                pr.save(update_fields=["llm_summary", "llm_summary_version"])
+                success_count += 1
+            except PullRequest.DoesNotExist:
+                self.stdout.write(self.style.WARNING(f"  PR {result.pr_id}: Not found"))
+                error_count += 1
+
+        self.stdout.write(f"\n{'=' * 50}")
+        self.stdout.write(self.style.SUCCESS(f"Saved: {success_count}"))
+        if error_count:
+            self.stdout.write(self.style.WARNING(f"Errors: {error_count}"))
 
     def _check_status(self, processor: GroqBatchProcessor, batch_id: str):
         """Check status of an existing batch."""

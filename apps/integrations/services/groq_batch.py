@@ -295,10 +295,16 @@ class BatchStatus:
 class GroqBatchProcessor:
     """Process PRs using Groq's batch API for 50% cost savings."""
 
+    # Model constants for two-pass processing
+    # DEFAULT_MODEL: Cheap but ~5-20% JSON failures
+    # FALLBACK_MODEL: More expensive but 98%+ reliable
+    DEFAULT_MODEL = "openai/gpt-oss-20b"
+    FALLBACK_MODEL = "llama-3.3-70b-versatile"
+
     def __init__(
         self,
         api_key: str | None = None,
-        model: str = "openai/gpt-oss-20b",
+        model: str | None = None,
         system_prompt: str | None = None,
         use_v5_prompt: bool = True,
     ):
@@ -306,13 +312,13 @@ class GroqBatchProcessor:
 
         Args:
             api_key: Groq API key (defaults to GROQ_API_KEY env var)
-            model: Model to use for detection. Defaults to openai/gpt-oss-20b which
-                   supports automatic prompt caching (50% cost savings) and 131K context.
+            model: Model to use for detection. Defaults to DEFAULT_MODEL (openai/gpt-oss-20b).
+                   Use FALLBACK_MODEL (llama-3.3-70b-versatile) for higher reliability.
             system_prompt: Custom system prompt (uses PR_ANALYSIS_SYSTEM_PROMPT v5 by default)
             use_v5_prompt: If True, use v5 prompt from llm_prompts.py (default)
         """
         self.client = Groq(api_key=api_key or os.environ.get("GROQ_API_KEY"))
-        self.model = model
+        self.model = model or self.DEFAULT_MODEL
         # Use v5 prompt from llm_prompts.py by default
         if system_prompt:
             self.system_prompt = system_prompt
@@ -485,3 +491,175 @@ class GroqBatchProcessor:
         """
         self.client.batches.cancel(batch_id)
         return self.get_status(batch_id)
+
+    def _wait_for_completion(
+        self,
+        batch_id: str,
+        poll_interval: int = 30,
+        on_progress: callable | None = None,
+    ) -> list[BatchResult]:
+        """Wait for batch to complete and return results.
+
+        Args:
+            batch_id: Batch ID to wait for
+            poll_interval: Seconds between status checks (default 30)
+            on_progress: Optional callback(status) for progress updates
+
+        Returns:
+            List of BatchResult objects
+        """
+        import time
+
+        while True:
+            status = self.get_status(batch_id)
+
+            if on_progress:
+                on_progress(status)
+
+            if status.is_complete:
+                break
+
+            time.sleep(poll_interval)
+
+        return self.get_results(batch_id)
+
+    def _get_failed_pr_ids(self, batch_id: str) -> list[int]:
+        """Get PR IDs that failed in a batch from the error file.
+
+        Args:
+            batch_id: Batch ID to get failures from
+
+        Returns:
+            List of PR IDs that failed
+        """
+        status = self.get_status(batch_id)
+
+        if not status.error_file_id:
+            return []
+
+        # Download and parse error file
+        error_content = self.client.files.content(status.error_file_id)
+        failed_ids = []
+
+        for line in error_content.text().strip().split("\n"):
+            if not line:
+                continue
+            try:
+                data = json.loads(line)
+                custom_id = data.get("custom_id", "")
+                if custom_id.startswith("pr-"):
+                    failed_ids.append(int(custom_id.replace("pr-", "")))
+            except (json.JSONDecodeError, ValueError):
+                continue
+
+        return failed_ids
+
+    def _merge_results(
+        self,
+        first_results: list[BatchResult],
+        retry_results: list[BatchResult],
+    ) -> list[BatchResult]:
+        """Merge results from first pass and retry pass.
+
+        Successful results from first pass are kept.
+        Failed results are replaced with retry results.
+
+        Args:
+            first_results: Results from first batch (may have errors)
+            retry_results: Results from retry batch
+
+        Returns:
+            Merged list with retry results replacing failures
+        """
+        # Build lookup for retry results
+        retry_by_pr_id = {r.pr_id: r for r in retry_results}
+
+        merged = []
+        for result in first_results:
+            if result.error and result.pr_id in retry_by_pr_id:
+                # Replace failed result with retry result
+                merged.append(retry_by_pr_id[result.pr_id])
+            else:
+                # Keep original result (success or retry also failed)
+                merged.append(result)
+
+        return merged
+
+    def submit_batch_with_fallback(
+        self,
+        prs: list[PullRequest],
+        poll_interval: int = 30,
+        on_progress: callable | None = None,
+    ) -> tuple[list[BatchResult], dict]:
+        """Submit batch with automatic retry of failures using better model.
+
+        Two-pass processing:
+        1. First pass: Use cheap DEFAULT_MODEL (openai/gpt-oss-20b)
+        2. Second pass: Retry failures with FALLBACK_MODEL (llama-3.3-70b-versatile)
+
+        Both passes use Batch API for 50% cost savings.
+
+        Args:
+            prs: List of PullRequest objects to process
+            poll_interval: Seconds between status checks (default 30)
+            on_progress: Optional callback(status) for progress updates
+
+        Returns:
+            Tuple of (results, stats) where stats contains:
+                - first_batch_id: ID of first batch
+                - retry_batch_id: ID of retry batch (None if no failures)
+                - first_pass_failures: Count of failures in first pass
+                - final_failures: Count of failures after retry
+        """
+        from apps.metrics.models import PullRequest as PRModel
+
+        stats = {
+            "first_batch_id": None,
+            "retry_batch_id": None,
+            "first_pass_failures": 0,
+            "final_failures": 0,
+        }
+
+        # Pass 1: Submit with cheap model
+        stats["first_batch_id"] = self.submit_batch(prs)
+        first_results = self._wait_for_completion(
+            stats["first_batch_id"],
+            poll_interval,
+            on_progress,
+        )
+
+        # Count failures
+        failed_pr_ids = [r.pr_id for r in first_results if r.error]
+        stats["first_pass_failures"] = len(failed_pr_ids)
+
+        if not failed_pr_ids:
+            # All succeeded, no retry needed
+            return first_results, stats
+
+        # Pass 2: Retry failures with better model (ALSO BATCH API)
+        failed_prs = list(
+            PRModel.objects.filter(id__in=failed_pr_ids)  # noqa: TEAM001
+            .select_related("author")
+            .prefetch_related("files", "commits", "reviews__reviewer", "comments__author")
+        )
+
+        # Create new processor with fallback model
+        retry_processor = GroqBatchProcessor(
+            model=self.FALLBACK_MODEL,
+            system_prompt=self.system_prompt,
+        )
+
+        stats["retry_batch_id"] = retry_processor.submit_batch(failed_prs)
+        retry_results = retry_processor._wait_for_completion(
+            stats["retry_batch_id"],
+            poll_interval,
+            on_progress,
+        )
+
+        # Merge results
+        merged_results = self._merge_results(first_results, retry_results)
+
+        # Count final failures
+        stats["final_failures"] = len([r for r in merged_results if r.error])
+
+        return merged_results, stats

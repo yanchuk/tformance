@@ -2,110 +2,115 @@
 
 Last Updated: 2025-12-26
 
-## Phase 0: Fix Model (CRITICAL)
+## Summary
 
-### Change batch model to llama-3.3-70b-versatile
+**Decision**: Implement Option B - 20B with 70B batch fallback
+**Both passes use Batch API** to maintain 50% discount
 
-- [ ] Edit `apps/integrations/services/groq_batch.py` line 301
+## Phase 0: Investigation (COMPLETED)
+
+- [x] Query Groq batch dashboard for failure stats
+- [x] Download error files from failed batches
+- [x] Analyze error patterns (93.5% JSON validation, 6.5% max tokens)
+- [x] Identify root cause (20B model can't generate complex JSON)
+- [x] Test retry with 70B model (SUCCESS)
+- [x] Research pricing ($0.0375 vs $0.30 per 1M input tokens)
+- [x] Present options to user and get approval
+
+## Phase 1: Implement Fallback Logic (COMPLETED)
+
+### Modified `apps/integrations/services/groq_batch.py`
+
+- [x] Add class constants for models:
   ```python
-  # Change from:
-  model: str = "openai/gpt-oss-20b"
-  # To:
-  model: str = "llama-3.3-70b-versatile"
+  DEFAULT_MODEL = "openai/gpt-oss-20b"
+  FALLBACK_MODEL = "llama-3.3-70b-versatile"
   ```
 
-- [ ] Test with small batch (10 PRs)
-  ```bash
-  GROQ_API_KEY=$GROQ_API_KEY python manage.py run_llm_batch --limit 10 --poll
-  ```
+- [x] Add `_wait_for_completion(batch_id, poll_interval=30)` method:
+  - Poll `get_status()` until `is_complete`
+  - Return results from `get_results()`
 
-- [ ] Verify results in Groq dashboard - failure rate should be <2%
+- [x] Add `_get_failed_pr_ids(batch_id)` method:
+  - Download error file
+  - Parse JSONL and extract pr-{id} custom_ids
+  - Return list of integer PR IDs
 
-## Phase 1: Reprocess Failed PRs
+- [x] Add `_merge_results(first_results, retry_results)` method:
+  - Keep successful results from first pass
+  - Replace failed results with retry results
+  - Return combined list
 
-### Run backfill for unprocessed PRs
+- [x] Add `submit_batch_with_fallback(prs, poll_interval=30)` method:
+  - Returns tuple of (results, stats)
+  - Stats include: first_batch_id, retry_batch_id, first_pass_failures, final_failures
 
-After model fix is verified, process remaining PRs:
+- [x] Update `__init__()` to accept optional `model` parameter
 
-- [ ] Process Cal.com (~4,147 unprocessed)
-  ```bash
-  GROQ_API_KEY=$GROQ_API_KEY python manage.py run_llm_batch --team "Cal.com" --limit 500 --poll
-  ```
+### Modified `apps/metrics/management/commands/run_llm_batch.py`
 
-- [ ] Process Antiwork (~3,083 unprocessed)
-  ```bash
-  GROQ_API_KEY=$GROQ_API_KEY python manage.py run_llm_batch --team "Antiwork" --limit 500 --poll
-  ```
+- [x] Add `--with-fallback` argument
+- [x] Add `_submit_batch_with_fallback()` method
+- [x] Add `_save_results()` method for saving results to DB
+- [x] Add progress logging for both passes
 
-- [ ] Process PostHog Analytics (~3,045 unprocessed)
-  ```bash
-  GROQ_API_KEY=$GROQ_API_KEY python manage.py run_llm_batch --team "PostHog Analytics" --limit 500 --poll
-  ```
+## Phase 2: Testing (IN PROGRESS)
 
-- [ ] Process LangChain (~2,817 unprocessed)
-- [ ] Process Neon (~1,983 unprocessed)
-- [ ] Process Deno (~1,757 unprocessed)
-- [ ] Process remaining teams with >100 unprocessed PRs
+- [x] Write unit tests for `_merge_results()` (3 tests)
+- [x] Write unit tests for `_get_failed_pr_ids()` (2 tests)
+- [x] Write unit tests for `_wait_for_completion()` (1 test)
+- [x] Write unit tests for model constants and init (3 tests)
+- [ ] **NEXT**: Test with small batch (10 PRs) with `--with-fallback`
+- [ ] Verify both batches appear in Groq dashboard
+- [ ] Check failure rate drops to <2% after retry
 
-## Phase 2: Optional Improvements
+**All 36 unit tests passing.**
 
-### Increase max_tokens (if still seeing truncation)
+## Phase 3: Backfill
 
-- [ ] Check if any new batches have "max tokens exceeded" errors
-- [ ] If >5% have truncation errors, increase max_tokens:
-  ```python
-  # Line 369 in groq_batch.py
-  "max_tokens": 2000,  # Increased from 1500
-  ```
+After implementation verified:
 
-### Add retry logic for failures
+- [ ] Run backfill for Cal.com (~4,147 unprocessed)
+- [ ] Run backfill for Antiwork (~3,083 unprocessed)
+- [ ] Run backfill for PostHog Analytics (~3,045 unprocessed)
+- [ ] Run backfill for remaining teams
 
-- [ ] Consider implementing `retry_failed_llm_batch.py` command
-- [ ] Or add automatic retry in `_download_results()` method
+## Phase 4: Verification
 
-## Phase 3: Verification
-
-- [ ] Query database to confirm all teams at >95% coverage
-  ```sql
-  SELECT t.name,
-         ROUND(100.0 * COUNT(CASE WHEN p.llm_summary IS NOT NULL THEN 1 END) / COUNT(*), 1) as pct
-  FROM metrics_pullrequest p
-  JOIN teams_team t ON t.id = p.team_id
-  WHERE p.body IS NOT NULL AND p.body != ''
-  GROUP BY t.id, t.name
-  ORDER BY pct ASC;
-  ```
-
+- [ ] Query database for >95% coverage across all teams
+- [ ] Verify Groq dashboard shows low failure rate
 - [ ] Spot check llm_summary quality
-  ```sql
-  SELECT id, title, llm_summary->'ai', llm_summary->'health'
-  FROM metrics_pullrequest
-  WHERE llm_summary IS NOT NULL
-  ORDER BY RANDOM()
-  LIMIT 10;
-  ```
 
-- [ ] Verify Groq dashboard shows <2% failure rate for new batches
+---
 
-## Summary of Findings
+## Key Technical Notes
 
-### Root Cause Identified
+### Error File Structure
+```json
+{
+  "custom_id": "pr-26313",
+  "response": {
+    "status_code": 400,
+    "body": {
+      "error": {
+        "message": "Failed to validate JSON",
+        "code": "json_validate_failed"
+      }
+    }
+  }
+}
+```
 
-| Issue | Cause | Fix |
-|-------|-------|-----|
-| 93.5% JSON validation errors | Wrong model (`openai/gpt-oss-20b`) | Change to `llama-3.3-70b-versatile` |
-| 6.5% max tokens errors | 1500 token limit | Increase to 2000 (optional) |
+### Groq API for Error Files
+```python
+from groq import Groq
+client = Groq()
+batch = client.batches.retrieve(batch_id)
+error_content = client.files.content(batch.error_file_id)
+lines = error_content.text().strip().split('\n')
+```
 
-### Validation Completed
-
-- ✅ Retrieved error files from Groq batches
-- ✅ Analyzed 836 failures across 4 batches
-- ✅ Identified model mismatch between batch and direct API
-- ✅ Tested retry with correct model - SUCCESS
-
-### Expected Outcome
-
-After model change:
-- Failure rate: **~5-58% → <2%**
-- JSON errors: **93.5% → <1%**
-- Coverage: **44.8% → >95%** (after backfill)
+### Test Command (READY TO RUN)
+```bash
+GROQ_API_KEY=$GROQ_API_KEY .venv/bin/python manage.py run_llm_batch --limit 10 --with-fallback
+```
