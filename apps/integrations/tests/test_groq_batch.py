@@ -877,6 +877,35 @@ class TestFallbackMethods(TestCase):
         # Retry result replaces original (even if still an error)
         self.assertEqual(merged[0].error, "Still failed")
 
+    def test_merge_results_adds_api_level_failures(self):
+        """Test that PRs missing from first_results (API-level failures) get retry results added."""
+        processor = GroqBatchProcessor(api_key="test-key")
+
+        # PR 1 succeeded in first pass, PR 2 and 3 failed at API level (not in results)
+        first_results = [
+            BatchResult(pr_id=1, is_ai_assisted=True, tools=["cursor"], confidence=0.9),
+        ]
+        # Retry got results for PRs 2 and 3
+        retry_results = [
+            BatchResult(pr_id=2, is_ai_assisted=True, tools=["claude"], confidence=0.85),
+            BatchResult(pr_id=3, is_ai_assisted=False, tools=[], confidence=0.95),
+        ]
+        # These were the failed PR IDs from error file
+        failed_pr_ids = [2, 3]
+
+        merged = processor._merge_results(first_results, retry_results, failed_pr_ids)
+
+        # Should have all 3 PRs: 1 from first pass, 2 and 3 from retry
+        self.assertEqual(len(merged), 3)
+        pr_ids = {r.pr_id for r in merged}
+        self.assertEqual(pr_ids, {1, 2, 3})
+
+        # Verify results
+        by_id = {r.pr_id: r for r in merged}
+        self.assertEqual(by_id[1].tools, ["cursor"])  # From first pass
+        self.assertEqual(by_id[2].tools, ["claude"])  # From retry
+        self.assertFalse(by_id[3].is_ai_assisted)  # From retry
+
     @patch("apps.integrations.services.groq_batch.Groq")
     def test_get_failed_pr_ids_from_error_file(self, mock_groq_class):
         """Test extracting failed PR IDs from error file."""

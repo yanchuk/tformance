@@ -688,21 +688,25 @@ class GroqBatchProcessor:
         self,
         first_results: list[BatchResult],
         retry_results: list[BatchResult],
+        failed_pr_ids: list[int] | None = None,
     ) -> list[BatchResult]:
         """Merge results from first pass and retry pass.
 
         Successful results from first pass are kept.
         Failed results are replaced with retry results.
+        PRs that failed at API level (not in first_results) get retry results added.
 
         Args:
-            first_results: Results from first batch (may have errors)
+            first_results: Results from first batch (may have errors or missing entries)
             retry_results: Results from retry batch
+            failed_pr_ids: Optional list of PR IDs that failed (from error file + parse errors)
 
         Returns:
-            Merged list with retry results replacing failures
+            Merged list with retry results replacing/adding failures
         """
-        # Build lookup for retry results
+        # Build lookups
         retry_by_pr_id = {r.pr_id: r for r in retry_results}
+        first_pr_ids = {r.pr_id for r in first_results}
 
         merged = []
         for result in first_results:
@@ -712,6 +716,13 @@ class GroqBatchProcessor:
             else:
                 # Keep original result (success or retry also failed)
                 merged.append(result)
+
+        # Add retry results for PRs that failed at API level
+        # (these have no entry in first_results - they're only in error file)
+        if failed_pr_ids:
+            for pr_id in failed_pr_ids:
+                if pr_id not in first_pr_ids and pr_id in retry_by_pr_id:
+                    merged.append(retry_by_pr_id[pr_id])
 
         return merged
 
@@ -789,8 +800,8 @@ class GroqBatchProcessor:
             on_progress,
         )
 
-        # Merge results
-        merged_results = self._merge_results(first_results, retry_results)
+        # Merge results - pass failed_pr_ids to include API-level failures
+        merged_results = self._merge_results(first_results, retry_results, failed_pr_ids)
 
         # Count final failures - check both error file and parse errors
         retry_error_file_failed = retry_processor._get_failed_pr_ids(stats["retry_batch_id"])
