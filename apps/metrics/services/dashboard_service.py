@@ -1241,7 +1241,7 @@ def get_ai_tool_breakdown(team: Team, start_date: date, end_date: date) -> list[
     """Get breakdown of AI tools detected in PRs.
 
     Counts how many PRs used each AI tool (claude_code, copilot, cursor, etc.)
-    based on the ai_tools_detected JSONField.
+    based on the ai_tools_detected JSONField. Includes category information.
 
     Args:
         team: Team instance
@@ -1252,8 +1252,11 @@ def get_ai_tool_breakdown(team: Team, start_date: date, end_date: date) -> list[
         list of dicts with keys:
             - tool (str): AI tool identifier
             - count (int): Number of PRs using this tool
-        Sorted by count descending.
+            - category (str | None): "code", "review", or None if excluded
+        Sorted by category then count descending.
     """
+    from apps.metrics.services.ai_categories import get_tool_category, is_excluded_tool
+
     prs = _get_merged_prs_in_range(team, start_date, end_date).filter(is_ai_assisted=True)
 
     # Count occurrences of each tool
@@ -1262,11 +1265,73 @@ def get_ai_tool_breakdown(team: Team, start_date: date, end_date: date) -> list[
         for tool in pr.ai_tools_detected:
             tool_counts[tool] = tool_counts.get(tool, 0) + 1
 
-    # Convert to list sorted by count descending
-    result = [{"tool": tool, "count": count} for tool, count in tool_counts.items()]
-    result.sort(key=lambda x: x["count"], reverse=True)
+    # Convert to list with category, excluding excluded tools
+    result = []
+    for tool, count in tool_counts.items():
+        if is_excluded_tool(tool):
+            continue  # Skip excluded tools like snyk, mintlify
+        category = get_tool_category(tool)
+        result.append({"tool": tool, "count": count, "category": category})
+
+    # Sort by category (code first, then review) then by count descending
+    category_order = {"code": 0, "review": 1}
+    result.sort(key=lambda x: (category_order.get(x["category"], 2), -x["count"]))
 
     return result
+
+
+def get_ai_category_breakdown(team: Team, start_date: date, end_date: date) -> dict:
+    """Get breakdown of PRs by AI category (code vs review).
+
+    Args:
+        team: Team instance
+        start_date: Start date (inclusive)
+        end_date: End date (inclusive)
+
+    Returns:
+        dict with keys:
+            - total_ai_prs (int): Total AI-assisted PRs
+            - code_ai_count (int): PRs with code AI tools
+            - review_ai_count (int): PRs with review AI tools
+            - both_ai_count (int): PRs with both code and review tools
+            - code_ai_pct (float): Percentage with code AI
+            - review_ai_pct (float): Percentage with review AI
+    """
+    from apps.metrics.services.ai_categories import (
+        CATEGORY_BOTH,
+        CATEGORY_CODE,
+        CATEGORY_REVIEW,
+        get_ai_category,
+    )
+
+    prs = _get_merged_prs_in_range(team, start_date, end_date).filter(is_ai_assisted=True)
+
+    code_count = 0
+    review_count = 0
+    both_count = 0
+
+    for pr in prs:
+        # Use effective_ai_tools for LLM priority
+        tools = pr.effective_ai_tools
+        category = get_ai_category(tools)
+        if category == CATEGORY_CODE:
+            code_count += 1
+        elif category == CATEGORY_REVIEW:
+            review_count += 1
+        elif category == CATEGORY_BOTH:
+            both_count += 1
+
+    total = prs.count()
+
+    return {
+        "total_ai_prs": total,
+        "code_ai_count": code_count,
+        "review_ai_count": review_count,
+        "both_ai_count": both_count,
+        "code_ai_pct": round(code_count * 100.0 / total, 1) if total > 0 else 0.0,
+        "review_ai_pct": round(review_count * 100.0 / total, 1) if total > 0 else 0.0,
+        "both_ai_pct": round(both_count * 100.0 / total, 1) if total > 0 else 0.0,
+    }
 
 
 def get_ai_bot_review_stats(team: Team, start_date: date, end_date: date) -> dict:

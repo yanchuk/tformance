@@ -535,3 +535,88 @@ class TestGetItemFilter(TestCase):
 
         # Get color directly with chained call
         self.assertEqual(get_item(get_item(pr_type_config, "bugfix"), "color"), "#F87171")
+
+
+class TestAICategoryDisplayFilter(TestCase):
+    """Tests for ai_category_display template filter."""
+
+    def test_code_tools_return_code_label(self):
+        """Test code-only tools return 'Code' label."""
+        from apps.metrics.templatetags.pr_list_tags import ai_category_display
+
+        self.assertEqual(ai_category_display(["cursor"]), "Code")
+        self.assertEqual(ai_category_display(["copilot"]), "Code")
+        self.assertEqual(ai_category_display(["claude"]), "Code")
+
+    def test_review_tools_return_review_label(self):
+        """Test review-only tools return 'Review' label."""
+        from apps.metrics.templatetags.pr_list_tags import ai_category_display
+
+        self.assertEqual(ai_category_display(["coderabbit"]), "Review")
+        self.assertEqual(ai_category_display(["cubic"]), "Review")
+
+    def test_mixed_tools_return_both_label(self):
+        """Test code and review tools return 'Both' label."""
+        from apps.metrics.templatetags.pr_list_tags import ai_category_display
+
+        self.assertEqual(ai_category_display(["cursor", "coderabbit"]), "Both")
+
+    def test_empty_list_returns_empty(self):
+        """Test empty list returns empty string."""
+        from apps.metrics.templatetags.pr_list_tags import ai_category_display
+
+        self.assertEqual(ai_category_display([]), "")
+
+    def test_none_returns_empty(self):
+        """Test None returns empty string."""
+        from apps.metrics.templatetags.pr_list_tags import ai_category_display
+
+        self.assertEqual(ai_category_display(None), "")
+
+    def test_excluded_tools_only_returns_empty(self):
+        """Test excluded tools only returns empty string."""
+        from apps.metrics.templatetags.pr_list_tags import ai_category_display
+
+        self.assertEqual(ai_category_display(["snyk"]), "")
+        self.assertEqual(ai_category_display(["mintlify"]), "")
+
+
+class TestAICategoryBadgeClassFilter(TestCase):
+    """Tests for ai_category_badge_class template filter."""
+
+    def test_code_tools_return_primary(self):
+        """Test code tools return badge-primary."""
+        from apps.metrics.templatetags.pr_list_tags import ai_category_badge_class
+
+        self.assertEqual(ai_category_badge_class(["cursor"]), "badge-primary")
+        self.assertEqual(ai_category_badge_class(["copilot"]), "badge-primary")
+
+    def test_review_tools_return_secondary(self):
+        """Test review tools return badge-secondary."""
+        from apps.metrics.templatetags.pr_list_tags import ai_category_badge_class
+
+        self.assertEqual(ai_category_badge_class(["coderabbit"]), "badge-secondary")
+
+    def test_mixed_tools_return_accent(self):
+        """Test code and review tools return badge-accent."""
+        from apps.metrics.templatetags.pr_list_tags import ai_category_badge_class
+
+        self.assertEqual(ai_category_badge_class(["cursor", "coderabbit"]), "badge-accent")
+
+    def test_empty_list_returns_ghost(self):
+        """Test empty list returns badge-ghost."""
+        from apps.metrics.templatetags.pr_list_tags import ai_category_badge_class
+
+        self.assertEqual(ai_category_badge_class([]), "badge-ghost")
+
+    def test_none_returns_ghost(self):
+        """Test None returns badge-ghost."""
+        from apps.metrics.templatetags.pr_list_tags import ai_category_badge_class
+
+        self.assertEqual(ai_category_badge_class(None), "badge-ghost")
+
+    def test_excluded_tools_only_returns_ghost(self):
+        """Test excluded tools only returns badge-ghost."""
+        from apps.metrics.templatetags.pr_list_tags import ai_category_badge_class
+
+        self.assertEqual(ai_category_badge_class(["snyk"]), "badge-ghost")

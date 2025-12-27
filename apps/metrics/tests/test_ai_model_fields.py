@@ -124,3 +124,92 @@ class TestCommitAIFields(TestCase):
         """Commit ai_co_authors should default to empty list."""
         commit = CommitFactory()
         self.assertEqual(commit.ai_co_authors, [])
+
+
+class TestPullRequestAICategoryProperties(TestCase):
+    """Tests for AI category computed properties on PullRequest model."""
+
+    def test_ai_code_tools_with_code_tools(self):
+        """ai_code_tools should return only code-category tools."""
+        pr = PullRequestFactory(
+            state="merged",
+            ai_tools_detected=["cursor", "coderabbit", "copilot"],
+        )
+        self.assertEqual(set(pr.ai_code_tools), {"cursor", "copilot"})
+
+    def test_ai_code_tools_empty_when_only_review_tools(self):
+        """ai_code_tools should be empty when only review tools detected."""
+        pr = PullRequestFactory(
+            state="merged",
+            ai_tools_detected=["coderabbit", "cubic"],
+        )
+        self.assertEqual(pr.ai_code_tools, [])
+
+    def test_ai_code_tools_empty_when_no_tools(self):
+        """ai_code_tools should be empty when no tools detected."""
+        pr = PullRequestFactory(state="merged", ai_tools_detected=[])
+        self.assertEqual(pr.ai_code_tools, [])
+
+    def test_ai_review_tools_with_review_tools(self):
+        """ai_review_tools should return only review-category tools."""
+        pr = PullRequestFactory(
+            state="merged",
+            ai_tools_detected=["cursor", "coderabbit", "greptile"],
+        )
+        self.assertEqual(set(pr.ai_review_tools), {"coderabbit", "greptile"})
+
+    def test_ai_review_tools_empty_when_only_code_tools(self):
+        """ai_review_tools should be empty when only code tools detected."""
+        pr = PullRequestFactory(
+            state="merged",
+            ai_tools_detected=["cursor", "copilot"],
+        )
+        self.assertEqual(pr.ai_review_tools, [])
+
+    def test_ai_category_code_only(self):
+        """ai_category should return 'code' when only code tools."""
+        pr = PullRequestFactory(
+            state="merged",
+            ai_tools_detected=["cursor", "copilot"],
+        )
+        self.assertEqual(pr.ai_category, "code")
+
+    def test_ai_category_review_only(self):
+        """ai_category should return 'review' when only review tools."""
+        pr = PullRequestFactory(
+            state="merged",
+            ai_tools_detected=["coderabbit", "cubic"],
+        )
+        self.assertEqual(pr.ai_category, "review")
+
+    def test_ai_category_both(self):
+        """ai_category should return 'both' when code and review tools."""
+        pr = PullRequestFactory(
+            state="merged",
+            ai_tools_detected=["cursor", "coderabbit"],
+        )
+        self.assertEqual(pr.ai_category, "both")
+
+    def test_ai_category_none_when_no_tools(self):
+        """ai_category should return None when no tools detected."""
+        pr = PullRequestFactory(state="merged", ai_tools_detected=[])
+        self.assertIsNone(pr.ai_category)
+
+    def test_ai_category_uses_effective_ai_tools(self):
+        """ai_category should prioritize LLM tools over regex detection."""
+        # PR with regex-detected tools but LLM summary with different tools
+        pr = PullRequestFactory(
+            state="merged",
+            ai_tools_detected=["coderabbit"],  # review tool from regex
+            llm_summary={"ai": {"tools": ["cursor"], "is_assisted": True}},  # code tool from LLM
+        )
+        # Should use LLM tools (cursor = code), not regex tools (coderabbit = review)
+        self.assertEqual(pr.ai_category, "code")
+
+    def test_ai_category_excludes_excluded_tools(self):
+        """ai_category should return None when only excluded tools."""
+        pr = PullRequestFactory(
+            state="merged",
+            ai_tools_detected=["snyk", "mintlify"],
+        )
+        self.assertIsNone(pr.ai_category)

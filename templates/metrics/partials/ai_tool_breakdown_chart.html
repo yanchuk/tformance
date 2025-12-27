@@ -1,40 +1,78 @@
 {% load i18n %}
 
 {% if chart_data %}
-<div class="space-y-3">
-  {% for item in chart_data %}
-  <div class="flex items-center gap-3">
-    <div class="w-28 text-sm text-base-content/80 truncate" title="{{ item.tool }}">
-      {% if item.tool == "claude_code" %}
-        Claude Code
-      {% elif item.tool == "copilot" %}
-        GitHub Copilot
-      {% elif item.tool == "cursor" %}
-        Cursor
-      {% elif item.tool == "cody" %}
-        Sourcegraph Cody
-      {% elif item.tool == "windsurf" %}
-        Windsurf
-      {% elif item.tool == "aider" %}
-        Aider
-      {% elif item.tool == "tabnine" %}
-        Tabnine
-      {% elif item.tool == "codewhisperer" %}
-        CodeWhisperer
-      {% elif item.tool == "amazon_q" %}
-        Amazon Q
-      {% elif item.tool == "ai_generic" %}
-        Generic AI
+<div class="space-y-4">
+  {% regroup chart_data by category as category_list %}
+  {% for category in category_list %}
+  <div class="space-y-2">
+    <!-- Category Header -->
+    <div class="flex items-center gap-2 mb-2">
+      {% if category.grouper == "code" %}
+        <span class="badge badge-primary badge-sm">{% trans "Code AI" %}</span>
+      {% elif category.grouper == "review" %}
+        <span class="badge badge-secondary badge-sm">{% trans "Review AI" %}</span>
       {% else %}
-        {{ item.tool }}
+        <span class="badge badge-ghost badge-sm">{% trans "Other" %}</span>
       {% endif %}
     </div>
-    <div class="flex-1">
-      <progress class="progress progress-primary w-full" value="{{ item.count }}" max="{{ chart_data.0.count }}"></progress>
+    <!-- Tools in this category -->
+    {% for item in category.list %}
+    <div class="flex items-center gap-3">
+      <div class="w-28 text-sm text-base-content/80 truncate" title="{{ item.tool }}">
+        {% if item.tool == "claude_code" %}
+          Claude Code
+        {% elif item.tool == "claude" %}
+          Claude
+        {% elif item.tool == "copilot" %}
+          GitHub Copilot
+        {% elif item.tool == "cursor" %}
+          Cursor
+        {% elif item.tool == "cody" %}
+          Sourcegraph Cody
+        {% elif item.tool == "windsurf" %}
+          Windsurf
+        {% elif item.tool == "aider" %}
+          Aider
+        {% elif item.tool == "tabnine" %}
+          Tabnine
+        {% elif item.tool == "codewhisperer" %}
+          CodeWhisperer
+        {% elif item.tool == "amazon_q" %}
+          Amazon Q
+        {% elif item.tool == "ai_generic" %}
+          Generic AI
+        {% elif item.tool == "coderabbit" %}
+          CodeRabbit
+        {% elif item.tool == "cubic" %}
+          Cubic
+        {% elif item.tool == "greptile" %}
+          Greptile
+        {% elif item.tool == "sourcery" %}
+          Sourcery
+        {% elif item.tool == "devin" %}
+          Devin
+        {% elif item.tool == "chatgpt" %}
+          ChatGPT
+        {% elif item.tool == "gemini" %}
+          Gemini
+        {% else %}
+          {{ item.tool }}
+        {% endif %}
+      </div>
+      <div class="flex-1">
+        {% if item.category == "code" %}
+          <progress class="progress progress-primary w-full" value="{{ item.count }}" max="{{ chart_data.0.count }}"></progress>
+        {% elif item.category == "review" %}
+          <progress class="progress progress-secondary w-full" value="{{ item.count }}" max="{{ chart_data.0.count }}"></progress>
+        {% else %}
+          <progress class="progress w-full" value="{{ item.count }}" max="{{ chart_data.0.count }}"></progress>
+        {% endif %}
+      </div>
+      <div class="w-12 text-right text-sm font-mono text-base-content">
+        {{ item.count }}
+      </div>
     </div>
-    <div class="w-12 text-right text-sm font-mono text-base-content">
-      {{ item.count }}
-    </div>
+    {% endfor %}
   </div>
   {% endfor %}
 </div>

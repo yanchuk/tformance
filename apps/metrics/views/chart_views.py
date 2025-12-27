@@ -528,7 +528,9 @@ def benchmark_panel(request: HttpRequest, metric: str) -> HttpResponse:
     if result["team_value"] is not None:
         result["team_value"] = float(result["team_value"])
     if result.get("benchmark"):
-        result["benchmark"] = {k: float(v) if isinstance(v, (int, float)) else v for k, v in result["benchmark"].items()}
+        result["benchmark"] = {
+            k: float(v) if isinstance(v, (int, float)) else v for k, v in result["benchmark"].items()
+        }
 
     # Add unit based on metric type
     unit_map = {

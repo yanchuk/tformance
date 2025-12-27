@@ -822,3 +822,294 @@ class TestEffectiveAIDetection(TestCase):
         result = pr.effective_ai_tools
 
         self.assertEqual(result, [])
+
+
+class TestAICategoryFilter(TestCase):
+    """Tests for AI category filter in PR list."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.team = TeamFactory()
+        self.member = TeamMemberFactory(team=self.team)
+
+    def test_filter_by_ai_category_code(self):
+        """Test filtering for PRs with code AI tools only."""
+        # PR with code tool
+        pr_code = PullRequestFactory(
+            team=self.team,
+            author=self.member,
+            is_ai_assisted=True,
+            ai_tools_detected=["cursor", "copilot"],
+        )
+        # PR with review tool
+        PullRequestFactory(
+            team=self.team,
+            author=self.member,
+            is_ai_assisted=True,
+            ai_tools_detected=["coderabbit"],
+        )
+        # PR with no AI
+        PullRequestFactory(team=self.team, author=self.member, is_ai_assisted=False)
+
+        result = get_prs_queryset(self.team, {"ai_category": "code"})
+
+        self.assertEqual(result.count(), 1)
+        self.assertEqual(result.first().id, pr_code.id)
+
+    def test_filter_by_ai_category_review(self):
+        """Test filtering for PRs with review AI tools only."""
+        # PR with code tool
+        PullRequestFactory(
+            team=self.team,
+            author=self.member,
+            is_ai_assisted=True,
+            ai_tools_detected=["cursor"],
+        )
+        # PR with review tool
+        pr_review = PullRequestFactory(
+            team=self.team,
+            author=self.member,
+            is_ai_assisted=True,
+            ai_tools_detected=["coderabbit", "greptile"],
+        )
+        # PR with no AI
+        PullRequestFactory(team=self.team, author=self.member, is_ai_assisted=False)
+
+        result = get_prs_queryset(self.team, {"ai_category": "review"})
+
+        self.assertEqual(result.count(), 1)
+        self.assertEqual(result.first().id, pr_review.id)
+
+    def test_filter_by_ai_category_both(self):
+        """Test filtering for PRs with both code and review AI tools."""
+        # PR with code only
+        PullRequestFactory(
+            team=self.team,
+            author=self.member,
+            is_ai_assisted=True,
+            ai_tools_detected=["cursor"],
+        )
+        # PR with review only
+        PullRequestFactory(
+            team=self.team,
+            author=self.member,
+            is_ai_assisted=True,
+            ai_tools_detected=["coderabbit"],
+        )
+        # PR with both
+        pr_both = PullRequestFactory(
+            team=self.team,
+            author=self.member,
+            is_ai_assisted=True,
+            ai_tools_detected=["cursor", "coderabbit"],
+        )
+
+        result = get_prs_queryset(self.team, {"ai_category": "both"})
+
+        self.assertEqual(result.count(), 1)
+        self.assertEqual(result.first().id, pr_both.id)
+
+    def test_filter_ai_category_excludes_excluded_tools(self):
+        """Test that excluded tools (snyk, mintlify) don't count as AI."""
+        # PR with only excluded tools
+        PullRequestFactory(
+            team=self.team,
+            author=self.member,
+            is_ai_assisted=True,
+            ai_tools_detected=["snyk", "mintlify"],
+        )
+        # PR with code tool
+        pr_code = PullRequestFactory(
+            team=self.team,
+            author=self.member,
+            is_ai_assisted=True,
+            ai_tools_detected=["cursor"],
+        )
+
+        result = get_prs_queryset(self.team, {"ai_category": "code"})
+
+        self.assertEqual(result.count(), 1)
+        self.assertEqual(result.first().id, pr_code.id)
+
+    def test_filter_ai_category_with_llm_priority(self):
+        """Test that ai_category filter uses effective_ai_tools (LLM priority)."""
+        # PR with regex=coderabbit but LLM=cursor (LLM should win)
+        pr = PullRequestFactory(
+            team=self.team,
+            author=self.member,
+            is_ai_assisted=True,
+            ai_tools_detected=["coderabbit"],  # Review tool from regex
+            llm_summary={"ai": {"is_assisted": True, "tools": ["cursor"], "confidence": 0.9}},
+        )
+
+        result = get_prs_queryset(self.team, {"ai_category": "code"})
+
+        # Should find PR because LLM says "cursor" (code tool)
+        self.assertEqual(result.count(), 1)
+        self.assertEqual(result.first().id, pr.id)
+
+    def test_filter_ai_category_combined_with_other_filters(self):
+        """Test ai_category filter works with other filters."""
+        # PR with code tool in repo-a
+        pr1 = PullRequestFactory(
+            team=self.team,
+            author=self.member,
+            github_repo="org/repo-a",
+            is_ai_assisted=True,
+            ai_tools_detected=["cursor"],
+            state="merged",
+        )
+        # PR with code tool in repo-b
+        PullRequestFactory(
+            team=self.team,
+            author=self.member,
+            github_repo="org/repo-b",
+            is_ai_assisted=True,
+            ai_tools_detected=["copilot"],
+            state="merged",
+        )
+
+        result = get_prs_queryset(
+            self.team,
+            {"ai_category": "code", "repo": "org/repo-a"},
+        )
+
+        self.assertEqual(result.count(), 1)
+        self.assertEqual(result.first().id, pr1.id)
+
+
+class TestAICategoryFilterOptions(TestCase):
+    """Tests for ai_categories in get_filter_options."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.team = TeamFactory()
+
+    def test_filter_options_includes_ai_categories(self):
+        """Test that get_filter_options returns ai_categories."""
+        options = get_filter_options(self.team)
+
+        self.assertIn("ai_categories", options)
+
+    def test_ai_categories_has_all_options(self):
+        """Test that ai_categories includes code, review, and both."""
+        options = get_filter_options(self.team)
+
+        category_values = [cat["value"] for cat in options["ai_categories"]]
+        self.assertIn("code", category_values)
+        self.assertIn("review", category_values)
+        self.assertIn("both", category_values)
+
+    def test_ai_categories_has_display_labels(self):
+        """Test that ai_categories has human-readable labels."""
+        options = get_filter_options(self.team)
+
+        for cat in options["ai_categories"]:
+            self.assertIn("value", cat)
+            self.assertIn("label", cat)
+            # Labels should be non-empty
+            self.assertTrue(cat["label"])
+
+
+class TestAICategoryStats(TestCase):
+    """Tests for AI category counts in get_pr_stats."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.team = TeamFactory()
+        self.member = TeamMemberFactory(team=self.team)
+
+    def test_stats_includes_code_ai_count(self):
+        """Test that stats include code AI PR count."""
+        PullRequestFactory(
+            team=self.team,
+            is_ai_assisted=True,
+            ai_tools_detected=["cursor"],
+        )
+        PullRequestFactory(
+            team=self.team,
+            is_ai_assisted=True,
+            ai_tools_detected=["copilot"],
+        )
+        PullRequestFactory(
+            team=self.team,
+            is_ai_assisted=True,
+            ai_tools_detected=["coderabbit"],  # Review
+        )
+
+        qs = get_prs_queryset(self.team, {})
+        stats = get_pr_stats(qs)
+
+        self.assertIn("code_ai_count", stats)
+        self.assertEqual(stats["code_ai_count"], 2)
+
+    def test_stats_includes_review_ai_count(self):
+        """Test that stats include review AI PR count."""
+        PullRequestFactory(
+            team=self.team,
+            is_ai_assisted=True,
+            ai_tools_detected=["coderabbit"],
+        )
+        PullRequestFactory(
+            team=self.team,
+            is_ai_assisted=True,
+            ai_tools_detected=["greptile"],
+        )
+        PullRequestFactory(
+            team=self.team,
+            is_ai_assisted=True,
+            ai_tools_detected=["cursor"],  # Code
+        )
+
+        qs = get_prs_queryset(self.team, {})
+        stats = get_pr_stats(qs)
+
+        self.assertIn("review_ai_count", stats)
+        self.assertEqual(stats["review_ai_count"], 2)
+
+    def test_stats_includes_both_ai_count(self):
+        """Test that stats include 'both' category count."""
+        PullRequestFactory(
+            team=self.team,
+            is_ai_assisted=True,
+            ai_tools_detected=["cursor", "coderabbit"],  # Both
+        )
+        PullRequestFactory(
+            team=self.team,
+            is_ai_assisted=True,
+            ai_tools_detected=["cursor"],  # Code only
+        )
+
+        qs = get_prs_queryset(self.team, {})
+        stats = get_pr_stats(qs)
+
+        self.assertIn("both_ai_count", stats)
+        self.assertEqual(stats["both_ai_count"], 1)
+
+    def test_stats_category_counts_exclude_excluded_tools(self):
+        """Test that category counts exclude non-AI tools like snyk."""
+        PullRequestFactory(
+            team=self.team,
+            is_ai_assisted=True,
+            ai_tools_detected=["snyk"],  # Excluded
+        )
+        PullRequestFactory(
+            team=self.team,
+            is_ai_assisted=True,
+            ai_tools_detected=["cursor"],  # Code
+        )
+
+        qs = get_prs_queryset(self.team, {})
+        stats = get_pr_stats(qs)
+
+        self.assertEqual(stats["code_ai_count"], 1)
+        # The snyk-only PR shouldn't count in any category
+
+    def test_stats_empty_queryset_has_zero_category_counts(self):
+        """Test that empty queryset has zero category counts."""
+        qs = get_prs_queryset(self.team, {})
+        stats = get_pr_stats(qs)
+
+        self.assertEqual(stats["code_ai_count"], 0)
+        self.assertEqual(stats["review_ai_count"], 0)
+        self.assertEqual(stats["both_ai_count"], 0)

@@ -119,6 +119,17 @@
             {% endif %}
           {% endwith %}
 
+          {% with tools=pr.effective_ai_tools %}
+            {% if tools %}
+              <div class="flex items-center gap-2">
+                <span class="text-xs text-base-content/50">{% trans "Category:" %}</span>
+                <span class="badge {{ tools|ai_category_badge_class }} badge-sm">
+                  {{ tools|ai_category_display }} {% trans "AI" %}
+                </span>
+              </div>
+            {% endif %}
+          {% endwith %}
+
           {% with ai_tools=pr|llm_ai_tools %}
             {% if ai_tools %}
               <div class="flex items-center gap-2 flex-wrap">

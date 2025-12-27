@@ -46,6 +46,7 @@ def _get_filters_from_request(request: HttpRequest, default_days: int = 30) -> d
         "reviewer",
         "ai",
         "ai_tool",
+        "ai_category",
         "size",
         "state",
         "has_jira",

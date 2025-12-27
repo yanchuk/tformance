@@ -212,3 +212,229 @@ class TestGetAIQualityComparison(TestCase):
 
         self.assertIsNotNone(result["ai_avg"])
         self.assertIsNone(result["non_ai_avg"])
+
+
+class TestGetAIToolBreakdown(TestCase):
+    """Tests for get_ai_tool_breakdown function with category support."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.team = TeamFactory()
+        self.start_date = date(2024, 1, 1)
+        self.end_date = date(2024, 1, 31)
+
+    def test_returns_list_of_dicts_with_category(self):
+        """Test that tool breakdown includes category for each tool."""
+        PullRequestFactory(
+            team=self.team,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 10, 12, 0)),
+            is_ai_assisted=True,
+            ai_tools_detected=["cursor"],
+        )
+
+        result = dashboard_service.get_ai_tool_breakdown(self.team, self.start_date, self.end_date)
+
+        self.assertEqual(len(result), 1)
+        self.assertIn("tool", result[0])
+        self.assertIn("count", result[0])
+        self.assertIn("category", result[0])
+        self.assertEqual(result[0]["category"], "code")
+
+    def test_code_tools_have_code_category(self):
+        """Test that code tools are categorized as 'code'."""
+        PullRequestFactory(
+            team=self.team,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 10, 12, 0)),
+            is_ai_assisted=True,
+            ai_tools_detected=["cursor", "copilot", "claude"],
+        )
+
+        result = dashboard_service.get_ai_tool_breakdown(self.team, self.start_date, self.end_date)
+
+        for item in result:
+            self.assertEqual(item["category"], "code")
+
+    def test_review_tools_have_review_category(self):
+        """Test that review tools are categorized as 'review'."""
+        PullRequestFactory(
+            team=self.team,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 10, 12, 0)),
+            is_ai_assisted=True,
+            ai_tools_detected=["coderabbit", "greptile"],
+        )
+
+        result = dashboard_service.get_ai_tool_breakdown(self.team, self.start_date, self.end_date)
+
+        for item in result:
+            self.assertEqual(item["category"], "review")
+
+    def test_excludes_excluded_tools(self):
+        """Test that excluded tools (snyk, mintlify) are not included."""
+        PullRequestFactory(
+            team=self.team,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 10, 12, 0)),
+            is_ai_assisted=True,
+            ai_tools_detected=["cursor", "snyk", "mintlify"],
+        )
+
+        result = dashboard_service.get_ai_tool_breakdown(self.team, self.start_date, self.end_date)
+
+        # Should only have cursor, not snyk or mintlify
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["tool"], "cursor")
+
+    def test_sorts_by_category_then_count(self):
+        """Test that results are sorted by category (code first) then by count."""
+        # Multiple PRs with different tools
+        for _ in range(3):
+            PullRequestFactory(
+                team=self.team,
+                state="merged",
+                merged_at=timezone.make_aware(timezone.datetime(2024, 1, 10, 12, 0)),
+                is_ai_assisted=True,
+                ai_tools_detected=["cursor"],
+            )
+        for _ in range(5):
+            PullRequestFactory(
+                team=self.team,
+                state="merged",
+                merged_at=timezone.make_aware(timezone.datetime(2024, 1, 11, 12, 0)),
+                is_ai_assisted=True,
+                ai_tools_detected=["coderabbit"],
+            )
+
+        result = dashboard_service.get_ai_tool_breakdown(self.team, self.start_date, self.end_date)
+
+        # Code tools should come first even if review tool has higher count
+        self.assertEqual(result[0]["category"], "code")
+        self.assertEqual(result[0]["tool"], "cursor")
+        self.assertEqual(result[1]["category"], "review")
+        self.assertEqual(result[1]["tool"], "coderabbit")
+
+
+class TestGetAICategoryBreakdown(TestCase):
+    """Tests for get_ai_category_breakdown function."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.team = TeamFactory()
+        self.start_date = date(2024, 1, 1)
+        self.end_date = date(2024, 1, 31)
+
+    def test_returns_category_counts(self):
+        """Test that category breakdown returns all expected keys."""
+        result = dashboard_service.get_ai_category_breakdown(self.team, self.start_date, self.end_date)
+
+        self.assertIn("total_ai_prs", result)
+        self.assertIn("code_ai_count", result)
+        self.assertIn("review_ai_count", result)
+        self.assertIn("both_ai_count", result)
+        self.assertIn("code_ai_pct", result)
+        self.assertIn("review_ai_pct", result)
+
+    def test_counts_code_ai_prs(self):
+        """Test that PRs with code tools are counted in code_ai_count."""
+        PullRequestFactory(
+            team=self.team,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 10, 12, 0)),
+            is_ai_assisted=True,
+            ai_tools_detected=["cursor"],
+        )
+        PullRequestFactory(
+            team=self.team,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 11, 12, 0)),
+            is_ai_assisted=True,
+            ai_tools_detected=["copilot"],
+        )
+
+        result = dashboard_service.get_ai_category_breakdown(self.team, self.start_date, self.end_date)
+
+        self.assertEqual(result["code_ai_count"], 2)
+        self.assertEqual(result["review_ai_count"], 0)
+        self.assertEqual(result["both_ai_count"], 0)
+
+    def test_counts_review_ai_prs(self):
+        """Test that PRs with review tools are counted in review_ai_count."""
+        PullRequestFactory(
+            team=self.team,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 10, 12, 0)),
+            is_ai_assisted=True,
+            ai_tools_detected=["coderabbit"],
+        )
+
+        result = dashboard_service.get_ai_category_breakdown(self.team, self.start_date, self.end_date)
+
+        self.assertEqual(result["code_ai_count"], 0)
+        self.assertEqual(result["review_ai_count"], 1)
+        self.assertEqual(result["both_ai_count"], 0)
+
+    def test_counts_both_ai_prs(self):
+        """Test that PRs with both code and review tools are counted in both_ai_count."""
+        PullRequestFactory(
+            team=self.team,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 10, 12, 0)),
+            is_ai_assisted=True,
+            ai_tools_detected=["cursor", "coderabbit"],
+        )
+
+        result = dashboard_service.get_ai_category_breakdown(self.team, self.start_date, self.end_date)
+
+        self.assertEqual(result["code_ai_count"], 0)
+        self.assertEqual(result["review_ai_count"], 0)
+        self.assertEqual(result["both_ai_count"], 1)
+
+    def test_calculates_percentages(self):
+        """Test that percentages are calculated correctly."""
+        # 2 code, 1 review, 1 both = 4 total
+        PullRequestFactory(
+            team=self.team,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 10, 12, 0)),
+            is_ai_assisted=True,
+            ai_tools_detected=["cursor"],
+        )
+        PullRequestFactory(
+            team=self.team,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 11, 12, 0)),
+            is_ai_assisted=True,
+            ai_tools_detected=["copilot"],
+        )
+        PullRequestFactory(
+            team=self.team,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 12, 12, 0)),
+            is_ai_assisted=True,
+            ai_tools_detected=["coderabbit"],
+        )
+        PullRequestFactory(
+            team=self.team,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 13, 12, 0)),
+            is_ai_assisted=True,
+            ai_tools_detected=["cursor", "coderabbit"],
+        )
+
+        result = dashboard_service.get_ai_category_breakdown(self.team, self.start_date, self.end_date)
+
+        self.assertEqual(result["total_ai_prs"], 4)
+        self.assertEqual(result["code_ai_pct"], 50.0)  # 2/4
+        self.assertEqual(result["review_ai_pct"], 25.0)  # 1/4
+
+    def test_handles_empty_data(self):
+        """Test that empty data returns zeros."""
+        result = dashboard_service.get_ai_category_breakdown(self.team, self.start_date, self.end_date)
+
+        self.assertEqual(result["total_ai_prs"], 0)
+        self.assertEqual(result["code_ai_count"], 0)
+        self.assertEqual(result["review_ai_count"], 0)
+        self.assertEqual(result["both_ai_count"], 0)
+        self.assertEqual(result["code_ai_pct"], 0.0)

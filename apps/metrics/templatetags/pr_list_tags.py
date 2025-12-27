@@ -2,6 +2,12 @@
 
 from django import template
 
+from apps.metrics.services.ai_categories import (
+    CATEGORY_BOTH,
+    CATEGORY_CODE,
+    CATEGORY_REVIEW,
+    get_ai_category,
+)
 from apps.metrics.services.ai_patterns import get_ai_tool_display_name
 from apps.metrics.services.pr_list_service import calculate_pr_size_bucket
 
@@ -391,6 +397,55 @@ AI_USAGE_TYPE_CONFIG = {
     "reviewed": {"label": "AI Reviewed", "class": "badge-info"},
     "brainstorm": {"label": "Brainstorming", "class": "badge-ghost"},
 }
+
+# AI Category display configuration (Code AI vs Review AI)
+AI_CATEGORY_CONFIG = {
+    CATEGORY_CODE: {"label": "Code", "class": "badge-primary"},
+    CATEGORY_REVIEW: {"label": "Review", "class": "badge-secondary"},
+    CATEGORY_BOTH: {"label": "Both", "class": "badge-accent"},
+}
+
+
+@register.filter
+def ai_category_display(tools: list | None) -> str:
+    """Get display label for AI category based on tools.
+
+    Args:
+        tools: List of AI tool identifiers
+
+    Returns:
+        Category label: 'Code', 'Review', 'Both', or ''
+
+    Usage:
+        {{ pr.effective_ai_tools|ai_category_display }}
+    """
+    if not tools:
+        return ""
+    category = get_ai_category(tools)
+    if not category:
+        return ""
+    return AI_CATEGORY_CONFIG.get(category, {}).get("label", "")
+
+
+@register.filter
+def ai_category_badge_class(tools: list | None) -> str:
+    """Get DaisyUI badge class for AI category based on tools.
+
+    Args:
+        tools: List of AI tool identifiers
+
+    Returns:
+        DaisyUI badge class (e.g., 'badge-primary', 'badge-secondary')
+
+    Usage:
+        <span class="badge {{ pr.effective_ai_tools|ai_category_badge_class }}">...</span>
+    """
+    if not tools:
+        return "badge-ghost"
+    category = get_ai_category(tools)
+    if not category:
+        return "badge-ghost"
+    return AI_CATEGORY_CONFIG.get(category, {}).get("class", "badge-ghost")
 
 
 @register.filter

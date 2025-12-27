@@ -146,19 +146,16 @@
           {{ pr.total_comments|default:0 }}
         </td>
         <td class="text-center">
-          {# AI confidence indicator with signal breakdown tooltip #}
-          {% with level=pr.ai_confidence_score|ai_confidence_level %}
-            {% if level %}
-              <div class="tooltip" data-tip="{{ pr.ai_signals|ai_signals_tooltip }}">
-                <span class="badge {{ level|ai_confidence_badge_class }} badge-sm cursor-help">
-                  {% if level == 'high' %}{% trans "High" %}{% elif level == 'medium' %}{% trans "Med" %}{% else %}{% trans "Low" %}{% endif %}
-                </span>
-              </div>
-            {% elif pr.effective_is_ai_assisted %}
-              {# Fallback for PRs without confidence score but with old detection #}
-              <span class="badge badge-primary badge-sm" title="{{ pr.effective_ai_tools|ai_tools_display }}">
-                {% trans "Yes" %}
-              </span>
+          {# AI category indicator with confidence and tooltip #}
+          {% with tools=pr.effective_ai_tools %}
+            {% if tools %}
+              {% with category_label=tools|ai_category_display %}
+                <div class="tooltip cursor-help" data-tip="{{ tools|ai_tools_display }}">
+                  <span class="badge {{ tools|ai_category_badge_class }} badge-xs">
+                    {{ category_label }}
+                  </span>
+                </div>
+              {% endwith %}
             {% else %}
               <span class="text-base-content/50">-</span>
             {% endif %}

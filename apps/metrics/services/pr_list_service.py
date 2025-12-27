@@ -7,6 +7,15 @@ from django.contrib.postgres.aggregates import ArrayAgg
 from django.db.models import Avg, Count, Exists, F, OuterRef, Q, QuerySet, Subquery, Sum, Value
 
 from apps.metrics.models import PRFile, PRReview, PullRequest
+from apps.metrics.services.ai_categories import (
+    AI_CATEGORY_DISPLAY_NAMES,
+    CATEGORY_BOTH,
+    CATEGORY_CODE,
+    CATEGORY_REVIEW,
+    CODE_TOOLS,
+    MIXED_TOOLS,
+    REVIEW_TOOLS,
+)
 from apps.teams.models import Team
 
 # PR size buckets: (min_lines, max_lines) - max is inclusive, None means no upper limit
@@ -149,6 +158,11 @@ def get_prs_queryset(team: Team, filters: dict[str, Any]) -> QuerySet[PullReques
     if filters.get("ai_tool"):
         qs = qs.filter(ai_tools_detected__contains=[filters["ai_tool"]])
 
+    # Filter by AI category (code, review, or both)
+    ai_category = filters.get("ai_category")
+    if ai_category:
+        qs = _apply_ai_category_filter(qs, ai_category)
+
     # Filter by PR size using annotate with F expressions (modern Django ORM)
     size = filters.get("size")
     if size and size in PR_SIZE_BUCKETS:
@@ -224,6 +238,9 @@ def get_pr_stats(queryset: QuerySet[PullRequest]) -> dict[str, Any]:
             - total_additions: Total lines added
             - total_deletions: Total lines deleted
             - ai_assisted_count: Number of AI-assisted PRs
+            - code_ai_count: Number of PRs with code AI tools
+            - review_ai_count: Number of PRs with review AI tools
+            - both_ai_count: Number of PRs with both code and review AI tools
     """
     stats = queryset.aggregate(
         total_count=Count("id"),
@@ -239,6 +256,45 @@ def get_pr_stats(queryset: QuerySet[PullRequest]) -> dict[str, Any]:
         stats["total_additions"] = 0
         stats["total_deletions"] = 0
         stats["ai_assisted_count"] = 0
+        stats["code_ai_count"] = 0
+        stats["review_ai_count"] = 0
+        stats["both_ai_count"] = 0
+        return stats
+
+    # Count PRs by AI category
+    # This requires Python-level evaluation because ai_category is computed
+    # from effective_ai_tools which considers LLM priority
+    from apps.metrics.services.ai_categories import get_ai_category
+
+    code_count = 0
+    review_count = 0
+    both_count = 0
+
+    # Only check AI-assisted PRs to avoid iterating all PRs
+    ai_prs = queryset.filter(is_ai_assisted=True).values_list("ai_tools_detected", "llm_summary", named=True)
+
+    for pr in ai_prs:
+        # Determine effective tools (LLM priority)
+        tools = []
+        if pr.llm_summary and pr.llm_summary.get("ai", {}).get("tools"):
+            llm_ai = pr.llm_summary.get("ai", {})
+            confidence = llm_ai.get("confidence", 0)
+            if confidence >= 0.5 and llm_ai.get("tools"):
+                tools = llm_ai["tools"]
+        if not tools and pr.ai_tools_detected:
+            tools = pr.ai_tools_detected
+
+        category = get_ai_category(tools)
+        if category == CATEGORY_CODE:
+            code_count += 1
+        elif category == CATEGORY_REVIEW:
+            review_count += 1
+        elif category == CATEGORY_BOTH:
+            both_count += 1
+
+    stats["code_ai_count"] = code_count
+    stats["review_ai_count"] = review_count
+    stats["both_ai_count"] = both_count
 
     return stats
 
@@ -300,11 +356,19 @@ def get_filter_options(team: Team) -> dict[str, Any]:
     ]
     tech_categories.extend(llm_only_categories)
 
+    # AI categories for filtering
+    ai_categories = [
+        {"value": CATEGORY_CODE, "label": AI_CATEGORY_DISPLAY_NAMES.get(CATEGORY_CODE, "Code AI")},
+        {"value": CATEGORY_REVIEW, "label": AI_CATEGORY_DISPLAY_NAMES.get(CATEGORY_REVIEW, "Review AI")},
+        {"value": CATEGORY_BOTH, "label": AI_CATEGORY_DISPLAY_NAMES.get(CATEGORY_BOTH, "Code + Review AI")},
+    ]
+
     return {
         "repos": repos,
         "authors": authors,
         "reviewers": reviewers,
         "ai_tools": ai_tools,
+        "ai_categories": ai_categories,
         "size_buckets": PR_SIZE_BUCKETS,
         "states": ["open", "merged", "closed"],
         "tech_categories": tech_categories,
@@ -327,3 +391,84 @@ def _parse_date(date_str: str) -> date | None:
         return datetime.strptime(date_str, "%Y-%m-%d").date()
     except (ValueError, TypeError):
         return None
+
+
+def _apply_ai_category_filter(qs: QuerySet[PullRequest], category: str) -> QuerySet[PullRequest]:
+    """Apply AI category filter to queryset.
+
+    This is complex because we need to check both:
+    1. LLM-detected tools (in llm_summary.ai.tools) - takes priority
+    2. Regex-detected tools (in ai_tools_detected) - fallback
+
+    The filter logic:
+    - code: Has code tools but NOT review-only
+    - review: Has review tools but NOT code-only
+    - both: Has both code AND review tools
+
+    Args:
+        qs: QuerySet to filter
+        category: Category to filter by ("code", "review", "both")
+
+    Returns:
+        Filtered QuerySet
+    """
+    # Build Q objects for tool matching
+    # We need to check both LLM tools and regex tools
+
+    # All tools that count as "code" (including mixed)
+    all_code_tools = CODE_TOOLS | MIXED_TOOLS
+
+    # Build contains queries for each tool
+    def build_tool_contains_query(tools: set[str], field: str) -> Q:
+        """Build OR query for any of the tools being present."""
+        q = Q()
+        for tool in tools:
+            q |= Q(**{f"{field}__contains": [tool]})
+        return q
+
+    # LLM tools field path
+    llm_field = "llm_summary__ai__tools"
+    # Regex tools field
+    regex_field = "ai_tools_detected"
+
+    # Build queries for LLM and regex sources
+    llm_has_code = build_tool_contains_query(all_code_tools, llm_field)
+    llm_has_review = build_tool_contains_query(REVIEW_TOOLS, llm_field)
+    regex_has_code = build_tool_contains_query(all_code_tools, regex_field)
+    regex_has_review = build_tool_contains_query(REVIEW_TOOLS, regex_field)
+
+    # Combined: has code tools from either source
+    has_code = llm_has_code | regex_has_code
+    # Combined: has review tools from either source
+    has_review = llm_has_review | regex_has_review
+
+    if category == CATEGORY_CODE:
+        # Has code tools, may or may not have review tools
+        # Exclude PRs that have ONLY review tools
+        qs = qs.filter(has_code)
+    elif category == CATEGORY_REVIEW:
+        # Has review tools, may or may not have code tools
+        # Exclude PRs that have ONLY code tools
+        qs = qs.filter(has_review)
+    elif category == CATEGORY_BOTH:
+        # Must have both code AND review tools
+        qs = qs.filter(has_code & has_review)
+
+    return qs
+
+
+def _get_ai_category_for_tools(tools: list[str] | None) -> str | None:
+    """Determine AI category for a list of tools.
+
+    Args:
+        tools: List of tool names
+
+    Returns:
+        "code", "review", "both", or None
+    """
+    if not tools:
+        return None
+
+    from apps.metrics.services.ai_categories import get_ai_category
+
+    return get_ai_category(tools)

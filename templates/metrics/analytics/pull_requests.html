@@ -28,6 +28,7 @@
              reviewer: '{{ filters.reviewer|default:"" }}',
              ai: '{{ filters.ai|default:"" }}',
              ai_tool: '{{ filters.ai_tool|default:"" }}',
+             ai_category: '{{ filters.ai_category|default:"" }}',
              state: '{{ filters.state|default:"" }}',
              size: '{{ filters.size|default:"" }}',
              has_jira: '{{ filters.has_jira|default:"" }}',
@@ -43,6 +44,7 @@
              reviewer: '{{ filters.reviewer|default:"" }}',
              ai: '{{ filters.ai|default:"" }}',
              ai_tool: '{{ filters.ai_tool|default:"" }}',
+             ai_category: '{{ filters.ai_category|default:"" }}',
              state: '{{ filters.state|default:"" }}',
              size: '{{ filters.size|default:"" }}',
              has_jira: '{{ filters.has_jira|default:"" }}',
@@ -59,6 +61,7 @@
                     this.current.reviewer !== this.initial.reviewer ||
                     this.current.ai !== this.initial.ai ||
                     this.current.ai_tool !== this.initial.ai_tool ||
+                    this.current.ai_category !== this.initial.ai_category ||
                     this.current.state !== this.initial.state ||
                     this.current.size !== this.initial.size ||
                     this.current.has_jira !== this.initial.has_jira ||
@@ -147,6 +150,22 @@
             <option value="">{% trans "All Tools" %}</option>
             {% for tool in filter_options.ai_tools %}
             <option value="{{ tool }}" {% if filters.ai_tool == tool %}selected{% endif %}>{{ tool }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        {% endif %}
+
+        <!-- AI Category Filter -->
+        {% if filter_options.ai_categories %}
+        <div class="form-control">
+          <label class="label">
+            <span class="label-text text-base-content/80">{% trans "AI Category" %}</span>
+          </label>
+          <select name="ai_category" class="select select-bordered select-sm w-full"
+                  x-model="current.ai_category">
+            <option value="">{% trans "All Categories" %}</option>
+            {% for cat in filter_options.ai_categories %}
+            <option value="{{ cat.value }}" {% if filters.ai_category == cat.value %}selected{% endif %}>{{ cat.label }}</option>
             {% endfor %}
           </select>
         </div>
@@ -348,6 +367,11 @@
       <div class="stat">
         <div class="stat-title">{% trans "AI Assisted" %}</div>
         <div class="stat-value text-2xl">{{ stats.ai_assisted_count }}</div>
+        <div class="stat-desc">
+          <span class="badge badge-primary badge-xs mr-1">{{ stats.code_ai_count }} Code</span>
+          <span class="badge badge-secondary badge-xs mr-1">{{ stats.review_ai_count }} Review</span>
+          {% if stats.both_ai_count %}<span class="badge badge-accent badge-xs">{{ stats.both_ai_count }} Both</span>{% endif %}
+        </div>
       </div>
     </div>
     </div>

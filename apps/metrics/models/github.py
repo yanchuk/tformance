@@ -364,6 +364,47 @@ class PullRequest(BaseTeamModel):
         return self.ai_tools_detected or []
 
     @property
+    def ai_code_tools(self) -> list[str]:
+        """Get AI tools that help write/generate code.
+
+        Returns:
+            List of code-category AI tools (e.g., ['cursor', 'copilot'])
+        """
+        from apps.metrics.services.ai_categories import categorize_tools
+
+        categorized = categorize_tools(self.effective_ai_tools)
+        return categorized.get("code", [])
+
+    @property
+    def ai_review_tools(self) -> list[str]:
+        """Get AI tools that review/comment on code.
+
+        Returns:
+            List of review-category AI tools (e.g., ['coderabbit', 'cubic'])
+        """
+        from apps.metrics.services.ai_categories import categorize_tools
+
+        categorized = categorize_tools(self.effective_ai_tools)
+        return categorized.get("review", [])
+
+    @property
+    def ai_category(self) -> str | None:
+        """Get the dominant AI assistance category for this PR.
+
+        Returns:
+            "code" | "review" | "both" | None
+
+        Categories:
+            - code: AI tools that write/generate code (Cursor, Copilot, etc.)
+            - review: AI tools that review/comment on code (CodeRabbit, etc.)
+            - both: PR uses both code and review AI tools
+            - None: No AI tools detected or all tools excluded
+        """
+        from apps.metrics.services.ai_categories import get_ai_category
+
+        return get_ai_category(self.effective_ai_tools)
+
+    @property
     def effective_pr_type(self) -> str:
         """Get PR type from LLM summary or infer from labels.
 
