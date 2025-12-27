@@ -116,8 +116,8 @@
     </div>
   </div>
 
-  <!-- PR Type & Tech Breakdown Charts (side by side on large screens) -->
-  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6"
+  <!-- PR Type & Tech Breakdown Charts (full width) -->
+  <div class="space-y-6"
        x-data="{ granularity: '{{ granularity }}' }"
        @htmx:afterSwap.window="if ($event.detail.target.id === 'wide-chart-container') {
          const params = new URLSearchParams($event.detail.requestConfig.path.split('?')[1]);
@@ -126,7 +126,7 @@
          htmx.ajax('GET', '{% url 'metrics:chart_tech_breakdown' %}?days={{ days }}&granularity=' + granularity, {target:'#tech-chart-container', swap:'innerHTML'});
        }">
 
-    <!-- PR Type Breakdown -->
+    <!-- PR Type Breakdown (Full Width) -->
     <div class="app-card p-0 overflow-hidden">
       <div id="pr-type-chart-container"
            hx-get="{% url 'metrics:chart_pr_type_breakdown' %}?days={{ days }}&granularity={{ granularity }}"
@@ -135,12 +135,12 @@
         <!-- Loading skeleton -->
         <div class="animate-pulse p-6">
           <div class="h-8 bg-base-300 rounded w-1/4 mb-4"></div>
-          <div class="h-64 bg-base-300 rounded"></div>
+          <div class="h-80 bg-base-300 rounded"></div>
         </div>
       </div>
     </div>
 
-    <!-- Technology Breakdown -->
+    <!-- Technology Breakdown (Full Width) -->
     <div class="app-card p-0 overflow-hidden">
       <div id="tech-chart-container"
            hx-get="{% url 'metrics:chart_tech_breakdown' %}?days={{ days }}&granularity={{ granularity }}"
@@ -149,7 +149,7 @@
         <!-- Loading skeleton -->
         <div class="animate-pulse p-6">
           <div class="h-8 bg-base-300 rounded w-1/4 mb-4"></div>
-          <div class="h-64 bg-base-300 rounded"></div>
+          <div class="h-80 bg-base-300 rounded"></div>
         </div>
       </div>
     </div>

@@ -13,6 +13,9 @@ if (typeof window.SiteJS === 'undefined') {
   window.SiteJS = {};
 }
 
+// Expose Chart.js globally for inline scripts in HTMX partials
+window.Chart = Chart;
+
 // Assign this entry's exports to SiteJS.app
 window.SiteJS.app = {
   DashboardCharts: AppDashboardCharts,

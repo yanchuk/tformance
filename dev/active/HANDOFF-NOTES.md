@@ -1,57 +1,51 @@
 # Session Handoff Notes
 
-**Last Updated: 2025-12-26 19:00 UTC**
+**Last Updated: 2025-12-26 23:30 UTC**
 
-## Current Status: Trends URL Parameter Fix Complete
+## Current Status: Trends Charts Fix - COMPLETED
 
-### Just Completed: Trends Dashboard URL Parameter Persistence
-
-Fixed issues where URL parameters weren't being updated when user changed settings on the Trends dashboard.
+All issues on the Trends page at `/app/metrics/analytics/trends/` have been fixed.
 
 ---
 
-## Completed Work
+## Fixes Applied
 
-### 1. Trends URL Parameters Fix
+### 1. Benchmark 500 Error (FIXED)
+- **Root cause**: KeyError in `chart_views.py` - accessing `result["benchmarks"]` when service returns `result["benchmark"]` (singular)
+- **Fix**: Changed key name and added `.get()` for safety
 
-**Problem**: When changing granularity (weekly/monthly) or date presets (This Year, etc.), the URL wasn't updating, making it impossible to bookmark or share specific views.
+### 2. Charts Not Rendering (FIXED)
+- **Root cause**: Chart.js imported as ES module but not exposed globally
+- **Fix**: Added `window.Chart = Chart;` in `assets/javascript/app.js`
 
-**Solution**: Updated Alpine.js components to use `history.pushState()` before making HTMX requests.
-
-**Files Modified**:
-- `templates/metrics/analytics/trends.html` - Added `updateUrlAndChart()` function
-- `templates/metrics/partials/date_range_picker.html` - Refactored `navigate()` to preserve params
-
-**Tests Added**: 7 new unit tests in `apps/metrics/tests/test_trends_views.py::TestTrendsURLParameters`
-
-**Playwright Verification**: All 4 scenarios passed:
-1. Monthly button updates URL with `granularity=monthly`
-2. This Year preset updates URL with `preset=this_year`
-3. Weekly button preserves preset, updates `granularity=weekly`
-4. 30d button clears preset, sets `days=30`
-
-### 2. Previous Session: AI Research Report (Already Committed)
-
-All 6 review checks completed - report is ready for publication.
+### 3. Full-Width Layout (FIXED)
+- **Change**: Updated `templates/metrics/analytics/trends.html` to use `space-y-6` instead of `grid grid-cols-1 lg:grid-cols-2`
+- PR Types Over Time and Technology Breakdown charts now render full-width
 
 ---
 
-## OSS Expansion Status
+## Completed Work This Session
 
-**Note:** OSS expansion seeding is in progress in separate terminals.
+### Trends Charts Fix
+- Fixed benchmark panel 500 error (KeyError bug)
+- Exposed Chart.js globally for HTMX partial scripts
+- Changed PR Types and Tech charts to full-width layout
+- All 124 tests passing
 
-See `dev/active/oss-expansion/oss-expansion-tasks.md` for current status.
+### Previous Work (Already Committed)
+- PR List Row Click Improvements
+- Trends URL Parameters Fix
+- PR List LLM Enrichment
 
 ---
 
-## Git Status
+## Files Changed
 
 ```
-Uncommitted changes:
-- templates/metrics/analytics/trends.html (Alpine.js URL fix)
-- templates/metrics/partials/date_range_picker.html (navigate() refactor)
-- apps/metrics/tests/test_trends_views.py (7 new tests)
-- dev/active/trends-url-parameters/ (new docs)
+apps/metrics/views/chart_views.py - Fixed benchmark KeyError
+assets/javascript/app.js - Exposed Chart.js globally
+templates/metrics/analytics/trends.html - Full-width layout
+dev/active/trends-charts-fix/ - Dev documentation
 ```
 
 ---
@@ -62,9 +56,12 @@ Uncommitted changes:
 # Run trends tests
 .venv/bin/pytest apps/metrics/tests/test_trends_views.py -v
 
+# Run benchmark tests
+.venv/bin/pytest apps/metrics/tests/test_benchmarks.py -v
+
 # Run all tests
 make test
 
 # View trends page
-open http://localhost:8000/app/metrics/analytics/trends/?days=30
+open "http://localhost:8000/app/metrics/analytics/trends/?preset=this_year&granularity=monthly&metrics=cycle_time,review_time,pr_count"
 ```

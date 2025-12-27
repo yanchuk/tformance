@@ -88,6 +88,11 @@
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
+        html, body {
+            overflow-x: hidden;
+            max-width: 100vw;
+        }
+
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             background: var(--bg-main);
@@ -543,6 +548,7 @@
 
             .report-content {
                 margin-left: 0;
+                margin-right: 0;
                 padding-left: 2.5rem;
                 padding-right: 2.5rem;
                 max-width: 100%;
@@ -659,11 +665,14 @@
                 font-size: 0.72rem;
             }
 
-            /* Sections - reduced padding */
+            /* Sections - reduced padding + constrain width */
             section {
                 margin: 1.5rem 0;
                 padding: 1.25rem !important;
                 border-radius: 12px !important;
+                max-width: 100%;
+                box-sizing: border-box;
+                overflow-x: hidden;
             }
 
             /* Grid layouts - single column */
@@ -697,9 +706,21 @@
                 z-index: 1;
             }
 
-            /* Charts - shorter on mobile */
+            /* Charts - shorter on mobile + constrain width */
+            .chart-container {
+                max-width: 100%;
+                overflow-x: auto;
+                box-sizing: border-box;
+            }
+
             .chart-wrapper {
                 height: 250px;
+                max-width: 100%;
+                width: 100%;
+            }
+
+            .chart-wrapper canvas {
+                max-width: 100% !important;
             }
 
             .chart-wrapper.tall {
@@ -1799,6 +1820,7 @@
 
             <!-- Alpine.js Sortable Table -->
             <div x-data="teamTable()" x-init="init()">
+                <div class="table-wrapper">
                 <table>
                     <thead>
                         <tr>
@@ -1856,6 +1878,7 @@
                         </template>
                     </tbody>
                 </table>
+                </div>
 
                 <!-- Table Pagination -->
                 <div class="table-pagination">
@@ -1949,6 +1972,7 @@
                 Comparing how each method detects specific AI tools. Green delta = LLM finds more; Red delta = Regex finds more (often over-matching).
             </p>
 
+            <div class="table-wrapper">
             <table class="tool-comparison-table">
                 <thead>
                     <tr>
@@ -2058,6 +2082,7 @@
                     </tr>
                 </tbody>
             </table>
+            </div>
 
             <!-- Key Insights -->
             <div class="key-insight-card">
@@ -2311,6 +2336,7 @@
             <!-- HIGH RISK: Adoption Gap Comparison Table -->
             <div style="background: var(--bg-main); border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; margin-bottom: 1.5rem;">
                 <h3 style="margin-bottom: 1rem; font-size: 1rem;">📊 Understanding the 4x Gap: Why Our Data Differs</h3>
+                <div class="table-wrapper">
                 <table style="font-size: 0.85rem; margin-bottom: 1rem;">
                     <thead>
                         <tr>
@@ -2347,6 +2373,7 @@
                         </tr>
                     </tbody>
                 </table>
+                </div>
                 <div style="display: flex; align-items: flex-start; gap: 1rem; padding: 1rem; background: rgba(90, 153, 151, 0.1); border-radius: 6px;">
                     <div style="font-size: 2rem;">🧊</div>
                     <div>
