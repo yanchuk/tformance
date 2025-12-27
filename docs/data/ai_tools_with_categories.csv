@@ -1,0 +1,59 @@
+tool,count,category
+coderabbit,11104,review
+cubic,6943,review
+devin,1796,code
+cursor,1431,code
+claude,1232,code
+copilot,823,code
+greptile,469,review
+chatgpt,456,code
+claude_code,310,code
+gemini,197,code
+ai_generic,159,code
+ellipsis,98,code
+codegen,33,code
+mintlify,25,unknown
+sourcery,16,review
+continue,11,code
+aider,10,code
+ai,9,unknown
+replexica,9,code
+snyk,8,unknown
+bito,8,code
+unknown,6,unknown
+codex,4,code
+claude-code,4,code
+promptless,4,code
+codegen-sh,4,code
+windsurf,3,code
+ai helper,3,code
+gemini-code-assist,3,code
+llm,3,code
+code rabbit,2,review
+gpt,2,code
+gpt5,2,code
+amazon_q,2,code
+gpt5.1,2,code
+sourcery-ai,2,code
+lingohub,2,unknown
+gpt-5.1-codex-max,2,code
+locadex,1,code
+codemod,1,code
+openai,1,code
+open-swe,1,code
+phpstorm ai plugin,1,code
+playwright,1,code
+codelines,1,code
+codecanvas,1,code
+rolldown-vite,1,code
+ai review process,1,code
+cubic-dev-ai,1,code
+gdev,1,code
+cody,1,code
+codex-cli,1,code
+aikido,1,code
+gpt-5,1,code
+grok-code-fast-1,1,code
+lingo,1,code
+lingo.dev,1,code
+ai assistant,1,code

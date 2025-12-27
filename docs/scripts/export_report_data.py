@@ -278,12 +278,238 @@ def export_ai_tools_monthly():
     return tool_data
 
 
+def export_ai_categories():
+    """Export ai_categories.csv with Code AI vs Review AI breakdown."""
+    print("Exporting ai_categories.csv...")
+
+    # Import the categorization logic
+    from apps.metrics.services.ai_categories import get_tool_category
+
+    team_ids = get_teams_with_threshold()
+
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT
+                tool,
+                COUNT(*) as count
+            FROM metrics_pullrequest pr
+            CROSS JOIN LATERAL jsonb_array_elements_text(
+                COALESCE(llm_summary->'ai'->'tools', ai_tools_detected)
+            ) as tool
+            WHERE pr.pr_created_at >= %s
+            AND pr.pr_created_at < %s
+            AND pr.team_id = ANY(%s)
+            AND (
+                (pr.llm_summary IS NOT NULL AND jsonb_array_length(pr.llm_summary->'ai'->'tools') > 0)
+                OR (pr.ai_tools_detected IS NOT NULL AND jsonb_array_length(pr.ai_tools_detected) > 0)
+            )
+            GROUP BY tool
+            ORDER BY count DESC
+        """,
+            [f"{YEAR}-01-01", f"{YEAR + 1}-01-01", team_ids],
+        )
+
+        rows = cursor.fetchall()
+
+    # Categorize tools and aggregate
+    category_totals = {"code": 0, "review": 0, "unknown": 0}
+    tool_categories = []
+
+    for tool, count in rows:
+        category = get_tool_category(tool)
+        if category:
+            category_totals[category] += count
+        else:
+            category_totals["unknown"] += count
+        tool_categories.append({"tool": tool, "count": count, "category": category or "unknown"})
+
+    # Calculate percentages
+    total = sum(category_totals.values())
+    category_pcts = {k: round(v * 100.0 / total, 1) if total > 0 else 0 for k, v in category_totals.items()}
+
+    # Write category summary
+    output_file = OUTPUT_DIR / "ai_categories.csv"
+    with open(output_file, "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=["category", "count", "percentage"])
+        writer.writeheader()
+        for cat in ["code", "review", "unknown"]:
+            writer.writerow({"category": cat, "count": category_totals[cat], "percentage": category_pcts[cat]})
+
+    print(f"  Category breakdown: Code={category_pcts['code']}%, Review={category_pcts['review']}%")
+
+    # Write tool-level categories
+    output_file2 = OUTPUT_DIR / "ai_tools_with_categories.csv"
+    with open(output_file2, "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=["tool", "count", "category"])
+        writer.writeheader()
+        writer.writerows(tool_categories)
+
+    print(f"  Written {len(tool_categories)} tools with categories to {output_file2}")
+
+    return {"totals": category_totals, "percentages": category_pcts, "tools": tool_categories}
+
+
+def export_category_metrics():
+    """Export category_metrics.csv with cycle/review time by AI category."""
+    print("Exporting category_metrics.csv...")
+
+    from apps.metrics.services.ai_categories import get_tool_category
+
+    team_ids = get_teams_with_threshold()
+
+    with connection.cursor() as cursor:
+        # Get PRs with their detected tools
+        cursor.execute(
+            """
+            WITH pr_tools AS (
+                SELECT
+                    pr.id,
+                    pr.cycle_time_hours,
+                    pr.review_time_hours,
+                    pr.additions + pr.deletions as size,
+                    jsonb_array_elements_text(
+                        COALESCE(llm_summary->'ai'->'tools', ai_tools_detected)
+                    ) as tool
+                FROM metrics_pullrequest pr
+                WHERE pr.pr_created_at >= %s
+                AND pr.pr_created_at < %s
+                AND pr.team_id = ANY(%s)
+                AND pr.is_ai_assisted = true
+                AND (
+                    (pr.llm_summary IS NOT NULL AND jsonb_array_length(pr.llm_summary->'ai'->'tools') > 0)
+                    OR (pr.ai_tools_detected IS NOT NULL AND jsonb_array_length(pr.ai_tools_detected) > 0)
+                )
+            )
+            SELECT tool, cycle_time_hours, review_time_hours, size
+            FROM pr_tools
+            WHERE cycle_time_hours IS NOT NULL
+        """,
+            [f"{YEAR}-01-01", f"{YEAR + 1}-01-01", team_ids],
+        )
+        rows = cursor.fetchall()
+
+    # Aggregate by category
+    category_data = {"code": [], "review": []}
+
+    for tool, cycle, review, size in rows:
+        cat = get_tool_category(tool)
+        if cat in category_data:
+            category_data[cat].append({"cycle": cycle, "review": review, "size": size})
+
+    # Calculate averages
+    results = {}
+    for cat, data in category_data.items():
+        if data:
+            avg_cycle = sum(d["cycle"] for d in data if d["cycle"]) / len([d for d in data if d["cycle"]])
+            avg_review = sum(d["review"] for d in data if d["review"]) / len([d for d in data if d["review"]])
+            avg_size = sum(d["size"] for d in data if d["size"]) / len([d for d in data if d["size"]])
+            results[cat] = {
+                "count": len(data),
+                "avg_cycle_hours": round(avg_cycle, 1),
+                "avg_review_hours": round(avg_review, 1),
+                "avg_size": round(avg_size, 0),
+            }
+
+    # Get non-AI baseline for comparison
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT
+                COUNT(*) as count,
+                AVG(cycle_time_hours) as avg_cycle,
+                AVG(review_time_hours) as avg_review,
+                AVG(additions + deletions) as avg_size
+            FROM metrics_pullrequest pr
+            WHERE pr.pr_created_at >= %s
+            AND pr.pr_created_at < %s
+            AND pr.team_id = ANY(%s)
+            AND pr.is_ai_assisted = false
+            AND pr.cycle_time_hours IS NOT NULL
+        """,
+            [f"{YEAR}-01-01", f"{YEAR + 1}-01-01", team_ids],
+        )
+        row = cursor.fetchone()
+        results["none"] = {
+            "count": row[0],
+            "avg_cycle_hours": round(row[1], 1) if row[1] else None,
+            "avg_review_hours": round(row[2], 1) if row[2] else None,
+            "avg_size": round(row[3], 0) if row[3] else None,
+        }
+
+    # Calculate deltas
+    baseline = results["none"]
+    for cat in ["code", "review"]:
+        if cat in results and baseline["avg_cycle_hours"]:
+            results[cat]["cycle_delta_pct"] = round(
+                (results[cat]["avg_cycle_hours"] - baseline["avg_cycle_hours"]) / baseline["avg_cycle_hours"] * 100, 0
+            )
+            results[cat]["review_delta_pct"] = round(
+                (results[cat]["avg_review_hours"] - baseline["avg_review_hours"]) / baseline["avg_review_hours"] * 100,
+                0,
+            )
+
+    # Write CSV
+    output_file = OUTPUT_DIR / "category_metrics.csv"
+    with open(output_file, "w", newline="") as f:
+        writer = csv.DictWriter(
+            f,
+            fieldnames=[
+                "category",
+                "count",
+                "avg_cycle_hours",
+                "avg_review_hours",
+                "avg_size",
+                "cycle_delta_pct",
+                "review_delta_pct",
+            ],
+        )
+        writer.writeheader()
+        for cat in ["none", "code", "review"]:
+            if cat in results:
+                row = {"category": cat, **results[cat]}
+                writer.writerow(row)
+
+    print(f"  Category metrics: Code AI {results.get('code', {}).get('cycle_delta_pct', 'N/A')}% cycle time")
+    print(f"                    Review AI {results.get('review', {}).get('cycle_delta_pct', 'N/A')}% cycle time")
+
+    return results
+
+
 def export_overall_stats():
     """Export overall statistics for the report header."""
     print("Calculating overall stats...")
 
     team_ids = get_teams_with_threshold()
 
+    # First, get total counts across all OSS teams (for headline numbers)
+    # OSS teams are identified by having "-demo" suffix in slug
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT
+                COUNT(DISTINCT t.id) as all_teams,
+                COUNT(pr.id) as all_prs,
+                COUNT(CASE WHEN pr.is_ai_assisted THEN 1 END) as all_ai_prs,
+                COUNT(CASE WHEN pr.llm_summary IS NOT NULL THEN 1 END) as all_llm_analyzed
+            FROM teams_team t
+            JOIN metrics_pullrequest pr ON pr.team_id = t.id
+            WHERE pr.pr_created_at >= %s
+            AND pr.pr_created_at < %s
+            AND t.slug LIKE '%%-demo'
+        """,
+            [f"{YEAR}-01-01", f"{YEAR + 1}-01-01"],
+        )
+        all_row = cursor.fetchone()
+
+    all_stats = {
+        "all_teams": all_row[0],
+        "all_prs": all_row[1],
+        "all_ai_prs": all_row[2],
+        "all_llm_analyzed": all_row[3],
+    }
+
+    # Then get stats for teams with 500+ PRs (for detailed analysis)
     with connection.cursor() as cursor:
         cursor.execute(
             """
@@ -339,21 +565,27 @@ def export_overall_stats():
     with open(output_file, "w") as f:
         f.write(f"Report Statistics - Generated {datetime.now().isoformat()}\n")
         f.write(f"{'=' * 50}\n\n")
-        f.write(f"Teams: {stats['teams']}\n")
-        f.write(f"Total PRs: {stats['total_prs']:,}\n")
-        f.write(f"AI-Assisted PRs: {stats['ai_prs']:,}\n")
+        f.write("# Headline Numbers (All OSS Companies)\n")
+        f.write(f"OSS Companies: {all_stats['all_teams']}\n")
+        f.write(f"Total PRs: {all_stats['all_prs']:,}\n")
+        f.write(f"AI-Assisted PRs: {all_stats['all_ai_prs']:,}\n")
+        f.write(f"AI Adoption Rate: {round(all_stats['all_ai_prs'] / all_stats['all_prs'] * 100, 1)}%\n")
+        llm_pct = round(all_stats["all_llm_analyzed"] / all_stats["all_prs"] * 100, 1)
+        f.write(f"LLM Analyzed: {all_stats['all_llm_analyzed']:,} ({llm_pct}%)\n")
+        f.write("\n# Detailed Analysis (Companies with 500+ PRs)\n")
+        f.write(f"Companies (500+ PRs): {stats['teams']}\n")
+        f.write(f"PRs from these companies: {stats['total_prs']:,}\n")
         f.write(f"AI Adoption Rate: {stats['ai_pct']}%\n")
-        f.write(
-            f"LLM Analyzed: {stats['llm_analyzed']:,} ({round(stats['llm_analyzed'] / stats['total_prs'] * 100, 1)}%)\n"
-        )
         f.write("\nMetric Changes (AI vs Non-AI):\n")
         f.write(f"  Cycle Time: {'+' if stats['cycle_delta_pct'] > 0 else ''}{stats['cycle_delta_pct']}%\n")
         f.write(f"  Review Time: {'+' if stats['review_delta_pct'] > 0 else ''}{stats['review_delta_pct']}%\n")
 
     print(f"  Stats written to {output_file}")
-    print(f"\n  Summary: {stats['teams']} teams, {stats['total_prs']:,} PRs, {stats['ai_pct']}% AI adoption")
+    ai_pct = round(all_stats["all_ai_prs"] / all_stats["all_prs"] * 100, 1)
+    print(f"\n  Summary: {all_stats['all_teams']} OSS companies, {all_stats['all_prs']:,} PRs, {ai_pct}% AI adoption")
+    print(f"  Detailed: {stats['teams']} companies with 500+ PRs ({stats['total_prs']:,} PRs)")
 
-    return stats
+    return stats, all_stats
 
 
 def main():
@@ -371,6 +603,8 @@ def main():
     teams = export_team_summary()
     monthly = export_monthly_trends()
     tools = export_ai_tools_monthly()
+    categories = export_ai_categories()
+    cat_metrics = export_category_metrics()
 
     print(f"\n{'=' * 60}")
     print("Export complete!")
@@ -379,7 +613,24 @@ def main():
     print(f"  - team_summary.csv ({len(teams)} teams)")
     print(f"  - monthly_trends.csv ({len(monthly)} teams × 12 months)")
     print(f"  - ai_tools_monthly.csv ({len(tools)} tools × 12 months)")
+    code_pct = categories["percentages"]["code"]
+    review_pct = categories["percentages"]["review"]
+    print(f"  - ai_categories.csv (Code: {code_pct}%, Review: {review_pct}%)")
+    print("  - ai_tools_with_categories.csv")
+    print("  - category_metrics.csv")
     print("  - overall_stats.txt")
+
+    # Print category impact summary
+    if cat_metrics:
+        print("\n📊 Category Impact Summary:")
+        if "code" in cat_metrics:
+            cycle = cat_metrics["code"].get("cycle_delta_pct", 0)
+            review = cat_metrics["code"].get("review_delta_pct", 0)
+            print(f"  Code AI: {cycle:+.0f}% cycle time, {review:+.0f}% review time")
+        if "review" in cat_metrics:
+            cycle = cat_metrics["review"].get("cycle_delta_pct", 0)
+            review = cat_metrics["review"].get("review_delta_pct", 0)
+            print(f"  Review AI: {cycle:+.0f}% cycle time, {review:+.0f}% review time")
 
 
 if __name__ == "__main__":

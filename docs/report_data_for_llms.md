@@ -13,7 +13,7 @@
 
 **Industry claims:** 85% adoption (Stack Overflow, JetBrains 2025), massive productivity gains.
 **The only RCT:** METR 2025 found AI made devs **19% slower** (with 43-point perception gap).
-**Our data:** 161,925 PRs from 74 OSS teams to see what actually happens.
+**Our data:** 167,308 PRs from 100 OSS companies to see what actually happens.
 
 ### Review AI vs Code AI — The Facts
 
@@ -50,8 +50,8 @@
 
 ```
 GitHub GraphQL API  →  PR Metadata  →  LLM Analysis  →  Metrics
-   161,925 PRs         (title,body,     (Llama 3.3      (cycle time,
-   74 teams             commits,         70B via         review time,
+   167,308 PRs         (title,body,     (Llama 3.3      (cycle time,
+   100 companies        commits,         70B via         review time,
                         comments)        Groq)           PR size)
 ```
 
@@ -83,11 +83,11 @@ GitHub GraphQL API  →  PR Metadata  →  LLM Analysis  →  Metrics
 
 | Metric | Value | Notes |
 |--------|-------|-------|
-| Total PRs Analyzed | 161,925 | From GitHub GraphQL API |
-| Teams Analyzed | 74 | Teams with 500+ PRs threshold |
-| AI-Assisted PRs | 19,660 | Detected via LLM + regex |
+| Total PRs Analyzed | 167,308 | From GitHub GraphQL API |
+| OSS Companies | 100 | 74 with 500+ PRs for detailed analysis |
+| AI-Assisted PRs | 20,260 | Detected via LLM + regex |
 | AI Adoption Rate | 12.1% | Floor estimate (disclosed only) |
-| LLM Analyzed PRs | 107,071 (66.1%) | PRs with non-empty body |
+| LLM Analyzed PRs | 109,240 (65.3%) | PRs with non-empty body |
 | Detection Agreement | 96.1% | LLM vs regex pattern match |
 
 ---
@@ -177,7 +177,7 @@ We categorize AI tools into two types with **dramatically different impacts**:
 
 | Source | Sample | Adoption Rate | What It Measures | Data Type |
 |--------|--------|---------------|------------------|-----------|
-| **Our Report** | 161,925 PRs | 12.1% | Explicit AI disclosure in PRs | Behavioral |
+| **Our Report** | 167,308 PRs | 12.1% | Explicit AI disclosure in PRs | Behavioral |
 | Stack Overflow 2025 | 65,000+ devs | 84% | "Using or planning to use AI" | Survey |
 | Stack Overflow 2025 | 65,000+ devs | 51% | Using AI daily at work | Survey |
 | JetBrains 2025 | 24,534 devs | 85% | "Regularly use AI for coding" | Survey |
@@ -352,9 +352,9 @@ CI = ± 1.96 × √(p × (1-p) / n)
 
 Where:
   p = AI adoption rate (0.121)
-  n = Sample size (161,925)
+  n = Sample size (167,308)
 
-CI = ± 1.96 × √(0.121 × 0.879 / 161925) = ±0.16%
+CI = ± 1.96 × √(0.121 × 0.879 / 167308) = ±0.16%
 ```
 
 ### Statistical Significance (Chi-Square)

@@ -1,12 +1,18 @@
-Report Statistics - Generated 2025-12-26T19:15:02.778545
+Report Statistics - Generated 2025-12-27T21:29:02.631886
 ==================================================
 
-Teams: 51
-Total PRs: 117,739
-AI-Assisted PRs: 14,962
-AI Adoption Rate: 12.7%
-LLM Analyzed: 89,239 (75.8%)
+# Headline Numbers (All OSS Companies)
+OSS Companies: 101
+Total PRs: 167,308
+AI-Assisted PRs: 20,260
+AI Adoption Rate: 12.1%
+LLM Analyzed: 109,240 (65.3%)
+
+# Detailed Analysis (Companies with 500+ PRs)
+Companies (500+ PRs): 74
+PRs from these companies: 161,962
+AI Adoption Rate: 12.1%
 
 Metric Changes (AI vs Non-AI):
-  Cycle Time: -5%
-  Review Time: -52%
+  Cycle Time: -9%
+  Review Time: -50%
