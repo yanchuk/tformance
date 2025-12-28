@@ -222,6 +222,37 @@ def select_repositories(request):
         return redirect("onboarding:start")
 
     if request.method == "POST":
+        # Get selected repository IDs from form
+        selected_repo_ids = request.POST.getlist("repos")
+
+        if selected_repo_ids:
+            # Fetch repos from GitHub to get full_name for each
+            try:
+                all_repos = github_oauth.get_organization_repositories(
+                    integration.credential.access_token,
+                    integration.organization_slug,
+                    exclude_archived=True,
+                )
+                repo_map = {str(repo["id"]): repo for repo in all_repos}
+
+                # Create TrackedRepository for each selected repo
+                for repo_id in selected_repo_ids:
+                    repo_data = repo_map.get(repo_id)
+                    if repo_data:
+                        TrackedRepository.objects.get_or_create(
+                            team=team,
+                            github_repo_id=int(repo_id),
+                            defaults={
+                                "integration": integration,
+                                "full_name": repo_data["full_name"],
+                                "is_active": True,
+                            },
+                        )
+            except Exception as e:
+                logger.error(f"Failed to create tracked repos during onboarding: {e}")
+                messages.error(request, _("Failed to save repository selection. Please try again."))
+                return redirect("onboarding:select_repos")
+
         # Start sync in background and continue to next step
         repo_ids = list(TrackedRepository.objects.filter(team=team).values_list("id", flat=True))
         if repo_ids:
@@ -235,17 +266,29 @@ def select_repositories(request):
         track_event(
             request.user,
             "onboarding_step_completed",
-            {"step": "repos", "team_slug": team.slug},
+            {"step": "repos", "team_slug": team.slug, "repos_count": len(selected_repo_ids)},
         )
         return redirect("onboarding:connect_jira")
 
-    # Fetch repositories (we'll implement this in the template)
+    # Fetch repositories from GitHub API
+    repos = []
+    try:
+        repos = github_oauth.get_organization_repositories(
+            integration.credential.access_token,
+            integration.organization_slug,
+            exclude_archived=True,
+        )
+    except Exception as e:
+        logger.error(f"Failed to fetch repos during onboarding: {e}")
+        messages.warning(request, _("Could not fetch repositories. You can skip this step and add repos later."))
+
     return render(
         request,
         "onboarding/select_repos.html",
         {
             "team": team,
             "integration": integration,
+            "repos": repos,
             "page_title": _("Select Repositories"),
             "step": 2,
         },
