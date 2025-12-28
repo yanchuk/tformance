@@ -2,9 +2,17 @@
 {% load social_tags %}
 {% get_socialapps as socialapps %}
 {% if socialapps %}
+{# Show divider only when email auth is also shown #}
+{% if ALLOW_EMAIL_AUTH %}
 <div class="app-divider my-4"></div>
 <p class="text-center text-base-content/70 text-sm mb-4">{% translate "or continue with" %}</p>
 {% endif %}
 {% for provider in socialapps %}
-  {% include 'account/components/social/login_with_social_button.html' with app=app %}
+  {# Filter out Google if ALLOW_GOOGLE_AUTH is False #}
+  {% if provider.id == "google" and not ALLOW_GOOGLE_AUTH %}
+    {# Skip Google #}
+  {% else %}
+    {% include 'account/components/social/login_with_social_button.html' with app=app %}
+  {% endif %}
 {% endfor %}
+{% endif %}

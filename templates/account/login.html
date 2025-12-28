@@ -9,6 +9,8 @@
       <h2 class="text-center text-2xl font-bold text-base-content mb-6">
         {% translate "Sign In" %}
       </h2>
+      {% if ALLOW_EMAIL_AUTH %}
+      {# Email/password form - only shown when AUTH_MODE=all #}
       <form class="space-y-4" method="post">
         {% csrf_token %}
         {{ form.non_field_errors }}
@@ -25,6 +27,18 @@
         {% translate "Don't have an account?" %}
         <a href="{% url 'account_signup' %}" class="font-medium text-primary hover:text-primary/80 transition-colors">
           {% translate "Sign up" %}
+        </a>
+      </div>
+      {% else %}
+      {# GitHub-only mode - shown when AUTH_MODE=github_only #}
+      <p class="text-center text-base-content/70 mb-6">
+        {% translate "Sign in with your GitHub account to continue" %}
+      </p>
+      {% include 'account/components/social/social_buttons.html' %}
+      {% endif %}
+      <div class="text-sm text-base-content/60 mt-6 text-center">
+        <a href="{% url 'web:home' %}" class="hover:text-primary transition-colors">
+          {% translate "Back to home" %}
         </a>
       </div>
     </div>

@@ -67,20 +67,35 @@ export default defineConfig({
   // Configure projects for browsers
   // By default, only run Chromium for faster local development (1m 44s vs 7m 37s)
   // To run all browsers: npx playwright test --project=chromium --project=firefox --project=webkit
+  // To run with mobile: npx playwright test --project="Mobile Chrome" --project="Mobile Safari"
   projects: [
+    // Desktop browsers
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },
-    // Uncomment to enable cross-browser testing:
-    // {
-    //   name: 'firefox',
-    //   use: { ...devices['Desktop Firefox'] },
-    // },
-    // {
-    //   name: 'webkit',
-    //   use: { ...devices['Desktop Safari'] },
-    // },
+    {
+      name: 'firefox',
+      use: { ...devices['Desktop Firefox'] },
+    },
+    {
+      name: 'webkit',
+      use: { ...devices['Desktop Safari'] },
+    },
+    // Mobile devices
+    {
+      name: 'Mobile Chrome',
+      use: { ...devices['Pixel 5'] },
+    },
+    {
+      name: 'Mobile Safari',
+      use: { ...devices['iPhone 12'] },
+    },
+    // Tablet
+    {
+      name: 'Tablet',
+      use: { ...devices['iPad (gen 7)'] },
+    },
   ],
 
   // Output directory for test artifacts

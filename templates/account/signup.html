@@ -3,7 +3,7 @@
 {% load static %}
 {% load form_tags %}
 {% block page_head %}
-{% if turnstile_key %}
+{% if turnstile_key and ALLOW_EMAIL_AUTH %}
   <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 {% endif %}
 {% endblock %}
@@ -12,7 +12,11 @@
   <div class="w-full max-w-md">
     <div class="app-card">
       <h2 class="text-center text-2xl font-bold text-base-content mb-6">
-        {% translate "Sign Up" %}
+        {% if ALLOW_EMAIL_AUTH %}
+          {% translate "Sign Up" %}
+        {% else %}
+          {% translate "Get Started" %}
+        {% endif %}
       </h2>
       {% if invitation %}
       <div class="bg-base-200 rounded-lg p-4 mb-6">
@@ -24,6 +28,8 @@
         </p>
       </div>
       {% endif %}
+      {% if ALLOW_EMAIL_AUTH %}
+      {# Email/password form - only shown when AUTH_MODE=all #}
       <form class="space-y-4" method="post">
         {% csrf_token %}
         {{ form.non_field_errors }}
@@ -55,6 +61,24 @@
         {% translate "Already have an account?" %}
         <a href="{% url 'account_login' %}" class="font-medium text-primary hover:text-primary/80 transition-colors">
           {% translate "Sign in" %}
+        </a>
+      </div>
+      {% else %}
+      {# GitHub-only mode - shown when AUTH_MODE=github_only #}
+      <p class="text-center text-base-content/70 mb-6">
+        {% translate "Create your account using GitHub to get started" %}
+      </p>
+      {% include 'account/components/social/social_buttons.html' %}
+      <div class="text-sm text-base-content/70 mt-4 text-center">
+        {% translate "Already have an account?" %}
+        <a href="{% url 'account_login' %}" class="font-medium text-primary hover:text-primary/80 transition-colors">
+          {% translate "Sign in" %}
+        </a>
+      </div>
+      {% endif %}
+      <div class="text-sm text-base-content/60 mt-6 text-center">
+        <a href="{% url 'web:home' %}" class="hover:text-primary transition-colors">
+          {% translate "Back to home" %}
         </a>
       </div>
     </div>

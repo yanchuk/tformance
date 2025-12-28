@@ -268,8 +268,10 @@ test.describe('Authentication Tests @auth', () => {
         // Wait for navigation
         await page.waitForURL(/github\.com|accounts\/github/, { timeout: 10000 });
 
-        // Verify no CSP errors
-        const cspErrors = consoleErrors.filter(e => e.includes('Content Security Policy'));
+        // Verify no auth-related CSP errors (filter out PostHog which is unrelated)
+        const cspErrors = consoleErrors.filter(e =>
+          e.includes('Content Security Policy') && !e.includes('posthog')
+        );
         expect(cspErrors).toHaveLength(0);
 
         // Should redirect to GitHub OAuth

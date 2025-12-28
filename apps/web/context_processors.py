@@ -50,3 +50,18 @@ def posthog_config(request):
             "POSTHOG_HOST": getattr(settings, "POSTHOG_HOST", "https://us.i.posthog.com"),
         }
     return {}
+
+
+def auth_mode(request):
+    """
+    Expose auth mode settings to templates.
+
+    Used to conditionally show/hide email auth forms based on AUTH_MODE setting.
+    - AUTH_MODE="all": Show email/password + GitHub (for development/testing)
+    - AUTH_MODE="github_only": Show only GitHub OAuth (for production)
+    """
+    return {
+        "ALLOW_EMAIL_AUTH": getattr(settings, "ALLOW_EMAIL_AUTH", False),
+        "ALLOW_GOOGLE_AUTH": getattr(settings, "ALLOW_GOOGLE_AUTH", False),
+        "AUTH_MODE": getattr(settings, "AUTH_MODE", "github_only"),
+    }

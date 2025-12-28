@@ -197,6 +197,8 @@ TEMPLATES = [
                 "apps.web.context_processors.google_analytics_id",
                 # PostHog analytics
                 "apps.web.context_processors.posthog_config",
+                # Auth mode (github_only vs all)
+                "apps.web.context_processors.auth_mode",
             ],
             "loaders": _DEFAULT_LOADERS if DEBUG else _CACHED_LOADERS,
             "builtins": [
@@ -305,6 +307,12 @@ SOCIALACCOUNT_FORMS = {
 # User signup configuration: change to "mandatory" to require users to confirm email before signing in.
 # or "optional" to send confirmation emails but not require them
 ACCOUNT_EMAIL_VERIFICATION = env("ACCOUNT_EMAIL_VERIFICATION", default="none")
+
+# Auth mode: "github_only" (production) or "all" (development/testing)
+# In github_only mode, email/password forms are hidden, only GitHub OAuth is shown
+AUTH_MODE = env("AUTH_MODE", default="all" if DEBUG else "github_only")
+ALLOW_EMAIL_AUTH = AUTH_MODE == "all"
+ALLOW_GOOGLE_AUTH = False  # Disabled - GitHub only for simplicity
 
 AUTHENTICATION_BACKENDS = (
     # Needed to login by username in Django admin, regardless of `allauth`
