@@ -3,16 +3,26 @@
 #
 # Deploy: Connect repo in Render Dashboard → New Blueprint → Select this repo
 #
-# FREE TIER - For testing only
-# Limitations:
-#   - Web sleeps after 15 min inactivity (slow cold starts)
-#   - Database expires after 30 days!
-#   - No Celery worker (no background sync)
+# ULTRA-BUDGET CONFIG - $20/mo
+# ─────────────────────────────
+# Web (Starter):      $7/mo  - 512MB RAM, 0.5 CPU
+# Worker (Starter):   $7/mo  - 512MB, all queues + beat
+# PostgreSQL:         $6/mo  - 256MB RAM, 100 connections
+# Redis:              $0/mo  - 25MB, 50 connections (FREE - NO PERSISTENCE!)
+# ─────────────────────────────
+# Total:              $20/mo
 #
-# To upgrade to paid ($24/mo), change:
-#   - Web plan: starter
-#   - Database plan: basic-256mb
-#   - Uncomment the worker section
+# ⚠️  FREE REDIS WARNING:
+#     - No persistence: tasks lost on restart
+#     - 25MB limit: monitor queue size
+#     - 50 connections: may hit limit under load
+#     - Upgrade to Starter ($10/mo) if issues occur
+#
+# Scaling path:
+#   - Redis issues:    Upgrade to starter ($10/mo)
+#   - Slow onboarding: Add 2nd worker (+$7/mo)
+#   - >10 teams:       Upgrade DB to basic-1gb ($19/mo)
+#   - High traffic:    Upgrade web to standard ($25/mo)
 
 services:
   # ===================
@@ -22,8 +32,8 @@ services:
     name: tformance-web
     runtime: docker
     dockerfilePath: ./Dockerfile.web
-    region: oregon  # Change to your preferred region
-    plan: free      # FREE - sleeps after 15 min inactivity
+    region: oregon
+    plan: starter     # $7/mo - 512MB RAM, 0.5 CPU
     healthCheckPath: /health/
     envVars:
       # Database connection (auto-populated from database)
@@ -67,53 +77,87 @@ services:
         sync: false
       - key: GITHUB_CLIENT_SECRET
         sync: false
+      # Jira OAuth - SET THIS in Render Dashboard
+      - key: JIRA_CLIENT_ID
+        sync: false
+      - key: JIRA_CLIENT_SECRET
+        sync: false
+      # Slack OAuth - SET THIS in Render Dashboard
+      - key: SLACK_CLIENT_ID
+        sync: false
+      - key: SLACK_CLIENT_SECRET
+        sync: false
+      - key: SLACK_SIGNING_SECRET
+        sync: false
+      # Integration encryption - SET THIS in Render Dashboard
+      - key: INTEGRATION_ENCRYPTION_KEY
+        sync: false
+      # LLM API keys - SET THIS in Render Dashboard
+      - key: GROQ_API_KEY
+        sync: false
     buildCommand: ./build.sh
-    # Note: Migrations run in build.sh
 
   # ===================
-  # Celery Worker (COMMENTED OUT FOR FREE TIER)
+  # Celery Worker (All Queues + Beat)
   # ===================
-  # Uncomment this section when upgrading to paid plan ($9/mo)
-  # - type: worker
-  #   name: tformance-worker
-  #   runtime: docker
-  #   dockerfilePath: ./Dockerfile.web
-  #   dockerCommand: celery -A tformance worker -l INFO --beat
-  #   region: oregon
-  #   plan: starter  # $9/mo - Required for background jobs
-  #   envVars:
-  #     - key: DATABASE_URL
-  #       fromDatabase:
-  #         name: tformance-db
-  #         property: connectionString
-  #     - key: REDIS_URL
-  #       fromService:
-  #         name: tformance-redis
-  #         type: redis
-  #         property: connectionString
-  #     - key: DJANGO_SETTINGS_MODULE
-  #       value: tformance.settings_production
-  #     - key: DEBUG
-  #       value: "False"
-  #     - key: SECRET_KEY
-  #       fromService:
-  #         name: tformance-web
-  #         type: web
-  #         envVarKey: SECRET_KEY
-  #     - key: GITHUB_CLIENT_ID
-  #       sync: false
-  #     - key: GITHUB_CLIENT_SECRET
-  #       sync: false
-  #   buildCommand: ./build_celery.sh
+  # Single worker handles: sync, llm, compute, celery (default)
+  # Uses thread pool for concurrent tasks
+  - type: worker
+    name: tformance-worker
+    runtime: docker
+    dockerfilePath: ./Dockerfile.web
+    dockerCommand: celery -A tformance worker -Q sync,llm,compute,celery -l INFO --pool=threads --concurrency=20 --beat
+    region: oregon
+    plan: starter     # $7/mo - 512MB RAM, 0.5 CPU
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: tformance-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: tformance-redis
+          type: redis
+          property: connectionString
+      - key: DJANGO_SETTINGS_MODULE
+        value: tformance.settings_production
+      - key: DEBUG
+        value: "False"
+      - key: SECRET_KEY
+        fromService:
+          name: tformance-web
+          type: web
+          envVarKey: SECRET_KEY
+      - key: GITHUB_CLIENT_ID
+        sync: false
+      - key: GITHUB_CLIENT_SECRET
+        sync: false
+      - key: JIRA_CLIENT_ID
+        sync: false
+      - key: JIRA_CLIENT_SECRET
+        sync: false
+      - key: SLACK_CLIENT_ID
+        sync: false
+      - key: SLACK_CLIENT_SECRET
+        sync: false
+      - key: SLACK_SIGNING_SECRET
+        sync: false
+      - key: INTEGRATION_ENCRYPTION_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+    buildCommand: ./build_celery.sh
 
   # ===================
-  # Redis (for Celery broker + cache)
+  # Redis (Celery broker + cache)
   # ===================
+  # ⚠️  FREE TIER: No persistence, 25MB, 50 connections
+  #     Upgrade to starter ($10/mo) if you experience task loss
   - type: redis
     name: tformance-redis
     region: oregon
-    plan: free      # Free tier: 25MB, 50 connections
-    ipAllowList: [] # Only allow internal connections
+    plan: free        # $0/mo - 25MB, 50 connections, NO PERSISTENCE
+    ipAllowList: []   # Only allow internal connections
 
 # ===================
 # PostgreSQL Database
@@ -121,8 +165,7 @@ services:
 databases:
   - name: tformance-db
     region: oregon
-    plan: free         # FREE - expires after 30 days!
-    # plan: basic-256mb  # $6/mo - Upgrade for persistent database
+    plan: basic-256mb # $6/mo - 256MB RAM, 100 connections
     databaseName: tformance
     user: tformance
-    ipAllowList: []    # Only allow internal connections
+    ipAllowList: []   # Only allow internal connections
