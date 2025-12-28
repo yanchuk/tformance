@@ -1,0 +1,272 @@
+"""Unified OAuth callback views.
+
+This module handles OAuth callbacks for both onboarding and integration flows,
+routing to the appropriate handler based on the state parameter.
+"""
+
+import logging
+import secrets
+
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import redirect
+from django.urls import reverse
+from django.utils.translation import gettext_lazy as _
+from django_ratelimit.decorators import ratelimit
+
+from apps.auth.oauth_state import (
+    FLOW_TYPE_INTEGRATION,
+    FLOW_TYPE_ONBOARDING,
+    OAuthStateError,
+    verify_oauth_state,
+)
+from apps.integrations.models import GitHubIntegration, IntegrationCredential
+from apps.integrations.services import github_oauth, member_sync
+from apps.integrations.services.encryption import encrypt
+from apps.integrations.services.github_oauth import GitHubOAuthError
+from apps.integrations.views.helpers import _create_github_integration, _create_integration_credential
+from apps.teams.helpers import get_next_unique_team_slug
+from apps.teams.models import Membership, Team
+from apps.teams.roles import ROLE_ADMIN
+from apps.utils.analytics import group_identify, track_event
+
+logger = logging.getLogger(__name__)
+
+# Session keys for onboarding state (matching onboarding app)
+ONBOARDING_TOKEN_KEY = "onboarding_github_token"
+ONBOARDING_ORGS_KEY = "onboarding_github_orgs"
+
+
+@ratelimit(key="ip", rate="10/m", method=["GET", "POST"])
+@login_required
+def github_callback(request):
+    """Unified GitHub OAuth callback handler.
+
+    Routes to appropriate handler based on flow type in state parameter.
+    Rate limited to 10 requests per minute per IP.
+    """
+    # Check if rate limited
+    if getattr(request, "limited", False):
+        messages.error(request, _("Too many requests. Please wait and try again."))
+        return redirect("web:home")
+
+    # Validate state parameter
+    state = request.GET.get("state")
+    try:
+        state_data = verify_oauth_state(state)
+    except OAuthStateError as e:
+        logger.warning(f"Invalid OAuth state: {e}")
+        messages.error(request, _("Invalid OAuth state. Please try again."))
+        return redirect("web:home")
+
+    # Check for errors from GitHub
+    error = request.GET.get("error")
+    if error:
+        error_description = request.GET.get("error_description", "Unknown error")
+        messages.error(request, _("GitHub authorization failed: {}").format(error_description))
+        return _get_error_redirect(state_data)
+
+    # Get authorization code
+    code = request.GET.get("code")
+    if not code:
+        messages.error(request, _("No authorization code received from GitHub."))
+        return _get_error_redirect(state_data)
+
+    # Route to appropriate handler
+    flow_type = state_data["type"]
+
+    if flow_type == FLOW_TYPE_ONBOARDING:
+        return _handle_onboarding_callback(request, code)
+    elif flow_type == FLOW_TYPE_INTEGRATION:
+        team_id = state_data["team_id"]
+        return _handle_integration_callback(request, code, team_id)
+    else:
+        logger.error(f"Unknown flow type: {flow_type}")
+        messages.error(request, _("Invalid OAuth flow. Please try again."))
+        return redirect("web:home")
+
+
+def _get_error_redirect(state_data: dict):
+    """Get appropriate error redirect based on flow type."""
+    flow_type = state_data.get("type")
+    if flow_type == FLOW_TYPE_ONBOARDING:
+        return redirect("onboarding:start")
+    elif flow_type == FLOW_TYPE_INTEGRATION:
+        return redirect("integrations:integrations_home")
+    return redirect("web:home")
+
+
+def _handle_onboarding_callback(request, code: str):
+    """Handle GitHub OAuth callback for onboarding flow.
+
+    Creates a new team from the user's GitHub organization.
+    """
+    # If user already has a team, redirect to dashboard
+    if request.user.teams.exists():
+        return redirect("web:home")
+
+    # Build callback URL for token exchange
+    callback_url = request.build_absolute_uri(reverse("tformance_auth:github_callback"))
+
+    try:
+        # Exchange code for access token
+        token_data = github_oauth.exchange_code_for_token(code, callback_url)
+        access_token = token_data.get("access_token")
+
+        if not access_token:
+            messages.error(request, _("Failed to get access token from GitHub."))
+            return redirect("onboarding:start")
+
+        # Fetch user's organizations
+        orgs = github_oauth.get_user_organizations(access_token)
+
+        if not orgs:
+            messages.error(
+                request,
+                _("No GitHub organizations found. You need to be a member of at least one organization."),
+            )
+            return redirect("onboarding:start")
+
+        # Store token (encrypted) and orgs in session for next step
+        request.session[ONBOARDING_TOKEN_KEY] = encrypt(access_token)
+        request.session[ONBOARDING_ORGS_KEY] = orgs
+
+        # If only one org, auto-select it and create team
+        if len(orgs) == 1:
+            return _create_team_from_org(request, orgs[0], access_token)
+
+        # Multiple orgs - redirect to selection page
+        return redirect("onboarding:select_org")
+
+    except GitHubOAuthError as e:
+        logger.error(f"GitHub OAuth error during onboarding: {e}", exc_info=True)
+        messages.error(request, _("Failed to connect to GitHub. Please try again."))
+        return redirect("onboarding:start")
+
+
+def _create_team_from_org(request, org: dict, access_token: str):
+    """Create team from GitHub organization during onboarding."""
+    try:
+        # Create team from org name
+        team_name = org["login"]
+        team_slug = get_next_unique_team_slug(team_name)
+        team = Team.objects.create(name=team_name, slug=team_slug)
+
+        # Add user as admin
+        Membership.objects.create(team=team, user=request.user, role=ROLE_ADMIN)
+
+        # Create encrypted credential
+        encrypted_token = encrypt(access_token)
+        credential = IntegrationCredential.objects.create(
+            team=team,
+            provider=IntegrationCredential.PROVIDER_GITHUB,
+            access_token=encrypted_token,
+            connected_by=request.user,
+        )
+
+        # Create GitHub integration
+        webhook_secret = secrets.token_hex(32)
+        GitHubIntegration.objects.create(
+            team=team,
+            credential=credential,
+            organization_slug=org["login"],
+            organization_id=org["id"],
+            webhook_secret=webhook_secret,
+        )
+
+        # Sync organization members
+        try:
+            member_sync.sync_github_members(team)
+        except Exception as e:
+            logger.warning(f"Failed to sync GitHub members during onboarding: {e}")
+            # Don't block onboarding if member sync fails
+
+        # Clear session token/orgs
+        request.session.pop(ONBOARDING_TOKEN_KEY, None)
+        request.session.pop(ONBOARDING_ORGS_KEY, None)
+
+        # Track events
+        group_identify(team)
+        track_event(
+            request.user,
+            "github_connected",
+            {
+                "org_name": org["login"],
+                "member_count": team.members.count(),
+                "team_slug": team.slug,
+            },
+        )
+        track_event(
+            request.user,
+            "onboarding_step_completed",
+            {"step": "github", "team_slug": team.slug},
+        )
+
+        messages.success(request, _("Team '{}' created successfully!").format(team_name))
+        return redirect("onboarding:select_repos")
+
+    except Exception as e:
+        logger.error(f"Failed to create team from org during onboarding: {e}")
+        messages.error(request, _("Failed to create team. Please try again."))
+        return redirect("onboarding:start")
+
+
+def _handle_integration_callback(request, code: str, team_id: int):
+    """Handle GitHub OAuth callback for integration flow.
+
+    Adds GitHub integration to an existing team.
+    """
+    # Get team and verify access
+    try:
+        team = Team.objects.get(id=team_id)
+    except Team.DoesNotExist:
+        messages.error(request, _("Team not found."))
+        return redirect("web:home")
+
+    # Verify user has access to this team
+    if not request.user.teams.filter(id=team_id).exists():
+        messages.error(request, _("You don't have access to this team."))
+        return redirect("web:home")
+
+    # Build callback URL for token exchange
+    callback_url = request.build_absolute_uri(reverse("tformance_auth:github_callback"))
+
+    try:
+        # Exchange code for token
+        token_data = github_oauth.exchange_code_for_token(code, callback_url)
+        access_token = token_data["access_token"]
+    except (GitHubOAuthError, KeyError) as e:
+        logger.error(f"GitHub token exchange failed: {e}", exc_info=True)
+        messages.error(request, _("Failed to connect to GitHub. Please try again."))
+        return redirect("integrations:integrations_home")
+
+    # Get user's organizations
+    try:
+        orgs = github_oauth.get_user_organizations(access_token)
+    except GitHubOAuthError as e:
+        logger.error(f"Failed to get GitHub organizations: {e}", exc_info=True)
+        messages.error(request, _("Failed to get organizations from GitHub. Please try again."))
+        return redirect("integrations:integrations_home")
+
+    # Create credential for the team
+    credential = _create_integration_credential(team, access_token, IntegrationCredential.PROVIDER_GITHUB, request.user)
+
+    # If single org, create integration immediately
+    if len(orgs) == 1:
+        org = orgs[0]
+        org_slug = org["login"]
+        _create_github_integration(team, credential, org)
+
+        # Sync members from GitHub
+        try:
+            result = member_sync.sync_github_members(team, access_token, org_slug)
+            member_count = result.get("created", 0) + result.get("updated", 0)
+        except Exception as e:
+            logger.warning(f"Failed to sync GitHub members: {e}")
+            member_count = 0
+
+        messages.success(request, _("Connected to {}. Imported {} members.").format(org_slug, member_count))
+        return redirect("integrations:integrations_home")
+
+    # Multiple orgs - redirect to selection
+    return redirect("integrations:github_select_org")

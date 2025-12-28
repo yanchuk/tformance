@@ -15,7 +15,6 @@ Module Structure:
 # Status views
 # GitHub views
 from .github import (
-    github_callback,
     github_connect,
     github_disconnect,
     github_member_toggle,
@@ -53,7 +52,6 @@ __all__ = [
     "copilot_sync",
     # GitHub
     "github_connect",
-    "github_callback",
     "github_disconnect",
     "github_select_org",
     "github_members",

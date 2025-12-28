@@ -6,7 +6,6 @@ from django.contrib import messages
 from django.http import HttpResponseNotAllowed, HttpResponseNotFound, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
-from django_ratelimit.decorators import ratelimit
 
 from apps.integrations.models import GitHubIntegration, IntegrationCredential
 from apps.integrations.services import github_oauth, github_sync, member_sync
@@ -15,11 +14,9 @@ from apps.teams.decorators import login_and_team_required, team_admin_required
 
 from .helpers import (
     _create_github_integration,
-    _create_integration_credential,
     _create_repository_webhook,
     _delete_repository_webhook,
     _sync_github_members_after_connection,
-    _validate_oauth_callback,
 )
 
 logger = logging.getLogger(__name__)
@@ -30,7 +27,7 @@ def github_connect(request):
     """Initiate GitHub OAuth flow for connecting a team's GitHub account.
 
     Redirects the user to GitHub's OAuth authorization page. On success,
-    GitHub redirects back to github_callback.
+    GitHub redirects back to the unified auth callback.
 
     Requires team admin role.
 
@@ -41,6 +38,12 @@ def github_connect(request):
     Returns:
         HttpResponse redirecting to GitHub OAuth authorization.
     """
+    from urllib.parse import urlencode
+
+    from django.conf import settings
+
+    from apps.auth.oauth_state import FLOW_TYPE_INTEGRATION, create_oauth_state
+
     team = request.team
 
     # Check if already connected
@@ -48,84 +51,23 @@ def github_connect(request):
         messages.info(request, "GitHub is already connected to this team.")
         return redirect("integrations:integrations_home")
 
-    # Build callback URL
-    callback_url = request.build_absolute_uri(reverse("integrations:github_callback"))
+    # Build callback URL - use unified auth callback
+    callback_url = request.build_absolute_uri(reverse("tformance_auth:github_callback"))
 
-    # Get authorization URL
-    authorization_url = github_oauth.get_authorization_url(team.id, callback_url)
+    # Create state for CSRF protection with team_id
+    state = create_oauth_state(FLOW_TYPE_INTEGRATION, team_id=team.id)
+
+    # Build GitHub authorization URL
+    params = {
+        "client_id": settings.GITHUB_CLIENT_ID,
+        "redirect_uri": callback_url,
+        "scope": github_oauth.GITHUB_OAUTH_SCOPES,
+        "state": state,
+    }
+    authorization_url = f"{github_oauth.GITHUB_OAUTH_AUTHORIZE_URL}?{urlencode(params)}"
 
     # Redirect to GitHub
     return redirect(authorization_url)
-
-
-@ratelimit(key="ip", rate="10/m", method=["GET", "POST"])
-@login_and_team_required
-def github_callback(request):
-    """Handle GitHub OAuth callback after user authorizes the app.
-
-    Receives the authorization code from GitHub, exchanges it for an access token,
-    and stores the token for the team.
-
-    Rate limited to 10 requests per minute per IP to prevent abuse.
-
-    Args:
-        request: The HTTP request object containing OAuth callback parameters.
-        team_slug: The slug of the team that initiated the OAuth flow.
-
-    Returns:
-        HttpResponse redirecting to organization selection or integrations home.
-    """
-    # Check if rate limited
-    if getattr(request, "limited", False):
-        messages.error(request, "Too many requests. Please wait and try again.")
-        return redirect("integrations:integrations_home")
-
-    team = request.team
-
-    # Validate OAuth callback parameters
-    code, error_response = _validate_oauth_callback(
-        request, team, github_oauth.verify_oauth_state, GitHubOAuthError, "GitHub"
-    )
-    if error_response:
-        return error_response
-
-    # Build callback URL
-    callback_url = request.build_absolute_uri(reverse("integrations:github_callback"))
-
-    # Exchange code for token
-    try:
-        token_data = github_oauth.exchange_code_for_token(code, callback_url)
-        access_token = token_data["access_token"]
-    except (GitHubOAuthError, KeyError, Exception) as e:
-        logger.error(f"GitHub token exchange failed: {e}", exc_info=True)
-        messages.error(request, "Failed to connect to GitHub. Please try again.")
-        return redirect("integrations:integrations_home")
-
-    # Get user's organizations
-    try:
-        orgs = github_oauth.get_user_organizations(access_token)
-    except GitHubOAuthError as e:
-        logger.error(f"Failed to get GitHub organizations: {e}", exc_info=True)
-        messages.error(request, "Failed to get organizations from GitHub. Please try again.")
-        return redirect("integrations:integrations_home")
-
-    # Create credential for the team
-    credential = _create_integration_credential(team, access_token, IntegrationCredential.PROVIDER_GITHUB, request.user)
-
-    # If single org, create integration immediately
-    if len(orgs) == 1:
-        org = orgs[0]
-        org_slug = org["login"]
-        _create_github_integration(team, credential, org)
-
-        # Sync members from GitHub
-        member_count = _sync_github_members_after_connection(team, access_token, org_slug)
-
-        messages.success(request, f"Connected to {org_slug}. Imported {member_count} members.")
-        return redirect("integrations:integrations_home")
-
-    # Multiple orgs - redirect to selection
-    return redirect("integrations:github_select_org")
 
 
 @team_admin_required

@@ -34,17 +34,6 @@ class TestIntegrationsURLs(TestCase):
         resolved = resolve(url)
         self.assertEqual(resolved.view_name, "integrations:github_connect")
 
-    def test_github_callback_url_resolves(self):
-        """Test that GitHub callback URL resolves correctly."""
-        url = reverse("integrations:github_callback")
-        self.assertEqual(url, "/app/integrations/github/callback/")
-
-    def test_github_callback_url_resolves_to_correct_view(self):
-        """Test that GitHub callback URL resolves to github_callback view."""
-        url = reverse("integrations:github_callback")
-        resolved = resolve(url)
-        self.assertEqual(resolved.view_name, "integrations:github_callback")
-
     def test_github_disconnect_url_resolves(self):
         """Test that GitHub disconnect URL resolves correctly."""
         url = reverse("integrations:github_disconnect")
@@ -72,7 +61,6 @@ class TestIntegrationsURLs(TestCase):
         url_names = [
             "integrations_home",
             "github_connect",
-            "github_callback",
             "github_disconnect",
             "github_select_org",
         ]
