@@ -78,4 +78,5 @@ jobs:
           DJANGO_DATABASE_PASSWORD: postgres_password
           CELERY_TASK_ALWAYS_EAGER: "true"
           INTEGRATION_ENCRYPTION_KEY: "1T69f5-MtFP1aZh5PMW2nVApXAUWihfqF7G_mrL1iCI="
+          POSTHOG_API_KEY: "phc_test_key_for_ci"
         run: uv run pytest -n auto
