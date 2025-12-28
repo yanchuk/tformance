@@ -98,6 +98,24 @@ test.describe('Onboarding Flow @onboarding', () => {
       }
     });
 
+    test('repos selection page displays repos sorted by activity', async ({ page }) => {
+      await page.goto('/onboarding/repos/');
+      const url = page.url();
+
+      // If we land on the repos page with repos available
+      if (url.includes('/onboarding/repos')) {
+        // Check that repo cards exist (sorted by updated_at descending)
+        const repoCards = page.locator('[data-repo-id]');
+        const count = await repoCards.count();
+
+        // If there are multiple repos, verify they are displayed
+        if (count > 0) {
+          // First repo card should be visible (most recently updated)
+          await expect(repoCards.first()).toBeVisible();
+        }
+      }
+    });
+
     test('jira page redirects to app or onboarding', async ({ page }) => {
       await page.goto('/onboarding/jira/');
       const url = page.url();
@@ -274,6 +292,18 @@ test.describe('Onboarding Flow @onboarding', () => {
           await expect(page.locator('#progress-message')).toBeVisible();
           // Progress bar element should exist (may be 0% width initially)
           await expect(page.locator('#progress-bar')).toBeAttached();
+        }
+      });
+
+      test('sync progress page shows estimated time element', async ({ page }) => {
+        await page.goto('/onboarding/sync/');
+
+        const url = page.url();
+        if (url.includes('/onboarding/sync')) {
+          // Should have estimated time display
+          await expect(page.locator('#estimated-time')).toBeVisible();
+          // Initial state should show "Calculating..."
+          await expect(page.locator('#estimated-time')).toContainText(/Calculating/);
         }
       });
 

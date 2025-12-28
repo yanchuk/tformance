@@ -24,6 +24,12 @@
     <div class="w-full bg-base-300 rounded-full h-3">
       <div id="progress-bar" class="bg-primary h-3 rounded-full transition-all duration-300" style="width: 0%"></div>
     </div>
+    <div class="text-center mt-2">
+      <span id="estimated-time" class="text-sm text-base-content/60">
+        <i class="fa-regular fa-clock mr-1"></i>
+        {% translate "Calculating..." %}
+      </span>
+    </div>
   </div>
 
   {# First insights ready banner #}
@@ -91,7 +97,8 @@
 <script type="application/json" id="sync-config">
 {
   "startUrl": "{% url 'onboarding:start_sync' %}",
-  "csrfToken": "{{ csrf_token }}"
+  "csrfToken": "{{ csrf_token }}",
+  "reposCount": {{ repos|length }}
 }
 </script>
 
@@ -101,8 +108,44 @@ document.addEventListener('DOMContentLoaded', function() {
   const progressBar = document.getElementById('progress-bar');
   const progressPercent = document.getElementById('progress-percent');
   const progressMessage = document.getElementById('progress-message');
+  const estimatedTime = document.getElementById('estimated-time');
+  const estimatedTimeIcon = estimatedTime.querySelector('i');
   const syncActions = document.getElementById('sync-actions');
   const syncComplete = document.getElementById('sync-complete');
+
+  // Time tracking for estimation
+  let syncStartTime = null;
+
+  // Update estimated time remaining based on progress
+  function updateEstimatedTime(percent) {
+    if (percent <= 0 || !syncStartTime) {
+      estimatedTimeIcon.className = 'fa-regular fa-clock mr-1';
+      estimatedTime.lastChild.textContent = ' Calculating...';
+      return;
+    }
+
+    if (percent >= 100) {
+      estimatedTimeIcon.className = 'fa-solid fa-check mr-1';
+      estimatedTime.lastChild.textContent = ' Complete!';
+      return;
+    }
+
+    const elapsedMs = Date.now() - syncStartTime;
+    const estimatedTotalMs = (elapsedMs / percent) * 100;
+    const remainingMs = estimatedTotalMs - elapsedMs;
+    const remainingSeconds = Math.ceil(remainingMs / 1000);
+
+    let timeText;
+    if (remainingSeconds < 60) {
+      timeText = ' ' + remainingSeconds + ' second' + (remainingSeconds !== 1 ? 's' : '') + ' remaining';
+    } else {
+      const minutes = Math.ceil(remainingSeconds / 60);
+      timeText = ' ~' + minutes + ' minute' + (minutes !== 1 ? 's' : '') + ' remaining';
+    }
+
+    estimatedTimeIcon.className = 'fa-regular fa-clock mr-1';
+    estimatedTime.lastChild.textContent = timeText;
+  }
 
   // Start the sync task
   fetch(config.startUrl, {
@@ -115,6 +158,8 @@ document.addEventListener('DOMContentLoaded', function() {
   .then(response => response.json())
   .then(data => {
     if (data.task_id) {
+      // Record start time for estimation
+      syncStartTime = Date.now();
       // Poll for progress using celery-progress
       const progressUrl = '/celery-progress/' + data.task_id + '/';
       pollProgress(progressUrl);
@@ -136,6 +181,7 @@ document.addEventListener('DOMContentLoaded', function() {
           progressBar.style.width = '100%';
           progressPercent.textContent = '100%';
           progressMessage.textContent = data.result?.message || 'Sync complete!';
+          updateEstimatedTime(100);
 
           // Show completion UI
           syncActions.classList.add('hidden');
@@ -148,6 +194,7 @@ document.addEventListener('DOMContentLoaded', function() {
           const percent = Math.round((data.progress.current / data.progress.total) * 100);
           progressBar.style.width = percent + '%';
           progressPercent.textContent = percent + '%';
+          updateEstimatedTime(percent);
           if (data.progress.description) {
             progressMessage.textContent = data.progress.description;
           }

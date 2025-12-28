@@ -14,7 +14,6 @@ from apps.teams.decorators import login_and_team_required, team_admin_required
 
 from .helpers import (
     _create_github_integration,
-    _create_repository_webhook,
     _delete_repository_webhook,
     _sync_github_members_after_connection,
 )
@@ -386,20 +385,22 @@ def github_repo_toggle(request, repo_id):
     except TrackedRepository.DoesNotExist:
         # Not tracked - create it (only if full_name provided)
         if full_name:
-            # Build webhook URL and create webhook
-            webhook_url = request.build_absolute_uri("/webhooks/github/")
-            webhook_id = _create_repository_webhook(access_token, full_name, webhook_url, integration.webhook_secret)
-
-            # Create tracked repository with webhook_id (or None if webhook creation failed)
+            # Create tracked repository first (webhook_id will be set by async task)
             tracked_repo = TrackedRepository.objects.create(
                 team=team,
                 integration=integration,
                 github_repo_id=repo_id,
                 full_name=full_name,
                 is_active=True,
-                webhook_id=webhook_id,
+                webhook_id=None,  # Set asynchronously by task
             )
             is_tracked = True
+
+            # Queue async webhook creation (non-blocking)
+            from apps.integrations.tasks import create_repository_webhook_task
+
+            webhook_url = request.build_absolute_uri("/webhooks/github/")
+            create_repository_webhook_task.delay(tracked_repo.id, webhook_url)
 
             # Parse days_back parameter
             days_back_str = request.POST.get("days_back", "")

@@ -13,7 +13,7 @@ from apps.integrations.models import (
     TrackedJiraProject,
     TrackedRepository,
 )
-from apps.integrations.services import github_comments, github_pr_description, github_sync
+from apps.integrations.services import github_comments, github_pr_description, github_sync, github_webhooks
 from apps.integrations.services.copilot_metrics import (
     CopilotMetricsError,
     fetch_copilot_metrics,
@@ -213,6 +213,65 @@ def _sync_incremental_with_graphql_or_rest(tracked_repo) -> dict:
     # Use REST API (default or fallback)
     logger.info(f"Using REST API for incremental sync: {tracked_repo.full_name}")
     return sync_repository_incremental(tracked_repo)
+
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=30)
+def create_repository_webhook_task(self, tracked_repo_id: int, webhook_url: str) -> dict:
+    """Create a GitHub webhook for a tracked repository asynchronously.
+
+    This task is queued after creating a TrackedRepository to avoid blocking
+    the view response. The webhook_id is updated on the TrackedRepository
+    once the webhook is successfully created.
+
+    Args:
+        self: Celery task instance (bound task)
+        tracked_repo_id: ID of the TrackedRepository
+        webhook_url: The URL for the webhook endpoint
+
+    Returns:
+        Dict with webhook_id on success, or error on failure
+    """
+    from apps.integrations.services.github_oauth import GitHubOAuthError
+
+    # Get TrackedRepository by id
+    try:
+        tracked_repo = TrackedRepository.objects.select_related(  # noqa: TEAM001 - ID from Celery task queue
+            "integration", "integration__credential"
+        ).get(id=tracked_repo_id)
+    except TrackedRepository.DoesNotExist:
+        logger.error(f"TrackedRepository with id {tracked_repo_id} not found for webhook creation")
+        return {"error": f"TrackedRepository with id {tracked_repo_id} not found"}
+
+    # Get access token and webhook secret from integration
+    try:
+        access_token = tracked_repo.integration.credential.access_token
+        webhook_secret = tracked_repo.integration.webhook_secret
+    except AttributeError as e:
+        logger.error(f"Failed to get credentials for webhook creation: {e}")
+        return {"error": "Failed to get integration credentials"}
+
+    # Create the webhook
+    try:
+        webhook_id = github_webhooks.create_repository_webhook(
+            access_token=access_token,
+            repo_full_name=tracked_repo.full_name,
+            webhook_url=webhook_url,
+            secret=webhook_secret,
+        )
+
+        # Update TrackedRepository with webhook_id
+        tracked_repo.webhook_id = webhook_id
+        tracked_repo.save(update_fields=["webhook_id"])
+
+        logger.info(f"Created webhook {webhook_id} for {tracked_repo.full_name}")
+        return {"webhook_id": webhook_id, "repo_id": tracked_repo_id}
+
+    except GitHubOAuthError as e:
+        logger.error(f"Failed to create webhook for {tracked_repo.full_name}: {e}")
+        return {"error": str(e)}
+    except Exception as e:
+        logger.error(f"Unexpected error creating webhook for {tracked_repo.full_name}: {e}")
+        return {"error": str(e)}
 
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)

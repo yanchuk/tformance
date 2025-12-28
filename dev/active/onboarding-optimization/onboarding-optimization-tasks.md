@@ -1,6 +1,6 @@
 # Onboarding Optimization - Tasks Checklist
 
-**Last Updated:** 2025-12-28 (Session 3)
+**Last Updated:** 2025-12-28 (Session 4 - COMPLETE)
 
 ---
 
@@ -153,16 +153,45 @@
 
 ---
 
-## Phase 4: UX Polish (Future)
+## Phase 4: UX Polish ✅ COMPLETE
 
-### 4.1 Repository Prioritization
-**Status:** PENDING
+### 4.1 Repository Prioritization ✅
+**Effort:** S | **Priority:** P2 | **Impact:** Low | **Status:** DONE
 
-### 4.2 Async Webhook Creation
-**Status:** PENDING
+- [x] Repos sorted by `updated_at` descending (most recent first)
+- [x] None values handled gracefully (placed at end)
+- [x] 6 tests added: `apps/onboarding/tests/test_repo_prioritization.py`
 
-### 4.3 Estimated Time Display
-**Status:** PENDING
+**Files Modified:**
+- [x] `apps/onboarding/views.py` - Lines 287-290: Sort repos by `updated_at`
+
+---
+
+### 4.2 Async Webhook Creation ✅
+**Effort:** S | **Priority:** P2 | **Impact:** Medium | **Status:** DONE
+
+- [x] Webhook creation queued as Celery task instead of blocking view
+- [x] View returns immediately without waiting for webhook
+- [x] Task updates `TrackedRepository.webhook_id` after creation
+- [x] 9 tests added: `apps/integrations/tests/test_async_webhook_creation.py`
+
+**Files Modified:**
+- [x] `apps/integrations/tasks.py` - Added `create_repository_webhook_task`
+- [x] `apps/integrations/views/github.py` - Updated `github_repo_toggle` to use async task
+
+---
+
+### 4.3 Estimated Time Display ✅
+**Effort:** S | **Priority:** P2 | **Impact:** Low | **Status:** DONE
+
+- [x] "Calculating..." shown initially
+- [x] "~X minutes remaining" calculated from progress and elapsed time
+- [x] Updates dynamically as sync progresses
+- [x] Shows "Complete!" when done
+- [x] 8 tests added: `apps/onboarding/tests/test_estimated_time_display.py`
+
+**Files Modified:**
+- [x] `templates/onboarding/sync_progress.html` - Added estimated time element and JavaScript
 
 ---
 
@@ -173,8 +202,8 @@
 | Phase 1: Quick Wins | 3 | 3 | ✅ COMPLETE |
 | Phase 2: Two-Phase Sync | 5 | 5 | ✅ COMPLETE |
 | Phase 3: Progressive Dashboard | 4 | 4 | ✅ COMPLETE |
-| Phase 4: UX Polish | 3 | 0 | Not Started |
-| **Total** | **15** | **12** | **80%** |
+| Phase 4: UX Polish | 3 | 3 | ✅ COMPLETE |
+| **Total** | **15** | **15** | **100%** |
 
 ---
 
@@ -192,7 +221,10 @@
 | `apps/web/tests/test_dashboard_sync_indicator.py` | 8 | Sync indicator banner |
 | `apps/web/tests/test_dashboard_partial_data.py` | 11 | Partial data display |
 | `apps/onboarding/tests/test_first_insights_banner.py` | 11 | First insights ready banner |
-| **Total** | **98** | |
+| `apps/onboarding/tests/test_repo_prioritization.py` | 6 | Repository sorting by activity |
+| `apps/integrations/tests/test_async_webhook_creation.py` | 9 | Async webhook creation task |
+| `apps/onboarding/tests/test_estimated_time_display.py` | 8 | Estimated time remaining display |
+| **Total** | **121** | |
 
 ---
 
