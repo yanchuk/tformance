@@ -1,5 +1,7 @@
 # Real-World Integration Testing Guide
 
+**Last Updated:** 2025-12-28
+
 This guide walks you through setting up a tunnel (Cloudflare Tunnel recommended) and creating real GitHub, Jira, and Slack apps for end-to-end integration testing.
 
 **Example domain used throughout:** `dev.ianchuk.com` (replace with your own tunnel domain)
@@ -10,11 +12,13 @@ This guide walks you through setting up a tunnel (Cloudflare Tunnel recommended)
 |-------------|--------|---------------|-------|
 | Tunnel | ✅ Verified | 2025-12-17 | Cloudflare Tunnel at `dev.ianchuk.com` |
 | GitHub OAuth | ✅ Verified | 2025-12-17 | OAuth flow, org selection, member sync working |
-| GitHub Copilot | ⏳ Pending | - | Requires org with 5+ Copilot licenses |
-| GitHub PR Sync | ⏳ Pending | - | Commits, check runs, files, comments |
-| GitHub Deployments | ⏳ Pending | - | Deployment tracking |
-| Jira OAuth | ⏳ Pending | - | - |
-| Slack OAuth | ⏳ Pending | - | - |
+| GitHub Copilot | ✅ Implemented | 2025-12-28 | Service + task ready, requires org with 5+ licenses to test |
+| GitHub PR Sync | ✅ Implemented | 2025-12-28 | Commits, check runs, files, comments, reviews all syncing |
+| GitHub Deployments | ✅ Implemented | 2025-12-28 | Deployment model + sync ready |
+| GitHub Webhooks | ✅ Implemented | 2025-12-28 | PR events processed via `/webhooks/github/` |
+| Jira OAuth | ✅ Implemented | 2025-12-28 | OAuth flow, site selection, project tracking |
+| Slack OAuth | ✅ Implemented | 2025-12-28 | OAuth flow, survey sending, interactions |
+| AI Impact Report | ✅ Live | 2025-12-28 | Available at `/report/` URL |
 
 ## Table of Contents
 
@@ -27,6 +31,9 @@ This guide walks you through setting up a tunnel (Cloudflare Tunnel recommended)
 7. [Phase 4: Slack App Setup](#phase-4-slack-app-setup)
 8. [Phase 5: Testing Checklist](#phase-5-testing-checklist)
 9. [Troubleshooting](#troubleshooting)
+10. [Quick Reference: URLs Summary](#quick-reference-urls-summary)
+11. [Quick Reference: Environment Variables](#quick-reference-environment-variables)
+12. [Quick Reference: Key Files](#quick-reference-key-files)
 
 ---
 
@@ -143,6 +150,11 @@ Fill in the form:
 | **Application name** | `AI Impact Analytics (Dev)` |
 | **Homepage URL** | `https://dev.ianchuk.com` |
 | **Authorization callback URL** | `https://dev.ianchuk.com/app/integrations/github/callback/` |
+
+**Note:** GitHub OAuth Apps support multiple callback URLs. After creating the app, add the onboarding callback as well:
+- `https://dev.ianchuk.com/onboarding/github/callback/`
+
+This allows OAuth to work for both new user onboarding and existing team integration management.
 
 ### 2.3 Get Credentials
 
@@ -1004,13 +1016,35 @@ celery -A tformance inspect active
 
 Using `dev.ianchuk.com` as the example domain:
 
+### OAuth Callback URLs
+
+There are **two OAuth paths** depending on context:
+
+**Onboarding Flow** (new users without teams):
+| Service | URL Type | Full URL |
+|---------|----------|----------|
+| GitHub | OAuth Callback | `https://dev.ianchuk.com/onboarding/github/callback/` |
+
+**Team Integrations** (existing teams adding/reconnecting):
 | Service | URL Type | Full URL |
 |---------|----------|----------|
 | GitHub | OAuth Callback | `https://dev.ianchuk.com/app/integrations/github/callback/` |
-| GitHub | Webhook | `https://dev.ianchuk.com/webhooks/github/` |
 | Jira | OAuth Callback | `https://dev.ianchuk.com/app/integrations/jira/callback/` |
 | Slack | OAuth Callback | `https://dev.ianchuk.com/app/integrations/slack/callback/` |
+
+### Webhook URLs
+
+| Service | URL Type | Full URL |
+|---------|----------|----------|
+| GitHub | Webhook | `https://dev.ianchuk.com/webhooks/github/` |
 | Slack | Interactions | `https://dev.ianchuk.com/integrations/webhooks/slack/interactions/` |
+
+### Other URLs
+
+| Feature | Full URL |
+|---------|----------|
+| AI Impact Report | `https://dev.ianchuk.com/report/` |
+| Health Check | `https://dev.ianchuk.com/health/` |
 
 ---
 
@@ -1040,6 +1074,45 @@ SLACK_CLIENT_ID="..."
 SLACK_CLIENT_SECRET="..."
 SLACK_SIGNING_SECRET="..."
 ```
+
+---
+
+## Quick Reference: Key Files
+
+### Integration Services
+
+| Service | File | Purpose |
+|---------|------|---------|
+| GitHub OAuth | `apps/integrations/services/github_oauth.py` | OAuth flow, token management |
+| GitHub Sync | `apps/integrations/services/github_sync.py` | PR, commit, file, check run sync |
+| GitHub GraphQL | `apps/integrations/services/github_graphql_sync.py` | Efficient bulk data fetching |
+| Copilot Metrics | `apps/integrations/services/copilot_metrics.py` | Copilot usage data fetching |
+| Jira OAuth | `apps/integrations/services/jira_oauth.py` | Jira OAuth flow |
+| Jira Sync | `apps/integrations/services/jira_sync.py` | Issue and sprint sync |
+| Slack OAuth | `apps/integrations/services/slack_oauth.py` | Slack OAuth flow |
+| Slack Surveys | `apps/integrations/services/slack_surveys.py` | Survey message sending |
+
+### Models
+
+| Model | File | Purpose |
+|-------|------|---------|
+| GitHubIntegration | `apps/integrations/models.py` | GitHub org connection |
+| TrackedRepository | `apps/integrations/models.py` | Tracked repos |
+| PullRequest | `apps/metrics/models/github.py` | PR data |
+| Commit | `apps/metrics/models/github.py` | Commit data |
+| PRFile | `apps/metrics/models/github.py` | Files changed |
+| PRCheckRun | `apps/metrics/models/github.py` | CI/CD results |
+| PRComment | `apps/metrics/models/github.py` | Comments |
+| Deployment | `apps/metrics/models/deployments.py` | Deployment tracking |
+| AIUsageDaily | `apps/metrics/models/aggregations.py` | Copilot metrics |
+
+### Celery Tasks
+
+| Task | File | Purpose |
+|------|------|---------|
+| `sync_copilot_metrics_task` | `apps/integrations/tasks.py` | Daily Copilot sync |
+| `sync_repository_task` | `apps/integrations/tasks.py` | Repository PR sync |
+| `send_surveys_for_merged_pr_task` | `apps/integrations/tasks.py` | Slack survey dispatch |
 
 ---
 

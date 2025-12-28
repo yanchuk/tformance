@@ -17,9 +17,21 @@ from django.core.signing import BadSignature, Signer
 # OAuth state validity period in seconds (10 minutes)
 OAUTH_STATE_MAX_AGE_SECONDS = 600
 
-# Flow types
+# Flow types - GitHub
 FLOW_TYPE_ONBOARDING = "onboarding"
 FLOW_TYPE_INTEGRATION = "integration"
+
+# Flow types - Jira
+FLOW_TYPE_JIRA_ONBOARDING = "jira_onboarding"
+FLOW_TYPE_JIRA_INTEGRATION = "jira_integration"
+
+# All valid flow types
+VALID_FLOW_TYPES = (
+    FLOW_TYPE_ONBOARDING,
+    FLOW_TYPE_INTEGRATION,
+    FLOW_TYPE_JIRA_ONBOARDING,
+    FLOW_TYPE_JIRA_INTEGRATION,
+)
 
 
 class OAuthStateError(Exception):
@@ -32,8 +44,8 @@ def create_oauth_state(flow_type: str, team_id: int | None = None) -> str:
     """Create a signed OAuth state parameter.
 
     Args:
-        flow_type: Either "onboarding" or "integration"
-        team_id: Required for integration flow, must be None for onboarding
+        flow_type: One of the FLOW_TYPE_* constants
+        team_id: Required for integration flows, must be None for onboarding flows
 
     Returns:
         Signed state string for CSRF protection
@@ -41,14 +53,20 @@ def create_oauth_state(flow_type: str, team_id: int | None = None) -> str:
     Raises:
         ValueError: If flow_type is invalid or team_id requirements not met
     """
-    if flow_type not in (FLOW_TYPE_ONBOARDING, FLOW_TYPE_INTEGRATION):
+    if flow_type not in VALID_FLOW_TYPES:
         raise ValueError(f"Invalid flow_type: {flow_type}")
 
-    if flow_type == FLOW_TYPE_INTEGRATION and team_id is None:
-        raise ValueError("team_id is required for integration flow")
+    # Flows that require team_id
+    team_required_flows = (FLOW_TYPE_INTEGRATION, FLOW_TYPE_JIRA_INTEGRATION)
+    # Flows where team_id must be None (new user onboarding)
+    no_team_flows = (FLOW_TYPE_ONBOARDING,)
+    # Note: FLOW_TYPE_JIRA_ONBOARDING has optional team_id (no validation needed)
 
-    if flow_type == FLOW_TYPE_ONBOARDING and team_id is not None:
-        raise ValueError("team_id must be None for onboarding flow")
+    if flow_type in team_required_flows and team_id is None:
+        raise ValueError(f"team_id is required for {flow_type} flow")
+
+    if flow_type in no_team_flows and team_id is not None:
+        raise ValueError(f"team_id must be None for {flow_type} flow")
 
     # Build payload
     payload: dict[str, Any] = {
@@ -101,7 +119,7 @@ def verify_oauth_state(state: str) -> dict[str, Any]:
 
         # Validate type
         flow_type = payload.get("type")
-        if flow_type not in (FLOW_TYPE_ONBOARDING, FLOW_TYPE_INTEGRATION):
+        if flow_type not in VALID_FLOW_TYPES:
             raise OAuthStateError(f"Invalid flow type: {flow_type}")
 
         # Validate timestamp
@@ -115,11 +133,12 @@ def verify_oauth_state(state: str) -> dict[str, Any]:
         if age < -60:  # Allow 60 seconds clock skew
             raise OAuthStateError("OAuth state has future timestamp")
 
-        # Validate team_id for integration flow
-        if flow_type == FLOW_TYPE_INTEGRATION:
+        # Validate team_id for flows that require it
+        team_required_flows = (FLOW_TYPE_INTEGRATION, FLOW_TYPE_JIRA_INTEGRATION)
+        if flow_type in team_required_flows:
             team_id = payload.get("team_id")
             if team_id is None:
-                raise OAuthStateError("Missing team_id for integration flow")
+                raise OAuthStateError(f"Missing team_id for {flow_type} flow")
 
         return payload
 

@@ -1,0 +1,140 @@
+{% extends "onboarding/base.html" %}
+{% load i18n %}
+
+{% block onboarding_content %}
+<div class="text-center mb-8">
+  <div class="w-20 h-20 bg-accent/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-accent/30">
+    <i class="fa-brands fa-jira text-4xl text-accent"></i>
+  </div>
+  <h1 class="text-3xl font-bold text-base-content mb-2">{% translate "Select Jira Projects" %}</h1>
+  <p class="text-base-content/70 max-w-md mx-auto">
+    {% translate "Choose which projects to track for sprint velocity and issue metrics." %}
+  </p>
+  <p class="text-sm text-base-content/50 mt-2">
+    {% translate "Connected to" %}: <span class="font-medium">{{ jira_integration.site_name }}</span>
+  </p>
+</div>
+
+{% if projects %}
+<div x-data="{
+  selectedProjects: [{% for project in projects %}{% if project.is_tracked %}'{{ project.id }}'{% if not forloop.last %}, {% endif %}{% endif %}{% endfor %}],
+  allProjectIds: [{% for project in projects %}'{{ project.id }}'{% if not forloop.last %}, {% endif %}{% endfor %}],
+  get selectAllChecked() { return this.selectedProjects.length === this.allProjectIds.length && this.allProjectIds.length > 0 },
+  toggleSelectAll() {
+    if (this.selectAllChecked) {
+      this.selectedProjects = [];
+    } else {
+      this.selectedProjects = [...this.allProjectIds];
+    }
+  },
+  toggleProject(projectId) {
+    const idx = this.selectedProjects.indexOf(projectId);
+    if (idx > -1) {
+      this.selectedProjects.splice(idx, 1);
+    } else {
+      this.selectedProjects.push(projectId);
+    }
+  }
+}" class="max-w-2xl mx-auto">
+  {# Selection controls #}
+  <div class="flex items-center justify-between mb-4">
+    <div class="flex items-center gap-3">
+      <button type="button"
+              @click="toggleSelectAll()"
+              class="app-btn-ghost text-sm">
+        <i class="fa-regular" :class="selectAllChecked ? 'fa-square-check' : 'fa-square'"></i>
+        <span x-text="selectAllChecked ? '{% translate "Deselect All" %}' : '{% translate "Select All" %}'"></span>
+      </button>
+      <span class="text-sm text-base-content/60">
+        <span x-text="selectedProjects.length"></span> {% translate "of" %} {{ projects|length }} {% translate "selected" %}
+      </span>
+    </div>
+  </div>
+
+  {# Project list #}
+  <div class="app-card mb-6 max-h-96 overflow-y-auto">
+    <ul class="divide-y divide-base-300">
+      {% for project in projects %}
+      <li class="py-3 px-4 hover:bg-base-200/50 transition-colors cursor-pointer"
+          @click="toggleProject('{{ project.id }}')">
+        <label class="flex items-start gap-3 cursor-pointer">
+          <input type="checkbox"
+                 class="checkbox checkbox-primary mt-1"
+                 :checked="selectedProjects.includes('{{ project.id }}')"
+                 @click.stop="toggleProject('{{ project.id }}')"
+                 name="projects"
+                 value="{{ project.id }}">
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="text-sm font-mono bg-base-300 px-2 py-0.5 rounded text-base-content/80">{{ project.key }}</span>
+              <span class="font-medium text-base-content">{{ project.name }}</span>
+            </div>
+            <div class="flex items-center gap-2 mt-1">
+              {% if project.projectTypeKey %}
+              <span class="text-xs text-base-content/60 capitalize">{{ project.projectTypeKey }}</span>
+              {% endif %}
+              {% if project.style %}
+              <span class="text-xs text-base-content/50">{{ project.style }}</span>
+              {% endif %}
+            </div>
+          </div>
+        </label>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+
+  {# Help text #}
+  <div class="app-alert app-alert-info mb-6">
+    <i class="fa-solid fa-info-circle"></i>
+    <span>{% translate "You can always add or remove projects later from Settings > Integrations." %}</span>
+  </div>
+
+  {# Form with hidden inputs for selected projects #}
+  <form method="post" x-ref="form">
+    {% csrf_token %}
+    <template x-for="projectId in selectedProjects" :key="projectId">
+      <input type="hidden" name="projects" :value="projectId">
+    </template>
+
+    <div class="flex gap-4">
+      <a href="{% url 'onboarding:connect_jira' %}" class="app-btn-ghost flex-1">
+        <i class="fa-solid fa-arrow-left mr-2"></i>
+        {% translate "Back" %}
+      </a>
+      <button type="submit" class="app-btn-primary flex-1">
+        {% translate "Continue" %}
+        <span x-show="selectedProjects.length > 0" class="ml-1">(<span x-text="selectedProjects.length"></span>)</span>
+        <i class="fa-solid fa-arrow-right ml-2"></i>
+      </button>
+    </div>
+  </form>
+</div>
+
+{% else %}
+{# No projects found or error fetching #}
+<div class="app-card max-w-md mx-auto mb-6 text-center">
+  <div class="py-8">
+    <i class="fa-brands fa-jira text-4xl text-base-content/30 mb-4"></i>
+    <h2 class="text-lg font-medium text-base-content mb-2">{% translate "No projects found" %}</h2>
+    <p class="text-sm text-base-content/60 mb-4">
+      {% translate "We couldn't find any projects in your Jira site. You can add them later from Settings." %}
+    </p>
+  </div>
+</div>
+
+<form method="post" class="max-w-md mx-auto">
+  {% csrf_token %}
+  <div class="flex gap-4">
+    <a href="{% url 'onboarding:connect_jira' %}" class="app-btn-ghost flex-1">
+      <i class="fa-solid fa-arrow-left mr-2"></i>
+      {% translate "Back" %}
+    </a>
+    <button type="submit" class="app-btn-primary flex-1">
+      {% translate "Skip for now" %}
+      <i class="fa-solid fa-arrow-right ml-2"></i>
+    </button>
+  </div>
+</form>
+{% endif %}
+{% endblock %}

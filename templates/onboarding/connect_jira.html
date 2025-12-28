@@ -39,11 +39,10 @@
   </ul>
 
   <div class="text-center">
-    <button class="app-btn-secondary gap-2 mb-2 opacity-60 cursor-not-allowed" disabled>
+    <a href="{% url 'onboarding:connect_jira' %}?action=connect" class="app-btn-secondary gap-2 mb-2">
       <i class="fa-brands fa-jira"></i>
       {% translate "Connect Jira" %}
-      <span class="app-badge app-badge-primary">{% translate "Coming Soon" %}</span>
-    </button>
+    </a>
     <p class="text-xs text-base-content/50 mt-2">
       {% translate "This is optional. You can connect Jira later from settings." %}
     </p>

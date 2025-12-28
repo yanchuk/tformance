@@ -342,14 +342,52 @@ def start_sync(request):
 
 @login_required
 def connect_jira(request):
-    """Optional step to connect Jira."""
+    """Optional step to connect Jira.
+
+    GET with action=connect: Initiate Jira OAuth flow
+    POST: Skip Jira and continue to Slack
+    """
+    from urllib.parse import urlencode
+
+    from apps.auth.oauth_state import FLOW_TYPE_JIRA_ONBOARDING, create_oauth_state
+    from apps.integrations.models import JiraIntegration
+    from apps.integrations.services import jira_oauth
+
     if not request.user.teams.exists():
         return redirect("onboarding:start")
 
     team = request.user.teams.first()
 
+    # Check if Jira is already connected
+    jira_connected = JiraIntegration.objects.filter(team=team).exists()
+    if jira_connected:
+        # Already connected, go to project selection
+        return redirect("onboarding:select_jira_projects")
+
+    # Handle OAuth initiation
+    if request.GET.get("action") == "connect":
+        # Build callback URL - use unified auth callback
+        callback_url = request.build_absolute_uri(reverse("tformance_auth:jira_callback"))
+
+        # Create state for CSRF protection with team_id
+        state = create_oauth_state(FLOW_TYPE_JIRA_ONBOARDING, team_id=team.id)
+
+        # Build Jira authorization URL
+        params = {
+            "audience": "api.atlassian.com",
+            "client_id": settings.JIRA_CLIENT_ID,
+            "scope": jira_oauth.JIRA_OAUTH_SCOPES,
+            "redirect_uri": callback_url,
+            "state": state,
+            "response_type": "code",
+            "prompt": "consent",
+        }
+        auth_url = f"{jira_oauth.JIRA_OAUTH_AUTHORIZE_URL}?{urlencode(params)}"
+
+        return redirect(auth_url)
+
     if request.method == "POST":
-        # Track skip (Jira connection tracking would go in the OAuth callback)
+        # Track skip (Jira connection tracking happens in OAuth callback)
         track_event(
             request.user,
             "onboarding_skipped",
@@ -363,6 +401,102 @@ def connect_jira(request):
         {
             "team": team,
             "page_title": _("Connect Jira"),
+            "step": 3,
+            "sync_task_id": request.session.get("sync_task_id"),
+        },
+    )
+
+
+@login_required
+def select_jira_projects(request):
+    """Select which Jira projects to track.
+
+    GET: Display list of available projects with checkboxes
+    POST: Create TrackedJiraProject records for selected projects
+    """
+    from apps.integrations.models import JiraIntegration, TrackedJiraProject
+    from apps.integrations.services import jira_client
+    from apps.integrations.services.jira_client import JiraClientError
+
+    if not request.user.teams.exists():
+        return redirect("onboarding:start")
+
+    team = request.user.teams.first()
+
+    # Check if Jira is connected
+    try:
+        jira_integration = JiraIntegration.objects.get(team=team)
+    except JiraIntegration.DoesNotExist:
+        messages.error(request, _("Please connect Jira first."))
+        return redirect("onboarding:connect_jira")
+
+    if request.method == "POST":
+        # Get selected project IDs from form
+        selected_project_ids = request.POST.getlist("projects")
+
+        # Get all available projects to look up details
+        try:
+            all_projects = jira_client.get_accessible_projects(jira_integration.credential)
+            project_map = {proj["id"]: proj for proj in all_projects}
+        except JiraClientError as e:
+            logger.error(f"Failed to fetch Jira projects: {e}")
+            messages.error(request, _("Failed to fetch Jira projects. Please try again."))
+            return redirect("onboarding:select_jira_projects")
+
+        # Create TrackedJiraProject for each selected project
+        created_count = 0
+        for project_id in selected_project_ids:
+            proj_data = project_map.get(project_id)
+            if proj_data:
+                obj, created = TrackedJiraProject.objects.get_or_create(
+                    team=team,
+                    jira_project_id=project_id,
+                    defaults={
+                        "integration": jira_integration,
+                        "jira_project_key": proj_data["key"],
+                        "name": proj_data["name"],
+                        "project_type": proj_data.get("projectTypeKey", "software"),
+                        "is_active": True,
+                    },
+                )
+                if created:
+                    created_count += 1
+
+        # Track event
+        track_event(
+            request.user,
+            "onboarding_step_completed",
+            {"step": "jira_projects", "team_slug": team.slug, "projects_count": len(selected_project_ids)},
+        )
+
+        if created_count > 0:
+            messages.success(request, _("Now tracking {} Jira project(s).").format(created_count))
+        else:
+            messages.info(request, _("No new projects selected."))
+
+        return redirect("onboarding:connect_slack")
+
+    # GET: Fetch projects and display selection form
+    projects = []
+    try:
+        projects = jira_client.get_accessible_projects(jira_integration.credential)
+    except JiraClientError as e:
+        logger.error(f"Failed to fetch Jira projects during onboarding: {e}")
+        messages.warning(request, _("Could not fetch Jira projects. You can add them later from settings."))
+
+    # Mark which projects are already tracked
+    tracked_project_ids = set(TrackedJiraProject.objects.filter(team=team).values_list("jira_project_id", flat=True))
+    for project in projects:
+        project["is_tracked"] = project["id"] in tracked_project_ids
+
+    return render(
+        request,
+        "onboarding/select_jira_projects.html",
+        {
+            "team": team,
+            "jira_integration": jira_integration,
+            "projects": projects,
+            "page_title": _("Select Jira Projects"),
             "step": 3,
             "sync_task_id": request.session.get("sync_task_id"),
         },
