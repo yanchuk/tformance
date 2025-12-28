@@ -102,11 +102,6 @@ WAGTAIL_APPS = [
     "taggit",
 ]
 
-PEGASUS_APPS = [
-    "pegasus.apps.examples.apps.PegasusExamplesConfig",
-    "pegasus.apps.employees.apps.PegasusEmployeesConfig",
-]
-
 # Put your project-specific apps here
 PROJECT_APPS = [
     "apps.content",
@@ -117,14 +112,14 @@ PROJECT_APPS = [
     "apps.utils",
     "apps.web",
     "apps.teams.apps.TeamConfig",
-    "apps.teams_example.apps.TeamsExampleConfig",
     "apps.metrics.apps.MetricsConfig",
     "apps.integrations.apps.IntegrationsConfig",
     "apps.onboarding.apps.OnboardingConfig",
     "apps.feedback.apps.FeedbackConfig",
+    "apps.auth.apps.AuthConfig",
 ]
 
-INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + PEGASUS_APPS + PROJECT_APPS + WAGTAIL_APPS
+INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + PROJECT_APPS + WAGTAIL_APPS
 
 if DEBUG:
     # in debug mode, add daphne to the beginning of INSTALLED_APPS to enable async support
@@ -592,11 +587,6 @@ CELERY_TASK_ROUTES = {
 
 # Add tasks to this dict and run `python manage.py bootstrap_celery_tasks` to create them
 SCHEDULED_TASKS = {
-    "test-celerybeat": {
-        "task": "pegasus.apps.examples.tasks.example_log_task",
-        "schedule": 60,
-        "expire_seconds": 60,
-    },
     "sync-subscriptions-every-day": {
         "task": "apps.subscriptions.tasks.sync_subscriptions_task",
         "schedule": timedelta(days=1),
@@ -784,10 +774,6 @@ LOGGING = {
         "tformance": {
             "handlers": ["console"],
             "level": env("TFORMANCE_LOG_LEVEL", default="INFO"),
-        },
-        "pegasus": {
-            "handlers": ["console"],
-            "level": env("PEGASUS_LOG_LEVEL", default="DEBUG"),
         },
     },
 }

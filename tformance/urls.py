@@ -52,7 +52,6 @@ team_urlpatterns = [
     path("metrics/", include(metrics_team_urls)),
     path("insights/", include(insights_team_urls)),
     path("feedback/", include(feedback_team_urls)),
-    path("example/", include("apps.teams_example.urls")),
 ]
 
 urlpatterns = [
@@ -69,9 +68,8 @@ urlpatterns = [
     path("teams/", include("apps.teams.urls")),
     path("integrations/", include("apps.integrations.urls")),  # Non-team integrations URLs (webhooks)
     path("onboarding/", include("apps.onboarding.urls")),
+    path("auth/", include("apps.auth.urls")),
     path("", include("apps.web.urls")),
-    path("pegasus/", include("pegasus.apps.examples.urls")),
-    path("pegasus/employees/", include("pegasus.apps.employees.urls")),
     path("support/", include("apps.support.urls")),
     path("celery-progress/", include("celery_progress.urls")),
     # API docs

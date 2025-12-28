@@ -112,8 +112,6 @@ class TeamScopedManager(models.Manager):
 class BaseTeamModel(BaseModel):
     """
     Abstract model for objects that are part of a team.
-
-    See `teams_example` app for usage.
     """
 
     team = models.ForeignKey(Team, verbose_name=gettext("Team"), on_delete=models.CASCADE)
