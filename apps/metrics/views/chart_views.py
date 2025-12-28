@@ -522,15 +522,31 @@ def benchmark_panel(request: HttpRequest, metric: str) -> HttpResponse:
         )
 
     days = int(request.GET.get("days", 30))
-    result = benchmark_service.get_benchmark_for_team(request.team, metric, days)
+
+    try:
+        result = benchmark_service.get_benchmark_for_team(request.team, metric, days)
+    except Exception:
+        # Return empty state on any service error
+        return TemplateResponse(
+            request,
+            "metrics/analytics/trends/benchmark_panel.html",
+            {"benchmark": None, "metric": metric},
+        )
 
     # Convert Decimal to float for display
     if result["team_value"] is not None:
         result["team_value"] = float(result["team_value"])
-    if result.get("benchmark"):
-        result["benchmark"] = {
-            k: float(v) if isinstance(v, (int, float)) else v for k, v in result["benchmark"].items()
-        }
+
+    # Extract benchmark data and add has_data flag
+    benchmark_data = result.get("benchmark", {})
+    if benchmark_data:
+        # Convert any numeric values to float
+        benchmark_data = {k: float(v) if isinstance(v, (int, float)) else v for k, v in benchmark_data.items()}
+
+    # Build template-friendly context
+    # Template expects: benchmark.has_data, benchmark.benchmarks (plural),
+    # benchmark.team_size_bucket, benchmark.source
+    has_data = result["team_value"] is not None and bool(benchmark_data)
 
     # Add unit based on metric type
     unit_map = {
@@ -540,10 +556,21 @@ def benchmark_panel(request: HttpRequest, metric: str) -> HttpResponse:
         "ai_adoption": "%",
         "deployment_freq": "/week",
     }
-    result["unit"] = unit_map.get(metric, "")
+
+    template_context = {
+        "has_data": has_data,
+        "team_value": result["team_value"],
+        "percentile": result["percentile"],
+        "interpretation": result["interpretation"],
+        "unit": unit_map.get(metric, ""),
+        # Flatten benchmark data to top level for template
+        "benchmarks": benchmark_data,  # Template uses plural "benchmarks"
+        "team_size_bucket": benchmark_data.get("team_size_bucket", "small"),
+        "source": benchmark_data.get("source", "DORA"),
+    }
 
     return TemplateResponse(
         request,
         "metrics/analytics/trends/benchmark_panel.html",
-        {"benchmark": result, "metric": metric},
+        {"benchmark": template_context, "metric": metric},
     )

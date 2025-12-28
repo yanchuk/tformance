@@ -84,4 +84,190 @@ document.addEventListener('htmx:afterSwap', function(event) {
       AppDashboardCharts.weeklyBarChart(ctx, data, "Copilot Acceptance Rate (%)", { ai: true });
     }
   }
+
+  // PR Type Breakdown Chart - stacked bar chart
+  initPrTypeChart();
+
+  // Technology Breakdown Chart - stacked bar chart
+  initTechChart();
 });
+
+/**
+ * Initialize PR Type breakdown stacked bar chart
+ * Used on the Trends page to show PR types over time
+ */
+function initPrTypeChart() {
+  const canvas = document.getElementById('pr-type-chart');
+  if (!canvas) return;
+
+  const chartDataEl = document.getElementById('pr-type-chart-data');
+  if (!chartDataEl) return;
+
+  try {
+    const chartData = JSON.parse(chartDataEl.textContent);
+    if (!chartData || !chartData.labels) return;
+
+    // Destroy existing chart if any
+    destroyChartIfExists(canvas);
+
+    // Build Chart.js datasets
+    const datasets = chartData.datasets.map(ds => ({
+      label: ds.label,
+      data: ds.data,
+      backgroundColor: ds.color,
+      borderColor: ds.color,
+      borderWidth: 1,
+      borderRadius: 2,
+    }));
+
+    new Chart(canvas, {
+      type: 'bar',
+      data: {
+        labels: chartData.labels,
+        datasets: datasets,
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: true,
+            position: 'top',
+            labels: {
+              boxWidth: 12,
+              padding: 10,
+              font: { family: "'DM Sans', sans-serif", size: 11 },
+            },
+          },
+          tooltip: {
+            mode: 'index',
+            intersect: false,
+          },
+          datalabels: {
+            display: false,
+          },
+        },
+        scales: {
+          x: {
+            stacked: true,
+            ticks: {
+              font: { family: "'DM Sans', sans-serif" },
+              maxRotation: 45,
+              autoSkip: true,
+            },
+            grid: {
+              display: false,
+            },
+          },
+          y: {
+            stacked: true,
+            beginAtZero: true,
+            ticks: {
+              font: { family: "'JetBrains Mono', monospace" },
+              precision: 0,
+            },
+            title: {
+              display: true,
+              text: 'PR Count',
+              font: { family: "'DM Sans', sans-serif" },
+            },
+          },
+        },
+      },
+    });
+  } catch (e) {
+    console.error('Failed to initialize PR type chart:', e);
+  }
+}
+
+/**
+ * Initialize Technology breakdown stacked bar chart
+ * Used on the Trends page to show tech categories over time
+ */
+function initTechChart() {
+  const canvas = document.getElementById('tech-chart');
+  if (!canvas) return;
+
+  const chartDataEl = document.getElementById('tech-chart-data');
+  if (!chartDataEl) return;
+
+  try {
+    const chartData = JSON.parse(chartDataEl.textContent);
+    if (!chartData || !chartData.labels) return;
+
+    // Destroy existing chart if any
+    destroyChartIfExists(canvas);
+
+    // Build Chart.js datasets
+    const datasets = chartData.datasets.map(ds => ({
+      label: ds.label,
+      data: ds.data,
+      backgroundColor: ds.color,
+      borderColor: ds.color,
+      borderWidth: 1,
+      borderRadius: 2,
+    }));
+
+    new Chart(canvas, {
+      type: 'bar',
+      data: {
+        labels: chartData.labels,
+        datasets: datasets,
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: true,
+            position: 'top',
+            labels: {
+              boxWidth: 12,
+              padding: 10,
+              font: { family: "'DM Sans', sans-serif", size: 11 },
+            },
+          },
+          tooltip: {
+            mode: 'index',
+            intersect: false,
+          },
+          datalabels: {
+            display: false,
+          },
+        },
+        scales: {
+          x: {
+            stacked: true,
+            ticks: {
+              font: { family: "'DM Sans', sans-serif" },
+              maxRotation: 45,
+              autoSkip: true,
+            },
+            grid: {
+              display: false,
+            },
+          },
+          y: {
+            stacked: true,
+            beginAtZero: true,
+            ticks: {
+              font: { family: "'JetBrains Mono', monospace" },
+              precision: 0,
+            },
+            title: {
+              display: true,
+              text: 'PR Count',
+              font: { family: "'DM Sans', sans-serif" },
+            },
+          },
+        },
+      },
+    });
+  } catch (e) {
+    console.error('Failed to initialize Tech chart:', e);
+  }
+}
+
+// Expose chart init functions globally for direct calls
+window.initPrTypeChart = initPrTypeChart;
+window.initTechChart = initTechChart;

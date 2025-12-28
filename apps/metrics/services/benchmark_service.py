@@ -237,6 +237,7 @@ def get_benchmark_for_team(team: Team, metric_name: str, days: int = 30) -> Benc
             "p90": float(benchmark.p90),
             "source": benchmark.source,
             "year": benchmark.year,
+            "team_size_bucket": size_bucket,
         },
         "interpretation": interpretation,
     }

@@ -1,5 +1,61 @@
 # Trends Charts Fix - Context
 
+**Last Updated:** 2025-12-29
+**Status:** ✅ Implementation Complete - Ready for E2E Testing
+
+## Session Progress
+
+### This Session (2025-12-29)
+
+#### Phase 0: E2E Test Setup
+1. Created `tests/e2e/trends-charts.spec.ts` - Playwright E2E tests to validate the bugs
+2. Created `trends-charts-fix-plan.md` - Detailed implementation plan
+
+#### Phase 1: Fixed Benchmark 500 Error ✅
+**Root Cause:** Template expected `benchmark.has_data`, `benchmark.benchmarks` (plural), `benchmark.team_size_bucket` - but view returned different structure.
+
+**Fix Applied:**
+- `apps/metrics/views/chart_views.py:505-578` - Restructured response to match template expectations
+- Added try/except for graceful error handling
+- `apps/metrics/services/benchmark_service.py:240` - Added `team_size_bucket` to response
+
+#### Phase 2: Fixed Chart.js Initialization ✅
+**Root Cause:** Inline `<script>` tags in HTMX-swapped partials don't execute.
+
+**Fix Applied:**
+- `assets/javascript/app.js:88-273` - Added `initPrTypeChart()` and `initTechChart()` functions
+- These are called in the `htmx:afterSwap` event handler
+- Exposed functions globally: `window.initPrTypeChart`, `window.initTechChart`
+
+#### Phase 3: Layout Already Correct ✅
+The charts were already full-width in `trends.html` (lines 129-155) - no changes needed.
+
+#### Phase 4: Updated Chart Heights ✅
+- `templates/metrics/analytics/trends/pr_type_chart.html:23` - 280px → 320px
+- `templates/metrics/analytics/trends/tech_chart.html:23` - 280px → 320px
+- Removed non-working inline scripts from both templates
+
+### Key Discovery
+- Server running in `AUTH_MODE=github_only` - E2E tests skip when email auth not available
+- Inline scripts in HTMX partials never execute - must use global event handlers
+
+### Files Modified
+| File | Changes |
+|------|---------|
+| `apps/metrics/views/chart_views.py` | Fixed benchmark_panel response structure |
+| `apps/metrics/services/benchmark_service.py` | Added team_size_bucket to response |
+| `assets/javascript/app.js` | Added chart init functions for HTMX swaps |
+| `templates/metrics/analytics/trends/pr_type_chart.html` | Height 320px, removed inline script |
+| `templates/metrics/analytics/trends/tech_chart.html` | Height 320px, removed inline script |
+| `tests/e2e/trends-charts.spec.ts` | Created E2E tests |
+
+### Next Steps
+1. Run E2E tests with `AUTH_MODE=all`: `AUTH_MODE=all npx playwright test trends-charts.spec.ts`
+2. Manual verification on Trends page
+3. Commit changes
+
+---
+
 ## Problem Statement
 
 The Trends page (`/app/metrics/analytics/trends/`) has three issues:

@@ -20,7 +20,7 @@
 
   <!-- Chart Container -->
   <div class="relative w-full">
-    <div style="height: 280px;">
+    <div style="height: 320px;">
       <canvas id="pr-type-chart"></canvas>
     </div>
   </div>
@@ -39,102 +39,4 @@
     {% endfor %}
   </div>
 </div>
-
-<script>
-  // Initialize PR type chart after HTMX swap
-  (function() {
-    initChart();
-
-    function initChart() {
-      const canvas = document.getElementById('pr-type-chart');
-      if (!canvas) return;
-
-      const chartDataEl = document.getElementById('pr-type-chart-data');
-      if (!chartDataEl) return;
-
-      // Wait for Chart.js to be available
-      if (typeof Chart === 'undefined') {
-        setTimeout(initChart, 100);
-        return;
-      }
-
-      try {
-        const chartData = JSON.parse(chartDataEl.textContent);
-
-        // Destroy existing chart if any
-        const existingChart = Chart.getChart(canvas);
-        if (existingChart) {
-          existingChart.destroy();
-        }
-
-        // Build Chart.js datasets
-        const datasets = chartData.datasets.map(ds => ({
-          label: ds.label,
-          data: ds.data,
-          backgroundColor: ds.color,
-          borderColor: ds.color,
-          borderWidth: 1,
-          borderRadius: 2,
-        }));
-
-        new Chart(canvas, {
-          type: 'bar',
-          data: {
-            labels: chartData.labels,
-            datasets: datasets,
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-              legend: {
-                display: true,
-                position: 'top',
-                labels: {
-                  boxWidth: 12,
-                  padding: 10,
-                  font: { family: "'DM Sans', sans-serif", size: 11 },
-                },
-              },
-              tooltip: {
-                mode: 'index',
-                intersect: false,
-              },
-              datalabels: {
-                display: false,
-              },
-            },
-            scales: {
-              x: {
-                stacked: true,
-                ticks: {
-                  font: { family: "'DM Sans', sans-serif" },
-                  maxRotation: 45,
-                  autoSkip: true,
-                },
-                grid: {
-                  display: false,
-                },
-              },
-              y: {
-                stacked: true,
-                beginAtZero: true,
-                ticks: {
-                  font: { family: "'JetBrains Mono', monospace" },
-                  precision: 0,
-                },
-                title: {
-                  display: true,
-                  text: '{% trans "PR Count" %}',
-                  font: { family: "'DM Sans', sans-serif" },
-                },
-              },
-            },
-          },
-        });
-      } catch (e) {
-        console.error('Failed to initialize PR type chart:', e);
-      }
-    }
-  })();
-</script>
+{# Chart initialization is handled by app.js htmx:afterSwap event #}
