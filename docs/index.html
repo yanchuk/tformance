@@ -1467,6 +1467,7 @@
             <li><a href="#methodology"><span class="toc-number">14</span>Methodology</a></li>
             <li><a href="#industry"><span class="toc-number">15</span>Industry Context</a></li>
             <li><a href="#action"><span class="toc-number">16</span>Action Items</a></li>
+            <li><a href="#author"><span class="toc-number">17</span>About the Author</a></li>
         </ul>
 
         <!-- Sidebar CTA -->
@@ -1500,15 +1501,37 @@
         <section id="tldr" style="background: linear-gradient(135deg, rgba(90, 153, 151, 0.2), rgba(249, 115, 22, 0.15)); border: 2px solid var(--accent); border-radius: 16px; padding: 2rem; margin-bottom: 2rem;">
             <h2 style="margin-bottom: 1rem;">⚡ TL;DR: Review AI Works. Code AI? It's Complicated.</h2>
 
-            <!-- Important Caveats Box -->
-            <div style="background: rgba(239, 68, 68, 0.1); border: 2px solid rgba(239, 68, 68, 0.4); border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 1.25rem;">
-                <div style="font-weight: 600; color: var(--error); margin-bottom: 0.5rem;">IMPORTANT CAVEATS:</div>
-                <ul style="margin: 0; padding-left: 1.25rem; font-size: 0.85rem; color: var(--text-muted);">
-                    <li><strong>Simpson's Paradox:</strong> While aggregate shows Review AI is -11% faster, <strong>60% of individual teams show AI is SLOWER</strong>.</li>
-                    <li><strong>Median vs Mean:</strong> Medians show Code AI is <strong>+100% slower</strong> and Review AI is <strong>+5% slower</strong>. Means are heavily skewed.</li>
-                    <li><strong>Not causation:</strong> This is observational data. We cannot prove AI <em>causes</em> these effects.</li>
-                    <li><strong>Code AI review time is NOT statistically significant</strong> (95% CI crosses zero).</li>
-                </ul>
+            <!-- What We Show vs Don't Show -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem; margin-bottom: 1.25rem;">
+                <!-- What We SHOW -->
+                <div style="background: rgba(34, 197, 94, 0.1); border: 2px solid var(--success); border-radius: 8px; padding: 1rem 1.25rem;">
+                    <div style="font-weight: 600; color: var(--success); margin-bottom: 0.75rem;">✓ What This Research SHOWS</div>
+                    <div style="font-size: 0.8rem; color: var(--text-muted);">
+                        <div style="margin-bottom: 0.5rem; padding: 0.5rem; background: rgba(34, 197, 94, 0.1); border-radius: 4px;">
+                            <strong>Review AI → -11% cycle time</strong><br>
+                            <span style="font-size: 0.75rem;">CI: -18% to -7% (significant)</span>
+                        </div>
+                        <div style="margin-bottom: 0.5rem; padding: 0.5rem; background: rgba(34, 197, 94, 0.1); border-radius: 4px;">
+                            <strong>Review AI → -54% review time</strong><br>
+                            <span style="font-size: 0.75rem;">CI: -60% to -49% (significant)</span>
+                        </div>
+                        <div style="padding: 0.5rem; background: rgba(234, 179, 8, 0.1); border-radius: 4px;">
+                            <strong>Code AI → +16% cycle time</strong><br>
+                            <span style="font-size: 0.75rem;">CI: +4% to +25% (significant)</span>
+                        </div>
+                    </div>
+                </div>
+                <!-- What We DON'T Show -->
+                <div style="background: rgba(239, 68, 68, 0.1); border: 2px solid rgba(239, 68, 68, 0.4); border-radius: 8px; padding: 1rem 1.25rem;">
+                    <div style="font-weight: 600; color: var(--error); margin-bottom: 0.75rem;">✗ What This Research Does NOT Show</div>
+                    <ul style="margin: 0; padding-left: 1.25rem; font-size: 0.8rem; color: var(--text-muted);">
+                        <li style="margin-bottom: 0.4rem;"><strong>"Code AI speeds up reviews"</strong> — NOT significant (CI crosses zero)</li>
+                        <li style="margin-bottom: 0.4rem;"><strong>"AI causes faster cycles"</strong> — Correlation only, not RCT</li>
+                        <li style="margin-bottom: 0.4rem;"><strong>"Typical PR is faster"</strong> — Medians show opposite (+100% slower)</li>
+                        <li style="margin-bottom: 0.4rem;"><strong>"All teams benefit"</strong> — 60% of teams show AI is SLOWER</li>
+                        <li><strong>"We detected all AI"</strong> — Copilot leaves no trace</li>
+                    </ul>
+                </div>
             </div>
 
             <!-- Industry context callout -->
@@ -2968,6 +2991,44 @@
                 </div>
             </div>
         </section>
+
+        <!-- About the Author -->
+        <section id="author" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 2rem; margin-top: 2rem;">
+            <h2>About the Author</h2>
+            <div style="display: flex; gap: 1.5rem; align-items: flex-start; flex-wrap: wrap;">
+                <div style="flex-shrink: 0;">
+                    <div style="width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, var(--primary), var(--accent)); display: flex; align-items: center; justify-content: center; font-size: 2rem; color: white; font-weight: bold;">OI</div>
+                </div>
+                <div style="flex: 1; min-width: 250px;">
+                    <h3 style="margin: 0 0 0.25rem 0;">Oleksii Ianchuk</h3>
+                    <div style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1rem;">Technical Product Manager</div>
+                    <p style="color: var(--text-muted); margin-bottom: 1rem;">
+                        8 years building developer tools. Technical Product Lead at <strong>Mailtrap</strong> — shipped Email API/SMTP, ran pricing experiments, onboarded enterprise accounts.
+                    </p>
+                    <blockquote style="border-left: 3px solid var(--primary); padding-left: 1rem; margin: 1rem 0; font-style: italic; color: var(--text-muted);">
+                        "We used Copilot, Cursor, and every AI tool we could get. But I couldn't answer: 'Is this actually helping us ship faster?'"
+                    </blockquote>
+                    <p style="color: var(--text-muted); margin-bottom: 1rem;">
+                        So I built tformance with <strong>Claude Code</strong> — AI pair programming in action. I share the process, tools, and learnings publicly.
+                    </p>
+                    <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                        <a href="https://github.com/yanchuk" target="_blank" style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; background: var(--bg-main); border: 1px solid var(--border); border-radius: 6px; color: var(--text); text-decoration: none; font-size: 0.85rem;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                            GitHub
+                        </a>
+                        <a href="https://linkedin.com/in/oianchuk" target="_blank" style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; background: var(--bg-main); border: 1px solid var(--border); border-radius: 6px; color: var(--text); text-decoration: none; font-size: 0.85rem;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg>
+                            LinkedIn
+                        </a>
+                        <a href="https://discord.gg/tformance" target="_blank" style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; background: var(--bg-main); border: 1px solid var(--border); border-radius: 6px; color: var(--text); text-decoration: none; font-size: 0.85rem;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z"/></svg>
+                            Discord
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <footer>
             <div class="logo">tformance</div>
             <p>AI Impact Analytics for Engineering Teams</p>

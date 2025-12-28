@@ -15,6 +15,28 @@
 **The only RCT:** METR 2025 found AI made devs **19% slower** (with 43-point perception gap).
 **Our data:** 167,308 PRs from 101 OSS companies to see what actually happens.
 
+---
+
+### What This Research SHOWS (Statistically Significant)
+
+| Finding | 95% CI | Interpretation |
+|---------|--------|----------------|
+| Review AI → **-11% cycle time** | -18% to -7% | PRs with Review AI tools merge faster (significant) |
+| Review AI → **-54% review time** | -60% to -49% | Code reviews happen much faster (significant) |
+| Code AI → **+16% cycle time** | +4% to +25% | PRs with Code AI take longer to merge (significant) |
+
+### What This Research Does NOT Show
+
+| Claim | Why Not |
+|-------|---------|
+| "Code AI speeds up reviews" | **NOT significant** — CI crosses zero (-32% to +1%) |
+| "AI *causes* faster/slower cycles" | **Correlation only** — observational data, not RCT |
+| "The typical PR is faster with AI" | **Medians contradict means** — Code AI +100% slower, Review AI +5% slower |
+| "All teams benefit from AI" | **Simpson's Paradox** — 60% of teams show AI is SLOWER |
+| "We detected all AI usage" | **Detection bias** — Copilot autocomplete leaves no trace |
+
+---
+
 > **IMPORTANT CAVEATS:**
 > - **Simpson's Paradox:** While aggregate data shows Review AI is -11% faster, **60% of individual teams show AI is SLOWER**. Aggregate stats can mislead.
 > - **Median vs Mean:** The typical (median) PR tells a different story. Medians show Code AI is **+100% slower** and Review AI is **+5% slower** than baseline. Means are heavily skewed by outliers.
@@ -638,6 +660,20 @@ Based on this analysis:
 4. **Don't trust surveys** — METR RCT shows 43-point perception gap; behavioral data tells different story than self-reports.
 
 5. **Expect detection floor** — If you detect 12% AI usage, actual is likely 40-60% (Copilot autocomplete leaves no trace).
+
+---
+
+## About the Author
+
+**Oleksii Ianchuk** — Technical Product Manager
+
+8 years building developer tools. Technical Product Lead at **Mailtrap** — shipped Email API/SMTP, ran pricing experiments, onboarded enterprise accounts.
+
+*"We used Copilot, Cursor, and every AI tool we could get. But I couldn't answer: 'Is this actually helping us ship faster?'"*
+
+So I built tformance with **Claude Code** — AI pair programming in action. I share the process, tools, and learnings publicly.
+
+**Connect:** [GitHub](https://github.com/yanchuk) • [LinkedIn](https://linkedin.com/in/oianchuk) • [Discord](https://discord.gg/tformance)
 
 ---
 
