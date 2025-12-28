@@ -46,7 +46,16 @@
 - [x] Remove Discord link (not available yet)
 - [x] Fix LinkedIn URL to correct one (linkedin.com/in/yanch/)
 
+## Phase F8: Round 2 Peer Review Feedback (2025-12-28)
+- [x] Add bot speed caveat for Review AI (bots auto-comment instantly)
+- [x] Strengthen Copilot invisibility warning (68% industry adoption)
+- [x] Add clustering caveat for CIs (PR-level, not team-level)
+- [x] Fix formula inconsistency (clarify bootstrap vs proportion)
+- [x] Create prominent Median Reality Check section in TL;DR
+- [x] Update HTML template with all new caveats and median section
+
 ## Final Verification
 - [x] Regenerate report with build_report.py
 - [x] Verify LinkedIn URL in generated HTML
-- [ ] Commit and push changes
+- [x] Commit and push Round 1 changes
+- [ ] Commit and push Round 2 changes

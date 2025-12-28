@@ -108,7 +108,8 @@
                         <li style="margin-bottom: 0.4rem;"><strong>"AI causes faster cycles"</strong> — Correlation only, not RCT</li>
                         <li style="margin-bottom: 0.4rem;"><strong>"Typical PR is faster"</strong> — Medians show opposite (+100% slower)</li>
                         <li style="margin-bottom: 0.4rem;"><strong>"All teams benefit"</strong> — 60% of teams show AI is SLOWER</li>
-                        <li><strong>"We detected all AI"</strong> — Copilot leaves no trace</li>
+                        <li style="margin-bottom: 0.4rem;"><strong>"We detected all AI"</strong> — Copilot (68% adoption) leaves no trace</li>
+                        <li><strong>"Review AI = human productivity"</strong> — Bots auto-comment instantly; we measure bot latency</li>
                     </ul>
                 </div>
             </div>
@@ -183,6 +184,35 @@
 
                 <div style="text-align: center; margin-top: 1rem; font-size: 0.75rem; color: var(--text-muted);">
                     Lower is better. Based on 167,000+ PRs from 101 OSS companies (74 with 500+ PRs for detailed analysis).
+                </div>
+            </div>
+
+            <!-- MEDIAN REALITY CHECK -->
+            <div style="background: rgba(234, 179, 8, 0.15); border: 2px solid var(--warning); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem;">
+                <div style="font-weight: 700; color: var(--warning); font-size: 1.1rem; margin-bottom: 1rem;">⚠️ Median Reality Check: The Typical PR Experience</div>
+                <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1rem;">
+                    <strong>Headlines use means. But medians tell a different story.</strong> A few PRs take 500+ hours, dragging means up dramatically.
+                </p>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+                    <div style="background: var(--bg-deep); border-radius: 8px; padding: 1rem; text-align: center;">
+                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.5rem;">CODE AI (Typical PR)</div>
+                        <div style="font-size: 1.5rem; font-weight: bold; color: var(--error); font-family: 'JetBrains Mono', monospace;">+100%</div>
+                        <div style="font-size: 0.8rem; color: var(--error);">2× slower</div>
+                    </div>
+                    <div style="background: var(--bg-deep); border-radius: 8px; padding: 1rem; text-align: center;">
+                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.5rem;">REVIEW AI (Typical PR)</div>
+                        <div style="font-size: 1.5rem; font-weight: bold; color: var(--warning); font-family: 'JetBrains Mono', monospace;">+5%</div>
+                        <div style="font-size: 0.8rem; color: var(--warning);">slightly slower</div>
+                    </div>
+                    <div style="background: var(--bg-deep); border-radius: 8px; padding: 1rem; text-align: center;">
+                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.5rem;">SKEW FACTOR</div>
+                        <div style="font-size: 1.5rem; font-weight: bold; color: var(--text-muted); font-family: 'JetBrains Mono', monospace;">8-14×</div>
+                        <div style="font-size: 0.8rem; color: var(--text-muted);">mean ÷ median</div>
+                    </div>
+                </div>
+                <div style="font-size: 0.85rem; color: var(--text-muted); background: var(--bg-deep); border-radius: 8px; padding: 1rem;">
+                    <strong>Bottom line:</strong> If you want to know "what happens to a typical PR," medians are more relevant.
+                    <strong>For the typical PR, both Code AI and Review AI correlate with <em>slower</em> cycles</strong> — the opposite of mean-based headlines.
                 </div>
             </div>
 

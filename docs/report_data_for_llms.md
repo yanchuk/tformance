@@ -33,13 +33,17 @@
 | "AI *causes* faster/slower cycles" | **Correlation only** — observational data, not RCT |
 | "The typical PR is faster with AI" | **Medians contradict means** — Code AI +100% slower, Review AI +5% slower |
 | "All teams benefit from AI" | **Simpson's Paradox** — 60% of teams show AI is SLOWER |
-| "We detected all AI usage" | **Detection bias** — Copilot autocomplete leaves no trace |
+| "We detected all AI usage" | **Detection bias** — Copilot (68% industry adoption) leaves no trace |
+| "Review AI = human productivity" | **Bot speed artifact** — CodeRabbit auto-comments in seconds; we measure bot latency, not human review quality |
 
 ---
 
 > **IMPORTANT CAVEATS:**
 > - **Simpson's Paradox:** While aggregate data shows Review AI is -11% faster, **60% of individual teams show AI is SLOWER**. Aggregate stats can mislead.
 > - **Median vs Mean:** The typical (median) PR tells a different story. Medians show Code AI is **+100% slower** and Review AI is **+5% slower** than baseline. Means are heavily skewed by outliers.
+> - **Bot Speed Artifact:** Review AI's -54% faster reviews may partly reflect **bot latency, not human productivity**. CodeRabbit auto-comments in seconds — we measure "time to first comment," not review quality.
+> - **Detection Bias:** Copilot (68% industry usage) leaves no trace. Our Code AI sample likely over-represents explicitly disclosed/complex PRs.
+> - **Clustering Not Modeled:** CIs computed at PR level, not team level. True uncertainty may be wider due to team/repo clustering.
 > - **Correlation, not causation:** This is observational data. We cannot prove AI *causes* these effects.
 > - **Code AI review time is NOT statistically significant** (95% CI crosses zero).
 
@@ -77,6 +81,33 @@
 | **12.1% is a floor, not ceiling** | Silent tools (Copilot autocomplete) leave no trace. Real usage is likely 40-60%. |
 
 **Note:** These are correlations from observational data, not causal findings. Your results may vary based on team, codebase, and workflow.
+
+---
+
+### ⚠️ Median Reality Check: The Typical PR Experience
+
+**Headlines use means. But medians tell a different story:**
+
+| Metric | Mean (Aggregate) | Median (Typical PR) | Which to Trust? |
+|--------|------------------|---------------------|-----------------|
+| **Code AI Cycle Time** | +16% slower | **+100% slower** | Median = typical PR |
+| **Review AI Cycle Time** | -11% faster | **+5% slower** | Median = typical PR |
+| **Skew Factor** | — | 8-14x | Means distorted by outliers |
+
+**Why the huge gap?**
+- A few PRs take 500+ hours (long-running features, blocked PRs)
+- These outliers drag means up dramatically
+- Median = the PR at the 50th percentile = what most PRs experience
+
+**Bottom line:** If you want to know "what happens to a typical PR," medians are more relevant. If you care about total team throughput including outliers, means matter.
+
+**For the typical PR:**
+- Code AI PRs take **2x longer** than baseline
+- Review AI PRs are **slightly slower** than baseline (not faster)
+
+This directly contradicts mean-based headlines and is the most honest interpretation for individual PR expectations.
+
+---
 
 ### How We Got These Numbers
 
@@ -448,7 +479,9 @@ Example for Code AI Cycle Time:
   Delta = ((95.6 - 82.2) / 82.2) × 100 = +16.3% ≈ +16%
 ```
 
-### Confidence Interval (95%)
+### Confidence Intervals (95%)
+
+**For Adoption Rate (Proportion CI):**
 ```
 CI = ± 1.96 × √(p × (1-p) / n)
 
@@ -457,6 +490,18 @@ Where:
   n = Sample size (167,308)
 
 CI = ± 1.96 × √(0.121 × 0.879 / 167308) = ±0.16%
+```
+
+**For Cycle/Review Time Deltas (Bootstrap CI):**
+```
+Method: Non-parametric bootstrap (1000 resamples)
+1. Resample PRs with replacement
+2. Compute delta for each resample
+3. Take 2.5th and 97.5th percentiles
+
+Note: Bootstrap is at PR level, not team level.
+      CIs may be narrower than true uncertainty
+      due to unmodeled team/repo clustering.
 ```
 
 ### Statistical Significance (Chi-Square)
