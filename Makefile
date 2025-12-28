@@ -108,6 +108,9 @@ lint: ruff lint-team-isolation lint-colors ## Run all linters (ruff + team isola
 export-prompts: ## Export LLM prompts and generate promptfoo config
 	@uv run manage.py export_prompts
 
+build-report: ## Build the AI Impact Report from Jinja2 templates
+	@uv run python docs/scripts/build_report.py
+
 e2e: ## Run all E2E tests (requires dev server running)
 	@npx playwright test
 
@@ -168,7 +171,7 @@ build-api-client:  ## Update the JavaScript API client code.
         migrations migrate shell dbshell init install-hooks \
         ruff ruff-format ruff-lint lint lint-team-isolation lint-team-isolation-all lint-colors \
         npm-install npm-install-all npm-uninstall npm-build npm-dev npm-type-check \
-        uv uv-sync upgrade build-api-client bootstrap_content export-prompts setup-env
+        uv uv-sync upgrade build-api-client bootstrap_content export-prompts build-report setup-env
 .DEFAULT_GOAL := help
 
 help:

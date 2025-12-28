@@ -1,0 +1,900 @@
+// Theme management
+function getSystemTheme() {
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+
+function getCurrentTheme() {
+    return document.documentElement.getAttribute('data-theme') || getSystemTheme();
+}
+
+function applyTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    document.getElementById('theme-icon').textContent = theme === 'dark' ? '☀️' : '🌙';
+    document.getElementById('theme-label').textContent = theme === 'dark' ? 'Light' : 'Dark';
+    updateChartColors();
+}
+
+function toggleTheme() {
+    const currentTheme = getCurrentTheme();
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    localStorage.setItem('theme', newTheme);
+    applyTheme(newTheme);
+}
+
+// Listen for system theme changes (only applies if no manual preference)
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+    if (!localStorage.getItem('theme')) {
+        applyTheme(e.matches ? 'dark' : 'light');
+    }
+});
+
+// Initialize theme UI on page load
+document.addEventListener('DOMContentLoaded', () => {
+    applyTheme(getCurrentTheme());
+});
+
+function getColors() {
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    return {
+        primary: '#F97316',
+        secondary: '#5a9997',
+        success: '#22c55e',
+        warning: '#eab308',
+        error: '#ef4444',
+        purple: '#a855f7',
+        text: isDark ? '#ccc9c0' : '#1f2937',
+        muted: isDark ? '#8a8880' : '#6b7280',
+        grid: isDark ? '#3c3c3a' : '#e5e7eb'
+    };
+}
+
+let charts = {};
+
+function updateChartColors() {
+    const colors = getColors();
+    Object.values(charts).forEach(chart => {
+        if (chart.options.scales) {
+            if (chart.options.scales.x) {
+                chart.options.scales.x.ticks.color = colors.text;
+                chart.options.scales.x.grid.color = colors.grid;
+            }
+            if (chart.options.scales.y) {
+                chart.options.scales.y.ticks.color = colors.text;
+                chart.options.scales.y.grid.color = colors.grid;
+            }
+        }
+        if (chart.options.plugins && chart.options.plugins.legend) {
+            chart.options.plugins.legend.labels.color = colors.text;
+        }
+        if (chart.options.plugins && chart.options.plugins.title) {
+            chart.options.plugins.title.color = colors.text;
+        }
+        chart.update();
+    });
+}
+
+const colors = getColors();
+
+// Prepare chart data from teamData (injected from base.html.j2)
+const sortedTeams = [...teamData].sort((a, b) => b.ai_pct - a.ai_pct);
+const reviewData = teamData
+    .filter(t => t.review_delta !== null)
+    .sort((a, b) => a.review_delta - b.review_delta);
+const cycleData = teamData
+    .filter(t => t.cycle_delta !== null)
+    .sort((a, b) => a.cycle_delta - b.cycle_delta);
+
+        // Overall AI Adoption Trend 2025
+        const overallTrendData = {
+            months: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+            prs: [8511, 8925, 10219, 10289, 9585, 9579, 10704, 10015, 11405, 12248, 11226, 11789],
+            ai_pct: [7.9, 8.3, 11.2, 11.9, 14.9, 15.5, 19.1, 14.9, 12.2, 13.4, 16.0, 15.5]
+        };
+
+        charts.overallTrend = new Chart(document.getElementById('overallTrendChart'), {
+            type: 'line',
+            data: {
+                labels: overallTrendData.months,
+                datasets: [{
+                    label: 'AI Adoption %',
+                    data: overallTrendData.ai_pct,
+                    borderColor: '#F97316',
+                    backgroundColor: 'rgba(249, 115, 22, 0.1)',
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 6,
+                    pointBackgroundColor: '#F97316'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    title: { display: true, text: 'Overall AI-Assisted PR Rate Across All Teams', color: colors.text, font: { size: 14 } },
+                    tooltip: {
+                        callbacks: {
+                            afterLabel: (ctx) => `${overallTrendData.prs[ctx.dataIndex].toLocaleString()} total PRs`
+                        }
+                    },
+                    datalabels: {
+                        display: true,
+                        anchor: 'end',
+                        align: 'top',
+                        color: colors.text,
+                        font: { weight: 'bold', size: 11 },
+                        formatter: (v) => v.toFixed(1) + '%'
+                    }
+                },
+                scales: {
+                    x: { ticks: { color: colors.text }, grid: { color: colors.grid } },
+                    y: { ticks: { color: colors.text }, grid: { color: colors.grid }, min: 0, max: 40, title: { display: true, text: 'AI Adoption %', color: colors.text } }
+                }
+            }
+        });
+        const months = Object.keys(toolTrends);
+        const toolColors = {
+            'coderabbit': '#F97316',
+            'devin': '#eab308',
+            'cubic': '#d97706',
+            'claude': '#a855f7',
+            'cursor': '#5a9997',
+            'copilot': '#22c55e',
+            'greptile': '#60a5fa',
+            'chatgpt': '#8a8880'
+        };
+
+        // Tool Trends Chart
+        charts.toolTrends = new Chart(document.getElementById('toolTrendsChart'), {
+            type: 'line',
+            data: {
+                labels: months.map(m => m.substring(5)),
+                datasets: ['coderabbit', 'devin', 'cubic', 'claude', 'cursor', 'copilot'].map(tool => ({
+                    label: tool.charAt(0).toUpperCase() + tool.slice(1),
+                    data: months.map(m => toolTrends[m][tool] || 0),
+                    borderColor: toolColors[tool],
+                    backgroundColor: 'transparent',
+                    tension: 0.4,
+                    pointRadius: 4
+                }))
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { labels: { color: colors.text } },
+                    title: { display: true, text: 'AI Tool Usage by Month (PRs)', color: colors.text },
+                    datalabels: { display: false }
+                },
+                scales: {
+                    x: { ticks: { color: colors.text }, grid: { color: colors.grid } },
+                    y: { ticks: { color: colors.text }, grid: { color: colors.grid }, title: { display: true, text: 'PRs per Month', color: colors.text } }
+                }
+            }
+        });
+
+        // Category Trends Chart
+        const categoryData = months.map(m => {
+            const d = toolTrends[m];
+            return {
+                bots: d.coderabbit + (d.greptile || 0),
+                agents: d.devin + d.cubic,
+                human: d.claude + d.cursor + d.copilot + (d.chatgpt || 0)
+            };
+        });
+
+        charts.categoryTrends = new Chart(document.getElementById('categoryTrendsChart'), {
+            type: 'bar',
+            data: {
+                labels: months.map(m => m.substring(5)),
+                datasets: [
+                    { label: 'Review Bots', data: categoryData.map(d => d.bots), backgroundColor: '#F97316', stack: 'stack' },
+                    { label: 'Autonomous Agents', data: categoryData.map(d => d.agents), backgroundColor: '#eab308', stack: 'stack' },
+                    { label: 'Human-Directed AI', data: categoryData.map(d => d.human), backgroundColor: '#5a9997', stack: 'stack' }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { labels: { color: colors.text } },
+                    datalabels: { display: false }
+                },
+                scales: {
+                    x: { stacked: true, ticks: { color: colors.text }, grid: { color: colors.grid } },
+                    y: { stacked: true, ticks: { color: colors.text }, grid: { color: colors.grid } }
+                }
+            }
+        });
+
+        charts.toolShare = new Chart(document.getElementById('toolShareChart'), {
+            type: 'doughnut',
+            data: {
+                labels: ['CodeRabbit', 'Devin', 'Cubic', 'Claude', 'Cursor', 'Copilot'],
+                datasets: [{
+                    data: [53.5, 17.9, 12.8, 4.9, 4.7, 2.0],
+                    backgroundColor: [toolColors.coderabbit, toolColors.devin, toolColors.cubic, toolColors.claude, toolColors.cursor, toolColors.copilot]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'right', labels: { color: colors.text } },
+                    title: { display: true, text: 'Overall Tool Share (2025)', color: colors.text },
+                    datalabels: { display: false }
+                }
+            }
+        });
+
+        // Team Adoption Chart
+        charts.teamAdoption = new Chart(document.getElementById('teamAdoptionChart'), {
+            type: 'bar',
+            data: {
+                labels: sortedTeams.map(t => t.team),
+                datasets: [{
+                    label: 'AI Adoption %',
+                    data: sortedTeams.map(t => t.ai_pct),
+                    backgroundColor: sortedTeams.map(t =>
+                        t.ai_pct > 50 ? '#F97316' :
+                        t.ai_pct > 20 ? '#eab308' :
+                        t.ai_pct > 5 ? '#5a9997' : '#8a8880'
+                    ),
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    datalabels: {
+                        anchor: 'end',
+                        align: 'end',
+                        color: colors.text,
+                        font: { family: "'JetBrains Mono', monospace", size: 10 },
+                        formatter: (v) => v > 0 ? v.toFixed(1) + '%' : ''
+                    }
+                },
+                scales: {
+                    x: { max: 100, ticks: { color: colors.text }, grid: { color: colors.grid } },
+                    y: { ticks: { color: colors.text, font: { size: 11 } }, grid: { display: false } }
+                }
+            }
+        });
+
+        // Review Impact Chart
+        charts.reviewImpact = new Chart(document.getElementById('reviewImpactChart'), {
+            type: 'bar',
+            data: {
+                labels: reviewData.map(t => t.team),
+                datasets: [{
+                    label: 'Review Time Change %',
+                    data: reviewData.map(t => t.review_delta),
+                    backgroundColor: reviewData.map(t => t.review_delta < 0 ? '#22c55e' : '#ef4444'),
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    datalabels: {
+                        anchor: 'end',
+                        align: (ctx) => ctx.dataset.data[ctx.dataIndex] < 0 ? 'start' : 'end',
+                        color: colors.text,
+                        font: { family: "'JetBrains Mono', monospace", size: 10 },
+                        formatter: (v) => (v > 0 ? '+' : '') + v.toFixed(0) + '%'
+                    }
+                },
+                scales: {
+                    x: { ticks: { color: colors.text }, grid: { color: colors.grid } },
+                    y: { ticks: { color: colors.text, font: { size: 10 } }, grid: { display: false } }
+                }
+            }
+        });
+
+        // Cycle Impact Chart
+        charts.cycleImpact = new Chart(document.getElementById('cycleImpactChart'), {
+            type: 'bar',
+            data: {
+                labels: cycleData.map(t => t.team),
+                datasets: [{
+                    label: 'Cycle Time Change %',
+                    data: cycleData.map(t => t.cycle_delta),
+                    backgroundColor: cycleData.map(t => t.cycle_delta < 0 ? '#22c55e' : '#ef4444'),
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    datalabels: {
+                        anchor: 'end',
+                        align: (ctx) => ctx.dataset.data[ctx.dataIndex] < 0 ? 'start' : 'end',
+                        color: colors.text,
+                        font: { family: "'JetBrains Mono', monospace", size: 10 },
+                        formatter: (v) => (v > 0 ? '+' : '') + v.toFixed(0) + '%'
+                    }
+                },
+                scales: {
+                    x: { ticks: { color: colors.text }, grid: { color: colors.grid } },
+                    y: { ticks: { color: colors.text, font: { size: 10 } }, grid: { display: false } }
+                }
+            }
+        });
+
+        // All 74 companies (with 500+ PRs) monthly data (from monthly_trends.csv - generated by export_report_data.py)
+        const allTeamsMonthlyData = [
+            { team: "AFFiNE", data: [0.8, 0.2, 0.4, 21.2, 78.6, 80.1, 87.4, 93.6, 63.8, 70.7, 89.7, 84.9], color: "#F97316" },
+            { team: "Activepieces", data: [0.5, 0.7, 1.7, 5.8, 0.3, 0.0, 1.3, 2.5, 1.8, 0.6, 2.3, 3.1], color: "#5a9997" },
+            { team: "Antiwork", data: [null, null, 40.3, 27.7, 74.2, 95.7, 94.5, 66.8, 26.0, 35.9, 39.9, 52.2], color: "#eab308" },
+            { team: "Appsmith", data: [85.5, 85.3, 86.7, 84.4, 60.6, 69.2, 59.7, 50.0, 57.1, 59.6, 68.0, 62.9], color: "#6366f1" },
+            { team: "Budibase", data: [0.0, 0.0, 0.9, 1.2, 0.0, 2.7, 2.0, 5.2, 1.0, 2.0, 0.9, 14.1], color: "#ec4899" },
+            { team: "Cal.com", data: [22.9, 24.6, 27.3, 14.6, 44.9, 78.8, 58.5, 21.1, 24.9, 49.6, 62.7, 62.0], color: "#3b82f6" },  // BLUE - volatile pattern
+            { team: "Chatwoot", data: [null, null, null, null, null, null, null, 9.5, 4.7, 3.6, 8.0, 6.8], color: "#06b6d4" },
+            { team: "Comp AI", data: [0.0, 64.9, 91.2, 27.4, 0.0, 2.7, 0.0, 1.3, 0.0, 0.0, 1.4, 1.9], color: "#f43f5e" },
+            { team: "Coolify", data: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 3.7, 5.3, 19.9, 28.1, 9.2], color: "#14b8a6" },
+            { team: "Deno", data: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.8, 0.7, 0.6, 4.3, 0.0], color: "#10b981" },
+            { team: "Dify", data: [3.8, 0.5, 0.2, 0.9, 0.3, 1.3, 0.4, 2.3, 1.6, 0.8, 1.5, 2.9], color: "#a855f7" },
+            { team: "Directus", data: [0.0, 0.0, 0.0, 0.0, 0.0, 3.9, 21.3, 2.0, 0.0, 5.9, 6.5, 3.2], color: "#fbbf24" },
+            { team: "Documenso", data: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 2.6, 0.0, 4.2], color: "#84cc16" },
+            { team: "Dub", data: [0.0, 0.0, 0.7, 1.5, 19.7, 96.9, 95.0, 91.6, 94.4, 96.3, 95.7, 92.5], color: "#ef4444" },  // RED - explosive growth
+            { team: "Erxes", data: [44.2, 35.1, 40.0, 64.0, 58.1, 69.2, 92.0, 87.0, 92.6, 81.3, 82.8, 81.8], color: "#78716c" },
+            { team: "Excalidraw", data: [2.0, 0.0, 0.0, 3.4, 18.2, 14.6, 5.3, 0.0, 0.0, 1.5, 9.3, 3.8], color: "#10b981" },
+            { team: "FastAPI Team", data: [0.0, 0.0, 1.3, 0.0, 0.0, 0.0, 0.0, 4.5, 2.7, 0.0, 0.0, 1.5], color: "#3b82f6" },
+            { team: "Flowise", data: [0.0, 4.1, 1.8, 6.7, 1.3, 0.0, 0.0, 1.8, 13.7, 22.7, 3.0, 3.4], color: "#0ea5e9" },
+            { team: "Formbricks", data: [90.5, 85.1, 59.1, 47.7, 66.4, 85.6, 80.6, 0.0, 2.1, 3.0, 3.7, 1.0], color: "#8b5cf6" },  // PURPLE - decline story
+            { team: "Ghost", data: [15.8, 0.0, 0.0, 0.5, 0.4, 0.2, 0.9, 0.6, 5.0, 6.4, 31.2, 22.5], color: "#d946ef" },
+            { team: "GrowthBook", data: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], color: "#fbbf24" },
+            { team: "Huly", data: [0.6, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], color: "#a3e635" },
+            { team: "Hyperswitch", data: [0.0, 0.0, 0.0, 0.0, 2.8, 11.4, 3.8, 0.5, 0.0, 0.6, 0.0, 2.6], color: "#2dd4bf" },
+            { team: "Infisical", data: [0.0, 44.7, 94.0, 92.7, 19.5, 0.0, 0.0, 0.0, 0.0, 0.6, 0.0, 0.0], color: "#fb7185" },
+            { team: "LangChain", data: [1.8, 3.3, 2.8, 2.8, 1.4, 3.6, 4.7, 5.5, 3.6, 4.5, 5.7, 7.5], color: "#c084fc" },
+            { team: "LobeChat", data: [1.3, 3.5, 3.4, 2.9, 3.6, 5.1, 0.0, 9.3, 6.2, 11.9, 20.5, 24.3], color: "#64748b" },
+            { team: "Matomo", data: [0.0, 0.0, 0.0, 0.0, 1.6, 0.0, 0.0, 0.0, 2.0, 1.3, 0.0, 0.0], color: "#f472b6" },
+            { team: "Mattermost", data: [1.4, 4.0, 9.1, 8.7, 3.2, 5.1, 4.5, 1.6, 1.7, 0.6, 6.3, 2.0], color: "#38bdf8" },
+            { team: "Neon", data: [0.0, 0.0, 0.8, 1.5, 1.7, 0.4, 0.0, 0.0, 0.0, 16.7, 0.0, 0.0], color: "#4ade80" },
+            { team: "Novu", data: [0.0, 0.0, 0.0, 0.5, 16.5, 26.2, 16.6, 17.2, 23.6, 25.9, 22.0, 19.7], color: "#818cf8" },
+            { team: "Ollama", data: [1.2, 1.0, 0.6, 0.0, 0.7, 1.1, 1.0, 0.8, 0.9, 0.6, 1.3, 2.3], color: "#fbbf24" },
+            { team: "Open WebUI", data: [1.4, 2.0, 1.3, 0.7, 1.2, 2.3, 0.8, 5.1, 3.4, 4.0, 5.1, 3.1], color: "#f87171" },
+            { team: "OpenReplay", data: [26.3, 13.9, 23.8, 54.0, 51.5, 33.3, 47.7, 42.5, 11.1, 0.0, 0.8, 0.7], color: "#a78bfa" },
+            { team: "Outline", data: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.6, 0.0, 1.4, 1.6, 12.4], color: "#34d399" },
+            { team: "Penpot", data: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.5, 0.0, 0.0], color: "#fcd34d" },
+            { team: "Plane", data: [74.3, 90.7, 90.4, 91.3, 92.9, 83.3, 87.1, 90.7, 83.3, 90.6, 93.8, 75.8], color: "#f97316" },
+            { team: "Plausible", data: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.3, 1.2, 0.0, 0.0], color: "#60a5fa" },
+            { team: "Polar.sh", data: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.4, 3.6, 5.9, 5.7, 5.1, 2.8], color: "#c4b5fd" },
+            { team: "PostHog Analytics", data: [0.9, 1.0, 0.6, 0.0, 0.0, 1.0, 0.8, 1.0, 0.7, 4.1, 3.6, 4.4], color: "#fb923c" },
+            { team: "Resend", data: [0.0, 0.0, 2.3, 0.6, 0.0, 0.0, 0.0, 37.5, 72.4, 80.7, 83.0, 88.9], color: "#22c55e" },  // GREEN - late bloomer
+            { team: "Saleor", data: [2.8, 0.0, 0.0, 0.0, 0.0, 0.0, 1.9, 0.0, 1.5, 1.2, 0.0, 0.0], color: "#a5b4fc" },
+            { team: "SigNoz", data: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 2.6, 0.0, 2.6, 11.6, 51.0, 53.3], color: "#f59e0b" },  // AMBER - Q4 surge
+            { team: "Strapi", data: [1.0, 1.1, 0.0, 0.0, 1.9, 0.0, 0.9, 0.0, 3.4, 1.9, 1.1, 1.5], color: "#fca5a5" },
+            { team: "Supabase", data: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 3.0, 1.4, 3.0, 1.3, 5.8, 41.7], color: "#67e8f9" },
+            { team: "ToolJet", data: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.2, 0.3, 0.0, 0.0, 0.5, 0.6], color: "#d8b4fe" },
+            { team: "Trigger.dev", data: [71.7, 84.0, 91.0, 89.1, 53.4, 1.4, 1.0, 0.8, 2.0, 5.5, 3.6, 4.5], color: "#fdba74" },
+            { team: "Twenty CRM", data: [0.0, 0.4, 0.0, 0.8, 0.3, 2.9, 1.1, 0.2, 0.7, 0.6, 3.7, 2.9], color: "#bef264" },
+            { team: "Vercel", data: [0.0, 2.4, 3.5, 3.0, 3.2, 6.0, 4.5, 7.0, 6.1, 2.3, 4.5, 5.7], color: "#7dd3fc" },
+            { team: "Webstudio", data: [0.0, 0.0, 0.0, 0.0, 0.0, 2.2, 0.0, 0.0, 0.0, 0.0, 0.0, 3.7], color: "#fda4af" },
+            { team: "Zitadel", data: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.6, 2.3, 2.3, 4.0, 4.7, 2.7], color: "#a5f3fc" },
+            { team: "n8n", data: [0.6, 0.6, 0.0, 0.5, 1.8, 1.6, 1.8, 4.2, 7.5, 11.6, 30.4, 1.8], color: "#e879f9" }
+        ];
+
+        // Default teams to show (interesting adoption stories)
+        // Dub: explosive growth, Formbricks: decline, Resend: late bloomer, Cal.com: volatile, SigNoz: Q4 surge
+        const defaultTeams = ["Dub", "Formbricks", "Resend", "Cal.com", "SigNoz"];
+
+        // Populate team dropdowns (sorted alphabetically)
+        function populateTeamDropdowns() {
+            // Sort teams alphabetically
+            const sortedTeams = [...allTeamsMonthlyData].sort((a, b) => a.team.localeCompare(b.team));
+
+            for (let i = 1; i <= 5; i++) {
+                const select = document.getElementById('teamSelect' + i);
+                // Add empty option
+                const emptyOpt = document.createElement('option');
+                emptyOpt.value = '';
+                emptyOpt.textContent = '-- Select Team --';
+                select.appendChild(emptyOpt);
+                // Add all teams (sorted)
+                sortedTeams.forEach(function(team) {
+                    const opt = document.createElement('option');
+                    opt.value = team.team;
+                    opt.textContent = team.team;
+                    select.appendChild(opt);
+                });
+                // Set default selection
+                if (defaultTeams[i - 1]) {
+                    select.value = defaultTeams[i - 1];
+                }
+            }
+        }
+
+        // Get selected teams from dropdowns
+        function getSelectedTeams() {
+            const selected = [];
+            for (let i = 1; i <= 5; i++) {
+                const val = document.getElementById('teamSelect' + i).value;
+                if (val) selected.push(val);
+            }
+            return selected;
+        }
+
+        // Build datasets for selected teams only
+        function buildMonthlyDatasets() {
+            const selected = getSelectedTeams();
+            return allTeamsMonthlyData
+                .filter(function(t) { return selected.includes(t.team); })
+                .map(function(team) {
+                    return {
+                        label: team.team,
+                        data: team.data,
+                        borderColor: team.color,
+                        backgroundColor: 'transparent',
+                        tension: 0.4,
+                        pointRadius: 4
+                    };
+                });
+        }
+        charts.monthlyTrend = new Chart(document.getElementById('monthlyTrendChart'), {
+            type: 'line',
+            data: {
+                labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+                datasets: buildMonthlyDatasets()
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { labels: { color: colors.text } },
+                    title: { display: true, text: 'AI Adoption Over 2025', color: colors.text },
+                    datalabels: { display: false }
+                },
+                scales: {
+                    x: { ticks: { color: colors.text }, grid: { color: colors.grid } },
+                    y: { ticks: { color: colors.text }, grid: { color: colors.grid }, title: { display: true, text: 'AI Adoption %', color: colors.text } }
+                }
+            }
+        });
+
+        // Update chart when dropdowns change
+        function updateMonthlyChart() {
+            charts.monthlyTrend.data.datasets = buildMonthlyDatasets();
+            charts.monthlyTrend.update();
+        }
+
+        // Initialize team dropdowns and update chart with defaults
+        populateTeamDropdowns();
+        updateMonthlyChart();
+
+        // Team Detection Comparison: LLM vs Regex
+        const teamDetectionData = [
+            { team: 'Cal.com', llm: 2336, regex: 1860, delta: 476, pctChange: 25.6 },
+            { team: 'PostHog', llm: 468, regex: 156, delta: 312, pctChange: 200.0 },
+            { team: 'Twenty CRM', llm: 267, regex: 58, delta: 209, pctChange: 360.3 },
+            { team: 'Deno', llm: 66, regex: 13, delta: 53, pctChange: 407.7 },
+            { team: 'Antiwork', llm: 2473, regex: 2429, delta: 44, pctChange: 1.8 },
+            { team: 'Neon', llm: 71, regex: 36, delta: 35, pctChange: 97.2 },
+            { team: 'Polar.sh', llm: 295, regex: 265, delta: 30, pctChange: 11.3 },
+            { team: 'Plane', llm: 1318, regex: 1322, delta: -4, pctChange: -0.3 },
+            { team: 'Trigger.dev', llm: 217, regex: 238, delta: -21, pctChange: -8.8 },
+            { team: 'LangChain', llm: 164, regex: 214, delta: -50, pctChange: -23.4 },
+            { team: 'Vercel', llm: 114, regex: 249, delta: -135, pctChange: -54.2 }
+        ];
+        charts.teamDetection = new Chart(document.getElementById('teamDetectionChart'), {
+            type: 'bar',
+            data: {
+                labels: teamDetectionData.map(t => t.team),
+                datasets: [{
+                    label: 'LLM Improvement (+) / Regex Over-Match (-)',
+                    data: teamDetectionData.map(t => t.delta),
+                    backgroundColor: teamDetectionData.map(t =>
+                        t.delta > 0 ? 'rgba(34, 197, 94, 0.8)' : 'rgba(239, 68, 68, 0.8)'
+                    ),
+                    borderColor: teamDetectionData.map(t =>
+                        t.delta > 0 ? '#22c55e' : '#ef4444'
+                    ),
+                    borderWidth: 1,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    title: {
+                        display: true,
+                        text: 'Additional AI PRs Detected: LLM vs Regex',
+                        color: colors.text,
+                        font: { size: 14 }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(ctx) {
+                                const t = teamDetectionData[ctx.dataIndex];
+                                const sign = t.delta > 0 ? '+' : '';
+                                return [
+                                    `Delta: ${sign}${t.delta} PRs (${sign}${t.pctChange.toFixed(1)}%)`,
+                                    `LLM: ${t.llm} AI PRs`,
+                                    `Regex: ${t.regex} AI PRs`
+                                ];
+                            }
+                        }
+                    },
+                    datalabels: {
+                        display: true,
+                        anchor: function(ctx) {
+                            return teamDetectionData[ctx.dataIndex].delta >= 0 ? 'end' : 'start';
+                        },
+                        align: function(ctx) {
+                            return teamDetectionData[ctx.dataIndex].delta >= 0 ? 'right' : 'left';
+                        },
+                        color: colors.text,
+                        font: { weight: 'bold', size: 11 },
+                        formatter: function(value, ctx) {
+                            const t = teamDetectionData[ctx.dataIndex];
+                            const sign = value > 0 ? '+' : '';
+                            return `${sign}${value} (${sign}${t.pctChange.toFixed(0)}%)`;
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        ticks: { color: colors.text },
+                        grid: { color: colors.grid },
+                        title: { display: true, text: 'Additional AI PRs Detected', color: colors.text }
+                    },
+                    y: {
+                        ticks: { color: colors.text },
+                        grid: { color: colors.grid }
+                    }
+                }
+            }
+        });
+
+        // PR Type Chart
+        const prTypeData = [
+            { type: 'Refactor', prs: 4129, ai_pct: 32.8 },
+            { type: 'Feature', prs: 14264, ai_pct: 26.7 },
+            { type: 'Test', prs: 647, ai_pct: 23.6 },
+            { type: 'Bugfix', prs: 16803, ai_pct: 22.3 },
+            { type: 'Improvement', prs: 266, ai_pct: 16.5 },
+            { type: 'Docs', prs: 5689, ai_pct: 13.2 },
+            { type: 'Chore', prs: 10820, ai_pct: 12.9 },
+            { type: 'CI', prs: 705, ai_pct: 9.9 }
+        ];
+        charts.prType = new Chart(document.getElementById('prTypeChart'), {
+            type: 'bar',
+            data: {
+                labels: prTypeData.map(d => d.type),
+                datasets: [{
+                    label: 'AI Adoption %',
+                    data: prTypeData.map(d => d.ai_pct),
+                    backgroundColor: 'rgba(168, 85, 247, 0.7)',
+                    borderColor: '#a855f7',
+                    borderWidth: 1,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    title: { display: true, text: 'AI Adoption by PR Type', color: colors.text },
+                    datalabels: {
+                        display: true,
+                        anchor: 'end',
+                        align: 'top',
+                        color: colors.text,
+                        font: { weight: 'bold' },
+                        formatter: (v) => v.toFixed(1) + '%'
+                    }
+                },
+                scales: {
+                    x: { ticks: { color: colors.text }, grid: { color: colors.grid } },
+                    y: { ticks: { color: colors.text }, grid: { color: colors.grid }, max: 40 }
+                }
+            }
+        });
+
+        // Tech Category Chart
+        const techCategoryData = [
+            { tech: 'Mobile', prs: 118, ai_pct: 42.4 },
+            { tech: 'Test', prs: 697, ai_pct: 33.0 },
+            { tech: 'Frontend', prs: 26848, ai_pct: 27.6 },
+            { tech: 'Docs', prs: 440, ai_pct: 26.8 },
+            { tech: 'Backend', prs: 26318, ai_pct: 20.8 },
+            { tech: 'Data', prs: 754, ai_pct: 17.9 },
+            { tech: 'DevOps', prs: 8457, ai_pct: 15.6 }
+        ];
+
+        charts.techCategory = new Chart(document.getElementById('techCategoryChart'), {
+            type: 'bar',
+            data: {
+                labels: techCategoryData.map(d => d.tech),
+                datasets: [{
+                    label: 'AI Adoption %',
+                    data: techCategoryData.map(d => d.ai_pct),
+                    backgroundColor: 'rgba(34, 197, 94, 0.7)',
+                    borderColor: '#22c55e',
+                    borderWidth: 1,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    title: { display: true, text: 'AI Adoption by Technology Category', color: colors.text },
+                    datalabels: {
+                        display: true,
+                        anchor: 'end',
+                        align: 'top',
+                        color: colors.text,
+                        font: { weight: 'bold' },
+                        formatter: (v) => v.toFixed(1) + '%'
+                    }
+                },
+                scales: {
+                    x: { ticks: { color: colors.text }, grid: { color: colors.grid } },
+                    y: { ticks: { color: colors.text }, grid: { color: colors.grid }, max: 50 }
+                }
+            }
+        });
+
+        // PR Size Chart
+        const prSizeData = [
+            { size: 'XS (0-10)', prs: 12683, ai_pct: 17.8 },
+            { size: 'S (11-50)', prs: 12008, ai_pct: 20.3 },
+            { size: 'M (51-200)', prs: 12362, ai_pct: 21.3 },
+            { size: 'L (201-500)', prs: 6955, ai_pct: 23.6 },
+            { size: 'XL (501+)', prs: 9868, ai_pct: 26.0 }
+        ];
+
+        charts.prSize = new Chart(document.getElementById('prSizeChart'), {
+            type: 'bar',
+            data: {
+                labels: prSizeData.map(d => d.size),
+                datasets: [{
+                    label: 'AI Adoption %',
+                    data: prSizeData.map(d => d.ai_pct),
+                    backgroundColor: 'rgba(249, 115, 22, 0.7)',
+                    borderColor: '#f97316',
+                    borderWidth: 1,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    title: { display: true, text: 'AI Adoption by PR Size (Lines Changed)', color: colors.text },
+                    datalabels: {
+                        display: true,
+                        anchor: 'end',
+                        align: 'top',
+                        color: colors.text,
+                        font: { weight: 'bold' },
+                        formatter: (v) => v.toFixed(1) + '%'
+                    }
+                },
+                scales: {
+                    x: { ticks: { color: colors.text }, grid: { color: colors.grid } },
+                    y: { ticks: { color: colors.text }, grid: { color: colors.grid }, max: 35 }
+                }
+            }
+        });
+
+        // Team Structure Chart
+        const teamStructureData = [
+            { level: 'High (70%+)', teams: 9, ai_pct: 29.2, contributors: 66 },
+            { level: 'Medium (40-70%)', teams: 9, ai_pct: 22.4, contributors: 255 },
+            { level: 'Low (<40%)', teams: 7, ai_pct: 19.2, contributors: 452 }
+        ];
+
+        charts.teamStructure = new Chart(document.getElementById('teamStructureChart'), {
+            type: 'bar',
+            data: {
+                labels: teamStructureData.map(d => d.level),
+                datasets: [{
+                    label: 'AI Adoption %',
+                    data: teamStructureData.map(d => d.ai_pct),
+                    backgroundColor: ['rgba(34, 197, 94, 0.7)', 'rgba(234, 179, 8, 0.7)', 'rgba(99, 102, 241, 0.7)'],
+                    borderColor: ['#22c55e', '#eab308', '#6366f1'],
+                    borderWidth: 1,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    title: { display: true, text: 'AI Adoption by Team Concentration (% PRs from Top 5)', color: colors.text },
+                    tooltip: {
+                        callbacks: {
+                            afterLabel: (ctx) => {
+                                const d = teamStructureData[ctx.dataIndex];
+                                return `${d.teams} teams, ~${d.contributors} contributors avg`;
+                            }
+                        }
+                    },
+                    datalabels: {
+                        display: true,
+                        anchor: 'end',
+                        align: 'top',
+                        color: colors.text,
+                        font: { weight: 'bold', size: 14 },
+                        formatter: (v) => v.toFixed(1) + '%'
+                    }
+                },
+                scales: {
+                    x: { ticks: { color: colors.text }, grid: { color: colors.grid } },
+                    y: { ticks: { color: colors.text }, grid: { color: colors.grid }, max: 35 }
+                }
+            }
+        });
+
+        // Alpine.js Sortable Table Component
+        function teamTable() {
+            return {
+                data: [],
+                sortBy: 'ai_pct',
+                sortDir: 'desc',
+                currentPage: 1,
+                perPage: 20,
+
+                init() {
+                    this.data = [...teamData];
+                    this.sortData();
+                },
+
+                get sortedData() {
+                    return [...this.data].sort((a, b) => {
+                        let aVal = a[this.sortBy];
+                        let bVal = b[this.sortBy];
+
+                        // Handle nulls - push to end
+                        if (aVal === null) return 1;
+                        if (bVal === null) return -1;
+
+                        // String comparison for team names
+                        if (this.sortBy === 'team') {
+                            return this.sortDir === 'asc'
+                                ? aVal.localeCompare(bVal)
+                                : bVal.localeCompare(aVal);
+                        }
+
+                        // Numeric comparison
+                        return this.sortDir === 'asc' ? aVal - bVal : bVal - aVal;
+                    });
+                },
+
+                get totalPages() {
+                    return Math.ceil(this.data.length / this.perPage);
+                },
+
+                get paginatedData() {
+                    const start = (this.currentPage - 1) * this.perPage;
+                    return this.sortedData.slice(start, start + this.perPage);
+                },
+
+                sort(column) {
+                    if (this.sortBy === column) {
+                        this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';
+                    } else {
+                        this.sortBy = column;
+                        this.sortDir = column === 'team' ? 'asc' : 'desc';
+                    }
+                    this.currentPage = 1; // Reset to first page on sort
+                },
+
+                sortData() {
+                    // Initial sort handled by getter
+                },
+
+                prevPage() {
+                    if (this.currentPage > 1) this.currentPage--;
+                },
+
+                nextPage() {
+                    if (this.currentPage < this.totalPages) this.currentPage++;
+                }
+            };
+        }
+
+        // TOC toggle for mobile with overlay
+        function toggleToc() {
+            const toc = document.getElementById('toc');
+            const isOpen = toc.classList.toggle('show');
+            document.body.classList.toggle('toc-open', isOpen);
+
+            // Update toggle button icon
+            const toggle = document.getElementById('toc-toggle');
+            toggle.textContent = isOpen ? '✕' : '☰';
+        }
+        window.toggleToc = toggleToc;
+
+        // Close TOC when clicking a link (mobile)
+        document.querySelectorAll('.toc-sidebar a').forEach(link => {
+            link.addEventListener('click', () => {
+                if (window.innerWidth < 1200) {
+                    document.getElementById('toc').classList.remove('show');
+                    document.body.classList.remove('toc-open');
+                    document.getElementById('toc-toggle').textContent = '☰';
+                }
+            });
+        });
+
+        // Close TOC when clicking overlay
+        document.addEventListener('click', (e) => {
+            const toc = document.getElementById('toc');
+            const toggle = document.getElementById('toc-toggle');
+            if (window.innerWidth < 1200 &&
+                toc.classList.contains('show') &&
+                !toc.contains(e.target) &&
+                !toggle.contains(e.target)) {
+                toc.classList.remove('show');
+                document.body.classList.remove('toc-open');
+                toggle.textContent = '☰';
+            }
+        });
+
+        // Scroll spy for TOC highlighting
+        const sections = document.querySelectorAll('section[id]');
+        const tocLinks = document.querySelectorAll('.toc-sidebar a');
+
+        function highlightToc() {
+            let current = '';
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                if (scrollY >= sectionTop - 200) {
+                    current = section.getAttribute('id');
+                }
+            });
+
+            tocLinks.forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('href') === '#' + current) {
+                    link.classList.add('active');
+                }
+            });
+        }
+
+        window.addEventListener('scroll', highlightToc);
+        highlightToc();
+
+        // Reading Progress Bar
+        const progressBar = document.getElementById('reading-progress');
+        function updateProgress() {
+            const scrollTop = window.scrollY;
+            const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+            const progress = (scrollTop / docHeight) * 100;
+            progressBar.style.width = progress + '%';
+        }
+        window.addEventListener('scroll', updateProgress);
+        updateProgress();
+
+        // Back to Top Button
+        const backToTop = document.getElementById('back-to-top');
+        function toggleBackToTop() {
+            if (window.scrollY > 400) {
+                backToTop.classList.add('visible');
+            } else {
+                backToTop.classList.remove('visible');
+            }
+        }
+        window.addEventListener('scroll', toggleBackToTop);
+        backToTop.addEventListener('click', () => {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });

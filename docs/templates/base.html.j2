@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script>
+        // Theme detection - runs before page renders to prevent flash
+        (function() {
+            const stored = localStorage.getItem('theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const theme = stored || (prefersDark ? 'dark' : 'light');
+            document.documentElement.setAttribute('data-theme', theme);
+        })();
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Impact on Software Engineering - 2025 OSS Analysis</title>
+
+    <!-- Modern Stack: Tailwind CSS + Chart.js -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
+
+    <!-- Tailwind Config for Custom Theme -->
+    <script>
+        tailwind.config = {
+            darkMode: ['selector', '[data-theme="dark"]'],
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#F97316',
+                        secondary: '#5a9997',
+                        success: '#22c55e',
+                        warning: '#eab308',
+                        error: '#ef4444',
+                        purple: '#a855f7',
+                        // Dark theme
+                        'dark-bg': '#1e1e1e',
+                        'dark-card': '#2a2a28',
+                        'dark-text': '#ccc9c0',
+                        'dark-muted': '#8a8880',
+                        'dark-border': '#3c3c3a',
+                        // Light theme
+                        'light-bg': '#f8f9fa',
+                        'light-card': '#ffffff',
+                        'light-text': '#1f2937',
+                        'light-muted': '#6b7280',
+                        'light-border': '#e5e7eb',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    {% include 'styles.css.j2' %}
+</head>
+<body>
+    <!-- Reading Progress Bar -->
+    <div class="reading-progress" id="reading-progress"></div>
+
+    <!-- Back to Top Button -->
+    <button class="back-to-top" id="back-to-top" aria-label="Back to top">↑</button>
+
+    {% include 'content.html.j2' %}
+
+    <script>
+        // Register datalabels plugin
+        Chart.register(ChartDataLabels);
+
+        // Data from CSV exports
+        const teamData = {{ tojson(data.team_data_js) }};
+        const toolTrends = {{ tojson(data.tool_trends) }};
+
+        {% include 'scripts.js.j2' %}
+    </script>
+
+    <!-- Alpine.js must load AFTER our scripts define teamTable() -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</body>
+</html>
