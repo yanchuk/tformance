@@ -1,0 +1,51 @@
+team,ai_prs,non_ai_prs,ai_cycle_hours,non_ai_cycle_hours,cycle_delta_pct,ai_result
+OpenReplay,215,683,3.0,43.4,-93.1,faster
+Coolify,87,667,33.8,233.0,-85.5,faster
+Comp AI,210,1284,1.5,8.9,-83.6,faster
+LobeChat,171,1825,20.8,83.6,-75.1,faster
+Unleash,18,1802,9.8,35.4,-72.2,faster
+Resend,293,497,63.9,190.1,-66.4,faster
+Netdata,147,1614,16.7,40.9,-59.1,faster
+Polar.sh,61,2928,6.6,15.8,-58.5,faster
+Novu,250,1485,29.3,47.7,-38.6,faster
+Flowise,21,441,61.7,98.6,-37.4,faster
+Outline,21,1299,25.0,35.0,-28.5,faster
+Continue,1313,1070,74.6,97.4,-23.4,faster
+Dify,50,4171,40.7,52.9,-23.0,faster
+Erxes,296,129,52.2,61.0,-14.5,faster
+QuestDB,13,638,119.9,137.3,-12.6,faster
+Antiwork,1439,1077,51.6,56.8,-9.1,faster
+Vercel,188,4686,33.9,36.5,-7.2,faster
+Trigger.dev,350,609,49.4,52.7,-6.3,faster
+Jan,26,1407,29.2,29.9,-2.3,faster
+Rocket.Chat,608,1318,175.9,176.1,-0.1,faster
+Directus,27,697,196.5,188.6,4.2,slower
+Cal.com,1034,2370,133.3,127.5,4.5,slower
+Windmill,76,1669,41.7,37.5,11.0,slower
+PostHog Analytics,98,5250,63.1,56.8,11.2,slower
+Nuxt,108,1255,108.9,97.1,12.2,slower
+Grafana,11,1800,69.0,60.8,13.5,slower
+Activepieces,31,2382,54.5,47.7,14.3,slower
+Budibase,16,1097,85.4,70.9,20.6,slower
+Dub,682,491,47.6,38.9,22.4,slower
+Infisical,310,1146,57.3,42.8,33.7,slower
+Formbricks,682,480,82.8,61.9,33.8,slower
+ERPNext,274,2240,99.4,63.1,57.5,slower
+AFFiNE,1052,2078,76.3,47.4,61.0,slower
+Appsmith,920,148,49.3,28.7,71.6,slower
+LangChain,129,3960,154.1,89.5,72.2,slower
+Mattermost,87,2276,357.5,203.9,75.3,slower
+Plane,1313,179,71.6,40.8,75.4,slower
+Hyperswitch,28,1884,323.9,182.2,77.7,slower
+Chatwoot,15,298,201.3,110.0,83.0,slower
+Supabase,221,2013,112.3,60.5,85.5,slower
+Twenty CRM,41,4535,51.2,27.5,85.9,slower
+SigNoz,86,1291,208.4,111.6,86.8,slower
+Rallly,428,34,14.9,7.4,102.3,slower
+Spree Commerce,576,282,29.4,14.5,102.8,slower
+Svelte,12,1631,156.3,76.9,103.2,slower
+n8n,190,4259,162.3,75.2,115.8,slower
+Open WebUI,27,1455,91.1,35.3,158.2,slower
+Ghost,103,2816,123.8,44.5,178.5,slower
+Flagsmith,11,802,511.0,121.2,321.7,slower
+Excalidraw,15,239,519.9,121.8,327.0,slower

@@ -42,9 +42,9 @@ def load_csv(filename: str) -> list[dict]:
         for key, value in row.items():
             if value == "" or value is None:
                 row[key] = None
-            elif key in ("total_prs", "ai_prs"):
+            elif key in ("total_prs", "ai_prs", "count"):
                 row[key] = int(value)
-            elif "pct" in key or "delta" in key:
+            elif "pct" in key or "delta" in key or "hours" in key:
                 try:
                     row[key] = float(value)
                 except (ValueError, TypeError):
@@ -109,6 +109,8 @@ def load_all_data() -> dict:
         "monthly_trends": load_csv("monthly_trends.csv"),
         "ai_categories": load_csv("ai_categories.csv"),
         "category_metrics": load_csv("category_metrics.csv"),
+        "normalized_metrics": load_csv("normalized_metrics.csv"),
+        "within_team_comparison": load_csv("within_team_comparison.csv"),
         "tool_trends": load_tool_trends(),
         "overall_stats": load_overall_stats(),
         "generated_at": datetime.now().isoformat(),

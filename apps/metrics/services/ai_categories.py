@@ -114,6 +114,9 @@ EXCLUDED_TOOLS: set[str] = {
     "renovate",  # Dependency update bot
     "unknown",  # Unknown/unidentified
     "ai",  # Too generic, likely noise
+    # LLM hallucinations - detected in PRs with no AI content (0.01% rate)
+    "playwright",  # Testing framework, not AI tool
+    "rolldown-vite",  # Build tool, not AI tool
 }
 
 # =============================================================================

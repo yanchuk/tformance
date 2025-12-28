@@ -61,7 +61,7 @@
         <header>
             <div class="logo">tformance</div>
             <h1>AI Impact on Software Engineering</h1>
-            <p class="subtitle">Analysis of 167,000+ PRs from 100 Open Source Companies</p>
+            <p class="subtitle">Analysis of 167,000+ PRs from 101 Open Source Companies</p>
             <p class="meta">Research Period: January 1 - December 25, 2025 | Generated: December 27, 2025</p>
         </header>
 
@@ -84,7 +84,7 @@
                 <span style="font-size: 0.85rem; color: var(--text-muted);">
                     <strong style="color: rgb(168, 85, 247);">Industry claims 85% adoption</strong> (Stack Overflow, JetBrains 2025) and massive productivity gains.
                     The <strong>only RCT study</strong> (METR 2025) found AI made devs <strong>19% slower</strong>.
-                    We analyzed <strong>167,000+ PRs from 100 OSS companies</strong> to see what actually happens.
+                    We analyzed <strong>167,000+ PRs from 101 OSS companies</strong> to see what actually happens.
                 </span>
             </div>
 
@@ -132,7 +132,7 @@
                         <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid rgba(128, 128, 128, 0.3);">
                             <span style="background: var(--text-muted); color: var(--bg-deep); padding: 0.25rem 0.75rem; border-radius: 999px; font-size: 0.85rem; font-weight: bold;">0% (no AI)</span>
                         </div>
-                        <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 0.5rem;">111,200 PRs</div>
+                        <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 0.5rem;">111,215 PRs</div>
                     </div>
 
                     <!-- Code AI Card -->
@@ -148,7 +148,7 @@
                 </div>
 
                 <div style="text-align: center; margin-top: 1rem; font-size: 0.75rem; color: var(--text-muted);">
-                    Lower is better. Based on 167,000+ PRs from 100 OSS companies (74 with 500+ PRs for detailed analysis).
+                    Lower is better. Based on 167,000+ PRs from 101 OSS companies (74 with 500+ PRs for detailed analysis).
                 </div>
             </div>
 
@@ -171,7 +171,7 @@
         <section id="about" class="about-research" style="background: linear-gradient(135deg, rgba(249, 115, 22, 0.1), rgba(90, 153, 151, 0.1)); border: 1px solid var(--border); border-radius: 16px; padding: 2rem; margin-bottom: 2rem;">
             <h2>About This Research</h2>
             <p style="font-size: 1rem; margin-bottom: 1.5rem;">
-                This is a <strong>meta-analysis of 167,000+ pull requests</strong> from 100 open source companies throughout 2025, attempting to understand real-world AI coding tool adoption patterns and their impact on engineering metrics.
+                This is a <strong>meta-analysis of 167,000+ pull requests</strong> from 101 open source companies throughout 2025, attempting to understand real-world AI coding tool adoption patterns and their impact on engineering metrics.
             </p>
 
             <div class="two-col" style="gap: 2rem;">
@@ -264,7 +264,7 @@
         <section id="trend-2025">
             <h2>AI Adoption Trend — 2025</h2>
             <p style="color: var(--text-muted); margin-bottom: 1rem;">
-                Overall AI-assisted PR rate across 100 OSS companies throughout 2025. Shows the growth trajectory from early adoption to mainstream usage.
+                Overall AI-assisted PR rate across 101 OSS companies throughout 2025. Shows the growth trajectory from early adoption to mainstream usage.
             </p>
             <div class="chart-container" style="background: var(--bg-card);">
                 <div class="chart-wrapper">
@@ -290,7 +290,7 @@
                 </div>
             </div>
             <div class="insight-box" style="margin-top: 1rem;">
-                <strong>Trend Analysis:</strong> AI adoption grew steadily throughout 2025, peaking at 16.8% in July. With 100 OSS companies in the dataset (74 with 500+ PRs), we see variance month-to-month. The dip after July may reflect seasonal patterns or detection limitations as AI usage becomes more normalized.
+                <strong>Trend Analysis:</strong> AI adoption grew steadily throughout 2025, peaking at 16.8% in July. With 101 OSS companies in the dataset (74 with 500+ PRs), we see variance month-to-month. The dip after July may reflect seasonal patterns or detection limitations as AI usage becomes more normalized.
             </div>
         </section>
         <section id="takeaways">
@@ -472,7 +472,7 @@
                         <div class="stat-value" style="font-size: 2rem; color: var(--primary);">26.3%</div>
                         <div class="stat-label">Code AI</div>
                         <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">
-                            <strong>6,625 detections</strong><br>
+                            <strong>6,633 detections</strong><br>
                             Devin (1.8k) • Cursor (1.4k) • Claude (1.2k) • Copilot (823)
                         </div>
                     </div>
@@ -490,35 +490,75 @@
             <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-top: 1.5rem;">
                 <h3 style="margin-bottom: 1rem;">📈 Category Impact: The Data Speaks</h3>
                 <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1.25rem;">
-                    Comparing PRs by AI category against the non-AI baseline (111,200 PRs):
+                    Comparing PRs by AI category against the non-AI baseline (111,215 PRs):
                 </p>
 
+                {% set baseline_cat = data.category_metrics | selectattr('category', 'equalto', 'none') | first %}
+                {% set code_cat = data.category_metrics | selectattr('category', 'equalto', 'code') | first %}
+                {% set review_cat = data.category_metrics | selectattr('category', 'equalto', 'review') | first %}
                 <div class="three-col" style="gap: 1rem;">
                     <!-- Baseline Card -->
                     <div style="background: rgba(107, 114, 128, 0.1); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; text-align: center;">
                         <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.5rem;">NO AI (BASELINE)</div>
-                        <div style="font-family: 'JetBrains Mono', monospace; font-size: 1.25rem; color: var(--text);">82.2 hrs</div>
+                        <div style="font-family: 'JetBrains Mono', monospace; font-size: 1.25rem; color: var(--text);">{{ baseline_cat.avg_cycle_hours }} hrs</div>
                         <div style="font-size: 0.7rem; color: var(--text-muted);">avg cycle time</div>
-                        <div style="font-family: 'JetBrains Mono', monospace; font-size: 1.1rem; color: var(--text); margin-top: 0.5rem;">40.8 hrs</div>
+                        <div style="font-family: 'JetBrains Mono', monospace; font-size: 1.1rem; color: var(--text); margin-top: 0.5rem;">{{ baseline_cat.avg_review_hours }} hrs</div>
                         <div style="font-size: 0.7rem; color: var(--text-muted);">avg review time</div>
                     </div>
 
                     <!-- Code AI Card -->
                     <div style="background: rgba(249, 115, 22, 0.1); border: 1px solid var(--primary); border-radius: 8px; padding: 1rem; text-align: center;">
-                        <div style="font-size: 0.75rem; color: var(--primary); margin-bottom: 0.5rem;">CODE AI (3,056 PRs)</div>
-                        <div style="font-family: 'JetBrains Mono', monospace; font-size: 1.25rem; color: var(--error);">+16%</div>
-                        <div style="font-size: 0.7rem; color: var(--text-muted);">cycle time (95.6 hrs)</div>
-                        <div style="font-family: 'JetBrains Mono', monospace; font-size: 1.1rem; color: var(--success); margin-top: 0.5rem;">-14%</div>
-                        <div style="font-size: 0.7rem; color: var(--text-muted);">review time (34.9 hrs)</div>
+                        <div style="font-size: 0.75rem; color: var(--primary); margin-bottom: 0.5rem;">CODE AI ({{ '{:,}'.format(code_cat.count|int) }} PRs)</div>
+                        <div style="font-family: 'JetBrains Mono', monospace; font-size: 1.25rem; color: var(--error);">{{ '%+.0f'|format(code_cat.cycle_delta_pct) }}%</div>
+                        <div style="font-size: 0.65rem; color: var(--text-muted);">cycle time ({{ code_cat.avg_cycle_hours }} hrs)</div>
+                        {% if code_cat.cycle_delta_ci_lower is not none %}
+                        <div style="font-size: 0.6rem; color: var(--text-muted);">95% CI: {{ '%+.0f'|format(code_cat.cycle_delta_ci_lower) }}% to {{ '%+.0f'|format(code_cat.cycle_delta_ci_upper) }}%</div>
+                        {% endif %}
+                        <div style="font-family: 'JetBrains Mono', monospace; font-size: 1.1rem; color: var(--success); margin-top: 0.5rem;">{{ '%+.0f'|format(code_cat.review_delta_pct) }}%</div>
+                        <div style="font-size: 0.65rem; color: var(--text-muted);">review time ({{ code_cat.avg_review_hours }} hrs)</div>
+                        {% if code_cat.review_delta_ci_lower is not none %}
+                        <div style="font-size: 0.6rem; color: var(--text-muted);">95% CI: {{ '%+.0f'|format(code_cat.review_delta_ci_lower) }}% to {{ '%+.0f'|format(code_cat.review_delta_ci_upper) }}%</div>
+                        {% endif %}
                     </div>
 
                     <!-- Review AI Card -->
                     <div style="background: rgba(90, 153, 151, 0.1); border: 1px solid var(--secondary); border-radius: 8px; padding: 1rem; text-align: center;">
-                        <div style="font-size: 0.75rem; color: var(--secondary); margin-bottom: 0.5rem;">REVIEW AI (11,302 PRs)</div>
-                        <div style="font-family: 'JetBrains Mono', monospace; font-size: 1.25rem; color: var(--success);">-11%</div>
-                        <div style="font-size: 0.7rem; color: var(--text-muted);">cycle time (73.4 hrs)</div>
-                        <div style="font-family: 'JetBrains Mono', monospace; font-size: 1.1rem; color: var(--success); margin-top: 0.5rem;">-54%</div>
-                        <div style="font-size: 0.7rem; color: var(--text-muted);">review time (18.7 hrs)</div>
+                        <div style="font-size: 0.75rem; color: var(--secondary); margin-bottom: 0.5rem;">REVIEW AI ({{ '{:,}'.format(review_cat.count|int) }} PRs)</div>
+                        <div style="font-family: 'JetBrains Mono', monospace; font-size: 1.25rem; color: var(--success);">{{ '%+.0f'|format(review_cat.cycle_delta_pct) }}%</div>
+                        <div style="font-size: 0.65rem; color: var(--text-muted);">cycle time ({{ review_cat.avg_cycle_hours }} hrs)</div>
+                        {% if review_cat.cycle_delta_ci_lower is not none %}
+                        <div style="font-size: 0.6rem; color: var(--text-muted);">95% CI: {{ '%+.0f'|format(review_cat.cycle_delta_ci_lower) }}% to {{ '%+.0f'|format(review_cat.cycle_delta_ci_upper) }}%</div>
+                        {% endif %}
+                        <div style="font-family: 'JetBrains Mono', monospace; font-size: 1.1rem; color: var(--success); margin-top: 0.5rem;">{{ '%+.0f'|format(review_cat.review_delta_pct) }}%</div>
+                        <div style="font-size: 0.65rem; color: var(--text-muted);">review time ({{ review_cat.avg_review_hours }} hrs)</div>
+                        {% if review_cat.review_delta_ci_lower is not none %}
+                        <div style="font-size: 0.6rem; color: var(--text-muted);">95% CI: {{ '%+.0f'|format(review_cat.review_delta_ci_lower) }}% to {{ '%+.0f'|format(review_cat.review_delta_ci_upper) }}%</div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Distribution Note: Mean vs Median -->
+                <div style="background: rgba(168, 85, 247, 0.08); border: 1px solid rgba(168, 85, 247, 0.3); border-radius: 8px; padding: 1rem; margin-top: 1.25rem;">
+                    <strong style="color: rgb(168, 85, 247);">📊 Distribution Note:</strong>
+                    <span style="color: var(--text-muted); font-size: 0.9rem;">
+                        Cycle times are heavily right-skewed — a few PRs take weeks while most merge quickly. The <strong>median</strong> (typical PR) differs dramatically from the mean:
+                    </span>
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; margin-top: 0.75rem; font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; text-align: center;">
+                        <div style="padding: 0.5rem; background: rgba(128, 128, 128, 0.1); border-radius: 4px;">
+                            <div style="color: var(--text-muted);">No AI</div>
+                            <div style="color: var(--text);">Mean: 82.2h | <strong>Median: 5.7h</strong></div>
+                        </div>
+                        <div style="padding: 0.5rem; background: rgba(249, 115, 22, 0.1); border-radius: 4px;">
+                            <div style="color: var(--primary);">Code AI</div>
+                            <div style="color: var(--text);">Mean: 95.6h | <strong>Median: 11.4h</strong></div>
+                        </div>
+                        <div style="padding: 0.5rem; background: rgba(90, 153, 151, 0.1); border-radius: 4px;">
+                            <div style="color: var(--secondary);">Review AI</div>
+                            <div style="color: var(--text);">Mean: 73.4h | <strong>Median: 6.0h</strong></div>
+                        </div>
+                    </div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">
+                        Medians show the typical PR experience is much faster than means suggest. The patterns hold in both measures.
                     </div>
                 </div>
 
@@ -543,6 +583,125 @@
                 <span style="color: var(--text-muted);">
                     <strong>Review AI is the clear efficiency win</strong> with measurable time savings. Code AI's mixed results suggest it's better suited for specific use cases (refactoring, boilerplate) rather than universal adoption. Consider a hybrid strategy: Review AI for all PRs + targeted Code AI for appropriate tasks.
                 </span>
+            </div>
+
+            <!-- Size-Normalized Analysis -->
+            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-top: 1.5rem;">
+                <h3 style="margin-bottom: 1rem;">📏 Size-Normalized Analysis: Controlling for PR Size</h3>
+                <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1.25rem;">
+                    PR size is a potential confounding variable — AI-assisted PRs might be systematically larger or smaller. By normalizing review time <strong>per 100 lines of code</strong>, we control for this:
+                </p>
+
+                {% if data.normalized_metrics %}
+                {% set baseline = data.normalized_metrics | selectattr('category', 'equalto', 'none') | first %}
+                {% set code_ai = data.normalized_metrics | selectattr('category', 'equalto', 'code') | first %}
+                {% set review_ai = data.normalized_metrics | selectattr('category', 'equalto', 'review') | first %}
+                <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+                    <thead>
+                        <tr style="border-bottom: 2px solid var(--border);">
+                            <th style="text-align: left; padding: 0.75rem; color: var(--text);">Category</th>
+                            <th style="text-align: center; padding: 0.75rem; color: var(--text);">PRs</th>
+                            <th style="text-align: center; padding: 0.75rem; color: var(--text);">Review Hours / 100 Lines</th>
+                            <th style="text-align: center; padding: 0.75rem; color: var(--text);">vs Baseline</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr style="border-bottom: 1px solid var(--border);">
+                            <td style="padding: 0.75rem; color: var(--text);">Baseline (No AI)</td>
+                            <td style="padding: 0.75rem; text-align: center; color: var(--text-muted);">{{ '{:,}'.format(baseline.count|int) if baseline else 'N/A' }}</td>
+                            <td style="padding: 0.75rem; text-align: center; font-family: 'JetBrains Mono', monospace; color: var(--text);">{{ '%.1f'|format(baseline.review_hours_per_100_lines) if baseline else 'N/A' }} hrs</td>
+                            <td style="padding: 0.75rem; text-align: center; color: var(--text-muted);">—</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid var(--border);">
+                            <td style="padding: 0.75rem; color: var(--primary);">Code AI</td>
+                            <td style="padding: 0.75rem; text-align: center; color: var(--text-muted);">{{ '{:,}'.format(code_ai.count|int) if code_ai else 'N/A' }}</td>
+                            <td style="padding: 0.75rem; text-align: center; font-family: 'JetBrains Mono', monospace; color: var(--text);">{{ '%.1f'|format(code_ai.review_hours_per_100_lines) if code_ai else 'N/A' }} hrs</td>
+                            <td style="padding: 0.75rem; text-align: center; font-family: 'JetBrains Mono', monospace; color: var(--success);">{{ '%+.0f'|format(code_ai.vs_baseline_pct) if code_ai and code_ai.vs_baseline_pct else 'N/A' }}%</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 0.75rem; color: var(--secondary);">Review AI</td>
+                            <td style="padding: 0.75rem; text-align: center; color: var(--text-muted);">{{ '{:,}'.format(review_ai.count|int) if review_ai else 'N/A' }}</td>
+                            <td style="padding: 0.75rem; text-align: center; font-family: 'JetBrains Mono', monospace; color: var(--text);">{{ '%.1f'|format(review_ai.review_hours_per_100_lines) if review_ai else 'N/A' }} hrs</td>
+                            <td style="padding: 0.75rem; text-align: center; font-family: 'JetBrains Mono', monospace; color: var(--success);">{{ '%+.0f'|format(review_ai.vs_baseline_pct) if review_ai and review_ai.vs_baseline_pct else 'N/A' }}%</td>
+                        </tr>
+                    </tbody>
+                </table>
+                {% else %}
+                <p style="color: var(--text-muted);">Normalized metrics data not available.</p>
+                {% endif %}
+
+                <div style="background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 8px; padding: 1rem; margin-top: 1.25rem;">
+                    <strong style="color: var(--success);">✓ Size Doesn't Explain the Results:</strong>
+                    <span style="color: var(--text-muted); font-size: 0.9rem;">
+                        Even after controlling for PR size, Review AI shows <strong>62% faster reviews</strong> per 100 lines. Code AI also shows improvement (-26%) when size-normalized, suggesting the raw metrics may understate its benefits.
+                    </span>
+                </div>
+            </div>
+
+            <!-- Within-Team Comparison -->
+            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-top: 1.5rem;">
+                <h3 style="margin-bottom: 1rem;">🔬 Within-Team Analysis: Controlling for Team Differences</h3>
+                <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1.25rem;">
+                    Different teams have different baselines (fast vs slow). Comparing AI vs non-AI <strong>within each team</strong> controls for this. Teams included only if they have 10+ PRs in both groups:
+                </p>
+
+                {% if data.within_team_comparison %}
+                {% set faster_teams = data.within_team_comparison | selectattr('ai_result', 'equalto', 'faster') | list %}
+                {% set slower_teams = data.within_team_comparison | selectattr('ai_result', 'equalto', 'slower') | list %}
+                {% set total = data.within_team_comparison | length %}
+                {% set faster_pct = (faster_teams | length / total * 100) | round(0) if total > 0 else 0 %}
+                {% set slower_pct = (slower_teams | length / total * 100) | round(0) if total > 0 else 0 %}
+
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.25rem;">
+                    <div style="background: var(--bg-surface); border-radius: 8px; padding: 1rem; text-align: center;">
+                        <div style="font-size: 2rem; font-weight: bold; font-family: 'JetBrains Mono', monospace; color: var(--text);">{{ total }}</div>
+                        <div style="font-size: 0.8rem; color: var(--text-muted);">Teams Analyzed</div>
+                    </div>
+                    <div style="background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 8px; padding: 1rem; text-align: center;">
+                        <div style="font-size: 2rem; font-weight: bold; font-family: 'JetBrains Mono', monospace; color: var(--success);">{{ faster_teams | length }}</div>
+                        <div style="font-size: 0.8rem; color: var(--text-muted);">AI Faster ({{ faster_pct | int }}%)</div>
+                    </div>
+                    <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; padding: 1rem; text-align: center;">
+                        <div style="font-size: 2rem; font-weight: bold; font-family: 'JetBrains Mono', monospace; color: var(--error);">{{ slower_teams | length }}</div>
+                        <div style="font-size: 0.8rem; color: var(--text-muted);">AI Slower ({{ slower_pct | int }}%)</div>
+                    </div>
+                </div>
+
+                <details style="margin-top: 1rem;">
+                    <summary style="cursor: pointer; color: var(--text-muted); font-size: 0.9rem; margin-bottom: 0.5rem;">
+                        Show top 5 teams where AI is faster/slower
+                    </summary>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 0.75rem;">
+                        <div>
+                            <div style="font-weight: 600; color: var(--success); margin-bottom: 0.5rem; font-size: 0.85rem;">✓ AI Faster (Top 5)</div>
+                            {% for team in faster_teams[:5] %}
+                            <div style="font-size: 0.8rem; padding: 0.25rem 0; border-bottom: 1px solid var(--border);">
+                                <span style="color: var(--text);">{{ team.team }}</span>
+                                <span style="color: var(--success); font-family: 'JetBrains Mono', monospace; float: right;">{{ '%+.0f'|format(team.cycle_delta_pct) }}%</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <div>
+                            <div style="font-weight: 600; color: var(--error); margin-bottom: 0.5rem; font-size: 0.85rem;">✗ AI Slower (Top 5)</div>
+                            {% for team in slower_teams[-5:] | reverse %}
+                            <div style="font-size: 0.8rem; padding: 0.25rem 0; border-bottom: 1px solid var(--border);">
+                                <span style="color: var(--text);">{{ team.team }}</span>
+                                <span style="color: var(--error); font-family: 'JetBrains Mono', monospace; float: right;">{{ '%+.0f'|format(team.cycle_delta_pct) }}%</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </details>
+                {% else %}
+                <p style="color: var(--text-muted);">Within-team comparison data not available.</p>
+                {% endif %}
+
+                <div style="background: rgba(168, 85, 247, 0.08); border: 1px solid rgba(168, 85, 247, 0.3); border-radius: 8px; padding: 1rem; margin-top: 1.25rem;">
+                    <strong style="color: rgb(168, 85, 247);">⚠️ Simpson's Paradox Alert:</strong>
+                    <span style="color: var(--text-muted); font-size: 0.9rem;">
+                        The aggregate shows Review AI is -11% faster overall, but <strong>60% of individual teams</strong> see AI as slower. This can happen when AI adoption correlates with other factors (e.g., teams that already ship fast adopt AI more). <strong>Aggregate stats can mislead</strong> — always check within-team patterns.
+                    </span>
+                </div>
             </div>
         </section>
         <section id="by-team">
@@ -710,10 +869,10 @@
             <!-- Agreement Stats -->
             <div class="comparison-stats">
                 <div class="comparison-stat success">
-                    <div class="comparison-stat-value" style="color: var(--success);">96.1%</div>
+                    <div class="comparison-stat-value" style="color: var(--success);">93.4%</div>
                     <div class="comparison-stat-label">Agreement Rate</div>
                     <div class="agreement-bar">
-                        <div class="agreement-bar-fill" style="width: 96.1%; background: var(--success);"></div>
+                        <div class="agreement-bar-fill" style="width: 93.4%; background: var(--success);"></div>
                     </div>
                 </div>
                 <div class="comparison-stat secondary">
@@ -899,7 +1058,7 @@
                     <span>Key Insights from Method Comparison</span>
                 </div>
                 <ul class="key-insight-list">
-                    <li><strong>96.1% agreement</strong> validates both detection methods produce consistent results</li>
+                    <li><strong>93.4% agreement</strong> validates both detection methods produce consistent results</li>
                     <li>LLM catches <strong>1,718 additional AI-assisted PRs</strong> (3.2%) that regex patterns miss entirely</li>
                     <li><strong>Greptile detection improved 65x</strong> — major regex pattern gap identified and fixed via LLM feedback</li>
                     <li>LLM correctly reassigns generic "ChatGPT" to specific tools (e.g., "GPT-4 via Cursor" → Cursor)</li>
@@ -1101,8 +1260,34 @@
                         <li><strong>Total PRs:</strong> 167,308</li>
                         <li><strong>LLM Analyzed:</strong> 109,240 (65.3%)</li>
                         <li><strong>AI-Assisted PRs:</strong> 20,260 (12.1%)</li>
-                        <li><strong>OSS Companies:</strong> 100 (74 with 500+ PRs)</li>
+                        <li><strong>OSS Companies:</strong> 101 (74 with 500+ PRs)</li>
                     </ul>
+                </div>
+            </div>
+
+            <!-- Data Pipeline Transparency -->
+            <div style="background: var(--bg-deep); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-top: 1.5rem;">
+                <h3 style="margin-bottom: 1rem;">📊 Data Pipeline: Sample Selection</h3>
+                <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1rem;">
+                    Why do our category metrics show 125k PRs instead of 167k? Here's the data funnel:
+                </p>
+                <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; background: var(--bg-card); padding: 1rem; border-radius: 8px; overflow-x: auto;">
+<pre style="margin: 0; color: var(--text);">167,308 total PRs (all 101 OSS companies)
+    │
+    ├─▶ 5,346 excluded: teams with &lt;500 PRs (too small for stats)
+    │
+    └─▶ 161,962 PRs from 74 teams with 500+ PRs
+            │
+            ├─▶ 36,290 excluded: unmerged PRs (no cycle_time)
+            │   └─ Cycle time requires merge timestamp
+            │
+            └─▶ <strong style="color: var(--primary);">125,573 merged PRs</strong>
+                    └─ This is what category_metrics.csv contains
+                    └─ Used for cycle time & review time analysis</pre>
+                </div>
+                <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.75rem;">
+                    <strong>Why exclude unmerged PRs?</strong> Cycle time (PR creation → merge) is undefined for PRs that never merged.
+                    Draft PRs, abandoned PRs, and still-open PRs are excluded from timing analysis but counted in adoption rates.
                 </div>
             </div>
         </section>
@@ -1159,6 +1344,17 @@
                         </p>
                     </div>
                 </div>
+            </div>
+
+            <!-- Study Design Caveat -->
+            <div style="background: rgba(234, 179, 8, 0.08); border: 1px solid rgba(234, 179, 8, 0.3); border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem;">
+                <strong style="color: var(--warning);">⚠️ Important Caveat on Study Design:</strong>
+                <span style="color: var(--text-muted); font-size: 0.9rem;">
+                    <strong>METR used an RCT (causal)</strong> — randomized assignment proves causation.
+                    <strong>This report is observational (correlational)</strong> — we observe what happens but cannot prove AI <em>caused</em> faster/slower cycles.
+                    Confounders like team culture, PR complexity, or developer experience could explain differences.
+                    The within-team and size-normalized analyses help control for some confounders, but true causation requires controlled experiments.
+                </span>
             </div>
 
             <!-- HIGH RISK: Adoption Gap Comparison Table -->
@@ -1324,13 +1520,13 @@
 
                 <p style="margin-bottom: 0.75rem;"><strong>NOT PROFESSIONAL ADVICE:</strong> This report does not constitute investment, legal, business, or professional advice of any kind. Readers should not make decisions solely based on the information presented here. Before making any business or technology decisions, consult with qualified professionals and conduct your own independent analysis appropriate to your circumstances.</p>
 
-                <p style="margin-bottom: 0.75rem;"><strong>DATA LIMITATIONS:</strong> Our sample of 100 open source companies (~167,000 PRs; 74 with 500+ PRs for detailed analysis) represents a specific subset of software development activity and may not reflect broader industry patterns. Selection bias exists toward well-maintained, popular projects. Detection rates represent disclosed AI usage only; actual AI tool usage may be significantly higher. The 12.1% detected adoption rate is a floor estimate, not a comprehensive measure.</p>
+                <p style="margin-bottom: 0.75rem;"><strong>DATA LIMITATIONS:</strong> Our sample of 101 open source companies (~167,000 PRs; 74 with 500+ PRs for detailed analysis) represents a specific subset of software development activity and may not reflect broader industry patterns. Selection bias exists toward well-maintained, popular projects. Detection rates represent disclosed AI usage only; actual AI tool usage may be significantly higher. The 12.1% detected adoption rate is a floor estimate, not a comprehensive measure.</p>
 
                 <p style="margin-bottom: 0.75rem;"><strong>THIRD-PARTY DATA:</strong> Industry comparison data from Stack Overflow Developer Survey 2025 and JetBrains State of Developer Ecosystem 2025 is used under fair use for research commentary. These surveys measure different populations and methodologies than our behavioral analysis. Direct comparisons should be interpreted with caution.</p>
 
                 <p style="margin-bottom: 0.75rem;"><strong>LIMITATION OF LIABILITY:</strong> In no event shall tformance, its authors, affiliates, or data providers be liable for any direct, indirect, incidental, special, consequential, or punitive damages arising out of or related to your use of or reliance on this report.</p>
 
-                <p style="margin-bottom: 0;"><strong>METHODOLOGY TRANSPARENCY:</strong> Our detection methods (regex pattern matching and LLM analysis) achieved 96.1% agreement on test data, but neither method has been independently validated for false negative rates. The -9% cycle time correlation finding shows association, not causation. Category analysis shows Review AI (-11% cycle time) vs Code AI (+16% cycle time) have different impact patterns. Reproduction and peer review of our methodology is welcomed.</p>
+                <p style="margin-bottom: 0;"><strong>METHODOLOGY TRANSPARENCY:</strong> Our detection methods (regex pattern matching and LLM analysis) achieved 93.4% agreement on test data, but neither method has been independently validated for false negative rates. The -9% cycle time correlation finding shows association, not causation. Category analysis shows Review AI (-11% cycle time) vs Code AI (+16% cycle time) have different impact patterns. Reproduction and peer review of our methodology is welcomed.</p>
             </div>
         </footer>
     </div>

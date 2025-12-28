@@ -42,10 +42,10 @@ codemod,1,code
 openai,1,code
 open-swe,1,code
 phpstorm ai plugin,1,code
-playwright,1,code
+playwright,1,unknown
 codelines,1,code
 codecanvas,1,code
-rolldown-vite,1,code
+rolldown-vite,1,unknown
 ai review process,1,code
 cubic-dev-ai,1,code
 gdev,1,code

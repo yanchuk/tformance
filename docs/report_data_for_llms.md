@@ -13,7 +13,7 @@
 
 **Industry claims:** 85% adoption (Stack Overflow, JetBrains 2025), massive productivity gains.
 **The only RCT:** METR 2025 found AI made devs **19% slower** (with 43-point perception gap).
-**Our data:** 167,308 PRs from 100 OSS companies to see what actually happens.
+**Our data:** 167,308 PRs from 101 OSS companies to see what actually happens.
 
 ### Review AI vs Code AI — The Facts
 
@@ -51,7 +51,7 @@
 ```
 GitHub GraphQL API  →  PR Metadata  →  LLM Analysis  →  Metrics
    167,308 PRs         (title,body,     (Llama 3.3      (cycle time,
-   100 companies        commits,         70B via         review time,
+   101 companies        commits,         70B via         review time,
                         comments)        Groq)           PR size)
 ```
 
@@ -84,11 +84,11 @@ GitHub GraphQL API  →  PR Metadata  →  LLM Analysis  →  Metrics
 | Metric | Value | Notes |
 |--------|-------|-------|
 | Total PRs Analyzed | 167,308 | From GitHub GraphQL API |
-| OSS Companies | 100 | 74 with 500+ PRs for detailed analysis |
+| OSS Companies | 101 | 74 with 500+ PRs for detailed analysis |
 | AI-Assisted PRs | 20,260 | Detected via LLM + regex |
 | AI Adoption Rate | 12.1% | Floor estimate (disclosed only) |
 | LLM Analyzed PRs | 109,240 (65.3%) | PRs with non-empty body |
-| Detection Agreement | 96.1% | LLM vs regex pattern match |
+| Detection Agreement | 93.4% | LLM vs regex pattern match |
 
 ---
 
@@ -108,7 +108,7 @@ We categorize AI tools into two types with **dramatically different impacts**:
 | Category | Tool Mentions | Percentage | Unique PRs |
 |----------|---------------|------------|------------|
 | Review AI | 18,534 | 73.5% | 11,302 |
-| Code AI | 6,625 | 26.3% | 3,056 |
+| Code AI | 6,633 | 26.3% | 3,056 |
 | Unknown | 50 | 0.2% | — |
 | **Total** | **25,209** | **100%** | — |
 
@@ -116,10 +116,23 @@ We categorize AI tools into two types with **dramatically different impacts**:
 
 | Metric | No AI (Baseline) | Code AI | Code AI Δ | Review AI | Review AI Δ |
 |--------|------------------|---------|-----------|-----------|-------------|
-| Sample Size | 111,200 PRs | 3,056 PRs | — | 11,302 PRs | — |
+| Sample Size | 111,215 PRs | 3,056 PRs | — | 11,302 PRs | — |
 | Avg Cycle Time | 82.2 hrs | 95.6 hrs | **+16%** | 73.4 hrs | **-11%** |
+| Median Cycle Time | 5.7 hrs | 11.4 hrs | +100% | 6.0 hrs | +5% |
 | Avg Review Time | 40.8 hrs | 34.9 hrs | **-14%** | 18.7 hrs | **-54%** |
+| Median Review Time | 0.6 hrs | 0.3 hrs | -50% | 0.1 hrs | -83% |
 | Avg PR Size | 723 lines | 519 lines | -28% | 481 lines | -33% |
+
+**95% Confidence Intervals (1000 bootstrap samples):**
+| Metric | Code AI Δ (95% CI) | Review AI Δ (95% CI) |
+|--------|--------------------|-----------------------|
+| Cycle Time | +16% (+3% to +27%) | -11% (-18% to -6%) |
+| Review Time | -14% (-31% to -1%) | -54% (-61% to -50%) |
+
+**Distribution Note:** Cycle times are heavily right-skewed (long tail of slow PRs). The median (typical PR) differs dramatically from the mean:
+- Baseline: Mean 82.2h vs Median 5.7h (14x difference)
+- Code AI: Mean 95.6h vs Median 11.4h (8x difference)
+- Review AI: Mean 73.4h vs Median 6.0h (12x difference)
 
 ### Key Insight
 
@@ -132,6 +145,44 @@ We categorize AI tools into two types with **dramatically different impacts**:
 - -14% faster review time (once code is ready)
 
 **Hypothesis:** AI-generated code may require more iteration/refinement before review-readiness, explaining the longer cycle time but faster reviews.
+
+### Size-Normalized Analysis
+
+PR size is a potential confounding variable. Normalizing review time **per 100 lines of code** controls for this:
+
+| Category | PRs | Review Hours / 100 Lines | vs Baseline |
+|----------|-----|--------------------------|-------------|
+| Baseline (No AI) | 96,903 | 321.4 hrs | — |
+| Code AI | 3,502 | 236.5 hrs | **-26%** |
+| Review AI | 12,290 | 122.8 hrs | **-62%** |
+
+**Conclusion:** Even after controlling for PR size, Review AI shows 62% faster reviews per 100 lines. Code AI also shows improvement (-26%) when size-normalized, suggesting the raw metrics may understate its benefits.
+
+### Within-Team Analysis
+
+Comparing AI vs non-AI PRs **within the same team** controls for team-level differences:
+
+| Metric | Value |
+|--------|-------|
+| Teams analyzed (10+ PRs in both groups) | 50 |
+| Teams where AI is faster | 20 (40%) |
+| Teams where AI is slower | 30 (60%) |
+
+**Top 5 where AI is faster:**
+- OpenReplay: -93% (AI: 3.0h vs Non-AI: 43.4h)
+- Coolify: -86% (AI: 33.8h vs Non-AI: 233.0h)
+- Comp AI: -84% (AI: 1.5h vs Non-AI: 8.9h)
+- LobeChat: -75% (AI: 20.8h vs Non-AI: 83.6h)
+- Unleash: -72% (AI: 9.8h vs Non-AI: 35.4h)
+
+**Top 5 where AI is slower:**
+- Excalidraw: +327% (AI: 519.9h vs Non-AI: 121.8h)
+- Flagsmith: +322% (AI: 511.0h vs Non-AI: 121.2h)
+- Ghost: +179% (AI: 123.8h vs Non-AI: 44.5h)
+- Open WebUI: +158% (AI: 91.1h vs Non-AI: 35.3h)
+- n8n: +116% (AI: 162.3h vs Non-AI: 75.2h)
+
+**⚠️ Simpson's Paradox:** The aggregate shows Review AI is -11% faster overall, but 60% of individual teams see AI as slower. This can happen when AI adoption correlates with other factors (e.g., teams that already ship fast adopt AI more). Aggregate stats can mislead — always check within-team patterns.
 
 ---
 
@@ -207,6 +258,14 @@ The only **randomized controlled trial** in the space (METR 2025):
 | Perception gap | **43 percentage points** | Massive disconnect from reality |
 
 **Our Code AI data (+16% cycle time) aligns with METR's +19% finding.**
+
+### Study Design Caveat
+
+⚠️ **Important distinction:**
+- **METR used an RCT (causal)** — randomized assignment proves causation
+- **This report is observational (correlational)** — we observe what happens but cannot prove AI *caused* faster/slower cycles
+
+Confounders like team culture, PR complexity, or developer experience could explain differences. The within-team and size-normalized analyses help control for some confounders, but true causation requires controlled experiments.
 
 ---
 
@@ -372,7 +431,7 @@ Result: p < 0.0001 (highly significant)
 | # | Assumption | Risk Level | Mitigation |
 |---|------------|------------|------------|
 | A1 | Disclosed AI usage represents true AI usage patterns | HIGH | Acknowledged as floor estimate |
-| A2 | LLM detection is accurate for explicit mentions | MEDIUM | 96.1% agreement with regex validation |
+| A2 | LLM detection is accurate for explicit mentions | MEDIUM | 93.4% agreement with regex validation |
 | A3 | Merged PRs represent completed work | LOW | Standard industry practice |
 | A4 | OSS patterns apply to enterprise | HIGH | Clearly stated as OSS-only |
 | A5 | Tool categories are mutually exclusive | LOW | Primary function classification |
@@ -468,6 +527,31 @@ Result: p < 0.0001 (highly significant)
 
 ---
 
+## Data Pipeline: Sample Selection
+
+Why do our category metrics show 125k PRs instead of 167k? Here's the data funnel:
+
+```
+167,308 total PRs (all 101 OSS companies)
+    │
+    ├─▶ 5,346 excluded: teams with <500 PRs (too small for stats)
+    │
+    └─▶ 161,962 PRs from 74 teams with 500+ PRs
+            │
+            ├─▶ 36,290 excluded: unmerged PRs (no cycle_time)
+            │   └─ Cycle time requires merge timestamp
+            │
+            └─▶ 125,573 merged PRs
+                    └─ Used for cycle time & review time analysis
+                    └─ This is what category_metrics.csv contains
+```
+
+**Why exclude unmerged PRs?** Cycle time (PR creation → merge) is undefined for PRs that never merged. Draft PRs, abandoned PRs, and still-open PRs are excluded from timing analysis but counted in adoption rates.
+
+**Why 500+ PR threshold?** Small teams produce unreliable statistics. We require 500+ PRs per team to ensure meaningful comparisons.
+
+---
+
 ## Data Files
 
 ### Available Data (GitHub)
@@ -495,17 +579,17 @@ https://raw.githubusercontent.com/yanchuk/tformance/main/docs/data/ai_tools_with
 #### ai_categories.csv
 ```csv
 category,count,percentage
-code,6625,26.3
+code,6633,26.3
 review,18534,73.5
 unknown,50,0.2
 ```
 
 #### category_metrics.csv
 ```csv
-category,count,avg_cycle_hours,avg_review_hours,avg_size,cycle_delta_pct,review_delta_pct
-none,111200,82.2,40.8,723,,
-code,3056,95.6,34.9,519.0,16,-14
-review,11302,73.4,18.7,481.0,-11,-54
+category,count,avg_cycle_hours,median_cycle_hours,avg_review_hours,median_review_hours,avg_size,median_size,cycle_delta_pct,review_delta_pct
+none,111215,82.2,5.7,40.8,0.6,723,49,,
+code,3056,95.6,11.4,34.9,0.3,519,66,16,-14
+review,11302,73.4,6.0,18.7,0.1,481,53,-11,-54
 ```
 
 ---
