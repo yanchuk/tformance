@@ -181,9 +181,11 @@ class PullRequest(BaseTeamModel):
 
     # AI tracking
     is_ai_assisted = models.BooleanField(
-        default=False,
+        null=True,
+        blank=True,
+        default=None,
         verbose_name="AI assisted",
-        help_text="Whether AI tools were detected in this PR",
+        help_text="Whether AI tools were detected in this PR (None = not yet processed)",
     )
     ai_tools_detected = models.JSONField(
         default=list,
