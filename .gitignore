@@ -42,3 +42,7 @@ seeding*.log
 # Seeding cache
 .seeding_cache/
 .seeding_checkpoint_*.json
+
+# Model comparison evaluation files
+dev/active/model-comparison/
+real-prs-feedback.json

@@ -11,7 +11,7 @@ This guide documents the Claude Code infrastructure set up for tformance and how
 | Tool allowlist | ⚠️ | Default settings - customize via `/permissions` as needed |
 | gh CLI usage | ✅ | Documented in CLAUDE.md, Claude can use for PR/issues |
 | Bash tools | ✅ | Makefile commands documented (make test, ruff, migrations) |
-| MCP servers | ⚠️ | Not configured - add if needed for specific integrations |
+| MCP servers | ✅ | Playwright, Postgree, Context7 |
 | Custom slash commands | ✅ | `/dev-docs`, `/dev-docs-update` |
 | TDD workflow | ✅ | Full skill + 3 agents for Red-Green-Refactor |
 | Context persistence | ✅ | Dev docs pattern with plan/context/tasks files |
