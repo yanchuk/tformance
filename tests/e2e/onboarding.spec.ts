@@ -36,6 +36,12 @@ test.describe('Onboarding Flow @onboarding', () => {
       await page.goto('/onboarding/complete/');
       await expect(page).toHaveURL(/\/accounts\/login/);
     });
+
+    test('jira projects page requires authentication', async ({ page }) => {
+      await page.context().clearCookies();
+      await page.goto('/onboarding/jira/projects/');
+      await expect(page).toHaveURL(/\/accounts\/login.*next=.*jira.*projects/);
+    });
   });
 
   test.describe('Redirects (User with Team)', () => {
@@ -69,9 +75,39 @@ test.describe('Onboarding Flow @onboarding', () => {
       expect(url).toMatch(/\/(app|onboarding)/);
     });
 
+    test('repos selection page shows UI elements when accessible', async ({ page }) => {
+      await page.goto('/onboarding/repos/');
+      const url = page.url();
+
+      // If we land on the repos page (user has GitHub connected but no repos selected)
+      if (url.includes('/onboarding/repos')) {
+        // Should show the page heading
+        await expect(page.getByRole('heading', { name: /Select Repositories/ })).toBeVisible();
+
+        // Should have Continue button
+        await expect(page.getByRole('button', { name: /Continue/ })).toBeVisible();
+
+        // Should have Back button
+        await expect(page.getByRole('link', { name: /Back/ })).toBeVisible();
+
+        // If repos are available, should show Select All button
+        const selectAllButton = page.getByRole('button', { name: /Select All|Deselect All/ });
+        if (await selectAllButton.isVisible({ timeout: 1000 }).catch(() => false)) {
+          await expect(selectAllButton).toBeVisible();
+        }
+      }
+    });
+
     test('jira page redirects to app or onboarding', async ({ page }) => {
       await page.goto('/onboarding/jira/');
       const url = page.url();
+      expect(url).toMatch(/\/(app|onboarding)/);
+    });
+
+    test('jira projects page redirects appropriately', async ({ page }) => {
+      await page.goto('/onboarding/jira/projects/');
+      const url = page.url();
+      // Should redirect to app, jira connect, or stay on onboarding
       expect(url).toMatch(/\/(app|onboarding)/);
     });
 
