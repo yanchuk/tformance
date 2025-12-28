@@ -1,0 +1,19 @@
+{% load i18n %}
+<!-- AI Impact Report Banner -->
+<div class="bg-gradient-to-r from-primary/10 via-accent/10 to-primary/10 border-b border-primary/20">
+  <div class="max-w-6xl mx-auto px-4 py-3">
+    <a href="{% url 'web:ai_impact_report' %}" class="flex items-center justify-center gap-3 group">
+      <span class="inline-flex items-center gap-2 px-3 py-1 bg-primary/20 text-primary text-xs font-bold rounded-full uppercase tracking-wide">
+        New Research
+      </span>
+      <span class="text-base-content/90 text-sm md:text-base">
+        <span class="font-semibold">AI Impact Report:</span>
+        <span class="hidden sm:inline">167K PRs analyzed — Review AI correlates with -11% cycle time, but medians tell a different story</span>
+        <span class="sm:hidden">167K PRs analyzed</span>
+      </span>
+      <svg class="w-4 h-4 text-primary group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+      </svg>
+    </a>
+  </div>
+</div>

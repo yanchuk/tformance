@@ -61,6 +61,20 @@ def home(request):
         return render(request, "web/landing_page.html")
 
 
+def ai_impact_report(request):
+    """Serve the AI Impact Report from docs/index.html."""
+    import os
+
+    from django.http import FileResponse, HttpResponse
+
+    report_path = os.path.join(settings.BASE_DIR, "docs", "index.html")
+
+    if os.path.exists(report_path):
+        return FileResponse(open(report_path, "rb"), content_type="text/html")
+    else:
+        return HttpResponse("Report not found", status=404)
+
+
 @login_and_team_required
 def team_home(request):
     """Team home page with conditional content based on integration status.
