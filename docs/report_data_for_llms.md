@@ -123,6 +123,32 @@ GitHub GraphQL API  →  PR Metadata  →  LLM Analysis  →  Metrics
 
 ---
 
+### 🚀 Want Better Insights for YOUR Team?
+
+This OSS study has inherent limitations. **tformance** solves them with native integrations:
+
+| Limitation | OSS Study | With tformance Integrations |
+|------------|-----------|---------------------------|
+| **Invisible Copilot** | Can't detect (68% of usage) | **GitHub Copilot API** → actual acceptance rates, lines generated |
+| **No complexity control** | Assume all PRs equal | **Jira** → story points, issue type, sprint velocity |
+| **Unknown task type** | LLM inference | **Jira** → bug vs feature vs refactor (ground truth) |
+| **No perception data** | Just measure time | **Slack Surveys** → "Did AI help?" per PR |
+| **Aggregate only** | Compare different devs | **Within-developer analysis** → same dev, AI vs non-AI PRs |
+| **Bot vs human reviews** | Can't separate | **Surveys** → who actually reviewed? |
+
+**What you get with full integrations:**
+
+1. **GitHub + Copilot** → Actual AI usage intensity (not just "detected/not")
+2. **Jira** → Task complexity, story points, issue types, blocked time
+3. **Slack Surveys** → Per-PR feedback: complexity, AI tools used, perceived help
+4. **Combined Analysis** → "AI helps on complex features, hurts on simple bugs" (actionable)
+
+**The key insight:** This report shows *correlations* in OSS data. With your team's full data (Copilot + Jira + Surveys), tformance can show *controlled associations* — much closer to answering "Does AI actually help MY team?"
+
+→ **Get started:** [tformance.com](https://tformance.com)
+
+---
+
 ## Table of Contents
 
 1. [Report Summary](#report-summary)
