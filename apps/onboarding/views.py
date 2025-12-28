@@ -9,6 +9,7 @@ Users without a team are directed here after signup to:
 
 import logging
 import secrets
+from datetime import UTC, datetime
 
 from django.conf import settings
 from django.contrib import messages
@@ -282,6 +283,9 @@ def select_repositories(request):
     except Exception as e:
         logger.error(f"Failed to fetch repos during onboarding: {e}")
         messages.warning(request, _("Could not fetch repositories. You can skip this step and add repos later."))
+
+    # Sort repos by updated_at descending (most recent first), None values at end
+    repos = sorted(repos, key=lambda r: r.get("updated_at") or datetime.min.replace(tzinfo=UTC), reverse=True)
 
     return render(
         request,
