@@ -560,10 +560,13 @@ Why do our category metrics show 125k PRs instead of 167k? Here's the data funne
 |------|------|----------|
 | Overall Stats | `docs/data/overall_stats.txt` | Summary metrics |
 | AI Categories | `docs/data/ai_categories.csv` | Category breakdown |
-| Category Metrics | `docs/data/category_metrics.csv` | Impact by category |
+| Category Metrics | `docs/data/category_metrics.csv` | Impact by category (with medians & CIs) |
 | Tool Categories | `docs/data/ai_tools_with_categories.csv` | Tool-level data |
 | Team Summary | `docs/data/team_summary.csv` | Per-team metrics |
 | Monthly Trends | `docs/data/monthly_trends.csv` | Monthly adoption |
+| AI Tools Monthly | `docs/data/ai_tools_monthly.csv` | Tool usage by month |
+| Normalized Metrics | `docs/data/normalized_metrics.csv` | Size-normalized review times |
+| Within-Team Comparison | `docs/data/within_team_comparison.csv` | AI vs non-AI within teams |
 
 ### Raw Data URLs
 
@@ -572,6 +575,11 @@ https://raw.githubusercontent.com/yanchuk/tformance/main/docs/data/overall_stats
 https://raw.githubusercontent.com/yanchuk/tformance/main/docs/data/ai_categories.csv
 https://raw.githubusercontent.com/yanchuk/tformance/main/docs/data/category_metrics.csv
 https://raw.githubusercontent.com/yanchuk/tformance/main/docs/data/ai_tools_with_categories.csv
+https://raw.githubusercontent.com/yanchuk/tformance/main/docs/data/team_summary.csv
+https://raw.githubusercontent.com/yanchuk/tformance/main/docs/data/monthly_trends.csv
+https://raw.githubusercontent.com/yanchuk/tformance/main/docs/data/ai_tools_monthly.csv
+https://raw.githubusercontent.com/yanchuk/tformance/main/docs/data/normalized_metrics.csv
+https://raw.githubusercontent.com/yanchuk/tformance/main/docs/data/within_team_comparison.csv
 ```
 
 ### Data Schema
