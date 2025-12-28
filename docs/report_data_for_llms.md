@@ -671,9 +671,7 @@ Based on this analysis:
 
 *"We used Copilot, Cursor, and every AI tool we could get. But I couldn't answer: 'Is this actually helping us ship faster?'"*
 
-So I built tformance with **Claude Code** — AI pair programming in action. I share the process, tools, and learnings publicly.
-
-**Connect:** [GitHub](https://github.com/yanchuk) • [LinkedIn](https://linkedin.com/in/oianchuk) • [Discord](https://discord.gg/tformance)
+**Connect:** [GitHub](https://github.com/yanchuk) • [LinkedIn](https://www.linkedin.com/in/yanch/)
 
 ---
 

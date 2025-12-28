@@ -38,7 +38,15 @@
 - [x] Add observational study disclaimer to CTO recommendations
 - [x] Update "Key Insight" section to use correlational language
 
+## Phase F7: Additional Improvements
+- [x] Add "What This Research SHOWS" and "What This Research Does NOT Show" sections
+- [x] Add two-column layout in HTML TL;DR for show/don't sections
+- [x] Add "About the Author" section with Oleksii Ianchuk bio
+- [x] Remove Claude Code mention from bio
+- [x] Remove Discord link (not available yet)
+- [x] Fix LinkedIn URL to correct one (linkedin.com/in/yanch/)
+
 ## Final Verification
 - [x] Regenerate report with build_report.py
-- [ ] Verify HTML rendering in browser
+- [x] Verify LinkedIn URL in generated HTML
 - [ ] Commit and push changes
