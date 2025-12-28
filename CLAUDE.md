@@ -391,13 +391,13 @@ See `dev/DEV-ENVIRONMENT.md` for full options including all 4 scenarios.
 
 ### Public Report (AI Impact Analysis)
 
-The `docs/index.html` is a standalone HTML report analyzing AI tool adoption across 100 OSS companies. It's built from Jinja2 templates with data from CSV exports.
+The `public_report/index.html` is a standalone HTML report analyzing AI tool adoption across 100 OSS companies. It's built from Jinja2 templates with data from CSV exports.
 
 ```bash
-make build-report  # Build docs/index.html from templates
+make build-report  # Build public_report/index.html from templates
 ```
 
-**Template Structure** (in `docs/templates/`):
+**Template Structure** (in `public_report/templates/`):
 | File | Purpose |
 |------|---------|
 | `base.html.j2` | HTML skeleton, `<head>`, script/style includes |
@@ -406,10 +406,10 @@ make build-report  # Build docs/index.html from templates
 | `styles.css.j2` | All CSS including dark/light theme variables |
 
 **Data Flow**:
-1. CSV files in `docs/data/` (exported via `docs/scripts/export_report_data.py`)
+1. CSV files in `public_report/data/` (exported via `public_report/scripts/export_report_data.py`)
 2. `build_report.py` loads CSVs into Python dicts
 3. Jinja2 renders templates with data context
-4. Output: `docs/index.html` (186 KB standalone file)
+4. Output: `public_report/index.html` (186 KB standalone file)
 
 **Key Variables** (available in templates):
 - `data.team_summary` - Team-level metrics (74 teams with 500+ PRs)
@@ -421,7 +421,7 @@ make build-report  # Build docs/index.html from templates
 - Theme colors come from `getColors()` function
 - Alpine.js components (like sortable table) need functions defined before Alpine loads
 
-See `docs/templates/README.md` for detailed documentation.
+See `public_report/templates/README.md` for detailed documentation.
 
 ## Test-Driven Development (TDD)
 

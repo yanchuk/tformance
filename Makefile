@@ -109,7 +109,7 @@ export-prompts: ## Export LLM prompts and generate promptfoo config
 	@uv run manage.py export_prompts
 
 build-report: ## Build the AI Impact Report from Jinja2 templates
-	@uv run python docs/scripts/build_report.py
+	@uv run python public_report/scripts/build_report.py
 
 e2e: ## Run all E2E tests (requires dev server running)
 	@npx playwright test

@@ -17,7 +17,7 @@ node_modules/
 .claude/settings.local.json
 openapitools.json
 media/
-docs/_build
+public_report/_build
 _dist/
 .env
 .env.production

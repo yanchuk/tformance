@@ -62,12 +62,12 @@ def home(request):
 
 
 def ai_impact_report(request):
-    """Serve the AI Impact Report from docs/index.html."""
+    """Serve the AI Impact Report from public_report/index.html."""
     import os
 
     from django.http import FileResponse, HttpResponse
 
-    report_path = os.path.join(settings.BASE_DIR, "docs", "index.html")
+    report_path = os.path.join(settings.BASE_DIR, "public_report", "index.html")
 
     if os.path.exists(report_path):
         return FileResponse(open(report_path, "rb"), content_type="text/html")

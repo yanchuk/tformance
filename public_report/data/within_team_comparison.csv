@@ -1,0 +1,49 @@
+team,ai_prs,non_ai_prs,ai_cycle_hours,non_ai_cycle_hours,cycle_delta_pct,ai_result
+Comp AI,210,1279,1.5,7.7,-81.1,faster
+OpenReplay,214,665,1.8,8.3,-77.8,faster
+Coolify,83,512,12.3,35.4,-65.4,faster
+Directus,21,543,19.4,32.3,-40.1,faster
+Resend,265,411,16.5,26.4,-37.6,faster
+LobeChat,167,1680,12.6,18.9,-33.6,faster
+Outline,20,1246,10.2,13.8,-26.4,faster
+Unleash,18,1747,9.8,13.2,-25.6,faster
+Trigger.dev,334,571,14.7,19.2,-23.4,faster
+Flowise,19,379,23.3,28.9,-19.4,faster
+Novu,242,1410,18.9,22.9,-17.7,faster
+Vercel,179,4529,13.2,15.5,-15.1,faster
+Netdata,145,1528,12.4,14.5,-14.4,faster
+SigNoz,52,1095,33.0,36.6,-10.0,faster
+Formbricks,607,447,35.4,39.1,-9.4,faster
+Polar.sh,61,2873,6.6,7.1,-7.7,faster
+Continue,1185,939,36.0,38.8,-7.2,faster
+Grafana,10,1662,28.2,30.2,-6.6,faster
+Dub,652,469,16.6,17.5,-5.6,faster
+Antiwork,1337,997,28.4,29.4,-3.5,faster
+Supabase,188,1880,29.6,30.4,-2.6,faster
+Rocket.Chat,486,1031,48.1,47.7,0.9,slower
+Infisical,291,1096,28.2,27.6,2.5,slower
+AFFiNE,974,1984,23.0,22.1,4.1,slower
+Open WebUI,25,1405,17.8,16.5,7.8,slower
+Dify,48,3929,19.7,17.4,13.0,slower
+Cal.com,868,2060,35.2,31.1,13.1,slower
+ERPNext,244,2070,23.8,20.3,17.1,slower
+QuestDB,10,529,41.6,35.1,18.6,slower
+Chatwoot,13,254,46.7,39.0,19.8,slower
+Hyperswitch,13,1436,76.1,61.4,24.0,slower
+Budibase,14,1011,37.8,30.3,24.6,slower
+Activepieces,27,2239,25.4,19.8,28.1,slower
+Spree Commerce,564,277,10.8,8.4,28.2,slower
+n8n,146,3928,44.4,34.5,28.5,slower
+Erxes,278,120,23.9,18.2,31.4,slower
+PostHog Analytics,90,4916,36.1,27.2,32.9,slower
+Nuxt,93,1149,32.4,23.1,40.2,slower
+Ghost,86,2686,23.2,15.3,51.2,slower
+Svelte,10,1509,39.0,24.6,58.5,slower
+Rallly,425,34,11.7,7.4,58.9,slower
+Jan,25,1362,17.5,10.8,62.8,slower
+Twenty CRM,38,4421,31.5,16.9,85.8,slower
+Plane,1213,171,28.3,15.1,87.1,slower
+LangChain,114,3600,38.6,19.6,97.3,slower
+Windmill,75,1590,28.1,13.9,102.3,slower
+Mattermost,40,1758,85.9,35.7,140.5,slower
+Appsmith,867,142,25.8,10.3,149.9,slower

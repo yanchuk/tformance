@@ -1,4 +1,4 @@
 category,count,avg_cycle_hours,median_cycle_hours,avg_review_hours,median_review_hours,avg_size,median_size,cycle_delta_pct,cycle_delta_ci_lower,cycle_delta_ci_upper,review_delta_pct,review_delta_ci_lower,review_delta_ci_upper
-none,111215,82.2,5.7,40.8,0.6,723,49.0,,,,,,
-code,3056,95.6,11.4,34.9,0.3,519.0,66,16,4.0,25.0,-14,-32.0,1.0
-review,11302,73.4,6.0,18.7,0.1,481.0,53,-11,-18.0,-7.0,-54,-60.0,-49.0
+none,101479,25.0,3.6,12.5,0.4,652,44.0,,,,,,
+code,2685,29.7,5.5,10.4,0.2,419.0,56,19,9.0,24.0,-17,-29.0,-9.0
+review,10361,26.2,4.0,5.8,0.1,421.0,47,5,-1.0,6.0,-54,-59.0,-52.0

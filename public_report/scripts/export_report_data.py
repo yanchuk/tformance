@@ -6,14 +6,20 @@ This script queries the database and generates:
 - team_summary.csv - Team-level metrics
 - monthly_trends.csv - Monthly AI adoption by team
 - ai_tools_monthly.csv - AI tool usage by month
+- category_metrics.csv - Cycle/review time by AI category (with outlier filtering)
 
 Usage:
     cd /Users/yanchuk/Documents/GitHub/tformance
-    .venv/bin/python docs/scripts/export_report_data.py
+    .venv/bin/python public_report/scripts/export_report_data.py
 
 Requirements:
     - Django settings configured
     - Database access
+
+Statistical Note:
+    PRs with cycle_time_hours > MAX_CYCLE_TIME_HOURS are excluded from
+    category_metrics.csv and within_team_comparison.csv to reduce skew
+    from extreme outliers (blocked PRs, abandoned work, etc.).
 """
 
 import csv
@@ -36,8 +42,12 @@ from django.db import connection  # noqa: E402
 
 # Configuration
 MIN_PRS_THRESHOLD = 500  # Teams must have at least this many PRs
+MAX_CYCLE_TIME_HOURS = 200  # Filter outliers > 200h (reduces skew from 13.9x to 6.8x)
 YEAR = 2025
 OUTPUT_DIR = Path(__file__).parent.parent / "data"
+
+# Tracking for transparency
+outlier_stats = {"excluded_count": 0, "total_count": 0}
 
 
 def get_teams_with_threshold():
@@ -465,13 +475,22 @@ def export_category_metrics():
         )
         rows = cursor.fetchall()
 
-    # Aggregate by category
+    # Aggregate by category, filtering outliers
     category_data = {"code": [], "review": []}
+    ai_excluded = 0
+    ai_total = 0
 
     for tool, cycle, review, size in rows:
+        ai_total += 1
+        # Skip outliers (PRs with extremely long cycle times)
+        if cycle and float(cycle) > MAX_CYCLE_TIME_HOURS:
+            ai_excluded += 1
+            continue
         cat = get_tool_category(tool)
         if cat in category_data:
             category_data[cat].append({"cycle": cycle, "review": review, "size": size})
+
+    print(f"  AI PRs: {ai_total} total, {ai_excluded} excluded (>{MAX_CYCLE_TIME_HOURS}h)")
 
     # Calculate averages and medians
     results = {}
@@ -500,7 +519,7 @@ def export_category_metrics():
                 "median_size": round(median_size, 0),
             }
 
-    # Get non-AI baseline for comparison (with medians) - also fetch raw values for CI
+    # Get non-AI baseline for comparison (with medians) - filtered for outliers
     with connection.cursor() as cursor:
         cursor.execute(
             """
@@ -518,8 +537,9 @@ def export_category_metrics():
             AND pr.team_id = ANY(%s)
             AND pr.is_ai_assisted = false
             AND pr.cycle_time_hours IS NOT NULL
+            AND pr.cycle_time_hours <= %s
         """,
-            [f"{YEAR}-01-01", f"{YEAR + 1}-01-01", team_ids],
+            [f"{YEAR}-01-01", f"{YEAR + 1}-01-01", team_ids, MAX_CYCLE_TIME_HOURS],
         )
         row = cursor.fetchone()
         results["none"] = {
@@ -531,8 +551,9 @@ def export_category_metrics():
             "avg_size": round(row[5], 0) if row[5] else None,
             "median_size": round(row[6], 0) if row[6] else None,
         }
+        print(f"  Baseline (non-AI): {row[0]} PRs (after filtering >{MAX_CYCLE_TIME_HOURS}h)")
 
-    # Fetch raw baseline values for CI calculation
+    # Fetch raw baseline values for CI calculation (also filtered)
     with connection.cursor() as cursor:
         cursor.execute(
             """
@@ -543,8 +564,9 @@ def export_category_metrics():
             AND pr.team_id = ANY(%s)
             AND pr.is_ai_assisted = false
             AND pr.cycle_time_hours IS NOT NULL
+            AND pr.cycle_time_hours <= %s
         """,
-            [f"{YEAR}-01-01", f"{YEAR + 1}-01-01", team_ids],
+            [f"{YEAR}-01-01", f"{YEAR + 1}-01-01", team_ids, MAX_CYCLE_TIME_HOURS],
         )
         baseline_rows = cursor.fetchall()
         baseline_cycle = [float(r[0]) for r in baseline_rows if r[0]]
@@ -740,14 +762,14 @@ def export_within_team_analysis():
 
     This analysis compares AI vs non-AI PRs within the same team,
     filtering for teams with at least 10 PRs in BOTH groups to ensure
-    statistical validity.
+    statistical validity. Also filters outliers (>MAX_CYCLE_TIME_HOURS).
     """
     print("Exporting within_team_comparison.csv...")
 
     team_ids = get_teams_with_threshold()
 
     # Get per-team comparison of cycle time for AI vs non-AI PRs
-    # Filter for teams with 10+ PRs in both groups
+    # Filter for teams with 10+ PRs in both groups, and filter outliers
     with connection.cursor() as cursor:
         cursor.execute(
             """
@@ -765,6 +787,7 @@ def export_within_team_analysis():
                 AND pr.team_id = ANY(%s)
                 AND pr.state = 'merged'
                 AND pr.cycle_time_hours IS NOT NULL
+                AND pr.cycle_time_hours <= %s
                 GROUP BY t.id, t.name
             )
             SELECT
@@ -779,7 +802,7 @@ def export_within_team_analysis():
             WHERE ai_prs >= 10 AND non_ai_prs >= 10
             ORDER BY cycle_delta_pct ASC
         """,
-            [f"{YEAR}-01-01", f"{YEAR + 1}-01-01", team_ids],
+            [f"{YEAR}-01-01", f"{YEAR + 1}-01-01", team_ids, MAX_CYCLE_TIME_HOURS],
         )
         rows = cursor.fetchall()
 
