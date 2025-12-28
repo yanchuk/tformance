@@ -104,11 +104,85 @@ test.describe('Onboarding Flow @onboarding', () => {
       expect(url).toMatch(/\/(app|onboarding)/);
     });
 
+    test('jira connect page shows UI elements when accessible', async ({ page }) => {
+      await page.goto('/onboarding/jira/');
+      const url = page.url();
+
+      // If we land on the Jira connect page
+      if (url.includes('/onboarding/jira') && !url.includes('/projects')) {
+        // Should show the page heading
+        await expect(page.getByRole('heading', { name: /Connect Jira/i })).toBeVisible();
+
+        // Should show Connect Jira button
+        await expect(page.getByRole('link', { name: /Connect Jira/i })).toBeVisible();
+
+        // Should show Skip for now button
+        await expect(page.getByRole('button', { name: /Skip for now/i })).toBeVisible();
+
+        // Should show Back button
+        await expect(page.getByRole('link', { name: /Back/i })).toBeVisible();
+
+        // Should show feature list items
+        await expect(page.getByText(/Sprint velocity/i)).toBeVisible();
+        await expect(page.getByText(/Issue cycle time/i)).toBeVisible();
+        await expect(page.getByText(/PR-to-issue linking/i)).toBeVisible();
+
+        // Should show optional notice
+        await expect(page.getByText(/This is optional/i)).toBeVisible();
+      }
+    });
+
+    test('jira connect page Connect button links to OAuth', async ({ page }) => {
+      await page.goto('/onboarding/jira/');
+      const url = page.url();
+
+      if (url.includes('/onboarding/jira') && !url.includes('/projects')) {
+        const connectButton = page.getByRole('link', { name: /Connect Jira/i });
+        await expect(connectButton).toBeVisible();
+
+        // Verify the link has action=connect parameter
+        const href = await connectButton.getAttribute('href');
+        expect(href).toContain('action=connect');
+      }
+    });
+
     test('jira projects page redirects appropriately', async ({ page }) => {
       await page.goto('/onboarding/jira/projects/');
       const url = page.url();
       // Should redirect to app, jira connect, or stay on onboarding
       expect(url).toMatch(/\/(app|onboarding)/);
+    });
+
+    test('jira projects page shows UI elements when accessible', async ({ page }) => {
+      await page.goto('/onboarding/jira/projects/');
+      const url = page.url();
+
+      // If we land on the Jira projects page (user has Jira connected)
+      if (url.includes('/onboarding/jira/projects')) {
+        // Should show the page heading
+        await expect(page.getByRole('heading', { name: /Select Jira Projects/i })).toBeVisible();
+
+        // Should show connected site info
+        await expect(page.getByText(/Connected to/i)).toBeVisible();
+
+        // Should have Continue button
+        await expect(page.getByRole('button', { name: /Continue/i })).toBeVisible();
+
+        // Should have Back button
+        await expect(page.getByRole('link', { name: /Back/i })).toBeVisible();
+
+        // If projects are available, should show Select All button
+        const selectAllButton = page.getByRole('button', { name: /Select All|Deselect All/i });
+        if (await selectAllButton.isVisible({ timeout: 1000 }).catch(() => false)) {
+          await expect(selectAllButton).toBeVisible();
+
+          // Should show selection count
+          await expect(page.getByText(/of.*selected/i)).toBeVisible();
+        }
+
+        // Should show info alert about settings
+        await expect(page.getByText(/Settings.*Integrations/i)).toBeVisible();
+      }
     });
 
     test('slack page redirects to app or onboarding', async ({ page }) => {
