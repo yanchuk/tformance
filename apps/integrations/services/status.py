@@ -2,6 +2,9 @@
 
 from typing import TypedDict
 
+from django.db.models import Avg
+
+from apps.integrations.constants import SYNC_STATUS_COMPLETE, SYNC_STATUS_SYNCING
 from apps.integrations.models import (
     GitHubIntegration,
     JiraIntegration,
@@ -114,4 +117,54 @@ def get_team_integration_status(team: Team) -> TeamIntegrationStatus:
         "has_data": has_data,
         "pr_count": pr_count,
         "survey_count": survey_count,
+    }
+
+
+class SyncStatus(TypedDict):
+    """Repository sync status for a team."""
+
+    sync_in_progress: bool
+    sync_progress_percent: int
+    repos_syncing: list[str]
+    repos_total: int
+    repos_synced: int
+
+
+def get_team_sync_status(team: Team) -> SyncStatus:
+    """
+    Get the repository sync status for a team.
+
+    Args:
+        team: Team object to get sync status for
+
+    Returns:
+        SyncStatus dict with:
+            - sync_in_progress: True if any repos are currently syncing
+            - sync_progress_percent: Average progress across all repos (0-100)
+            - repos_syncing: List of full_name for repos currently syncing
+            - repos_total: Total number of tracked repositories
+            - repos_synced: Number of repos that have completed sync
+    """
+    team_repos = TrackedRepository.objects.filter(team=team)
+
+    # Get syncing repo names
+    repos_syncing = list(team_repos.filter(sync_status=SYNC_STATUS_SYNCING).values_list("full_name", flat=True))
+
+    # Get counts
+    repos_total = team_repos.count()
+    repos_synced = team_repos.filter(sync_status=SYNC_STATUS_COMPLETE).count()
+
+    # Calculate average sync progress
+    if repos_total > 0:
+        avg_progress = team_repos.aggregate(avg=Avg("sync_progress"))["avg"]
+        sync_progress_percent = int(avg_progress) if avg_progress else 0
+    else:
+        sync_progress_percent = 0
+
+    return {
+        "sync_in_progress": len(repos_syncing) > 0,
+        "sync_progress_percent": sync_progress_percent,
+        "repos_syncing": repos_syncing,
+        "repos_total": repos_total,
+        "repos_synced": repos_synced,
     }

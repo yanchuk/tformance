@@ -23,6 +23,7 @@ from apps.integrations.models import GitHubIntegration, IntegrationCredential, T
 from apps.integrations.services import github_oauth, member_sync
 from apps.integrations.services.encryption import decrypt, encrypt
 from apps.integrations.tasks import sync_historical_data_task
+from apps.metrics.models import PullRequest
 from apps.teams.helpers import get_next_unique_team_slug
 from apps.teams.models import Membership, Team
 from apps.teams.roles import ROLE_ADMIN
@@ -306,6 +307,9 @@ def sync_progress(request):
     # Get tracked repositories for this team
     repos = TrackedRepository.objects.filter(team=team).select_related("integration")
 
+    # Check if team has any PR data (quick sync has produced results)
+    first_insights_ready = PullRequest.objects.filter(team=team).exists()
+
     return render(
         request,
         "onboarding/sync_progress.html",
@@ -314,6 +318,7 @@ def sync_progress(request):
             "repos": repos,
             "page_title": _("Syncing Data"),
             "step": 3,
+            "first_insights_ready": first_insights_ready,
         },
     )
 

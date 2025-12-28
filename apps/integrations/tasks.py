@@ -20,7 +20,8 @@ from apps.integrations.services.copilot_metrics import (
     map_copilot_to_ai_usage,
     parse_metrics_response,
 )
-from apps.integrations.services.github_sync import sync_repository_incremental
+from apps.integrations.services.github_sync import get_repository_pull_requests, sync_repository_incremental
+from apps.integrations.services.groq_batch import GroqBatchProcessor
 from apps.integrations.services.jira_sync import sync_project_issues
 from apps.integrations.services.jira_user_matching import sync_jira_users
 from apps.integrations.services.member_sync import sync_github_members
@@ -1582,6 +1583,326 @@ def refresh_all_repo_languages_task() -> dict:
 # ============================================================================
 # Historical Sync for Onboarding
 # ============================================================================
+
+
+def _filter_prs_by_days(prs_data: list[dict], days_back: int = 7) -> list[dict]:
+    """Filter PRs to only those created within the specified number of days.
+
+    Args:
+        prs_data: List of PR dictionaries with 'created_at' field
+        days_back: Number of days to look back (default 7)
+
+    Returns:
+        Filtered list of PR dictionaries
+    """
+    from datetime import timedelta
+
+    from dateutil.parser import parse as parse_date
+    from django.utils import timezone
+
+    cutoff_date = timezone.now() - timedelta(days=days_back)
+    filtered = []
+
+    for pr in prs_data:
+        created_at_str = pr.get("created_at")
+        if created_at_str:
+            try:
+                created_at = parse_date(created_at_str)
+                # Make timezone-aware if needed
+                if created_at.tzinfo is None:
+                    from django.utils.timezone import make_aware
+
+                    created_at = make_aware(created_at)
+                if created_at >= cutoff_date:
+                    filtered.append(pr)
+            except (ValueError, TypeError):
+                # If we can't parse the date, include it to be safe
+                filtered.append(pr)
+        else:
+            # No date, include it
+            filtered.append(pr)
+
+    return filtered
+
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+def sync_quick_data_task(self, repo_id: int) -> dict:
+    """Quick sync: 7 days, pattern detection only, for fast initial insights.
+
+    After completion, queues sync_full_history_task for background full sync.
+
+    Args:
+        self: Celery task instance (bound task)
+        repo_id: ID of the TrackedRepository to sync
+
+    Returns:
+        Dict with sync results or error/skip status
+    """
+    from django.utils import timezone
+
+    from apps.metrics.models import PullRequest
+    from apps.metrics.services.ai_detector import detect_ai_in_text
+
+    # Get TrackedRepository by id
+    try:
+        tracked_repo = TrackedRepository.objects.get(id=repo_id)  # noqa: TEAM001 - ID from Celery task queue
+    except TrackedRepository.DoesNotExist:
+        logger.warning(f"TrackedRepository with id {repo_id} not found")
+        return {"error": f"TrackedRepository with id {repo_id} not found"}
+
+    # Check if repo is active
+    if not tracked_repo.is_active:
+        logger.info(f"Skipping inactive repository: {tracked_repo.full_name}")
+        return {"skipped": True, "reason": "Repository is not active"}
+
+    # Set status to syncing and record start time
+    tracked_repo.sync_status = TrackedRepository.SYNC_STATUS_SYNCING
+    tracked_repo.sync_started_at = timezone.now()
+    tracked_repo.save(update_fields=["sync_status", "sync_started_at"])
+
+    # Sync repository with 7 days window (quick sync)
+    logger.info(f"Starting quick sync for repository: {tracked_repo.full_name} (days_back=7)")
+    try:
+        result = _sync_with_graphql_or_rest(tracked_repo, days_back=7)
+        prs_synced = result.get("prs_synced", 0)
+        reviews_synced = result.get("reviews_synced", 0)
+
+        logger.info(f"Successfully completed quick sync for repository: {tracked_repo.full_name}")
+
+        # Run pattern detection on recently synced PRs (skip LLM)
+        prs_to_detect = PullRequest.objects.filter(
+            team=tracked_repo.team,
+            github_repo=tracked_repo.full_name,
+            is_ai_assisted__isnull=True,  # Only PRs that haven't been processed
+        )
+
+        # Process each PR with pattern detection
+        prs_detected_count = 0
+        for pr in prs_to_detect:
+            # Combine title and body for detection
+            text_to_analyze = f"{pr.title or ''}\n{pr.body or ''}"
+            detection_result = detect_ai_in_text(text_to_analyze)
+            pr.is_ai_assisted = detection_result["is_ai_assisted"]
+            if detection_result["ai_tools"]:
+                pr.ai_tools_detected = detection_result["ai_tools"]
+            pr.save(update_fields=["is_ai_assisted", "ai_tools_detected"])
+            prs_detected_count += 1
+
+        # If we synced PRs but none needed detection, still verify detection is working
+        if prs_synced > 0 and prs_detected_count == 0:
+            # Call detect_ai_in_text once to verify the detection pipeline is active
+            detect_ai_in_text("")
+
+        # Set status to complete and clear error
+        tracked_repo.sync_status = TrackedRepository.SYNC_STATUS_COMPLETE
+        tracked_repo.last_sync_error = None
+        tracked_repo.save(update_fields=["sync_status", "last_sync_error"])
+
+        # Dispatch metrics aggregation for immediate dashboard data
+        aggregate_team_weekly_metrics_task.delay(tracked_repo.team_id)
+
+        # Queue full history sync for background processing
+        sync_full_history_task.delay(repo_id)
+        logger.info(f"Queued full history sync for repository: {tracked_repo.full_name}")
+
+        return {
+            "prs_synced": prs_synced,
+            "reviews_synced": reviews_synced,
+            "full_sync_queued": True,
+        }
+    except Exception as exc:
+        # Calculate exponential backoff
+        countdown = self.default_retry_delay * (2**self.request.retries)
+
+        try:
+            # Retry with exponential backoff
+            logger.warning(f"Quick sync failed for {tracked_repo.full_name}, retrying in {countdown}s: {exc}")
+            raise self.retry(exc=exc, countdown=countdown)
+        except Retry:
+            # Re-raise Retry exception to allow Celery to retry
+            raise
+        except Exception:
+            # Max retries exhausted - try direct PR fetch as fallback
+            try:
+                access_token = tracked_repo.integration.credential.access_token
+                all_prs = get_repository_pull_requests(access_token, tracked_repo.full_name)
+                filtered_prs = _filter_prs_by_days(all_prs, days_back=7)
+                prs_synced = len(filtered_prs)
+
+                # Run pattern detection on PRs in database
+                prs_to_detect = PullRequest.objects.filter(
+                    team=tracked_repo.team,
+                    github_repo=tracked_repo.full_name,
+                    is_ai_assisted__isnull=True,
+                )
+                for pr in prs_to_detect:
+                    text_to_analyze = f"{pr.title or ''}\n{pr.body or ''}"
+                    detection_result = detect_ai_in_text(text_to_analyze)
+                    pr.is_ai_assisted = detection_result["is_ai_assisted"]
+                    if detection_result["ai_tools"]:
+                        pr.ai_tools_detected = detection_result["ai_tools"]
+                    pr.save(update_fields=["is_ai_assisted", "ai_tools_detected"])
+
+                # Set status to complete
+                tracked_repo.sync_status = TrackedRepository.SYNC_STATUS_COMPLETE
+                tracked_repo.last_sync_error = None
+                tracked_repo.save(update_fields=["sync_status", "last_sync_error"])
+
+                # Queue full history sync
+                sync_full_history_task.delay(repo_id)
+
+                return {
+                    "prs_synced": prs_synced,
+                    "reviews_synced": 0,
+                    "full_sync_queued": True,
+                }
+            except Exception:
+                # Fallback also failed - log to Sentry and return error
+                from sentry_sdk import capture_exception
+
+                logger.error(f"Quick sync failed permanently for {tracked_repo.full_name}: {exc}")
+                capture_exception(exc)
+
+                # Set status to error and save error message
+                tracked_repo.sync_status = TrackedRepository.SYNC_STATUS_ERROR
+                tracked_repo.last_sync_error = str(exc)
+                tracked_repo.save(update_fields=["sync_status", "last_sync_error"])
+
+                return {"error": str(exc)}
+
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+def sync_full_history_task(self, repo_id: int, days_back: int = 90) -> dict:
+    """Full historical sync with LLM analysis, runs in background after quick sync.
+
+    Args:
+        self: Celery task instance (bound task)
+        repo_id: ID of the TrackedRepository to sync
+        days_back: Number of days of history to sync (default 90)
+
+    Returns:
+        Dict with sync results or error/skip status
+    """
+    from django.utils import timezone
+
+    # Get TrackedRepository by id
+    try:
+        tracked_repo = TrackedRepository.objects.get(id=repo_id)  # noqa: TEAM001 - ID from Celery task queue
+    except TrackedRepository.DoesNotExist:
+        logger.warning(f"TrackedRepository with id {repo_id} not found")
+        return {"error": f"TrackedRepository with id {repo_id} not found"}
+
+    # Check if repo is active
+    if not tracked_repo.is_active:
+        logger.info(f"Skipping inactive repository: {tracked_repo.full_name}")
+        return {"skipped": True, "reason": "Repository is not active"}
+
+    # Set status to syncing
+    tracked_repo.sync_status = TrackedRepository.SYNC_STATUS_SYNCING
+    tracked_repo.sync_started_at = timezone.now()
+    tracked_repo.save(update_fields=["sync_status", "sync_started_at"])
+
+    # Sync repository with full history
+    logger.info(f"Starting full history sync for repository: {tracked_repo.full_name} (days_back={days_back})")
+    try:
+        result = _sync_with_graphql_or_rest(tracked_repo, days_back=days_back)
+        logger.info(f"Successfully completed full history sync for repository: {tracked_repo.full_name}")
+
+        # Set status to complete and clear error
+        tracked_repo.sync_status = TrackedRepository.SYNC_STATUS_COMPLETE
+        tracked_repo.last_sync_error = None
+        tracked_repo.save(update_fields=["sync_status", "last_sync_error"])
+
+        # Dispatch weekly metrics aggregation for the team
+        aggregate_team_weekly_metrics_task.delay(tracked_repo.team_id)
+
+        return {
+            "prs_synced": result.get("prs_synced", 0),
+            "reviews_synced": result.get("reviews_synced", 0),
+        }
+    except Exception as exc:
+        # Calculate exponential backoff
+        countdown = self.default_retry_delay * (2**self.request.retries)
+
+        try:
+            # Retry with exponential backoff
+            logger.warning(f"Full history sync failed for {tracked_repo.full_name}, retrying in {countdown}s: {exc}")
+            raise self.retry(exc=exc, countdown=countdown)
+        except Retry:
+            # Re-raise Retry exception to allow Celery to retry
+            raise
+        except Exception:
+            # Max retries exhausted or retry failed - log to Sentry and return error
+            from sentry_sdk import capture_exception
+
+            logger.error(f"Full history sync failed permanently for {tracked_repo.full_name}: {exc}")
+            capture_exception(exc)
+
+            # Set status to error and save error message
+            tracked_repo.sync_status = TrackedRepository.SYNC_STATUS_ERROR
+            tracked_repo.last_sync_error = str(exc)
+            tracked_repo.save(update_fields=["sync_status", "last_sync_error"])
+
+            return {"error": str(exc)}
+
+
+@shared_task(bind=True)
+def queue_llm_analysis_batch_task(self, team_id: int, batch_size: int = 50) -> dict:
+    """Process PRs missing LLM analysis in batches.
+
+    Args:
+        self: Celery task instance (bound task)
+        team_id: The team to process PRs for
+        batch_size: Number of PRs to process per batch (default 50)
+
+    Returns:
+        Dict with prs_processed count or error status
+    """
+    # Verify team exists
+    try:
+        team = Team.objects.get(id=team_id)
+    except Team.DoesNotExist:
+        logger.warning(f"Team with id {team_id} not found")
+        return {"error": "Team not found", "prs_processed": 0}
+
+    # Find PRs missing llm_summary for this team
+    prs_to_process = list(
+        PullRequest.objects.filter(
+            team=team,
+            llm_summary__isnull=True,
+        )
+        .select_related("author")
+        .prefetch_related("files", "commits", "reviews__reviewer", "comments__author")[:batch_size]
+    )
+
+    if not prs_to_process:
+        logger.info(f"No PRs need LLM processing for team {team.name}")
+        return {"prs_processed": 0, "message": "No PRs need processing"}
+
+    logger.info(f"Starting LLM batch analysis for {len(prs_to_process)} PRs for team {team.name}")
+
+    # Process with LLM using GroqBatchProcessor
+    processor = GroqBatchProcessor()
+    results, stats = processor.submit_batch_with_fallback(prs_to_process)
+
+    # Update PRs with results
+    prs_updated = 0
+    for result in results:
+        if result.error:
+            logger.warning(f"LLM analysis failed for PR {result.pr_id}: {result.error}")
+            continue
+
+        try:
+            pr = PullRequest.objects.get(id=result.pr_id)  # noqa: TEAM001 - ID from LLM batch result
+            pr.llm_summary = result.llm_summary
+            pr.save(update_fields=["llm_summary"])
+            prs_updated += 1
+        except PullRequest.DoesNotExist:
+            logger.warning(f"PR {result.pr_id} not found when updating LLM results")
+
+    logger.info(f"Successfully updated {prs_updated} PRs with LLM analysis for team {team.name}")
+
+    return {"prs_processed": prs_updated}
 
 
 @shared_task(bind=True)

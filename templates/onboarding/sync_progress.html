@@ -26,6 +26,17 @@
     </div>
   </div>
 
+  {# First insights ready banner #}
+  {% if first_insights_ready %}
+  <div id="first-insights-banner" class="alert alert-success mb-8">
+    <i class="fa-solid fa-chart-line"></i>
+    <span>{% translate "First insights are ready! View your initial dashboard while the full sync continues." %}</span>
+    <a href="{% url 'web_team:home' %}" class="btn btn-sm btn-primary">
+      {% translate "View Dashboard" %}
+    </a>
+  </div>
+  {% endif %}
+
   {# Repository list with status #}
   {% if repos %}
   <div class="border border-base-300 rounded-lg divide-y divide-base-300 mb-8">
@@ -55,6 +66,9 @@
     <p class="text-sm text-base-content/70 mb-4">
       {% translate "You can safely close this page. The sync will continue in the background." %}
     </p>
+    <a href="{% url 'onboarding:connect_jira' %}" class="app-btn-secondary mt-4">
+      {% translate "Continue to Jira" %}
+    </a>
   </div>
 
   {# Completion section (hidden by default) #}

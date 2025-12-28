@@ -19,7 +19,7 @@ from health_check.views import MainView
 
 from apps.integrations.models import TrackedRepository
 from apps.integrations.services.github_webhooks import validate_webhook_signature
-from apps.integrations.services.status import get_team_integration_status
+from apps.integrations.services.status import get_team_integration_status, get_team_sync_status
 from apps.metrics import processors
 from apps.metrics.models import PRSurveyReview, TeamMember
 from apps.metrics.services.quick_stats import get_team_quick_stats
@@ -84,12 +84,14 @@ def team_home(request):
     """
     team = request.team
     integration_status = get_team_integration_status(team)
+    sync_status = get_team_sync_status(team)
 
     context = {
         "team": team,
         "active_tab": "dashboard",
         "page_title": _("{team} Dashboard").format(team=team),
         "integration_status": integration_status,
+        **sync_status,  # Unpacks sync_in_progress, sync_progress_percent, repos_syncing, repos_total, repos_synced
     }
 
     # Only fetch quick stats if the team has data

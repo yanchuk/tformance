@@ -1,0 +1,32 @@
+{% comment %}
+Sync Indicator Banner Component
+Shows a progress banner when repositories are actively syncing.
+
+Required context:
+- sync_in_progress: boolean indicating if any repos are syncing
+- sync_progress_percent: overall sync progress percentage (0-100)
+- repos_synced: number of repos that have completed syncing
+- repos_total: total number of tracked repos
+- repos_syncing: list of repo names currently syncing
+
+Usage:
+  {% include "web/components/sync_indicator.html" %}
+{% endcomment %}
+{% load i18n %}
+
+{% if sync_in_progress %}
+<div id="sync-indicator" class="alert alert-info shadow-sm mb-4" role="status" aria-live="polite">
+  <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-5 w-5 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+  </svg>
+  <div class="flex-1">
+    <h3 class="font-medium">{% trans "Syncing" %} {{ sync_progress_percent }}%</h3>
+    <p class="text-sm text-base-content/70">
+      {{ repos_synced }} of {{ repos_total }} {% trans "repos synced" %}
+      {% if repos_syncing %}
+        - {% for repo in repos_syncing %}{{ repo }}{% if not forloop.last %}, {% endif %}{% endfor %}
+      {% endif %}
+    </p>
+  </div>
+</div>
+{% endif %}

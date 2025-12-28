@@ -7,6 +7,9 @@
   {% if integration_status.has_data %}
     {# User has data - show dashboard overview #}
 
+    {# Sync indicator banner - shown when repos are actively syncing #}
+    {% include "web/components/sync_indicator.html" %}
+
     {# Setup prompt for missing integrations #}
     {% include "web/components/setup_prompt.html" %}
 
@@ -147,6 +150,9 @@
 
   {% elif integration_status.github.connected %}
     {# GitHub connected but no data yet #}
+
+    {# Sync indicator banner - shown when repos are actively syncing #}
+    {% include "web/components/sync_indicator.html" %}
 
     {# Setup prompt for missing integrations #}
     {% include "web/components/setup_prompt.html" %}
