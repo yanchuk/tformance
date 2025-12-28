@@ -484,3 +484,79 @@ class SelectJiraProjectsViewTests(TestCase):
 
         # Should redirect to Slack
         self.assertRedirects(response, reverse("onboarding:connect_slack"))
+
+
+class SlackConnectViewTests(TestCase):
+    """Tests for connect_slack onboarding view."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        from apps.teams.roles import ROLE_ADMIN
+
+        self.user = CustomUser.objects.create_user(
+            username="slack_test@example.com",
+            email="slack_test@example.com",
+            password="testpassword123",
+        )
+        self.team = TeamFactory()
+        self.team.members.add(self.user, through_defaults={"role": ROLE_ADMIN})
+        self.client.login(username="slack_test@example.com", password="testpassword123")
+
+    def test_redirect_to_start_when_user_has_no_team(self):
+        """Test that users without teams are redirected to onboarding start."""
+        # Create new user without team
+        CustomUser.objects.create_user(
+            username="no_team@example.com",
+            email="no_team@example.com",
+            password="testpassword123",
+        )
+        self.client.login(username="no_team@example.com", password="testpassword123")
+
+        response = self.client.get(reverse("onboarding:connect_slack"))
+
+        self.assertRedirects(response, reverse("onboarding:start"))
+
+    def test_shows_connect_slack_page(self):
+        """Test that users with teams see the connect slack page."""
+        response = self.client.get(reverse("onboarding:connect_slack"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "onboarding/connect_slack.html")
+
+    def test_action_connect_redirects_to_slack_oauth(self):
+        """Test that ?action=connect initiates Slack OAuth flow."""
+        response = self.client.get(
+            reverse("onboarding:connect_slack"),
+            {"action": "connect"},
+        )
+
+        # Should redirect to Slack OAuth
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("slack.com/oauth", response.url)
+        self.assertIn("state=", response.url)
+        # Verify scope is included
+        self.assertIn("scope=", response.url)
+
+    def test_skip_redirects_to_complete(self):
+        """Test that POST (skip) redirects to complete."""
+        response = self.client.post(reverse("onboarding:connect_slack"))
+
+        self.assertRedirects(response, reverse("onboarding:complete"))
+
+    def test_shows_connected_workspace_when_slack_connected(self):
+        """Test that connected workspace name is shown when Slack is already connected."""
+        from apps.integrations.factories import IntegrationCredentialFactory, SlackIntegrationFactory
+
+        # Create Slack integration for the team
+        credential = IntegrationCredentialFactory(team=self.team, provider="slack")
+        SlackIntegrationFactory(
+            team=self.team,
+            credential=credential,
+            workspace_name="Test Workspace",
+        )
+
+        response = self.client.get(reverse("onboarding:connect_slack"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Test Workspace")
+        self.assertContains(response, "Connected to")

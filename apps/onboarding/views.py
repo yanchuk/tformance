@@ -268,7 +268,7 @@ def select_repositories(request):
             "onboarding_step_completed",
             {"step": "repos", "team_slug": team.slug, "repos_count": len(selected_repo_ids)},
         )
-        return redirect("onboarding:connect_jira")
+        return redirect("onboarding:sync_progress")
 
     # Fetch repositories from GitHub API
     repos = []
@@ -505,10 +505,40 @@ def select_jira_projects(request):
 @login_required
 def connect_slack(request):
     """Optional step to connect Slack."""
+    from urllib.parse import urlencode
+
+    from django.conf import settings
+
+    from apps.auth.oauth_state import FLOW_TYPE_SLACK_ONBOARDING, create_oauth_state
+    from apps.integrations.models import SlackIntegration
+    from apps.integrations.services.slack_oauth import SLACK_OAUTH_AUTHORIZE_URL, SLACK_OAUTH_SCOPES
+
     if not request.user.teams.exists():
         return redirect("onboarding:start")
 
     team = request.user.teams.first()
+
+    # Check if Slack is already connected
+    slack_integration = SlackIntegration.objects.filter(team=team).first()
+
+    # Handle OAuth initiation
+    if request.GET.get("action") == "connect":
+        # Create OAuth state with team_id
+        state = create_oauth_state(FLOW_TYPE_SLACK_ONBOARDING, team_id=team.id)
+
+        # Build callback URL
+        callback_url = request.build_absolute_uri(reverse("tformance_auth:slack_callback"))
+
+        # Build Slack OAuth authorization URL
+        params = {
+            "client_id": settings.SLACK_CLIENT_ID,
+            "scope": SLACK_OAUTH_SCOPES,
+            "redirect_uri": callback_url,
+            "state": state,
+        }
+        auth_url = f"{SLACK_OAUTH_AUTHORIZE_URL}?{urlencode(params)}"
+
+        return redirect(auth_url)
 
     if request.method == "POST":
         # Track skip (Slack connection tracking would go in the OAuth callback)
@@ -527,6 +557,7 @@ def connect_slack(request):
             "page_title": _("Connect Slack"),
             "step": 4,
             "sync_task_id": request.session.get("sync_task_id"),
+            "slack_integration": slack_integration,
         },
     )
 

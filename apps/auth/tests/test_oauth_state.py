@@ -10,6 +10,8 @@ from apps.auth.oauth_state import (
     FLOW_TYPE_JIRA_INTEGRATION,
     FLOW_TYPE_JIRA_ONBOARDING,
     FLOW_TYPE_ONBOARDING,
+    FLOW_TYPE_SLACK_INTEGRATION,
+    FLOW_TYPE_SLACK_ONBOARDING,
     OAUTH_STATE_MAX_AGE_SECONDS,
     OAuthStateError,
     create_oauth_state,
@@ -246,6 +248,71 @@ class TestJiraOAuthState(TestCase):
 
         # Manually create state without team_id
         payload = {"type": FLOW_TYPE_JIRA_INTEGRATION, "iat": int(time.time())}
+        encoded = base64.b64encode(json.dumps(payload).encode()).decode()
+        signer = Signer()
+        state = signer.sign(encoded)
+
+        with self.assertRaises(OAuthStateError) as ctx:
+            verify_oauth_state(state)
+
+        self.assertIn("team_id", str(ctx.exception))
+
+
+class TestSlackOAuthState(TestCase):
+    """Tests for Slack OAuth state flow types."""
+
+    def test_create_slack_onboarding_state_with_team_id(self):
+        """Test creating Slack onboarding state with team_id."""
+        team_id = 456
+        state = create_oauth_state(FLOW_TYPE_SLACK_ONBOARDING, team_id=team_id)
+
+        self.assertIsInstance(state, str)
+
+        # Verify it can be decoded
+        payload = verify_oauth_state(state)
+        self.assertEqual(payload["type"], FLOW_TYPE_SLACK_ONBOARDING)
+        self.assertEqual(payload["team_id"], team_id)
+        self.assertIn("iat", payload)
+
+    def test_create_slack_onboarding_state_without_team_id(self):
+        """Test creating Slack onboarding state without team_id (allowed)."""
+        # Slack onboarding has optional team_id
+        state = create_oauth_state(FLOW_TYPE_SLACK_ONBOARDING)
+
+        self.assertIsInstance(state, str)
+
+        payload = verify_oauth_state(state)
+        self.assertEqual(payload["type"], FLOW_TYPE_SLACK_ONBOARDING)
+        self.assertNotIn("team_id", payload)
+
+    def test_create_slack_integration_state(self):
+        """Test creating Slack integration state."""
+        team_id = 789
+        state = create_oauth_state(FLOW_TYPE_SLACK_INTEGRATION, team_id=team_id)
+
+        self.assertIsInstance(state, str)
+
+        # Verify it can be decoded
+        payload = verify_oauth_state(state)
+        self.assertEqual(payload["type"], FLOW_TYPE_SLACK_INTEGRATION)
+        self.assertEqual(payload["team_id"], team_id)
+
+    def test_create_slack_integration_state_requires_team_id(self):
+        """Test that Slack integration flow requires team_id."""
+        with self.assertRaises(ValueError) as ctx:
+            create_oauth_state(FLOW_TYPE_SLACK_INTEGRATION)
+
+        self.assertIn("team_id is required", str(ctx.exception))
+
+    def test_verify_slack_integration_state_without_team_id(self):
+        """Test that Slack integration state without team_id is rejected."""
+        import base64
+        import json
+
+        from django.core.signing import Signer
+
+        # Manually create state without team_id
+        payload = {"type": FLOW_TYPE_SLACK_INTEGRATION, "iat": int(time.time())}
         encoded = base64.b64encode(json.dumps(payload).encode()).decode()
         signer = Signer()
         state = signer.sign(encoded)

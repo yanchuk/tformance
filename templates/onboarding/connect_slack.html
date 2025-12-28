@@ -39,11 +39,21 @@
   </ul>
 
   <div class="text-center">
-    <button class="app-btn-secondary gap-2 mb-2 opacity-60 cursor-not-allowed" disabled>
+    {% if slack_integration %}
+    <div class="app-badge app-badge-success gap-2 mb-3">
+      <i class="fa-solid fa-check-circle"></i>
+      {% translate "Connected to" %} {{ slack_integration.workspace_name }}
+    </div>
+    <a href="?action=connect" class="app-btn-ghost gap-2 mb-2">
+      <i class="fa-brands fa-slack"></i>
+      {% translate "Reconnect Slack" %}
+    </a>
+    {% else %}
+    <a href="?action=connect" class="app-btn-secondary gap-2 mb-2">
       <i class="fa-brands fa-slack"></i>
       {% translate "Add to Slack" %}
-      <span class="app-badge app-badge-primary">{% translate "Coming Soon" %}</span>
-    </button>
+    </a>
+    {% endif %}
     <p class="text-xs text-base-content/50 mt-2">
       {% translate "This is optional. You can connect Slack later from settings." %}
     </p>
@@ -58,7 +68,11 @@
       {% translate "Back" %}
     </a>
     <button type="submit" class="app-btn-primary flex-1">
+      {% if slack_integration %}
+      {% translate "Continue" %}
+      {% else %}
       {% translate "Skip for now" %}
+      {% endif %}
       <i class="fa-solid fa-arrow-right ml-2"></i>
     </button>
   </div>

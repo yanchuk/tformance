@@ -25,12 +25,18 @@ FLOW_TYPE_INTEGRATION = "integration"
 FLOW_TYPE_JIRA_ONBOARDING = "jira_onboarding"
 FLOW_TYPE_JIRA_INTEGRATION = "jira_integration"
 
+# Flow types - Slack
+FLOW_TYPE_SLACK_ONBOARDING = "slack_onboarding"
+FLOW_TYPE_SLACK_INTEGRATION = "slack_integration"
+
 # All valid flow types
 VALID_FLOW_TYPES = (
     FLOW_TYPE_ONBOARDING,
     FLOW_TYPE_INTEGRATION,
     FLOW_TYPE_JIRA_ONBOARDING,
     FLOW_TYPE_JIRA_INTEGRATION,
+    FLOW_TYPE_SLACK_ONBOARDING,
+    FLOW_TYPE_SLACK_INTEGRATION,
 )
 
 
@@ -57,10 +63,10 @@ def create_oauth_state(flow_type: str, team_id: int | None = None) -> str:
         raise ValueError(f"Invalid flow_type: {flow_type}")
 
     # Flows that require team_id
-    team_required_flows = (FLOW_TYPE_INTEGRATION, FLOW_TYPE_JIRA_INTEGRATION)
+    team_required_flows = (FLOW_TYPE_INTEGRATION, FLOW_TYPE_JIRA_INTEGRATION, FLOW_TYPE_SLACK_INTEGRATION)
     # Flows where team_id must be None (new user onboarding)
     no_team_flows = (FLOW_TYPE_ONBOARDING,)
-    # Note: FLOW_TYPE_JIRA_ONBOARDING has optional team_id (no validation needed)
+    # Note: FLOW_TYPE_JIRA_ONBOARDING and FLOW_TYPE_SLACK_ONBOARDING have optional team_id (no validation needed)
 
     if flow_type in team_required_flows and team_id is None:
         raise ValueError(f"team_id is required for {flow_type} flow")
@@ -134,7 +140,7 @@ def verify_oauth_state(state: str) -> dict[str, Any]:
             raise OAuthStateError("OAuth state has future timestamp")
 
         # Validate team_id for flows that require it
-        team_required_flows = (FLOW_TYPE_INTEGRATION, FLOW_TYPE_JIRA_INTEGRATION)
+        team_required_flows = (FLOW_TYPE_INTEGRATION, FLOW_TYPE_JIRA_INTEGRATION, FLOW_TYPE_SLACK_INTEGRATION)
         if flow_type in team_required_flows:
             team_id = payload.get("team_id")
             if team_id is None:

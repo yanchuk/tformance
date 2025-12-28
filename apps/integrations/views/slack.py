@@ -9,11 +9,7 @@ from django.urls import reverse
 from django_ratelimit.decorators import ratelimit
 
 from apps.integrations.models import IntegrationCredential, SlackIntegration
-from apps.integrations.services import slack_oauth
-from apps.integrations.services.slack_oauth import SlackOAuthError
 from apps.teams.decorators import login_and_team_required, team_admin_required
-
-from .helpers import _create_integration_credential, _validate_oauth_callback
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +19,7 @@ def slack_connect(request):
     """Initiate Slack OAuth flow for connecting a team's Slack workspace.
 
     Redirects the user to Slack's OAuth authorization page. On success,
-    Slack redirects back to slack_callback.
+    Slack redirects back to the unified callback at /auth/slack/callback/.
 
     Requires team admin role.
 
@@ -34,6 +30,13 @@ def slack_connect(request):
     Returns:
         HttpResponse redirecting to Slack OAuth authorization.
     """
+    from urllib.parse import urlencode
+
+    from django.conf import settings
+
+    from apps.auth.oauth_state import FLOW_TYPE_SLACK_INTEGRATION, create_oauth_state
+    from apps.integrations.services.slack_oauth import SLACK_OAUTH_AUTHORIZE_URL, SLACK_OAUTH_SCOPES
+
     team = request.team
 
     # Check if already connected
@@ -41,11 +44,20 @@ def slack_connect(request):
         messages.info(request, "Slack is already connected to this team.")
         return redirect("integrations:integrations_home")
 
-    # Build callback URL
-    callback_url = request.build_absolute_uri(reverse("integrations:slack_callback"))
+    # Create OAuth state with team_id for integration flow
+    state = create_oauth_state(FLOW_TYPE_SLACK_INTEGRATION, team_id=team.id)
 
-    # Get authorization URL
-    authorization_url = slack_oauth.get_authorization_url(team.id, callback_url)
+    # Build callback URL (use unified callback)
+    callback_url = request.build_absolute_uri(reverse("tformance_auth:slack_callback"))
+
+    # Build Slack OAuth authorization URL
+    params = {
+        "client_id": settings.SLACK_CLIENT_ID,
+        "scope": SLACK_OAUTH_SCOPES,
+        "redirect_uri": callback_url,
+        "state": state,
+    }
+    authorization_url = f"{SLACK_OAUTH_AUTHORIZE_URL}?{urlencode(params)}"
 
     # Redirect to Slack
     return redirect(authorization_url)
@@ -54,82 +66,28 @@ def slack_connect(request):
 @ratelimit(key="ip", rate="10/m", method=["GET", "POST"])
 @login_and_team_required
 def slack_callback(request):
-    """Handle Slack OAuth callback after user authorizes the app.
+    """Legacy Slack OAuth callback - redirects to unified callback.
 
-    Receives the authorization code from Slack, exchanges it for an access token,
-    and stores the token for the team.
-
-    Rate limited to 10 requests per minute per IP to prevent abuse.
+    This endpoint is kept for backwards compatibility with any in-flight OAuth flows
+    that may be using the old callback URL. New flows use the unified callback at
+    /auth/slack/callback/.
 
     Args:
         request: The HTTP request object containing OAuth callback parameters.
         team_slug: The slug of the team that initiated the OAuth flow.
 
     Returns:
-        HttpResponse redirecting to integrations home.
+        HttpResponse redirecting to unified callback.
     """
-    # Check if rate limited
-    if getattr(request, "limited", False):
-        messages.error(request, "Too many requests. Please wait and try again.")
-        return redirect("integrations:integrations_home")
+    # Forward all query parameters to the unified callback
 
-    team = request.team
+    query_string = request.GET.urlencode()
+    unified_url = reverse("tformance_auth:slack_callback")
 
-    # Validate OAuth callback parameters
-    code, error_response = _validate_oauth_callback(
-        request, team, slack_oauth.verify_slack_oauth_state, SlackOAuthError, "Slack"
-    )
-    if error_response:
-        return error_response
+    if query_string:
+        unified_url = f"{unified_url}?{query_string}"
 
-    # Build callback URL
-    callback_url = request.build_absolute_uri(reverse("integrations:slack_callback"))
-
-    # Exchange code for token
-    try:
-        token_data = slack_oauth.exchange_code_for_token(code, callback_url)
-        access_token = token_data["access_token"]
-        bot_user_id = token_data["bot_user_id"]
-        workspace_id = token_data["team"]["id"]
-        workspace_name = token_data["team"]["name"]
-    except (SlackOAuthError, KeyError, Exception) as e:
-        logger.error(f"Slack token exchange failed: {e}", exc_info=True)
-        messages.error(request, "Failed to connect to Slack. Please try again.")
-        return redirect("integrations:integrations_home")
-
-    # Check if this workspace is already connected (update if so)
-    existing_integration = SlackIntegration.objects.filter(team=team, workspace_id=workspace_id).first()
-
-    if existing_integration:
-        # Update existing integration
-        existing_integration.workspace_name = workspace_name
-        existing_integration.bot_user_id = bot_user_id
-        existing_integration.save()
-
-        # Update credential (EncryptedTextField auto-encrypts on save)
-        existing_integration.credential.access_token = access_token
-        existing_integration.credential.connected_by = request.user
-        existing_integration.credential.save()
-
-        messages.success(request, f"Reconnected to Slack workspace: {workspace_name}")
-    else:
-        # Create credential for the team
-        credential = _create_integration_credential(
-            team, access_token, IntegrationCredential.PROVIDER_SLACK, request.user
-        )
-
-        # Create SlackIntegration
-        SlackIntegration.objects.create(
-            team=team,
-            credential=credential,
-            workspace_id=workspace_id,
-            workspace_name=workspace_name,
-            bot_user_id=bot_user_id,
-        )
-
-        messages.success(request, f"Connected to Slack workspace: {workspace_name}")
-
-    return redirect("integrations:integrations_home")
+    return redirect(unified_url)
 
 
 @team_admin_required
