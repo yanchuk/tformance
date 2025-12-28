@@ -282,3 +282,205 @@ class StartSyncApiViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("task_id", response.json())
         self.assertEqual(response.json()["task_id"], "test-task-id-123")
+
+
+class ConnectJiraViewTests(TestCase):
+    """Tests for connect_jira view."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.user = CustomUser.objects.create_user(
+            username="jira_test@example.com",
+            email="jira_test@example.com",
+            password="testpassword123",
+        )
+        self.team = TeamFactory()
+        self.team.members.add(self.user)
+
+    def test_redirect_to_login_when_not_authenticated(self):
+        """Test that unauthenticated users are redirected to login."""
+        response = self.client.get(reverse("onboarding:connect_jira"))
+        self.assertRedirects(
+            response,
+            f"{reverse('account_login')}?next={reverse('onboarding:connect_jira')}",
+        )
+
+    def test_redirect_to_start_when_no_team(self):
+        """Test that users without teams are redirected to start."""
+        CustomUser.objects.create_user(
+            username="noteam_jira@example.com",
+            email="noteam_jira@example.com",
+            password="testpassword123",
+        )
+        self.client.login(username="noteam_jira@example.com", password="testpassword123")
+
+        response = self.client.get(reverse("onboarding:connect_jira"))
+
+        self.assertRedirects(response, reverse("onboarding:start"))
+
+    def test_shows_jira_connect_page(self):
+        """Test that Jira connect page loads correctly."""
+        self.client.login(username="jira_test@example.com", password="testpassword123")
+
+        response = self.client.get(reverse("onboarding:connect_jira"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "onboarding/connect_jira.html")
+
+    def test_post_skips_to_slack(self):
+        """Test that POST skips Jira and continues to Slack."""
+        self.client.login(username="jira_test@example.com", password="testpassword123")
+
+        response = self.client.post(reverse("onboarding:connect_jira"))
+
+        self.assertRedirects(response, reverse("onboarding:connect_slack"))
+
+    def test_action_connect_redirects_to_jira_oauth(self):
+        """Test that action=connect initiates Jira OAuth flow."""
+        self.client.login(username="jira_test@example.com", password="testpassword123")
+
+        response = self.client.get(reverse("onboarding:connect_jira"), {"action": "connect"})
+
+        # Should redirect to Jira OAuth URL
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("atlassian.com", response.url)
+
+    def test_redirect_to_projects_when_already_connected(self):
+        """Test that users with Jira connected are redirected to project selection."""
+        from apps.integrations.factories import JiraIntegrationFactory
+
+        self.client.login(username="jira_test@example.com", password="testpassword123")
+
+        # Create Jira integration for team
+        JiraIntegrationFactory(team=self.team)
+
+        response = self.client.get(reverse("onboarding:connect_jira"))
+
+        self.assertRedirects(response, reverse("onboarding:select_jira_projects"))
+
+
+class SelectJiraProjectsViewTests(TestCase):
+    """Tests for select_jira_projects view."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        from apps.integrations.factories import JiraIntegrationFactory
+
+        self.user = CustomUser.objects.create_user(
+            username="jira_projects@example.com",
+            email="jira_projects@example.com",
+            password="testpassword123",
+        )
+        self.team = TeamFactory()
+        self.team.members.add(self.user)
+        self.jira_integration = JiraIntegrationFactory(team=self.team)
+
+    def test_redirect_to_login_when_not_authenticated(self):
+        """Test that unauthenticated users are redirected to login."""
+        response = self.client.get(reverse("onboarding:select_jira_projects"))
+        self.assertRedirects(
+            response,
+            f"{reverse('account_login')}?next={reverse('onboarding:select_jira_projects')}",
+        )
+
+    def test_redirect_to_start_when_no_team(self):
+        """Test that users without teams are redirected to start."""
+        CustomUser.objects.create_user(
+            username="noteam_projects@example.com",
+            email="noteam_projects@example.com",
+            password="testpassword123",
+        )
+        self.client.login(username="noteam_projects@example.com", password="testpassword123")
+
+        response = self.client.get(reverse("onboarding:select_jira_projects"))
+
+        self.assertRedirects(response, reverse("onboarding:start"))
+
+    def test_redirect_to_connect_jira_when_not_connected(self):
+        """Test that users without Jira are redirected to connect."""
+        # Create user with team but no Jira integration
+        user2 = CustomUser.objects.create_user(
+            username="no_jira@example.com",
+            email="no_jira@example.com",
+            password="testpassword123",
+        )
+        team2 = TeamFactory()
+        team2.members.add(user2)
+
+        self.client.login(username="no_jira@example.com", password="testpassword123")
+
+        response = self.client.get(reverse("onboarding:select_jira_projects"))
+
+        self.assertRedirects(response, reverse("onboarding:connect_jira"))
+
+    def test_shows_project_selection_page(self):
+        """Test that project selection page loads correctly."""
+        from unittest.mock import patch
+
+        self.client.login(username="jira_projects@example.com", password="testpassword123")
+
+        with patch("apps.integrations.services.jira_client.get_accessible_projects") as mock_get_projects:
+            mock_get_projects.return_value = [
+                {"id": "10001", "key": "PROJ", "name": "My Project", "projectTypeKey": "software"}
+            ]
+
+            response = self.client.get(reverse("onboarding:select_jira_projects"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "onboarding/select_jira_projects.html")
+
+    def test_context_contains_projects(self):
+        """Test that context contains projects list."""
+        from unittest.mock import patch
+
+        self.client.login(username="jira_projects@example.com", password="testpassword123")
+
+        with patch("apps.integrations.services.jira_client.get_accessible_projects") as mock_get_projects:
+            mock_get_projects.return_value = [
+                {"id": "10001", "key": "PROJ1", "name": "Project 1"},
+                {"id": "10002", "key": "PROJ2", "name": "Project 2"},
+            ]
+
+            response = self.client.get(reverse("onboarding:select_jira_projects"))
+
+        self.assertIn("projects", response.context)
+        self.assertEqual(len(response.context["projects"]), 2)
+
+    def test_post_creates_tracked_projects(self):
+        """Test that POST creates TrackedJiraProject records."""
+        from unittest.mock import patch
+
+        from apps.integrations.models import TrackedJiraProject
+
+        self.client.login(username="jira_projects@example.com", password="testpassword123")
+
+        with patch("apps.integrations.services.jira_client.get_accessible_projects") as mock_get_projects:
+            mock_get_projects.return_value = [
+                {"id": "10001", "key": "PROJ1", "name": "Project 1", "projectTypeKey": "software"},
+                {"id": "10002", "key": "PROJ2", "name": "Project 2", "projectTypeKey": "business"},
+            ]
+
+            response = self.client.post(
+                reverse("onboarding:select_jira_projects"),
+                {"projects": ["10001", "10002"]},
+            )
+
+        # Should redirect to Slack
+        self.assertRedirects(response, reverse("onboarding:connect_slack"))
+
+        # Should have created tracked projects
+        self.assertEqual(TrackedJiraProject.objects.filter(team=self.team).count(), 2)
+
+    def test_post_with_no_selection_redirects_to_slack(self):
+        """Test that POST with no selection continues to Slack."""
+        from unittest.mock import patch
+
+        self.client.login(username="jira_projects@example.com", password="testpassword123")
+
+        with patch("apps.integrations.services.jira_client.get_accessible_projects") as mock_get_projects:
+            mock_get_projects.return_value = []
+
+            response = self.client.post(reverse("onboarding:select_jira_projects"))
+
+        # Should redirect to Slack
+        self.assertRedirects(response, reverse("onboarding:connect_slack"))

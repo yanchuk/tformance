@@ -382,7 +382,7 @@ def connect_jira(request):
             "response_type": "code",
             "prompt": "consent",
         }
-        auth_url = f"{jira_oauth.JIRA_OAUTH_AUTHORIZE_URL}?{urlencode(params)}"
+        auth_url = f"{jira_oauth.JIRA_AUTH_URL}?{urlencode(params)}"
 
         return redirect(auth_url)
 
@@ -455,7 +455,6 @@ def select_jira_projects(request):
                         "integration": jira_integration,
                         "jira_project_key": proj_data["key"],
                         "name": proj_data["name"],
-                        "project_type": proj_data.get("projectTypeKey", "software"),
                         "is_active": True,
                     },
                 )

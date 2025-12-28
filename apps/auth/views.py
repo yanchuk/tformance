@@ -378,7 +378,7 @@ def _handle_jira_onboarding_callback(request, code: str, team_id: int | None):
             return redirect("onboarding:connect_jira")
 
         # Create or update credential
-        credential, _ = IntegrationCredential.objects.update_or_create(
+        credential, _created = IntegrationCredential.objects.update_or_create(
             team=team,
             provider=IntegrationCredential.PROVIDER_JIRA,
             defaults={
@@ -393,7 +393,7 @@ def _handle_jira_onboarding_callback(request, code: str, team_id: int | None):
         site = sites[0]
 
         # Create or update Jira integration
-        integration, _ = JiraIntegration.objects.update_or_create(
+        integration, _created = JiraIntegration.objects.update_or_create(
             team=team,
             defaults={
                 "credential": credential,
