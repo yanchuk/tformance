@@ -26,9 +26,6 @@ export default defineConfig({
         'site-tailwind-css': path.resolve(__dirname, './assets/styles/site-tailwind.css'),
         'site': path.resolve(__dirname, './assets/javascript/site.js'),
         'app': path.resolve(__dirname, './assets/javascript/app.js'),
-        'pegasus': path.resolve(__dirname, './assets/javascript/pegasus/pegasus.js'),
-        'react-object-lifecycle': path.resolve(__dirname, './assets/javascript/pegasus/examples/react/react-object-lifecycle.jsx'),
-        'vue-object-lifecycle': path.resolve(__dirname, './assets/javascript/pegasus/examples/vue/vue-object-lifecycle.js'),
       },
       output: {
         // Output JS bundles to js/ directory with -bundle suffix
