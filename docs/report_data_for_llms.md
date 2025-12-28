@@ -9,18 +9,26 @@
 
 ---
 
-## ⚡ TL;DR: Review AI Works. Code AI? It's Complicated.
+## TL;DR: Review AI Works. Code AI? It's Complicated.
 
 **Industry claims:** 85% adoption (Stack Overflow, JetBrains 2025), massive productivity gains.
 **The only RCT:** METR 2025 found AI made devs **19% slower** (with 43-point perception gap).
 **Our data:** 167,308 PRs from 101 OSS companies to see what actually happens.
 
+> **IMPORTANT CAVEATS:**
+> - **Simpson's Paradox:** While aggregate data shows Review AI is -11% faster, **60% of individual teams show AI is SLOWER**. Aggregate stats can mislead.
+> - **Median vs Mean:** The typical (median) PR tells a different story. Medians show Code AI is **+100% slower** and Review AI is **+5% slower** than baseline. Means are heavily skewed by outliers.
+> - **Correlation, not causation:** This is observational data. We cannot prove AI *causes* these effects.
+> - **Code AI review time is NOT statistically significant** (95% CI crosses zero).
+
 ### Review AI vs Code AI — The Facts
 
 | Category | Tools | Cycle Time | Review Time | Detection Share |
 |----------|-------|------------|-------------|-----------------|
-| 🔍 **Review AI** | CodeRabbit, Cubic, Greptile | **-11%** ✓ | **-54%** ✓ | 73.5% |
-| ⌨️ **Code AI** | Cursor, Claude, Copilot, Devin | **+16%** ⚠ | **-14%** ✓ | 26.3%* |
+| **Review AI** | CodeRabbit, Cubic, Greptile | **-11%** | **-54%** | 73.5% |
+| **Code AI** | Cursor, Claude, Copilot, Devin | **+16%** | **-14%** (n.s.) | 26.3%* |
+
+**(n.s.) = not statistically significant** — Code AI review time CI crosses zero (-32% to +1%).
 
 *Code AI real share is likely much higher — Copilot (68% survey adoption) leaves no trace in PRs.
 
@@ -42,9 +50,11 @@
 
 | Recommendation | Why |
 |---------------|-----|
-| ✅ **Deploy Review AI immediately** | Clear wins: -11% cycle time, -54% review time. Low risk. |
-| ⚠️ **Use Code AI selectively** | Mixed results: +16% cycle time. Best for refactoring, boilerplate, tests. |
-| 🔬 **12.1% is a floor, not ceiling** | Silent tools (Copilot autocomplete) leave no trace. Real usage is likely 40-60%. |
+| **Review AI correlates with faster cycles** | Associated with -11% cycle time, -54% review time. Statistically significant. |
+| **Code AI shows mixed correlations** | Associated with +16% cycle time. Review time improvement (-14%) is NOT significant. |
+| **12.1% is a floor, not ceiling** | Silent tools (Copilot autocomplete) leave no trace. Real usage is likely 40-60%. |
+
+**Note:** These are correlations from observational data, not causal findings. Your results may vary based on team, codebase, and workflow.
 
 ### How We Got These Numbers
 
@@ -108,9 +118,11 @@ We categorize AI tools into two types with **dramatically different impacts**:
 | Category | Tool Mentions | Percentage | Unique PRs |
 |----------|---------------|------------|------------|
 | Review AI | 18,534 | 73.5% | 11,302 |
-| Code AI | 6,633 | 26.3% | 3,056 |
-| Unknown | 50 | 0.2% | — |
-| **Total** | **25,209** | **100%** | — |
+| Code AI | 6,631 | 26.3% | 3,056 |
+| Unknown | 52 | 0.2% | — |
+| **Total** | **25,217** | **100%** | — |
+
+> **Understanding the Numbers:** Tool mentions (25,217) can exceed unique PRs because one PR can mention multiple tools. Category metrics use unique PRs (125,573 merged PRs from teams with 500+ PRs).
 
 ### Impact Comparison (vs Non-AI Baseline)
 
@@ -126,25 +138,34 @@ We categorize AI tools into two types with **dramatically different impacts**:
 **95% Confidence Intervals (1000 bootstrap samples):**
 | Metric | Code AI Δ (95% CI) | Review AI Δ (95% CI) |
 |--------|--------------------|-----------------------|
-| Cycle Time | +16% (+3% to +27%) | -11% (-18% to -6%) |
-| Review Time | -14% (-31% to -1%) | -54% (-61% to -50%) |
+| Cycle Time | +16% (+4% to +25%) | -11% (-18% to -7%) |
+| Review Time | -14% (-32% to +1%) **(n.s.)** | -54% (-60% to -49%) |
 
-**Distribution Note:** Cycle times are heavily right-skewed (long tail of slow PRs). The median (typical PR) differs dramatically from the mean:
-- Baseline: Mean 82.2h vs Median 5.7h (14x difference)
-- Code AI: Mean 95.6h vs Median 11.4h (8x difference)
-- Review AI: Mean 73.4h vs Median 6.0h (12x difference)
+**(n.s.) = not statistically significant.** The Code AI review time confidence interval crosses zero (-32% to +1%), meaning we cannot rule out that the true effect is zero or even positive. Interpret the -14% figure with caution.
+
+**MEDIAN WARNING:** The typical (median) PR tells a different story than means:
+
+| Metric | Baseline | Code AI | Review AI |
+|--------|----------|---------|-----------|
+| **Mean Cycle Time** | 82.2h | 95.6h (+16%) | 73.4h (-11%) |
+| **Median Cycle Time** | 5.7h | 11.4h (**+100%**) | 6.0h (**+5%**) |
+| **Skew Factor** | 14x | 8x | 12x |
+
+The median shows Code AI PRs take **twice as long** as baseline, and Review AI PRs are **5% slower** — contradicting the mean-based headlines. Means are heavily influenced by long-tail outliers (a few PRs taking 500+ hours).
+
+**Why this matters:** If you're trying to predict the "typical" PR experience, use medians. If you care about total team throughput (including outliers), means are more relevant.
 
 ### Key Insight
 
-**Review AI is the clear efficiency win.** Automated code reviews (CodeRabbit, Cubic) deliver:
-- 11% faster cycle time
-- 54% faster review time
+**Review AI correlates with efficiency gains.** PRs with automated code reviews (CodeRabbit, Cubic) show:
+- 11% faster mean cycle time (statistically significant)
+- 54% faster mean review time (statistically significant)
 
-**Code AI shows mixed results.** Code generation tools (Cursor, Claude, Devin) show:
-- +16% longer cycle time (slower overall)
-- -14% faster review time (once code is ready)
+**Code AI shows mixed correlations.** PRs mentioning code generation tools (Cursor, Claude, Devin) show:
+- +16% longer mean cycle time
+- -14% shorter mean review time **(but NOT statistically significant)**
 
-**Hypothesis:** AI-generated code may require more iteration/refinement before review-readiness, explaining the longer cycle time but faster reviews.
+**Hypothesis:** AI-generated code may require more iteration/refinement before review-readiness, explaining the longer cycle time. However, these are correlations — we cannot prove AI *causes* these effects.
 
 ### Size-Normalized Analysis
 
@@ -587,9 +608,9 @@ https://raw.githubusercontent.com/yanchuk/tformance/main/docs/data/within_team_c
 #### ai_categories.csv
 ```csv
 category,count,percentage
-code,6633,26.3
+code,6631,26.3
 review,18534,73.5
-unknown,50,0.2
+unknown,52,0.2
 ```
 
 #### category_metrics.csv
@@ -604,21 +625,19 @@ review,11302,73.4,6.0,18.7,0.1,481,53,-11,-54
 
 ## CTO Recommendations
 
-Based on this analysis, we recommend:
+> **Important disclaimer:** These are correlations from observational data, not causal findings from a controlled experiment. Your results may vary based on team composition, codebase complexity, and workflow. The only RCT in this space (METR 2025) found AI made experienced devs 19% slower.
 
-1. **Deploy Review AI immediately** — CodeRabbit/Cubic show clear efficiency gains (-11% cycle time, -54% review time) with minimal risk
+Based on this analysis:
 
-2. **Use Code AI selectively** — Target for:
-   - Refactoring tasks (high AI adoption in refactor PRs)
-   - Boilerplate generation
-   - Test writing
-   - Avoid for: Complex features, critical paths
+1. **Review AI correlates with faster cycles** — CodeRabbit/Cubic show -11% cycle time, -54% review time (statistically significant). Consider piloting with low risk.
 
-3. **Measure your own data** — These are OSS patterns; your enterprise may differ
+2. **Code AI shows mixed correlations** — +16% cycle time (significant), -14% review time (NOT significant). Results vary widely by team (60% of teams are slower with AI).
 
-4. **Don't trust surveys** — METR RCT shows 43-point perception gap; behavioral data tells different story
+3. **Measure your own data** — These are OSS patterns; your enterprise may differ. Run your own before/after analysis.
 
-5. **Expect detection floor** — If you detect 12% AI usage, actual is likely 40-60%
+4. **Don't trust surveys** — METR RCT shows 43-point perception gap; behavioral data tells different story than self-reports.
+
+5. **Expect detection floor** — If you detect 12% AI usage, actual is likely 40-60% (Copilot autocomplete leaves no trace).
 
 ---
 

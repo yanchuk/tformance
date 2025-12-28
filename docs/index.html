@@ -1500,6 +1500,17 @@
         <section id="tldr" style="background: linear-gradient(135deg, rgba(90, 153, 151, 0.2), rgba(249, 115, 22, 0.15)); border: 2px solid var(--accent); border-radius: 16px; padding: 2rem; margin-bottom: 2rem;">
             <h2 style="margin-bottom: 1rem;">⚡ TL;DR: Review AI Works. Code AI? It's Complicated.</h2>
 
+            <!-- Important Caveats Box -->
+            <div style="background: rgba(239, 68, 68, 0.1); border: 2px solid rgba(239, 68, 68, 0.4); border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 1.25rem;">
+                <div style="font-weight: 600; color: var(--error); margin-bottom: 0.5rem;">IMPORTANT CAVEATS:</div>
+                <ul style="margin: 0; padding-left: 1.25rem; font-size: 0.85rem; color: var(--text-muted);">
+                    <li><strong>Simpson's Paradox:</strong> While aggregate shows Review AI is -11% faster, <strong>60% of individual teams show AI is SLOWER</strong>.</li>
+                    <li><strong>Median vs Mean:</strong> Medians show Code AI is <strong>+100% slower</strong> and Review AI is <strong>+5% slower</strong>. Means are heavily skewed.</li>
+                    <li><strong>Not causation:</strong> This is observational data. We cannot prove AI <em>causes</em> these effects.</li>
+                    <li><strong>Code AI review time is NOT statistically significant</strong> (95% CI crosses zero).</li>
+                </ul>
+            </div>
+
             <!-- Industry context callout -->
             <div style="background: rgba(168, 85, 247, 0.1); border-left: 4px solid rgb(168, 85, 247); padding: 0.75rem 1rem; margin-bottom: 1.25rem; border-radius: 0 8px 8px 0;">
                 <span style="font-size: 0.85rem; color: var(--text-muted);">
@@ -1523,7 +1534,7 @@
                     <div style="font-weight: 600; color: var(--primary); font-size: 0.85rem; margin-bottom: 0.5rem;">⌨️ CODE AI (Cursor, Claude, Copilot, Devin)</div>
                     <ul style="margin: 0; padding-left: 1.25rem; font-size: 0.9rem; color: var(--text-muted);">
                         <li><strong>+16% cycle time</strong> — aligns with METR RCT findings</li>
-                        <li><strong>-14% review time</strong> — code reviews faster once ready</li>
+                        <li><strong>-14% review time (n.s.)</strong> — NOT statistically significant</li>
                         <li><strong>26.3%</strong> of detected usage (real share likely much higher)</li>
                     </ul>
                 </div>
@@ -1576,12 +1587,12 @@
             <!-- Key insight boxes -->
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem;">
                 <div style="background: rgba(34, 197, 94, 0.15); border: 1px solid var(--success); border-radius: 8px; padding: 1rem;">
-                    <div style="font-weight: 600; color: var(--success); margin-bottom: 0.5rem;">✅ Deploy Review AI Now</div>
-                    <div style="color: var(--text-muted); font-size: 0.9rem;">Clear wins: -11% cycle time, -54% review time. Low risk, high reward.</div>
+                    <div style="font-weight: 600; color: var(--success); margin-bottom: 0.5rem;">Review AI Correlates with Faster Cycles</div>
+                    <div style="color: var(--text-muted); font-size: 0.9rem;">Associated with -11% cycle time, -54% review time. Statistically significant.</div>
                 </div>
                 <div style="background: rgba(234, 179, 8, 0.15); border: 1px solid var(--warning); border-radius: 8px; padding: 1rem;">
-                    <div style="font-weight: 600; color: var(--warning); margin-bottom: 0.5rem;">⚠️ Use Code AI Selectively</div>
-                    <div style="color: var(--text-muted); font-size: 0.9rem;">Mixed results: +16% cycle time. Best for refactoring, boilerplate, tests.</div>
+                    <div style="font-weight: 600; color: var(--warning); margin-bottom: 0.5rem;">Code AI Shows Mixed Correlations</div>
+                    <div style="color: var(--text-muted); font-size: 0.9rem;">+16% cycle time. Review time (-14%) is <strong>not statistically significant</strong> (n.s.).</div>
                 </div>
                 <div style="background: rgba(168, 85, 247, 0.15); border: 1px solid rgba(168, 85, 247, 0.6); border-radius: 8px; padding: 1rem;">
                     <div style="font-weight: 600; color: rgb(168, 85, 247); margin-bottom: 0.5rem;">🔬 How We Know</div>
@@ -1878,7 +1889,7 @@
             <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-top: 1.5rem;">
                 <h3 style="margin-bottom: 1rem;">📊 Category Breakdown in Our Data</h3>
                 <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1rem;">
-                    Analysis of <strong>25,209 detected tool usages</strong> across 167,308 PRs:
+                    Analysis of <strong>25,217 detected tool usages</strong> across 167,308 PRs:
                 </p>
                 <div class="stat-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
                     <div class="stat-card" style="border-left: 4px solid var(--secondary);">
@@ -1893,7 +1904,7 @@
                         <div class="stat-value" style="font-size: 2rem; color: var(--primary);">26.3%</div>
                         <div class="stat-label">Code AI</div>
                         <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">
-                            <strong>6,633 detections</strong><br>
+                            <strong>6,631 detections</strong><br>
                             Devin (1.8k) • Cursor (1.4k) • Claude (1.2k) • Copilot (823)
                         </div>
                     </div>
