@@ -384,6 +384,65 @@ def start_sync(request):
 
 
 @login_required
+def sync_status(request):
+    """Return real-time sync status from database.
+
+    Returns JSON with sync status for all tracked repos and overall status.
+    This allows the frontend to compare with Celery task state for discrepancies.
+    """
+    if not request.user.teams.exists():
+        return JsonResponse({"error": "No team found"}, status=400)
+
+    team = request.user.teams.first()
+
+    # Get all tracked repositories with their sync status
+    repos = TrackedRepository.objects.filter(team=team).values(
+        "id", "full_name", "sync_status", "sync_progress", "last_sync_at", "last_sync_error"
+    )
+
+    repo_list = []
+    statuses = set()
+    for repo in repos:
+        repo_list.append(
+            {
+                "id": repo["id"],
+                "full_name": repo["full_name"],
+                "sync_status": repo["sync_status"],
+                "sync_progress": repo["sync_progress"] or 0,
+                "last_sync_at": repo["last_sync_at"].isoformat() if repo["last_sync_at"] else None,
+                "last_sync_error": repo["last_sync_error"],
+            }
+        )
+        statuses.add(repo["sync_status"])
+
+    # Determine overall status
+    if not repo_list:
+        overall_status = "no_repos"
+    elif "syncing" in statuses:
+        overall_status = "syncing"
+    elif "failed" in statuses and "completed" not in statuses:
+        overall_status = "failed"
+    elif "pending" in statuses and "completed" not in statuses:
+        overall_status = "pending"
+    elif all(s == "completed" for s in statuses):
+        overall_status = "completed"
+    else:
+        # Mixed states - some completed, some failed/pending
+        overall_status = "partial"
+
+    # Count PRs synced
+    prs_synced = PullRequest.objects.filter(team=team).count()
+
+    return JsonResponse(
+        {
+            "repos": repo_list,
+            "overall_status": overall_status,
+            "prs_synced": prs_synced,
+        }
+    )
+
+
+@login_required
 def connect_jira(request):
     """Optional step to connect Jira.
 

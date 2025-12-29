@@ -121,6 +121,7 @@
 <script type="application/json" id="sync-config">
 {
   "startUrl": "{% url 'onboarding:start_sync' %}",
+  "statusUrl": "{% url 'onboarding:sync_status' %}",
   "csrfToken": "{{ csrf_token }}",
   "reposCount": {{ repos|length }}
 }
@@ -147,6 +148,7 @@ document.addEventListener('DOMContentLoaded', function() {
   let stallTimeoutMs = 45000; // 45 seconds without progress = stalled
   let isPolling = false;
   let currentTaskId = null;
+  let dbStatusInterval = null;
 
   // Update estimated time remaining based on progress
   function updateEstimatedTime(percent) {
@@ -179,9 +181,101 @@ document.addEventListener('DOMContentLoaded', function() {
     estimatedTime.lastChild.textContent = timeText;
   }
 
+  // Update individual repo status badges using safe DOM methods
+  function updateRepoStatus(repoId, status, progress, error) {
+    const repoRow = document.getElementById('repo-' + repoId);
+    if (!repoRow) return;
+
+    const statusDiv = repoRow.querySelector('.repo-status');
+    if (!statusDiv) return;
+
+    let badgeClass, iconClass, statusText;
+
+    switch (status) {
+      case 'completed':
+        badgeClass = 'badge badge-success';
+        iconClass = 'fa-solid fa-check mr-1';
+        statusText = 'Completed';
+        break;
+      case 'syncing':
+        badgeClass = 'badge badge-primary';
+        iconClass = 'fa-solid fa-sync fa-spin mr-1';
+        statusText = progress > 0 ? progress + '%' : 'Syncing...';
+        break;
+      case 'failed':
+        badgeClass = 'badge badge-error';
+        iconClass = 'fa-solid fa-times mr-1';
+        statusText = 'Failed';
+        break;
+      default: // pending
+        badgeClass = 'badge badge-ghost text-base-content/50';
+        iconClass = 'fa-solid fa-clock mr-1';
+        statusText = 'Pending';
+    }
+
+    // Clear existing content safely
+    while (statusDiv.firstChild) {
+      statusDiv.removeChild(statusDiv.firstChild);
+    }
+
+    // Create badge span
+    const badge = document.createElement('span');
+    badge.className = badgeClass;
+
+    // Create icon
+    const icon = document.createElement('i');
+    icon.className = iconClass;
+    badge.appendChild(icon);
+
+    // Add text
+    badge.appendChild(document.createTextNode(statusText));
+
+    statusDiv.appendChild(badge);
+
+    // Add error tooltip if failed
+    if (status === 'failed' && error) {
+      statusDiv.setAttribute('title', error);
+    }
+  }
+
+  // Poll database for real-time status
+  function pollDbStatus() {
+    fetch(config.statusUrl)
+      .then(response => response.json())
+      .then(data => {
+        if (data.error) {
+          console.warn('Status error:', data.error);
+          return;
+        }
+
+        // Update individual repo statuses
+        if (data.repos) {
+          data.repos.forEach(repo => {
+            updateRepoStatus(repo.id, repo.sync_status, repo.sync_progress, repo.last_sync_error);
+          });
+        }
+
+        // Update PR count in message if available
+        if (data.prs_synced > 0 && progressMessage) {
+          const currentText = progressMessage.textContent;
+          // Only add PR count if not already showing it and we're in progress
+          if (!currentText.includes('PR') && isPolling) {
+            progressMessage.textContent = currentText + ' (' + data.prs_synced + ' PRs synced)';
+          }
+        }
+      })
+      .catch(error => {
+        console.warn('Error fetching DB status:', error);
+      });
+  }
+
   // Show error/stalled state
   function showErrorState(message) {
     isPolling = false;
+    if (dbStatusInterval) {
+      clearInterval(dbStatusInterval);
+      dbStatusInterval = null;
+    }
     syncActions.classList.add('hidden');
     syncComplete.classList.add('hidden');
     syncError.classList.remove('hidden');
@@ -195,6 +289,30 @@ document.addEventListener('DOMContentLoaded', function() {
       syncIcon.classList.remove('fa-sync');
       syncIcon.classList.add('fa-exclamation-circle');
     }
+  }
+
+  // Show completion state
+  function showCompleteState(message) {
+    isPolling = false;
+    if (dbStatusInterval) {
+      clearInterval(dbStatusInterval);
+      dbStatusInterval = null;
+    }
+    progressBar.style.width = '100%';
+    progressPercent.textContent = '100%';
+    progressMessage.textContent = message || 'Sync complete!';
+    updateEstimatedTime(100);
+
+    // Show completion UI
+    syncActions.classList.add('hidden');
+    syncComplete.classList.remove('hidden');
+
+    // Stop the spinner
+    const syncIcon = document.querySelector('.fa-sync');
+    if (syncIcon) syncIcon.classList.remove('fa-spin');
+
+    // Final update of repo statuses
+    pollDbStatus();
   }
 
   // Reset UI for retry
@@ -217,6 +335,20 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     lastProgressPercent = 0;
     lastProgressTime = null;
+
+    // Reset all repo statuses to pending
+    document.querySelectorAll('.repo-status').forEach(statusDiv => {
+      while (statusDiv.firstChild) {
+        statusDiv.removeChild(statusDiv.firstChild);
+      }
+      const badge = document.createElement('span');
+      badge.className = 'badge badge-ghost text-base-content/50';
+      const icon = document.createElement('i');
+      icon.className = 'fa-solid fa-clock mr-1';
+      badge.appendChild(icon);
+      badge.appendChild(document.createTextNode('Pending'));
+      statusDiv.appendChild(badge);
+    });
   }
 
   // Start the sync task
@@ -239,6 +371,11 @@ document.addEventListener('DOMContentLoaded', function() {
         const progressUrl = '/celery-progress/' + data.task_id + '/';
         isPolling = true;
         pollProgress(progressUrl);
+
+        // Start DB status polling (every 2 seconds)
+        dbStatusInterval = setInterval(pollDbStatus, 2000);
+        // Initial poll
+        pollDbStatus();
       } else if (data.error) {
         showErrorState(data.error);
       } else {
@@ -266,20 +403,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         if (data.complete) {
-          // Sync complete
-          isPolling = false;
-          progressBar.style.width = '100%';
-          progressPercent.textContent = '100%';
-          progressMessage.textContent = data.result?.message || 'Sync complete!';
-          updateEstimatedTime(100);
-
-          // Show completion UI
-          syncActions.classList.add('hidden');
-          syncComplete.classList.remove('hidden');
-
-          // Stop the spinner
-          const syncIcon = document.querySelector('.fa-sync');
-          if (syncIcon) syncIcon.classList.remove('fa-spin');
+          showCompleteState(data.result?.message);
         } else if (data.progress) {
           // Update progress
           const percent = Math.round((data.progress.current / data.progress.total) * 100);
