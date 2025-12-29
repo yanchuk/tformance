@@ -16,6 +16,7 @@ team_urlpatterns = (
         path("github/select-org/", views.github_select_org, name="github_select_org"),
         path("github/members/", views.github_members, name="github_members"),
         path("github/members/sync/", views.github_members_sync, name="github_members_sync"),
+        path("github/members/sync/progress/", views.github_members_sync_progress, name="github_members_sync_progress"),
         path("github/members/<int:member_id>/toggle/", views.github_member_toggle, name="github_member_toggle"),
         path("github/repos/", views.github_repos, name="github_repos"),
         path("github/repos/<int:repo_id>/toggle/", views.github_repo_toggle, name="github_repo_toggle"),

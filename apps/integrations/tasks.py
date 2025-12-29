@@ -500,6 +500,7 @@ def sync_github_members_task(self, integration_id: int) -> dict:
         Dict with sync results (created, updated, unchanged, failed) or error status
     """
     from celery.exceptions import Retry as CeleryRetry
+    from django.utils import timezone
 
     # Get GitHubIntegration by id
     try:
@@ -513,6 +514,12 @@ def sync_github_members_task(self, integration_id: int) -> dict:
         logger.info(f"Skipping member sync - no org selected for team {integration.team.name}")
         return {"skipped": True, "reason": "No organization selected"}
 
+    # Set status to syncing at start
+    integration.member_sync_status = GitHubIntegration.SYNC_STATUS_SYNCING
+    integration.member_sync_started_at = timezone.now()
+    integration.member_sync_error = ""
+    integration.save(update_fields=["member_sync_status", "member_sync_started_at", "member_sync_error"])
+
     # Sync members
     logger.info(f"Starting GitHub member sync for team: {integration.team.name} (org: {integration.organization_slug})")
     try:
@@ -521,6 +528,13 @@ def sync_github_members_task(self, integration_id: int) -> dict:
             f"Successfully synced GitHub members for team {integration.team.name}: "
             f"created={result['created']}, updated={result['updated']}, unchanged={result['unchanged']}"
         )
+
+        # Set status to complete on success
+        integration.member_sync_status = GitHubIntegration.SYNC_STATUS_COMPLETE
+        integration.member_sync_completed_at = timezone.now()
+        integration.member_sync_result = result
+        integration.save(update_fields=["member_sync_status", "member_sync_completed_at", "member_sync_result"])
+
         return result
     except Exception as exc:
         # Calculate exponential backoff
@@ -536,6 +550,12 @@ def sync_github_members_task(self, integration_id: int) -> dict:
 
             logger.error(f"Member sync failed permanently for {integration.team.name}: {exc}")
             capture_exception(exc)
+
+            # Set status to error on failure
+            integration.member_sync_status = GitHubIntegration.SYNC_STATUS_ERROR
+            integration.member_sync_error = str(exc)
+            integration.save(update_fields=["member_sync_status", "member_sync_error"])
+
             return {"error": str(exc)}
 
 
@@ -2045,10 +2065,17 @@ def sync_historical_data_task(self, team_id: int, repo_ids: list[int]) -> dict:
     )
     from apps.teams.models import Team
 
+    # Log task entry
+    logger.info(
+        f"[SYNC_TASK] Starting sync_historical_data_task: "
+        f"team_id={team_id}, repo_ids={repo_ids}, task_id={self.request.id}"
+    )
+
     try:
         team = Team.objects.get(id=team_id)
+        logger.info(f"[SYNC_TASK] Found team: {team.name} (id={team_id})")
     except Team.DoesNotExist:
-        logger.error(f"Team with id {team_id} not found")
+        logger.error(f"[SYNC_TASK] Team with id {team_id} not found")
         return {"status": "error", "error": f"Team {team_id} not found"}
 
     repos = TrackedRepository.objects.filter(
@@ -2069,13 +2096,25 @@ def sync_historical_data_task(self, team_id: int, repo_ids: list[int]) -> dict:
     # Get GitHub token from integration
     try:
         integration = GitHubIntegration.objects.get(team=team)
+        logger.info(f"[SYNC_TASK] Found GitHubIntegration for team {team_id}, org={integration.organization_slug}")
+
+        # Access token through encrypted field descriptor
         github_token = integration.credential.access_token
+        token_prefix = github_token[:10] if github_token else "None"
+        logger.info(
+            f"[SYNC_TASK] Token access successful: {token_prefix}... (len={len(github_token) if github_token else 0})"
+        )
+
+        if not github_token:
+            logger.error(f"[SYNC_TASK] Token is empty for team {team_id}")
+            return {"status": "error", "error": "GitHub token is empty"}
+
     except GitHubIntegration.DoesNotExist:
-        logger.error(f"No GitHub integration found for team {team_id}")
+        logger.error(f"[SYNC_TASK] No GitHub integration found for team {team_id}")
         return {"status": "error", "error": "GitHub integration not configured"}
     except Exception as e:
-        logger.error(f"Failed to get GitHub token for team {team_id}: {e}")
-        return {"status": "error", "error": "GitHub integration not configured"}
+        logger.error(f"[SYNC_TASK] Failed to get GitHub token for team {team_id}: {type(e).__name__}: {e}")
+        return {"status": "error", "error": f"Token access failed: {type(e).__name__}"}
 
     # Send sync started signal
     onboarding_sync_started.send(
@@ -2086,7 +2125,9 @@ def sync_historical_data_task(self, team_id: int, repo_ids: list[int]) -> dict:
 
     service = OnboardingSyncService(team=team, github_token=github_token)
 
-    for repo in sorted_repos:
+    for idx, repo in enumerate(sorted_repos, 1):
+        logger.info(f"[SYNC_TASK] Starting sync for repo {idx}/{total_repos}: {repo.full_name} (id={repo.id})")
+
         # Update repo status to syncing
         repo.sync_status = "syncing"
         repo.sync_started_at = timezone.now()
@@ -2122,10 +2163,10 @@ def sync_historical_data_task(self, team_id: int, repo_ids: list[int]) -> dict:
                 prs_synced=prs_synced,
             )
 
-            logger.info(f"Synced {prs_synced} PRs for {repo.full_name}")
+            logger.info(f"[SYNC_TASK] Completed sync for {repo.full_name}: {prs_synced} PRs synced")
 
         except Exception as e:
-            logger.error(f"Failed to sync {repo.full_name}: {e}")
+            logger.error(f"[SYNC_TASK] Failed to sync {repo.full_name}: {type(e).__name__}: {e}")
             failed_repos += 1
 
             # Mark as failed
@@ -2141,6 +2182,11 @@ def sync_historical_data_task(self, team_id: int, repo_ids: list[int]) -> dict:
         repos_synced=repos_synced,
         failed_repos=failed_repos,
         total_prs=total_prs,
+    )
+
+    logger.info(
+        f"[SYNC_TASK] Task completed: team_id={team_id}, task_id={self.request.id}, "
+        f"repos_synced={repos_synced}, failed_repos={failed_repos}, total_prs={total_prs}"
     )
 
     return {

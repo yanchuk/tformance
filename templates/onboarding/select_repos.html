@@ -12,156 +12,21 @@
   </p>
 </div>
 
-{% if repos %}
-<div x-data="{
-  selectedRepos: [],
-  searchQuery: '',
-  allRepos: [{% for repo in repos %}{ id: '{{ repo.id }}', name: '{{ repo.name }}' }{% if not forloop.last %}, {% endif %}{% endfor %}],
-  get allRepoIds() { return this.allRepos.map(r => r.id) },
-  get filteredRepoIds() {
-    if (!this.searchQuery.trim()) return this.allRepoIds;
-    const query = this.searchQuery.toLowerCase();
-    return this.allRepos.filter(r => r.name.toLowerCase().includes(query)).map(r => r.id);
-  },
-  get selectAllChecked() { return this.selectedRepos.length === this.allRepoIds.length && this.allRepoIds.length > 0 },
-  isVisible(repoId) {
-    return this.filteredRepoIds.includes(repoId);
-  },
-  toggleSelectAll() {
-    if (this.selectAllChecked) {
-      this.selectedRepos = [];
-    } else {
-      this.selectedRepos = [...this.allRepoIds];
-    }
-  },
-  toggleRepo(repoId) {
-    const idx = this.selectedRepos.indexOf(repoId);
-    if (idx > -1) {
-      this.selectedRepos.splice(idx, 1);
-    } else {
-      this.selectedRepos.push(repoId);
-    }
-  }
-}" class="max-w-2xl mx-auto">
-  {# Search filter #}
-  {% if repos|length > 5 %}
-  <div class="mb-4">
-    <div class="relative">
-      <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-base-content/50"></i>
-      <input type="search"
-             x-model="searchQuery"
-             placeholder="{% translate 'Search repositories...' %}"
-             class="w-full pl-10 pr-4 py-2 bg-base-100 border border-base-300 rounded-lg text-base-content placeholder:text-base-content/50 focus:outline-none focus:border-primary">
-    </div>
-    <p x-show="searchQuery && filteredRepoIds.length === 0" class="text-sm text-base-content/60 mt-2">
-      {% translate "No repositories match your search." %}
-    </p>
+{# Loading indicator (shown while fetching) #}
+<div id="repos-loading" class="htmx-indicator max-w-md mx-auto text-center py-8">
+  <div class="inline-flex items-center gap-3 text-base-content/70">
+    <i class="fa-solid fa-spinner fa-spin text-2xl text-primary"></i>
+    <span class="text-lg">{% translate "Fetching repositories from GitHub..." %}</span>
   </div>
-  {% endif %}
-
-  {# Selection controls #}
-  <div class="flex items-center justify-between mb-4">
-    <div class="flex items-center gap-3">
-      <button type="button"
-              @click="toggleSelectAll()"
-              class="app-btn-ghost text-sm">
-        <i class="fa-regular" :class="selectAllChecked ? 'fa-square-check' : 'fa-square'"></i>
-        <span x-text="selectAllChecked ? '{% translate "Deselect All" %}' : '{% translate "Select All" %}'"></span>
-      </button>
-      <span class="text-sm text-base-content/60">
-        <span x-text="selectedRepos.length"></span> {% translate "of" %} {{ repos|length }} {% translate "selected" %}
-      </span>
-    </div>
-  </div>
-
-  {# Repository list #}
-  <div class="app-card mb-6 max-h-96 overflow-y-auto">
-    <ul class="divide-y divide-base-300">
-      {% for repo in repos %}
-      <li class="py-3 px-4 hover:bg-base-200/50 transition-colors cursor-pointer"
-          x-show="isVisible('{{ repo.id }}')"
-          @click="toggleRepo('{{ repo.id }}')">
-        <label class="flex items-start gap-3 cursor-pointer">
-          <input type="checkbox"
-                 class="checkbox checkbox-primary mt-1"
-                 :checked="selectedRepos.includes('{{ repo.id }}')"
-                 @click.stop="toggleRepo('{{ repo.id }}')"
-                 name="repos"
-                 value="{{ repo.id }}">
-          <div class="flex-1 min-w-0">
-            <div class="flex items-center gap-2 flex-wrap">
-              <span class="font-medium text-base-content">{{ repo.name }}</span>
-              {% if repo.private %}
-              <span class="app-badge text-xs">
-                <i class="fa-solid fa-lock text-xs mr-1"></i>
-                {% translate "Private" %}
-              </span>
-              {% endif %}
-              {% if repo.language %}
-              <span class="text-xs text-base-content/60 bg-base-300 px-2 py-0.5 rounded">{{ repo.language }}</span>
-              {% endif %}
-            </div>
-            {% if repo.description %}
-            <p class="text-sm text-base-content/60 mt-1 truncate">{{ repo.description }}</p>
-            {% endif %}
-          </div>
-        </label>
-      </li>
-      {% endfor %}
-    </ul>
-  </div>
-
-  {# Help text #}
-  <div class="app-alert app-alert-info mb-6">
-    <i class="fa-solid fa-info-circle"></i>
-    <span>{% translate "You can always add or remove repositories later from Settings > Integrations." %}</span>
-  </div>
-
-  {# Form with hidden inputs for selected repos #}
-  <form method="post" x-ref="form">
-    {% csrf_token %}
-    <template x-for="repoId in selectedRepos" :key="repoId">
-      <input type="hidden" name="repos" :value="repoId">
-    </template>
-
-    <div class="flex gap-4">
-      <a href="{% url 'onboarding:select_org' %}" class="app-btn-ghost flex-1">
-        <i class="fa-solid fa-arrow-left mr-2"></i>
-        {% translate "Back" %}
-      </a>
-      <button type="submit" class="app-btn-primary flex-1" :disabled="selectedRepos.length === 0">
-        {% translate "Continue" %}
-        <span x-show="selectedRepos.length > 0" class="ml-1">(<span x-text="selectedRepos.length"></span>)</span>
-        <i class="fa-solid fa-arrow-right ml-2"></i>
-      </button>
-    </div>
-  </form>
+  <p class="text-sm text-base-content/50 mt-2">{% translate "This may take a few seconds" %}</p>
 </div>
 
-{% else %}
-{# No repos found or error fetching #}
-<div class="app-card max-w-md mx-auto mb-6 text-center">
-  <div class="py-8">
-    <i class="fa-solid fa-folder-open text-4xl text-base-content/30 mb-4"></i>
-    <h2 class="text-lg font-medium text-base-content mb-2">{% translate "No repositories found" %}</h2>
-    <p class="text-sm text-base-content/60 mb-4">
-      {% translate "We couldn't find any repositories in your organization. You can add them later from Settings." %}
-    </p>
-  </div>
+{# Repository content container - loads via HTMX #}
+<div id="repos-container"
+     hx-get="{% url 'onboarding:fetch_repos' %}"
+     hx-trigger="load"
+     hx-swap="innerHTML"
+     hx-indicator="#repos-loading">
+  {# Initially empty - content loaded via HTMX #}
 </div>
-
-<form method="post" class="max-w-md mx-auto">
-  {% csrf_token %}
-  <div class="flex gap-4">
-    <a href="{% url 'onboarding:select_org' %}" class="app-btn-ghost flex-1">
-      <i class="fa-solid fa-arrow-left mr-2"></i>
-      {% translate "Back" %}
-    </a>
-    <button type="submit" class="app-btn-primary flex-1">
-      {% translate "Skip for now" %}
-      <i class="fa-solid fa-arrow-right ml-2"></i>
-    </button>
-  </div>
-</form>
-{% endif %}
 {% endblock %}

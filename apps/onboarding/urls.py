@@ -10,6 +10,7 @@ urlpatterns = [
     path("github/", views.github_connect, name="github_connect"),
     path("org/", views.select_organization, name="select_org"),
     path("repos/", views.select_repositories, name="select_repos"),
+    path("repos/fetch/", views.fetch_repos, name="fetch_repos"),
     path("sync/", views.sync_progress, name="sync_progress"),
     path("sync/start/", views.start_sync, name="start_sync"),
     path("jira/", views.connect_jira, name="connect_jira"),

@@ -177,6 +177,10 @@ def _handle_login_callback(request, code: str):
         github_email = github_user.get("email")
         github_name = github_user.get("name")
 
+        # If no public email, try to fetch primary email from /user/emails
+        if github_email is None:
+            github_email = github_oauth.get_user_primary_email(access_token)
+
         # Try to find existing user
         user = None
 

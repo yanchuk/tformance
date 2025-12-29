@@ -91,6 +91,30 @@
       <i class="fa-solid fa-arrow-right ml-2"></i>
     </a>
   </div>
+
+  {# Error/Stuck section (hidden by default) #}
+  <div id="sync-error" class="hidden text-center">
+    <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-warning/10 mb-4">
+      <i class="fa-solid fa-exclamation-triangle text-2xl text-warning"></i>
+    </div>
+    <h2 class="text-xl font-semibold mb-2">{% translate "Sync May Have Stalled" %}</h2>
+    <p id="sync-error-message" class="text-base-content/70 mb-6">
+      {% translate "The sync hasn't made progress in a while. This could be temporary." %}
+    </p>
+    <div class="flex flex-col sm:flex-row gap-4 justify-center">
+      <button id="retry-sync-btn" class="app-btn-primary">
+        <i class="fa-solid fa-redo mr-2"></i>
+        {% translate "Retry Sync" %}
+      </button>
+      <a href="{% url 'onboarding:connect_jira' %}" class="app-btn-secondary">
+        {% translate "Skip for Now" %}
+        <i class="fa-solid fa-arrow-right ml-2"></i>
+      </a>
+    </div>
+    <p class="text-sm text-base-content/50 mt-4">
+      {% translate "You can always re-sync from Settings > Integrations later." %}
+    </p>
+  </div>
 </div>
 
 {# Hidden data for JavaScript #}
@@ -112,9 +136,17 @@ document.addEventListener('DOMContentLoaded', function() {
   const estimatedTimeIcon = estimatedTime.querySelector('i');
   const syncActions = document.getElementById('sync-actions');
   const syncComplete = document.getElementById('sync-complete');
+  const syncError = document.getElementById('sync-error');
+  const syncErrorMessage = document.getElementById('sync-error-message');
+  const retrySyncBtn = document.getElementById('retry-sync-btn');
 
-  // Time tracking for estimation
+  // Time tracking for estimation and stall detection
   let syncStartTime = null;
+  let lastProgressTime = null;
+  let lastProgressPercent = 0;
+  let stallTimeoutMs = 45000; // 45 seconds without progress = stalled
+  let isPolling = false;
+  let currentTaskId = null;
 
   // Update estimated time remaining based on progress
   function updateEstimatedTime(percent) {
@@ -147,37 +179,95 @@ document.addEventListener('DOMContentLoaded', function() {
     estimatedTime.lastChild.textContent = timeText;
   }
 
-  // Start the sync task
-  fetch(config.startUrl, {
-    method: 'POST',
-    headers: {
-      'X-CSRFToken': config.csrfToken,
-      'Content-Type': 'application/json'
+  // Show error/stalled state
+  function showErrorState(message) {
+    isPolling = false;
+    syncActions.classList.add('hidden');
+    syncComplete.classList.add('hidden');
+    syncError.classList.remove('hidden');
+    if (message) {
+      syncErrorMessage.textContent = message;
     }
-  })
-  .then(response => response.json())
-  .then(data => {
-    if (data.task_id) {
-      // Record start time for estimation
-      syncStartTime = Date.now();
-      // Poll for progress using celery-progress
-      const progressUrl = '/celery-progress/' + data.task_id + '/';
-      pollProgress(progressUrl);
+    // Stop the spinner
+    const syncIcon = document.querySelector('.fa-sync');
+    if (syncIcon) {
+      syncIcon.classList.remove('fa-spin');
+      syncIcon.classList.remove('fa-sync');
+      syncIcon.classList.add('fa-exclamation-circle');
+    }
+  }
+
+  // Reset UI for retry
+  function resetUIForRetry() {
+    syncError.classList.add('hidden');
+    syncComplete.classList.add('hidden');
+    syncActions.classList.remove('hidden');
+    progressBar.style.width = '0%';
+    progressPercent.textContent = '0%';
+    progressMessage.textContent = 'Starting sync...';
+    estimatedTime.lastChild.textContent = ' Calculating...';
+    // Reset spinner
+    const syncIcon = document.querySelector('.fa-exclamation-circle');
+    if (syncIcon) {
+      syncIcon.classList.remove('fa-exclamation-circle');
+      syncIcon.classList.add('fa-sync', 'fa-spin');
     } else {
-      progressMessage.textContent = 'Failed to start sync';
+      const existingIcon = document.querySelector('.fa-sync');
+      if (existingIcon) existingIcon.classList.add('fa-spin');
     }
-  })
-  .catch(error => {
-    console.error('Error starting sync:', error);
-    progressMessage.textContent = 'Error starting sync';
-  });
+    lastProgressPercent = 0;
+    lastProgressTime = null;
+  }
+
+  // Start the sync task
+  function startSync() {
+    syncStartTime = Date.now();
+    lastProgressTime = Date.now();
+
+    fetch(config.startUrl, {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': config.csrfToken,
+        'Content-Type': 'application/json'
+      }
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.task_id) {
+        currentTaskId = data.task_id;
+        // Poll for progress using celery-progress
+        const progressUrl = '/celery-progress/' + data.task_id + '/';
+        isPolling = true;
+        pollProgress(progressUrl);
+      } else if (data.error) {
+        showErrorState(data.error);
+      } else {
+        showErrorState('Failed to start sync. Please try again.');
+      }
+    })
+    .catch(error => {
+      console.error('Error starting sync:', error);
+      showErrorState('Error starting sync. Please check your connection.');
+    });
+  }
 
   function pollProgress(url) {
+    if (!isPolling) return;
+
     fetch(url)
       .then(response => response.json())
       .then(data => {
+        if (!isPolling) return;
+
+        // Check for task failure
+        if (data.state === 'FAILURE' || data.state === 'REVOKED') {
+          showErrorState('Sync task failed. ' + (data.result?.error || 'Please try again.'));
+          return;
+        }
+
         if (data.complete) {
           // Sync complete
+          isPolling = false;
           progressBar.style.width = '100%';
           progressPercent.textContent = '100%';
           progressMessage.textContent = data.result?.message || 'Sync complete!';
@@ -188,7 +278,8 @@ document.addEventListener('DOMContentLoaded', function() {
           syncComplete.classList.remove('hidden');
 
           // Stop the spinner
-          document.querySelector('.fa-sync').classList.remove('fa-spin');
+          const syncIcon = document.querySelector('.fa-sync');
+          if (syncIcon) syncIcon.classList.remove('fa-spin');
         } else if (data.progress) {
           // Update progress
           const percent = Math.round((data.progress.current / data.progress.total) * 100);
@@ -199,19 +290,47 @@ document.addEventListener('DOMContentLoaded', function() {
             progressMessage.textContent = data.progress.description;
           }
 
+          // Track progress changes for stall detection
+          if (percent > lastProgressPercent) {
+            lastProgressPercent = percent;
+            lastProgressTime = Date.now();
+          }
+
+          // Check for stall (no progress for stallTimeoutMs)
+          if (lastProgressTime && (Date.now() - lastProgressTime > stallTimeoutMs)) {
+            showErrorState('Sync appears to be stuck. No progress in ' + Math.round(stallTimeoutMs/1000) + ' seconds.');
+            return;
+          }
+
           // Continue polling
           setTimeout(() => pollProgress(url), 1000);
         } else {
-          // No progress yet, keep polling
+          // No progress yet - could be pending or task not started
+          // Check for stall from initial state
+          if (lastProgressTime && (Date.now() - lastProgressTime > stallTimeoutMs)) {
+            showErrorState('Sync task may not have started. Please try again.');
+            return;
+          }
+
+          // Keep polling
           setTimeout(() => pollProgress(url), 1000);
         }
       })
       .catch(error => {
         console.error('Error polling progress:', error);
-        // Retry after a delay
+        // Retry after a delay (network issues)
         setTimeout(() => pollProgress(url), 2000);
       });
   }
+
+  // Retry button handler
+  retrySyncBtn.addEventListener('click', function() {
+    resetUIForRetry();
+    startSync();
+  });
+
+  // Initial sync start
+  startSync();
 });
 </script>
 {% endblock %}

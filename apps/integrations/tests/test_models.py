@@ -1159,6 +1159,186 @@ class TestTrackedJiraProjectModel(TestCase):
         self.assertNotIn(project1, projects)
 
 
+class TestGitHubIntegrationMemberSyncFields(TestCase):
+    """Tests for GitHubIntegration member sync fields.
+
+    These fields track the status and results of member synchronization
+    from GitHub org to TeamMember records.
+    """
+
+    def setUp(self):
+        """Set up test fixtures using factories."""
+        self.team = TeamFactory()
+        self.credential = IntegrationCredentialFactory(
+            team=self.team,
+            provider=IntegrationCredential.PROVIDER_GITHUB,
+        )
+
+    def tearDown(self):
+        """Clean up team context."""
+        unset_current_team()
+
+    def test_member_sync_status_field_exists(self):
+        """Test that member_sync_status field exists on GitHubIntegration."""
+        integration = GitHubIntegrationFactory(
+            team=self.team,
+            credential=self.credential,
+        )
+
+        # Access the field to verify it exists
+        self.assertTrue(hasattr(integration, "member_sync_status"))
+
+    def test_member_sync_status_default_value(self):
+        """Test that member_sync_status defaults to 'pending'."""
+        integration = GitHubIntegrationFactory(
+            team=self.team,
+            credential=self.credential,
+        )
+
+        self.assertEqual(integration.member_sync_status, "pending")
+
+    def test_member_sync_status_choices(self):
+        """Test that member_sync_status accepts valid sync status choices."""
+        statuses = ["pending", "syncing", "complete", "error"]
+
+        for status in statuses:
+            team = TeamFactory()
+            integration = GitHubIntegrationFactory(
+                team=team,
+                credential=IntegrationCredentialFactory(
+                    team=team,
+                    provider=IntegrationCredential.PROVIDER_GITHUB,
+                ),
+                member_sync_status=status,
+            )
+            self.assertEqual(integration.member_sync_status, status)
+
+    def test_member_sync_started_at_field_exists(self):
+        """Test that member_sync_started_at field exists on GitHubIntegration."""
+        integration = GitHubIntegrationFactory(
+            team=self.team,
+            credential=self.credential,
+        )
+
+        # Access the field to verify it exists
+        self.assertTrue(hasattr(integration, "member_sync_started_at"))
+
+    def test_member_sync_started_at_default_is_null(self):
+        """Test that member_sync_started_at defaults to null."""
+        integration = GitHubIntegrationFactory(
+            team=self.team,
+            credential=self.credential,
+        )
+
+        self.assertIsNone(integration.member_sync_started_at)
+
+    def test_member_sync_started_at_can_be_set(self):
+        """Test that member_sync_started_at can be set to a datetime."""
+        sync_time = timezone.now()
+        integration = GitHubIntegrationFactory(
+            team=self.team,
+            credential=self.credential,
+            member_sync_started_at=sync_time,
+        )
+
+        self.assertEqual(integration.member_sync_started_at, sync_time)
+
+    def test_member_sync_completed_at_field_exists(self):
+        """Test that member_sync_completed_at field exists on GitHubIntegration."""
+        integration = GitHubIntegrationFactory(
+            team=self.team,
+            credential=self.credential,
+        )
+
+        # Access the field to verify it exists
+        self.assertTrue(hasattr(integration, "member_sync_completed_at"))
+
+    def test_member_sync_completed_at_default_is_null(self):
+        """Test that member_sync_completed_at defaults to null."""
+        integration = GitHubIntegrationFactory(
+            team=self.team,
+            credential=self.credential,
+        )
+
+        self.assertIsNone(integration.member_sync_completed_at)
+
+    def test_member_sync_completed_at_can_be_set(self):
+        """Test that member_sync_completed_at can be set to a datetime."""
+        sync_time = timezone.now()
+        integration = GitHubIntegrationFactory(
+            team=self.team,
+            credential=self.credential,
+            member_sync_completed_at=sync_time,
+        )
+
+        self.assertEqual(integration.member_sync_completed_at, sync_time)
+
+    def test_member_sync_error_field_exists(self):
+        """Test that member_sync_error field exists on GitHubIntegration."""
+        integration = GitHubIntegrationFactory(
+            team=self.team,
+            credential=self.credential,
+        )
+
+        # Access the field to verify it exists
+        self.assertTrue(hasattr(integration, "member_sync_error"))
+
+    def test_member_sync_error_default_is_blank(self):
+        """Test that member_sync_error defaults to empty string."""
+        integration = GitHubIntegrationFactory(
+            team=self.team,
+            credential=self.credential,
+        )
+
+        self.assertEqual(integration.member_sync_error, "")
+
+    def test_member_sync_error_can_store_error_message(self):
+        """Test that member_sync_error can store an error message."""
+        error_message = "Failed to fetch org members: API rate limit exceeded"
+        integration = GitHubIntegrationFactory(
+            team=self.team,
+            credential=self.credential,
+            member_sync_error=error_message,
+        )
+
+        self.assertEqual(integration.member_sync_error, error_message)
+
+    def test_member_sync_result_field_exists(self):
+        """Test that member_sync_result field exists on GitHubIntegration."""
+        integration = GitHubIntegrationFactory(
+            team=self.team,
+            credential=self.credential,
+        )
+
+        # Access the field to verify it exists
+        self.assertTrue(hasattr(integration, "member_sync_result"))
+
+    def test_member_sync_result_default_is_null(self):
+        """Test that member_sync_result defaults to null."""
+        integration = GitHubIntegrationFactory(
+            team=self.team,
+            credential=self.credential,
+        )
+
+        self.assertIsNone(integration.member_sync_result)
+
+    def test_member_sync_result_can_store_json_data(self):
+        """Test that member_sync_result can store JSON sync result data."""
+        result_data = {
+            "members_created": 5,
+            "members_updated": 3,
+            "members_skipped": 1,
+            "total_fetched": 9,
+        }
+        integration = GitHubIntegrationFactory(
+            team=self.team,
+            credential=self.credential,
+            member_sync_result=result_data,
+        )
+
+        self.assertEqual(integration.member_sync_result, result_data)
+
+
 class TestSlackIntegrationModel(TestCase):
     """Tests for SlackIntegration model."""
 

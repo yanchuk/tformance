@@ -100,7 +100,7 @@ class IntegrationsHomeViewTest(TestCase):
         from apps.integrations.factories import TrackedRepositoryFactory
 
         # Create a GitHub integration for the team
-        integration = GitHubIntegrationFactory(team=self.team)
+        GitHubIntegrationFactory(team=self.team)
 
         # Create some tracked repositories
         TrackedRepositoryFactory(team=self.team, integration=integration)
@@ -272,7 +272,7 @@ class GitHubDisconnectViewTest(TestCase):
     def test_github_disconnect_deletes_github_integration(self):
         """Test that github_disconnect deletes the GitHubIntegration."""
         # Create integration
-        integration = GitHubIntegrationFactory(team=self.team)
+        GitHubIntegrationFactory(team=self.team)
         self.client.force_login(self.admin)
 
         self.client.post(reverse("integrations:github_disconnect"))
@@ -283,7 +283,7 @@ class GitHubDisconnectViewTest(TestCase):
     def test_github_disconnect_deletes_integration_credential(self):
         """Test that github_disconnect deletes the IntegrationCredential."""
         # Create integration with credential
-        integration = GitHubIntegrationFactory(team=self.team)
+        GitHubIntegrationFactory(team=self.team)
         credential = integration.credential
         self.client.force_login(self.admin)
 
@@ -420,9 +420,62 @@ class GitHubMembersViewTest(TestCase):
 
         self.assertEqual(response.status_code, 200)
 
+    def test_github_members_page_contains_member_sync_status_target_element(self):
+        """Test that github_members page contains #member-sync-status target element for HTMX swap."""
+        # Create GitHub integration
+        GitHubIntegrationFactory(team=self.team)
+
+        self.client.force_login(self.admin)
+
+        response = self.client.get(reverse("integrations:github_members"))
+
+        self.assertEqual(response.status_code, 200)
+        # Should contain a target element with id="member-sync-status"
+        self.assertContains(response, 'id="member-sync-status"')
+
+    def test_github_members_sync_button_has_hx_post_attribute(self):
+        """Test that Sync Now button has hx-post attribute pointing to sync URL."""
+        # Create GitHub integration
+        GitHubIntegrationFactory(team=self.team)
+
+        self.client.force_login(self.admin)
+
+        response = self.client.get(reverse("integrations:github_members"))
+
+        self.assertEqual(response.status_code, 200)
+        # Should contain hx-post pointing to the sync URL
+        expected_url = reverse("integrations:github_members_sync")
+        self.assertContains(response, f'hx-post="{expected_url}"')
+
+    def test_github_members_sync_button_has_hx_target_attribute(self):
+        """Test that Sync Now button has hx-target="#member-sync-status" attribute."""
+        # Create GitHub integration
+        GitHubIntegrationFactory(team=self.team)
+
+        self.client.force_login(self.admin)
+
+        response = self.client.get(reverse("integrations:github_members"))
+
+        self.assertEqual(response.status_code, 200)
+        # Should contain hx-target pointing to the status element
+        self.assertContains(response, 'hx-target="#member-sync-status"')
+
+    def test_github_members_sync_button_has_hx_swap_attribute(self):
+        """Test that Sync Now button has hx-swap="outerHTML" attribute."""
+        # Create GitHub integration
+        GitHubIntegrationFactory(team=self.team)
+
+        self.client.force_login(self.admin)
+
+        response = self.client.get(reverse("integrations:github_members"))
+
+        self.assertEqual(response.status_code, 200)
+        # Should contain hx-swap="outerHTML"
+        self.assertContains(response, 'hx-swap="outerHTML"')
+
 
 class GitHubMembersSyncViewTest(TestCase):
-    """Tests for github_members_sync view (trigger manual member re-sync)."""
+    """Tests for github_members_sync view (trigger manual member re-sync via Celery task)."""
 
     def setUp(self):
         """Set up test fixtures using factories."""
@@ -469,45 +522,82 @@ class GitHubMembersSyncViewTest(TestCase):
 
         self.assertEqual(response.status_code, 404)
 
-    @patch("apps.integrations.services.member_sync.sync_github_members")
-    def test_github_members_sync_triggers_sync_and_shows_results(self, mock_sync):
-        """Test that github_members_sync triggers sync_github_members and shows results message."""
-        # Create GitHub integration
-        integration = GitHubIntegrationFactory(team=self.team)
-
-        # Mock sync result
-        mock_sync.return_value = {"created": 3, "updated": 2, "unchanged": 5, "failed": 0}
-
-        self.client.force_login(self.admin)
-
-        response = self.client.post(reverse("integrations:github_members_sync"), follow=True)
-
-        # Verify sync was called with correct arguments
-        mock_sync.assert_called_once()
-        call_args = mock_sync.call_args[0]
-        self.assertEqual(call_args[0], self.team)
-        self.assertEqual(call_args[2], integration.organization_slug)
-
-        # Verify success message includes counts
-        messages = list(get_messages(response.wsgi_request))
-        self.assertTrue(any("3" in str(m) and "created" in str(m).lower() for m in messages))
-
-    @patch("apps.integrations.services.member_sync.sync_github_members")
-    def test_github_members_sync_redirects_back_to_members_page(self, mock_sync):
-        """Test that github_members_sync redirects back to members page after sync."""
+    @patch("apps.integrations.tasks.sync_github_members_task.delay")
+    def test_github_members_sync_queues_celery_task(self, mock_task_delay):
+        """Test that github_members_sync queues sync_github_members_task.delay() with integration.id."""
         # Create GitHub integration
         GitHubIntegrationFactory(team=self.team)
 
-        # Mock sync result
-        mock_sync.return_value = {"created": 0, "updated": 0, "unchanged": 5, "failed": 0}
+        self.client.force_login(self.admin)
+
+        self.client.post(reverse("integrations:github_members_sync"))
+
+        # Verify task was queued with integration.id
+        mock_task_delay.assert_called_once_with(integration.id)
+
+    @patch("apps.integrations.tasks.sync_github_members_task.delay")
+    def test_github_members_sync_sets_member_sync_status_to_syncing(self, mock_task_delay):
+        """Test that github_members_sync sets member_sync_status to 'syncing' immediately."""
+        # Create GitHub integration
+        GitHubIntegrationFactory(team=self.team)
+        self.assertEqual(integration.member_sync_status, "pending")
+
+        self.client.force_login(self.admin)
+
+        self.client.post(reverse("integrations:github_members_sync"))
+
+        # Refresh from DB
+        integration.refresh_from_db()
+
+        # Status should be set to syncing
+        self.assertEqual(integration.member_sync_status, "syncing")
+
+    @patch("apps.integrations.tasks.sync_github_members_task.delay")
+    def test_github_members_sync_sets_member_sync_started_at(self, mock_task_delay):
+        """Test that github_members_sync sets member_sync_started_at timestamp immediately."""
+        # Create GitHub integration
+        GitHubIntegrationFactory(team=self.team)
+        self.assertIsNone(integration.member_sync_started_at)
+
+        self.client.force_login(self.admin)
+
+        self.client.post(reverse("integrations:github_members_sync"))
+
+        # Refresh from DB
+        integration.refresh_from_db()
+
+        # member_sync_started_at should be set
+        self.assertIsNotNone(integration.member_sync_started_at)
+
+    @patch("apps.integrations.tasks.sync_github_members_task.delay")
+    def test_github_members_sync_returns_http_200(self, mock_task_delay):
+        """Test that github_members_sync returns HTTP 200 (not redirect)."""
+        # Create GitHub integration
+        GitHubIntegrationFactory(team=self.team)
 
         self.client.force_login(self.admin)
 
         response = self.client.post(reverse("integrations:github_members_sync"))
 
-        # Should redirect to github_members page
-        self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, reverse("integrations:github_members"))
+        # Should return 200, not 302 redirect
+        self.assertEqual(response.status_code, 200)
+
+    @patch("apps.integrations.tasks.sync_github_members_task.delay")
+    def test_github_members_sync_returns_html_partial_with_syncing_text(self, mock_task_delay):
+        """Test that github_members_sync returns HTML partial containing 'Syncing' text."""
+        # Create GitHub integration
+        GitHubIntegrationFactory(team=self.team)
+
+        self.client.force_login(self.admin)
+
+        response = self.client.post(reverse("integrations:github_members_sync"))
+
+        # Should return HTML content
+        self.assertEqual(response["Content-Type"], "text/html; charset=utf-8")
+
+        # Should contain "Syncing" text in the response
+        content = response.content.decode()
+        self.assertIn("Syncing", content)
 
 
 class GitHubMemberToggleViewTest(TestCase):
@@ -819,7 +909,7 @@ class GitHubReposViewTest(TestCase):
         from apps.integrations.factories import TrackedRepositoryFactory
 
         # Create GitHub integration
-        integration = GitHubIntegrationFactory(team=self.team, organization_slug="acme-corp")
+        GitHubIntegrationFactory(team=self.team, organization_slug="acme-corp")
 
         # Create tracked repository
         TrackedRepositoryFactory(
@@ -910,7 +1000,7 @@ class GitHubReposViewTest(TestCase):
         from apps.integrations.factories import TrackedRepositoryFactory
 
         # Create GitHub integration
-        integration = GitHubIntegrationFactory(team=self.team, organization_slug="acme-corp")
+        GitHubIntegrationFactory(team=self.team, organization_slug="acme-corp")
 
         # Create a tracked repo with last_sync_at set and sync_status="complete"
         sync_time = timezone.now()
@@ -944,7 +1034,7 @@ class GitHubReposViewTest(TestCase):
         from apps.integrations.factories import TrackedRepositoryFactory
 
         # Create GitHub integration
-        integration = GitHubIntegrationFactory(team=self.team, organization_slug="acme-corp")
+        GitHubIntegrationFactory(team=self.team, organization_slug="acme-corp")
 
         # Create a tracked repo WITHOUT last_sync_at
         TrackedRepositoryFactory(
@@ -976,7 +1066,7 @@ class GitHubReposViewTest(TestCase):
         from apps.integrations.factories import TrackedRepositoryFactory
 
         # Create GitHub integration
-        integration = GitHubIntegrationFactory(team=self.team, organization_slug="acme-corp")
+        GitHubIntegrationFactory(team=self.team, organization_slug="acme-corp")
 
         # Create a tracked repo
         tracked_repo = TrackedRepositoryFactory(
@@ -1039,7 +1129,7 @@ class GitHubRepoToggleViewTest(TestCase):
         self.member = UserFactory()
         self.team.members.add(self.admin, through_defaults={"role": ROLE_ADMIN})
         self.team.members.add(self.member, through_defaults={"role": ROLE_MEMBER})
-        self.integration = GitHubIntegrationFactory(team=self.team)
+        self.GitHubIntegrationFactory(team=self.team)
         self.client = Client()
 
     def test_github_repo_toggle_requires_post_method(self):
@@ -1195,7 +1285,7 @@ class GitHubReposWebhookStatusViewTest(TestCase):
         self.team = TeamFactory()
         self.admin = UserFactory()
         self.team.members.add(self.admin, through_defaults={"role": ROLE_ADMIN})
-        self.integration = GitHubIntegrationFactory(team=self.team, organization_slug="acme-corp")
+        self.GitHubIntegrationFactory(team=self.team, organization_slug="acme-corp")
         self.client = Client()
 
     @patch("apps.integrations.services.github_oauth.get_organization_repositories")
@@ -1265,7 +1355,7 @@ class GitHubRepoToggleWebhookIntegrationTest(TestCase):
         self.team = TeamFactory()
         self.admin = UserFactory()
         self.team.members.add(self.admin, through_defaults={"role": ROLE_ADMIN})
-        self.integration = GitHubIntegrationFactory(team=self.team, organization_slug="acme-corp")
+        self.GitHubIntegrationFactory(team=self.team, organization_slug="acme-corp")
         self.client = Client()
 
     @patch("apps.integrations.tasks.sync_repository_initial_task")
@@ -1491,7 +1581,7 @@ class GitHubRepoSyncViewTest(TestCase):
         self.member = UserFactory()
         self.team.members.add(self.admin, through_defaults={"role": ROLE_ADMIN})
         self.team.members.add(self.member, through_defaults={"role": ROLE_MEMBER})
-        self.integration = GitHubIntegrationFactory(team=self.team, organization_slug="acme-corp")
+        self.GitHubIntegrationFactory(team=self.team, organization_slug="acme-corp")
         self.tracked_repo = TrackedRepositoryFactory(
             team=self.team, integration=self.integration, github_repo_id=12345, full_name="acme-corp/test-repo"
         )
@@ -1641,3 +1731,150 @@ class TestCopilotSettings(TestCase):
 
         # Should return 404 or redirect with error
         self.assertIn(response.status_code, [404, 302])
+
+
+class TestSyncGitHubMembersAfterConnectionHelper(TestCase):
+    """Tests for _sync_github_members_after_connection helper function.
+
+    This helper is called from github_select_org view after organization selection
+    to queue a Celery task for syncing GitHub members.
+    """
+
+    def setUp(self):
+        """Set up test fixtures using factories."""
+        self.team = TeamFactory()
+
+    @patch("apps.integrations.tasks.sync_github_members_task.delay")
+    def test_helper_queues_celery_task_with_integration_id(self, mock_task_delay):
+        """Test helper queues sync_github_members_task.delay() with integration.id."""
+        from apps.integrations.views.helpers import _sync_github_members_after_connection
+
+        # Create GitHub integration for the team
+        GitHubIntegrationFactory(team=self.team, organization_slug="test-org")
+
+        # Call the helper
+        _sync_github_members_after_connection(self.team)
+
+        # Verify task was queued with integration.id
+        mock_task_delay.assert_called_once_with(integration.id)
+
+    @patch("apps.integrations.tasks.sync_github_members_task.delay")
+    def test_helper_returns_true_when_task_queued(self, mock_task_delay):
+        """Test helper returns True when task is successfully queued."""
+        from apps.integrations.views.helpers import _sync_github_members_after_connection
+
+        # Create GitHub integration for the team
+        GitHubIntegrationFactory(team=self.team, organization_slug="test-org")
+
+        # Call the helper
+        result = _sync_github_members_after_connection(self.team)
+
+        # Helper should return True since task was queued
+        self.assertTrue(result)
+
+        # Task should have been queued with integration.id
+        mock_task_delay.assert_called_once_with(integration.id)
+
+    def test_helper_handles_missing_github_integration_gracefully(self):
+        """Test helper returns False when GitHubIntegration does not exist."""
+        from apps.integrations.views.helpers import _sync_github_members_after_connection
+
+        # No GitHubIntegration created for the team
+
+        # Call the helper - should not raise exception
+        result = _sync_github_members_after_connection(self.team)
+
+        # Should return False gracefully
+        self.assertFalse(result)
+
+
+class GitHubMembersSyncProgressViewTest(TestCase):
+    """Tests for github_members_sync_progress view (HTMX polling endpoint for member sync status)."""
+
+    def setUp(self):
+        """Set up test fixtures using factories."""
+        self.team = TeamFactory()
+        self.admin = UserFactory()
+        self.member = UserFactory()
+        self.team.members.add(self.admin, through_defaults={"role": ROLE_ADMIN})
+        self.team.members.add(self.member, through_defaults={"role": ROLE_MEMBER})
+        self.client = Client()
+
+    def test_github_members_sync_progress_requires_login(self):
+        """Test that github_members_sync_progress redirects to login if user is not authenticated."""
+        response = self.client.get(reverse("integrations:github_members_sync_progress"))
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/accounts/login/", response.url)
+
+    def test_github_members_sync_progress_requires_team_membership(self):
+        """Test that github_members_sync_progress returns 404 if user is not a team member."""
+        # Create GitHub integration for our team
+        GitHubIntegrationFactory(team=self.team)
+
+        # Login as a non-member
+        non_member = UserFactory()
+        self.client.force_login(non_member)
+
+        response = self.client.get(reverse("integrations:github_members_sync_progress"))
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_github_members_sync_progress_returns_http_200(self):
+        """Test that github_members_sync_progress returns HTTP 200 for authenticated team members."""
+        # Create GitHub integration
+        GitHubIntegrationFactory(team=self.team)
+
+        self.client.force_login(self.member)
+
+        response = self.client.get(reverse("integrations:github_members_sync_progress"))
+
+        self.assertEqual(response.status_code, 200)
+
+    def test_github_members_sync_progress_returns_html_with_sync_status(self):
+        """Test that github_members_sync_progress returns HTML with current sync status."""
+        # Create GitHub integration with syncing status
+        GitHubIntegrationFactory(team=self.team, member_sync_status="syncing")
+
+        self.client.force_login(self.member)
+
+        response = self.client.get(reverse("integrations:github_members_sync_progress"))
+
+        # Should return HTML content
+        self.assertEqual(response["Content-Type"], "text/html; charset=utf-8")
+
+        # Should contain sync status text
+        content = response.content.decode()
+        self.assertIn("Syncing", content)
+
+    def test_github_members_sync_progress_includes_htmx_polling_when_syncing(self):
+        """Test that when status is 'syncing', HTML includes HTMX polling attributes."""
+        # Create GitHub integration with syncing status
+        GitHubIntegrationFactory(team=self.team, member_sync_status="syncing")
+
+        self.client.force_login(self.member)
+
+        response = self.client.get(reverse("integrations:github_members_sync_progress"))
+
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode()
+
+        # Should include HTMX polling attributes
+        self.assertIn("hx-get", content)
+        self.assertIn("hx-trigger", content)
+
+    def test_github_members_sync_progress_excludes_htmx_polling_when_complete(self):
+        """Test that when status is 'complete', HTML does NOT include HTMX polling attributes."""
+        # Create GitHub integration with complete status
+        GitHubIntegrationFactory(team=self.team, member_sync_status="complete")
+
+        self.client.force_login(self.member)
+
+        response = self.client.get(reverse("integrations:github_members_sync_progress"))
+
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode()
+
+        # Should NOT include HTMX polling attributes (sync is done)
+        self.assertNotIn("hx-get", content)
+        self.assertNotIn("hx-trigger", content)

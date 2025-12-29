@@ -8,7 +8,7 @@ from django.shortcuts import redirect, render
 from django.urls import reverse
 
 from apps.integrations.models import GitHubIntegration, IntegrationCredential
-from apps.integrations.services import github_oauth, member_sync
+from apps.integrations.services import github_oauth
 from apps.integrations.services.github_oauth import GitHubOAuthError
 from apps.teams.decorators import login_and_team_required, team_admin_required
 
@@ -132,10 +132,10 @@ def github_select_org(request):
         org_data = {"login": organization_slug, "id": int(organization_id)}
         _create_github_integration(team, credential, org_data)
 
-        # Sync members from GitHub (EncryptedTextField auto-decrypts)
-        member_count = _sync_github_members_after_connection(team, credential.access_token, organization_slug)
+        # Queue async member sync task
+        _sync_github_members_after_connection(team)
 
-        messages.success(request, f"Connected to {organization_slug}. Imported {member_count} members.")
+        messages.success(request, f"Connected to {organization_slug}. Members syncing in background.")
         return redirect("integrations:integrations_home")
 
     # GET request - show organization selection form
@@ -172,7 +172,7 @@ def github_members(request):
 
     # Check if GitHub integration exists
     try:
-        GitHubIntegration.objects.get(team=team)
+        integration = GitHubIntegration.objects.get(team=team)
     except GitHubIntegration.DoesNotExist:
         messages.error(request, "Please connect GitHub first.")
         return redirect("integrations:integrations_home")
@@ -182,6 +182,7 @@ def github_members(request):
 
     context = {
         "members": members,
+        "integration": integration,
     }
 
     return render(request, "integrations/github_members.html", context)
@@ -191,7 +192,8 @@ def github_members(request):
 def github_members_sync(request):
     """Trigger manual re-sync of GitHub members.
 
-    Re-imports team members from the connected GitHub organization.
+    Queues an async Celery task and returns the progress partial immediately
+    so the user sees feedback. HTMX polling will show progress updates.
 
     Requires team admin role and POST method.
 
@@ -200,8 +202,12 @@ def github_members_sync(request):
         team_slug: The slug of the team to sync members for.
 
     Returns:
-        HttpResponse redirecting to github_members with success message.
+        HttpResponse with member sync progress partial (for HTMX swap).
     """
+    from django.utils import timezone
+
+    from apps.integrations.tasks import sync_github_members_task
+
     # Require POST method
     if request.method != "POST":
         return HttpResponseNotAllowed(["POST"])
@@ -215,24 +221,17 @@ def github_members_sync(request):
         messages.error(request, "GitHub integration not found. Please connect GitHub first.")
         return redirect("integrations:integrations_home")
 
-    # Call sync service (EncryptedTextField auto-decrypts access_token)
-    try:
-        result = member_sync.sync_github_members(
-            team, integration.credential.access_token, integration.organization_slug
-        )
-    except Exception as e:
-        logger.error(f"Failed to sync GitHub members for team {team.slug}: {e}")
-        messages.error(request, "Failed to sync GitHub members. Please try again.")
-        return redirect("integrations:github_members")
+    # Set status to syncing immediately (so HTMX polling sees it)
+    integration.member_sync_status = "syncing"
+    integration.member_sync_started_at = timezone.now()
+    integration.save(update_fields=["member_sync_status", "member_sync_started_at"])
 
-    # Show success message with results
-    msg = (
-        f"Synced GitHub members: {result['created']} created, "
-        f"{result['updated']} updated, {result['unchanged']} unchanged."
-    )
-    messages.success(request, msg)
+    # Queue async task (non-blocking)
+    sync_github_members_task.delay(integration.id)
+    logger.info(f"Queued member sync task for team: {team.slug}")
 
-    return redirect("integrations:github_members")
+    # Return progress partial for HTMX swap
+    return render(request, "integrations/partials/member_sync_progress.html", {"integration": integration})
 
 
 @team_admin_required
@@ -519,3 +518,25 @@ def github_repo_sync_progress(request, repo_id):
 
     tracked_repo = get_object_or_404(TrackedRepository, id=repo_id, team=request.team)
     return render(request, "integrations/partials/sync_progress.html", {"repo": tracked_repo})
+
+
+@login_and_team_required
+def github_members_sync_progress(request):
+    """Return member sync progress partial for HTMX polling.
+
+    Args:
+        request: The HTTP request object.
+        team_slug: The slug of the team.
+
+    Returns:
+        HttpResponse with member sync progress partial template.
+    """
+    team = request.team
+
+    # Get GitHub integration
+    try:
+        integration = GitHubIntegration.objects.get(team=team)
+    except GitHubIntegration.DoesNotExist:
+        return HttpResponseNotFound("GitHub integration not found")
+
+    return render(request, "integrations/partials/member_sync_progress.html", {"integration": integration})

@@ -206,7 +206,10 @@ class RepoSearchFilterTests(TestCase):
         self.client.login(username="search@example.com", password="testpassword123")
 
     def test_repo_selection_has_search_input(self):
-        """Test that repository selection page has a search input."""
+        """Test that repository selection page has a search input when 6+ repos.
+
+        NOTE: Search input is now loaded via HTMX from fetch_repos endpoint.
+        """
         # Store repos in session (simulating post-OAuth state)
         session = self.client.session
         session["onboarding_github_orgs"] = [{"login": "test-org", "id": 123}]
@@ -227,7 +230,8 @@ class RepoSearchFilterTests(TestCase):
                 {"id": 6, "name": "repo-zeta", "private": False, "language": "Ruby"},
             ]
 
-            response = self.client.get(reverse("onboarding:select_repos"))
+            # Test the HTMX fetch_repos endpoint where search is rendered
+            response = self.client.get(reverse("onboarding:fetch_repos"))
 
         self.assertEqual(response.status_code, 200)
         content = response.content.decode()

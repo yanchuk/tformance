@@ -17,6 +17,12 @@ from apps.integrations.services.github_oauth import (
     get_user_organizations,
     verify_oauth_state,
 )
+
+# Import get_user_primary_email - will fail until implemented (TDD RED phase)
+try:
+    from apps.integrations.services.github_oauth import get_user_primary_email
+except ImportError:
+    get_user_primary_email = None  # Will cause test failures with clear error
 from apps.metrics.factories import TeamFactory
 
 
@@ -35,6 +41,15 @@ class TestGitHubOAuthScopes(TestCase):
         for scope in required_scopes:
             with self.subTest(scope=scope):
                 self.assertIn(scope, GITHUB_OAUTH_SCOPES, f"Missing required scope: {scope}")
+
+    def test_github_oauth_scopes_includes_user_email(self):
+        """Test that GITHUB_OAUTH_SCOPES constant includes user:email scope.
+
+        This scope is required to access the user's email addresses via the
+        /user/emails endpoint, which provides verified email addresses even
+        when the user has set their email to private.
+        """
+        self.assertIn("user:email", GITHUB_OAUTH_SCOPES)
 
 
 class TestOAuthStateGeneration(TestCase):
@@ -1185,3 +1200,147 @@ class TestGetOrganizationRepositories(TestCase):
         self.assertEqual(result[0]["name"], "active-repo")
         self.assertEqual(result[1]["name"], "archived-repo")
         self.assertTrue(result[1]["archived"])
+
+
+@override_settings(
+    GITHUB_CLIENT_ID="test_client_id_123",
+    GITHUB_SECRET_ID="test_client_secret_456",
+)
+class TestGetUserPrimaryEmail(TestCase):
+    """Tests for fetching user's primary email from GitHub API."""
+
+    @patch("apps.integrations.services.github_oauth.Github")
+    def test_get_user_primary_email_returns_primary_verified_email(self, mock_github_class):
+        """Test that get_user_primary_email returns the primary verified email when available."""
+        # Mock Github instance
+        mock_github = MagicMock()
+        mock_github_class.return_value = mock_github
+
+        # Create mock user
+        mock_user = MagicMock()
+        mock_github.get_user.return_value = mock_user
+
+        # Create mock email objects with primary verified email
+        mock_email1 = MagicMock()
+        mock_email1.email = "primary@example.com"
+        mock_email1.primary = True
+        mock_email1.verified = True
+
+        mock_email2 = MagicMock()
+        mock_email2.email = "secondary@example.com"
+        mock_email2.primary = False
+        mock_email2.verified = True
+
+        mock_user.get_emails.return_value = [mock_email1, mock_email2]
+
+        access_token = "gho_test_token"
+
+        result = get_user_primary_email(access_token)
+
+        self.assertEqual(result, "primary@example.com")
+
+        # Verify Github was initialized with the access token
+        mock_github_class.assert_called_once_with(access_token)
+        # Verify get_user() was called with no arguments (gets authenticated user)
+        mock_github.get_user.assert_called_once_with()
+        # Verify get_emails() was called
+        mock_user.get_emails.assert_called_once()
+
+    @patch("apps.integrations.services.github_oauth.Github")
+    def test_get_user_primary_email_falls_back_to_first_verified_email(self, mock_github_class):
+        """Test that get_user_primary_email returns first verified email when no primary exists."""
+        # Mock Github instance
+        mock_github = MagicMock()
+        mock_github_class.return_value = mock_github
+
+        # Create mock user
+        mock_user = MagicMock()
+        mock_github.get_user.return_value = mock_user
+
+        # Create mock email objects - no primary, but verified exists
+        mock_email1 = MagicMock()
+        mock_email1.email = "first@example.com"
+        mock_email1.primary = False
+        mock_email1.verified = True
+
+        mock_email2 = MagicMock()
+        mock_email2.email = "second@example.com"
+        mock_email2.primary = False
+        mock_email2.verified = False
+
+        mock_user.get_emails.return_value = [mock_email1, mock_email2]
+
+        access_token = "gho_test_token"
+
+        result = get_user_primary_email(access_token)
+
+        # Should return the first verified email
+        self.assertEqual(result, "first@example.com")
+
+    @patch("apps.integrations.services.github_oauth.Github")
+    def test_get_user_primary_email_returns_none_when_no_verified_emails(self, mock_github_class):
+        """Test that get_user_primary_email returns None when all emails are unverified."""
+        # Mock Github instance
+        mock_github = MagicMock()
+        mock_github_class.return_value = mock_github
+
+        # Create mock user
+        mock_user = MagicMock()
+        mock_github.get_user.return_value = mock_user
+
+        # Create mock email objects - all unverified
+        mock_email1 = MagicMock()
+        mock_email1.email = "unverified@example.com"
+        mock_email1.primary = True
+        mock_email1.verified = False
+
+        mock_user.get_emails.return_value = [mock_email1]
+
+        access_token = "gho_test_token"
+
+        result = get_user_primary_email(access_token)
+
+        # Should return None since no verified emails exist
+        self.assertIsNone(result)
+
+    @patch("apps.integrations.services.github_oauth.Github")
+    def test_get_user_primary_email_returns_none_when_no_emails(self, mock_github_class):
+        """Test that get_user_primary_email returns None when user has no emails."""
+        # Mock Github instance
+        mock_github = MagicMock()
+        mock_github_class.return_value = mock_github
+
+        # Create mock user
+        mock_user = MagicMock()
+        mock_github.get_user.return_value = mock_user
+
+        # Empty email list
+        mock_user.get_emails.return_value = []
+
+        access_token = "gho_test_token"
+
+        result = get_user_primary_email(access_token)
+
+        # Should return None since no emails exist
+        self.assertIsNone(result)
+
+    @patch("apps.integrations.services.github_oauth.Github")
+    def test_get_user_primary_email_raises_error_on_api_failure(self, mock_github_class):
+        """Test that get_user_primary_email raises GitHubOAuthError on API failure."""
+        # Mock Github instance that raises exception
+        from github import GithubException
+
+        mock_github = MagicMock()
+        mock_github_class.return_value = mock_github
+
+        # Create mock user that raises exception on get_emails()
+        mock_user = MagicMock()
+        mock_github.get_user.return_value = mock_user
+        mock_user.get_emails.side_effect = GithubException(status=401, data={"message": "Bad credentials"})
+
+        access_token = "invalid_token"
+
+        with self.assertRaises(GitHubOAuthError) as context:
+            get_user_primary_email(access_token)
+
+        self.assertIn("401", str(context.exception))

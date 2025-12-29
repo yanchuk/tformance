@@ -1070,3 +1070,192 @@ class TestAggregateWeeklyMetricsTasks(TestCase):
 
         # Verify result contains count of teams processed (only 1)
         self.assertEqual(result, 1)
+
+
+class TestSyncGitHubMembersTaskStatusUpdates(TestCase):
+    """Tests for sync_github_members_task status field updates."""
+
+    def setUp(self):
+        """Set up test fixtures using factories."""
+        self.team = TeamFactory()
+        self.credential = IntegrationCredentialFactory(
+            team=self.team,
+            provider="github",
+            access_token="encrypted_token_12345",
+        )
+        self.integration = GitHubIntegrationFactory(
+            team=self.team,
+            credential=self.credential,
+            organization_slug="test-org",
+        )
+
+    @patch("apps.integrations.tasks._sync_members_with_graphql_or_rest")
+    def test_task_sets_member_sync_status_to_syncing_at_start(self, mock_sync):
+        """Test that task sets member_sync_status to 'syncing' at start."""
+        from apps.integrations.models import GitHubIntegration
+        from apps.integrations.tasks import sync_github_members_task
+
+        # Track status during sync
+        status_during_sync = []
+
+        def capture_status_during_sync(integration, org_slug):
+            # Get fresh status from database
+            db_integration = GitHubIntegration.objects.get(id=self.integration.id)
+            status_during_sync.append(db_integration.member_sync_status)
+            return {"created": 5, "updated": 3, "unchanged": 2, "failed": 0}
+
+        mock_sync.side_effect = capture_status_during_sync
+
+        # Verify initial status
+        self.assertEqual(self.integration.member_sync_status, "pending")
+
+        # Call the task
+        sync_github_members_task(self.integration.id)
+
+        # Verify mock was called
+        self.assertEqual(mock_sync.call_count, 1)
+
+        # Verify status was 'syncing' during the sync operation
+        self.assertEqual(len(status_during_sync), 1)
+        self.assertEqual(status_during_sync[0], "syncing")
+
+    @patch("apps.integrations.tasks._sync_members_with_graphql_or_rest")
+    def test_task_sets_member_sync_started_at_at_start(self, mock_sync):
+        """Test that task sets member_sync_started_at at start."""
+        from apps.integrations.models import GitHubIntegration
+        from apps.integrations.tasks import sync_github_members_task
+
+        # Track started_at during sync
+        started_at_during_sync = []
+
+        def capture_started_at_during_sync(integration, org_slug):
+            # Get fresh value from database
+            db_integration = GitHubIntegration.objects.get(id=self.integration.id)
+            started_at_during_sync.append(db_integration.member_sync_started_at)
+            return {"created": 5, "updated": 3, "unchanged": 2, "failed": 0}
+
+        mock_sync.side_effect = capture_started_at_during_sync
+
+        # Verify initial state
+        self.assertIsNone(self.integration.member_sync_started_at)
+
+        # Call the task
+        before_task = timezone.now()
+        sync_github_members_task(self.integration.id)
+        after_task = timezone.now()
+
+        # Verify mock was called
+        self.assertEqual(mock_sync.call_count, 1)
+
+        # Verify started_at was set during the sync operation
+        self.assertEqual(len(started_at_during_sync), 1)
+        self.assertIsNotNone(started_at_during_sync[0])
+        self.assertGreaterEqual(started_at_during_sync[0], before_task)
+        self.assertLessEqual(started_at_during_sync[0], after_task)
+
+    @patch("apps.integrations.tasks._sync_members_with_graphql_or_rest")
+    def test_task_sets_member_sync_status_to_complete_on_success(self, mock_sync):
+        """Test that task sets member_sync_status to 'complete' on successful sync."""
+        from apps.integrations.models import GitHubIntegration
+        from apps.integrations.tasks import sync_github_members_task
+
+        mock_sync.return_value = {"created": 5, "updated": 3, "unchanged": 2, "failed": 0}
+
+        # Verify initial status
+        self.assertEqual(self.integration.member_sync_status, "pending")
+
+        # Call the task
+        sync_github_members_task(self.integration.id)
+
+        # Reload from database and verify status is 'complete'
+        integration = GitHubIntegration.objects.get(id=self.integration.id)
+        self.assertEqual(integration.member_sync_status, "complete")
+
+    @patch("apps.integrations.tasks._sync_members_with_graphql_or_rest")
+    def test_task_sets_member_sync_completed_at_on_success(self, mock_sync):
+        """Test that task sets member_sync_completed_at on successful sync."""
+        from apps.integrations.models import GitHubIntegration
+        from apps.integrations.tasks import sync_github_members_task
+
+        mock_sync.return_value = {"created": 5, "updated": 3, "unchanged": 2, "failed": 0}
+
+        # Verify initial state
+        self.assertIsNone(self.integration.member_sync_completed_at)
+
+        # Call the task
+        before_task = timezone.now()
+        sync_github_members_task(self.integration.id)
+        after_task = timezone.now()
+
+        # Reload from database and verify completed_at is set
+        integration = GitHubIntegration.objects.get(id=self.integration.id)
+        self.assertIsNotNone(integration.member_sync_completed_at)
+        self.assertGreaterEqual(integration.member_sync_completed_at, before_task)
+        self.assertLessEqual(integration.member_sync_completed_at, after_task)
+
+    @patch("apps.integrations.tasks._sync_members_with_graphql_or_rest")
+    def test_task_stores_result_dict_in_member_sync_result_on_success(self, mock_sync):
+        """Test that task stores result dict in member_sync_result on success."""
+        from apps.integrations.models import GitHubIntegration
+        from apps.integrations.tasks import sync_github_members_task
+
+        expected_result = {"created": 5, "updated": 3, "unchanged": 2, "failed": 0}
+        mock_sync.return_value = expected_result
+
+        # Verify initial state
+        self.assertIsNone(self.integration.member_sync_result)
+
+        # Call the task
+        sync_github_members_task(self.integration.id)
+
+        # Reload from database and verify result is stored
+        integration = GitHubIntegration.objects.get(id=self.integration.id)
+        self.assertIsNotNone(integration.member_sync_result)
+        self.assertEqual(integration.member_sync_result, expected_result)
+
+    @patch("sentry_sdk.capture_exception")
+    @patch("apps.integrations.tasks._sync_members_with_graphql_or_rest")
+    def test_task_sets_member_sync_status_to_error_on_failure(self, mock_sync, mock_sentry):
+        """Test that task sets member_sync_status to 'error' on permanent failure."""
+        from apps.integrations.models import GitHubIntegration
+        from apps.integrations.tasks import sync_github_members_task
+
+        # Mock sync to raise an exception
+        mock_sync.side_effect = Exception("GitHub API error")
+
+        # Mock retry to simulate max retries exhausted
+        with patch.object(sync_github_members_task, "retry") as mock_retry:
+            mock_retry.side_effect = Exception("Max retries exceeded")
+
+            # Call the task
+            sync_github_members_task(self.integration.id)
+
+            # Reload from database and verify status is 'error'
+            integration = GitHubIntegration.objects.get(id=self.integration.id)
+            self.assertEqual(integration.member_sync_status, "error")
+
+    @patch("sentry_sdk.capture_exception")
+    @patch("apps.integrations.tasks._sync_members_with_graphql_or_rest")
+    def test_task_stores_error_message_in_member_sync_error_on_failure(self, mock_sync, mock_sentry):
+        """Test that task stores error message in member_sync_error on failure."""
+        from apps.integrations.models import GitHubIntegration
+        from apps.integrations.tasks import sync_github_members_task
+
+        # Mock sync to raise an exception
+        error_message = "GitHub API rate limit exceeded"
+        mock_sync.side_effect = Exception(error_message)
+
+        # Verify initial state
+        self.assertEqual(self.integration.member_sync_error, "")
+
+        # Mock retry to simulate max retries exhausted
+        with patch.object(sync_github_members_task, "retry") as mock_retry:
+            mock_retry.side_effect = Exception("Max retries exceeded")
+
+            # Call the task
+            sync_github_members_task(self.integration.id)
+
+            # Reload from database and verify error message is stored
+            integration = GitHubIntegration.objects.get(id=self.integration.id)
+            self.assertIsNotNone(integration.member_sync_error)
+            self.assertIn(error_message, integration.member_sync_error)

@@ -7,7 +7,7 @@ from django.contrib import messages
 from django.shortcuts import redirect
 
 from apps.integrations.models import GitHubIntegration, IntegrationCredential
-from apps.integrations.services import github_webhooks, member_sync
+from apps.integrations.services import github_webhooks
 from apps.integrations.services.github_oauth import GitHubOAuthError
 
 logger = logging.getLogger(__name__)
@@ -149,24 +149,25 @@ def _create_github_integration(team, credential, org):
     )
 
 
-def _sync_github_members_after_connection(team, access_token, org_slug):
-    """Sync GitHub organization members after connecting an integration.
+def _sync_github_members_after_connection(team):
+    """Queue async sync of GitHub organization members after connecting an integration.
 
-    This is called after successfully creating a GitHubIntegration to import
-    team members from the GitHub organization.
+    This is called after successfully creating a GitHubIntegration to queue
+    a Celery task for importing team members from the GitHub organization.
+    The actual sync happens asynchronously.
 
     Args:
         team: The team to sync members for.
-        access_token: The GitHub OAuth access token.
-        org_slug: The GitHub organization slug.
 
     Returns:
-        int: The number of members created, or 0 if sync fails.
+        bool: True if task was queued, False if GitHubIntegration not found.
     """
+    from apps.integrations.tasks import sync_github_members_task
+
     try:
-        result = member_sync.sync_github_members(team, access_token, org_slug)
-        return result["created"]
-    except Exception as e:
-        # Log error but don't fail the OAuth flow
-        logger.error(f"Failed to sync GitHub members for team {team.slug}: {e}")
-        return 0
+        integration = GitHubIntegration.objects.get(team=team)
+        sync_github_members_task.delay(integration.id)
+        return True
+    except GitHubIntegration.DoesNotExist:
+        logger.warning(f"GitHubIntegration not found for team {team.slug}, skipping member sync")
+        return False

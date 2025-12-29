@@ -78,6 +78,12 @@ class GitHubIntegrationFactory(DjangoModelFactory):
     webhook_secret = factory.Faker("sha256")
     last_sync_at = None
     sync_status = "pending"
+    # Member sync fields
+    member_sync_status = "pending"
+    member_sync_started_at = None
+    member_sync_completed_at = None
+    member_sync_error = ""
+    member_sync_result = None
 
 
 class TrackedRepositoryFactory(DjangoModelFactory):

@@ -24,12 +24,14 @@ GITHUB_API_VERSION = "application/vnd.github.v3+json"
 # read:org - Access organization membership and teams
 # repo - Access repositories (code, PRs, commits)
 # read:user - Access user profile information
+# user:email - Access user email addresses (including private emails)
 # manage_billing:copilot - Access GitHub Copilot usage metrics
 GITHUB_OAUTH_SCOPES = " ".join(
     [
         "read:org",
         "repo",
         "read:user",
+        "user:email",
         "manage_billing:copilot",
     ]
 )
@@ -394,3 +396,44 @@ def get_organization_repositories(
         raise GitHubOAuthError(f"Organization not found: {e.status} - {e.data}") from e
     except GithubException as e:
         raise GitHubOAuthError(f"Failed to get organization repositories: {e.status} - {e.data}") from e
+
+
+def get_user_primary_email(access_token: str) -> str | None:
+    """Get user's primary verified email from GitHub.
+
+    Calls /user/emails endpoint to fetch all emails including private ones.
+    Returns the primary verified email, or first verified email as fallback.
+
+    Args:
+        access_token: GitHub access token with user:email scope
+
+    Returns:
+        Primary verified email address or None if unavailable
+
+    Raises:
+        GitHubOAuthError: If API request fails
+    """
+    try:
+        # Create Github client with access token
+        github = Github(access_token)
+
+        # Get authenticated user
+        user = github.get_user()
+
+        # Get emails - returns list of email objects
+        emails = user.get_emails()
+
+        # Find primary + verified email first
+        for email in emails:
+            if email.primary and email.verified:
+                return email.email
+
+        # Fall back to first verified email
+        for email in emails:
+            if email.verified:
+                return email.email
+
+        # No verified emails found
+        return None
+    except GithubException as e:
+        raise GitHubOAuthError(f"Failed to get user emails: {e.status} - {e.data}") from e

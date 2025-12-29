@@ -129,6 +129,39 @@ class GitHubIntegration(BaseTeamModel):
         help_text="Current status of data synchronization",
     )
 
+    # Member sync fields - track status of GitHub org member sync to TeamMember records
+    member_sync_status = models.CharField(
+        max_length=20,
+        choices=SYNC_STATUS_CHOICES,
+        default=SYNC_STATUS_PENDING,
+        verbose_name="Member sync status",
+        help_text="Current status of member synchronization from GitHub org",
+    )
+    member_sync_started_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Member sync started at",
+        help_text="When member sync was started",
+    )
+    member_sync_completed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Member sync completed at",
+        help_text="When member sync was completed",
+    )
+    member_sync_error = models.TextField(
+        blank=True,
+        default="",
+        verbose_name="Member sync error",
+        help_text="Error message from the last failed member sync attempt",
+    )
+    member_sync_result = models.JSONField(
+        null=True,
+        blank=True,
+        verbose_name="Member sync result",
+        help_text="JSON result data from the last member sync (e.g., counts of created/updated members)",
+    )
+
     class Meta:
         ordering = ["organization_slug"]
         verbose_name = "GitHub Integration"

@@ -402,3 +402,131 @@ class TestLoginFlowTypeInOAuthState(TestCase):
         # Should not require team_id
         state_data = verify_oauth_state(state)
         self.assertNotIn("team_id", state_data)
+
+
+class TestLoginPrivateEmailHandling(TestCase):
+    """Tests for handling GitHub users with private emails during login.
+
+    When a GitHub user has their email set to private, the /user endpoint
+    returns email: null. In this case, we need to call /user/emails endpoint
+    via get_user_primary_email() to fetch their primary verified email.
+    """
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.callback_url = reverse("tformance_auth:github_callback")
+
+    def test_login_callback_fetches_primary_email_when_public_email_is_none(self):
+        """Test that login callback fetches primary email when public email is None.
+
+        When GitHub user has private email settings, github_user.get("email")
+        returns None. The callback should then call get_user_primary_email()
+        to fetch the actual email from /user/emails endpoint.
+        """
+        if FLOW_TYPE_LOGIN is None:
+            self.fail("FLOW_TYPE_LOGIN does not exist in oauth_state.py")
+
+        state = create_oauth_state(FLOW_TYPE_LOGIN)
+
+        with patch("apps.auth.views.github_oauth") as mock_oauth:
+            # Setup: github_user returns no email (private email settings)
+            mock_oauth.exchange_code_for_token.return_value = {"access_token": "test_token"}
+            mock_oauth.get_github_user.return_value = {
+                "id": 123456,
+                "login": "privateemail_user",
+                "email": None,  # Private email - this is the key scenario
+                "name": "Private Email User",
+            }
+            mock_oauth.get_user_primary_email.return_value = "real.email@example.com"
+
+            response = self.client.get(
+                self.callback_url,
+                {"state": state, "code": "test_code"},
+            )
+
+        # Should redirect successfully
+        self.assertEqual(response.status_code, 302)
+
+        # Assert get_user_primary_email was called with the access token
+        mock_oauth.get_user_primary_email.assert_called_once_with("test_token")
+
+        # Assert user was created with real email, not placeholder
+        from apps.users.models import CustomUser
+
+        user = CustomUser.objects.get(username="privateemail_user")
+        self.assertEqual(user.email, "real.email@example.com")
+
+    def test_login_callback_uses_placeholder_when_both_emails_are_none(self):
+        """Test that placeholder is used only when both public and primary emails are None.
+
+        If both github_user.email and get_user_primary_email() return None,
+        then fall back to the placeholder email format.
+        """
+        if FLOW_TYPE_LOGIN is None:
+            self.fail("FLOW_TYPE_LOGIN does not exist in oauth_state.py")
+
+        state = create_oauth_state(FLOW_TYPE_LOGIN)
+
+        with patch("apps.auth.views.github_oauth") as mock_oauth:
+            mock_oauth.exchange_code_for_token.return_value = {"access_token": "test_token"}
+            mock_oauth.get_github_user.return_value = {
+                "id": 789012,
+                "login": "noemail_user",
+                "email": None,  # No public email
+                "name": "No Email User",
+            }
+            mock_oauth.get_user_primary_email.return_value = None  # No primary email either
+
+            response = self.client.get(
+                self.callback_url,
+                {"state": state, "code": "test_code"},
+            )
+
+        # Should still redirect successfully
+        self.assertEqual(response.status_code, 302)
+
+        # Assert get_user_primary_email was called
+        mock_oauth.get_user_primary_email.assert_called_once_with("test_token")
+
+        # User should have placeholder email
+        from apps.users.models import CustomUser
+
+        user = CustomUser.objects.get(username="noemail_user")
+        self.assertEqual(user.email, "noemail_user@github.placeholder")
+
+    def test_login_callback_does_not_call_primary_email_when_public_email_exists(self):
+        """Test that get_user_primary_email is not called when public email exists.
+
+        If github_user.email is present, we should use it directly without
+        making an extra API call to /user/emails.
+        """
+        if FLOW_TYPE_LOGIN is None:
+            self.fail("FLOW_TYPE_LOGIN does not exist in oauth_state.py")
+
+        state = create_oauth_state(FLOW_TYPE_LOGIN)
+
+        with patch("apps.auth.views.github_oauth") as mock_oauth:
+            mock_oauth.exchange_code_for_token.return_value = {"access_token": "test_token"}
+            mock_oauth.get_github_user.return_value = {
+                "id": 345678,
+                "login": "publicemail_user",
+                "email": "public@example.com",  # Public email is available
+                "name": "Public Email User",
+            }
+
+            response = self.client.get(
+                self.callback_url,
+                {"state": state, "code": "test_code"},
+            )
+
+        # Should redirect successfully
+        self.assertEqual(response.status_code, 302)
+
+        # Assert get_user_primary_email was NOT called (no need for extra API call)
+        mock_oauth.get_user_primary_email.assert_not_called()
+
+        # User should have public email
+        from apps.users.models import CustomUser
+
+        user = CustomUser.objects.get(username="publicemail_user")
+        self.assertEqual(user.email, "public@example.com")

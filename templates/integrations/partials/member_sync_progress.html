@@ -1,0 +1,18 @@
+{% load i18n %}
+{# Partial for member sync status - used by HTMX polling #}
+<div id="member-sync-status" class="flex flex-wrap gap-1 items-center"
+     {% if integration.member_sync_status == 'syncing' %}
+       hx-get="{% url 'integrations:github_members_sync_progress' %}"
+       hx-trigger="every 3s"
+       hx-swap="outerHTML"
+     {% endif %}>
+  {% if integration.member_sync_status == 'syncing' %}
+    <span class="app-badge app-badge-warning">{% translate "Syncing" %}</span>
+  {% elif integration.member_sync_status == 'complete' %}
+    <span class="app-badge app-badge-success">{% translate "Complete" %}</span>
+  {% elif integration.member_sync_status == 'error' %}
+    <span class="app-badge app-badge-error">{% translate "Error" %}</span>
+  {% else %}
+    <span class="app-badge app-badge-default">{% translate "Pending" %}</span>
+  {% endif %}
+</div>

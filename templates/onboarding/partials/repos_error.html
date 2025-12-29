@@ -1,0 +1,38 @@
+{% load i18n %}
+
+<div class="app-card max-w-md mx-auto mb-6 text-center">
+  <div class="py-8">
+    <i class="fa-solid fa-exclamation-triangle text-4xl text-warning mb-4"></i>
+    <h2 class="text-lg font-medium text-base-content mb-2">{% translate "Could not fetch repositories" %}</h2>
+    <p class="text-sm text-base-content/60 mb-4">
+      {% if error %}
+      {{ error }}
+      {% else %}
+      {% translate "There was an error connecting to GitHub. Please try again." %}
+      {% endif %}
+    </p>
+    <button type="button"
+            hx-get="{% url 'onboarding:fetch_repos' %}"
+            hx-target="#repos-container"
+            hx-swap="innerHTML"
+            hx-indicator="#repos-loading"
+            class="app-btn-secondary">
+      <i class="fa-solid fa-refresh mr-2"></i>
+      {% translate "Try Again" %}
+    </button>
+  </div>
+</div>
+
+<form method="post" action="{% url 'onboarding:select_repos' %}" class="max-w-md mx-auto">
+  {% csrf_token %}
+  <div class="flex gap-4">
+    <a href="{% url 'onboarding:select_org' %}" class="app-btn-ghost flex-1">
+      <i class="fa-solid fa-arrow-left mr-2"></i>
+      {% translate "Back" %}
+    </a>
+    <button type="submit" class="app-btn-primary flex-1">
+      {% translate "Skip for now" %}
+      <i class="fa-solid fa-arrow-right ml-2"></i>
+    </button>
+  </div>
+</form>

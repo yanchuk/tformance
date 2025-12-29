@@ -3,6 +3,9 @@
 Phase 4.1: Repository Prioritization
 - Sort repositories by updated_at descending (most recent first)
 - Most active repos appear at top of selection list
+
+NOTE: Repo sorting now happens in the fetch_repos HTMX endpoint,
+not in the initial select_repos page load.
 """
 
 from datetime import UTC, datetime
@@ -17,7 +20,7 @@ from apps.users.models import CustomUser
 
 
 class TestRepositoryPrioritization(TestCase):
-    """Tests for repository sorting by updated_at in select_repositories view."""
+    """Tests for repository sorting by updated_at in fetch_repos view."""
 
     def setUp(self):
         """Set up test fixtures using factories."""
@@ -72,7 +75,7 @@ class TestRepositoryPrioritization(TestCase):
         with patch("apps.onboarding.views.github_oauth.get_organization_repositories") as mock_get_repos:
             mock_get_repos.return_value = mock_repos
 
-            response = self.client.get(reverse("onboarding:select_repos"))
+            response = self.client.get(reverse("onboarding:fetch_repos"))
 
         self.assertEqual(response.status_code, 200)
 
@@ -116,7 +119,7 @@ class TestRepositoryPrioritization(TestCase):
         with patch("apps.onboarding.views.github_oauth.get_organization_repositories") as mock_get_repos:
             mock_get_repos.return_value = mock_repos
 
-            response = self.client.get(reverse("onboarding:select_repos"))
+            response = self.client.get(reverse("onboarding:fetch_repos"))
 
         repos = response.context["repos"]
 
@@ -165,7 +168,7 @@ class TestRepositoryPrioritization(TestCase):
         with patch("apps.onboarding.views.github_oauth.get_organization_repositories") as mock_get_repos:
             mock_get_repos.return_value = mock_repos
 
-            response = self.client.get(reverse("onboarding:select_repos"))
+            response = self.client.get(reverse("onboarding:fetch_repos"))
 
         repos = response.context["repos"]
 
@@ -216,7 +219,7 @@ class TestRepositoryPrioritization(TestCase):
         with patch("apps.onboarding.views.github_oauth.get_organization_repositories") as mock_get_repos:
             mock_get_repos.return_value = mock_repos
 
-            response = self.client.get(reverse("onboarding:select_repos"))
+            response = self.client.get(reverse("onboarding:fetch_repos"))
 
         repos = response.context["repos"]
 
@@ -230,7 +233,7 @@ class TestRepositoryPrioritization(TestCase):
         with patch("apps.onboarding.views.github_oauth.get_organization_repositories") as mock_get_repos:
             mock_get_repos.return_value = []
 
-            response = self.client.get(reverse("onboarding:select_repos"))
+            response = self.client.get(reverse("onboarding:fetch_repos"))
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["repos"], [])
@@ -254,8 +257,55 @@ class TestRepositoryPrioritization(TestCase):
         with patch("apps.onboarding.views.github_oauth.get_organization_repositories") as mock_get_repos:
             mock_get_repos.return_value = mock_repos
 
-            response = self.client.get(reverse("onboarding:select_repos"))
+            response = self.client.get(reverse("onboarding:fetch_repos"))
 
         repos = response.context["repos"]
         self.assertEqual(len(repos), 1)
         self.assertEqual(repos[0]["name"], "only-repo")
+
+
+class TestSelectReposPageLoading(TestCase):
+    """Tests for select_repos page with HTMX loading pattern."""
+
+    def setUp(self):
+        """Set up test fixtures using factories."""
+        self.user = CustomUser.objects.create_user(
+            username="repo_loading_test@example.com",
+            email="repo_loading_test@example.com",
+            password="testpassword123",
+        )
+        self.team = TeamFactory()
+        self.team.members.add(self.user)
+        self.integration = GitHubIntegrationFactory(team=self.team)
+        self.client.login(username="repo_loading_test@example.com", password="testpassword123")
+
+    def test_select_repos_page_does_not_fetch_repos_on_initial_load(self):
+        """Test that initial page load does not call GitHub API."""
+        with patch("apps.onboarding.views.github_oauth.get_organization_repositories") as mock_get_repos:
+            response = self.client.get(reverse("onboarding:select_repos"))
+
+        self.assertEqual(response.status_code, 200)
+        # API should NOT be called on initial page load (HTMX will call fetch_repos)
+        mock_get_repos.assert_not_called()
+
+    def test_select_repos_page_has_htmx_trigger(self):
+        """Test that the page has HTMX trigger to fetch repos."""
+        response = self.client.get(reverse("onboarding:select_repos"))
+
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode()
+        # Check for HTMX attributes
+        self.assertIn("hx-get", content)
+        self.assertIn('hx-trigger="load"', content)
+        # The URL should include the fetch path
+        self.assertIn("/onboarding/repos/fetch/", content)
+
+    def test_select_repos_page_has_loading_indicator(self):
+        """Test that the page has a loading indicator."""
+        response = self.client.get(reverse("onboarding:select_repos"))
+
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode()
+        # Check for loading indicator
+        self.assertIn("htmx-indicator", content)
+        self.assertIn("fa-spinner", content)

@@ -283,6 +283,35 @@ def select_repositories(request):
         )
         return redirect("onboarding:sync_progress")
 
+    # Render the page with loading state - repos will be fetched via HTMX
+    return render(
+        request,
+        "onboarding/select_repos.html",
+        {
+            "team": team,
+            "integration": integration,
+            "page_title": _("Select Repositories"),
+            "step": 2,
+        },
+    )
+
+
+@login_required
+def fetch_repos(request):
+    """HTMX endpoint to fetch repositories from GitHub API.
+
+    Returns a partial HTML template with the repository list.
+    """
+    if not request.user.teams.exists():
+        return render(request, "onboarding/partials/repos_error.html", {"error": "No team found"})
+
+    team = request.user.teams.first()
+
+    try:
+        integration = GitHubIntegration.objects.get(team=team)
+    except GitHubIntegration.DoesNotExist:
+        return render(request, "onboarding/partials/repos_error.html", {"error": "GitHub not connected"})
+
     # Fetch repositories from GitHub API
     repos = []
     try:
@@ -293,21 +322,15 @@ def select_repositories(request):
         )
     except Exception as e:
         logger.error(f"Failed to fetch repos during onboarding: {e}")
-        messages.warning(request, _("Could not fetch repositories. You can skip this step and add repos later."))
+        return render(request, "onboarding/partials/repos_error.html", {"error": str(e)})
 
     # Sort repos by updated_at descending (most recent first), None values at end
     repos = sorted(repos, key=lambda r: r.get("updated_at") or datetime.min.replace(tzinfo=UTC), reverse=True)
 
     return render(
         request,
-        "onboarding/select_repos.html",
-        {
-            "team": team,
-            "integration": integration,
-            "repos": repos,
-            "page_title": _("Select Repositories"),
-            "step": 2,
-        },
+        "onboarding/partials/repos_list.html",
+        {"repos": repos},
     )
 
 
