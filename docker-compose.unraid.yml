@@ -69,6 +69,8 @@ services:
       DEBUG: "False"
       SECRET_KEY: ${SECRET_KEY:?SECRET_KEY is required}
       ALLOWED_HOSTS: ${ALLOWED_HOSTS:-dev2.ianchuk.com,localhost}
+      # Disable SSL redirect when behind Cloudflare Tunnel (it handles SSL termination)
+      SECURE_SSL_REDIRECT: ${SECURE_SSL_REDIRECT:-False}
 
       # Database (internal Docker network)
       DATABASE_URL: postgresql://${POSTGRES_USER:-tformance}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-tformance}
