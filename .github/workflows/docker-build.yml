@@ -1,8 +1,10 @@
 name: Build and Push Docker Image
 
+# NOTE: Auto-build on push disabled - use workflow_dispatch for manual builds only
+# To reactivate auto-build, uncomment the push trigger below
 on:
-  push:
-    branches: [main]
+  # push:
+  #   branches: [main]
   workflow_dispatch:
     inputs:
       tag:
