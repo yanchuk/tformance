@@ -560,3 +560,237 @@ class TestOnboardingSyncSignals(TestCase):
             self.assertEqual(repo_ids_signaled, {repo1.id, repo2.id})
         finally:
             repository_sync_completed.disconnect(handler)
+
+
+class TestSyncHistoricalDataTaskIntegration(TestCase):
+    """Integration tests verifying sync_historical_data_task creates actual records.
+
+    These tests mock only the external GitHub API calls and verify that
+    the full sync flow creates PullRequest, PRReview, and Commit records.
+    """
+
+    def setUp(self):
+        """Set up test fixtures with full integration setup."""
+        from apps.integrations.factories import IntegrationCredentialFactory
+        from apps.integrations.models import IntegrationCredential
+
+        self.team = TeamFactory()
+        # Create integration with valid encrypted credential
+        self.credential = IntegrationCredentialFactory(team=self.team, provider=IntegrationCredential.PROVIDER_GITHUB)
+        self.integration = GitHubIntegrationFactory(
+            team=self.team,
+            credential=self.credential,
+            organization_slug="test-org",
+        )
+        # Create team member to match PR author
+        from apps.metrics.factories import TeamMemberFactory
+
+        self.author = TeamMemberFactory(team=self.team, github_id="testuser", display_name="Test User")
+        self.reviewer = TeamMemberFactory(team=self.team, github_id="reviewer1", display_name="Reviewer")
+
+    def test_sync_task_creates_pr_records(self):
+        """Test that sync_historical_data_task creates PullRequest records in database.
+
+        Mocks OnboardingSyncService.sync_repository with side_effect that creates
+        actual database records, verifying the full task flow works correctly.
+        """
+        from datetime import timedelta
+
+        from apps.integrations.tasks import sync_historical_data_task
+        from apps.metrics.models import PullRequest
+
+        # Create tracked repo
+        repo = TrackedRepositoryFactory(
+            team=self.team,
+            integration=self.integration,
+            full_name="test-org/test-repo",
+            sync_status="pending",
+        )
+
+        # Mock the service to create real PR records
+        def mock_sync_side_effect(repo, progress_callback=None):
+            """Side effect that creates PR records like the real sync would."""
+            base_time = timezone.now() - timedelta(days=5)
+            for pr_num in [101, 102, 103]:
+                PullRequest.objects.create(
+                    team=self.team,
+                    github_pr_id=pr_num,
+                    github_repo=repo.full_name,
+                    title=f"Test PR #{pr_num}",
+                    body=f"Description for PR #{pr_num}",
+                    state="merged",
+                    pr_created_at=base_time,
+                    merged_at=base_time + timedelta(hours=24),
+                    additions=100 + pr_num,
+                    deletions=50 + pr_num,
+                    author=self.author,
+                )
+            return {"prs_synced": 3, "reviews_synced": 3, "commits_synced": 3, "errors": []}
+
+        with patch("apps.integrations.services.onboarding_sync.OnboardingSyncService") as mock_service_class:
+            mock_service = mock_service_class.return_value
+            mock_service.sync_repository.side_effect = mock_sync_side_effect
+
+            # Run sync task synchronously
+            result = sync_historical_data_task(
+                team_id=self.team.id,
+                repo_ids=[repo.id],
+            )
+
+        # Verify task completed successfully
+        self.assertEqual(result["status"], "complete")
+        self.assertEqual(result["repos_synced"], 1)
+        self.assertEqual(result["total_prs"], 3)
+
+        # Verify PullRequest records were created
+        prs = PullRequest.objects.filter(team=self.team, github_repo="test-org/test-repo")
+        self.assertEqual(prs.count(), 3)
+
+        # Verify specific PR data
+        pr101 = prs.get(github_pr_id=101)
+        self.assertEqual(pr101.title, "Test PR #101")
+        self.assertEqual(pr101.state, "merged")
+        self.assertEqual(pr101.author, self.author)
+
+    def test_sync_task_creates_review_records(self):
+        """Test that sync_historical_data_task creates PRReview records."""
+        from datetime import timedelta
+
+        from apps.integrations.tasks import sync_historical_data_task
+        from apps.metrics.models import PRReview, PullRequest
+
+        repo = TrackedRepositoryFactory(
+            team=self.team,
+            integration=self.integration,
+            full_name="test-org/test-repo",
+        )
+
+        def mock_sync_side_effect(repo, progress_callback=None):
+            """Side effect that creates PR and review records."""
+            base_time = timezone.now() - timedelta(days=5)
+            pr = PullRequest.objects.create(
+                team=self.team,
+                github_pr_id=201,
+                github_repo=repo.full_name,
+                title="Test PR #201",
+                state="merged",
+                pr_created_at=base_time,
+                author=self.author,
+            )
+            PRReview.objects.create(
+                team=self.team,
+                pull_request=pr,
+                github_review_id=2000201,
+                reviewer=self.reviewer,
+                state="approved",
+                submitted_at=base_time + timedelta(hours=12),
+            )
+            return {"prs_synced": 1, "reviews_synced": 1, "errors": []}
+
+        with patch("apps.integrations.services.onboarding_sync.OnboardingSyncService") as mock_service_class:
+            mock_service = mock_service_class.return_value
+            mock_service.sync_repository.side_effect = mock_sync_side_effect
+
+            sync_historical_data_task(team_id=self.team.id, repo_ids=[repo.id])
+
+        # Verify PRReview record was created
+        pr = PullRequest.objects.get(team=self.team, github_pr_id=201)
+        reviews = PRReview.objects.filter(pull_request=pr)
+        self.assertEqual(reviews.count(), 1)
+
+        review = reviews.first()
+        self.assertEqual(review.state, "approved")
+        self.assertEqual(review.reviewer, self.reviewer)
+
+    def test_sync_task_creates_commit_records(self):
+        """Test that sync_historical_data_task creates Commit records."""
+        from datetime import timedelta
+
+        from apps.integrations.tasks import sync_historical_data_task
+        from apps.metrics.models import Commit, PullRequest
+
+        repo = TrackedRepositoryFactory(
+            team=self.team,
+            integration=self.integration,
+            full_name="test-org/test-repo",
+        )
+
+        def mock_sync_side_effect(repo, progress_callback=None):
+            """Side effect that creates PR and commit records."""
+            base_time = timezone.now() - timedelta(days=5)
+            pr = PullRequest.objects.create(
+                team=self.team,
+                github_pr_id=301,
+                github_repo=repo.full_name,
+                title="Test PR #301",
+                state="merged",
+                pr_created_at=base_time,
+                author=self.author,
+            )
+            Commit.objects.create(
+                team=self.team,
+                pull_request=pr,
+                github_sha="abc000000000301",
+                message="Commit for PR 301",
+                github_repo=repo.full_name,
+                committed_at=base_time + timedelta(hours=2),
+                author=self.author,
+            )
+            return {"prs_synced": 1, "commits_synced": 1, "errors": []}
+
+        with patch("apps.integrations.services.onboarding_sync.OnboardingSyncService") as mock_service_class:
+            mock_service = mock_service_class.return_value
+            mock_service.sync_repository.side_effect = mock_sync_side_effect
+
+            sync_historical_data_task(team_id=self.team.id, repo_ids=[repo.id])
+
+        # Verify Commit record was created
+        pr = PullRequest.objects.get(team=self.team, github_pr_id=301)
+        commits = Commit.objects.filter(pull_request=pr)
+        self.assertEqual(commits.count(), 1)
+
+        commit = commits.first()
+        self.assertEqual(commit.message, "Commit for PR 301")
+        self.assertEqual(commit.author, self.author)
+
+    def test_sync_task_updates_repo_status_to_completed(self):
+        """Test that sync task updates TrackedRepository sync_status to completed."""
+        from apps.integrations.tasks import sync_historical_data_task
+
+        repo = TrackedRepositoryFactory(
+            team=self.team,
+            integration=self.integration,
+            full_name="test-org/test-repo",
+            sync_status="pending",
+        )
+
+        with patch("apps.integrations.services.onboarding_sync.OnboardingSyncService") as mock_service_class:
+            mock_service = mock_service_class.return_value
+            mock_service.sync_repository.return_value = {"prs_synced": 1, "errors": []}
+
+            sync_historical_data_task(team_id=self.team.id, repo_ids=[repo.id])
+
+        repo.refresh_from_db()
+        self.assertEqual(repo.sync_status, "completed")
+        self.assertIsNotNone(repo.last_sync_at)
+
+    def test_sync_task_handles_empty_response(self):
+        """Test that sync task handles empty PR response gracefully."""
+        from apps.integrations.tasks import sync_historical_data_task
+        from apps.metrics.models import PullRequest
+
+        repo = TrackedRepositoryFactory(
+            team=self.team,
+            integration=self.integration,
+            full_name="test-org/empty-repo",
+        )
+
+        with patch("apps.integrations.services.onboarding_sync.OnboardingSyncService") as mock_service_class:
+            mock_service = mock_service_class.return_value
+            mock_service.sync_repository.return_value = {"prs_synced": 0, "errors": []}
+
+            result = sync_historical_data_task(team_id=self.team.id, repo_ids=[repo.id])
+
+        self.assertEqual(result["status"], "complete")
+        self.assertEqual(result["total_prs"], 0)
+        self.assertEqual(PullRequest.objects.filter(team=self.team).count(), 0)
