@@ -3,12 +3,12 @@
 import logging
 
 from django.contrib import messages
-from django.http import HttpResponseNotAllowed, HttpResponseNotFound, JsonResponse
+from django.http import HttpResponseNotAllowed, HttpResponseNotFound
 from django.shortcuts import redirect, render
 from django.urls import reverse
 
 from apps.integrations.models import GitHubIntegration, IntegrationCredential
-from apps.integrations.services import github_oauth, github_sync, member_sync
+from apps.integrations.services import github_oauth, member_sync
 from apps.integrations.services.github_oauth import GitHubOAuthError
 from apps.teams.decorators import login_and_team_required, team_admin_required
 
@@ -461,15 +461,21 @@ def github_repo_toggle(request, repo_id):
 def github_repo_sync(request, repo_id):
     """Manually trigger historical sync for a tracked repository.
 
+    Queues an async Celery task and returns the progress partial immediately
+    so the user sees feedback. HTMX polling will show progress updates.
+
     Args:
         request: The HTTP request object.
         team_slug: The slug of the team.
         repo_id: The ID of the tracked repository to sync.
 
     Returns:
-        JsonResponse with sync results or error.
+        HttpResponse with sync progress partial (for HTMX swap).
     """
+    from django.utils import timezone
+
     from apps.integrations.models import TrackedRepository
+    from apps.integrations.tasks import sync_repository_manual_task
 
     if request.method != "POST":
         return HttpResponseNotAllowed(["POST"])
@@ -482,13 +488,17 @@ def github_repo_sync(request, repo_id):
     except TrackedRepository.DoesNotExist:
         return HttpResponseNotFound("Repository not found")
 
-    # Trigger sync
-    try:
-        result = github_sync.sync_repository_history(tracked_repo)
-        return JsonResponse(result)
-    except Exception as e:
-        logger.error(f"Failed to sync repository {tracked_repo.full_name}: {e}", exc_info=True)
-        return JsonResponse({"error": "Failed to sync repository. Please try again."}, status=500)
+    # Set status to syncing immediately (so HTMX polling sees it)
+    tracked_repo.sync_status = TrackedRepository.SYNC_STATUS_SYNCING
+    tracked_repo.sync_started_at = timezone.now()
+    tracked_repo.save(update_fields=["sync_status", "sync_started_at"])
+
+    # Queue async task (non-blocking)
+    sync_repository_manual_task.delay(repo_id)
+    logger.info(f"Queued manual sync task for repository: {tracked_repo.full_name}")
+
+    # Return progress partial for HTMX swap
+    return render(request, "integrations/partials/sync_progress.html", {"repo": tracked_repo})
 
 
 @login_and_team_required

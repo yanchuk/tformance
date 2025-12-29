@@ -1,5 +1,22 @@
 {% load i18n %}
-<div class="flex items-center gap-2">
+{# Partial for sync status - used by HTMX polling and manual sync trigger #}
+<div id="sync-status-{{ repo.id }}" class="flex flex-wrap gap-1 items-center"
+     {% if repo.sync_status == 'syncing' %}
+       hx-get="{% url 'integrations:github_repo_sync_progress' repo_id=repo.id %}"
+       hx-trigger="every 5s"
+       hx-swap="outerHTML"
+     {% endif %}>
+  {# Tracked badge (always shown for tracked repos) #}
+  <span class="app-badge app-badge-success">{% translate "Tracked" %}</span>
+
+  {# Webhook status #}
+  {% if repo.webhook_id %}
+    <span class="app-badge app-badge-success">{% translate "Webhook active" %}</span>
+  {% else %}
+    <span class="app-badge app-badge-warning">{% translate "Webhook pending" %}</span>
+  {% endif %}
+
+  {# Sync status #}
   {% if repo.sync_status == 'syncing' %}
     <span class="app-badge app-badge-warning">{% translate "Syncing" %}</span>
     {% if repo.sync_prs_total %}
@@ -11,9 +28,9 @@
       <progress class="progress progress-primary w-20" value="{{ repo.sync_progress }}" max="100"></progress>
     {% endif %}
   {% elif repo.sync_status == 'complete' %}
-    <span class="app-badge app-badge-success">{% translate "Complete" %}</span>
+    <span class="app-badge app-badge-primary" title="Last synced: {{ repo.last_sync_at }}">{% translate "Synced" %}</span>
   {% elif repo.sync_status == 'error' %}
-    <span class="app-badge app-badge-error">{% translate "Error" %}</span>
+    <span class="app-badge app-badge-error">{% translate "Sync Error" %}</span>
   {% else %}
     <span class="app-badge app-badge-default">{% translate "Pending" %}</span>
   {% endif %}

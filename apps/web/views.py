@@ -48,6 +48,9 @@ def home(request):
     if request.user.is_authenticated:
         team = request.default_team
         if team:
+            # If onboarding not complete, redirect to continue onboarding
+            if not team.onboarding_complete:
+                return HttpResponseRedirect(reverse("onboarding:select_repos"))
             return HttpResponseRedirect(reverse("web_team:home"))
         else:
             # Check for open invitations first

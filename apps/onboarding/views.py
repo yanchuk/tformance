@@ -91,9 +91,9 @@ def github_connect(request):
 @login_required
 def select_organization(request):
     """Select which GitHub organization to use for the team."""
-    # If user already has a team, redirect to dashboard
-    if request.user.teams.exists():
-        # Redirect to /app/ which auto-selects the team
+    # If user has a team that completed onboarding, redirect to dashboard
+    existing_team = request.user.teams.first()
+    if existing_team and existing_team.onboarding_complete:
         return redirect("web:home")
 
     # Get orgs from session
@@ -147,10 +147,10 @@ def _create_team_from_org(request, org: dict):
         return redirect("onboarding:start")
 
     try:
-        # Create team from org name
+        # Create team from org name (onboarding_complete=False until they finish)
         team_name = org["login"]
         team_slug = get_next_unique_team_slug(team_name)
-        team = Team.objects.create(name=team_name, slug=team_slug)
+        team = Team.objects.create(name=team_name, slug=team_slug, onboarding_complete=False)
 
         # Add user as admin
         Membership.objects.create(team=team, user=request.user, role=ROLE_ADMIN)
@@ -685,6 +685,11 @@ def onboarding_complete(request):
     # Check integration status
     jira_connected = JiraIntegration.objects.filter(team=team).exists()
     slack_connected = SlackIntegration.objects.filter(team=team).exists()
+
+    # Mark onboarding as complete
+    if not team.onboarding_complete:
+        team.onboarding_complete = True
+        team.save(update_fields=["onboarding_complete"])
 
     # Track onboarding completion
     track_event(

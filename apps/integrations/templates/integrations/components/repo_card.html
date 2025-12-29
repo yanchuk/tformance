@@ -1,17 +1,17 @@
 {% load i18n %}
 <tr id="repo-row-{{ repo.id }}" class="hover:bg-deep/50 transition-colors">
   <td class="px-4 py-3 border-b border-elevated/50">
-    <span class="font-medium text-slate-200">{{ repo.name }}</span>
+    <span class="font-medium text-base-content">{{ repo.name }}</span>
   </td>
   <td class="px-4 py-3 border-b border-elevated/50">
-    <span class="text-sm text-slate-400">{{ repo.description|default:"" }}</span>
+    <span class="text-sm text-base-content/80">{{ repo.description|default:"" }}</span>
   </td>
   <td class="px-4 py-3 border-b border-elevated/50">
-    <div class="flex flex-wrap gap-1 items-center"
+    <div id="sync-status-{{ repo.id }}" class="flex flex-wrap gap-1 items-center"
          {% if repo.is_tracked and repo.sync_status == 'syncing' %}
            hx-get="{% url 'integrations:github_repo_sync_progress' repo_id=repo.tracked_repo_id %}"
            hx-trigger="every 5s"
-           hx-swap="innerHTML"
+           hx-swap="outerHTML"
          {% endif %}>
       {% if repo.is_tracked %}
         <span class="app-badge app-badge-success">{% translate "Tracked" %}</span>
@@ -70,7 +70,8 @@
         {% if repo.is_tracked and repo.tracked_repo_id %}
           <button
             hx-post="{% url 'integrations:github_repo_sync' repo_id=repo.tracked_repo_id %}"
-            hx-swap="none"
+            hx-target="#sync-status-{{ repo.id }}"
+            hx-swap="outerHTML"
             class="app-btn-ghost app-btn-sm"
             title="Sync historical data"
             aria-label="Sync historical data for {{ repo.name }}"

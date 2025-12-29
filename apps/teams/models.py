@@ -25,6 +25,11 @@ class Team(SubscriptionModelBase, BaseModel):
     name = models.CharField(max_length=100)
     slug = models.SlugField(unique=True)
     members = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name="teams", through="Membership")
+    onboarding_complete = models.BooleanField(
+        default=True,
+        help_text="Whether the team has completed the onboarding flow. "
+        "Default True for existing teams; set False during onboarding creation.",
+    )
 
     # your team customizations go here.
 

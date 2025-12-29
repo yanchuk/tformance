@@ -1533,30 +1533,37 @@ class GitHubRepoSyncViewTest(TestCase):
         # Should return 404
         self.assertEqual(response.status_code, 404)
 
-    @patch("apps.integrations.services.github_sync.sync_repository_history")
-    def test_github_repo_sync_triggers_sync(self, mock_sync):
-        """Test that github_repo_sync calls sync_repository_history for the tracked repo."""
-        # Mock sync result
-        mock_sync.return_value = {"prs_synced": 15, "reviews_synced": 8, "errors": []}
+    @patch("apps.integrations.tasks.sync_repository_manual_task.delay")
+    def test_github_repo_sync_queues_celery_task(self, mock_task_delay):
+        """Test that github_repo_sync queues a Celery task (async sync)."""
+        self.client.force_login(self.admin)
+
+        # Trigger manual sync
+        self.client.post(reverse("integrations:github_repo_sync", args=[self.tracked_repo.id]))
+
+        # Verify task was queued with the repo ID
+        mock_task_delay.assert_called_once_with(self.tracked_repo.id)
+
+    @patch("apps.integrations.tasks.sync_repository_manual_task.delay")
+    def test_github_repo_sync_sets_status_to_syncing(self, mock_task_delay):
+        """Test that github_repo_sync sets repo status to 'syncing' immediately."""
+        from apps.integrations.models import TrackedRepository
 
         self.client.force_login(self.admin)
 
         # Trigger manual sync
         self.client.post(reverse("integrations:github_repo_sync", args=[self.tracked_repo.id]))
 
-        # Verify sync was called with the tracked repository
-        mock_sync.assert_called_once()
-        call_args = mock_sync.call_args[0]
-        tracked_repo_arg = call_args[0]
-        self.assertEqual(tracked_repo_arg.id, self.tracked_repo.id)
-        self.assertEqual(tracked_repo_arg.github_repo_id, self.tracked_repo.github_repo_id)
+        # Refresh repo from database
+        self.tracked_repo.refresh_from_db()
 
-    @patch("apps.integrations.services.github_sync.sync_repository_history")
-    def test_github_repo_sync_returns_success_response(self, mock_sync):
-        """Test that github_repo_sync returns 200 with success message in JSON."""
-        # Mock sync result
-        mock_sync.return_value = {"prs_synced": 15, "reviews_synced": 8, "errors": []}
+        # Status should be set to syncing
+        self.assertEqual(self.tracked_repo.sync_status, TrackedRepository.SYNC_STATUS_SYNCING)
+        self.assertIsNotNone(self.tracked_repo.sync_started_at)
 
+    @patch("apps.integrations.tasks.sync_repository_manual_task.delay")
+    def test_github_repo_sync_returns_html_partial(self, mock_task_delay):
+        """Test that github_repo_sync returns HTML partial for HTMX swap."""
         self.client.force_login(self.admin)
 
         # Trigger manual sync
@@ -1565,57 +1572,12 @@ class GitHubRepoSyncViewTest(TestCase):
         # Should return 200
         self.assertEqual(response.status_code, 200)
 
-        # Should return JSON response
-        self.assertEqual(response["Content-Type"], "application/json")
+        # Should return HTML (not JSON)
+        self.assertEqual(response["Content-Type"], "text/html; charset=utf-8")
 
-        # Should contain success data
-        import json
-
-        data = json.loads(response.content)
-        self.assertEqual(data["prs_synced"], 15)
-        self.assertEqual(data["reviews_synced"], 8)
-        self.assertEqual(data["errors"], [])
-
-    @patch("apps.integrations.services.github_sync.sync_repository_history")
-    def test_github_repo_sync_handles_sync_errors_gracefully(self, mock_sync):
-        """Test that github_repo_sync handles sync errors and returns them in response."""
-        # Mock sync result with errors
-        mock_sync.return_value = {
-            "prs_synced": 10,
-            "reviews_synced": 5,
-            "errors": ["Failed to sync PR #42: API timeout", "Failed to sync PR #43: Invalid data"],
-        }
-
-        self.client.force_login(self.admin)
-
-        # Trigger manual sync
-        response = self.client.post(reverse("integrations:github_repo_sync", args=[self.tracked_repo.id]))
-
-        # Should still return 200 (partial success)
-        self.assertEqual(response.status_code, 200)
-
-        # Should include errors in response
-        import json
-
-        data = json.loads(response.content)
-        self.assertEqual(data["prs_synced"], 10)
-        self.assertEqual(data["reviews_synced"], 5)
-        self.assertEqual(len(data["errors"]), 2)
-        self.assertIn("Failed to sync PR #42", data["errors"][0])
-
-    @patch("apps.integrations.services.github_sync.sync_repository_history")
-    def test_github_repo_sync_handles_complete_failure(self, mock_sync):
-        """Test that github_repo_sync handles complete sync failure."""
-        # Mock complete sync failure
-        mock_sync.side_effect = Exception("GitHub API unavailable")
-
-        self.client.force_login(self.admin)
-
-        # Trigger manual sync
-        response = self.client.post(reverse("integrations:github_repo_sync", args=[self.tracked_repo.id]))
-
-        # Should return error response
-        self.assertIn(response.status_code, [500, 400])  # Either is acceptable
+        # Should contain sync status content
+        content = response.content.decode()
+        self.assertIn("Syncing", content)
 
 
 class TestCopilotSettings(TestCase):

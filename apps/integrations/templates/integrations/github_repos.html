@@ -7,7 +7,7 @@
   <div class="app-card-header">
     <div>
       <a href="{% url 'integrations:integrations_home' %}"
-         class="inline-flex items-center gap-2 text-sm text-slate-500 hover:text-slate-300 transition-colors mb-2">
+         class="inline-flex items-center gap-2 text-sm text-base-content/70 hover:text-base-content transition-colors mb-2">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
         </svg>
@@ -39,7 +39,7 @@
       </table>
     </div>
 
-    <div class="mt-4 text-sm text-slate-500">
+    <div class="mt-4 text-sm text-base-content/70">
       {% blocktranslate count counter=repos|length %}
         Showing {{ counter }} repository
       {% plural %}

@@ -347,6 +347,61 @@ def sync_repository_initial_task(self, repo_id: int, days_back: int = 30) -> dic
 
 
 @shared_task
+def sync_repository_manual_task(repo_id: int) -> dict:
+    """Manually trigger sync for an already-tracked repository.
+
+    Used when user clicks the refresh/sync icon on the repos page.
+
+    Args:
+        repo_id: ID of the TrackedRepository to sync
+
+    Returns:
+        Dict with sync results or error status
+    """
+    from django.utils import timezone
+
+    from apps.integrations.services import github_sync
+
+    # Get TrackedRepository by id
+    try:
+        tracked_repo = TrackedRepository.objects.get(id=repo_id)  # noqa: TEAM001 - ID from Celery task queue
+    except TrackedRepository.DoesNotExist:
+        logger.warning(f"TrackedRepository with id {repo_id} not found for manual sync")
+        return {"error": f"TrackedRepository with id {repo_id} not found"}
+
+    # Set status to syncing and record start time
+    tracked_repo.sync_status = TrackedRepository.SYNC_STATUS_SYNCING
+    tracked_repo.sync_started_at = timezone.now()
+    tracked_repo.save(update_fields=["sync_status", "sync_started_at"])
+
+    # Sync repository history
+    logger.info(f"Starting manual sync for repository: {tracked_repo.full_name}")
+    try:
+        result = github_sync.sync_repository_history(tracked_repo)
+        logger.info(f"Successfully completed manual sync for: {tracked_repo.full_name}")
+
+        # Set status to complete and clear error
+        tracked_repo.sync_status = TrackedRepository.SYNC_STATUS_COMPLETE
+        tracked_repo.last_sync_error = None
+        tracked_repo.last_sync_at = timezone.now()
+        tracked_repo.save(update_fields=["sync_status", "last_sync_error", "last_sync_at"])
+
+        return result
+    except Exception as exc:
+        from sentry_sdk import capture_exception
+
+        logger.error(f"Manual sync failed for {tracked_repo.full_name}: {exc}")
+        capture_exception(exc)
+
+        # Set status to error and save error message
+        tracked_repo.sync_status = TrackedRepository.SYNC_STATUS_ERROR
+        tracked_repo.last_sync_error = str(exc)
+        tracked_repo.save(update_fields=["sync_status", "last_sync_error"])
+
+        return {"error": str(exc)}
+
+
+@shared_task
 def sync_all_repositories_task() -> dict:
     """Dispatch sync tasks for all active tracked repositories.
 

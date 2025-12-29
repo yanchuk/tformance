@@ -6,20 +6,20 @@
         {% if member.avatar_url %}
           <img src="{{ member.avatar_url }}" alt="{{ member.display_name }}" class="w-full h-full object-cover">
         {% else %}
-          <span class="text-sm font-medium text-slate-300">{{ member.initials }}</span>
+          <span class="text-sm font-medium text-base-content/80">{{ member.initials }}</span>
         {% endif %}
       </div>
-      <div class="font-medium text-slate-200">{{ member.display_name }}</div>
+      <div class="font-medium text-base-content">{{ member.display_name }}</div>
     </div>
   </td>
   <td class="px-4 py-3 border-b border-elevated/50">
-    <span class="text-sm font-mono text-slate-400">{{ member.github_username }}</span>
+    <span class="text-sm font-mono text-base-content/80">{{ member.github_username }}</span>
   </td>
   <td class="px-4 py-3 border-b border-elevated/50">
     {% if member.email %}
-      <span class="text-sm text-slate-400">{{ member.email }}</span>
+      <span class="text-sm text-base-content/80">{{ member.email }}</span>
     {% else %}
-      <span class="text-sm text-slate-600 italic">{% translate "Not available" %}</span>
+      <span class="text-sm text-base-content/60 italic">{% translate "Not available" %}</span>
     {% endif %}
   </td>
   <td class="px-4 py-3 border-b border-elevated/50">
