@@ -82,7 +82,11 @@ RUN sed -i '1c\#!/usr/bin/env python3' /code/manage.py
 
 # why this has to be here:
 # https://stackoverflow.com/questions/59719175/where-to-run-collectstatic-when-deploying-django-app-to-heroku-using-docker
-RUN DEBUG=False python /code/manage.py collectstatic --noinput --settings=tformance.settings_production
+# Provide dummy secrets for collectstatic (not used at runtime, just needed for Django to load)
+RUN SECRET_KEY=build-time-dummy-key \
+    INTEGRATION_ENCRYPTION_KEY=build-time-dummy-key-32-chars-ok \
+    DEBUG=False \
+    python /code/manage.py collectstatic --noinput --settings=tformance.settings_production
 RUN chown django:django -R static_root
 
 USER django
