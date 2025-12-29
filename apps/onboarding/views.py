@@ -25,6 +25,7 @@ from apps.integrations.services import github_oauth, member_sync
 from apps.integrations.services.encryption import decrypt, encrypt
 from apps.integrations.tasks import sync_historical_data_task
 from apps.metrics.models import PullRequest
+from apps.onboarding.services.notifications import send_welcome_email
 from apps.teams.helpers import get_next_unique_team_slug
 from apps.teams.models import Membership, Team
 from apps.teams.roles import ROLE_ADMIN
@@ -175,6 +176,12 @@ def _create_team_from_org(request, org: dict):
         except Exception as e:
             logger.warning(f"Failed to sync GitHub members during onboarding: {e}")
             # Don't block onboarding if member sync fails
+
+        # Send welcome email (fail silently to not block onboarding)
+        try:
+            send_welcome_email(team, request.user)
+        except Exception as e:
+            logger.warning(f"Failed to send welcome email during onboarding: {e}")
 
         # Store selected org in session and clear token/orgs
         request.session[ONBOARDING_SELECTED_ORG_KEY] = org
@@ -550,12 +557,49 @@ def connect_slack(request):
         return redirect(auth_url)
 
     if request.method == "POST":
-        # Track skip (Slack connection tracking would go in the OAuth callback)
-        track_event(
-            request.user,
-            "onboarding_skipped",
-            {"step": "slack", "team_slug": team.slug},
-        )
+        if slack_integration:
+            # Save Slack configuration
+            from datetime import time
+
+            # Update feature toggles (checkboxes return 'on' or are absent)
+            slack_integration.surveys_enabled = request.POST.get("surveys_enabled") == "on"
+            slack_integration.leaderboard_enabled = request.POST.get("leaderboard_enabled") == "on"
+            slack_integration.reveals_enabled = request.POST.get("reveals_enabled") == "on"
+
+            # Update schedule
+            if request.POST.get("leaderboard_day"):
+                slack_integration.leaderboard_day = int(request.POST.get("leaderboard_day"))
+            if request.POST.get("leaderboard_time"):
+                time_str = request.POST.get("leaderboard_time")
+                try:
+                    hours, minutes = map(int, time_str.split(":"))
+                    slack_integration.leaderboard_time = time(hours, minutes)
+                except (ValueError, AttributeError):
+                    pass  # Keep existing value on parse error
+
+            # Update channel
+            if request.POST.get("leaderboard_channel_id"):
+                slack_integration.leaderboard_channel_id = request.POST.get("leaderboard_channel_id")
+
+            slack_integration.save()
+
+            track_event(
+                request.user,
+                "slack_configured",
+                {
+                    "team_slug": team.slug,
+                    "surveys_enabled": slack_integration.surveys_enabled,
+                    "leaderboard_enabled": slack_integration.leaderboard_enabled,
+                    "reveals_enabled": slack_integration.reveals_enabled,
+                },
+            )
+        else:
+            # Track skip (Slack connection tracking would go in the OAuth callback)
+            track_event(
+                request.user,
+                "onboarding_skipped",
+                {"step": "slack", "team_slug": team.slug},
+            )
         return redirect("onboarding:complete")
 
     return render(
@@ -592,6 +636,12 @@ def skip_onboarding(request):
     # Add user as admin
     Membership.objects.create(team=team, user=request.user, role=ROLE_ADMIN)
 
+    # Send welcome email (fail silently to not block onboarding)
+    try:
+        send_welcome_email(team, request.user)
+    except Exception as e:
+        logger.warning(f"Failed to send welcome email during onboarding skip: {e}")
+
     # Clear any onboarding session data
     request.session.pop(ONBOARDING_TOKEN_KEY, None)
     request.session.pop(ONBOARDING_ORGS_KEY, None)
@@ -615,6 +665,8 @@ def skip_onboarding(request):
 @login_required
 def onboarding_complete(request):
     """Final step showing sync status and dashboard link."""
+    from apps.integrations.models import JiraIntegration, SlackIntegration
+
     if not request.user.teams.exists():
         return redirect("onboarding:start")
 
@@ -625,6 +677,10 @@ def onboarding_complete(request):
 
     # Get sync task info for progress indicator
     sync_task_id = request.session.get("sync_task_id")
+
+    # Check integration status
+    jira_connected = JiraIntegration.objects.filter(team=team).exists()
+    slack_connected = SlackIntegration.objects.filter(team=team).exists()
 
     # Track onboarding completion
     track_event(
@@ -641,5 +697,7 @@ def onboarding_complete(request):
             "page_title": _("Setup Complete"),
             "step": 5,
             "sync_task_id": sync_task_id,
+            "jira_connected": jira_connected,
+            "slack_connected": slack_connected,
         },
     )

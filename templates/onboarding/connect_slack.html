@@ -49,7 +49,7 @@
       {% translate "Reconnect Slack" %}
     </a>
     {% else %}
-    <a href="?action=connect" class="app-btn-secondary gap-2 mb-2">
+    <a href="?action=connect" class="app-btn-primary gap-2 mb-2">
       <i class="fa-brands fa-slack"></i>
       {% translate "Add to Slack" %}
     </a>
@@ -60,6 +60,105 @@
   </div>
 </div>
 
+{% if slack_integration %}
+{# Configuration form - shown when Slack is connected #}
+<div class="app-card max-w-md mx-auto mb-6">
+  <h2 class="app-card-title text-center mb-4">{% translate "Configure Slack Bot" %}</h2>
+
+  <form method="post" id="slack-config-form">
+    {% csrf_token %}
+
+    {# Leaderboard channel (text input for now - would need API for channel list) #}
+    <div class="mb-4">
+      <label class="block text-sm font-medium text-base-content mb-2">
+        {% translate "Leaderboard Channel" %}
+      </label>
+      <input type="text"
+             name="leaderboard_channel_id"
+             value="{{ slack_integration.leaderboard_channel_id }}"
+             placeholder="#engineering"
+             class="w-full px-3 py-2 bg-base-100 border border-base-300 rounded-lg text-base-content placeholder:text-base-content/50 focus:outline-none focus:border-primary">
+      <p class="text-xs text-base-content/50 mt-1">
+        {% translate "Enter the channel ID where weekly leaderboards will be posted" %}
+      </p>
+    </div>
+
+    {# Schedule section #}
+    <div class="mb-4">
+      <label class="block text-sm font-medium text-base-content mb-2">
+        {% translate "Leaderboard Schedule" %}
+      </label>
+      <div class="flex gap-3">
+        <select name="leaderboard_day"
+                class="flex-1 px-3 py-2 bg-base-100 border border-base-300 rounded-lg text-base-content focus:outline-none focus:border-primary">
+          <option value="0" {% if slack_integration.leaderboard_day == 0 %}selected{% endif %}>{% translate "Monday" %}</option>
+          <option value="1" {% if slack_integration.leaderboard_day == 1 %}selected{% endif %}>{% translate "Tuesday" %}</option>
+          <option value="2" {% if slack_integration.leaderboard_day == 2 %}selected{% endif %}>{% translate "Wednesday" %}</option>
+          <option value="3" {% if slack_integration.leaderboard_day == 3 %}selected{% endif %}>{% translate "Thursday" %}</option>
+          <option value="4" {% if slack_integration.leaderboard_day == 4 %}selected{% endif %}>{% translate "Friday" %}</option>
+          <option value="5" {% if slack_integration.leaderboard_day == 5 %}selected{% endif %}>{% translate "Saturday" %}</option>
+          <option value="6" {% if slack_integration.leaderboard_day == 6 %}selected{% endif %}>{% translate "Sunday" %}</option>
+        </select>
+        <input type="time"
+               name="leaderboard_time"
+               value="{{ slack_integration.leaderboard_time|time:'H:i' }}"
+               class="flex-1 px-3 py-2 bg-base-100 border border-base-300 rounded-lg text-base-content focus:outline-none focus:border-primary">
+      </div>
+    </div>
+
+    {# Feature toggles #}
+    <div class="mb-4">
+      <label class="block text-sm font-medium text-base-content mb-3">
+        {% translate "Features" %}
+      </label>
+      <div class="space-y-3">
+        <label class="flex items-center gap-3 cursor-pointer">
+          <input type="checkbox"
+                 name="surveys_enabled"
+                 class="checkbox checkbox-primary"
+                 {% if slack_integration.surveys_enabled %}checked{% endif %}>
+          <div>
+            <span class="text-base-content font-medium">{% translate "PR surveys via DM" %}</span>
+            <p class="text-xs text-base-content/60">{% translate "Send quick surveys after PRs are merged" %}</p>
+          </div>
+        </label>
+        <label class="flex items-center gap-3 cursor-pointer">
+          <input type="checkbox"
+                 name="leaderboard_enabled"
+                 class="checkbox checkbox-primary"
+                 {% if slack_integration.leaderboard_enabled %}checked{% endif %}>
+          <div>
+            <span class="text-base-content font-medium">{% translate "Weekly leaderboard" %}</span>
+            <p class="text-xs text-base-content/60">{% translate "Post AI Detective rankings to channel" %}</p>
+          </div>
+        </label>
+        <label class="flex items-center gap-3 cursor-pointer">
+          <input type="checkbox"
+                 name="reveals_enabled"
+                 class="checkbox checkbox-primary"
+                 {% if slack_integration.reveals_enabled %}checked{% endif %}>
+          <div>
+            <span class="text-base-content font-medium">{% translate "Reveal messages" %}</span>
+            <p class="text-xs text-base-content/60">{% translate "Show guess results to survey respondents" %}</p>
+          </div>
+        </label>
+      </div>
+    </div>
+
+    <div class="flex gap-4 pt-4">
+      <a href="{% url 'onboarding:connect_jira' %}" class="app-btn-ghost flex-1">
+        <i class="fa-solid fa-arrow-left mr-2"></i>
+        {% translate "Back" %}
+      </a>
+      <button type="submit" class="app-btn-primary flex-1">
+        {% translate "Continue" %}
+        <i class="fa-solid fa-arrow-right ml-2"></i>
+      </button>
+    </div>
+  </form>
+</div>
+{% else %}
+{# Skip button form - shown when Slack is not connected #}
 <form method="post" class="max-w-md mx-auto">
   {% csrf_token %}
   <div class="flex gap-4">
@@ -67,14 +166,11 @@
       <i class="fa-solid fa-arrow-left mr-2"></i>
       {% translate "Back" %}
     </a>
-    <button type="submit" class="app-btn-primary flex-1">
-      {% if slack_integration %}
-      {% translate "Continue" %}
-      {% else %}
+    <button type="submit" class="app-btn-ghost flex-1">
       {% translate "Skip for now" %}
-      {% endif %}
       <i class="fa-solid fa-arrow-right ml-2"></i>
     </button>
   </div>
 </form>
+{% endif %}
 {% endblock %}

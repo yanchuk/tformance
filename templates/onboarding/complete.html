@@ -23,12 +23,22 @@
         <span class="text-base-content/90">{% translate "GitHub connected" %}</span>
       </li>
       <li class="flex items-center gap-3">
-        <i class="fa-solid fa-clock text-warning"></i>
-        <span class="text-base-content/90">{% translate "Jira - not connected (optional)" %}</span>
+        {% if jira_connected %}
+        <i class="fa-solid fa-check-circle text-success"></i>
+        <span class="text-base-content/90">{% translate "Jira connected" %}</span>
+        {% else %}
+        <i class="fa-solid fa-info-circle text-base-content/50"></i>
+        <span class="text-base-content/70">{% translate "Jira" %} - {% translate "Available to connect later" %}</span>
+        {% endif %}
       </li>
       <li class="flex items-center gap-3">
-        <i class="fa-solid fa-clock text-warning"></i>
-        <span class="text-base-content/90">{% translate "Slack - not connected (optional)" %}</span>
+        {% if slack_connected %}
+        <i class="fa-solid fa-check-circle text-success"></i>
+        <span class="text-base-content/90">{% translate "Slack connected" %}</span>
+        {% else %}
+        <i class="fa-solid fa-info-circle text-base-content/50"></i>
+        <span class="text-base-content/70">{% translate "Slack" %} - {% translate "Available to connect later" %}</span>
+        {% endif %}
       </li>
     </ul>
   </div>

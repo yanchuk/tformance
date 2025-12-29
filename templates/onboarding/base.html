@@ -24,6 +24,10 @@
   {# Progress indicator #}
   <div class="w-full bg-base-200 border-b border-base-300 py-4">
     <div class="max-w-2xl mx-auto px-4">
+      <div class="flex justify-between items-center mb-2">
+        <span class="text-xs text-base-content/60">{% translate "Setup" %}</span>
+        <span class="text-xs text-base-content/60"><i class="fa-regular fa-clock mr-1"></i>~5 min</span>
+      </div>
       <div class="app-steps">
         {# Step 1: GitHub #}
         <div class="app-step">
@@ -37,16 +41,22 @@
           <span class="app-step-label {% if step >= 2 %}app-step-label-active{% endif %}">{% translate "Repos" %}</span>
         </div>
         <div class="app-step-connector {% if step >= 3 %}app-step-connector-complete{% endif %}"></div>
-        {# Step 3: Jira #}
+        {# Step 3: Jira (optional) #}
         <div class="app-step">
           <div class="app-step-indicator {% if step >= 3 %}app-step-indicator-active{% endif %}">3</div>
-          <span class="app-step-label {% if step >= 3 %}app-step-label-active{% endif %}">{% translate "Jira" %}</span>
+          <span class="app-step-label {% if step >= 3 %}app-step-label-active{% endif %}">
+            {% translate "Jira" %}
+            <span class="text-xs text-base-content/50 block">(optional)</span>
+          </span>
         </div>
         <div class="app-step-connector {% if step >= 4 %}app-step-connector-complete{% endif %}"></div>
-        {# Step 4: Slack #}
+        {# Step 4: Slack (optional) #}
         <div class="app-step">
           <div class="app-step-indicator {% if step >= 4 %}app-step-indicator-active{% endif %}">4</div>
-          <span class="app-step-label {% if step >= 4 %}app-step-label-active{% endif %}">{% translate "Slack" %}</span>
+          <span class="app-step-label {% if step >= 4 %}app-step-label-active{% endif %}">
+            {% translate "Slack" %}
+            <span class="text-xs text-base-content/50 block">(optional)</span>
+          </span>
         </div>
         <div class="app-step-connector {% if step >= 5 %}app-step-connector-complete{% endif %}"></div>
         {# Step 5: Complete #}
