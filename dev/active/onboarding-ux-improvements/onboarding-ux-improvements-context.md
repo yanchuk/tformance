@@ -1,11 +1,11 @@
 # Onboarding UX Improvements - Context
 
 **Last Updated:** 2025-12-29
-**Status:** COMPLETED - All tasks implemented and tests passing
+**Status:** COMPLETED - All P0, P1, P2, P3 improvements implemented
 
 ## Session Summary
 
-This session implemented all P0, P1, and P3 priority UX improvements identified in a senior PM/UX review of the onboarding flow. All implementations followed strict TDD methodology.
+This session implemented all priority UX improvements identified in a senior PM/UX review of the onboarding flow. All implementations followed strict TDD methodology.
 
 ## Implementation Completed
 
@@ -16,59 +16,68 @@ This session implemented all P0, P1, and P3 priority UX improvements identified 
 
 ### Phase 2: P1 High Priority (DONE)
 4. **Repository Search Filter** - Alpine.js search for orgs with 6+ repos
-5. **Button Hierarchy** - Verified already correct
+5. **Button Hierarchy** - Fixed Jira connect button to primary, skip to ghost
 6. **Sync Progress Continue** - Verified already correct
 
-### Phase 4: Missing Features (DONE)
-7. **Welcome Email** - New service `apps/onboarding/services/notifications.py`
-8. **Slack Config Form** - Full configuration form with toggles and schedule
+### Phase 3: P2 Medium Priority (DONE)
+7. **Mobile Step Indicator** - Hide labels on mobile (`hidden sm:block`)
+8. **Enhanced Floating Sync Indicator** - Entrance animation, prominent border
+9. **Focus States** - Verified button focus rings from design system
+
+### Phase 4: P3 + Missing Features (DONE)
+10. **Welcome Email** - New service `apps/onboarding/services/notifications.py`
+11. **Slack Config Form** - Full configuration form with toggles and schedule
+12. **Loading States on OAuth** - Alpine.js spinner on GitHub/Jira/Slack buttons
+13. **Celebration Animation** - Sparkles and emojis on complete page
+14. **Personalized Welcome** - Show user's first name on complete page
+15. **Sync Complete Email** - Notification when data sync finishes
 
 ## Key Files Modified
 
 ### Templates
 | File | Changes |
 |------|---------|
-| `templates/onboarding/base.html` | Lines 27-30 (time estimate), Lines 43-46 & 52-55 (optional labels) |
-| `templates/onboarding/complete.html` | Lines 25-42 (conditional Jira/Slack status) |
-| `templates/onboarding/select_repos.html` | Lines 16-60 (Alpine.js search + filter) |
-| `templates/onboarding/connect_slack.html` | Lines 63-159 (full config form) |
+| `templates/onboarding/base.html` | Time estimate, optional labels, mobile hiding, sync indicator animation |
+| `templates/onboarding/complete.html` | Conditional status, celebration sparkles, personalized greeting |
+| `templates/onboarding/select_repos.html` | Alpine.js search + filter |
+| `templates/onboarding/connect_slack.html` | Config form, loading state on OAuth |
+| `templates/onboarding/connect_jira.html` | Loading state on OAuth, button hierarchy fix |
+| `templates/onboarding/start.html` | Loading state on GitHub connect |
 
-### Views
+### CSS
 | File | Changes |
 |------|---------|
-| `apps/onboarding/views.py` | Line 28 (import), Lines 180-184 (welcome email in org flow), Lines 602-606 (welcome email in skip flow), Lines 559-603 (Slack config POST), Lines 631-633 (complete page context) |
+| `assets/styles/app/tailwind/design-system.css` | `animate-bounce-in` keyframe animation |
 
-### New Services
+### Services
 | File | Purpose |
 |------|---------|
 | `apps/onboarding/services/__init__.py` | Module init with exports |
-| `apps/onboarding/services/notifications.py` | `send_welcome_email(team, user)` function |
+| `apps/onboarding/services/notifications.py` | `send_welcome_email()` and `send_sync_complete_email()` |
 
 ### New Tests
 | File | Tests |
 |------|-------|
-| `apps/onboarding/tests/test_ux_improvements.py` | 13 tests for UX changes |
-| `apps/onboarding/tests/test_welcome_email.py` | 8 tests for email service |
+| `apps/onboarding/tests/test_ux_improvements.py` | 13 tests for P0/P1 UX changes |
+| `apps/onboarding/tests/test_ux_improvements_p2p3.py` | 8 tests for P2/P3 UX changes |
+| `apps/onboarding/tests/test_welcome_email.py` | 13 tests for email services |
 | `apps/onboarding/tests/test_slack_config.py` | 6 tests for config form |
-
-## Key Decisions Made
-
-1. **Search filter threshold**: Only show search input for organizations with >5 repos
-2. **Welcome email URL**: Uses `settings.PROJECT_METADATA["URL"]` not `BASE_URL`
-3. **Slack config**: Uses text input for channel ID (API integration for dropdown deferred)
-4. **Optional label style**: `text-xs text-base-content/50 block` for subtle display
-5. **Integration status**: Uses `fa-info-circle text-base-content/50` instead of `fa-clock text-warning`
 
 ## Test Status
 
 ```bash
 .venv/bin/pytest apps/onboarding/tests/ -v
-# Result: 97 passed
+# Result: 110 passed
 ```
+
+## Git Commits
+
+1. `95c2bbf` - Add onboarding UX improvements from PM/UX review (P0, P1, P3 partial)
+2. `df04464` - Add P2/P3 onboarding UX improvements
 
 ## No Migrations Required
 
-No model changes were made - all changes are templates, views, and a new service module.
+No model changes were made - all changes are templates, views, CSS, and service modules.
 
 ## Verification Commands
 
@@ -78,6 +87,7 @@ make test ARGS='apps.onboarding'
 
 # Run specific test files
 .venv/bin/pytest apps/onboarding/tests/test_ux_improvements.py -v
+.venv/bin/pytest apps/onboarding/tests/test_ux_improvements_p2p3.py -v
 .venv/bin/pytest apps/onboarding/tests/test_welcome_email.py -v
 .venv/bin/pytest apps/onboarding/tests/test_slack_config.py -v
 
@@ -85,29 +95,14 @@ make test ARGS='apps.onboarding'
 make test
 ```
 
-## Deferred/Future Work
+## Remaining/Deferred Work
 
-Per original PRD review, these items were identified but not implemented this session:
-- P2: Mobile step indicator responsiveness
-- P2: Enhanced floating sync indicator
-- P2: Focus states for interactive cards
-- P3: Loading states on OAuth buttons
-- P3: Error recovery CTAs
-- P3: Celebration animation on complete page
-- P3: Sync complete email notification
+Only one item from original review not implemented:
+- P3: Error recovery CTAs (would require more extensive view changes)
 
 ## Dependencies
 
 - No new packages required
-- Existing Alpine.js (v3.x) for repo search filter
+- Existing Alpine.js (v3.x) for repo search filter and loading states
 - Existing email infrastructure (Django send_mail)
 - SlackIntegration model fields already exist for config form
-
-## URLs/Routes
-
-All routes unchanged - only template/view logic updated:
-- `/onboarding/` - start
-- `/onboarding/repos/` - select repos (now with search)
-- `/onboarding/jira/` - connect Jira
-- `/onboarding/slack/` - connect Slack (now with config form)
-- `/onboarding/complete/` - completion page (now with neutral messaging)
