@@ -90,6 +90,9 @@ document.addEventListener('htmx:afterSwap', function(event) {
 
   // Technology Breakdown Chart - stacked bar chart
   initTechChart();
+
+  // Wide Trend Chart (main analytics chart)
+  initWideTrendChart();
 });
 
 /**
@@ -268,6 +271,57 @@ function initTechChart() {
   }
 }
 
+/**
+ * Initialize Wide Trend Chart (main analytics chart)
+ * Reads data from json_script tags and creates chart
+ * Supports both single metric and multi-metric comparison modes
+ */
+function initWideTrendChart() {
+  const canvas = document.getElementById('trend-chart');
+  if (!canvas) return;
+
+  const chartDataEl = document.getElementById('trend-chart-data');
+  const comparisonDataEl = document.getElementById('trend-comparison-data');
+  if (!chartDataEl) return;
+
+  // Check if chart creation functions are available
+  if (!window.createWideTrendChart || !window.createMultiMetricChart) {
+    // Retry after a short delay if modules not yet loaded
+    setTimeout(initWideTrendChart, 100);
+    return;
+  }
+
+  try {
+    const chartData = JSON.parse(chartDataEl.textContent);
+    const comparisonData = comparisonDataEl ? JSON.parse(comparisonDataEl.textContent) : null;
+    const isMultiMetric = canvas.getAttribute('data-multi-metric') === 'true';
+
+    // Destroy existing chart if any
+    destroyChartIfExists(canvas);
+
+    if (isMultiMetric) {
+      // Multi-metric comparison mode
+      window.trendChart = window.createMultiMetricChart(canvas, chartData);
+    } else {
+      // Single metric mode
+      const metric = canvas.getAttribute('data-metric');
+      // Convert old format to new if needed
+      const data = chartData.datasets ? chartData.datasets[0]?.data?.map((value, i) => ({
+        month: chartData.labels[i],
+        value: value
+      })) : chartData;
+
+      window.trendChart = window.createWideTrendChart(canvas, data, {
+        metric: metric,
+        comparisonData: comparisonData,
+      });
+    }
+  } catch (e) {
+    console.error('Failed to initialize wide trend chart:', e);
+  }
+}
+
 // Expose chart init functions globally for direct calls
 window.initPrTypeChart = initPrTypeChart;
 window.initTechChart = initTechChart;
+window.initWideTrendChart = initWideTrendChart;

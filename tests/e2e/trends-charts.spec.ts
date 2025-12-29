@@ -223,6 +223,104 @@ test.describe('Trends Charts Tests @trends-charts', () => {
     });
   });
 
+  test.describe('Wide Trend Chart HTMX Integration', () => {
+    test('Wide trend chart renders after initial page load', async ({ page }) => {
+      await page.goto('/app/metrics/analytics/trends/');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForTimeout(3000);
+
+      // Main trend chart canvas should exist and have Chart.js instance
+      const canvas = page.locator('#trend-chart');
+      await expect(canvas).toBeAttached();
+
+      const chartRendered = await page.evaluate(() => {
+        const canvas = document.getElementById('trend-chart') as HTMLCanvasElement;
+        if (!canvas) return { exists: false, hasChart: false };
+        const chartInstance = (window as any).Chart?.getChart?.(canvas);
+        return {
+          exists: true,
+          hasChart: !!chartInstance,
+          width: canvas.width,
+          height: canvas.height,
+        };
+      });
+
+      expect(chartRendered.exists).toBe(true);
+      expect(chartRendered.hasChart).toBe(true);
+    });
+
+    test('Wide trend chart re-renders after granularity change (HTMX swap)', async ({ page }) => {
+      await page.goto('/app/metrics/analytics/trends/');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForTimeout(3000);
+
+      // Verify initial chart exists
+      const initialChart = await page.evaluate(() => {
+        const canvas = document.getElementById('trend-chart') as HTMLCanvasElement;
+        return canvas ? !!(window as any).Chart?.getChart?.(canvas) : false;
+      });
+      expect(initialChart).toBe(true);
+
+      // Find and click granularity dropdown/button to trigger HTMX swap
+      // The granularity selector should be in the trends page
+      const granularitySelect = page.locator('[data-granularity], select[name="granularity"], #granularity-select').first();
+
+      if (await granularitySelect.isVisible()) {
+        // Change granularity - this should trigger HTMX swap
+        await granularitySelect.selectOption({ index: 1 });
+      } else {
+        // If no dropdown, look for granularity buttons (weekly/monthly)
+        const monthlyBtn = page.getByRole('button', { name: /monthly/i }).first();
+        if (await monthlyBtn.isVisible()) {
+          await monthlyBtn.click();
+        }
+      }
+
+      // Wait for HTMX swap to complete
+      await page.waitForTimeout(2000);
+
+      // After HTMX swap, chart should still render (this is the critical test)
+      const chartAfterSwap = await page.evaluate(() => {
+        const canvas = document.getElementById('trend-chart') as HTMLCanvasElement;
+        if (!canvas) return { exists: false, hasChart: false };
+        const chartInstance = (window as any).Chart?.getChart?.(canvas);
+        return {
+          exists: true,
+          hasChart: !!chartInstance,
+        };
+      });
+
+      // This assertion will FAIL if inline script doesn't execute after HTMX swap
+      expect(chartAfterSwap.exists).toBe(true);
+      expect(chartAfterSwap.hasChart).toBe(true);
+    });
+
+    test('No inline script errors in wide chart template', async ({ page }) => {
+      const consoleErrors: string[] = [];
+      page.on('console', (msg) => {
+        if (msg.type() === 'error') {
+          consoleErrors.push(msg.text());
+        }
+      });
+
+      await page.goto('/app/metrics/analytics/trends/');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForTimeout(3000);
+
+      // Filter for chart-related errors
+      const chartErrors = consoleErrors.filter(
+        (err) =>
+          err.includes('trend') ||
+          err.includes('chart') ||
+          err.includes('Chart') ||
+          err.includes('canvas')
+      );
+
+      // Should have no chart-related errors
+      expect(chartErrors).toHaveLength(0);
+    });
+  });
+
   test.describe('No Console Errors', () => {
     test('Trends page loads without JavaScript errors', async ({ page }) => {
       const consoleErrors: string[] = [];
