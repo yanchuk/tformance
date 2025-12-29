@@ -31,6 +31,39 @@ class Team(SubscriptionModelBase, BaseModel):
         "Default True for existing teams; set False during onboarding creation.",
     )
 
+    # Onboarding pipeline tracking
+    PIPELINE_STATUS_CHOICES = [
+        ("not_started", "Not Started"),
+        ("syncing", "Syncing PRs"),
+        ("llm_processing", "Analyzing with AI"),
+        ("computing_metrics", "Computing Metrics"),
+        ("computing_insights", "Computing Insights"),
+        ("complete", "Complete"),
+        ("failed", "Failed"),
+    ]
+
+    onboarding_pipeline_status = models.CharField(
+        max_length=50,
+        choices=PIPELINE_STATUS_CHOICES,
+        default="not_started",
+        help_text="Current status of the onboarding data processing pipeline.",
+    )
+    onboarding_pipeline_error = models.TextField(
+        blank=True,
+        null=True,
+        help_text="Error message if pipeline failed.",
+    )
+    onboarding_pipeline_started_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When the pipeline started processing.",
+    )
+    onboarding_pipeline_completed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When the pipeline completed (success or failure).",
+    )
+
     # your team customizations go here.
 
     def __str__(self):
@@ -54,6 +87,51 @@ class Team(SubscriptionModelBase, BaseModel):
     @property
     def dashboard_url(self) -> str:
         return reverse("teams:switch_team", kwargs={"team_slug": self.slug})
+
+    @property
+    def pipeline_in_progress(self) -> bool:
+        """Return True if the onboarding pipeline is currently running."""
+        return self.onboarding_pipeline_status in [
+            "syncing",
+            "llm_processing",
+            "computing_metrics",
+            "computing_insights",
+        ]
+
+    def update_pipeline_status(self, status: str, error: str | None = None) -> None:
+        """
+        Update the pipeline status and related fields.
+
+        Args:
+            status: One of the PIPELINE_STATUS_CHOICES values
+            error: Optional error message (only stored if status is 'failed')
+        """
+        from django.utils import timezone
+
+        self.onboarding_pipeline_status = status
+
+        # Set started_at when pipeline begins
+        if status == "syncing" and self.onboarding_pipeline_started_at is None:
+            self.onboarding_pipeline_started_at = timezone.now()
+
+        # Set completed_at when pipeline ends (success or failure)
+        if status in ["complete", "failed"]:
+            self.onboarding_pipeline_completed_at = timezone.now()
+
+        # Store error message only for failed status, clear otherwise
+        if status == "failed" and error:
+            self.onboarding_pipeline_error = error
+        elif status != "failed":
+            self.onboarding_pipeline_error = None
+
+        self.save(
+            update_fields=[
+                "onboarding_pipeline_status",
+                "onboarding_pipeline_error",
+                "onboarding_pipeline_started_at",
+                "onboarding_pipeline_completed_at",
+            ]
+        )
 
 
 class Membership(BaseModel):

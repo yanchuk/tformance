@@ -15,6 +15,7 @@ from allauth.socialaccount.models import SocialAccount
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.db.models import Count, Q
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
@@ -22,10 +23,10 @@ from django.utils.translation import gettext_lazy as _
 from django.views.decorators.http import require_POST
 
 from apps.integrations.models import GitHubIntegration, IntegrationCredential, TrackedRepository
+from apps.integrations.onboarding_pipeline import start_onboarding_pipeline
 from apps.integrations.services import github_oauth, member_sync
 from apps.integrations.services.encryption import decrypt, encrypt
-from apps.integrations.tasks import sync_historical_data_task
-from apps.metrics.models import PullRequest
+from apps.metrics.models import DailyInsight, PullRequest, WeeklyMetrics
 from apps.onboarding.services.notifications import send_welcome_email
 from apps.teams.helpers import get_next_unique_team_slug
 from apps.teams.models import Membership, Team
@@ -269,11 +270,11 @@ def select_repositories(request):
         # Start sync in background and continue to next step
         repo_ids = list(TrackedRepository.objects.filter(team=team).values_list("id", flat=True))
         if repo_ids:
-            # Start background sync task
-            task = sync_historical_data_task.delay(team.id, repo_ids)
+            # Start the full onboarding pipeline (sync + LLM + metrics + insights)
+            task = start_onboarding_pipeline(team.id, repo_ids)
             # Store task_id in session for progress tracking
             request.session["sync_task_id"] = task.id
-            logger.info(f"Started background sync task {task.id} for team {team.name}")
+            logger.info(f"Started onboarding pipeline task {task.id} for team {team.name}")
 
         # Track step completion
         track_event(
@@ -377,8 +378,8 @@ def start_sync(request):
     # Get all tracked repo IDs for this team
     repo_ids = list(TrackedRepository.objects.filter(team=team).values_list("id", flat=True))
 
-    # Start the Celery task
-    task = sync_historical_data_task.delay(team.id, repo_ids)
+    # Start the full onboarding pipeline (sync + LLM + metrics + insights)
+    task = start_onboarding_pipeline(team.id, repo_ids)
 
     return JsonResponse({"task_id": task.id})
 
@@ -430,14 +431,31 @@ def sync_status(request):
         # Mixed states - some completed, some failed/pending
         overall_status = "partial"
 
-    # Count PRs synced
-    prs_synced = PullRequest.objects.filter(team=team).count()
+    # Get PR counts in a single query: total and LLM-processed
+    pr_counts = PullRequest.objects.filter(team=team).aggregate(
+        total=Count("id"),
+        llm_processed=Count("id", filter=Q(llm_summary__isnull=False)),
+    )
+    prs_synced = pr_counts["total"]
+    llm_processed = pr_counts["llm_processed"]
+
+    # Check if metrics and insights are ready
+    metrics_ready = WeeklyMetrics.objects.filter(team=team).exists()
+    insights_ready = DailyInsight.objects.filter(team=team).exists()
 
     return JsonResponse(
         {
             "repos": repo_list,
             "overall_status": overall_status,
             "prs_synced": prs_synced,
+            "pipeline_status": team.onboarding_pipeline_status,
+            "pipeline_stage": team.get_onboarding_pipeline_status_display(),
+            "llm_progress": {
+                "processed": llm_processed,
+                "total": prs_synced,
+            },
+            "metrics_ready": metrics_ready,
+            "insights_ready": insights_ready,
         }
     )
 

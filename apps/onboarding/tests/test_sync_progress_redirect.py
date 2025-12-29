@@ -44,12 +44,12 @@ class TestSelectRepositoriesRedirectToSyncProgress(TestCase):
         # Mock the GitHub API call and Celery task
         with (
             patch("apps.onboarding.views.github_oauth.get_organization_repositories") as mock_repos,
-            patch("apps.onboarding.views.sync_historical_data_task") as mock_task,
+            patch("apps.onboarding.views.start_onboarding_pipeline") as mock_pipeline,
         ):
             mock_repos.return_value = [
                 {"id": 123456, "full_name": "org/repo1", "name": "repo1"},
             ]
-            mock_task.delay.return_value.id = "test-task-id-123"
+            mock_pipeline.return_value.id = "test-task-id-123"
 
             response = self.client.post(
                 reverse("onboarding:select_repos"),
@@ -161,12 +161,12 @@ class TestSyncTaskIdStoredInSession(TestCase):
         # Mock the GitHub API call and Celery task
         with (
             patch("apps.onboarding.views.github_oauth.get_organization_repositories") as mock_repos,
-            patch("apps.onboarding.views.sync_historical_data_task") as mock_task,
+            patch("apps.onboarding.views.start_onboarding_pipeline") as mock_pipeline,
         ):
             mock_repos.return_value = [
                 {"id": 789012, "full_name": "org/repo", "name": "repo"},
             ]
-            mock_task.delay.return_value.id = "celery-task-uuid-456"
+            mock_pipeline.return_value.id = "celery-task-uuid-456"
 
             self.client.post(
                 reverse("onboarding:select_repos"),
