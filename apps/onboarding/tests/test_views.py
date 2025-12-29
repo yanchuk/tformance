@@ -560,3 +560,128 @@ class SlackConnectViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Test Workspace")
         self.assertContains(response, "Connected to")
+
+
+class SyncStatusViewTests(TestCase):
+    """Tests for sync_status API endpoint."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        from apps.integrations.factories import GitHubIntegrationFactory, IntegrationCredentialFactory
+        from apps.integrations.models import TrackedRepository
+
+        self.user = CustomUser.objects.create_user(
+            username="syncstatus@example.com",
+            email="syncstatus@example.com",
+            password="testpassword123",
+        )
+        self.team = TeamFactory()
+        self.team.members.add(self.user)
+
+        # Create GitHub integration
+        credential = IntegrationCredentialFactory(team=self.team, provider="github")
+        self.integration = GitHubIntegrationFactory(
+            team=self.team,
+            credential=credential,
+            organization_slug="test-org",
+        )
+
+        # Create some tracked repos
+        self.repo1 = TrackedRepository.objects.create(
+            team=self.team,
+            integration=self.integration,
+            github_repo_id=12345,
+            full_name="test-org/repo1",
+            sync_status="completed",
+        )
+        self.repo2 = TrackedRepository.objects.create(
+            team=self.team,
+            integration=self.integration,
+            github_repo_id=12346,
+            full_name="test-org/repo2",
+            sync_status="pending",
+        )
+
+    def test_requires_authentication(self):
+        """Test that unauthenticated requests are rejected."""
+        response = self.client.get(reverse("onboarding:sync_status"))
+        self.assertEqual(response.status_code, 302)  # Redirect to login
+
+    def test_returns_json_with_repos(self):
+        """Test that authenticated requests get JSON with repo statuses."""
+        self.client.login(username="syncstatus@example.com", password="testpassword123")
+
+        response = self.client.get(reverse("onboarding:sync_status"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "application/json")
+
+        data = response.json()
+        self.assertIn("repos", data)
+        self.assertIn("overall_status", data)
+        self.assertIn("prs_synced", data)
+        self.assertEqual(len(data["repos"]), 2)
+
+    def test_returns_correct_repo_statuses(self):
+        """Test that repo statuses are correctly returned."""
+        self.client.login(username="syncstatus@example.com", password="testpassword123")
+
+        response = self.client.get(reverse("onboarding:sync_status"))
+        data = response.json()
+
+        repo_by_id = {r["id"]: r for r in data["repos"]}
+        self.assertEqual(repo_by_id[self.repo1.id]["sync_status"], "completed")
+        self.assertEqual(repo_by_id[self.repo2.id]["sync_status"], "pending")
+
+    def test_overall_status_partial_when_mixed(self):
+        """Test overall status is partial when repos have mixed statuses."""
+        self.client.login(username="syncstatus@example.com", password="testpassword123")
+
+        response = self.client.get(reverse("onboarding:sync_status"))
+        data = response.json()
+
+        # One completed, one pending = partial
+        self.assertEqual(data["overall_status"], "partial")
+
+    def test_overall_status_completed_when_all_done(self):
+        """Test overall status is completed when all repos are completed."""
+        self.repo2.sync_status = "completed"
+        self.repo2.save()
+
+        self.client.login(username="syncstatus@example.com", password="testpassword123")
+
+        response = self.client.get(reverse("onboarding:sync_status"))
+        data = response.json()
+
+        self.assertEqual(data["overall_status"], "completed")
+
+    def test_returns_prs_synced_count(self):
+        """Test that prs_synced count is returned."""
+        from apps.metrics.factories import PullRequestFactory, TeamMemberFactory
+
+        author = TeamMemberFactory(team=self.team)
+        PullRequestFactory(team=self.team, author=author)
+        PullRequestFactory(team=self.team, author=author)
+
+        self.client.login(username="syncstatus@example.com", password="testpassword123")
+
+        response = self.client.get(reverse("onboarding:sync_status"))
+        data = response.json()
+
+        self.assertEqual(data["prs_synced"], 2)
+
+    def test_error_when_no_team(self):
+        """Test error response when user has no team."""
+        # Create user without team
+        CustomUser.objects.create_user(
+            username="noteam@example.com",
+            email="noteam@example.com",
+            password="testpassword123",
+        )
+        self.client.login(username="noteam@example.com", password="testpassword123")
+
+        response = self.client.get(reverse("onboarding:sync_status"))
+
+        self.assertEqual(response.status_code, 400)
+        data = response.json()
+        self.assertIn("error", data)
