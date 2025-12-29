@@ -274,8 +274,8 @@ class StartSyncApiViewTests(TestCase):
 
         self.client.login(username="api_test@example.com", password="testpassword123")
 
-        with patch("apps.onboarding.views.sync_historical_data_task") as mock_task:
-            mock_task.delay.return_value.id = "test-task-id-123"
+        with patch("apps.onboarding.views.start_onboarding_pipeline") as mock_pipeline:
+            mock_pipeline.return_value.id = "test-task-id-123"
 
             response = self.client.post(reverse("onboarding:start_sync"))
 
@@ -685,3 +685,407 @@ class SyncStatusViewTests(TestCase):
         self.assertEqual(response.status_code, 400)
         data = response.json()
         self.assertIn("error", data)
+
+
+class SyncStatusPipelineFieldsTests(TestCase):
+    """Tests for sync_status API endpoint pipeline progress fields.
+
+    These tests verify that the sync_status endpoint returns pipeline
+    progress information for tracking the onboarding data pipeline.
+    """
+
+    def setUp(self):
+        """Set up test fixtures."""
+        from apps.integrations.factories import GitHubIntegrationFactory, IntegrationCredentialFactory
+        from apps.integrations.models import TrackedRepository
+
+        self.user = CustomUser.objects.create_user(
+            username="pipeline_test@example.com",
+            email="pipeline_test@example.com",
+            password="testpassword123",
+        )
+        self.team = TeamFactory()
+        self.team.members.add(self.user)
+
+        # Create GitHub integration
+        credential = IntegrationCredentialFactory(team=self.team, provider="github")
+        self.integration = GitHubIntegrationFactory(
+            team=self.team,
+            credential=credential,
+            organization_slug="test-org",
+        )
+
+        # Create tracked repo
+        self.repo = TrackedRepository.objects.create(
+            team=self.team,
+            integration=self.integration,
+            github_repo_id=99999,
+            full_name="test-org/pipeline-repo",
+            sync_status="completed",
+        )
+
+        self.client.login(username="pipeline_test@example.com", password="testpassword123")
+
+    def test_returns_pipeline_status_field(self):
+        """Test that sync_status returns pipeline_status from team model."""
+
+        # Set a specific pipeline status
+        self.team.onboarding_pipeline_status = "llm_processing"
+        self.team.save()
+
+        response = self.client.get(reverse("onboarding:sync_status"))
+        data = response.json()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("pipeline_status", data)
+        self.assertEqual(data["pipeline_status"], "llm_processing")
+
+    def test_returns_pipeline_stage_display_for_not_started(self):
+        """Test that pipeline_stage returns human-readable display for not_started."""
+        self.team.onboarding_pipeline_status = "not_started"
+        self.team.save()
+
+        response = self.client.get(reverse("onboarding:sync_status"))
+        data = response.json()
+
+        self.assertIn("pipeline_stage", data)
+        self.assertEqual(data["pipeline_stage"], "Not Started")
+
+    def test_returns_pipeline_stage_display_for_syncing(self):
+        """Test that pipeline_stage returns human-readable display for syncing."""
+        self.team.onboarding_pipeline_status = "syncing"
+        self.team.save()
+
+        response = self.client.get(reverse("onboarding:sync_status"))
+        data = response.json()
+
+        self.assertIn("pipeline_stage", data)
+        self.assertEqual(data["pipeline_stage"], "Syncing PRs")
+
+    def test_returns_pipeline_stage_display_for_llm_processing(self):
+        """Test that pipeline_stage returns human-readable display for llm_processing."""
+        self.team.onboarding_pipeline_status = "llm_processing"
+        self.team.save()
+
+        response = self.client.get(reverse("onboarding:sync_status"))
+        data = response.json()
+
+        self.assertIn("pipeline_stage", data)
+        self.assertEqual(data["pipeline_stage"], "Analyzing with AI")
+
+    def test_returns_pipeline_stage_display_for_computing_metrics(self):
+        """Test that pipeline_stage returns human-readable display for computing_metrics."""
+        self.team.onboarding_pipeline_status = "computing_metrics"
+        self.team.save()
+
+        response = self.client.get(reverse("onboarding:sync_status"))
+        data = response.json()
+
+        self.assertIn("pipeline_stage", data)
+        self.assertEqual(data["pipeline_stage"], "Computing Metrics")
+
+    def test_returns_pipeline_stage_display_for_complete(self):
+        """Test that pipeline_stage returns human-readable display for complete."""
+        self.team.onboarding_pipeline_status = "complete"
+        self.team.save()
+
+        response = self.client.get(reverse("onboarding:sync_status"))
+        data = response.json()
+
+        self.assertIn("pipeline_stage", data)
+        self.assertEqual(data["pipeline_stage"], "Complete")
+
+    def test_returns_llm_progress_with_zero_when_no_prs(self):
+        """Test that llm_progress returns zeros when no PRs exist."""
+        response = self.client.get(reverse("onboarding:sync_status"))
+        data = response.json()
+
+        self.assertIn("llm_progress", data)
+        self.assertIsInstance(data["llm_progress"], dict)
+        self.assertEqual(data["llm_progress"]["processed"], 0)
+        self.assertEqual(data["llm_progress"]["total"], 0)
+
+    def test_returns_llm_progress_with_counts(self):
+        """Test that llm_progress returns correct processed/total counts."""
+        from apps.metrics.factories import PullRequestFactory, TeamMemberFactory
+
+        author = TeamMemberFactory(team=self.team)
+
+        # Create 3 PRs, 2 with llm_summary (processed), 1 without
+        PullRequestFactory(
+            team=self.team,
+            author=author,
+            llm_summary={"ai": {"is_assisted": True}},
+        )
+        PullRequestFactory(
+            team=self.team,
+            author=author,
+            llm_summary={"ai": {"is_assisted": False}},
+        )
+        PullRequestFactory(
+            team=self.team,
+            author=author,
+            llm_summary=None,
+        )
+
+        response = self.client.get(reverse("onboarding:sync_status"))
+        data = response.json()
+
+        self.assertIn("llm_progress", data)
+        self.assertEqual(data["llm_progress"]["total"], 3)
+        self.assertEqual(data["llm_progress"]["processed"], 2)
+
+    def test_returns_metrics_ready_false_when_no_weekly_metrics(self):
+        """Test that metrics_ready is False when no WeeklyMetrics exist."""
+        response = self.client.get(reverse("onboarding:sync_status"))
+        data = response.json()
+
+        self.assertIn("metrics_ready", data)
+        self.assertFalse(data["metrics_ready"])
+
+    def test_returns_metrics_ready_true_when_weekly_metrics_exist(self):
+        """Test that metrics_ready is True when WeeklyMetrics exist for team."""
+        from apps.metrics.factories import TeamMemberFactory, WeeklyMetricsFactory
+
+        member = TeamMemberFactory(team=self.team)
+        WeeklyMetricsFactory(team=self.team, member=member)
+
+        response = self.client.get(reverse("onboarding:sync_status"))
+        data = response.json()
+
+        self.assertIn("metrics_ready", data)
+        self.assertTrue(data["metrics_ready"])
+
+    def test_returns_insights_ready_false_when_no_daily_insights(self):
+        """Test that insights_ready is False when no DailyInsight exist."""
+        response = self.client.get(reverse("onboarding:sync_status"))
+        data = response.json()
+
+        self.assertIn("insights_ready", data)
+        self.assertFalse(data["insights_ready"])
+
+    def test_returns_insights_ready_true_when_daily_insights_exist(self):
+        """Test that insights_ready is True when DailyInsight exist for team."""
+        from apps.metrics.factories import DailyInsightFactory
+
+        DailyInsightFactory(team=self.team)
+
+        response = self.client.get(reverse("onboarding:sync_status"))
+        data = response.json()
+
+        self.assertIn("insights_ready", data)
+        self.assertTrue(data["insights_ready"])
+
+    def test_all_pipeline_fields_returned_together(self):
+        """Test that all new pipeline fields are returned in a single response."""
+        from apps.metrics.factories import (
+            DailyInsightFactory,
+            PullRequestFactory,
+            TeamMemberFactory,
+            WeeklyMetricsFactory,
+        )
+
+        # Set up complete scenario
+        self.team.onboarding_pipeline_status = "complete"
+        self.team.save()
+
+        member = TeamMemberFactory(team=self.team)
+        PullRequestFactory(team=self.team, author=member, llm_summary={"ai": {"is_assisted": True}})
+        WeeklyMetricsFactory(team=self.team, member=member)
+        DailyInsightFactory(team=self.team)
+
+        response = self.client.get(reverse("onboarding:sync_status"))
+        data = response.json()
+
+        # Verify all new fields are present
+        self.assertIn("pipeline_status", data)
+        self.assertIn("pipeline_stage", data)
+        self.assertIn("llm_progress", data)
+        self.assertIn("metrics_ready", data)
+        self.assertIn("insights_ready", data)
+
+        # Verify correct values
+        self.assertEqual(data["pipeline_status"], "complete")
+        self.assertEqual(data["pipeline_stage"], "Complete")
+        self.assertEqual(data["llm_progress"]["processed"], 1)
+        self.assertEqual(data["llm_progress"]["total"], 1)
+        self.assertTrue(data["metrics_ready"])
+        self.assertTrue(data["insights_ready"])
+
+
+class PipelineIntegrationTests(TestCase):
+    """Tests for onboarding views integration with the onboarding pipeline.
+
+    These tests verify that the onboarding views use start_onboarding_pipeline()
+    instead of sync_historical_data_task.delay() directly.
+    """
+
+    def setUp(self):
+        """Set up test fixtures using factories."""
+        from apps.integrations.factories import (
+            GitHubIntegrationFactory,
+            IntegrationCredentialFactory,
+            TrackedRepositoryFactory,
+        )
+
+        self.user = CustomUser.objects.create_user(
+            username="pipeline_views@example.com",
+            email="pipeline_views@example.com",
+            password="testpassword123",
+        )
+        self.team = TeamFactory()
+        self.team.members.add(self.user)
+
+        # Create GitHub integration
+        self.credential = IntegrationCredentialFactory(team=self.team, provider="github")
+        self.integration = GitHubIntegrationFactory(
+            team=self.team,
+            credential=self.credential,
+            organization_slug="test-org",
+        )
+
+        # Create tracked repositories
+        self.repo1 = TrackedRepositoryFactory(
+            team=self.team,
+            integration=self.integration,
+            full_name="test-org/repo-1",
+        )
+        self.repo2 = TrackedRepositoryFactory(
+            team=self.team,
+            integration=self.integration,
+            full_name="test-org/repo-2",
+        )
+
+        self.client.login(username="pipeline_views@example.com", password="testpassword123")
+
+    def test_select_repos_post_calls_start_onboarding_pipeline(self):
+        """Test that select_repos POST calls start_onboarding_pipeline instead of sync_historical_data_task.
+
+        This test verifies that when a user submits repository selection,
+        the view triggers the full onboarding pipeline, not just the sync task.
+        """
+        from unittest.mock import patch
+
+        # Mock both the GitHub API call and the pipeline function
+        with patch("apps.onboarding.views.github_oauth.get_organization_repositories") as mock_repos:
+            mock_repos.return_value = [
+                {"id": self.repo1.github_repo_id, "full_name": "test-org/repo-1"},
+                {"id": self.repo2.github_repo_id, "full_name": "test-org/repo-2"},
+            ]
+
+            with patch("apps.onboarding.views.start_onboarding_pipeline") as mock_pipeline:
+                mock_pipeline.return_value.id = "pipeline-task-id-123"
+
+                response = self.client.post(
+                    reverse("onboarding:select_repos"),
+                    {"repos": [str(self.repo1.github_repo_id)]},
+                )
+
+                # Verify the pipeline was called
+                mock_pipeline.assert_called_once()
+                call_args = mock_pipeline.call_args
+                self.assertEqual(call_args[0][0], self.team.id)  # First arg is team_id
+                self.assertIsInstance(call_args[0][1], list)  # Second arg is repo_ids list
+
+        # Should redirect to sync_progress
+        self.assertRedirects(response, reverse("onboarding:sync_progress"))
+
+    def test_select_repos_post_stores_task_id_in_session(self):
+        """Test that select_repos stores the pipeline task_id in session.
+
+        The session should contain the task_id returned by start_onboarding_pipeline
+        for progress tracking on the sync_progress page.
+        """
+        from unittest.mock import patch
+
+        with patch("apps.onboarding.views.github_oauth.get_organization_repositories") as mock_repos:
+            mock_repos.return_value = [
+                {"id": self.repo1.github_repo_id, "full_name": "test-org/repo-1"},
+            ]
+
+            with patch("apps.onboarding.views.start_onboarding_pipeline") as mock_pipeline:
+                mock_pipeline.return_value.id = "pipeline-task-id-456"
+
+                self.client.post(
+                    reverse("onboarding:select_repos"),
+                    {"repos": [str(self.repo1.github_repo_id)]},
+                )
+
+                # Verify task_id is stored in session
+                session = self.client.session
+                self.assertEqual(session.get("sync_task_id"), "pipeline-task-id-456")
+
+    def test_start_sync_post_calls_start_onboarding_pipeline(self):
+        """Test that start_sync POST calls start_onboarding_pipeline instead of sync_historical_data_task.
+
+        The start_sync API endpoint should trigger the full onboarding pipeline
+        for processing historical data.
+        """
+        from unittest.mock import patch
+
+        with patch("apps.onboarding.views.start_onboarding_pipeline") as mock_pipeline:
+            mock_pipeline.return_value.id = "pipeline-task-id-789"
+
+            response = self.client.post(reverse("onboarding:start_sync"))
+
+            # Verify the pipeline was called with correct arguments
+            mock_pipeline.assert_called_once()
+            call_args = mock_pipeline.call_args
+            self.assertEqual(call_args[0][0], self.team.id)  # team_id
+
+            # Verify repo_ids include both repos
+            repo_ids = call_args[0][1]
+            self.assertIn(self.repo1.id, repo_ids)
+            self.assertIn(self.repo2.id, repo_ids)
+
+        # Should return JSON with task_id
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data["task_id"], "pipeline-task-id-789")
+
+    def test_start_sync_returns_pipeline_task_id_in_response(self):
+        """Test that start_sync returns the task_id from the pipeline AsyncResult.
+
+        The JSON response should contain the task_id from the pipeline,
+        which can be used for polling the task progress.
+        """
+        from unittest.mock import patch
+
+        with patch("apps.onboarding.views.start_onboarding_pipeline") as mock_pipeline:
+            # Create a mock AsyncResult
+            mock_result = type("AsyncResult", (), {"id": "unique-pipeline-id-abc"})()
+            mock_pipeline.return_value = mock_result
+
+            response = self.client.post(reverse("onboarding:start_sync"))
+
+            data = response.json()
+            self.assertIn("task_id", data)
+            self.assertEqual(data["task_id"], "unique-pipeline-id-abc")
+
+    def test_select_repos_does_not_call_sync_historical_data_task_directly(self):
+        """Test that select_repos does NOT call sync_historical_data_task.delay() directly.
+
+        This is a negative test to ensure we migrated away from the old pattern.
+        The sync_historical_data_task should not even be imported in the views module.
+        """
+        from apps.onboarding import views
+
+        # The old task should not be imported in views at all
+        self.assertFalse(
+            hasattr(views, "sync_historical_data_task"),
+            "sync_historical_data_task should not be imported in onboarding views",
+        )
+
+    def test_start_sync_does_not_call_sync_historical_data_task_directly(self):
+        """Test that start_sync does NOT call sync_historical_data_task.delay() directly.
+
+        This is a negative test to ensure we migrated away from the old pattern.
+        The sync_historical_data_task should not even be imported in the views module.
+        """
+        from apps.onboarding import views
+
+        # The old task should not be imported in views at all
+        self.assertFalse(
+            hasattr(views, "sync_historical_data_task"),
+            "sync_historical_data_task should not be imported in onboarding views",
+        )

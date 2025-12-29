@@ -5,3 +5,8 @@ class IntegrationsConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
     name = "apps.integrations"
     verbose_name = "Integrations"
+
+    def ready(self):
+        """Register signal receivers when app is ready."""
+        # Import receivers to register signal handlers
+        from apps.integrations import receivers  # noqa: F401
