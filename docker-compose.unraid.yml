@@ -1,0 +1,220 @@
+# Tformance - Unraid Docker Compose Configuration
+#
+# Deploy to Unraid with Cloudflare Tunnel
+# See: dev/guides/UNRAID-DEPLOYMENT.md for full setup instructions
+#
+# Usage:
+#   1. Copy .env.unraid.example to .env and fill in values
+#   2. docker-compose -f docker-compose.unraid.yml up -d
+#
+# Image: ayanch/tformance:latest (Docker Hub, auto-built on push to main)
+
+services:
+  # =============================================================================
+  # POSTGRESQL DATABASE
+  # =============================================================================
+  db:
+    image: postgres:17-alpine
+    container_name: tformance-db
+    restart: unless-stopped
+    volumes:
+      - tformance_postgres_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-tformance}
+      POSTGRES_USER: ${POSTGRES_USER:-tformance}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-tformance} -d ${POSTGRES_DB:-tformance}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - tformance-internal
+
+  # =============================================================================
+  # REDIS (Cache & Celery Broker)
+  # =============================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: tformance-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - tformance_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - tformance-internal
+
+  # =============================================================================
+  # DJANGO WEB APPLICATION
+  # =============================================================================
+  web:
+    image: ayanch/tformance:${IMAGE_TAG:-latest}
+    container_name: tformance-web
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "${WEB_PORT:-8000}:8000"
+    environment:
+      # Django Core
+      DJANGO_SETTINGS_MODULE: tformance.settings_production
+      DEBUG: "False"
+      SECRET_KEY: ${SECRET_KEY:?SECRET_KEY is required}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-dev2.ianchuk.com,localhost}
+
+      # Database (internal Docker network)
+      DATABASE_URL: postgresql://${POSTGRES_USER:-tformance}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-tformance}
+
+      # Redis (internal Docker network)
+      REDIS_URL: redis://redis:6379
+
+      # Security
+      INTEGRATION_ENCRYPTION_KEY: ${INTEGRATION_ENCRYPTION_KEY:?INTEGRATION_ENCRYPTION_KEY is required}
+
+      # OAuth - GitHub
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
+      GITHUB_SECRET_ID: ${GITHUB_SECRET_ID:-}
+
+      # OAuth - Jira
+      JIRA_CLIENT_ID: ${JIRA_CLIENT_ID:-}
+      JIRA_CLIENT_SECRET: ${JIRA_CLIENT_SECRET:-}
+
+      # OAuth - Slack
+      SLACK_CLIENT_ID: ${SLACK_CLIENT_ID:-}
+      SLACK_CLIENT_SECRET: ${SLACK_CLIENT_SECRET:-}
+      SLACK_SIGNING_SECRET: ${SLACK_SIGNING_SECRET:-}
+
+      # LLM (Groq)
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+
+      # Email (Resend)
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      EMAIL_BACKEND: ${EMAIL_BACKEND:-django.core.mail.backends.console.EmailBackend}
+      DEFAULT_FROM_EMAIL: ${DEFAULT_FROM_EMAIL:-tformance <noreply@ianchuk.com>}
+
+      # Analytics
+      POSTHOG_API_KEY: ${POSTHOG_API_KEY:-}
+      POSTHOG_HOST: ${POSTHOG_HOST:-https://us.i.posthog.com}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+
+      # Stripe
+      STRIPE_LIVE_PUBLIC_KEY: ${STRIPE_LIVE_PUBLIC_KEY:-}
+      STRIPE_LIVE_SECRET_KEY: ${STRIPE_LIVE_SECRET_KEY:-}
+      STRIPE_TEST_PUBLIC_KEY: ${STRIPE_TEST_PUBLIC_KEY:-}
+      STRIPE_TEST_SECRET_KEY: ${STRIPE_TEST_SECRET_KEY:-}
+      STRIPE_PRICING_TABLE_ID: ${STRIPE_PRICING_TABLE_ID:-}
+
+      # Health check
+      HEALTH_CHECK_TOKENS: ${HEALTH_CHECK_TOKENS:-}
+
+      # Port for gunicorn
+      PORT: "8000"
+    command: >
+      sh -c "
+        echo 'Running database migrations...' &&
+        python manage.py migrate --noinput &&
+        echo 'Starting gunicorn...' &&
+        exec gunicorn --bind 0.0.0.0:8000 --workers 2 --threads 4 --timeout 120 tformance.asgi:application -k uvicorn.workers.UvicornWorker
+      "
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+    networks:
+      - tformance-internal
+      - tformance-external
+
+  # =============================================================================
+  # CELERY WORKER (Background Tasks)
+  # =============================================================================
+  worker:
+    image: ayanch/tformance:${IMAGE_TAG:-latest}
+    container_name: tformance-worker
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      web:
+        condition: service_started
+    environment:
+      DJANGO_SETTINGS_MODULE: tformance.settings_production
+      DEBUG: "False"
+      SECRET_KEY: ${SECRET_KEY}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-dev2.ianchuk.com,localhost}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-tformance}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-tformance}
+      REDIS_URL: redis://redis:6379
+      INTEGRATION_ENCRYPTION_KEY: ${INTEGRATION_ENCRYPTION_KEY}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
+      GITHUB_SECRET_ID: ${GITHUB_SECRET_ID:-}
+      JIRA_CLIENT_ID: ${JIRA_CLIENT_ID:-}
+      JIRA_CLIENT_SECRET: ${JIRA_CLIENT_SECRET:-}
+      SLACK_CLIENT_ID: ${SLACK_CLIENT_ID:-}
+      SLACK_CLIENT_SECRET: ${SLACK_CLIENT_SECRET:-}
+      SLACK_SIGNING_SECRET: ${SLACK_SIGNING_SECRET:-}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+    command: celery -A tformance worker -l INFO --pool threads --concurrency 10
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+    networks:
+      - tformance-internal
+
+  # =============================================================================
+  # CELERY BEAT (Scheduled Tasks)
+  # =============================================================================
+  beat:
+    image: ayanch/tformance:${IMAGE_TAG:-latest}
+    container_name: tformance-beat
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      web:
+        condition: service_started
+    environment:
+      DJANGO_SETTINGS_MODULE: tformance.settings_production
+      DEBUG: "False"
+      SECRET_KEY: ${SECRET_KEY}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-dev2.ianchuk.com,localhost}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-tformance}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-tformance}
+      REDIS_URL: redis://redis:6379
+      INTEGRATION_ENCRYPTION_KEY: ${INTEGRATION_ENCRYPTION_KEY}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+    command: celery -A tformance beat -l INFO
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+    networks:
+      - tformance-internal
+
+# =============================================================================
+# VOLUMES (Persistent Data)
+# =============================================================================
+volumes:
+  tformance_postgres_data:
+    name: tformance_postgres_data
+  tformance_redis_data:
+    name: tformance_redis_data
+
+# =============================================================================
+# NETWORKS
+# =============================================================================
+networks:
+  # Internal network for service-to-service communication
+  tformance-internal:
+    name: tformance-internal
+    driver: bridge
+
+  # External network for Cloudflare Tunnel access
+  # Your existing tunnel container should be on this network
+  tformance-external:
+    name: tformance-external
+    driver: bridge
