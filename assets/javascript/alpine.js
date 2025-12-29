@@ -1,4 +1,5 @@
 import Alpine from 'alpinejs';
+import { registerDateRangePicker } from './components/date-range-picker.js';
 
 /**
  * Alpine.js Stores
@@ -160,6 +161,9 @@ document.addEventListener('alpine:init', () => {
 
   // Sync dateRange store from URL on init
   Alpine.store('dateRange').syncFromUrl();
+
+  // Register reusable Alpine components
+  registerDateRangePicker();
 });
 
 // Expose Alpine globally
