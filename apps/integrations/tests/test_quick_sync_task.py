@@ -70,8 +70,9 @@ class TestSyncQuickDataTaskFetches7Days(TestCase):
             is_active=True,
         )
 
+    @patch("apps.integrations.tasks.sync_full_history_task.delay")
     @patch("apps.integrations.tasks._sync_with_graphql_or_rest")
-    def test_sync_quick_data_task_syncs_only_7_days(self, mock_sync):
+    def test_sync_quick_data_task_syncs_only_7_days(self, mock_sync, mock_full_history):
         """Test that sync_quick_data_task passes days_back=7 to sync function."""
         from apps.integrations.tasks import sync_quick_data_task
 
@@ -91,6 +92,9 @@ class TestSyncQuickDataTaskFetches7Days(TestCase):
         days_back = call_kwargs[0][1] if len(call_kwargs[0]) >= 2 else call_kwargs[1].get("days_back")
 
         self.assertEqual(days_back, 7)
+
+        # Verify full history sync was queued
+        mock_full_history.assert_called_once_with(self.tracked_repo.id)
 
     @patch("apps.integrations.tasks.get_repository_pull_requests")
     def test_sync_quick_data_task_filters_prs_by_7_day_window(self, mock_get_prs):
@@ -381,8 +385,9 @@ class TestSyncQuickDataTaskRunsPatternDetection(TestCase):
         # Verify pattern detection was called (at least once for synced PRs)
         self.assertTrue(mock_detect_ai.called)
 
+    @patch("apps.integrations.tasks.sync_full_history_task.delay")
     @patch("apps.integrations.tasks._sync_with_graphql_or_rest")
-    def test_prs_have_is_ai_assisted_set_after_quick_sync(self, mock_sync):
+    def test_prs_have_is_ai_assisted_set_after_quick_sync(self, mock_sync, mock_full_history):
         """Test that PRs have is_ai_assisted field populated after quick sync."""
         from apps.integrations.tasks import sync_quick_data_task
 

@@ -1,7 +1,6 @@
 """Tests for Slack OAuth views."""
 
 from datetime import time
-from unittest.mock import patch
 
 from django.contrib.messages import get_messages
 from django.test import Client, TestCase, override_settings
@@ -106,7 +105,11 @@ class SlackConnectViewTest(TestCase):
 
 
 class SlackCallbackViewTest(TestCase):
-    """Tests for slack_callback view."""
+    """Tests for slack_callback view (legacy redirect to unified callback).
+
+    Note: This view now redirects to the unified callback at tformance_auth:slack_callback.
+    The actual OAuth flow tests are in apps/auth/tests/test_slack_callback.py.
+    """
 
     def setUp(self):
         """Set up test fixtures using factories."""
@@ -133,100 +136,17 @@ class SlackCallbackViewTest(TestCase):
 
         self.assertEqual(response.status_code, 404)
 
-    @patch("apps.integrations.services.slack_oauth.verify_slack_oauth_state")
-    def test_slack_callback_verifies_oauth_state(self, mock_verify):
-        """Test that slack_callback verifies the OAuth state parameter."""
-        mock_verify.return_value = {"team_id": self.team.id}
+    def test_slack_callback_redirects_to_unified_callback(self):
+        """Test that slack_callback redirects to the unified auth callback."""
         self.client.force_login(self.admin)
 
-        self.client.get(
-            reverse("integrations:slack_callback"),
-            {"code": "auth_code_123", "state": "valid_state"},
-        )
+        response = self.client.get(reverse("integrations:slack_callback"))
 
-        # Verify that the state verification function was called
-        mock_verify.assert_called_once_with("valid_state")
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/auth/slack/callback/", response.url)
 
-    @override_settings(SLACK_CLIENT_ID="test_client_id", SLACK_CLIENT_SECRET="test_secret")
-    @patch("apps.integrations.services.slack_oauth.exchange_code_for_token")
-    @patch("apps.integrations.services.slack_oauth.verify_slack_oauth_state")
-    def test_slack_callback_creates_integration_credential(self, mock_verify, mock_exchange):
-        """Test that slack_callback creates IntegrationCredential with provider=slack."""
-        # Mock state verification
-        mock_verify.return_value = {"team_id": self.team.id}
-
-        # Mock token exchange
-        mock_exchange.return_value = {
-            "access_token": "xoxb-slack-access-token",
-            "bot_user_id": "U12345678",
-            "team": {
-                "id": "T12345678",
-                "name": "Test Workspace",
-            },
-        }
-
-        self.client.force_login(self.admin)
-
-        self.client.get(
-            reverse("integrations:slack_callback"),
-            {"code": "auth_code_123", "state": "valid_state"},
-        )
-
-        # Should create IntegrationCredential
-        self.assertTrue(
-            IntegrationCredential.objects.filter(team=self.team, provider=IntegrationCredential.PROVIDER_SLACK).exists()
-        )
-
-    @override_settings(SLACK_CLIENT_ID="test_client_id", SLACK_CLIENT_SECRET="test_secret")
-    @patch("apps.integrations.services.slack_oauth.exchange_code_for_token")
-    @patch("apps.integrations.services.slack_oauth.verify_slack_oauth_state")
-    def test_slack_callback_creates_slack_integration(self, mock_verify, mock_exchange):
-        """Test that slack_callback creates SlackIntegration with workspace info."""
-        # Mock state verification
-        mock_verify.return_value = {"team_id": self.team.id}
-
-        # Mock token exchange
-        mock_exchange.return_value = {
-            "access_token": "xoxb-slack-access-token",
-            "bot_user_id": "U12345678",
-            "team": {
-                "id": "T12345678",
-                "name": "Test Workspace",
-            },
-        }
-
-        self.client.force_login(self.admin)
-
-        self.client.get(
-            reverse("integrations:slack_callback"),
-            {"code": "auth_code_123", "state": "valid_state"},
-        )
-
-        # Should create SlackIntegration
-        self.assertTrue(
-            SlackIntegration.objects.filter(
-                team=self.team, workspace_id="T12345678", workspace_name="Test Workspace"
-            ).exists()
-        )
-
-    @override_settings(SLACK_CLIENT_ID="test_client_id", SLACK_CLIENT_SECRET="test_secret")
-    @patch("apps.integrations.services.slack_oauth.exchange_code_for_token")
-    @patch("apps.integrations.services.slack_oauth.verify_slack_oauth_state")
-    def test_slack_callback_redirects_to_integrations_home_on_success(self, mock_verify, mock_exchange):
-        """Test that slack_callback redirects to integrations_home on success."""
-        # Mock state verification
-        mock_verify.return_value = {"team_id": self.team.id}
-
-        # Mock token exchange
-        mock_exchange.return_value = {
-            "access_token": "xoxb-slack-access-token",
-            "bot_user_id": "U12345678",
-            "team": {
-                "id": "T12345678",
-                "name": "Test Workspace",
-            },
-        }
-
+    def test_slack_callback_preserves_query_params(self):
+        """Test that slack_callback preserves OAuth query parameters in redirect."""
         self.client.force_login(self.admin)
 
         response = self.client.get(
@@ -234,71 +154,21 @@ class SlackCallbackViewTest(TestCase):
             {"code": "auth_code_123", "state": "valid_state"},
         )
 
-        # Should redirect to integrations home
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, reverse("integrations:integrations_home"))
+        self.assertIn("code=auth_code_123", response.url)
+        self.assertIn("state=valid_state", response.url)
 
-    @override_settings(SLACK_CLIENT_ID="test_client_id", SLACK_CLIENT_SECRET="test_secret")
-    @patch("apps.integrations.services.slack_oauth.exchange_code_for_token")
-    @patch("apps.integrations.services.slack_oauth.verify_slack_oauth_state")
-    def test_slack_callback_handles_invalid_oauth_code(self, mock_verify, mock_exchange):
-        """Test that slack_callback handles invalid OAuth code gracefully."""
-        from apps.integrations.services.slack_oauth import SlackOAuthError
-
-        # Mock state verification
-        mock_verify.return_value = {"team_id": self.team.id}
-
-        # Mock token exchange error
-        mock_exchange.side_effect = SlackOAuthError("Invalid code")
-
+    def test_slack_callback_preserves_error_params(self):
+        """Test that slack_callback preserves error parameters in redirect."""
         self.client.force_login(self.admin)
 
         response = self.client.get(
             reverse("integrations:slack_callback"),
-            {"code": "invalid_code", "state": "valid_state"},
+            {"error": "access_denied", "error_description": "User denied"},
         )
 
-        # Should redirect to integrations home with error
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, reverse("integrations:integrations_home"))
-
-        # Should NOT create any integration records
-        self.assertFalse(IntegrationCredential.objects.filter(team=self.team).exists())
-
-    @override_settings(SLACK_CLIENT_ID="test_client_id", SLACK_CLIENT_SECRET="test_secret")
-    @patch("apps.integrations.services.slack_oauth.exchange_code_for_token")
-    @patch("apps.integrations.services.slack_oauth.verify_slack_oauth_state")
-    def test_slack_callback_handles_already_connected(self, mock_verify, mock_exchange):
-        """Test that slack_callback updates existing integration when already connected."""
-        # Create existing integration
-        SlackIntegrationFactory(team=self.team, workspace_id="T12345678")
-
-        # Mock state verification
-        mock_verify.return_value = {"team_id": self.team.id}
-
-        # Mock token exchange with different workspace name
-        mock_exchange.return_value = {
-            "access_token": "xoxb-new-token",
-            "bot_user_id": "U87654321",
-            "team": {
-                "id": "T12345678",
-                "name": "Updated Workspace Name",
-            },
-        }
-
-        self.client.force_login(self.admin)
-
-        self.client.get(
-            reverse("integrations:slack_callback"),
-            {"code": "auth_code_123", "state": "valid_state"},
-        )
-
-        # Should update existing integration
-        integration = SlackIntegration.objects.get(team=self.team, workspace_id="T12345678")
-        self.assertEqual(integration.workspace_name, "Updated Workspace Name")
-
-        # Should only have one integration for this team
-        self.assertEqual(SlackIntegration.objects.filter(team=self.team).count(), 1)
+        self.assertIn("error=access_denied", response.url)
 
 
 class SlackDisconnectViewTest(TestCase):
