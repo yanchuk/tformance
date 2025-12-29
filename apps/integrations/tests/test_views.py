@@ -100,7 +100,7 @@ class IntegrationsHomeViewTest(TestCase):
         from apps.integrations.factories import TrackedRepositoryFactory
 
         # Create a GitHub integration for the team
-        GitHubIntegrationFactory(team=self.team)
+        integration = GitHubIntegrationFactory(team=self.team)
 
         # Create some tracked repositories
         TrackedRepositoryFactory(team=self.team, integration=integration)
@@ -272,7 +272,7 @@ class GitHubDisconnectViewTest(TestCase):
     def test_github_disconnect_deletes_github_integration(self):
         """Test that github_disconnect deletes the GitHubIntegration."""
         # Create integration
-        GitHubIntegrationFactory(team=self.team)
+        integration = GitHubIntegrationFactory(team=self.team)
         self.client.force_login(self.admin)
 
         self.client.post(reverse("integrations:github_disconnect"))
@@ -283,7 +283,7 @@ class GitHubDisconnectViewTest(TestCase):
     def test_github_disconnect_deletes_integration_credential(self):
         """Test that github_disconnect deletes the IntegrationCredential."""
         # Create integration with credential
-        GitHubIntegrationFactory(team=self.team)
+        integration = GitHubIntegrationFactory(team=self.team)
         credential = integration.credential
         self.client.force_login(self.admin)
 
@@ -526,7 +526,7 @@ class GitHubMembersSyncViewTest(TestCase):
     def test_github_members_sync_queues_celery_task(self, mock_task_delay):
         """Test that github_members_sync queues sync_github_members_task.delay() with integration.id."""
         # Create GitHub integration
-        GitHubIntegrationFactory(team=self.team)
+        integration = GitHubIntegrationFactory(team=self.team)
 
         self.client.force_login(self.admin)
 
@@ -539,7 +539,7 @@ class GitHubMembersSyncViewTest(TestCase):
     def test_github_members_sync_sets_member_sync_status_to_syncing(self, mock_task_delay):
         """Test that github_members_sync sets member_sync_status to 'syncing' immediately."""
         # Create GitHub integration
-        GitHubIntegrationFactory(team=self.team)
+        integration = GitHubIntegrationFactory(team=self.team)
         self.assertEqual(integration.member_sync_status, "pending")
 
         self.client.force_login(self.admin)
@@ -556,7 +556,7 @@ class GitHubMembersSyncViewTest(TestCase):
     def test_github_members_sync_sets_member_sync_started_at(self, mock_task_delay):
         """Test that github_members_sync sets member_sync_started_at timestamp immediately."""
         # Create GitHub integration
-        GitHubIntegrationFactory(team=self.team)
+        integration = GitHubIntegrationFactory(team=self.team)
         self.assertIsNone(integration.member_sync_started_at)
 
         self.client.force_login(self.admin)
@@ -909,7 +909,7 @@ class GitHubReposViewTest(TestCase):
         from apps.integrations.factories import TrackedRepositoryFactory
 
         # Create GitHub integration
-        GitHubIntegrationFactory(team=self.team, organization_slug="acme-corp")
+        integration = GitHubIntegrationFactory(team=self.team, organization_slug="acme-corp")
 
         # Create tracked repository
         TrackedRepositoryFactory(
@@ -1000,7 +1000,7 @@ class GitHubReposViewTest(TestCase):
         from apps.integrations.factories import TrackedRepositoryFactory
 
         # Create GitHub integration
-        GitHubIntegrationFactory(team=self.team, organization_slug="acme-corp")
+        integration = GitHubIntegrationFactory(team=self.team, organization_slug="acme-corp")
 
         # Create a tracked repo with last_sync_at set and sync_status="complete"
         sync_time = timezone.now()
@@ -1034,7 +1034,7 @@ class GitHubReposViewTest(TestCase):
         from apps.integrations.factories import TrackedRepositoryFactory
 
         # Create GitHub integration
-        GitHubIntegrationFactory(team=self.team, organization_slug="acme-corp")
+        integration = GitHubIntegrationFactory(team=self.team, organization_slug="acme-corp")
 
         # Create a tracked repo WITHOUT last_sync_at
         TrackedRepositoryFactory(
@@ -1066,7 +1066,7 @@ class GitHubReposViewTest(TestCase):
         from apps.integrations.factories import TrackedRepositoryFactory
 
         # Create GitHub integration
-        GitHubIntegrationFactory(team=self.team, organization_slug="acme-corp")
+        integration = GitHubIntegrationFactory(team=self.team, organization_slug="acme-corp")
 
         # Create a tracked repo
         tracked_repo = TrackedRepositoryFactory(
@@ -1129,7 +1129,7 @@ class GitHubRepoToggleViewTest(TestCase):
         self.member = UserFactory()
         self.team.members.add(self.admin, through_defaults={"role": ROLE_ADMIN})
         self.team.members.add(self.member, through_defaults={"role": ROLE_MEMBER})
-        self.GitHubIntegrationFactory(team=self.team)
+        self.integration = GitHubIntegrationFactory(team=self.team)
         self.client = Client()
 
     def test_github_repo_toggle_requires_post_method(self):
@@ -1285,7 +1285,7 @@ class GitHubReposWebhookStatusViewTest(TestCase):
         self.team = TeamFactory()
         self.admin = UserFactory()
         self.team.members.add(self.admin, through_defaults={"role": ROLE_ADMIN})
-        self.GitHubIntegrationFactory(team=self.team, organization_slug="acme-corp")
+        self.integration = GitHubIntegrationFactory(team=self.team, organization_slug="acme-corp")
         self.client = Client()
 
     @patch("apps.integrations.services.github_oauth.get_organization_repositories")
@@ -1355,7 +1355,7 @@ class GitHubRepoToggleWebhookIntegrationTest(TestCase):
         self.team = TeamFactory()
         self.admin = UserFactory()
         self.team.members.add(self.admin, through_defaults={"role": ROLE_ADMIN})
-        self.GitHubIntegrationFactory(team=self.team, organization_slug="acme-corp")
+        self.integration = GitHubIntegrationFactory(team=self.team, organization_slug="acme-corp")
         self.client = Client()
 
     @patch("apps.integrations.tasks.sync_repository_initial_task")
@@ -1581,7 +1581,7 @@ class GitHubRepoSyncViewTest(TestCase):
         self.member = UserFactory()
         self.team.members.add(self.admin, through_defaults={"role": ROLE_ADMIN})
         self.team.members.add(self.member, through_defaults={"role": ROLE_MEMBER})
-        self.GitHubIntegrationFactory(team=self.team, organization_slug="acme-corp")
+        self.integration = GitHubIntegrationFactory(team=self.team, organization_slug="acme-corp")
         self.tracked_repo = TrackedRepositoryFactory(
             team=self.team, integration=self.integration, github_repo_id=12345, full_name="acme-corp/test-repo"
         )
@@ -1750,7 +1750,7 @@ class TestSyncGitHubMembersAfterConnectionHelper(TestCase):
         from apps.integrations.views.helpers import _sync_github_members_after_connection
 
         # Create GitHub integration for the team
-        GitHubIntegrationFactory(team=self.team, organization_slug="test-org")
+        integration = GitHubIntegrationFactory(team=self.team, organization_slug="test-org")
 
         # Call the helper
         _sync_github_members_after_connection(self.team)
@@ -1764,7 +1764,7 @@ class TestSyncGitHubMembersAfterConnectionHelper(TestCase):
         from apps.integrations.views.helpers import _sync_github_members_after_connection
 
         # Create GitHub integration for the team
-        GitHubIntegrationFactory(team=self.team, organization_slug="test-org")
+        integration = GitHubIntegrationFactory(team=self.team, organization_slug="test-org")
 
         # Call the helper
         result = _sync_github_members_after_connection(self.team)
