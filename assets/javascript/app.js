@@ -3,9 +3,12 @@ import Chart from 'chart.js/auto';
 import { DashboardCharts as AppDashboardCharts } from './dashboard/dashboard-charts';
 import { createWideTrendChart, resetChartZoom, initTrendCharts } from './dashboard/trend-charts';
 import { createSparkline, initSparklines, reinitSparklines } from './dashboard/sparkline';
+import { chartManager } from './dashboard/chart-manager';
+
 export { AppDashboardCharts as DashboardCharts };
 export { createWideTrendChart, resetChartZoom, initTrendCharts };
 export { createSparkline, initSparklines, reinitSparklines };
+export { chartManager };
 export const Cookies = JsCookie.default;
 
 // Ensure SiteJS global exists
@@ -21,274 +24,81 @@ window.SiteJS.app = {
   DashboardCharts: AppDashboardCharts,
   TrendCharts: { createWideTrendChart, resetChartZoom, initTrendCharts },
   Sparklines: { createSparkline, initSparklines, reinitSparklines },
+  chartManager: chartManager,
   Cookies: JsCookie.default,
 };
 
-// Helper to destroy existing Chart.js instance on a canvas
-function destroyChartIfExists(canvas) {
-  if (canvas) {
-    const existingChart = Chart.getChart(canvas);
-    if (existingChart) {
-      existingChart.destroy();
-    }
-  }
-}
-
-// Initialize charts after HTMX swaps content
-document.addEventListener('htmx:afterSwap', function(event) {
-  // AI Adoption Chart - uses weekly aggregated data
-  const aiAdoptionData = document.getElementById('ai-adoption-data');
-  const aiAdoptionChart = document.getElementById('ai-adoption-chart');
-  if (aiAdoptionData && aiAdoptionChart) {
-    destroyChartIfExists(aiAdoptionChart);
-    const data = JSON.parse(aiAdoptionData.textContent);
-    if (data && data.length > 0) {
-      const ctx = aiAdoptionChart.getContext('2d');
-      AppDashboardCharts.weeklyBarChart(ctx, data, "AI Adoption %");
-    }
-  }
-
-  // Cycle Time Chart - uses weekly aggregated data
-  const cycleTimeData = document.getElementById('cycle-time-data');
-  const cycleTimeChart = document.getElementById('cycle-time-chart');
-  if (cycleTimeData && cycleTimeChart) {
-    destroyChartIfExists(cycleTimeChart);
-    const data = JSON.parse(cycleTimeData.textContent);
-    if (data && data.length > 0) {
-      const ctx = cycleTimeChart.getContext('2d');
-      AppDashboardCharts.weeklyBarChart(ctx, data, "Avg Cycle Time (hours)");
-    }
-  }
-
-  // Review Time Chart - uses weekly aggregated data
-  const reviewTimeData = document.getElementById('review-time-data');
-  const reviewTimeChart = document.getElementById('review-time-chart');
-  if (reviewTimeData && reviewTimeChart) {
-    destroyChartIfExists(reviewTimeChart);
-    const data = JSON.parse(reviewTimeData.textContent);
-    if (data && data.length > 0) {
-      const ctx = reviewTimeChart.getContext('2d');
-      AppDashboardCharts.weeklyBarChart(ctx, data, "Avg Review Time (hours)");
-    }
-  }
-
-  // Copilot Trend Chart - uses weekly aggregated data
-  // Uses AI purple color to differentiate from standard metrics
-  const copilotTrendData = document.getElementById('copilot-trend-data');
-  const copilotTrendChart = document.getElementById('copilot-trend-chart');
-  if (copilotTrendData && copilotTrendChart) {
-    destroyChartIfExists(copilotTrendChart);
-    const data = JSON.parse(copilotTrendData.textContent);
-    if (data && data.length > 0) {
-      const ctx = copilotTrendChart.getContext('2d');
-      AppDashboardCharts.weeklyBarChart(ctx, data, "Copilot Acceptance Rate (%)", { ai: true });
-    }
-  }
-
-  // PR Type Breakdown Chart - stacked bar chart
-  initPrTypeChart();
-
-  // Technology Breakdown Chart - stacked bar chart
-  initTechChart();
-
-  // Wide Trend Chart (main analytics chart)
-  initWideTrendChart();
-});
+// Expose chartManager globally
+window.chartManager = chartManager;
 
 /**
- * Initialize PR Type breakdown stacked bar chart
- * Used on the Trends page to show PR types over time
+ * Register all charts with ChartManager
+ * Charts are registered once at module load, then initialized on demand
  */
-function initPrTypeChart() {
-  const canvas = document.getElementById('pr-type-chart');
-  if (!canvas) return;
+function registerCharts() {
+  // AI Adoption Chart - weekly bar chart
+  chartManager.register('ai-adoption-chart', (canvas, data) => {
+    if (!data || data.length === 0) return null;
+    const ctx = canvas.getContext('2d');
+    return AppDashboardCharts.weeklyBarChart(ctx, data, "AI Adoption %");
+  }, { dataId: 'ai-adoption-data' });
 
-  const chartDataEl = document.getElementById('pr-type-chart-data');
-  if (!chartDataEl) return;
+  // Cycle Time Chart - weekly bar chart
+  chartManager.register('cycle-time-chart', (canvas, data) => {
+    if (!data || data.length === 0) return null;
+    const ctx = canvas.getContext('2d');
+    return AppDashboardCharts.weeklyBarChart(ctx, data, "Avg Cycle Time (hours)");
+  }, { dataId: 'cycle-time-data' });
 
-  try {
-    const chartData = JSON.parse(chartDataEl.textContent);
-    if (!chartData || !chartData.labels) return;
+  // Review Time Chart - weekly bar chart
+  chartManager.register('review-time-chart', (canvas, data) => {
+    if (!data || data.length === 0) return null;
+    const ctx = canvas.getContext('2d');
+    return AppDashboardCharts.weeklyBarChart(ctx, data, "Avg Review Time (hours)");
+  }, { dataId: 'review-time-data' });
 
-    // Destroy existing chart if any
-    destroyChartIfExists(canvas);
+  // Copilot Trend Chart - weekly bar chart with AI purple color
+  chartManager.register('copilot-trend-chart', (canvas, data) => {
+    if (!data || data.length === 0) return null;
+    const ctx = canvas.getContext('2d');
+    return AppDashboardCharts.weeklyBarChart(ctx, data, "Copilot Acceptance Rate (%)", { ai: true });
+  }, { dataId: 'copilot-trend-data' });
 
-    // Build Chart.js datasets
-    const datasets = chartData.datasets.map(ds => ({
-      label: ds.label,
-      data: ds.data,
-      backgroundColor: ds.color,
-      borderColor: ds.color,
-      borderWidth: 1,
-      borderRadius: 2,
-    }));
+  // PR Type Chart - stacked bar chart
+  chartManager.register('pr-type-chart', (canvas, data) => {
+    if (!data || !data.labels) return null;
+    return chartManager.createStackedBarChart(canvas.getContext('2d'), data, { yAxisLabel: 'PR Count' });
+  }, { dataId: 'pr-type-chart-data' });
 
-    new Chart(canvas, {
-      type: 'bar',
-      data: {
-        labels: chartData.labels,
-        datasets: datasets,
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: {
-            display: true,
-            position: 'top',
-            labels: {
-              boxWidth: 12,
-              padding: 10,
-              font: { family: "'DM Sans', sans-serif", size: 11 },
-            },
-          },
-          tooltip: {
-            mode: 'index',
-            intersect: false,
-          },
-          datalabels: {
-            display: false,
-          },
-        },
-        scales: {
-          x: {
-            stacked: true,
-            ticks: {
-              font: { family: "'DM Sans', sans-serif" },
-              maxRotation: 45,
-              autoSkip: true,
-            },
-            grid: {
-              display: false,
-            },
-          },
-          y: {
-            stacked: true,
-            beginAtZero: true,
-            ticks: {
-              font: { family: "'JetBrains Mono', monospace" },
-              precision: 0,
-            },
-            title: {
-              display: true,
-              text: 'PR Count',
-              font: { family: "'DM Sans', sans-serif" },
-            },
-          },
-        },
-      },
-    });
-  } catch (e) {
-    console.error('Failed to initialize PR type chart:', e);
-  }
+  // Tech Chart - stacked bar chart
+  chartManager.register('tech-chart', (canvas, data) => {
+    if (!data || !data.labels) return null;
+    return chartManager.createStackedBarChart(canvas.getContext('2d'), data, { yAxisLabel: 'PR Count' });
+  }, { dataId: 'tech-chart-data' });
+
+  // Wide Trend Chart - complex chart with multiple modes
+  chartManager.register('trend-chart', (canvas) => {
+    // This chart has complex initialization logic
+    return initWideTrendChartInternal(canvas);
+  });
 }
 
 /**
- * Initialize Technology breakdown stacked bar chart
- * Used on the Trends page to show tech categories over time
+ * Internal wide trend chart initialization
+ * Handles both single metric and multi-metric comparison modes
  */
-function initTechChart() {
-  const canvas = document.getElementById('tech-chart');
-  if (!canvas) return;
-
-  const chartDataEl = document.getElementById('tech-chart-data');
-  if (!chartDataEl) return;
-
-  try {
-    const chartData = JSON.parse(chartDataEl.textContent);
-    if (!chartData || !chartData.labels) return;
-
-    // Destroy existing chart if any
-    destroyChartIfExists(canvas);
-
-    // Build Chart.js datasets
-    const datasets = chartData.datasets.map(ds => ({
-      label: ds.label,
-      data: ds.data,
-      backgroundColor: ds.color,
-      borderColor: ds.color,
-      borderWidth: 1,
-      borderRadius: 2,
-    }));
-
-    new Chart(canvas, {
-      type: 'bar',
-      data: {
-        labels: chartData.labels,
-        datasets: datasets,
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: {
-            display: true,
-            position: 'top',
-            labels: {
-              boxWidth: 12,
-              padding: 10,
-              font: { family: "'DM Sans', sans-serif", size: 11 },
-            },
-          },
-          tooltip: {
-            mode: 'index',
-            intersect: false,
-          },
-          datalabels: {
-            display: false,
-          },
-        },
-        scales: {
-          x: {
-            stacked: true,
-            ticks: {
-              font: { family: "'DM Sans', sans-serif" },
-              maxRotation: 45,
-              autoSkip: true,
-            },
-            grid: {
-              display: false,
-            },
-          },
-          y: {
-            stacked: true,
-            beginAtZero: true,
-            ticks: {
-              font: { family: "'JetBrains Mono', monospace" },
-              precision: 0,
-            },
-            title: {
-              display: true,
-              text: 'PR Count',
-              font: { family: "'DM Sans', sans-serif" },
-            },
-          },
-        },
-      },
-    });
-  } catch (e) {
-    console.error('Failed to initialize Tech chart:', e);
-  }
-}
-
-/**
- * Initialize Wide Trend Chart (main analytics chart)
- * Reads data from json_script tags and creates chart
- * Supports both single metric and multi-metric comparison modes
- */
-function initWideTrendChart() {
-  const canvas = document.getElementById('trend-chart');
-  if (!canvas) return;
+function initWideTrendChartInternal(canvas) {
+  if (!canvas) return null;
 
   const chartDataEl = document.getElementById('trend-chart-data');
   const comparisonDataEl = document.getElementById('trend-comparison-data');
-  if (!chartDataEl) return;
+  if (!chartDataEl) return null;
 
   // Check if chart creation functions are available
   if (!window.createWideTrendChart || !window.createMultiMetricChart) {
     // Retry after a short delay if modules not yet loaded
-    setTimeout(initWideTrendChart, 100);
-    return;
+    setTimeout(() => chartManager.init('trend-chart'), 100);
+    return null;
   }
 
   try {
@@ -296,12 +106,10 @@ function initWideTrendChart() {
     const comparisonData = comparisonDataEl ? JSON.parse(comparisonDataEl.textContent) : null;
     const isMultiMetric = canvas.getAttribute('data-multi-metric') === 'true';
 
-    // Destroy existing chart if any
-    destroyChartIfExists(canvas);
-
+    let chart;
     if (isMultiMetric) {
       // Multi-metric comparison mode
-      window.trendChart = window.createMultiMetricChart(canvas, chartData);
+      chart = window.createMultiMetricChart(canvas, chartData);
     } else {
       // Single metric mode
       const metric = canvas.getAttribute('data-metric');
@@ -311,17 +119,47 @@ function initWideTrendChart() {
         value: value
       })) : chartData;
 
-      window.trendChart = window.createWideTrendChart(canvas, data, {
+      chart = window.createWideTrendChart(canvas, data, {
         metric: metric,
         comparisonData: comparisonData,
       });
     }
+
+    // Store reference for zoom reset
+    window.trendChart = chart;
+    return chart;
   } catch (e) {
     console.error('Failed to initialize wide trend chart:', e);
+    return null;
   }
 }
 
-// Expose chart init functions globally for direct calls
+// Register charts on module load
+registerCharts();
+
+// Initialize charts after HTMX swaps content
+document.addEventListener('htmx:afterSwap', function(event) {
+  // Use ChartManager to initialize all registered charts
+  chartManager.initAll();
+
+  // Also check for charts with data attributes (declarative approach)
+  chartManager.initFromDataAttributes();
+});
+
+// Legacy function exports for backward compatibility
+function initWideTrendChart() {
+  chartManager.init('trend-chart');
+}
+
+function initPrTypeChart() {
+  chartManager.init('pr-type-chart');
+}
+
+function initTechChart() {
+  chartManager.init('tech-chart');
+}
+
+// Expose chart init functions globally for direct calls (backward compatibility)
 window.initPrTypeChart = initPrTypeChart;
 window.initTechChart = initTechChart;
 window.initWideTrendChart = initWideTrendChart;
