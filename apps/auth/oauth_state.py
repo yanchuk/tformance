@@ -20,6 +20,7 @@ OAUTH_STATE_MAX_AGE_SECONDS = 600
 # Flow types - GitHub
 FLOW_TYPE_ONBOARDING = "onboarding"
 FLOW_TYPE_INTEGRATION = "integration"
+FLOW_TYPE_LOGIN = "login"
 
 # Flow types - Jira
 FLOW_TYPE_JIRA_ONBOARDING = "jira_onboarding"
@@ -33,6 +34,7 @@ FLOW_TYPE_SLACK_INTEGRATION = "slack_integration"
 VALID_FLOW_TYPES = (
     FLOW_TYPE_ONBOARDING,
     FLOW_TYPE_INTEGRATION,
+    FLOW_TYPE_LOGIN,
     FLOW_TYPE_JIRA_ONBOARDING,
     FLOW_TYPE_JIRA_INTEGRATION,
     FLOW_TYPE_SLACK_ONBOARDING,
@@ -64,8 +66,8 @@ def create_oauth_state(flow_type: str, team_id: int | None = None) -> str:
 
     # Flows that require team_id
     team_required_flows = (FLOW_TYPE_INTEGRATION, FLOW_TYPE_JIRA_INTEGRATION, FLOW_TYPE_SLACK_INTEGRATION)
-    # Flows where team_id must be None (new user onboarding)
-    no_team_flows = (FLOW_TYPE_ONBOARDING,)
+    # Flows where team_id must be None (new user onboarding or login)
+    no_team_flows = (FLOW_TYPE_ONBOARDING, FLOW_TYPE_LOGIN)
     # Note: FLOW_TYPE_JIRA_ONBOARDING and FLOW_TYPE_SLACK_ONBOARDING have optional team_id (no validation needed)
 
     if flow_type in team_required_flows and team_id is None:

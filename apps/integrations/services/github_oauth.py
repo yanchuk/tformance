@@ -199,6 +199,10 @@ def get_authenticated_user(access_token: str) -> dict[str, Any]:
         raise GitHubOAuthError(f"Failed to get authenticated user: {e.status} - {e.data}") from e
 
 
+# Alias for backward compatibility and cleaner API
+get_github_user = get_authenticated_user
+
+
 def get_user_organizations(access_token: str) -> list[dict[str, Any]]:
     """Get user's GitHub organizations.
 

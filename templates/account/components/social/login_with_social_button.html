@@ -1,6 +1,13 @@
 {% load i18n %}
 {% load socialaccount %}
 {% load static %}
+{# Use our unified OAuth callback for GitHub to support single callback URL #}
+{% if provider.id == "github" %}
+<a href="{% url 'tformance_auth:github_login' %}" class="app-btn-secondary w-full flex items-center justify-center gap-2 mt-2">
+  <img class="w-5 h-5" src="{% static provider.logo_path %}" alt="{{ provider.name }} {% translate 'Logo' %}">
+  {% translate "Continue with" %} {{ provider.name }}
+</a>
+{% else %}
 <form method="post" class="mt-2" action="{% provider_login_url provider %}">
   {% csrf_token %}
   <button class="app-btn-secondary w-full flex items-center justify-center gap-2" type="submit">
@@ -8,3 +15,4 @@
     {% translate "Continue with" %} {{ provider.name }}
   </button>
 </form>
+{% endif %}

@@ -6,8 +6,12 @@ routing to the appropriate handler based on the state parameter.
 
 import logging
 import secrets
+from urllib.parse import urlencode
 
+from allauth.socialaccount.models import SocialAccount
+from django.conf import settings
 from django.contrib import messages
+from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect
 from django.urls import reverse
@@ -18,10 +22,12 @@ from apps.auth.oauth_state import (
     FLOW_TYPE_INTEGRATION,
     FLOW_TYPE_JIRA_INTEGRATION,
     FLOW_TYPE_JIRA_ONBOARDING,
+    FLOW_TYPE_LOGIN,
     FLOW_TYPE_ONBOARDING,
     FLOW_TYPE_SLACK_INTEGRATION,
     FLOW_TYPE_SLACK_ONBOARDING,
     OAuthStateError,
+    create_oauth_state,
     verify_oauth_state,
 )
 from apps.integrations import tasks as integration_tasks
@@ -40,6 +46,7 @@ from apps.integrations.views.helpers import _create_github_integration, _create_
 from apps.teams.helpers import get_next_unique_team_slug
 from apps.teams.models import Membership, Team
 from apps.teams.roles import ROLE_ADMIN
+from apps.users.models import CustomUser
 from apps.utils.analytics import group_identify, track_event
 
 logger = logging.getLogger(__name__)
@@ -48,9 +55,35 @@ logger = logging.getLogger(__name__)
 ONBOARDING_TOKEN_KEY = "onboarding_github_token"
 ONBOARDING_ORGS_KEY = "onboarding_github_orgs"
 
+# GitHub OAuth constants for login flow (minimal scopes)
+GITHUB_OAUTH_AUTHORIZE_URL = "https://github.com/login/oauth/authorize"
+GITHUB_LOGIN_SCOPES = "user:email"
+
+
+def github_login(request):
+    """Initiate GitHub OAuth flow for login.
+
+    Uses minimal scopes (user:email) since this is just for authentication.
+    """
+    # Create OAuth state with login flow type
+    state = create_oauth_state(FLOW_TYPE_LOGIN)
+
+    # Build callback URL
+    callback_url = request.build_absolute_uri(reverse("tformance_auth:github_callback"))
+
+    # Build GitHub OAuth URL with minimal scopes
+    params = {
+        "client_id": settings.GITHUB_CLIENT_ID,
+        "redirect_uri": callback_url,
+        "scope": GITHUB_LOGIN_SCOPES,
+        "state": state,
+    }
+
+    github_url = f"{GITHUB_OAUTH_AUTHORIZE_URL}?{urlencode(params)}"
+    return redirect(github_url)
+
 
 @ratelimit(key="ip", rate="10/m", method=["GET", "POST"])
-@login_required
 def github_callback(request):
     """Unified GitHub OAuth callback handler.
 
@@ -87,9 +120,19 @@ def github_callback(request):
     # Route to appropriate handler
     flow_type = state_data["type"]
 
-    if flow_type == FLOW_TYPE_ONBOARDING:
+    if flow_type == FLOW_TYPE_LOGIN:
+        return _handle_login_callback(request, code)
+    elif flow_type == FLOW_TYPE_ONBOARDING:
+        # Onboarding requires user to be logged in
+        if not request.user.is_authenticated:
+            messages.error(request, _("Please log in first."))
+            return redirect("account_login")
         return _handle_onboarding_callback(request, code)
     elif flow_type == FLOW_TYPE_INTEGRATION:
+        # Integration requires user to be logged in
+        if not request.user.is_authenticated:
+            messages.error(request, _("Please log in first."))
+            return redirect("account_login")
         team_id = state_data["team_id"]
         return _handle_integration_callback(request, code, team_id)
     else:
@@ -101,11 +144,90 @@ def github_callback(request):
 def _get_error_redirect(state_data: dict):
     """Get appropriate error redirect based on flow type."""
     flow_type = state_data.get("type")
-    if flow_type == FLOW_TYPE_ONBOARDING:
+    if flow_type == FLOW_TYPE_LOGIN:
+        return redirect("account_login")
+    elif flow_type == FLOW_TYPE_ONBOARDING:
         return redirect("onboarding:start")
     elif flow_type == FLOW_TYPE_INTEGRATION:
         return redirect("integrations:integrations_home")
     return redirect("web:home")
+
+
+def _handle_login_callback(request, code: str):
+    """Handle GitHub OAuth callback for login flow.
+
+    Authenticates user via GitHub, creating account if needed.
+    """
+    # Build callback URL for token exchange
+    callback_url = request.build_absolute_uri(reverse("tformance_auth:github_callback"))
+
+    try:
+        # Exchange code for access token
+        token_data = github_oauth.exchange_code_for_token(code, callback_url)
+        access_token = token_data.get("access_token")
+
+        if not access_token:
+            messages.error(request, _("Failed to get access token from GitHub."))
+            return redirect("account_login")
+
+        # Get GitHub user info
+        github_user = github_oauth.get_github_user(access_token)
+        github_id = str(github_user["id"])
+        github_login_name = github_user["login"]
+        github_email = github_user.get("email")
+        github_name = github_user.get("name")
+
+        # Try to find existing user
+        user = None
+
+        # First: Try to match by GitHub ID via SocialAccount
+        try:
+            social_account = SocialAccount.objects.get(provider="github", uid=github_id)
+            user = social_account.user
+        except SocialAccount.DoesNotExist:
+            pass
+
+        # Second: Try to match by email if we have one
+        if user is None and github_email:
+            try:
+                user = CustomUser.objects.get(email=github_email)
+                # Create SocialAccount to link the accounts
+                SocialAccount.objects.create(
+                    user=user,
+                    provider="github",
+                    uid=github_id,
+                    extra_data={"login": github_login_name, "name": github_name},
+                )
+            except CustomUser.DoesNotExist:
+                pass
+
+        # Third: Create new user if not found
+        if user is None:
+            user = CustomUser.objects.create(
+                username=github_login_name,
+                email=github_email or f"{github_login_name}@github.placeholder",
+            )
+            # Create SocialAccount
+            SocialAccount.objects.create(
+                user=user,
+                provider="github",
+                uid=github_id,
+                extra_data={"login": github_login_name, "name": github_name},
+            )
+
+        # Log the user in
+        login(request, user, backend="django.contrib.auth.backends.ModelBackend")
+
+        # Redirect based on team membership
+        if user.teams.exists():
+            return redirect("web:home")
+        else:
+            return redirect("onboarding:start")
+
+    except GitHubOAuthError as e:
+        logger.error(f"GitHub OAuth error during login: {e}", exc_info=True)
+        messages.error(request, _("Failed to connect to GitHub. Please try again."))
+        return redirect("account_login")
 
 
 def _handle_onboarding_callback(request, code: str):

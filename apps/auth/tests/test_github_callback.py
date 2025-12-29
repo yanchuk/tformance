@@ -212,13 +212,18 @@ class TestIntegrationCallback(TestCase):
         self.assertTrue(any("don't have access" in str(m) for m in messages))
 
 
-class TestCallbackRequiresLogin(TestCase):
-    """Tests that callback requires authentication."""
+class TestCallbackWithoutState(TestCase):
+    """Tests callback behavior when state is missing or invalid."""
 
-    def test_unauthenticated_user_redirected_to_login(self):
-        """Test that unauthenticated users are redirected to login."""
+    def test_unauthenticated_user_without_state_redirects_to_home(self):
+        """Test that unauthenticated users without state are redirected to home.
+
+        Note: The callback no longer uses @login_required to allow login flow
+        to work for unauthenticated users. When state is missing/invalid, we
+        redirect to home since we don't know the intended flow type.
+        """
         callback_url = reverse("tformance_auth:github_callback")
         response = self.client.get(callback_url)
 
         self.assertEqual(response.status_code, 302)
-        self.assertIn("login", response.url)
+        self.assertEqual(response.url, "/")
