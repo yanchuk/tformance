@@ -11,6 +11,7 @@ import logging
 import secrets
 from datetime import UTC, datetime
 
+from allauth.socialaccount.models import SocialAccount
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -47,10 +48,13 @@ def onboarding_start(request):
         # Redirect to /app/ which auto-selects the team
         return redirect("web:home")
 
+    # Check if user has a GitHub social account (signed up via GitHub OAuth)
+    has_github_social = SocialAccount.objects.filter(user=request.user, provider="github").exists()
+
     return render(
         request,
         "onboarding/start.html",
-        {"page_title": _("Connect GitHub"), "step": 1},
+        {"page_title": _("Connect GitHub"), "step": 1, "has_github_social": has_github_social},
     )
 
 
