@@ -40,7 +40,7 @@ jobs:
           cp public_report/favicon.svg _site/
 
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v4
         with:
           # Only upload the static report files (not scripts or data)
           path: '_site'
