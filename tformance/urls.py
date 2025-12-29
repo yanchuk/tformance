@@ -55,7 +55,6 @@ team_urlpatterns = [
 ]
 
 urlpatterns = [
-    path("__reload__/", include("django_browser_reload.urls")),
     # redirect Django admin login to main login page
     path("admin/login/", RedirectView.as_view(pattern_name="account_login")),
     path("admin/", admin.site.urls),
@@ -88,3 +87,7 @@ urlpatterns = [
     path("documents/", include(wagtaildocs_urls)),
     path("content/", include(wagtail_urls)),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+# Debug-only URLs
+if settings.DEBUG:
+    urlpatterns = [path("__reload__/", include("django_browser_reload.urls"))] + urlpatterns
