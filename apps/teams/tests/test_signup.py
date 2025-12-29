@@ -6,7 +6,12 @@ from apps.teams.models import Invitation, Membership, Team
 from apps.users.models import CustomUser
 
 
-@override_settings(ACCOUNT_ADAPTER="apps.teams.adapter.AcceptInvitationAdapter", TURNSTILE_SECRET=None)
+@override_settings(
+    ACCOUNT_ADAPTER="apps.teams.adapter.AcceptInvitationAdapter",
+    TURNSTILE_SECRET=None,
+    AUTH_MODE="all",
+    ALLOW_EMAIL_AUTH=True,
+)
 class TestSignupView(TestCase):
     """Tests for the signup flow.
 
