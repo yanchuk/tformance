@@ -16,12 +16,18 @@ All product requirements are in `/prd/`:
 - [ONBOARDING.md](prd/ONBOARDING.md) - User flow
 - [AI-DETECTION-TESTING.md](prd/AI-DETECTION-TESTING.md) - AI detection testing tools & workflow
 
+Development guides in `/dev/guides/`:
+- [HEROKU-DEPLOYMENT.md](dev/guides/HEROKU-DEPLOYMENT.md) - Heroku Docker deployment (staging & production)
+- [AUTHENTICATION-FLOWS.md](dev/guides/AUTHENTICATION-FLOWS.md) - OAuth and auth patterns
+- [REAL-WORLD-TESTING.md](dev/guides/REAL-WORLD-TESTING.md) - Testing with real integrations
+
 **Read these before implementing features.**
 
 ## Key Decisions (Do Not Change Without Discussion)
 
 | Decision | Choice | Why |
 |----------|--------|-----|
+| **Hosting** | Heroku (Docker) | Full platform: dynos, Postgres, Redis. Docker for portability |
 | Client data storage | Single DB (team-isolated) | Faster MVP, lower onboarding friction. BYOS deferred to Phase 12 if demand exists |
 | Dashboards | Native (Chart.js + HTMX) | Already integrated, full design control |
 | Sync frequency | Daily | Simpler than real-time |
