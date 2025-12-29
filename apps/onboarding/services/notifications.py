@@ -58,3 +58,60 @@ The Tformance Team
     )
 
     return True
+
+
+def send_sync_complete_email(team: Team, user: CustomUser, prs_synced: int, repos_synced: int) -> bool:
+    """Send email notification when initial data sync is complete.
+
+    Args:
+        team: The Team whose data was synced
+        user: The user to notify
+        prs_synced: Number of pull requests synced
+        repos_synced: Number of repositories synced
+
+    Returns:
+        True if email was sent, False if skipped (no email address)
+    """
+    if not user.email:
+        return False
+
+    # Determine greeting name
+    name = user.first_name or "there"
+
+    # Build dashboard URL using PROJECT_METADATA
+    base_url = getattr(settings, "PROJECT_METADATA", {}).get("URL", "http://localhost:8000")
+    dashboard_url = f"{base_url}/a/{team.slug}/"
+
+    subject = "Your Tformance data sync is complete!"
+
+    message = f"""Hi {name},
+
+Great news! We've finished syncing your GitHub data for {team.name}.
+
+Here's what we imported:
+- {repos_synced} repositories
+- {prs_synced} pull requests
+
+Your dashboard is now ready with historical metrics and insights. Check it out:
+{dashboard_url}
+
+What you can explore now:
+- PR cycle time trends and review metrics
+- AI tool adoption patterns across your team
+- Team velocity and throughput analysis
+
+If you haven't already, consider connecting Jira and Slack to get even more insights.
+
+Thanks for using Tformance!
+The Tformance Team
+"""
+
+    send_mail(
+        subject=subject,
+        message=message,
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        recipient_list=[user.email],
+        fail_silently=True,
+    )
+
+    return True

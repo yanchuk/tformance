@@ -39,10 +39,15 @@
       </li>
     </ul>
 
-    <div class="flex justify-center mt-6">
-      <a href="{% url 'onboarding:github_connect' %}" class="app-btn-primary app-btn-lg gap-2">
-        <i class="fa-brands fa-github"></i>
-        {% translate "Connect GitHub" %}
+    <div class="flex justify-center mt-6" x-data="{ loading: false }">
+      <a href="{% url 'onboarding:github_connect' %}"
+         @click="loading = true"
+         class="app-btn-primary app-btn-lg gap-2"
+         :class="{ 'opacity-75 cursor-wait': loading }">
+        <i class="fa-brands fa-github" x-show="!loading"></i>
+        <i class="fa-solid fa-spinner fa-spin" x-show="loading" x-cloak></i>
+        <span x-show="!loading">{% translate "Connect GitHub" %}</span>
+        <span x-show="loading" x-cloak>{% translate "Connecting..." %}</span>
       </a>
     </div>
 

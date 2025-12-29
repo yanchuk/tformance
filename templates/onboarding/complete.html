@@ -3,10 +3,22 @@
 
 {% block onboarding_content %}
 <div class="text-center">
-  <div class="w-20 h-20 bg-success/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-success/30">
-    <i class="fa-solid fa-check text-4xl text-success"></i>
+  {# Celebration sparkles #}
+  <div class="relative inline-block mb-4">
+    <div class="absolute -top-2 -left-4 text-2xl animate-pulse">✨</div>
+    <div class="absolute -top-3 -right-3 text-xl animate-bounce" style="animation-delay: 0.2s">🎉</div>
+    <div class="w-20 h-20 bg-success/10 rounded-full flex items-center justify-center mx-auto border border-success/30">
+      <i class="fa-solid fa-check text-4xl text-success"></i>
+    </div>
+    <div class="absolute -bottom-1 -right-4 text-xl animate-pulse" style="animation-delay: 0.4s">✨</div>
   </div>
-  <h1 class="text-3xl font-bold text-base-content mb-2">{% translate "You're All Set!" %}</h1>
+  <h1 class="text-3xl font-bold text-base-content mb-2">
+    {% if request.user.first_name %}
+    {% translate "Welcome," %} {{ request.user.first_name }}! 🎊
+    {% else %}
+    {% translate "You're All Set!" %} 🎊
+    {% endif %}
+  </h1>
   <p class="text-base-content/70 max-w-md mx-auto mb-8">
     {% translate "Your team is ready. Start exploring your engineering metrics dashboard." %}
   </p>

@@ -38,10 +38,15 @@
     </li>
   </ul>
 
-  <div class="text-center">
-    <a href="{% url 'onboarding:connect_jira' %}?action=connect" class="app-btn-secondary gap-2 mb-2">
-      <i class="fa-brands fa-jira"></i>
-      {% translate "Connect Jira" %}
+  <div class="text-center" x-data="{ loading: false }">
+    <a href="{% url 'onboarding:connect_jira' %}?action=connect"
+       @click="loading = true"
+       class="app-btn-primary gap-2 mb-2"
+       :class="{ 'opacity-75 cursor-wait': loading }">
+      <i class="fa-brands fa-jira" x-show="!loading"></i>
+      <i class="fa-solid fa-spinner fa-spin" x-show="loading" x-cloak></i>
+      <span x-show="!loading">{% translate "Connect Jira" %}</span>
+      <span x-show="loading" x-cloak>{% translate "Connecting..." %}</span>
     </a>
     <p class="text-xs text-base-content/50 mt-2">
       {% translate "This is optional. You can connect Jira later from settings." %}
@@ -56,7 +61,7 @@
       <i class="fa-solid fa-arrow-left mr-2"></i>
       {% translate "Back" %}
     </a>
-    <button type="submit" class="app-btn-primary flex-1">
+    <button type="submit" class="app-btn-ghost flex-1">
       {% translate "Skip for now" %}
       <i class="fa-solid fa-arrow-right ml-2"></i>
     </button>

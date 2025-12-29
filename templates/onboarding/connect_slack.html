@@ -38,7 +38,7 @@
     </li>
   </ul>
 
-  <div class="text-center">
+  <div class="text-center" x-data="{ loading: false }">
     {% if slack_integration %}
     <div class="app-badge app-badge-success gap-2 mb-3">
       <i class="fa-solid fa-check-circle"></i>
@@ -49,9 +49,14 @@
       {% translate "Reconnect Slack" %}
     </a>
     {% else %}
-    <a href="?action=connect" class="app-btn-primary gap-2 mb-2">
-      <i class="fa-brands fa-slack"></i>
-      {% translate "Add to Slack" %}
+    <a href="?action=connect"
+       @click="loading = true"
+       class="app-btn-primary gap-2 mb-2"
+       :class="{ 'opacity-75 cursor-wait': loading }">
+      <i class="fa-brands fa-slack" x-show="!loading"></i>
+      <i class="fa-solid fa-spinner fa-spin" x-show="loading" x-cloak></i>
+      <span x-show="!loading">{% translate "Add to Slack" %}</span>
+      <span x-show="loading" x-cloak>{% translate "Connecting..." %}</span>
     </a>
     {% endif %}
     <p class="text-xs text-base-content/50 mt-2">
