@@ -53,7 +53,7 @@ services:
   # DJANGO WEB APPLICATION
   # =============================================================================
   web:
-    image: ayanch/tformance:${IMAGE_TAG:-latest}
+    image: ayanchuk/tformance:${IMAGE_TAG:-latest}
     container_name: tformance-web
     restart: unless-stopped
     depends_on:
@@ -134,7 +134,7 @@ services:
   # CELERY WORKER (Background Tasks)
   # =============================================================================
   worker:
-    image: ayanch/tformance:${IMAGE_TAG:-latest}
+    image: ayanchuk/tformance:${IMAGE_TAG:-latest}
     container_name: tformance-worker
     restart: unless-stopped
     depends_on:
@@ -170,7 +170,7 @@ services:
   # CELERY BEAT (Scheduled Tasks)
   # =============================================================================
   beat:
-    image: ayanch/tformance:${IMAGE_TAG:-latest}
+    image: ayanchuk/tformance:${IMAGE_TAG:-latest}
     container_name: tformance-beat
     restart: unless-stopped
     depends_on:

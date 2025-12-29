@@ -73,7 +73,7 @@ This guide deploys a **staging instance** on Unraid using:
 Add these secrets to your GitHub repo:
 1. Go to: https://github.com/ayanch/tformance/settings/secrets/actions
 2. Add:
-   - `DOCKERHUB_USERNAME`: `ayanch`
+   - `DOCKERHUB_USERNAME`: `ayanchuk`
    - `DOCKERHUB_TOKEN`: Access token from step 1.1
 
 ### 1.3 Authenticate Docker on Unraid
@@ -81,7 +81,7 @@ Add these secrets to your GitHub repo:
 SSH into Unraid and login to Docker Hub:
 
 ```bash
-docker login -u ayanch
+docker login -u ayanchuk
 # Enter your access token when prompted
 ```
 
@@ -90,7 +90,7 @@ This creates `~/.docker/config.json` with credentials.
 ### 1.4 Verify Image Access
 
 ```bash
-docker pull ayanch/tformance:latest
+docker pull ayanchuk/tformance:latest
 ```
 
 If the image doesn't exist yet, trigger the first build:
@@ -99,7 +99,7 @@ If the image doesn't exist yet, trigger the first build:
 
 ### 1.5 Make Repository Private
 
-1. Go to: https://hub.docker.com/repository/docker/ayanch/tformance/settings
+1. Go to: https://hub.docker.com/repository/docker/ayanchuk/tformance/settings
 2. Set visibility to **Private**
 
 ---
@@ -489,16 +489,16 @@ docker exec tformance-web python manage.py showmigrations
 
 ```bash
 # Verify Docker Hub login
-docker login -u ayanch
+docker login -u ayanchuk
 
 # Try pulling again
-docker pull ayanch/tformance:latest
+docker pull ayanchuk/tformance:latest
 
 # Check credentials file exists
 cat ~/.docker/config.json | grep "index.docker.io"
 
 # Check Docker Hub for available tags (requires login):
-# https://hub.docker.com/r/ayanch/tformance/tags
+# https://hub.docker.com/r/ayanchuk/tformance/tags
 ```
 
 ---

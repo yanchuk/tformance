@@ -11,7 +11,7 @@ on:
         default: 'latest'
 
 env:
-  DOCKERHUB_REPO: ayanch/tformance
+  DOCKERHUB_REPO: ayanchuk/tformance
 
 jobs:
   build-and-push:
