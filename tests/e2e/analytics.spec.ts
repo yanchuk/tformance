@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, Page } from '@playwright/test';
 
 /**
  * Analytics Pages Tests
@@ -13,6 +13,45 @@ import { test, expect } from '@playwright/test';
  * - Team Performance Page
  * - Pull Requests Data Explorer
  */
+
+/**
+ * Wait for Alpine.js dateRange store to be initialized.
+ */
+async function waitForAlpineStore(page: Page, timeout = 5000): Promise<void> {
+  await page.waitForFunction(
+    () => {
+      const Alpine = (window as any).Alpine;
+      return Alpine && Alpine.store && Alpine.store('dateRange') !== undefined;
+    },
+    { timeout }
+  );
+}
+
+/**
+ * Wait for HTMX request to complete.
+ */
+async function waitForHtmxComplete(page: Page, timeout = 5000): Promise<void> {
+  await page.waitForFunction(
+    () => !document.body.classList.contains('htmx-request'),
+    { timeout }
+  );
+}
+
+/**
+ * Wait for chart canvas to be present in the DOM.
+ */
+async function waitForChart(page: Page, chartId: string, timeout = 5000): Promise<void> {
+  await page.waitForSelector(`#${chartId}`, { state: 'attached', timeout });
+  // Also wait for any HTMX requests to complete
+  await waitForHtmxComplete(page, timeout);
+}
+
+/**
+ * Wait for an element to be visible with text content.
+ */
+async function waitForContent(page: Page, text: string, timeout = 5000): Promise<void> {
+  await page.getByText(text).first().waitFor({ state: 'visible', timeout });
+}
 
 test.describe('Analytics Pages Tests @analytics', () => {
   // Login before each test
@@ -58,7 +97,7 @@ test.describe('Analytics Pages Tests @analytics', () => {
     test('key metrics cards load via HTMX', async ({ page }) => {
       await page.goto('/app/metrics/analytics/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(1000); // Allow HTMX to load
+      await waitForHtmxComplete(page);
 
       // Check for metric labels
       await expect(page.getByText('PRs Merged').first()).toBeVisible();
@@ -106,12 +145,11 @@ test.describe('Analytics Pages Tests @analytics', () => {
     test('date filter changes URL', async ({ page }) => {
       await page.goto('/app/metrics/analytics/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(500); // Wait for HTMX/Alpine to initialize
+      await waitForAlpineStore(page);
 
       // Click 7d - Alpine updates button state, HTMX updates page content
       await page.getByRole('button', { name: '7d' }).click();
-      // Wait for HTMX to update the content (checking that page still renders)
-      await page.waitForTimeout(1000);
+      await waitForHtmxComplete(page);
       // Verify button state updated (Alpine works)
       await expect(page.getByRole('button', { name: '7d' })).toHaveClass(/btn-primary/);
     });
@@ -120,7 +158,7 @@ test.describe('Analytics Pages Tests @analytics', () => {
       // Start with default (30d)
       await page.goto('/app/metrics/analytics/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(500); // Wait for HTMX/Alpine to initialize
+      await waitForAlpineStore(page);
 
       // 30d should be primary (active)
       await expect(page.getByRole('button', { name: '30d' })).toHaveClass(/btn-primary/);
@@ -128,7 +166,7 @@ test.describe('Analytics Pages Tests @analytics', () => {
 
       // Click 7d - Alpine immediately updates button state
       await page.getByRole('button', { name: '7d' }).click();
-      await page.waitForTimeout(500);
+      await waitForHtmxComplete(page);
 
       // 7d should now be primary (active), 30d should be ghost
       await expect(page.getByRole('button', { name: '7d' })).toHaveClass(/btn-primary/);
@@ -138,14 +176,14 @@ test.describe('Analytics Pages Tests @analytics', () => {
     test('time range button highlighting updates when switching to 90d', async ({ page }) => {
       await page.goto('/app/metrics/analytics/?days=7');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(500); // Wait for HTMX/Alpine to initialize
+      await waitForAlpineStore(page);
 
       // 7d should be active
       await expect(page.getByRole('button', { name: '7d' })).toHaveClass(/btn-primary/);
 
       // Click 90d - Alpine immediately updates state
       await page.getByRole('button', { name: '90d' }).click();
-      await page.waitForTimeout(500);
+      await waitForHtmxComplete(page);
 
       // 90d should now be active
       await expect(page.getByRole('button', { name: '90d' })).toHaveClass(/btn-primary/);
@@ -212,14 +250,14 @@ test.describe('Analytics Pages Tests @analytics', () => {
     test('AI Adoption date filter updates button state', async ({ page }) => {
       await page.goto('/app/metrics/analytics/ai-adoption/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(500); // Wait for HTMX/Alpine to initialize
+      await waitForAlpineStore(page);
 
       // Verify initial state - 30d is default
       await expect(page.getByRole('button', { name: '30d' })).toHaveClass(/btn-primary/);
 
       // Click 7d and verify state updates
       await page.getByRole('button', { name: '7d' }).click();
-      await page.waitForTimeout(500);
+      await waitForHtmxComplete(page);
       await expect(page.getByRole('button', { name: '7d' })).toHaveClass(/btn-primary/);
     });
 
@@ -273,11 +311,11 @@ test.describe('Analytics Pages Tests @analytics', () => {
     test('Delivery date filter updates button state', async ({ page }) => {
       await page.goto('/app/metrics/analytics/delivery/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(500); // Wait for HTMX/Alpine to initialize
+      await waitForAlpineStore(page);
 
       // Click 90d and verify state updates
       await page.getByRole('button', { name: '90d' }).click();
-      await page.waitForTimeout(500);
+      await waitForHtmxComplete(page);
       await expect(page.getByRole('button', { name: '90d' })).toHaveClass(/btn-primary/);
     });
 
@@ -331,11 +369,11 @@ test.describe('Analytics Pages Tests @analytics', () => {
     test('Quality date filter updates button state', async ({ page }) => {
       await page.goto('/app/metrics/analytics/quality/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(500); // Wait for HTMX/Alpine to initialize
+      await waitForAlpineStore(page);
 
       // Click 7d and verify state updates
       await page.getByRole('button', { name: '7d' }).click();
-      await page.waitForTimeout(500);
+      await waitForHtmxComplete(page);
       await expect(page.getByRole('button', { name: '7d' })).toHaveClass(/btn-primary/);
     });
 
@@ -389,11 +427,11 @@ test.describe('Analytics Pages Tests @analytics', () => {
     test('Team date filter updates button state', async ({ page }) => {
       await page.goto('/app/metrics/analytics/team/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(500); // Wait for HTMX/Alpine to initialize
+      await waitForAlpineStore(page);
 
       // Click 7d and verify state updates
       await page.getByRole('button', { name: '7d' }).click();
-      await page.waitForTimeout(500);
+      await waitForHtmxComplete(page);
       await expect(page.getByRole('button', { name: '7d' })).toHaveClass(/btn-primary/);
     });
 
@@ -471,7 +509,7 @@ test.describe('Analytics Pages Tests @analytics', () => {
     test('PR table displays with expected columns', async ({ page }) => {
       await page.goto('/app/metrics/pull-requests/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(500); // Allow table to load
+      await waitForHtmxComplete(page);
 
       // Check for table headers (Cmts = Comments abbreviated, Size = Lines)
       await expect(page.getByRole('columnheader', { name: 'Title' })).toBeVisible();
@@ -483,7 +521,7 @@ test.describe('Analytics Pages Tests @analytics', () => {
     test('sortable columns show cursor pointer on hover', async ({ page }) => {
       await page.goto('/app/metrics/pull-requests/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(500);
+      await waitForHtmxComplete(page);
 
       // Sortable columns should have cursor-pointer class
       const cycleTimeHeader = page.getByRole('columnheader', { name: /Cycle Time/ });
@@ -493,11 +531,11 @@ test.describe('Analytics Pages Tests @analytics', () => {
     test('clicking sortable column updates URL with sort params', async ({ page }) => {
       await page.goto('/app/metrics/pull-requests/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(500);
+      await waitForHtmxComplete(page);
 
       // Click Cycle Time column header to sort
       await page.getByRole('columnheader', { name: /Cycle Time/ }).click();
-      await page.waitForTimeout(300);
+      await page.waitForURL(/sort=cycle_time/);
 
       // URL should include sort params
       await expect(page).toHaveURL(/sort=cycle_time/);
@@ -506,14 +544,14 @@ test.describe('Analytics Pages Tests @analytics', () => {
     test('clicking same column toggles sort order', async ({ page }) => {
       await page.goto('/app/metrics/pull-requests/?sort=cycle_time&order=desc');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(500);
+      await waitForHtmxComplete(page);
 
       // Should show descending indicator
       await expect(page.getByRole('columnheader', { name: /Cycle Time/ })).toContainText('▼');
 
       // Click again to toggle to ascending
       await page.getByRole('columnheader', { name: /Cycle Time/ }).click();
-      await page.waitForTimeout(300);
+      await page.waitForURL(/order=asc/);
 
       await expect(page).toHaveURL(/order=asc/);
       await expect(page.getByRole('columnheader', { name: /Cycle Time/ })).toContainText('▲');
@@ -522,7 +560,7 @@ test.describe('Analytics Pages Tests @analytics', () => {
     test('sort indicator shows on active sort column', async ({ page }) => {
       await page.goto('/app/metrics/pull-requests/?sort=review_time&order=desc');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(500);
+      await waitForHtmxComplete(page);
 
       // Review Time should show ▼
       await expect(page.getByRole('columnheader', { name: /Review Time/ })).toContainText('▼');
@@ -535,11 +573,11 @@ test.describe('Analytics Pages Tests @analytics', () => {
     test('sort by Cmts column works', async ({ page }) => {
       await page.goto('/app/metrics/pull-requests/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(500);
+      await waitForHtmxComplete(page);
 
       // Click Cmts (Comments) column header
       await page.getByRole('columnheader', { name: 'Cmts' }).click();
-      await page.waitForTimeout(300);
+      await page.waitForURL(/sort=comments/);
 
       await expect(page).toHaveURL(/sort=comments/);
     });
@@ -547,11 +585,11 @@ test.describe('Analytics Pages Tests @analytics', () => {
     test('sort by Size column works', async ({ page }) => {
       await page.goto('/app/metrics/pull-requests/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(500);
+      await waitForHtmxComplete(page);
 
       // Click Size (Lines) column header
       await page.getByRole('columnheader', { name: 'Size' }).click();
-      await page.waitForTimeout(300);
+      await page.waitForURL(/sort=lines/);
 
       await expect(page).toHaveURL(/sort=lines/);
     });
@@ -560,11 +598,11 @@ test.describe('Analytics Pages Tests @analytics', () => {
       // Start with a filter applied
       await page.goto('/app/metrics/pull-requests/?state=merged');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(500);
+      await waitForHtmxComplete(page);
 
       // Click to sort
       await page.getByRole('columnheader', { name: /Cycle Time/ }).click();
-      await page.waitForTimeout(300);
+      await page.waitForURL(/sort=cycle_time/);
 
       // URL should have both filter and sort params
       await expect(page).toHaveURL(/state=merged/);
@@ -574,7 +612,7 @@ test.describe('Analytics Pages Tests @analytics', () => {
     test('stats row displays totals', async ({ page }) => {
       await page.goto('/app/metrics/pull-requests/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(500);
+      await waitForHtmxComplete(page);
 
       // Should show total count label in stats
       await expect(page.getByText('Total PRs')).toBeVisible();
@@ -604,7 +642,7 @@ test.describe('Analytics Pages Tests @analytics', () => {
     test('pagination displays for large datasets', async ({ page }) => {
       await page.goto('/app/metrics/pull-requests/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(500);
+      await waitForHtmxComplete(page);
 
       // Should show pagination if more than 50 PRs
       // This is conditional - may not show if demo data has < 50 PRs
@@ -834,24 +872,21 @@ test.describe('Analytics Pages Tests @analytics', () => {
     test('trend chart loads via HTMX', async ({ page }) => {
       await page.goto('/app/metrics/analytics/trends/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(2000); // Allow HTMX to load chart
-
-      // Check for chart header that appears after HTMX load
-      await expect(page.getByRole('heading', { name: /Cycle Time \(hours\)/ })).toBeVisible();
+      // Wait for the chart heading to appear (indicates HTMX loaded the chart content)
+      await expect(page.getByRole('heading', { name: /Cycle Time \(hours\)/ })).toBeVisible({ timeout: 10000 });
     });
 
     test('chart has zoom/pan instructions', async ({ page }) => {
       await page.goto('/app/metrics/analytics/trends/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(2000);
-
-      await expect(page.getByText('Scroll to zoom, drag to pan')).toBeVisible();
+      // Wait for zoom/pan text which indicates chart UI is loaded
+      await expect(page.getByText('Scroll to zoom, drag to pan')).toBeVisible({ timeout: 10000 });
     });
 
     test('quick stats cards display', async ({ page }) => {
       await page.goto('/app/metrics/analytics/trends/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(1000);
+      await waitForHtmxComplete(page);
 
       // Should show metric cards in the grid (not in the dropdown)
       const cardGrid = page.locator('.grid.grid-cols-1.md\\:grid-cols-4');
@@ -885,14 +920,15 @@ test.describe('Analytics Pages Tests @analytics', () => {
     test('selecting multiple metrics shows comparison chart', async ({ page }) => {
       await page.goto('/app/metrics/analytics/trends/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(2000);
+      // Wait for initial chart to load
+      await expect(page.getByRole('heading', { name: /Cycle Time \(hours\)/ })).toBeVisible({ timeout: 10000 });
 
       // Add Review Time to comparison (Cycle Time already selected)
       await page.getByLabel('Review Time').click();
-      await page.waitForTimeout(2000);
+      await waitForHtmxComplete(page);
 
       // Chart title should show comparison
-      await expect(page.getByRole('heading', { name: /Cycle Time vs Review Time/ })).toBeVisible();
+      await expect(page.getByRole('heading', { name: /Cycle Time vs Review Time/ })).toBeVisible({ timeout: 10000 });
       // Should show "Comparing" badge
       await expect(page.getByText('Comparing')).toBeVisible();
     });
@@ -900,14 +936,12 @@ test.describe('Analytics Pages Tests @analytics', () => {
     test('PR type breakdown chart loads via HTMX', async ({ page }) => {
       await page.goto('/app/metrics/analytics/trends/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(2000);
+      await waitForHtmxComplete(page);
 
       // Scroll to PR type chart section (it's below the fold)
       await page.locator('#pr-type-chart-container').scrollIntoViewIfNeeded();
-      await page.waitForTimeout(1000);
-
-      // PR type chart should load via HTMX
-      await expect(page.getByRole('heading', { name: 'PR Types Over Time' })).toBeVisible();
+      // Wait for the chart heading and canvas to appear
+      await expect(page.getByRole('heading', { name: 'PR Types Over Time' })).toBeVisible({ timeout: 10000 });
       // Chart canvas should exist
       await expect(page.locator('#pr-type-chart')).toBeAttached();
     });
@@ -915,14 +949,12 @@ test.describe('Analytics Pages Tests @analytics', () => {
     test('Tech breakdown chart loads via HTMX', async ({ page }) => {
       await page.goto('/app/metrics/analytics/trends/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(2000);
+      await waitForHtmxComplete(page);
 
       // Scroll to tech chart section (it's below the fold)
       await page.locator('#tech-chart-container').scrollIntoViewIfNeeded();
-      await page.waitForTimeout(1000);
-
-      // Tech breakdown chart should load via HTMX
-      await expect(page.getByRole('heading', { name: 'Technology Breakdown' })).toBeVisible();
+      // Wait for the chart heading and canvas to appear
+      await expect(page.getByRole('heading', { name: 'Technology Breakdown' })).toBeVisible({ timeout: 10000 });
       // Chart canvas should exist
       await expect(page.locator('#tech-chart')).toBeAttached();
     });
@@ -944,7 +976,7 @@ test.describe('Analytics Pages Tests @analytics', () => {
 
       await page.goto('/app/metrics/analytics/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(1000); // Allow HTMX to load cards
+      await waitForHtmxComplete(page);
 
       // Get all stat-value elements
       const statValues = page.locator('.stat-value');
@@ -998,7 +1030,7 @@ test.describe('Analytics Pages Tests @analytics', () => {
 
       await page.goto('/app/metrics/analytics/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(1000); // Allow HTMX to load cards
+      await waitForHtmxComplete(page);
 
       // Get all stat-value elements
       const statValues = page.locator('.stat-value');
@@ -1046,7 +1078,7 @@ test.describe('Analytics Pages Tests @analytics', () => {
 
       await page.goto('/app/metrics/analytics/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(1000);
+      await waitForHtmxComplete(page);
 
       // On mobile, cards should stack (grid-cols-1) giving more width
       const statValues = page.locator('.stat-value');
