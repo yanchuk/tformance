@@ -8,6 +8,12 @@
     </a>
   </li>
   <li>
+    <a href="{% url 'pullrequests:pr_list' %}" {% if active_tab == 'pull_requests' %}class="menu-active"{% endif %}>
+      <i class="fa fa-code-pull-request h-4 w-4"></i>
+      {% translate "Pull Requests" %}
+    </a>
+  </li>
+  <li>
     <a href="{% url 'integrations:integrations_home' %}" {% if active_tab == 'integrations' %}class="menu-active"{% endif %}>
       <i class="fa fa-plug h-4 w-4"></i>
       {% translate "Integrations" %}

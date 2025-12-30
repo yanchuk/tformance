@@ -79,21 +79,14 @@
          hx-push-url="true">
         {% trans "Trends" %}
       </a>
-      <a role="tab"
-         href="{% url 'metrics:pr_list' %}"
-         class="tab {% if active_page == 'pull_requests' %}tab-active{% endif %}">
-        {% trans "Pull Requests" %}
-      </a>
     </div>
 
     <!-- Date Range Filter Container (updated via OOB swap on HTMX navigation) -->
     <div id="date-range-picker-container">
-      {% if active_page != 'pull_requests' %}
       <div class="flex gap-2 items-center">
         <span class="text-sm text-base-content/70">{% trans "Time range:" %}</span>
         {% include "metrics/partials/date_range_picker.html" with days=days start_date=start_date end_date=end_date preset=preset %}
       </div>
-      {% endif %}
     </div>
   </div>
 

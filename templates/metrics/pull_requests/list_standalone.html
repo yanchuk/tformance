@@ -1,16 +1,18 @@
-{% extends "metrics/analytics/base_analytics.html" %}
+{% extends "web/app/app_base.html" %}
 {% load static %}
 {% load i18n %}
 {% load partials %}
 {% load pr_list_tags %}
+{% load django_vite %}
 
-{% block analytics_content %}
+{% block app %}
+<div class="app-card">
   {% partialdef page-content inline %}
   <div id="page-content" class="min-w-0 overflow-hidden">
     <!-- Header with title and export button -->
     <div class="flex justify-between items-center mb-6">
       <h1 class="pg-title">{% trans "Pull Requests" %}</h1>
-      <a href="{% url 'metrics:pr_list_export' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}"
+      <a href="{% url 'pullrequests:pr_list_export' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}"
          class="btn btn-outline btn-sm">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -78,7 +80,7 @@
            }
          }"
          @htmx:after-request.window="resetDirty()">
-      <form hx-get="{% url 'metrics:pr_list' %}"
+      <form hx-get="{% url 'pullrequests:pr_list' %}"
             hx-target="#page-content"
             hx-swap="outerHTML"
             hx-push-url="true"
@@ -330,7 +332,7 @@
             <span x-show="!isDirty">{% trans "Apply Filters" %}</span>
             <span x-show="isDirty" x-cloak>{% trans "Apply Changes" %}</span>
           </button>
-          <a href="{% url 'metrics:pr_list' %}" class="btn btn-ghost btn-sm">
+          <a href="{% url 'pullrequests:pr_list' %}" class="btn btn-ghost btn-sm">
             {% trans "Clear" %}
           </a>
         </div>
@@ -381,7 +383,10 @@
       {% include "metrics/pull_requests/partials/table.html" %}
     </div>
   </div>
-  {# OOB swap to hide date range picker when navigating to PR list via HTMX #}
-  {% include "metrics/partials/date_range_picker_oob.html" with show_picker=False %}
   {% endpartialdef page-content %}
+</div>
+{% endblock %}
+
+{% block page_js %}
+{% vite_asset 'assets/javascript/app.js' %}
 {% endblock %}
