@@ -149,6 +149,7 @@ def get_key_metrics(team: Team, start_date: date, end_date: date) -> dict:
         dict with keys:
             - prs_merged (int): Count of merged PRs
             - avg_cycle_time (Decimal or None): Average cycle time in hours
+            - avg_review_time (Decimal or None): Average review time in hours
             - avg_quality_rating (Decimal or None): Average quality rating
             - ai_assisted_pct (Decimal): Percentage of AI-assisted PRs (0.00 to 100.00)
     """
@@ -166,6 +167,9 @@ def get_key_metrics(team: Team, start_date: date, end_date: date) -> dict:
     # Calculate average cycle time
     avg_cycle_time = prs.aggregate(avg=Avg("cycle_time_hours"))["avg"]
 
+    # Calculate average review time
+    avg_review_time = prs.aggregate(avg=Avg("review_time_hours"))["avg"]
+
     # Calculate average quality rating from survey reviews
     reviews = PRSurveyReview.objects.filter(survey__pull_request__in=prs)
     avg_quality_rating = reviews.aggregate(avg=Avg("quality_rating"))["avg"]
@@ -177,6 +181,7 @@ def get_key_metrics(team: Team, start_date: date, end_date: date) -> dict:
     result = {
         "prs_merged": prs_merged,
         "avg_cycle_time": avg_cycle_time,
+        "avg_review_time": avg_review_time,
         "avg_quality_rating": avg_quality_rating,
         "ai_assisted_pct": ai_assisted_pct,
     }
@@ -1986,7 +1991,7 @@ def get_sparkline_data(team: Team, start_date: date, end_date: date) -> dict:
     }
 
 
-def get_pr_type_breakdown(team: Team, start_date: date, end_date: date) -> list[dict]:
+def get_pr_type_breakdown(team: Team, start_date: date, end_date: date, ai_assisted: str = "all") -> list[dict]:
     """Get PR breakdown by type (feature, bugfix, refactor, etc.).
 
     Uses LLM-detected PR types from llm_summary.summary.type,
@@ -1996,6 +2001,7 @@ def get_pr_type_breakdown(team: Team, start_date: date, end_date: date) -> list[
         team: Team instance
         start_date: Start date (inclusive)
         end_date: End date (inclusive)
+        ai_assisted: Filter by AI assistance - "all", "yes", or "no"
 
     Returns:
         list of dicts with keys:
@@ -2009,7 +2015,13 @@ def get_pr_type_breakdown(team: Team, start_date: date, end_date: date) -> list[
     type_counts: dict[str, int] = {}
     total = 0
 
-    for pr in prs.only("id", "llm_summary", "labels"):
+    for pr in prs.only("id", "llm_summary", "labels", "is_ai_assisted"):
+        # Apply AI filter using effective_is_ai_assisted property (LLM takes priority)
+        if ai_assisted == "yes" and not pr.effective_is_ai_assisted:
+            continue
+        if ai_assisted == "no" and pr.effective_is_ai_assisted:
+            continue
+
         pr_type = pr.effective_pr_type
         type_counts[pr_type] = type_counts.get(pr_type, 0) + 1
         total += 1
@@ -2031,13 +2043,16 @@ def get_pr_type_breakdown(team: Team, start_date: date, end_date: date) -> list[
     return result
 
 
-def get_monthly_pr_type_trend(team: Team, start_date: date, end_date: date) -> dict[str, list[dict]]:
+def get_monthly_pr_type_trend(
+    team: Team, start_date: date, end_date: date, ai_assisted: str = "all"
+) -> dict[str, list[dict]]:
     """Get PR type breakdown trend by month.
 
     Args:
         team: Team instance
         start_date: Start date (inclusive)
         end_date: End date (inclusive)
+        ai_assisted: Filter by AI assistance - "all", "yes", or "no"
 
     Returns:
         dict mapping PR type to list of monthly counts:
@@ -2052,9 +2067,16 @@ def get_monthly_pr_type_trend(team: Team, start_date: date, end_date: date) -> d
     # Group by month and type using Python (need effective_pr_type property)
     monthly_type_counts: dict[str, dict[str, int]] = {}  # {month: {type: count}}
 
-    for pr in prs.only("id", "merged_at", "llm_summary", "labels"):
+    for pr in prs.only("id", "merged_at", "llm_summary", "labels", "is_ai_assisted"):
         if not pr.merged_at:
             continue
+
+        # Apply AI filter using effective_is_ai_assisted property (LLM takes priority)
+        if ai_assisted == "yes" and not pr.effective_is_ai_assisted:
+            continue
+        if ai_assisted == "no" and pr.effective_is_ai_assisted:
+            continue
+
         month_str = pr.merged_at.strftime("%Y-%m")
         pr_type = pr.effective_pr_type
 
@@ -2081,13 +2103,16 @@ def get_monthly_pr_type_trend(team: Team, start_date: date, end_date: date) -> d
     return result
 
 
-def get_weekly_pr_type_trend(team: Team, start_date: date, end_date: date) -> dict[str, list[dict]]:
+def get_weekly_pr_type_trend(
+    team: Team, start_date: date, end_date: date, ai_assisted: str = "all"
+) -> dict[str, list[dict]]:
     """Get PR type breakdown trend by week.
 
     Args:
         team: Team instance
         start_date: Start date (inclusive)
         end_date: End date (inclusive)
+        ai_assisted: Filter by AI assistance - "all", "yes", or "no"
 
     Returns:
         dict mapping PR type to list of weekly counts:
@@ -2102,9 +2127,16 @@ def get_weekly_pr_type_trend(team: Team, start_date: date, end_date: date) -> di
     # Group by week and type using Python
     weekly_type_counts: dict[str, dict[str, int]] = {}  # {week: {type: count}}
 
-    for pr in prs.only("id", "merged_at", "llm_summary", "labels"):
+    for pr in prs.only("id", "merged_at", "llm_summary", "labels", "is_ai_assisted"):
         if not pr.merged_at:
             continue
+
+        # Apply AI filter using effective_is_ai_assisted property (LLM takes priority)
+        if ai_assisted == "yes" and not pr.effective_is_ai_assisted:
+            continue
+        if ai_assisted == "no" and pr.effective_is_ai_assisted:
+            continue
+
         week_str = pr.merged_at.strftime("%Y-W%V")
         pr_type = pr.effective_pr_type
 
@@ -2139,7 +2171,7 @@ def _is_valid_category(category: str) -> bool:
     return bool(category_str) and category_str not in ("{}", "[]", "None", "null")
 
 
-def get_tech_breakdown(team: Team, start_date: date, end_date: date) -> list[dict]:
+def get_tech_breakdown(team: Team, start_date: date, end_date: date, ai_assisted: str = "all") -> list[dict]:
     """Get PR breakdown by technology category (frontend, backend, devops, etc.).
 
     Uses LLM-detected categories from llm_summary.tech.categories,
@@ -2151,6 +2183,7 @@ def get_tech_breakdown(team: Team, start_date: date, end_date: date) -> list[dic
         team: Team instance
         start_date: Start date (inclusive)
         end_date: End date (inclusive)
+        ai_assisted: Filter by AI assistance - "all", "yes", or "no"
 
     Returns:
         list of dicts with keys:
@@ -2164,7 +2197,13 @@ def get_tech_breakdown(team: Team, start_date: date, end_date: date) -> list[dic
     category_counts: dict[str, int] = {}
     total_prs = 0
 
-    for pr in prs.only("id", "llm_summary").prefetch_related("files"):
+    for pr in prs.only("id", "llm_summary", "is_ai_assisted").prefetch_related("files"):
+        # Apply AI filter using effective_is_ai_assisted property (LLM takes priority)
+        if ai_assisted == "yes" and not pr.effective_is_ai_assisted:
+            continue
+        if ai_assisted == "no" and pr.effective_is_ai_assisted:
+            continue
+
         categories = pr.effective_tech_categories
         # Filter out invalid categories (empty, {}, etc.)
         valid_categories = [c for c in categories if _is_valid_category(c)] if categories else []
@@ -2191,13 +2230,16 @@ def get_tech_breakdown(team: Team, start_date: date, end_date: date) -> list[dic
     return result
 
 
-def get_monthly_tech_trend(team: Team, start_date: date, end_date: date) -> dict[str, list[dict]]:
+def get_monthly_tech_trend(
+    team: Team, start_date: date, end_date: date, ai_assisted: str = "all"
+) -> dict[str, list[dict]]:
     """Get tech category breakdown trend by month.
 
     Args:
         team: Team instance
         start_date: Start date (inclusive)
         end_date: End date (inclusive)
+        ai_assisted: Filter by AI assistance - "all", "yes", or "no"
 
     Returns:
         dict mapping category to list of monthly counts:
@@ -2212,9 +2254,16 @@ def get_monthly_tech_trend(team: Team, start_date: date, end_date: date) -> dict
     # Group by month and category using Python
     monthly_category_counts: dict[str, dict[str, int]] = {}  # {month: {category: count}}
 
-    for pr in prs.only("id", "merged_at", "llm_summary").prefetch_related("files"):
+    for pr in prs.only("id", "merged_at", "llm_summary", "is_ai_assisted").prefetch_related("files"):
         if not pr.merged_at:
             continue
+
+        # Apply AI filter using effective_is_ai_assisted property (LLM takes priority)
+        if ai_assisted == "yes" and not pr.effective_is_ai_assisted:
+            continue
+        if ai_assisted == "no" and pr.effective_is_ai_assisted:
+            continue
+
         month_str = pr.merged_at.strftime("%Y-%m")
         categories = pr.effective_tech_categories
         # Filter out invalid categories (empty, {}, etc.)
@@ -2247,13 +2296,16 @@ def get_monthly_tech_trend(team: Team, start_date: date, end_date: date) -> dict
     return result
 
 
-def get_weekly_tech_trend(team: Team, start_date: date, end_date: date) -> dict[str, list[dict]]:
+def get_weekly_tech_trend(
+    team: Team, start_date: date, end_date: date, ai_assisted: str = "all"
+) -> dict[str, list[dict]]:
     """Get tech category breakdown trend by week.
 
     Args:
         team: Team instance
         start_date: Start date (inclusive)
         end_date: End date (inclusive)
+        ai_assisted: Filter by AI assistance - "all", "yes", or "no"
 
     Returns:
         dict mapping category to list of weekly counts:
@@ -2268,9 +2320,16 @@ def get_weekly_tech_trend(team: Team, start_date: date, end_date: date) -> dict[
     # Group by week and category using Python
     weekly_category_counts: dict[str, dict[str, int]] = {}  # {week: {category: count}}
 
-    for pr in prs.only("id", "merged_at", "llm_summary").prefetch_related("files"):
+    for pr in prs.only("id", "merged_at", "llm_summary", "is_ai_assisted").prefetch_related("files"):
         if not pr.merged_at:
             continue
+
+        # Apply AI filter using effective_is_ai_assisted property (LLM takes priority)
+        if ai_assisted == "yes" and not pr.effective_is_ai_assisted:
+            continue
+        if ai_assisted == "no" and pr.effective_is_ai_assisted:
+            continue
+
         week_str = pr.merged_at.strftime("%Y-W%V")
         categories = pr.effective_tech_categories
         # Filter out invalid categories (empty, {}, etc.)

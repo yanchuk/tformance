@@ -65,6 +65,10 @@ def _get_trends_context(request: HttpRequest) -> dict:
             "end_date": today,
             "granularity": "monthly",
         }
+        # Respect explicit granularity parameter even with default date range
+        explicit_granularity = request.GET.get("granularity")
+        if explicit_granularity in ("weekly", "monthly"):
+            date_range["granularity"] = explicit_granularity
     else:
         date_range = get_extended_date_range(request)
 
@@ -352,14 +356,19 @@ def pr_type_breakdown_chart(request: HttpRequest) -> HttpResponse:
     date_range = get_extended_date_range(request)
     granularity = date_range["granularity"]
 
+    # Get and validate AI filter parameter
+    ai_filter = request.GET.get("ai_filter", "all")
+    if ai_filter not in ("all", "yes", "no"):
+        ai_filter = "all"
+
     # Get type trend data based on granularity
     if granularity == "weekly":
         type_data = dashboard_service.get_weekly_pr_type_trend(
-            request.team, date_range["start_date"], date_range["end_date"]
+            request.team, date_range["start_date"], date_range["end_date"], ai_assisted=ai_filter
         )
     else:
         type_data = dashboard_service.get_monthly_pr_type_trend(
-            request.team, date_range["start_date"], date_range["end_date"]
+            request.team, date_range["start_date"], date_range["end_date"], ai_assisted=ai_filter
         )
 
     # Build datasets for chart
@@ -383,8 +392,10 @@ def pr_type_breakdown_chart(request: HttpRequest) -> HttpResponse:
         "datasets": datasets,
     }
 
-    # Get overall breakdown for the period
-    breakdown = dashboard_service.get_pr_type_breakdown(request.team, date_range["start_date"], date_range["end_date"])
+    # Get overall breakdown for the period (also filtered)
+    breakdown = dashboard_service.get_pr_type_breakdown(
+        request.team, date_range["start_date"], date_range["end_date"], ai_assisted=ai_filter
+    )
 
     context = {
         "chart_data": chart_data,
@@ -393,6 +404,7 @@ def pr_type_breakdown_chart(request: HttpRequest) -> HttpResponse:
         "start_date": date_range["start_date"],
         "end_date": date_range["end_date"],
         "pr_type_config": PR_TYPE_CONFIG,
+        "ai_filter": ai_filter,
     }
 
     return TemplateResponse(
@@ -429,14 +441,19 @@ def tech_breakdown_chart(request: HttpRequest) -> HttpResponse:
     date_range = get_extended_date_range(request)
     granularity = date_range["granularity"]
 
+    # Get and validate AI filter parameter
+    ai_filter = request.GET.get("ai_filter", "all")
+    if ai_filter not in ("all", "yes", "no"):
+        ai_filter = "all"
+
     # Get tech trend data based on granularity
     if granularity == "weekly":
         tech_data = dashboard_service.get_weekly_tech_trend(
-            request.team, date_range["start_date"], date_range["end_date"]
+            request.team, date_range["start_date"], date_range["end_date"], ai_assisted=ai_filter
         )
     else:
         tech_data = dashboard_service.get_monthly_tech_trend(
-            request.team, date_range["start_date"], date_range["end_date"]
+            request.team, date_range["start_date"], date_range["end_date"], ai_assisted=ai_filter
         )
 
     # Build datasets for chart
@@ -460,8 +477,10 @@ def tech_breakdown_chart(request: HttpRequest) -> HttpResponse:
         "datasets": datasets,
     }
 
-    # Get overall breakdown for the period
-    breakdown = dashboard_service.get_tech_breakdown(request.team, date_range["start_date"], date_range["end_date"])
+    # Get overall breakdown for the period (also filtered)
+    breakdown = dashboard_service.get_tech_breakdown(
+        request.team, date_range["start_date"], date_range["end_date"], ai_assisted=ai_filter
+    )
 
     context = {
         "chart_data": chart_data,
@@ -470,6 +489,7 @@ def tech_breakdown_chart(request: HttpRequest) -> HttpResponse:
         "start_date": date_range["start_date"],
         "end_date": date_range["end_date"],
         "tech_config": TECH_CONFIG,
+        "ai_filter": ai_filter,
     }
 
     return TemplateResponse(

@@ -37,6 +37,7 @@ class TestGetKeyMetrics(TestCase):
 
         self.assertIn("prs_merged", result)
         self.assertIn("avg_cycle_time", result)
+        self.assertIn("avg_review_time", result)
         self.assertIn("avg_quality_rating", result)
         self.assertIn("ai_assisted_pct", result)
 
@@ -98,6 +99,27 @@ class TestGetKeyMetrics(TestCase):
         # Average should be (24 + 48) / 2 = 36
         self.assertEqual(result["avg_cycle_time"], Decimal("36.00"))
 
+    def test_get_key_metrics_calculates_avg_review_time(self):
+        """Test that get_key_metrics calculates average review time correctly."""
+        # Create PRs with different review times
+        PullRequestFactory(
+            team=self.team,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 15, 12, 0)),
+            review_time_hours=Decimal("4.00"),
+        )
+        PullRequestFactory(
+            team=self.team,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 20, 12, 0)),
+            review_time_hours=Decimal("8.00"),
+        )
+
+        result = dashboard_service.get_key_metrics(self.team, self.start_date, self.end_date)
+
+        # Average should be (4 + 8) / 2 = 6
+        self.assertEqual(result["avg_review_time"], Decimal("6.00"))
+
     def test_get_key_metrics_calculates_avg_quality_rating_from_surveys(self):
         """Test that get_key_metrics calculates average quality rating from survey reviews."""
         # Create PRs with surveys and reviews
@@ -145,6 +167,7 @@ class TestGetKeyMetrics(TestCase):
 
         self.assertEqual(result["prs_merged"], 0)
         self.assertIsNone(result["avg_cycle_time"])
+        self.assertIsNone(result["avg_review_time"])
         self.assertIsNone(result["avg_quality_rating"])
         self.assertEqual(result["ai_assisted_pct"], Decimal("0.00"))
 

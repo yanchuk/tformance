@@ -1,168 +1,170 @@
 # Trends Charts Fix - Context
 
-**Last Updated:** 2025-12-30
-**Status:** Phase 3 Complete, Phase 4 Pending
+**Last Updated:** 2025-12-30 (Session 4 - End)
+**Status:** Phase 4 Complete, All Bugs Fixed
 
 ---
 
-## Session Progress
+## Session 4 Progress (2025-12-30)
 
-### Previous Session (2025-12-29) - Phase 1 Complete
-- [x] Fixed Benchmark 500 error (response structure mismatch)
-- [x] Added `initPrTypeChart()` and `initTechChart()` to app.js
-- [x] Removed non-working inline scripts from HTMX partials
-- [x] Increased chart heights to 320px
-- [x] Created E2E test file
+### Completed: AI Assisted Filter Implementation (TDD)
 
-### Session 2 (2025-12-30) - Phase 2 Complete
-All issues fixed:
+**Phase 1: Tech Breakdown Filter**
+- [x] RED: Added 8 failing tests for ai_filter parameter
+- [x] GREEN: Implemented `ai_assisted` parameter in 3 service functions:
+  - `get_tech_breakdown()`
+  - `get_monthly_tech_trend()`
+  - `get_weekly_tech_trend()`
+- [x] GREEN: Added `ai_filter` to `tech_breakdown_chart` view
+- [x] GREEN: Added filter UI buttons to `tech_chart.html`
 
-1. **Multi-metric comparison chart blank** - Fixed with defensive checks and `formatMetricValue()` helper
-2. **Tech breakdown shows `{}`** - Fixed with `_is_valid_category()` filter in dashboard_service.py
-3. **Cycle time missing "h"** - Fixed with consistent `formatMetricValue()` usage in tooltips/axes
-4. **PRs Merged stat missing** - Fixed by loading full `key_metrics_cards.html` partial (sparklines included)
-5. **Charts need page reload** - Fixed with `requestAnimationFrame` wrapper and retry logic in ChartManager
-6. **Need stacked area charts** - Implemented with `createStackedAreaChart()` factory
+**Phase 2: PR Type Filter**
+- [x] Applied same pattern to 3 service functions:
+  - `get_pr_type_breakdown()`
+  - `get_monthly_pr_type_trend()`
+  - `get_weekly_pr_type_trend()`
+- [x] Added `ai_filter` to `pr_type_breakdown_chart` view
+- [x] Added filter UI buttons to `pr_type_chart.html`
 
-### Session 3 (2025-12-30) - Final Fixes Complete
-Additional issues discovered and fixed:
+**Phase 3: Review Time Fix**
+- [x] RED: Added tests expecting `avg_review_time` in `get_key_metrics()`
+- [x] GREEN: Added `avg_review_time = prs.aggregate(avg=Avg("review_time_hours"))["avg"]` to function
+- [x] GREEN: Added key to result dict
 
-1. **Chart not rendering data lines after HTMX swap** - Canvas stayed at default 300x150 dimensions
-   - Root cause: Layout not complete when chart.resize() called
-   - Fix: Nested `requestAnimationFrame` calls to ensure layout completion
-   - Files: `chart-manager.js` init() and initByType() methods
-
-2. **Default period for Trends page** - Now defaults to last 12 months with monthly granularity
-   - Modified `_get_trends_context()` in `trends_views.py`
-   - Only applies when no date params are explicitly provided
-
-3. **`{}` entries in Tech Breakdown** - LLM returns 'chore' and 'ci' as tech categories
-   - Root cause: `chore` and `ci` were not in `TECH_CONFIG`, so `get_item` filter returned `{}`
-   - Fix: Added `chore` and `ci` to `TECH_CONFIG` with appropriate colors
-   - File: `trends_views.py` line 419-421
-
-4. **Benchmark Panel Jinja2 comments rendering** - `{# ... #}` shown as text
-   - Root cause: Django's `{# #}` is single-line only; multiline comments need `{% comment %}`
-   - Fix: Changed to `{% comment %}...{% endcomment %}` syntax
-   - File: `benchmark_panel.html`
+### Test Results
+- 221 dashboard tests pass
+- 57 trends views tests pass
+- All code formatted with ruff
 
 ---
 
-## Next Session Tasks (NEW FEATURE REQUEST)
+## BUG FOUND: AI Filter Loses Granularity Parameter
 
-### AI Assisted Filter for Charts
-User requested adding "AI Assisted" filter to Technology and PR Types breakdown charts:
-- **Options:** All (default), No, Yes
-- **Behavior:** Filter PRs to show only AI-assisted or non-AI-assisted breakdown
-- **Use case:** See composition trends specifically for AI-assisted PRs
+**Reported by user with screenshots**
 
-### Review Time Issues
-User reported problems with Review Time display. Need to investigate:
-- Review Time stat card shows "-" instead of value
-- Need to check `avg_review_time` calculation in dashboard service
-- May be related to data availability or calculation logic
+### Symptoms
+1. **Initial state (All filter)**: Shows monthly granularity, 12 months of data (2025-03 to 2025-12)
+2. **After clicking "No" filter**: Shows weekly granularity, only 5 weeks (2025-W48 to 2025-W52)
+3. **Returning to "All" filter**: Data doesn't match initial state
 
-### 12-Month Default Verification (TDD Required)
-User requested strict TDD approach to ensure:
-- All Trends data defaults to last 12 months
-- A predefined "Last 12 Months" preset option exists in UI
-- Current implementation in `_get_trends_context()` sets 365 days default
-- Need to verify preset dropdown has this option
+### Root Cause
+The `hx-include` in `tech_chart.html` and `pr_type_chart.html` does NOT include `granularity`:
 
-**Current State:**
-- `_get_trends_context()` already defaults to 365 days/monthly when no params
-- Need to verify preset dropdown includes "Last 12 Months" option
-- Need TDD tests to lock in this behavior
+```html
+hx-include="[name='days'],[name='preset'],[name='start'],[name='end']"
+```
 
----
+Missing: `[name='granularity']`
 
-## Implementation Summary
+### What Happens
+1. Page loads with `preset=12_months` and `granularity=monthly`
+2. User clicks "No" AI filter button
+3. HTMX request sends date params but NOT granularity
+4. View's `_get_trends_context()` has special logic:
+   - If `has_date_params=False` (no days/preset/start/end), use 365 days + monthly
+   - Otherwise, use 30 days + weekly defaults
+5. Since days/preset ARE included, `has_date_params=True` but granularity is lost
+6. View uses default weekly granularity instead of monthly
 
-### Phase 2A: Critical Bug Fixes
+### Fix Applied (Two Parts)
 
-**Multi-metric Chart (trend-charts.js)**
-- Added `formatMetricValue(value, unit)` helper function for consistent formatting
-- Added defensive checks in `createMultiMetricChart()` for missing/invalid data
-- Fixed tooltip callback to use `context.dataset.unit` instead of potentially stale array reference
-- Added Y-axis tick formatting with unit suffixes
+**Part 1:** Added `[name='granularity']` to `hx-include` in both chart templates:
+```html
+hx-include="[name='days'],[name='preset'],[name='start'],[name='end'],[name='granularity']"
+```
 
-**Race Condition (app.js, chart-manager.js)**
-- Wrapped `chartManager.initAll()` in `requestAnimationFrame` for DOM settling
-- Added retry logic (MAX_RETRIES=3, RETRY_DELAY=100ms) in ChartManager.init()
-- Added `data-chart-initialized` attribute to prevent double initialization
+**Part 2:** The `hx-include` selectors were looking for inputs that didn't exist! Added hidden inputs to `trends.html`:
+```html
+<input type="hidden" name="days" value="{{ days }}">
+<input type="hidden" name="preset" value="{{ preset }}">
+<input type="hidden" name="start" value="{{ start_date|date:'Y-m-d' }}">
+<input type="hidden" name="end" value="{{ end_date|date:'Y-m-d' }}">
+<input type="hidden" name="granularity" value="{{ granularity }}">
+```
 
-### Phase 2B: Data Quality
+**Part 3:** Updated `setGranularity()` in Alpine.js to sync the hidden input:
+```javascript
+setGranularity(g) {
+  this.granularity = g;
+  // Update hidden input for HTMX hx-include
+  const hiddenInput = document.querySelector('input[name=granularity]');
+  if (hiddenInput) hiddenInput.value = g;
+  this.updateUrlAndChart();
+},
+```
 
-**Empty Category Filtering (dashboard_service.py)**
-- Added `_is_valid_category()` helper to filter:
-  - Empty strings, None values
-  - Empty dicts `{}`, empty lists `[]`
-  - String representations: "None", "null", "{}", "[]"
-- Applied filter in `get_tech_breakdown()`, `get_monthly_tech_trend()`, `get_weekly_tech_trend()`
-
-### Phase 2C: UX Enhancements
-
-**Stat Cards (trends.html)**
-- Changed from fragile `hx-select` approach to loading full `key_metrics_cards.html`
-- This partial already has PRs Merged card with sparklines
-- Fixed Review Time card showing wrong metric (`avg_quality_rating` → `avg_review_time`)
-
-### Phase 2D: 100% Stacked Area Charts
-
-**ChartManager Factory (chart-manager.js)**
-- Added `normalizeToPercentages(datasets, labelCount)` - calculates % share per time point
-- Added `createStackedAreaChart(ctx, chartData, options)`:
-  - Chart.js line chart with `fill: '-1'` for stacking
-  - Semi-transparent fills (`color + '99'`)
-  - Y-axis 0-100% with percentage labels
-  - Smooth curves with `tension: 0.3`
-  - Tooltips showing % values with total footer
-
-**Chart Registrations (app.js)**
-- Changed PR Type chart to use `createStackedAreaChart`
-- Changed Tech chart to use `createStackedAreaChart`
+**Status:** VERIFIED FIXED with Playwright test
 
 ---
 
-## Test Results
+## Files Modified This Session
 
-- **Unit Tests:** 53/53 passed (tech-related tests)
-- **E2E Tests:** 71/72 passed (1 Firefox CSP false positive for PostHog analytics)
+| File | Changes |
+|------|---------|
+| `apps/metrics/services/dashboard_service.py` | Added `ai_assisted` param to 6 functions, added `avg_review_time` to `get_key_metrics()` |
+| `apps/metrics/views/trends_views.py` | Added `ai_filter` param handling to `tech_breakdown_chart` and `pr_type_breakdown_chart` |
+| `templates/metrics/analytics/trends.html` | **Added hidden inputs for days/preset/start/end/granularity**, updated setGranularity() |
+| `templates/metrics/analytics/trends/tech_chart.html` | Added AI filter button group, fixed hx-include to include granularity |
+| `templates/metrics/analytics/trends/pr_type_chart.html` | Added AI filter button group, fixed hx-include to include granularity |
+| `apps/metrics/tests/dashboard/test_key_metrics.py` | Added `avg_review_time` tests |
+| `apps/metrics/tests/dashboard/test_file_categories.py` | Added AI filter tests |
+| `apps/metrics/tests/test_trends_views.py` | Added AI filter view tests |
+| `assets/javascript/dashboard/trend-charts.js` | Disabled zoom/pan on comparison chart |
+
+---
+
+## Additional Fixes This Session
+
+### Comparison Chart Zoom Disabled
+User requested disabling zoom/pan on the multi-metric comparison chart.
+
+**Fix Applied:** Set `enabled: false` for both pan and zoom in `createMultiMetricChart()`:
+- `assets/javascript/dashboard/trend-charts.js:392-405`
+
+### Commands to Verify
+```bash
+# Rebuild JS
+npm run build
+
+# Verify tests still pass
+make test ARGS='apps.metrics.tests.dashboard'
+
+# Test manually in browser
+# Navigate to /a/{team}/metrics/analytics/trends/
+# Click AI filter buttons - granularity should persist
+# Comparison chart should not zoom on scroll/pinch
+```
 
 ---
 
 ## Key Code Locations
 
-### Modified Files
+### AI Filter Implementation
 
-| File | Changes |
-|------|---------|
-| `assets/javascript/dashboard/trend-charts.js:1-50` | `formatMetricValue()` helper |
-| `assets/javascript/dashboard/chart-manager.js:59-127` | Retry logic, double-init prevention, nested RAF for resize |
-| `assets/javascript/dashboard/chart-manager.js:410-549` | `normalizeToPercentages()`, `createStackedAreaChart()` |
-| `assets/javascript/app.js:68-78` | PR Type/Tech chart registrations changed to stacked area |
-| `assets/javascript/app.js:142-150` | `requestAnimationFrame` wrapper |
-| `apps/metrics/services/dashboard_service.py:1970-2000` | `_is_valid_category()` helper |
-| `apps/metrics/views/trends_views.py:39-83` | Default 365 days/monthly for Trends page |
-| `apps/metrics/views/trends_views.py:419-421` | Added `chore` and `ci` to TECH_CONFIG |
-| `templates/metrics/analytics/trends.html:159-173` | Load full key_metrics_cards.html |
-| `templates/metrics/partials/key_metrics_cards.html:88-90` | Fixed Review Time metric |
-| `templates/metrics/analytics/trends/pr_type_chart.html:4,14-16` | Updated description |
-| `templates/metrics/analytics/trends/tech_chart.html:4,14-16` | Updated description |
-| `templates/metrics/analytics/trends/benchmark_panel.html:2-13` | Fixed multiline comment syntax |
+| File | Location |
+|------|----------|
+| Service functions | `dashboard_service.py:1989-2335` (6 functions with ai_assisted param) |
+| View ai_filter handling | `trends_views.py:133-141` and `trends_views.py:196-204` |
+| Template filter buttons | `tech_chart.html:19-54` and `pr_type_chart.html:19-54` |
+| Review time fix | `dashboard_service.py:169-170` and `dashboard_service.py:183` |
+
+### Bug Location
+
+| File | Line | Issue |
+|------|------|-------|
+| `tech_chart.html` | 30, 40, 50 | Missing `[name='granularity']` in hx-include |
+| `pr_type_chart.html` | 30, 40, 50 | Missing `[name='granularity']` in hx-include |
 
 ---
 
-## Verification URL
+## Verification After Fix
 
 ```
-http://localhost:8000/app/metrics/analytics/trends/?preset=this_year&granularity=monthly&metrics=cycle_time
+http://localhost:8000/a/{team_slug}/metrics/analytics/trends/?preset=12_months&granularity=monthly
 ```
 
-Expected behavior:
-- Multi-metric selection renders all selected metrics
-- No `{}` entries in tech breakdown
-- Cycle time shows "h" suffix in tooltips
-- All 4 stat cards visible with sparklines
-- Tech breakdown and PR Types show as 100% stacked area charts
-- Charts render on first load without page refresh
+Expected:
+1. Load with monthly granularity (2025-03 to 2025-12 or similar)
+2. Click "No" AI filter → Still monthly granularity
+3. Click "Yes" AI filter → Still monthly granularity
+4. Click "All" AI filter → Same data as initial load

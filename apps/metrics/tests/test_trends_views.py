@@ -410,3 +410,46 @@ class TestTechConfig(TestCase):
         ]
         for category in expected:
             self.assertIn(category, TECH_CONFIG, f"Missing category: {category}")
+
+
+class TestTechBreakdownChartAIFilter(TestCase):
+    """Tests for AI Assisted filter on tech breakdown chart view."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.team = TeamFactory()
+        self.admin_user = UserFactory()
+        self.team.members.add(self.admin_user, through_defaults={"role": ROLE_ADMIN})
+        self.client = Client()
+
+    def test_tech_chart_accepts_ai_filter_parameter(self):
+        """Test that tech chart view accepts ai_filter query parameter."""
+        self.client.force_login(self.admin_user)
+        url = reverse("metrics:chart_tech_breakdown")
+        response = self.client.get(f"{url}?ai_filter=yes")
+        self.assertEqual(response.status_code, 200)
+
+    def test_tech_chart_passes_ai_filter_to_context(self):
+        """Test that ai_filter parameter is passed to template context."""
+        self.client.force_login(self.admin_user)
+        url = reverse("metrics:chart_tech_breakdown")
+        response = self.client.get(f"{url}?ai_filter=no")
+        self.assertIn("ai_filter", response.context)
+        self.assertEqual(response.context["ai_filter"], "no")
+
+    def test_tech_chart_defaults_ai_filter_to_all(self):
+        """Test that ai_filter defaults to 'all' when not provided."""
+        self.client.force_login(self.admin_user)
+        url = reverse("metrics:chart_tech_breakdown")
+        response = self.client.get(url)
+        self.assertIn("ai_filter", response.context)
+        self.assertEqual(response.context["ai_filter"], "all")
+
+    def test_tech_chart_validates_ai_filter_values(self):
+        """Test that invalid ai_filter values are handled gracefully."""
+        self.client.force_login(self.admin_user)
+        url = reverse("metrics:chart_tech_breakdown")
+        response = self.client.get(f"{url}?ai_filter=invalid")
+        # Should still return 200, defaulting to 'all'
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["ai_filter"], "all")

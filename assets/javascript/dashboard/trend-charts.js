@@ -389,25 +389,17 @@ export function createMultiMetricChart(canvas, chartData) {
             },
           },
         },
+        // Zoom disabled for comparison chart per user request
         zoom: {
           pan: {
-            enabled: true,
-            mode: 'x',
-            modifierKey: null,
+            enabled: false,
           },
           zoom: {
             wheel: {
-              enabled: true,
+              enabled: false,
             },
             pinch: {
-              enabled: true,
-            },
-            mode: 'x',
-            onZoomComplete: ({ chart }) => {
-              const resetBtn = document.querySelector('[data-chart-reset]');
-              if (resetBtn) {
-                resetBtn.style.display = 'block';
-              }
+              enabled: false,
             },
           },
         },

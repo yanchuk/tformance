@@ -16,6 +16,42 @@
         <span class="ml-2 badge badge-ghost badge-sm">{{ granularity }}</span>
       </p>
     </div>
+    <!-- AI Filter -->
+    <div class="flex items-center gap-2" x-data="{ aiFilter: '{{ ai_filter }}' }">
+      <span class="text-sm text-base-content/60">{% trans "AI Assisted" %}:</span>
+      <div class="join">
+        <button
+          type="button"
+          class="btn btn-xs join-item"
+          :class="aiFilter === 'all' ? 'btn-primary' : 'btn-ghost'"
+          hx-get="{% url 'metrics:chart_pr_type_breakdown' %}?ai_filter=all"
+          hx-target="#pr-type-chart-container"
+          hx-swap="innerHTML"
+          hx-include="[name='days'],[name='preset'],[name='start'],[name='end'],[name='granularity']"
+          @click="aiFilter = 'all'"
+        >{% trans "All" %}</button>
+        <button
+          type="button"
+          class="btn btn-xs join-item"
+          :class="aiFilter === 'no' ? 'btn-primary' : 'btn-ghost'"
+          hx-get="{% url 'metrics:chart_pr_type_breakdown' %}?ai_filter=no"
+          hx-target="#pr-type-chart-container"
+          hx-swap="innerHTML"
+          hx-include="[name='days'],[name='preset'],[name='start'],[name='end'],[name='granularity']"
+          @click="aiFilter = 'no'"
+        >{% trans "No" %}</button>
+        <button
+          type="button"
+          class="btn btn-xs join-item"
+          :class="aiFilter === 'yes' ? 'btn-primary' : 'btn-ghost'"
+          hx-get="{% url 'metrics:chart_pr_type_breakdown' %}?ai_filter=yes"
+          hx-target="#pr-type-chart-container"
+          hx-swap="innerHTML"
+          hx-include="[name='days'],[name='preset'],[name='start'],[name='end'],[name='granularity']"
+          @click="aiFilter = 'yes'"
+        >{% trans "Yes" %}</button>
+      </div>
+    </div>
   </div>
 
   <!-- Chart Container -->

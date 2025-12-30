@@ -7,6 +7,13 @@
 {% block analytics_content %}
 {% partialdef page-content inline %}
 <div id="page-content" class="space-y-6">
+  {# Hidden inputs for HTMX hx-include to pass date range and granularity #}
+  <input type="hidden" name="days" value="{{ days }}">
+  <input type="hidden" name="preset" value="{{ preset }}">
+  <input type="hidden" name="start" value="{{ start_date|date:'Y-m-d' }}">
+  <input type="hidden" name="end" value="{{ end_date|date:'Y-m-d' }}">
+  <input type="hidden" name="granularity" value="{{ granularity }}">
+
   <!-- Trends Header -->
   <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
     <div>
@@ -33,6 +40,9 @@
            },
            setGranularity(g) {
              this.granularity = g;
+             // Update hidden input for HTMX hx-include
+             const hiddenInput = document.querySelector('input[name=granularity]');
+             if (hiddenInput) hiddenInput.value = g;
              this.updateUrlAndChart();
            },
            updateUrlAndChart() {
