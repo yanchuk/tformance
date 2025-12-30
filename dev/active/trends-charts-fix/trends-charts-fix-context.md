@@ -1,7 +1,7 @@
 # Trends Charts Fix - Context
 
 **Last Updated:** 2025-12-30
-**Status:** COMPLETE
+**Status:** Phase 3 Complete, Phase 4 Pending
 
 ---
 
@@ -45,6 +45,22 @@ Additional issues discovered and fixed:
    - Root cause: Django's `{# #}` is single-line only; multiline comments need `{% comment %}`
    - Fix: Changed to `{% comment %}...{% endcomment %}` syntax
    - File: `benchmark_panel.html`
+
+---
+
+## Next Session Tasks (NEW FEATURE REQUEST)
+
+### AI Assisted Filter for Charts
+User requested adding "AI Assisted" filter to Technology and PR Types breakdown charts:
+- **Options:** All (default), No, Yes
+- **Behavior:** Filter PRs to show only AI-assisted or non-AI-assisted breakdown
+- **Use case:** See composition trends specifically for AI-assisted PRs
+
+### Review Time Issues
+User reported problems with Review Time display. Need to investigate:
+- Review Time stat card shows "-" instead of value
+- Need to check `avg_review_time` calculation in dashboard service
+- May be related to data availability or calculation logic
 
 ---
 

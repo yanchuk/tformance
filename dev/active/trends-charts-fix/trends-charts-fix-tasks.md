@@ -1,7 +1,7 @@
-# Trends Charts Fix - Tasks (v3)
+# Trends Charts Fix - Tasks (v4)
 
 **Last Updated:** 2025-12-30
-**Status:** COMPLETE (All Sessions)
+**Status:** Phase 3 Complete, Phase 4 Pending (AI Filter + Review Time)
 
 ---
 
@@ -246,6 +246,51 @@ Fix 6 issues on the Trends & Comparison page for complete ICP experience:
 
 **Files Modified:**
 - `templates/metrics/analytics/trends/benchmark_panel.html` (lines 2-13)
+
+---
+
+## Phase 4: New Feature Requests (PENDING)
+
+### Task 4.1: Add AI Assisted Filter to Tech/PR Type Charts
+**Effort:** M | **Priority:** High | **Status:** TODO
+
+Add filter dropdown to Technology Breakdown and PR Types charts:
+- [ ] Add Alpine.js state for `aiFilter` ('all', 'yes', 'no') with 'all' as default
+- [ ] Add UI dropdown/radio buttons in chart headers
+- [ ] Modify `get_tech_breakdown()` to accept `ai_assisted` filter parameter
+- [ ] Modify `get_pr_type_breakdown()` to accept `ai_assisted` filter parameter
+- [ ] Modify `get_monthly_tech_trend()` to accept `ai_assisted` filter
+- [ ] Modify `get_monthly_pr_type_trend()` to accept `ai_assisted` filter
+- [ ] Update HTMX calls to include `ai_assisted` query param
+- [ ] Filter using `effective_is_ai_assisted` property on PullRequest
+- [ ] Test: Filter works correctly for each option
+
+**Implementation Notes:**
+- Use `effective_is_ai_assisted` property which prioritizes LLM detection over pattern matching
+- Filter should apply to both the summary breakdown and the time-series chart
+- Consider caching implications for filtered queries
+
+**Files to Modify:**
+- `apps/metrics/services/dashboard_service.py` - Add filter to breakdown/trend functions
+- `apps/metrics/views/trends_views.py` - Accept filter param in views
+- `templates/metrics/analytics/trends/tech_chart.html` - Add filter UI
+- `templates/metrics/analytics/trends/pr_type_chart.html` - Add filter UI
+- `assets/javascript/app.js` or Alpine store - Add filter state management
+
+### Task 4.2: Fix Review Time Display Issues
+**Effort:** S | **Priority:** Medium | **Status:** TODO
+
+Review Time stat card shows "-" instead of actual value:
+- [ ] Investigate `avg_review_time` calculation in `dashboard_service.py`
+- [ ] Check if data exists for Antiwork team in date range
+- [ ] Verify `key_metrics_cards.html` template uses correct field
+- [ ] Check if review_time data is being aggregated correctly
+- [ ] Test: Review Time shows actual hours value
+
+**Investigation Steps:**
+1. Query database for review_time values on merged PRs
+2. Check `get_key_metrics()` function in dashboard_service
+3. Verify template binding for review_time stat card
 
 ---
 
