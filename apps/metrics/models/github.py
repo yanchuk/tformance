@@ -1334,8 +1334,8 @@ class Commit(BaseTeamModel):
         ]
         indexes = [
             # Removed: commit_repo_date_idx (1 use, 16MB)
+            # Removed: commit_pr_idx (duplicate of Django auto-generated FK index)
             models.Index(fields=["author", "committed_at"], name="commit_author_date_idx"),
-            models.Index(fields=["pull_request"], name="commit_pr_idx"),
         ]
 
     def __str__(self):

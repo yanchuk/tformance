@@ -102,7 +102,7 @@ class PRSurvey(BaseTeamModel):
         verbose_name = "PR Survey"
         verbose_name_plural = "PR Surveys"
         indexes = [
-            models.Index(fields=["pull_request"], name="pr_survey_pr_idx"),
+            # Removed: pr_survey_pr_idx (duplicate of OneToOneField unique index)
             models.Index(fields=["author", "author_ai_assisted"], name="pr_survey_author_ai_idx"),
             # Removed: pr_survey_responded_idx (0 uses) - replaced with composite
             # Added composite index for team+date dashboard queries (reduce seq scans)
