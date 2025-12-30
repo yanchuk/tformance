@@ -169,6 +169,63 @@ test.describe('HTMX Navigation State', () => {
     });
   });
 
+  test.describe('Date Range State Persistence', () => {
+    test('date range passes to PR list when clicking "All Pull Requests" link', async ({ page }) => {
+      // Navigate to Delivery page with 90d date range
+      await page.goto('/app/metrics/analytics/delivery/?days=90');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForTimeout(2000);
+
+      // Verify we're on Delivery page with 90d
+      expect(page.url()).toContain('days=90');
+
+      // Click "All Pull Requests" link
+      const prLink = page.getByRole('link', { name: 'All Pull Requests' });
+      await prLink.click();
+      await page.waitForTimeout(2000);
+
+      // PR list URL should include days=90
+      expect(page.url()).toContain('pull-requests');
+      expect(page.url()).toContain('days=90');
+    });
+
+    test('date range passes to PR list when clicking "AI-Assisted PRs" link', async ({ page }) => {
+      // Navigate to Overview page with 7d date range
+      await page.goto('/app/metrics/analytics/?days=7');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForTimeout(2000);
+
+      // Click "AI-Assisted PRs" link
+      const aiPrLink = page.getByRole('link', { name: 'AI-Assisted PRs' });
+      await aiPrLink.click();
+      await page.waitForTimeout(2000);
+
+      // PR list URL should include days=7 and ai=yes
+      expect(page.url()).toContain('pull-requests');
+      expect(page.url()).toContain('ai=yes');
+      expect(page.url()).toContain('days=7');
+    });
+
+    test('preset passes to PR list when using preset date range', async ({ page }) => {
+      // Navigate to Delivery page with preset=12_months
+      await page.goto('/app/metrics/analytics/delivery/?preset=12_months');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForTimeout(2000);
+
+      // Click "All Pull Requests" link
+      const prLink = page.getByRole('link', { name: 'All Pull Requests' });
+      await prLink.click();
+      await page.waitForTimeout(2000);
+
+      // PR list URL should include days parameter (12_months = 365 days)
+      expect(page.url()).toContain('pull-requests');
+      // Should pass either days=365 or the actual date range
+      const url = page.url();
+      const hasDateRange = url.includes('days=') || (url.includes('date_from=') && url.includes('date_to='));
+      expect(hasDateRange).toBe(true);
+    });
+  });
+
   test.describe('Date Range Picker Visibility', () => {
     test('date range picker appears when navigating from Pull Requests to Delivery', async ({ page }) => {
       // Navigate to Pull Requests page (which doesn't show date range picker)
