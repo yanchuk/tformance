@@ -28,53 +28,95 @@ test.describe('Dashboard Tests @dashboard', () => {
     await expect(page).toHaveURL(/\/app/);
   });
 
-  test.describe('App Home Page', () => {
-    test('home page loads with welcome message', async ({ page }) => {
+  test.describe('App Home Page (Unified Dashboard)', () => {
+    test('home page loads with dashboard heading', async ({ page }) => {
       await page.goto('/app/');
       await page.waitForLoadState('domcontentloaded');
 
-      // Should have welcome heading
-      await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible();
+      // Should have Dashboard heading (unified dashboard)
+      await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
     });
 
-    test('quick stats cards display', async ({ page }) => {
+    test('key metrics cards load via HTMX', async ({ page }) => {
       await page.goto('/app/');
       await page.waitForLoadState('domcontentloaded');
+      await waitForHtmxComplete(page);
 
-      // Check for stat card labels
+      // Check for metric labels (lazy-loaded via HTMX)
       await expect(page.getByText('PRs Merged').first()).toBeVisible();
       await expect(page.getByText('Avg Cycle Time').first()).toBeVisible();
     });
 
-    test('recent activity section displays', async ({ page }) => {
+    test('needs attention section displays', async ({ page }) => {
       await page.goto('/app/');
       await page.waitForLoadState('domcontentloaded');
+      await waitForHtmxComplete(page);
 
-      // Check for Recent Activity heading
-      await expect(page.getByRole('heading', { name: 'Recent Activity' })).toBeVisible();
+      // Check for Needs Attention heading (new dashboard section)
+      await expect(page.getByRole('heading', { name: 'Needs Attention' })).toBeVisible();
     });
 
-    test('integration status section displays', async ({ page }) => {
+    test('AI impact section displays', async ({ page }) => {
+      await page.goto('/app/');
+      await page.waitForLoadState('domcontentloaded');
+      await waitForHtmxComplete(page);
+
+      // Check for AI Impact heading (new dashboard section)
+      await expect(page.getByRole('heading', { name: 'AI Impact' })).toBeVisible();
+    });
+
+    test('top contributors section displays', async ({ page }) => {
+      await page.goto('/app/');
+      await page.waitForLoadState('domcontentloaded');
+      await waitForHtmxComplete(page);
+
+      // Check for Top Contributors heading (new dashboard section)
+      await expect(page.getByRole('heading', { name: 'Top Contributors' })).toBeVisible();
+    });
+
+    test('review distribution section displays', async ({ page }) => {
+      await page.goto('/app/');
+      await page.waitForLoadState('domcontentloaded');
+      await waitForHtmxComplete(page);
+
+      // Check for Review Distribution heading
+      await expect(page.getByRole('heading', { name: 'Review Distribution' })).toBeVisible();
+    });
+
+    test('integration status footer link displays', async ({ page }) => {
       await page.goto('/app/');
       await page.waitForLoadState('domcontentloaded');
 
-      // Check for Integrations heading in sidebar
-      await expect(page.getByRole('heading', { name: 'Integrations' })).toBeVisible();
+      // Check for Manage Integrations link in footer
+      await expect(page.getByRole('link', { name: /Manage Integrations/ })).toBeVisible();
 
-      // Check for integration names
+      // Check for GitHub badge (should be connected in demo data)
       await expect(page.getByText('GitHub').first()).toBeVisible();
-      await expect(page.getByText('Jira').first()).toBeVisible();
-      await expect(page.getByText('Slack').first()).toBeVisible();
     });
 
-    test('view analytics button navigates to team dashboard', async ({ page }) => {
+    test('time range selector works', async ({ page }) => {
       await page.goto('/app/');
       await page.waitForLoadState('domcontentloaded');
 
-      await page.getByRole('link', { name: 'View Analytics' }).click();
+      // Click 7d filter and verify URL changes
+      await page.getByRole('link', { name: '7d' }).click();
+      await expect(page).toHaveURL(/\?days=7/);
 
-      await expect(page).toHaveURL(/\/app\/metrics\/dashboard\/team/);
-      await expect(page.getByRole('heading', { name: 'Team Dashboard' })).toBeVisible();
+      // Click 90d filter
+      await page.getByRole('link', { name: '90d' }).click();
+      await expect(page).toHaveURL(/\?days=90/);
+    });
+
+    test('HTMX sections have correct containers', async ({ page }) => {
+      await page.goto('/app/');
+      await page.waitForLoadState('domcontentloaded');
+
+      // Verify HTMX container IDs exist for lazy loading
+      await expect(page.locator('#key-metrics-container')).toBeVisible();
+      await expect(page.locator('#needs-attention-container')).toBeVisible();
+      await expect(page.locator('#ai-impact-container')).toBeVisible();
+      await expect(page.locator('#team-velocity-container')).toBeVisible();
+      await expect(page.locator('#review-distribution-container')).toBeVisible();
     });
   });
 
