@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, Page } from '@playwright/test';
 
 /**
  * Trends Charts Tests
@@ -12,6 +12,32 @@ import { test, expect } from '@playwright/test';
  *
  * Issue: https://github.com/tformance/dev/active/trends-charts-fix
  */
+
+/**
+ * Wait for HTMX request to complete.
+ */
+async function waitForHtmxComplete(page: Page, timeout = 5000): Promise<void> {
+  await page.waitForFunction(
+    () => !document.body.classList.contains('htmx-request'),
+    { timeout }
+  );
+}
+
+/**
+ * Wait for a Chart.js chart to be rendered on a canvas.
+ */
+async function waitForChart(page: Page, chartId: string, timeout = 10000): Promise<void> {
+  await page.waitForFunction(
+    (id) => {
+      const canvas = document.getElementById(id) as HTMLCanvasElement;
+      if (!canvas) return false;
+      const Chart = (window as any).Chart;
+      return Chart && Chart.getChart && Chart.getChart(canvas);
+    },
+    chartId,
+    { timeout }
+  );
+}
 
 test.describe('Trends Charts Tests @trends-charts', () => {
   // Login before each test - supports both email and GitHub-only auth modes
@@ -39,11 +65,11 @@ test.describe('Trends Charts Tests @trends-charts', () => {
     test('PR Types chart canvas renders with actual chart content', async ({ page }) => {
       await page.goto('/app/metrics/analytics/trends/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(3000); // Allow HTMX to load charts
+      await waitForHtmxComplete(page);
+      await waitForChart(page, 'pr-type-chart');
 
       // Scroll to PR type chart section
       await page.locator('#pr-type-chart-container').scrollIntoViewIfNeeded();
-      await page.waitForTimeout(1500);
 
       // Canvas element should exist
       const canvas = page.locator('#pr-type-chart');
@@ -81,7 +107,7 @@ test.describe('Trends Charts Tests @trends-charts', () => {
     test('PR Types chart should be full-width (not side-by-side with Tech chart)', async ({ page }) => {
       await page.goto('/app/metrics/analytics/trends/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(2000);
+      await waitForHtmxComplete(page);
 
       // Get the PR type chart container's parent grid
       const prTypeContainer = page.locator('#pr-type-chart-container');
@@ -103,11 +129,11 @@ test.describe('Trends Charts Tests @trends-charts', () => {
     test('Tech Breakdown chart canvas renders with actual chart content', async ({ page }) => {
       await page.goto('/app/metrics/analytics/trends/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(3000);
+      await waitForHtmxComplete(page);
+      await waitForChart(page, 'tech-chart');
 
       // Scroll to tech chart section
       await page.locator('#tech-chart-container').scrollIntoViewIfNeeded();
-      await page.waitForTimeout(1500);
 
       // Canvas element should exist
       const canvas = page.locator('#tech-chart');
@@ -141,7 +167,7 @@ test.describe('Trends Charts Tests @trends-charts', () => {
     test('Tech Breakdown chart should be full-width (not side-by-side with PR Types)', async ({ page }) => {
       await page.goto('/app/metrics/analytics/trends/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(2000);
+      await waitForHtmxComplete(page);
 
       const techContainer = page.locator('#tech-chart-container');
       await techContainer.scrollIntoViewIfNeeded();
@@ -169,7 +195,7 @@ test.describe('Trends Charts Tests @trends-charts', () => {
 
       await page.goto('/app/metrics/analytics/trends/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(3000); // Allow all HTMX panels to load
+      await waitForHtmxComplete(page, 10000);
 
       // Should have NO 500 errors from benchmark endpoints
       expect(errors).toHaveLength(0);
@@ -178,7 +204,7 @@ test.describe('Trends Charts Tests @trends-charts', () => {
     test('Benchmark panel content loads successfully', async ({ page }) => {
       await page.goto('/app/metrics/analytics/trends/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(3000);
+      await waitForHtmxComplete(page, 10000);
 
       // Industry Benchmark heading should be visible
       await expect(page.getByRole('heading', { name: 'Industry Benchmark' })).toBeVisible();
@@ -197,7 +223,8 @@ test.describe('Trends Charts Tests @trends-charts', () => {
     test('PR Types chart has adequate height (320px like main chart)', async ({ page }) => {
       await page.goto('/app/metrics/analytics/trends/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(2000);
+      await waitForHtmxComplete(page);
+      await waitForChart(page, 'pr-type-chart');
 
       const prTypeChart = page.locator('#pr-type-chart');
       await prTypeChart.scrollIntoViewIfNeeded();
@@ -211,7 +238,8 @@ test.describe('Trends Charts Tests @trends-charts', () => {
     test('Tech Breakdown chart has adequate height (320px like main chart)', async ({ page }) => {
       await page.goto('/app/metrics/analytics/trends/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(2000);
+      await waitForHtmxComplete(page);
+      await waitForChart(page, 'tech-chart');
 
       const techChart = page.locator('#tech-chart');
       await techChart.scrollIntoViewIfNeeded();
@@ -227,7 +255,8 @@ test.describe('Trends Charts Tests @trends-charts', () => {
     test('Wide trend chart renders after initial page load', async ({ page }) => {
       await page.goto('/app/metrics/analytics/trends/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(3000);
+      await waitForHtmxComplete(page);
+      await waitForChart(page, 'trend-chart');
 
       // Main trend chart canvas should exist and have Chart.js instance
       const canvas = page.locator('#trend-chart');
@@ -252,7 +281,8 @@ test.describe('Trends Charts Tests @trends-charts', () => {
     test('Wide trend chart re-renders after granularity change (HTMX swap)', async ({ page }) => {
       await page.goto('/app/metrics/analytics/trends/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(3000);
+      await waitForHtmxComplete(page);
+      await waitForChart(page, 'trend-chart');
 
       // Verify initial chart exists
       const initialChart = await page.evaluate(() => {
@@ -277,7 +307,8 @@ test.describe('Trends Charts Tests @trends-charts', () => {
       }
 
       // Wait for HTMX swap to complete
-      await page.waitForTimeout(2000);
+      await waitForHtmxComplete(page);
+      await waitForChart(page, 'trend-chart');
 
       // After HTMX swap, chart should still render (this is the critical test)
       const chartAfterSwap = await page.evaluate(() => {
@@ -305,15 +336,17 @@ test.describe('Trends Charts Tests @trends-charts', () => {
 
       await page.goto('/app/metrics/analytics/trends/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(3000);
+      await waitForHtmxComplete(page, 10000);
 
-      // Filter for chart-related errors
+      // Filter for chart-related errors (exclude known CSP/external script errors)
       const chartErrors = consoleErrors.filter(
         (err) =>
-          err.includes('trend') ||
+          (err.includes('trend') ||
           err.includes('chart') ||
           err.includes('Chart') ||
-          err.includes('canvas')
+          err.includes('canvas')) &&
+          !err.includes('posthog') &&
+          !err.includes('Content-Security-Policy')
       );
 
       // Should have no chart-related errors
@@ -332,15 +365,18 @@ test.describe('Trends Charts Tests @trends-charts', () => {
 
       await page.goto('/app/metrics/analytics/trends/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(3000);
+      await waitForHtmxComplete(page, 10000);
 
-      // Filter out expected/known errors
+      // Filter out expected/known errors (CSP, fonts, external resources)
       const unexpectedErrors = consoleErrors.filter(
         (err) =>
           !err.includes('favicon') &&
           !err.includes('404') &&
           !err.includes('posthog') && // PostHog CSP errors are expected in dev
-          !err.includes('Content Security Policy')
+          !err.includes('Content Security Policy') &&
+          !err.includes('downloadable font') && // Font download failures in Firefox
+          !err.includes('Font Awesome') &&
+          !err.includes('fonts.gstatic.com')
       );
 
       expect(unexpectedErrors).toHaveLength(0);
