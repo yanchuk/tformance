@@ -14,7 +14,7 @@
 
   <!-- Key Metrics Cards -->
   <div id="key-metrics-container"
-       hx-get="{% url 'metrics:cards_metrics' %}?days={{ days }}"
+       hx-get="{% url 'metrics:cards_metrics' %}?days={{ days }}{% if selected_repo %}&repo={{ selected_repo }}{% endif %}"
        hx-trigger="load"
        hx-swap="innerHTML">
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -31,7 +31,7 @@
       <div class="card-body">
         <h2 class="card-title text-base">{% trans "AI Adoption Trend" %}</h2>
         <div id="ai-adoption-container"
-             hx-get="{% url 'metrics:chart_ai_adoption' %}?days={{ days }}"
+             hx-get="{% url 'metrics:chart_ai_adoption' %}?days={{ days }}{% if selected_repo %}&repo={{ selected_repo }}{% endif %}"
              hx-trigger="load"
              hx-swap="innerHTML">
           <div class="flex justify-center items-center h-64">
@@ -52,7 +52,7 @@
         </h2>
         <p class="text-sm text-base-content/80 mb-2">{% trans "Time from PR creation to merge" %}</p>
         <div id="cycle-time-container"
-             hx-get="{% url 'metrics:chart_cycle_time' %}?days={{ days }}"
+             hx-get="{% url 'metrics:chart_cycle_time' %}?days={{ days }}{% if selected_repo %}&repo={{ selected_repo }}{% endif %}"
              hx-trigger="load"
              hx-swap="innerHTML">
           <div class="flex justify-center items-center h-48">
@@ -70,7 +70,7 @@
       <div class="card-body">
         <h2 class="card-title text-base">{% trans "Quality by AI Status" %}</h2>
         <div id="ai-quality-container"
-             hx-get="{% url 'metrics:chart_ai_quality' %}?days={{ days }}"
+             hx-get="{% url 'metrics:chart_ai_quality' %}?days={{ days }}{% if selected_repo %}&repo={{ selected_repo }}{% endif %}"
              hx-trigger="load"
              hx-swap="innerHTML">
           <div class="flex justify-center items-center h-64">
@@ -91,7 +91,7 @@
         </h2>
         <p class="text-sm text-base-content/80 mb-2">{% trans "Smaller PRs are easier to review" %}</p>
         <div id="pr-size-container"
-             hx-get="{% url 'metrics:chart_pr_size' %}?days={{ days }}"
+             hx-get="{% url 'metrics:chart_pr_size' %}?days={{ days }}{% if selected_repo %}&repo={{ selected_repo }}{% endif %}"
              hx-trigger="load"
              hx-swap="innerHTML">
           <div class="skeleton h-48 w-full rounded-lg"></div>

@@ -521,25 +521,30 @@ def get_ai_detective_leaderboard(team: Team, start_date: date, end_date: date, r
     ]
 
 
-def get_review_distribution(team: Team, start_date: date, end_date: date) -> list[dict]:
+def get_review_distribution(team: Team, start_date: date, end_date: date, repo: str | None = None) -> list[dict]:
     """Get review distribution by reviewer (for pie chart).
 
     Args:
         team: Team instance
         start_date: Start date (inclusive)
         end_date: End date (inclusive)
+        repo: Optional repository to filter by (owner/repo format)
 
     Returns:
         list of dicts with keys:
             - reviewer_name (str): Reviewer display name
             - count (int): Number of reviews
     """
+    filters = {
+        "team": team,
+        "responded_at__gte": start_of_day(start_date),
+        "responded_at__lte": end_of_day(end_date),
+    }
+    if repo:
+        filters["survey__pull_request__github_repo"] = repo
+
     reviews = (
-        PRSurveyReview.objects.filter(
-            team=team,
-            responded_at__gte=start_of_day(start_date),
-            responded_at__lte=end_of_day(end_date),
-        )
+        PRSurveyReview.objects.filter(**filters)  # noqa: TEAM001 - team in filters
         .values("reviewer__display_name", "reviewer__github_id")
         .annotate(count=Count("id"))
         .order_by("-count")
@@ -2787,8 +2792,9 @@ def get_team_velocity(team: Team, start_date: date, end_date: date, limit: int =
 
 def detect_review_bottleneck(
     team: Team,
-    start_date: date,
+    start_date: date,  # noqa: ARG001
     end_date: date,  # noqa: ARG001
+    repo: str | None = None,
 ) -> dict | None:
     """Detect if any reviewer has > 3x average pending reviews.
 
@@ -2803,6 +2809,7 @@ def detect_review_bottleneck(
         team: Team instance
         start_date: Unused (kept for API consistency)
         end_date: Unused (kept for API consistency)
+        repo: Optional repository to filter by (owner/repo format)
 
     Returns:
         dict with bottleneck info if detected:
@@ -2813,11 +2820,15 @@ def detect_review_bottleneck(
     """
     # Get distinct open PRs per reviewer
     # Count distinct PRs (not reviews) - a reviewer might review same PR multiple times
+    filters = {
+        "team": team,
+        "pull_request__state": "open",
+    }
+    if repo:
+        filters["pull_request__github_repo"] = repo
+
     reviewer_stats = list(
-        PRReview.objects.filter(
-            team=team,
-            pull_request__state="open",
-        )
+        PRReview.objects.filter(**filters)  # noqa: TEAM001 - team in filters
         .values("reviewer__id", "reviewer__display_name")
         .annotate(pending_count=Count("pull_request", distinct=True))
     )

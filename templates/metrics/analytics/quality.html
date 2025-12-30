@@ -23,7 +23,7 @@
         </h2>
         <p class="text-sm text-base-content/80 mb-2">{% trans "Time to first review" %}</p>
         <div id="review-time-container"
-             hx-get="{% url 'metrics:chart_review_time' %}?days={{ days }}"
+             hx-get="{% url 'metrics:chart_review_time' %}?days={{ days }}{% if selected_repo %}&repo={{ selected_repo }}{% endif %}"
              hx-trigger="load"
              hx-swap="innerHTML">
           <div class="flex justify-center items-center h-48">
@@ -44,7 +44,7 @@
         </h2>
         <p class="text-sm text-base-content/80 mb-2">{% trans "Reviews per team member" %}</p>
         <div id="review-distribution-container"
-             hx-get="{% url 'metrics:chart_review_distribution' %}?days={{ days }}"
+             hx-get="{% url 'metrics:chart_review_distribution' %}?days={{ days }}{% if selected_repo %}&repo={{ selected_repo }}{% endif %}"
              hx-trigger="load"
              hx-swap="innerHTML">
           <div class="skeleton h-48 w-full rounded-lg"></div>
@@ -65,7 +65,7 @@
           {% trans "Reviewer Workload" %}
         </h2>
         <div id="reviewer-workload-container"
-             hx-get="{% url 'metrics:table_reviewer_workload' %}?days={{ days }}"
+             hx-get="{% url 'metrics:table_reviewer_workload' %}?days={{ days }}{% if selected_repo %}&repo={{ selected_repo }}{% endif %}"
              hx-trigger="load"
              hx-swap="innerHTML">
           <div class="skeleton h-48 w-full rounded-lg"></div>
@@ -83,7 +83,7 @@
           {% trans "CI/CD Pass Rate" %}
         </h2>
         <div id="cicd-container"
-             hx-get="{% url 'metrics:cards_cicd_pass_rate' %}?days={{ days }}"
+             hx-get="{% url 'metrics:cards_cicd_pass_rate' %}?days={{ days }}{% if selected_repo %}&repo={{ selected_repo }}{% endif %}"
              hx-trigger="load"
              hx-swap="innerHTML">
           <div class="skeleton h-32 w-full rounded-lg"></div>
@@ -105,7 +105,7 @@
         </h2>
         <p class="text-sm text-base-content/80 mb-2">{% trans "Review rounds and changes requested" %}</p>
         <div id="iteration-container"
-             hx-get="{% url 'metrics:cards_iteration_metrics' %}?days={{ days }}"
+             hx-get="{% url 'metrics:cards_iteration_metrics' %}?days={{ days }}{% if selected_repo %}&repo={{ selected_repo }}{% endif %}"
              hx-trigger="load"
              hx-swap="innerHTML">
           <div class="skeleton h-32 w-full rounded-lg"></div>
@@ -124,7 +124,7 @@
         </h2>
         <p class="text-sm text-base-content/80 mb-2">{% trans "PRs that were reverted after merge" %}</p>
         <div id="revert-rate-container"
-             hx-get="{% url 'metrics:cards_revert_rate' %}?days={{ days }}"
+             hx-get="{% url 'metrics:cards_revert_rate' %}?days={{ days }}{% if selected_repo %}&repo={{ selected_repo }}{% endif %}"
              hx-trigger="load"
              hx-swap="innerHTML">
           <div class="skeleton h-32 w-full rounded-lg"></div>

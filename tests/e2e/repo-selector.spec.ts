@@ -495,6 +495,92 @@ test.describe('Repository Selector Tests @repo-selector', () => {
     });
   });
 
+  test.describe('Data Filtering', () => {
+    test('selecting repo triggers HTMX chart updates with repo param', async ({ page }) => {
+      await page.goto('/app/metrics/analytics/');
+      await waitForPageReady(page);
+
+      const hasSelector = await hasRepoSelector(page);
+      if (!hasSelector) {
+        test.skip();
+        return;
+      }
+
+      // Monitor network requests
+      const chartRequests: string[] = [];
+      page.on('request', request => {
+        const url = request.url();
+        if (url.includes('/cards/') || url.includes('/charts/')) {
+          chartRequests.push(url);
+        }
+      });
+
+      // Select a repo
+      const button = getRepoSelectorButton(page);
+      await button.click();
+      const dropdown = getRepoDropdown(page);
+      const repoLinks = dropdown.locator('li a').filter({ hasNot: page.locator('text=All Repositories') });
+      const repoCount = await repoLinks.count();
+
+      if (repoCount === 0) {
+        test.skip();
+        return;
+      }
+
+      // Clear previous requests
+      chartRequests.length = 0;
+
+      await repoLinks.first().click();
+      await waitForHtmxComplete(page);
+
+      // Wait for URL to update with repo param instead of networkidle
+      await expect(page).toHaveURL(/repo=/, { timeout: 5000 });
+
+      // Give HTMX requests time to start
+      await page.waitForTimeout(500);
+
+      // Verify chart requests include repo parameter
+      const requestsWithRepo = chartRequests.filter(url => url.includes('repo='));
+      expect(requestsWithRepo.length).toBeGreaterThan(0);
+    });
+
+    test('key metrics cards update when repo is selected', async ({ page }) => {
+      await page.goto('/app/metrics/analytics/');
+      await waitForPageReady(page);
+
+      const hasSelector = await hasRepoSelector(page);
+      if (!hasSelector) {
+        test.skip();
+        return;
+      }
+
+      // Wait for initial metrics to load (skeleton disappears)
+      await expect(page.locator('#key-metrics-container .skeleton')).toHaveCount(0, { timeout: 10000 });
+
+      // Select a repo
+      const button = getRepoSelectorButton(page);
+      await button.click();
+      const dropdown = getRepoDropdown(page);
+      const repoLinks = dropdown.locator('li a').filter({ hasNot: page.locator('text=All Repositories') });
+      const repoCount = await repoLinks.count();
+
+      if (repoCount === 0) {
+        test.skip();
+        return;
+      }
+
+      await repoLinks.first().click();
+      await waitForHtmxComplete(page);
+
+      // Wait for URL to update with repo param
+      await expect(page).toHaveURL(/repo=/, { timeout: 5000 });
+
+      // Verify metrics container still exists and content loaded (no skeletons)
+      await expect(page.locator('#key-metrics-container')).toBeVisible();
+      await expect(page.locator('#key-metrics-container .skeleton')).toHaveCount(0, { timeout: 10000 });
+    });
+  });
+
   test.describe('Button State', () => {
     test('repo selector button highlights when repo is selected', async ({ page }) => {
       await page.goto('/app/metrics/analytics/');

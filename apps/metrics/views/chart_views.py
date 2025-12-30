@@ -152,10 +152,11 @@ def leaderboard_table(request: HttpRequest) -> HttpResponse:
 def review_distribution_chart(request: HttpRequest) -> HttpResponse:
     """Review distribution by reviewer (all members)."""
     start_date, end_date = get_date_range_from_request(request)
-    data = dashboard_service.get_review_distribution(request.team, start_date, end_date)
+    repo = _get_repo_filter(request)
+    data = dashboard_service.get_review_distribution(request.team, start_date, end_date, repo=repo)
 
     # Check for bottleneck (reviewer with >3x average pending reviews)
-    bottleneck = dashboard_service.detect_review_bottleneck(request.team, start_date, end_date)
+    bottleneck = dashboard_service.detect_review_bottleneck(request.team, start_date, end_date, repo=repo)
 
     return TemplateResponse(
         request,

@@ -1116,3 +1116,35 @@ class TestChartViewsRepoFilter(TestCase):
         response = self.client.get(reverse("metrics:table_recent_prs"), {"repo": "acme/frontend"})
 
         self.assertEqual(response.status_code, 200)
+
+    def test_review_distribution_chart_accepts_repo_param(self):
+        """Test that review_distribution_chart accepts repo query parameter."""
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(reverse("metrics:chart_review_distribution"), {"repo": "acme/frontend"})
+
+        self.assertEqual(response.status_code, 200)
+
+    def test_review_time_chart_accepts_repo_param(self):
+        """Test that review_time_chart accepts repo query parameter."""
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(reverse("metrics:chart_review_time"), {"repo": "acme/frontend"})
+
+        self.assertEqual(response.status_code, 200)
+
+    def test_pr_size_chart_accepts_repo_param(self):
+        """Test that pr_size_chart accepts repo query parameter."""
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(reverse("metrics:chart_pr_size"), {"repo": "acme/frontend"})
+
+        self.assertEqual(response.status_code, 200)
+
+    def test_ai_quality_chart_accepts_repo_param(self):
+        """Test that ai_quality_chart accepts repo query parameter."""
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(reverse("metrics:chart_ai_quality"), {"repo": "acme/frontend"})
+
+        self.assertEqual(response.status_code, 200)

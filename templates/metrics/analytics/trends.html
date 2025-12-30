@@ -66,15 +66,17 @@
              const params = new URLSearchParams(window.location.search);
              const days = params.get('days') || '{{ days }}';
              const preset = params.get('preset') || '{{ preset }}';
+             const repo = params.get('repo') || '';
+             const repoParam = repo ? '&repo=' + encodeURIComponent(repo) : '';
              // Update wide trend chart
-             htmx.ajax('GET', '{% url 'metrics:chart_wide_trend' %}?metrics=' + metricsParam + '&days=' + days + '&preset=' + preset + '&granularity=' + this.granularity, {target:'#wide-chart-container', swap:'innerHTML'});
+             htmx.ajax('GET', '{% url 'metrics:chart_wide_trend' %}?metrics=' + metricsParam + '&days=' + days + '&preset=' + preset + '&granularity=' + this.granularity + repoParam, {target:'#wide-chart-container', swap:'innerHTML'});
              // Update benchmark panel for single metric
              if (this.selectedMetrics.length === 1) {
-               htmx.ajax('GET', '{% url 'metrics:benchmark_panel' metric='cycle_time' %}'.replace('cycle_time', this.selectedMetrics[0]) + '?days=' + days, {target:'#benchmark-panel-container', swap:'innerHTML'});
+               htmx.ajax('GET', '{% url 'metrics:benchmark_panel' metric='cycle_time' %}'.replace('cycle_time', this.selectedMetrics[0]) + '?days=' + days + repoParam, {target:'#benchmark-panel-container', swap:'innerHTML'});
              }
              // Update Tech and PR Type breakdown charts with new granularity
-             htmx.ajax('GET', '{% url 'metrics:chart_tech_breakdown' %}?days=' + days + '&preset=' + preset + '&granularity=' + this.granularity, {target:'#tech-chart-container', swap:'innerHTML'});
-             htmx.ajax('GET', '{% url 'metrics:chart_pr_type_breakdown' %}?days=' + days + '&preset=' + preset + '&granularity=' + this.granularity, {target:'#pr-type-chart-container', swap:'innerHTML'});
+             htmx.ajax('GET', '{% url 'metrics:chart_tech_breakdown' %}?days=' + days + '&preset=' + preset + '&granularity=' + this.granularity + repoParam, {target:'#tech-chart-container', swap:'innerHTML'});
+             htmx.ajax('GET', '{% url 'metrics:chart_pr_type_breakdown' %}?days=' + days + '&preset=' + preset + '&granularity=' + this.granularity + repoParam, {target:'#pr-type-chart-container', swap:'innerHTML'});
            }
          }">
 
@@ -125,7 +127,7 @@
   <!-- Wide Trend Chart Container -->
   <div class="app-card p-0 overflow-hidden">
     <div id="wide-chart-container"
-         hx-get="{% url 'metrics:chart_wide_trend' %}?metrics={{ selected_metrics|join:',' }}&days={{ days }}&preset={{ preset }}&granularity={{ granularity }}"
+         hx-get="{% url 'metrics:chart_wide_trend' %}?metrics={{ selected_metrics|join:',' }}&days={{ days }}&preset={{ preset }}&granularity={{ granularity }}{% if selected_repo %}&repo={{ selected_repo }}{% endif %}"
          hx-trigger="load"
          hx-swap="innerHTML">
       <!-- Loading skeleton -->
@@ -149,7 +151,7 @@
     <!-- PR Type Breakdown (Full Width) -->
     <div class="app-card p-0 overflow-hidden">
       <div id="pr-type-chart-container"
-           hx-get="{% url 'metrics:chart_pr_type_breakdown' %}?days={{ days }}&granularity={{ granularity }}"
+           hx-get="{% url 'metrics:chart_pr_type_breakdown' %}?days={{ days }}&granularity={{ granularity }}{% if selected_repo %}&repo={{ selected_repo }}{% endif %}"
            hx-trigger="load"
            hx-swap="innerHTML">
         <!-- Loading skeleton -->
@@ -163,7 +165,7 @@
     <!-- Technology Breakdown (Full Width) -->
     <div class="app-card p-0 overflow-hidden">
       <div id="tech-chart-container"
-           hx-get="{% url 'metrics:chart_tech_breakdown' %}?days={{ days }}&granularity={{ granularity }}"
+           hx-get="{% url 'metrics:chart_tech_breakdown' %}?days={{ days }}&granularity={{ granularity }}{% if selected_repo %}&repo={{ selected_repo }}{% endif %}"
            hx-trigger="load"
            hx-swap="innerHTML">
         <!-- Loading skeleton -->
@@ -177,7 +179,7 @@
 
   <!-- Quick Stats Cards (with sparklines) -->
   <div id="stats-cards-container"
-       hx-get="{% url 'metrics:cards_metrics' %}?days={{ days }}"
+       hx-get="{% url 'metrics:cards_metrics' %}?days={{ days }}{% if selected_repo %}&repo={{ selected_repo }}{% endif %}"
        hx-trigger="load"
        hx-swap="innerHTML">
     <!-- Loading skeleton -->
@@ -203,7 +205,7 @@
 
     <!-- Benchmark Panel (HTMX loaded) -->
     <div id="benchmark-panel-container"
-         hx-get="{% url 'metrics:benchmark_panel' metric=default_metric %}?days={{ days }}"
+         hx-get="{% url 'metrics:benchmark_panel' metric=default_metric %}?days={{ days }}{% if selected_repo %}&repo={{ selected_repo }}{% endif %}"
          hx-trigger="load"
          hx-swap="innerHTML">
       <!-- Loading skeleton -->

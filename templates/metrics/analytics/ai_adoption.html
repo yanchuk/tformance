@@ -22,7 +22,7 @@
         </h2>
         <p class="text-sm text-base-content/80 mb-2">{% trans "Weekly percentage of AI-assisted PRs" %}</p>
         <div id="ai-adoption-container"
-             hx-get="{% url 'metrics:chart_ai_adoption' %}?days={{ days }}"
+             hx-get="{% url 'metrics:chart_ai_adoption' %}?days={{ days }}{% if selected_repo %}&repo={{ selected_repo }}{% endif %}"
              hx-trigger="load"
              hx-swap="innerHTML">
           <div class="flex justify-center items-center h-64">
@@ -44,7 +44,7 @@
         </h2>
         <p class="text-sm text-base-content/80 mb-2">{% trans "Distribution of AI tools used in PRs" %}</p>
         <div id="ai-tools-container"
-             hx-get="{% url 'metrics:chart_ai_tools' %}?days={{ days }}"
+             hx-get="{% url 'metrics:chart_ai_tools' %}?days={{ days }}{% if selected_repo %}&repo={{ selected_repo }}{% endif %}"
              hx-trigger="load"
              hx-swap="innerHTML">
           <div class="flex justify-center items-center h-64">
@@ -65,7 +65,7 @@
         {% trans "AI vs Non-AI Quality Comparison" %}
       </h2>
       <div id="ai-quality-container"
-           hx-get="{% url 'metrics:chart_ai_quality' %}?days={{ days }}"
+           hx-get="{% url 'metrics:chart_ai_quality' %}?days={{ days }}{% if selected_repo %}&repo={{ selected_repo }}{% endif %}"
            hx-trigger="load"
            hx-swap="innerHTML">
         <div class="flex justify-center items-center h-64">
@@ -87,7 +87,7 @@
           {% trans "Copilot Metrics" %}
         </h2>
         <div id="copilot-container"
-             hx-get="{% url 'metrics:cards_copilot' %}?days={{ days }}"
+             hx-get="{% url 'metrics:cards_copilot' %}?days={{ days }}{% if selected_repo %}&repo={{ selected_repo }}{% endif %}"
              hx-trigger="load"
              hx-swap="innerHTML">
           <div class="skeleton h-32 w-full rounded-lg"></div>
@@ -105,7 +105,7 @@
           {% trans "AI Bot Reviews" %}
         </h2>
         <div id="ai-bot-reviews-container"
-             hx-get="{% url 'metrics:cards_ai_bot_reviews' %}?days={{ days }}"
+             hx-get="{% url 'metrics:cards_ai_bot_reviews' %}?days={{ days }}{% if selected_repo %}&repo={{ selected_repo }}{% endif %}"
              hx-trigger="load"
              hx-swap="innerHTML">
           <div class="skeleton h-32 w-full rounded-lg"></div>
