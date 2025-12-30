@@ -11,6 +11,7 @@ from apps.metrics.views.chart_views import (
     ai_adoption_chart,
     ai_bot_reviews_card,
     ai_detected_metrics_card,
+    ai_impact_view,
     ai_quality_chart,
     ai_tool_breakdown_chart,
     benchmark_data,
@@ -25,6 +26,7 @@ from apps.metrics.views.chart_views import (
     iteration_metrics_card,
     key_metrics_cards,
     leaderboard_table,
+    needs_attention_view,
     pr_size_chart,
     recent_prs_table,
     revert_rate_card,
@@ -36,6 +38,7 @@ from apps.metrics.views.chart_views import (
     survey_channel_distribution_card,
     survey_response_time_card,
     team_breakdown_table,
+    team_velocity_view,
     unlinked_prs_table,
 )
 from apps.metrics.views.dashboard_views import cto_overview, dashboard_redirect, dismiss_insight, home, team_dashboard
@@ -96,4 +99,7 @@ __all__ = [
     "tech_breakdown_chart",
     "benchmark_data",
     "benchmark_panel",
+    "needs_attention_view",
+    "ai_impact_view",
+    "team_velocity_view",
 ]

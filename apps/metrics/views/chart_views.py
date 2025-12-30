@@ -152,13 +152,17 @@ def leaderboard_table(request: HttpRequest) -> HttpResponse:
 def review_distribution_chart(request: HttpRequest) -> HttpResponse:
     """Review distribution by reviewer (all members)."""
     start_date, end_date = get_date_range_from_request(request)
-    repo = _get_repo_filter(request)
-    data = dashboard_service.get_review_distribution(request.team, start_date, end_date, repo=repo)
+    data = dashboard_service.get_review_distribution(request.team, start_date, end_date)
+
+    # Check for bottleneck (reviewer with >3x average pending reviews)
+    bottleneck = dashboard_service.detect_review_bottleneck(request.team, start_date, end_date)
+
     return TemplateResponse(
         request,
         "metrics/partials/review_distribution_chart.html",
         {
             "chart_data": data,
+            "bottleneck": bottleneck,
         },
     )
 
@@ -616,4 +620,71 @@ def benchmark_panel(request: HttpRequest, metric: str) -> HttpResponse:
         request,
         "metrics/analytics/trends/benchmark_panel.html",
         {"benchmark": template_context, "metric": metric},
+    )
+
+
+@team_admin_required
+def needs_attention_view(request: HttpRequest) -> HttpResponse:
+    """Needs attention PR list (admin only).
+
+    Returns prioritized list of PRs with issues (reverts, hotfixes, long cycle, etc.).
+    """
+    start_date, end_date = get_date_range_from_request(request)
+    page = int(request.GET.get("page", 1))
+
+    result = dashboard_service.get_needs_attention_prs(request.team, start_date, end_date, page=page)
+
+    # Calculate total pages from total and per_page
+    per_page = result["per_page"]
+    total = result["total"]
+    total_pages = (total + per_page - 1) // per_page if total > 0 else 1
+
+    return TemplateResponse(
+        request,
+        "metrics/partials/needs_attention.html",
+        {
+            "prs": result["items"],
+            "page": result["page"],
+            "total_pages": total_pages,
+            "total_count": total,
+        },
+    )
+
+
+@team_admin_required
+def ai_impact_view(request: HttpRequest) -> HttpResponse:
+    """AI impact stats comparison (admin only).
+
+    Returns AI adoption % and cycle time comparison.
+    """
+    start_date, end_date = get_date_range_from_request(request)
+
+    stats = dashboard_service.get_ai_impact_stats(request.team, start_date, end_date)
+
+    return TemplateResponse(
+        request,
+        "metrics/partials/ai_impact.html",
+        {
+            "stats": stats,
+        },
+    )
+
+
+@team_admin_required
+def team_velocity_view(request: HttpRequest) -> HttpResponse:
+    """Team velocity / top contributors (admin only).
+
+    Returns top N contributors by PR count with avg cycle time.
+    """
+    start_date, end_date = get_date_range_from_request(request)
+    limit = int(request.GET.get("limit", 5))
+
+    contributors = dashboard_service.get_team_velocity(request.team, start_date, end_date, limit=limit)
+
+    return TemplateResponse(
+        request,
+        "metrics/partials/team_velocity.html",
+        {
+            "contributors": contributors,
+        },
     )

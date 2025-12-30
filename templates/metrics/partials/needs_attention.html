@@ -1,0 +1,62 @@
+{% load i18n %}
+<div class="needs-attention-container">
+  {% if prs %}
+  <ul class="divide-y divide-base-300">
+    {% for pr in prs %}
+    <li class="py-3">
+      <div class="flex items-start gap-3">
+        <span class="text-lg">
+          {% if pr.issue_priority == 1 %}🔴{% elif pr.issue_priority == 2 %}🟡{% else %}⚪{% endif %}
+        </span>
+        <div class="flex-1 min-w-0">
+          <a href="{{ pr.url }}" target="_blank" class="font-medium text-base-content hover:text-primary truncate block">
+            {{ pr.title }}
+          </a>
+          <div class="text-sm text-base-content/70 mt-1">
+            <span class="badge badge-sm badge-ghost">{{ pr.issue_type }}</span>
+            <span class="ml-2">by {{ pr.author }}</span>
+          </div>
+        </div>
+      </div>
+    </li>
+    {% endfor %}
+  </ul>
+
+  {% if total_pages > 1 %}
+  <div class="flex justify-center gap-2 mt-4">
+    {% if page > 1 %}
+    <button
+      hx-get="{% url 'metrics:needs_attention' %}?page={{ page|add:'-1' }}"
+      hx-target="closest .needs-attention-container"
+      hx-swap="outerHTML"
+      class="btn btn-sm btn-ghost"
+    >
+      {% trans "Previous" %}
+    </button>
+    {% endif %}
+    <span class="btn btn-sm btn-disabled">{{ page }} / {{ total_pages }}</span>
+    {% if page < total_pages %}
+    <button
+      hx-get="{% url 'metrics:needs_attention' %}?page={{ page|add:'1' }}"
+      hx-target="closest .needs-attention-container"
+      hx-swap="outerHTML"
+      class="btn btn-sm btn-ghost"
+    >
+      {% trans "Next" %}
+    </button>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% else %}
+  <div class="flex flex-col items-center justify-center py-8">
+    <div class="w-12 h-12 mb-3 rounded-full bg-success/10 flex items-center justify-center">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+      </svg>
+    </div>
+    <p class="text-base-content/80 font-medium">{% trans "All Clear!" %}</p>
+    <p class="text-base-content/60 text-sm">{% trans "No PRs need attention right now" %}</p>
+  </div>
+  {% endif %}
+</div>

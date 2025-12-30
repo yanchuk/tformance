@@ -1,0 +1,63 @@
+{% load i18n %}
+<div class="ai-impact-container">
+  {% if stats.total_prs > 0 %}
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <!-- AI Adoption -->
+    <div class="stat bg-base-200 rounded-lg">
+      <div class="stat-title">{% trans "AI Adoption" %}</div>
+      <div class="stat-value text-primary">{{ stats.ai_adoption_pct|floatformat:0 }}%</div>
+      <div class="stat-desc">{{ stats.ai_prs }} / {{ stats.total_prs }} {% trans "PRs" %}</div>
+    </div>
+
+    <!-- Cycle Time Comparison -->
+    <div class="stat bg-base-200 rounded-lg">
+      <div class="stat-title">{% trans "Avg Cycle Time" %}</div>
+      <div class="flex items-baseline gap-2">
+        <div>
+          <span class="text-lg font-bold text-primary">
+            {% if stats.avg_cycle_with_ai %}{{ stats.avg_cycle_with_ai|floatformat:1 }}h{% else %}-{% endif %}
+          </span>
+          <span class="text-xs text-base-content/60">{% trans "with AI" %}</span>
+        </div>
+        <span class="text-base-content/40">vs</span>
+        <div>
+          <span class="text-lg font-bold">
+            {% if stats.avg_cycle_without_ai %}{{ stats.avg_cycle_without_ai|floatformat:1 }}h{% else %}-{% endif %}
+          </span>
+          <span class="text-xs text-base-content/60">{% trans "without" %}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Impact -->
+    <div class="stat bg-base-200 rounded-lg">
+      <div class="stat-title">{% trans "Impact" %}</div>
+      {% if stats.cycle_time_difference_pct %}
+      <div class="stat-value {% if stats.cycle_time_difference_pct < 0 %}text-success{% else %}text-warning{% endif %}">
+        {% if stats.cycle_time_difference_pct > 0 %}+{% endif %}{{ stats.cycle_time_difference_pct|floatformat:0 }}%
+      </div>
+      <div class="stat-desc">
+        {% if stats.cycle_time_difference_pct < 0 %}
+        {% trans "Faster with AI" %}
+        {% else %}
+        {% trans "Slower with AI" %}
+        {% endif %}
+      </div>
+      {% else %}
+      <div class="stat-value text-base-content/40">-</div>
+      <div class="stat-desc">{% trans "Not enough data" %}</div>
+      {% endif %}
+    </div>
+  </div>
+  {% else %}
+  <div class="flex flex-col items-center justify-center py-8">
+    <div class="w-12 h-12 mb-3 rounded-full bg-base-300 flex items-center justify-center">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-base-content/60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+      </svg>
+    </div>
+    <p class="text-base-content/80 font-medium">{% trans "No AI Impact Data" %}</p>
+    <p class="text-base-content/60 text-sm">{% trans "Need merged PRs to calculate AI impact" %}</p>
+  </div>
+  {% endif %}
+</div>

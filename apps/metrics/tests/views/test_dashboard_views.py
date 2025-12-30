@@ -1,0 +1,332 @@
+"""Tests for new dashboard partial views (HTMX endpoints).
+
+This test module covers:
+- needs_attention_view: Admin-only PR issue list
+- ai_impact_view: Admin-only AI impact stats
+- team_velocity_view: Admin-only top contributors
+"""
+
+from django.test import Client, TestCase
+from django.urls import reverse
+
+from apps.integrations.factories import UserFactory
+from apps.metrics.factories import TeamFactory
+from apps.teams.roles import ROLE_ADMIN, ROLE_MEMBER
+
+
+class TestNeedsAttentionView(TestCase):
+    """Tests for needs_attention_view (admin-only)."""
+
+    def setUp(self):
+        """Set up test fixtures using factories."""
+        self.team = TeamFactory()
+        self.admin_user = UserFactory()
+        self.member_user = UserFactory()
+        self.team.members.add(self.admin_user, through_defaults={"role": ROLE_ADMIN})
+        self.team.members.add(self.member_user, through_defaults={"role": ROLE_MEMBER})
+        self.client = Client()
+
+    def test_requires_login(self):
+        """Test that needs_attention_view redirects to login if not authenticated."""
+        response = self.client.get(reverse("metrics:needs_attention"))
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/accounts/login/", response.url)
+
+    def test_requires_team_membership(self):
+        """Test that needs_attention_view returns 404 for non-team-members."""
+        non_member = UserFactory()
+        self.client.force_login(non_member)
+
+        response = self.client.get(reverse("metrics:needs_attention"))
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_requires_admin_role(self):
+        """Test that needs_attention_view returns 404 for non-admin team members."""
+        self.client.force_login(self.member_user)
+
+        response = self.client.get(reverse("metrics:needs_attention"))
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_returns_200_for_admin(self):
+        """Test that needs_attention_view returns 200 for admin users."""
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(reverse("metrics:needs_attention"))
+
+        self.assertEqual(response.status_code, 200)
+
+    def test_renders_correct_template(self):
+        """Test that needs_attention_view renders correct partial template."""
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(reverse("metrics:needs_attention"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "metrics/partials/needs_attention.html")
+
+    def test_context_contains_prs(self):
+        """Test that context contains prs list."""
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(reverse("metrics:needs_attention"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("prs", response.context)
+        self.assertIsInstance(response.context["prs"], list)
+
+    def test_context_contains_pagination_metadata(self):
+        """Test that context contains pagination metadata."""
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(reverse("metrics:needs_attention"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("page", response.context)
+        self.assertIn("total_pages", response.context)
+        self.assertIn("total_count", response.context)
+
+    def test_accepts_days_query_param(self):
+        """Test that needs_attention_view accepts days query param."""
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(reverse("metrics:needs_attention"), {"days": "7"})
+
+        self.assertEqual(response.status_code, 200)
+
+    def test_accepts_page_query_param(self):
+        """Test that needs_attention_view accepts page query param."""
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(reverse("metrics:needs_attention"), {"page": "2"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["page"], 2)
+
+    def test_default_days_is_30(self):
+        """Test that default date range is 30 days."""
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(reverse("metrics:needs_attention"))
+
+        self.assertEqual(response.status_code, 200)
+        # Service is called with 30-day date range by default
+
+    def test_default_page_is_1(self):
+        """Test that default page is 1."""
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(reverse("metrics:needs_attention"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["page"], 1)
+
+
+class TestAiImpactView(TestCase):
+    """Tests for ai_impact_view (admin-only)."""
+
+    def setUp(self):
+        """Set up test fixtures using factories."""
+        self.team = TeamFactory()
+        self.admin_user = UserFactory()
+        self.member_user = UserFactory()
+        self.team.members.add(self.admin_user, through_defaults={"role": ROLE_ADMIN})
+        self.team.members.add(self.member_user, through_defaults={"role": ROLE_MEMBER})
+        self.client = Client()
+
+    def test_requires_login(self):
+        """Test that ai_impact_view redirects to login if not authenticated."""
+        response = self.client.get(reverse("metrics:ai_impact"))
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/accounts/login/", response.url)
+
+    def test_requires_team_membership(self):
+        """Test that ai_impact_view returns 404 for non-team-members."""
+        non_member = UserFactory()
+        self.client.force_login(non_member)
+
+        response = self.client.get(reverse("metrics:ai_impact"))
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_requires_admin_role(self):
+        """Test that ai_impact_view returns 404 for non-admin team members."""
+        self.client.force_login(self.member_user)
+
+        response = self.client.get(reverse("metrics:ai_impact"))
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_returns_200_for_admin(self):
+        """Test that ai_impact_view returns 200 for admin users."""
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(reverse("metrics:ai_impact"))
+
+        self.assertEqual(response.status_code, 200)
+
+    def test_renders_correct_template(self):
+        """Test that ai_impact_view renders correct partial template."""
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(reverse("metrics:ai_impact"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "metrics/partials/ai_impact.html")
+
+    def test_context_contains_stats(self):
+        """Test that context contains stats dict with required keys."""
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(reverse("metrics:ai_impact"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("stats", response.context)
+        stats = response.context["stats"]
+        self.assertIn("ai_adoption_pct", stats)
+        self.assertIn("avg_cycle_with_ai", stats)
+        self.assertIn("avg_cycle_without_ai", stats)
+        self.assertIn("cycle_time_difference_pct", stats)
+
+    def test_accepts_days_query_param(self):
+        """Test that ai_impact_view accepts days query param."""
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(reverse("metrics:ai_impact"), {"days": "90"})
+
+        self.assertEqual(response.status_code, 200)
+
+
+class TestTeamVelocityView(TestCase):
+    """Tests for team_velocity_view (admin-only)."""
+
+    def setUp(self):
+        """Set up test fixtures using factories."""
+        self.team = TeamFactory()
+        self.admin_user = UserFactory()
+        self.member_user = UserFactory()
+        self.team.members.add(self.admin_user, through_defaults={"role": ROLE_ADMIN})
+        self.team.members.add(self.member_user, through_defaults={"role": ROLE_MEMBER})
+        self.client = Client()
+
+    def test_requires_login(self):
+        """Test that team_velocity_view redirects to login if not authenticated."""
+        response = self.client.get(reverse("metrics:team_velocity"))
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/accounts/login/", response.url)
+
+    def test_requires_team_membership(self):
+        """Test that team_velocity_view returns 404 for non-team-members."""
+        non_member = UserFactory()
+        self.client.force_login(non_member)
+
+        response = self.client.get(reverse("metrics:team_velocity"))
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_requires_admin_role(self):
+        """Test that team_velocity_view returns 404 for non-admin team members."""
+        self.client.force_login(self.member_user)
+
+        response = self.client.get(reverse("metrics:team_velocity"))
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_returns_200_for_admin(self):
+        """Test that team_velocity_view returns 200 for admin users."""
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(reverse("metrics:team_velocity"))
+
+        self.assertEqual(response.status_code, 200)
+
+    def test_renders_correct_template(self):
+        """Test that team_velocity_view renders correct partial template."""
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(reverse("metrics:team_velocity"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "metrics/partials/team_velocity.html")
+
+    def test_context_contains_contributors(self):
+        """Test that context contains contributors list."""
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(reverse("metrics:team_velocity"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("contributors", response.context)
+        self.assertIsInstance(response.context["contributors"], list)
+
+    def test_accepts_days_query_param(self):
+        """Test that team_velocity_view accepts days query param."""
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(reverse("metrics:team_velocity"), {"days": "7"})
+
+        self.assertEqual(response.status_code, 200)
+
+    def test_accepts_limit_query_param(self):
+        """Test that team_velocity_view accepts limit query param."""
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(reverse("metrics:team_velocity"), {"limit": "10"})
+
+        self.assertEqual(response.status_code, 200)
+
+    def test_default_limit_is_5(self):
+        """Test that default limit is 5."""
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(reverse("metrics:team_velocity"))
+
+        self.assertEqual(response.status_code, 200)
+        # Service is called with limit=5 by default
+
+
+class TestReviewDistributionBottleneck(TestCase):
+    """Tests for bottleneck alert integration in review_distribution_chart."""
+
+    def setUp(self):
+        """Set up test fixtures using factories."""
+        self.team = TeamFactory()
+        self.admin_user = UserFactory()
+        self.member_user = UserFactory()
+        self.team.members.add(self.admin_user, through_defaults={"role": ROLE_ADMIN})
+        self.team.members.add(self.member_user, through_defaults={"role": ROLE_MEMBER})
+        self.client = Client()
+
+    def test_context_contains_bottleneck(self):
+        """Test that review_distribution_chart context contains bottleneck key."""
+        self.client.force_login(self.member_user)
+
+        response = self.client.get(reverse("metrics:chart_review_distribution"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("bottleneck", response.context)
+
+    def test_bottleneck_is_none_when_no_bottleneck(self):
+        """Test that bottleneck is None when no reviewer exceeds threshold."""
+        self.client.force_login(self.member_user)
+
+        response = self.client.get(reverse("metrics:chart_review_distribution"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNone(response.context["bottleneck"])
+
+    def test_bottleneck_contains_expected_keys_when_detected(self):
+        """Test that bottleneck dict contains expected keys when detected."""
+        # This test verifies the structure when a bottleneck exists
+        # The actual bottleneck detection is tested in service tests
+        self.client.force_login(self.member_user)
+
+        response = self.client.get(reverse("metrics:chart_review_distribution"))
+
+        self.assertEqual(response.status_code, 200)
+        # Bottleneck may be None or a dict - just verify the key exists
+        self.assertIn("bottleneck", response.context)

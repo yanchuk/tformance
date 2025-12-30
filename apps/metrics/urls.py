@@ -66,6 +66,10 @@ team_urlpatterns = (
         # Benchmarks API
         path("api/benchmarks/<str:metric>/", views.benchmark_data, name="benchmark_data"),
         path("panels/benchmark/<str:metric>/", views.benchmark_panel, name="benchmark_panel"),
+        # Dashboard partials (new unified dashboard)
+        path("partials/needs-attention/", views.needs_attention_view, name="needs_attention"),
+        path("partials/ai-impact/", views.ai_impact_view, name="ai_impact"),
+        path("partials/team-velocity/", views.team_velocity_view, name="team_velocity"),
     ],
     "metrics",
 )
