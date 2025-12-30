@@ -251,6 +251,27 @@ Fix 6 issues on the Trends & Comparison page for complete ICP experience:
 
 ## Phase 4: New Feature Requests (PENDING)
 
+### Task 4.0: Ensure 12-Month Default & Preset Option (TDD)
+**Effort:** S | **Priority:** High | **Status:** TODO
+
+Verify and ensure all Trends data displays last 12 months by default with a predefined preset option:
+- [ ] Write failing test: Trends page defaults to 365 days when no params
+- [ ] Write failing test: "Last 12 Months" preset option exists in UI
+- [ ] Implement: Verify `_get_trends_context()` defaults to 365 days (already done)
+- [ ] Implement: Add "Last 12 Months" to preset dropdown options
+- [ ] Write failing test: All charts (Tech, PR Type, Main trend) respect default
+- [ ] Test: Preset can be selected and persists across page interactions
+
+**TDD Workflow:**
+1. RED: Write test in `tests/metrics/test_trends_views.py`
+2. GREEN: Implement minimal code to pass
+3. REFACTOR: Clean up if needed
+
+**Files to Check/Modify:**
+- `apps/metrics/views/trends_views.py` - `_get_trends_context()` (line 48-69)
+- `templates/metrics/analytics/trends.html` - Preset dropdown
+- `apps/metrics/view_utils.py` - `get_extended_date_range()` presets
+
 ### Task 4.1: Add AI Assisted Filter to Tech/PR Type Charts
 **Effort:** M | **Priority:** High | **Status:** TODO
 

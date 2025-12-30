@@ -62,6 +62,18 @@ User reported problems with Review Time display. Need to investigate:
 - Need to check `avg_review_time` calculation in dashboard service
 - May be related to data availability or calculation logic
 
+### 12-Month Default Verification (TDD Required)
+User requested strict TDD approach to ensure:
+- All Trends data defaults to last 12 months
+- A predefined "Last 12 Months" preset option exists in UI
+- Current implementation in `_get_trends_context()` sets 365 days default
+- Need to verify preset dropdown has this option
+
+**Current State:**
+- `_get_trends_context()` already defaults to 365 days/monthly when no params
+- Need to verify preset dropdown includes "Last 12 Months" option
+- Need TDD tests to lock in this behavior
+
 ---
 
 ## Implementation Summary
