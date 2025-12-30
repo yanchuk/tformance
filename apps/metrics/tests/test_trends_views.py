@@ -327,3 +327,86 @@ class TestTrendsURLParameters(TestCase):
         response = self.client.get(f"{url}?days=30")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["days"], 30)
+
+
+class TestTrendsDefaultBehavior(TestCase):
+    """Tests for default behavior when no parameters are provided."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.team = TeamFactory()
+        self.admin_user = UserFactory()
+        self.team.members.add(self.admin_user, through_defaults={"role": ROLE_ADMIN})
+        self.client = Client()
+
+    def test_trends_defaults_to_365_days_when_no_params(self):
+        """Test that trends page defaults to 365 days (12 months) when no params."""
+        self.client.force_login(self.admin_user)
+        url = reverse("metrics:trends_overview")
+
+        # No date params
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["days"], 365)
+
+    def test_trends_defaults_to_monthly_granularity_when_no_params(self):
+        """Test that trends page defaults to monthly granularity when no params."""
+        self.client.force_login(self.admin_user)
+        url = reverse("metrics:trends_overview")
+
+        response = self.client.get(url)
+        self.assertEqual(response.context["granularity"], "monthly")
+
+    def test_trends_respects_explicit_params_over_defaults(self):
+        """Test that explicit params override the 365 day default."""
+        self.client.force_login(self.admin_user)
+        url = reverse("metrics:trends_overview")
+
+        # With explicit days param
+        response = self.client.get(f"{url}?days=30")
+        self.assertEqual(response.context["days"], 30)
+
+        # With explicit preset param
+        response = self.client.get(f"{url}?preset=this_quarter")
+        self.assertEqual(response.context["preset"], "this_quarter")
+
+
+class TestTechConfig(TestCase):
+    """Tests for TECH_CONFIG configuration."""
+
+    def test_tech_config_includes_chore_category(self):
+        """Test that TECH_CONFIG includes 'chore' category."""
+        from apps.metrics.views.trends_views import TECH_CONFIG
+
+        self.assertIn("chore", TECH_CONFIG)
+        self.assertIn("name", TECH_CONFIG["chore"])
+        self.assertIn("color", TECH_CONFIG["chore"])
+
+    def test_tech_config_includes_ci_category(self):
+        """Test that TECH_CONFIG includes 'ci' category."""
+        from apps.metrics.views.trends_views import TECH_CONFIG
+
+        self.assertIn("ci", TECH_CONFIG)
+        self.assertIn("name", TECH_CONFIG["ci"])
+        self.assertIn("color", TECH_CONFIG["ci"])
+
+    def test_tech_config_has_all_expected_categories(self):
+        """Test that TECH_CONFIG has all expected tech categories."""
+        from apps.metrics.views.trends_views import TECH_CONFIG
+
+        expected = [
+            "frontend",
+            "backend",
+            "devops",
+            "mobile",
+            "data",
+            "test",
+            "docs",
+            "config",
+            "javascript",
+            "other",
+            "chore",
+            "ci",
+        ]
+        for category in expected:
+            self.assertIn(category, TECH_CONFIG, f"Missing category: {category}")

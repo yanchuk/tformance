@@ -150,3 +150,48 @@ class TestGetFileCategoryBreakdown(TestCase):
 
         self.assertEqual(result["total_files"], 1)
         self.assertEqual(result["total_changes"], 15)
+
+
+class TestIsValidCategory(TestCase):
+    """Tests for _is_valid_category helper function."""
+
+    def test_is_valid_category_accepts_valid_strings(self):
+        """Test that valid category strings return True."""
+        from apps.metrics.services.dashboard_service import _is_valid_category
+
+        valid_categories = ["frontend", "backend", "devops", "test", "other"]
+        for cat in valid_categories:
+            self.assertTrue(_is_valid_category(cat), f"Should accept: {cat}")
+
+    def test_is_valid_category_rejects_empty_string(self):
+        """Test that empty string returns False."""
+        from apps.metrics.services.dashboard_service import _is_valid_category
+
+        self.assertFalse(_is_valid_category(""))
+        self.assertFalse(_is_valid_category("   "))
+
+    def test_is_valid_category_rejects_none(self):
+        """Test that None returns False."""
+        from apps.metrics.services.dashboard_service import _is_valid_category
+
+        self.assertFalse(_is_valid_category(None))
+
+    def test_is_valid_category_rejects_empty_dict(self):
+        """Test that empty dict returns False."""
+        from apps.metrics.services.dashboard_service import _is_valid_category
+
+        self.assertFalse(_is_valid_category({}))
+
+    def test_is_valid_category_rejects_dict_string_representation(self):
+        """Test that '{}' string returns False."""
+        from apps.metrics.services.dashboard_service import _is_valid_category
+
+        self.assertFalse(_is_valid_category("{}"))
+        self.assertFalse(_is_valid_category("[]"))
+
+    def test_is_valid_category_rejects_none_string(self):
+        """Test that 'None' and 'null' strings return False."""
+        from apps.metrics.services.dashboard_service import _is_valid_category
+
+        self.assertFalse(_is_valid_category("None"))
+        self.assertFalse(_is_valid_category("null"))
