@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, Page } from '@playwright/test';
 import { loginAs } from './fixtures/test-users';
 
 /**
@@ -14,6 +14,32 @@ import { loginAs } from './fixtures/test-users';
  * Data source: PRSurveyReview (reviewer guesses vs author disclosure)
  */
 
+/**
+ * Wait for HTMX request to complete.
+ */
+async function waitForHtmxComplete(page: Page, timeout = 5000): Promise<void> {
+  await page.waitForFunction(
+    () => !document.body.classList.contains('htmx-request'),
+    { timeout }
+  );
+}
+
+/**
+ * Wait for leaderboard container to have content (either table or empty state).
+ */
+async function waitForLeaderboard(page: Page, timeout = 10000): Promise<void> {
+  const container = page.locator('#leaderboard-container');
+  await container.waitFor({ state: 'attached', timeout });
+  await waitForHtmxComplete(page, timeout);
+
+  // Wait for skeleton to disappear (indicates content has loaded)
+  const skeleton = container.locator('.skeleton');
+  await skeleton.waitFor({ state: 'hidden', timeout }).catch(() => {});
+
+  // Additional wait for content to render
+  await waitForHtmxComplete(page, timeout);
+}
+
 test.describe('AI Detective Leaderboard @leaderboard', () => {
   test.beforeEach(async ({ page }) => {
     await loginAs(page);
@@ -23,7 +49,7 @@ test.describe('AI Detective Leaderboard @leaderboard', () => {
     test('leaderboard section loads on team dashboard', async ({ page }) => {
       await page.goto('/app/metrics/dashboard/team/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(1000); // Allow HTMX to load
+      await waitForLeaderboard(page);
 
       await expect(page.getByRole('heading', { name: 'AI Detective Leaderboard' })).toBeVisible();
     });
@@ -47,12 +73,12 @@ test.describe('AI Detective Leaderboard @leaderboard', () => {
     test('leaderboard table loads via HTMX', async ({ page }) => {
       await page.goto('/app/metrics/dashboard/team/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(1500); // Allow HTMX to load
+      await waitForLeaderboard(page);
 
       // Either table loads or "No results" message shows
       const container = page.locator('#leaderboard-container');
       const hasTable = await container.locator('table').isVisible().catch(() => false);
-      const hasEmptyState = await container.getByText(/No AI Detective results/i).isVisible().catch(() => false);
+      const hasEmptyState = await container.getByText(/No AI Detective results yet/i).isVisible().catch(() => false);
 
       expect(hasTable || hasEmptyState).toBeTruthy();
     });
@@ -62,7 +88,7 @@ test.describe('AI Detective Leaderboard @leaderboard', () => {
     test('table has correct column headers when data exists', async ({ page }) => {
       await page.goto('/app/metrics/dashboard/team/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(1500);
+      await waitForLeaderboard(page);
 
       const container = page.locator('#leaderboard-container');
       const table = container.locator('table');
@@ -80,14 +106,14 @@ test.describe('AI Detective Leaderboard @leaderboard', () => {
     test('empty state shows appropriate message', async ({ page }) => {
       await page.goto('/app/metrics/dashboard/team/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(1500);
+      await waitForLeaderboard(page);
 
       const container = page.locator('#leaderboard-container');
       const hasData = await container.locator('table').isVisible().catch(() => false);
 
       if (!hasData) {
         // Should show empty state
-        await expect(container.getByText(/No AI Detective results/i)).toBeVisible();
+        await expect(container.getByText(/No AI Detective results yet/i)).toBeVisible();
         await expect(container.getByText(/Respond to Slack surveys to participate/i)).toBeVisible();
       }
     });
@@ -95,7 +121,7 @@ test.describe('AI Detective Leaderboard @leaderboard', () => {
     test('leaderboard rows display member information', async ({ page }) => {
       await page.goto('/app/metrics/dashboard/team/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(1500);
+      await waitForLeaderboard(page);
 
       const container = page.locator('#leaderboard-container');
       const table = container.locator('table');
@@ -128,7 +154,7 @@ test.describe('AI Detective Leaderboard @leaderboard', () => {
     test('first place shows gold medal emoji', async ({ page }) => {
       await page.goto('/app/metrics/dashboard/team/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(1500);
+      await waitForLeaderboard(page);
 
       const container = page.locator('#leaderboard-container');
       const table = container.locator('table');
@@ -148,7 +174,7 @@ test.describe('AI Detective Leaderboard @leaderboard', () => {
     test('accuracy percentages are displayed correctly', async ({ page }) => {
       await page.goto('/app/metrics/dashboard/team/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(1500);
+      await waitForLeaderboard(page);
 
       const container = page.locator('#leaderboard-container');
       const table = container.locator('table');
@@ -172,12 +198,12 @@ test.describe('AI Detective Leaderboard @leaderboard', () => {
     test('leaderboard respects date range filter', async ({ page }) => {
       await page.goto('/app/metrics/dashboard/team/?days=7');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(1500);
+      await waitForLeaderboard(page);
 
       // Change to 30 days
       await page.getByRole('link', { name: '30d' }).click();
       await page.waitForURL(/\?days=30/);
-      await page.waitForTimeout(1500);
+      await waitForLeaderboard(page);
 
       // Leaderboard should still be visible after filter change
       await expect(page.getByRole('heading', { name: 'AI Detective Leaderboard' })).toBeVisible();
@@ -190,7 +216,7 @@ test.describe('AI Detective Leaderboard @leaderboard', () => {
     test('leaderboard updates with 90 day filter', async ({ page }) => {
       await page.goto('/app/metrics/dashboard/team/?days=90');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(1500);
+      await waitForLeaderboard(page);
 
       // Leaderboard section should be visible
       await expect(page.getByRole('heading', { name: 'AI Detective Leaderboard' })).toBeVisible();
@@ -270,7 +296,7 @@ test.describe('Leaderboard with Data @leaderboard @data', () => {
   test('leaderboard shows multiple team members when data exists', async ({ page }) => {
     await page.goto('/app/metrics/dashboard/team/?days=90');
     await page.waitForLoadState('domcontentloaded');
-    await page.waitForTimeout(2000); // Allow HTMX to load
+    await waitForLeaderboard(page);
 
     const container = page.locator('#leaderboard-container');
     const table = container.locator('table');
@@ -288,7 +314,7 @@ test.describe('Leaderboard with Data @leaderboard @data', () => {
   test('leaderboard shows correct guess counts', async ({ page }) => {
     await page.goto('/app/metrics/dashboard/team/?days=90');
     await page.waitForLoadState('domcontentloaded');
-    await page.waitForTimeout(2000);
+    await waitForLeaderboard(page);
 
     const container = page.locator('#leaderboard-container');
     const table = container.locator('table');
