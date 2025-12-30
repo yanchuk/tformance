@@ -527,6 +527,8 @@ def get_review_distribution(
     """Get review distribution by reviewer (for bar chart).
 
     Uses actual GitHub PR reviews (not survey responses) filtered by review submission date.
+    Counts unique PRs reviewed (not total review submissions) to match PR list semantics.
+    Only counts PRs that were merged within the date range.
 
     Args:
         team: Team instance
@@ -540,12 +542,15 @@ def get_review_distribution(
             - reviewer_name (str): Reviewer display name
             - avatar_url (str): GitHub avatar URL
             - initials (str): Initials for fallback display
-            - count (int): Number of reviews
+            - count (int): Number of unique PRs reviewed
     """
     filters = {
         "team": team,
         "submitted_at__gte": start_of_day(start_date),
         "submitted_at__lte": end_of_day(end_date),
+        # Also filter by PR merged_at to match PR list semantics
+        "pull_request__merged_at__date__gte": start_date,
+        "pull_request__merged_at__date__lte": end_date,
     }
     if repo:
         filters["pull_request__github_repo"] = repo
@@ -553,7 +558,7 @@ def get_review_distribution(
     reviews = (
         PRReview.objects.filter(**filters)  # noqa: TEAM001 - team in filters
         .values("reviewer__id", "reviewer__display_name", "reviewer__github_id")
-        .annotate(count=Count("id"))
+        .annotate(count=Count("pull_request", distinct=True))  # Count unique PRs, not review submissions
         .order_by("-count")
     )
 

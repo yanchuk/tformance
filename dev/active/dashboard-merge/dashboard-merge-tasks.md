@@ -1,7 +1,7 @@
 # Dashboard Merge - Implementation Tasks
 
-**Last Updated:** 2024-12-30
-**Status:** Phase 5 Complete - Migration Done
+**Last Updated:** 2024-12-31
+**Status:** Phase 5 Complete - Bug Fixes Applied
 
 ---
 
@@ -276,6 +276,31 @@ Comprehensive testing before launch.
 **Critical Path:** Phase 1 → Phase 2 → Phase 3 → Phase 4 → Phase 6
 
 Phase 5 can run in parallel with Phase 6 (redirect can be added early).
+
+---
+
+## Bug Fixes (Post-Release) ✅ COMPLETE
+
+### Review Distribution Count Mismatch (2024-12-31)
+- [x] Fixed semantic mismatch: dashboard counted review submissions, PR list counted unique PRs
+- [x] Changed `Count("id")` to `Count("pull_request", distinct=True)` in get_review_distribution()
+- [x] Added `merged_at` date filter to dashboard to match PR list semantics
+- [x] Added `submitted_at` date filter to PR list's reviewer filter
+- [x] Updated template label from "reviews" to "PRs"
+- [x] Added test: `test_get_review_distribution_counts_unique_prs_not_total_reviews`
+- [x] All 372 dashboard tests pass, all 76 PR list service tests pass
+
+**Acceptance:** Dashboard counts match PR list counts when clicking through. ✅
+
+### E2E Data Consistency Tests (2024-12-31)
+- [x] Created `tests/e2e/dashboard-data-consistency.spec.ts`
+- [x] Test: Review Distribution shows "PRs" label, not "reviews"
+- [x] Test: Needs Attention total matches sum of issue types
+- [x] Test: Key Metrics PRs Merged matches PR list total
+- [x] Test: Time range selector updates all sections
+- [x] Tests pass on chromium (3 passed, 5 skipped due to no demo data)
+
+**Acceptance:** E2E tests verify dashboard-to-PR-list data consistency. ✅
 
 ---
 

@@ -18,7 +18,7 @@
       <div class="flex-1 min-w-0">
         <div class="flex items-center justify-between mb-1">
           <span class="text-sm font-medium truncate group-hover:text-primary transition-colors">{{ row.reviewer_name }}</span>
-          <span class="text-sm text-base-content/80">{{ row.count }} {% trans "reviews" %}</span>
+          <span class="text-sm text-base-content/80">{{ row.count }} {% trans "PRs" %}</span>
         </div>
         <progress class="progress progress-primary w-full" value="{{ row.count }}" max="{{ chart_data.0.count }}"></progress>
       </div>

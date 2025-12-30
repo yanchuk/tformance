@@ -11,6 +11,7 @@ from django.test import TestCase
 from django.utils import timezone
 
 from apps.metrics.factories import (
+    PRReviewFactory,
     PRSurveyFactory,
     PRSurveyReviewFactory,
     PullRequestFactory,
@@ -21,7 +22,11 @@ from apps.metrics.services import dashboard_service
 
 
 class TestGetReviewDistribution(TestCase):
-    """Tests for get_review_distribution function."""
+    """Tests for get_review_distribution function.
+
+    Uses GitHub PR reviews (PRReview model) filtered by submitted_at date.
+    Counts unique PRs reviewed per reviewer (not total review submissions).
+    """
 
     def setUp(self):
         """Set up test fixtures."""
@@ -35,12 +40,11 @@ class TestGetReviewDistribution(TestCase):
 
         self.assertIsInstance(result, list)
 
-    def test_get_review_distribution_counts_reviews_per_reviewer(self):
-        """Test that get_review_distribution counts reviews per reviewer."""
+    def test_get_review_distribution_counts_unique_prs_per_reviewer(self):
+        """Test that get_review_distribution counts unique PRs per reviewer."""
         reviewer1 = TeamMemberFactory(team=self.team, display_name="Alice")
         reviewer2 = TeamMemberFactory(team=self.team, display_name="Bob")
 
-        # Create multiple PRs with surveys - each reviewer can only review each survey once
         # Alice reviews 3 PRs, Bob reviews 2 PRs
         for i in range(3):
             pr = PullRequestFactory(
@@ -48,12 +52,11 @@ class TestGetReviewDistribution(TestCase):
                 state="merged",
                 merged_at=timezone.make_aware(timezone.datetime(2024, 1, 10 + i, 12, 0)),
             )
-            survey = PRSurveyFactory(team=self.team, pull_request=pr)
-            PRSurveyReviewFactory(
+            PRReviewFactory(
                 team=self.team,
-                survey=survey,
+                pull_request=pr,
                 reviewer=reviewer1,
-                responded_at=timezone.make_aware(timezone.datetime(2024, 1, 11 + i, 12, 0)),
+                submitted_at=timezone.make_aware(timezone.datetime(2024, 1, 11 + i, 12, 0)),
             )
 
         for i in range(2):
@@ -62,12 +65,11 @@ class TestGetReviewDistribution(TestCase):
                 state="merged",
                 merged_at=timezone.make_aware(timezone.datetime(2024, 1, 15 + i, 12, 0)),
             )
-            survey = PRSurveyFactory(team=self.team, pull_request=pr)
-            PRSurveyReviewFactory(
+            PRReviewFactory(
                 team=self.team,
-                survey=survey,
+                pull_request=pr,
                 reviewer=reviewer2,
-                responded_at=timezone.make_aware(timezone.datetime(2024, 1, 16 + i, 12, 0)),
+                submitted_at=timezone.make_aware(timezone.datetime(2024, 1, 16 + i, 12, 0)),
             )
 
         result = dashboard_service.get_review_distribution(self.team, self.start_date, self.end_date)
@@ -83,6 +85,30 @@ class TestGetReviewDistribution(TestCase):
         self.assertEqual(alice_data["count"], 3)
         self.assertEqual(bob_data["count"], 2)
 
+    def test_get_review_distribution_counts_unique_prs_not_total_reviews(self):
+        """Test that multiple reviews on same PR count as 1 (unique PRs, not submissions)."""
+        reviewer = TeamMemberFactory(team=self.team, display_name="Alice")
+
+        # One PR with 3 reviews from same reviewer (request changes, approve, etc)
+        pr = PullRequestFactory(
+            team=self.team,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 15, 12, 0)),
+        )
+        for i in range(3):
+            PRReviewFactory(
+                team=self.team,
+                pull_request=pr,
+                reviewer=reviewer,
+                submitted_at=timezone.make_aware(timezone.datetime(2024, 1, 10 + i, 12, 0)),
+            )
+
+        result = dashboard_service.get_review_distribution(self.team, self.start_date, self.end_date)
+
+        # Should count as 1 unique PR, not 3 reviews
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["count"], 1)
+
     def test_get_review_distribution_only_counts_reviews_in_date_range(self):
         """Test that get_review_distribution only counts reviews in the date range."""
         reviewer = TeamMemberFactory(team=self.team, display_name="Alice")
@@ -93,26 +119,24 @@ class TestGetReviewDistribution(TestCase):
             state="merged",
             merged_at=timezone.make_aware(timezone.datetime(2024, 1, 10, 12, 0)),
         )
-        survey_in = PRSurveyFactory(team=self.team, pull_request=pr_in_range)
-        PRSurveyReviewFactory(
+        PRReviewFactory(
             team=self.team,
-            survey=survey_in,
+            pull_request=pr_in_range,
             reviewer=reviewer,
-            responded_at=timezone.make_aware(timezone.datetime(2024, 1, 12, 12, 0)),
+            submitted_at=timezone.make_aware(timezone.datetime(2024, 1, 12, 12, 0)),
         )
 
-        # Out-of-range review (before start date) - needs separate PR/survey
+        # Out-of-range review (before start date)
         pr_out_range = PullRequestFactory(
             team=self.team,
             state="merged",
             merged_at=timezone.make_aware(timezone.datetime(2023, 12, 10, 12, 0)),
         )
-        survey_out = PRSurveyFactory(team=self.team, pull_request=pr_out_range)
-        PRSurveyReviewFactory(
+        PRReviewFactory(
             team=self.team,
-            survey=survey_out,
+            pull_request=pr_out_range,
             reviewer=reviewer,
-            responded_at=timezone.make_aware(timezone.datetime(2023, 12, 15, 12, 0)),
+            submitted_at=timezone.make_aware(timezone.datetime(2023, 12, 15, 12, 0)),
         )
 
         result = dashboard_service.get_review_distribution(self.team, self.start_date, self.end_date)
@@ -137,12 +161,11 @@ class TestGetReviewDistribution(TestCase):
                 state="merged",
                 merged_at=timezone.make_aware(timezone.datetime(2024, 1, 10, 12, 0)),
             )
-            survey = PRSurveyFactory(team=self.team, pull_request=pr)
-            PRSurveyReviewFactory(
+            PRReviewFactory(
                 team=self.team,
-                survey=survey,
+                pull_request=pr,
                 reviewer=reviewer,
-                responded_at=timezone.make_aware(timezone.datetime(2024, 1, 11, 12, i)),
+                submitted_at=timezone.make_aware(timezone.datetime(2024, 1, 11, 12, i)),
             )
 
         result = dashboard_service.get_review_distribution(self.team, self.start_date, self.end_date)
@@ -160,12 +183,11 @@ class TestGetReviewDistribution(TestCase):
                 state="merged",
                 merged_at=timezone.make_aware(timezone.datetime(2024, 1, 10, 12, 0)),
             )
-            survey = PRSurveyFactory(team=self.team, pull_request=pr)
-            PRSurveyReviewFactory(
+            PRReviewFactory(
                 team=self.team,
-                survey=survey,
+                pull_request=pr,
                 reviewer=reviewer,
-                responded_at=timezone.make_aware(timezone.datetime(2024, 1, 11, 12, i)),
+                submitted_at=timezone.make_aware(timezone.datetime(2024, 1, 11, 12, i)),
             )
 
         result = dashboard_service.get_review_distribution(self.team, self.start_date, self.end_date, limit=5)
@@ -175,7 +197,7 @@ class TestGetReviewDistribution(TestCase):
 
     def test_get_review_distribution_limit_returns_top_reviewers(self):
         """Test that limit returns reviewers with highest counts."""
-        # Create reviewers with varying review counts
+        # Create reviewers with varying review counts (each PR gets 1 review)
         review_counts = [5, 1, 10, 3, 8, 2]
         for i, count in enumerate(review_counts):
             reviewer = TeamMemberFactory(team=self.team, display_name=f"Reviewer{i}")
@@ -185,12 +207,11 @@ class TestGetReviewDistribution(TestCase):
                     state="merged",
                     merged_at=timezone.make_aware(timezone.datetime(2024, 1, 10 + j % 20, 12, 0)),
                 )
-                survey = PRSurveyFactory(team=self.team, pull_request=pr)
-                PRSurveyReviewFactory(
+                PRReviewFactory(
                     team=self.team,
-                    survey=survey,
+                    pull_request=pr,
                     reviewer=reviewer,
-                    responded_at=timezone.make_aware(timezone.datetime(2024, 1, 11 + j % 20, 12, 0)),
+                    submitted_at=timezone.make_aware(timezone.datetime(2024, 1, 11 + j % 20, 12, 0)),
                 )
 
         result = dashboard_service.get_review_distribution(self.team, self.start_date, self.end_date, limit=3)
@@ -211,12 +232,11 @@ class TestGetReviewDistribution(TestCase):
                 state="merged",
                 merged_at=timezone.make_aware(timezone.datetime(2024, 1, 10, 12, 0)),
             )
-            survey = PRSurveyFactory(team=self.team, pull_request=pr)
-            PRSurveyReviewFactory(
+            PRReviewFactory(
                 team=self.team,
-                survey=survey,
+                pull_request=pr,
                 reviewer=reviewer,
-                responded_at=timezone.make_aware(timezone.datetime(2024, 1, 11, 12, i)),
+                submitted_at=timezone.make_aware(timezone.datetime(2024, 1, 11, 12, i)),
             )
 
         result = dashboard_service.get_review_distribution(self.team, self.start_date, self.end_date, limit=5)

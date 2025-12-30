@@ -373,9 +373,39 @@ No database migrations required, so rollback is purely code-based.
 
 ---
 
-## Session Handoff Notes (2024-12-30)
+## Session Handoff Notes (2024-12-31)
 
-### What Was Completed
+### Critical Bug Fix: Review Distribution Count Mismatch
+
+**Problem:** Dashboard showed "118 reviews" for a reviewer, but clicking through to PR list showed only 35 PRs.
+
+**Root Causes (3 issues found):**
+
+1. **Counting reviews vs unique PRs**: Dashboard was counting individual `PRReview` records (review submissions), but PR list counted unique `PullRequest` records. A reviewer can submit multiple reviews on the same PR (request changes → approve).
+
+2. **Missing merged_at filter in dashboard**: Dashboard filtered by `submitted_at` on reviews but didn't filter by `merged_at` on PRs. PR list filtered by both.
+
+3. **PR list didn't filter reviews by date**: When filtering by reviewer, PR list wasn't filtering reviews by `submitted_at` date range.
+
+**Fixes Applied:**
+
+1. Changed `get_review_distribution()` from `Count("id")` to `Count("pull_request", distinct=True)` to count unique PRs
+2. Added `pull_request__merged_at__date__gte/lte` filters to `get_review_distribution()` to match PR list semantics
+3. Added `submitted_at` date range filtering to PR list's reviewer filter
+4. Updated template label from "reviews" to "PRs"
+5. Updated tests to use `PRReviewFactory` and added new test for unique PR counting
+
+**Files Modified:**
+- `apps/metrics/services/dashboard_service.py` - get_review_distribution()
+- `apps/metrics/services/pr_list_service.py` - reviewer filter
+- `templates/metrics/partials/review_distribution_chart.html` - label change
+- `apps/metrics/tests/dashboard/test_review_metrics.py` - updated tests
+
+**Verification:** Dashboard shows 33 PRs, PR list shows 33 PRs - counts now match!
+
+---
+
+### Previous Session: What Was Completed
 - Phase 1 (Service Layer): 4 functions, 59 tests - ALL PASSING
 - Phase 2 (HTMX Endpoints): 4 endpoints, 30 tests - ALL PASSING
 - Created 3 partial templates for new dashboard components

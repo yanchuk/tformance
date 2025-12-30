@@ -140,8 +140,17 @@ def get_prs_queryset(team: Team, filters: dict[str, Any]) -> QuerySet[PullReques
         qs = qs.filter(author_id=filters["author"])
 
     # Filter by reviewer
+    # When filtering by reviewer, also filter by review submitted_at date range
+    # to match dashboard semantics (reviews submitted in the date range)
     if filters.get("reviewer"):
-        reviewer_pr_ids = PRReview.objects.filter(team=team, reviewer_id=filters["reviewer"]).values_list(
+        review_filters = {"team": team, "reviewer_id": filters["reviewer"]}
+        date_from = _parse_date(filters.get("date_from"))
+        date_to = _parse_date(filters.get("date_to"))
+        if date_from:
+            review_filters["submitted_at__date__gte"] = date_from
+        if date_to:
+            review_filters["submitted_at__date__lte"] = date_to
+        reviewer_pr_ids = PRReview.objects.filter(**review_filters).values_list(  # noqa: TEAM001
             "pull_request_id", flat=True
         )
         qs = qs.filter(id__in=reviewer_pr_ids)
