@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, Page } from '@playwright/test';
 import { loginAs } from './fixtures/test-users';
 
 /**
@@ -7,6 +7,16 @@ import { loginAs } from './fixtures/test-users';
  * Run with: npx playwright test copilot.spec.ts
  * Tag: @copilot
  */
+
+/**
+ * Wait for HTMX request to complete.
+ */
+async function waitForHtmxComplete(page: Page, timeout = 5000): Promise<void> {
+  await page.waitForFunction(
+    () => !document.body.classList.contains('htmx-request'),
+    { timeout }
+  );
+}
 
 test.describe('Copilot Metrics @copilot', () => {
   test.beforeEach(async ({ page }) => {
@@ -17,8 +27,7 @@ test.describe('Copilot Metrics @copilot', () => {
     test.beforeEach(async ({ page }) => {
       await page.goto('/app/metrics/overview/');
       await page.waitForLoadState('domcontentloaded');
-      // Wait for HTMX content
-      await page.waitForTimeout(1000);
+      await waitForHtmxComplete(page);
     });
 
     test('Copilot section exists on CTO dashboard', async ({ page }) => {
@@ -101,7 +110,7 @@ test.describe('Copilot Metrics @copilot', () => {
 
         // Click should trigger action (not navigation)
         await syncButton.click();
-        await page.waitForTimeout(500);
+        await waitForHtmxComplete(page);
 
         // Should still be on integrations page
         await expect(page).toHaveURL(/\/integrations/);
@@ -131,7 +140,7 @@ test.describe('Copilot Metrics @copilot', () => {
     test('Copilot metrics show numeric values', async ({ page }) => {
       await page.goto('/app/metrics/overview/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(1000);
+      await waitForHtmxComplete(page);
 
       // Check that Copilot metrics show actual numbers, not NaN or errors
       const statValues = page.locator('.stat-value');
@@ -151,7 +160,7 @@ test.describe('Copilot Metrics @copilot', () => {
     test('acceptance rate shows percentage format', async ({ page }) => {
       await page.goto('/app/metrics/overview/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(1000);
+      await waitForHtmxComplete(page);
 
       // Look for acceptance rate value
       const acceptanceRate = page.locator('.stat').filter({ hasText: /acceptance/i });
@@ -181,7 +190,7 @@ test.describe('Copilot Metrics @copilot', () => {
     test('Copilot section gracefully handles missing data', async ({ page }) => {
       await page.goto('/app/metrics/overview/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(1000);
+      await waitForHtmxComplete(page);
 
       // Page should not show error states
       const errorMessages = page.getByText(/error|failed|crash/i);
@@ -196,13 +205,13 @@ test.describe('Copilot Metrics @copilot', () => {
     test('Copilot trend chart responds to date filters', async ({ page }) => {
       await page.goto('/app/metrics/overview/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(1000);
+      await waitForHtmxComplete(page);
 
       // Change date filter
       const filter30d = page.getByRole('button', { name: /30 days/i });
       if (await filter30d.isVisible()) {
         await filter30d.click();
-        await page.waitForTimeout(500);
+        await waitForHtmxComplete(page);
 
         // Chart should update (no way to verify data change, but no errors)
         const errors = await page.locator('.error').count();
@@ -213,7 +222,7 @@ test.describe('Copilot Metrics @copilot', () => {
     test('Copilot chart canvas exists when section visible', async ({ page }) => {
       await page.goto('/app/metrics/overview/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(1000);
+      await waitForHtmxComplete(page);
 
       // Find the Copilot chart section container
       const copilotChartSection = page.locator('#copilot-trend-container');
