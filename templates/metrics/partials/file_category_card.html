@@ -1,46 +1,50 @@
 {% load i18n number_filters %}
-<div class="grid grid-cols-2 gap-4 mb-4">
-  <!-- Total Files -->
-  <div class="stat bg-base-200 rounded-lg p-4">
-    <div class="stat-title text-xs">{% trans "Files Changed" %}</div>
-    <div class="stat-value !text-xl font-mono">{{ metrics.total_files|format_compact }}</div>
-    <div class="stat-desc">{% trans "total files" %}</div>
-  </div>
-
-  <!-- Total Lines Changed -->
-  <div class="stat bg-base-200 rounded-lg p-4">
-    <div class="stat-title text-xs">{% trans "Lines Changed" %}</div>
-    <div class="stat-value !text-xl font-mono">{{ metrics.total_changes|format_compact }}</div>
-    <div class="stat-desc">{% trans "additions + deletions" %}</div>
-  </div>
-</div>
-
 {% if metrics.by_category %}
-<div class="mt-4">
-  <h4 class="text-sm font-medium text-base-content/80 mb-3">{% trans "By Category" %}</h4>
-  <div class="space-y-2">
-    {% for cat in metrics.by_category %}
-    <div class="flex items-center gap-4">
-      <div class="w-28 text-sm font-medium">{{ cat.category_display }}</div>
-      <div class="flex-1">
-        <div class="h-4 bg-base-300 rounded-full overflow-hidden">
-          <div class="h-full rounded-full transition-all
-            {% if cat.category == 'frontend' %}bg-blue-500
-            {% elif cat.category == 'backend' %}bg-green-500
-            {% elif cat.category == 'test' %}bg-purple-500
-            {% elif cat.category == 'docs' %}bg-amber-500
-            {% elif cat.category == 'config' %}bg-gray-500
-            {% else %}bg-base-content/30{% endif %}"
-            style="width: {{ cat.percentage }}%"></div>
-        </div>
+<!-- Horizontal layout: Chart left, Table right -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+  <!-- Left side: Stats + Category Chart -->
+  <div>
+    <!-- Summary Stats -->
+    <div class="grid grid-cols-2 gap-4 mb-4">
+      <div class="stat bg-base-200 rounded-lg p-3">
+        <div class="stat-title text-xs">{% trans "Files Changed" %}</div>
+        <div class="font-bold text-xl font-mono">{{ metrics.total_files|format_compact }}</div>
+        <div class="stat-desc text-xs">{% trans "total files" %}</div>
       </div>
-      <div class="w-20 text-right text-sm font-mono">{{ cat.file_count }} <span class="text-xs text-base-content/70">({{ cat.percentage }}%)</span></div>
+      <div class="stat bg-base-200 rounded-lg p-3">
+        <div class="stat-title text-xs">{% trans "Lines Changed" %}</div>
+        <div class="font-bold text-xl font-mono">{{ metrics.total_changes|format_compact }}</div>
+        <div class="stat-desc text-xs">{% trans "additions + deletions" %}</div>
+      </div>
     </div>
-    {% endfor %}
+
+    <!-- Category Breakdown Chart -->
+    <h4 class="text-sm font-medium text-base-content/80 mb-3">{% trans "By Category" %}</h4>
+    <div class="space-y-2">
+      {% for cat in metrics.by_category %}
+      <div class="flex items-center gap-3">
+        <div class="w-24 text-sm font-medium truncate">{{ cat.category_display }}</div>
+        <div class="flex-1">
+          <div class="h-5 bg-base-300 rounded-full overflow-hidden">
+            <div class="h-full rounded-full transition-all
+              {% if cat.category == 'frontend' %}bg-blue-500
+              {% elif cat.category == 'backend' %}bg-green-500
+              {% elif cat.category == 'test' %}bg-purple-500
+              {% elif cat.category == 'docs' %}bg-amber-500
+              {% elif cat.category == 'config' %}bg-gray-500
+              {% else %}bg-base-content/30{% endif %}"
+              style="width: {{ cat.percentage }}%"></div>
+          </div>
+        </div>
+        <div class="w-24 text-right text-sm font-mono">{{ cat.file_count }} <span class="text-xs text-base-content/70">({{ cat.percentage }}%)</span></div>
+      </div>
+      {% endfor %}
+    </div>
   </div>
 
-  <!-- Legend with line changes -->
-  <div class="mt-4 overflow-x-auto">
+  <!-- Right side: Detailed Table -->
+  <div class="overflow-x-auto">
+    <h4 class="text-sm font-medium text-base-content/80 mb-3">{% trans "Line Changes by Category" %}</h4>
     <table class="table table-sm">
       <thead>
         <tr>
@@ -54,7 +58,7 @@
       <tbody>
         {% for cat in metrics.by_category %}
         <tr>
-          <td>{{ cat.category_display }}</td>
+          <td class="font-medium">{{ cat.category_display }}</td>
           <td class="text-right font-mono">{{ cat.file_count }}</td>
           <td class="text-right font-mono text-success">+{{ cat.additions|format_compact }}</td>
           <td class="text-right font-mono text-error">-{{ cat.deletions|format_compact }}</td>
