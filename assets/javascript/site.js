@@ -5,3 +5,5 @@ import './theme';
 import './htmx';
 import './mock-i18n';
 import './alpine';
+// Dashboard sparkline charts for key metrics
+import './dashboard/sparkline';

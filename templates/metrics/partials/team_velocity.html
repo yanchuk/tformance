@@ -3,31 +3,34 @@
   {% if contributors %}
   <ul class="divide-y divide-base-300">
     {% for contributor in contributors %}
-    <li class="py-3 flex items-center gap-3">
-      <div class="avatar">
-        <div class="w-10 rounded-full">
-          {% if contributor.avatar_url %}
-          <img src="{{ contributor.avatar_url }}" alt="{{ contributor.display_name }}" />
-          {% else %}
-          <div class="bg-base-300 w-full h-full flex items-center justify-center">
-            <span class="text-base-content/60 text-sm">{{ contributor.display_name|slice:":2"|upper }}</span>
+    <li class="py-3">
+      <a href="{% url 'metrics:pr_list' %}?author={{ contributor.member_id }}&days={{ days }}"
+         class="flex items-center gap-3 hover:bg-base-200 rounded-lg p-1 -m-1 transition-colors group">
+        <div class="avatar">
+          <div class="w-10 rounded-full">
+            {% if contributor.avatar_url %}
+            <img src="{{ contributor.avatar_url }}" alt="{{ contributor.display_name }}" />
+            {% else %}
+            <div class="bg-base-300 w-full h-full flex items-center justify-center">
+              <span class="text-base-content/60 text-sm">{{ contributor.display_name|slice:":2"|upper }}</span>
+            </div>
+            {% endif %}
           </div>
-          {% endif %}
         </div>
-      </div>
-      <div class="flex-1 min-w-0">
-        <p class="font-medium text-base-content truncate">{{ contributor.display_name }}</p>
-        <p class="text-sm text-base-content/70">
-          {{ contributor.pr_count }} {% trans "PRs" %}
-          {% if contributor.avg_cycle_time %}
-          <span class="mx-1">&middot;</span>
-          {{ contributor.avg_cycle_time|floatformat:1 }}h {% trans "avg cycle" %}
-          {% endif %}
-        </p>
-      </div>
-      <div class="text-right">
-        <span class="badge badge-primary badge-lg">{{ contributor.pr_count }}</span>
-      </div>
+        <div class="flex-1 min-w-0">
+          <p class="font-medium text-base-content group-hover:text-primary truncate transition-colors">{{ contributor.display_name }}</p>
+          <p class="text-sm text-base-content/70">
+            {{ contributor.pr_count }} {% trans "PRs" %}
+            {% if contributor.avg_cycle_time %}
+            <span class="mx-1">&middot;</span>
+            {{ contributor.avg_cycle_time|floatformat:1 }}h {% trans "avg cycle" %}
+            {% endif %}
+          </p>
+        </div>
+        <div class="text-right">
+          <span class="badge badge-primary badge-lg">{{ contributor.pr_count }}</span>
+        </div>
+      </a>
     </li>
     {% endfor %}
   </ul>

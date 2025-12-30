@@ -1,62 +1,62 @@
 {% load i18n %}
 <div class="needs-attention-container">
-  {% if prs %}
-  <ul class="divide-y divide-base-300">
-    {% for pr in prs %}
-    <li class="py-3">
-      <div class="flex items-start gap-3">
-        <span class="text-lg">
-          {% if pr.issue_priority == 1 %}🔴{% elif pr.issue_priority == 2 %}🟡{% else %}⚪{% endif %}
-        </span>
-        <div class="flex-1 min-w-0">
-          <a href="{{ pr.url }}" target="_blank" class="font-medium text-base-content hover:text-primary truncate block">
-            {{ pr.title }}
-          </a>
-          <div class="text-sm text-base-content/70 mt-1">
-            <span class="badge badge-sm badge-ghost">{{ pr.issue_type }}</span>
-            <span class="ml-2">by {{ pr.author }}</span>
-          </div>
-        </div>
+  {% if summary %}
+  <!-- Stacked Horizontal Bar with clickable segments -->
+  <div class="mb-4">
+    <div class="flex h-6 rounded-lg overflow-hidden bg-base-200">
+      {% for item in summary %}
+      <a href="{% url 'metrics:pr_list' %}?issue_type={{ item.type }}&days={{ days }}"
+         class="flex items-center justify-center text-xs font-medium hover:opacity-80 cursor-pointer transition-opacity"
+         style="width: {{ item.percent }}%; background-color: {{ item.color }};"
+         title="{{ item.tooltip }}">
+        {% if item.percent > 8 %}{{ item.count }}{% endif %}
+      </a>
+      {% endfor %}
+    </div>
+    <!-- Legend with links and tooltips -->
+    <div class="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs">
+      {% for item in summary %}
+      <a href="{% url 'metrics:pr_list' %}?issue_type={{ item.type }}&days={{ days }}"
+         class="flex items-center gap-1 hover:text-primary transition-colors"
+         title="{{ item.tooltip }}">
+        <span class="w-3 h-3 rounded-sm" style="background-color: {{ item.color }};"></span>
+        <span class="text-base-content/70">{{ item.label }}</span>
+        <span class="font-bold tabular-nums">{{ item.count }}</span>
+      </a>
+      {% endfor %}
+      <div class="flex items-center gap-1 ml-auto">
+        <span class="text-base-content/50">{% trans "Total" %}:</span>
+        <span class="font-bold tabular-nums">{{ total_count }}</span>
       </div>
-    </li>
-    {% endfor %}
-  </ul>
+    </div>
+  </div>
 
-  {% if total_pages > 1 %}
-  <div class="flex justify-center gap-2 mt-4">
-    {% if page > 1 %}
-    <button
-      hx-get="{% url 'metrics:needs_attention' %}?page={{ page|add:'-1' }}"
-      hx-target="closest .needs-attention-container"
-      hx-swap="outerHTML"
-      class="btn btn-sm btn-ghost"
-    >
-      {% trans "Previous" %}
-    </button>
-    {% endif %}
-    <span class="btn btn-sm btn-disabled">{{ page }} / {{ total_pages }}</span>
-    {% if page < total_pages %}
-    <button
-      hx-get="{% url 'metrics:needs_attention' %}?page={{ page|add:'1' }}"
-      hx-target="closest .needs-attention-container"
-      hx-swap="outerHTML"
-      class="btn btn-sm btn-ghost"
-    >
-      {% trans "Next" %}
-    </button>
-    {% endif %}
+  {% if prs %}
+  <!-- Most Critical PR -->
+  <div class="pt-3 border-t border-base-300">
+    <div class="text-xs text-base-content/50 mb-1">{% trans "Most Critical" %}</div>
+    {% with pr=prs.0 %}
+    <a href="{{ pr.url }}" target="_blank" class="flex items-start gap-2 hover:bg-base-200 rounded p-1 -m-1 group">
+      <span class="w-3 h-3 rounded-sm mt-1 flex-shrink-0" style="background-color: {% if pr.issue_priority == 1 %}#ef4444{% elif pr.issue_priority == 2 %}#f59e0b{% elif pr.issue_priority == 3 %}#06b6d4{% elif pr.issue_priority == 4 %}#8b5cf6{% else %}#6b7280{% endif %};"></span>
+      <div class="flex-1 min-w-0">
+        <div class="text-sm text-base-content group-hover:text-primary line-clamp-1">{{ pr.title }}</div>
+        <div class="text-xs text-base-content/60">{{ pr.author }}</div>
+      </div>
+    </a>
+    {% endwith %}
   </div>
   {% endif %}
 
   {% else %}
-  <div class="flex flex-col items-center justify-center py-8">
-    <div class="w-12 h-12 mb-3 rounded-full bg-success/10 flex items-center justify-center">
-      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+  <!-- Empty State -->
+  <div class="flex flex-col items-center justify-center py-6">
+    <div class="w-10 h-10 mb-2 rounded-full bg-success/10 flex items-center justify-center">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
       </svg>
     </div>
-    <p class="text-base-content/80 font-medium">{% trans "All Clear!" %}</p>
-    <p class="text-base-content/60 text-sm">{% trans "No PRs need attention right now" %}</p>
+    <p class="text-base-content/80 font-medium text-sm">{% trans "All Clear!" %}</p>
+    <p class="text-base-content/60 text-xs">{% trans "No PRs need attention" %}</p>
   </div>
   {% endif %}
 </div>

@@ -127,6 +127,103 @@ class TestGetReviewDistribution(TestCase):
 
         self.assertEqual(result, [])
 
+    def test_get_review_distribution_default_limit_is_none(self):
+        """Test that get_review_distribution returns all reviewers by default."""
+        # Create 7 reviewers with different review counts
+        for i in range(7):
+            reviewer = TeamMemberFactory(team=self.team, display_name=f"Reviewer{i}")
+            pr = PullRequestFactory(
+                team=self.team,
+                state="merged",
+                merged_at=timezone.make_aware(timezone.datetime(2024, 1, 10, 12, 0)),
+            )
+            survey = PRSurveyFactory(team=self.team, pull_request=pr)
+            PRSurveyReviewFactory(
+                team=self.team,
+                survey=survey,
+                reviewer=reviewer,
+                responded_at=timezone.make_aware(timezone.datetime(2024, 1, 11, 12, i)),
+            )
+
+        result = dashboard_service.get_review_distribution(self.team, self.start_date, self.end_date)
+
+        # Should return all 7 reviewers by default
+        self.assertEqual(len(result), 7)
+
+    def test_get_review_distribution_respects_limit_parameter(self):
+        """Test that get_review_distribution respects the limit parameter."""
+        # Create 10 reviewers with different review counts
+        for i in range(10):
+            reviewer = TeamMemberFactory(team=self.team, display_name=f"Reviewer{i}")
+            pr = PullRequestFactory(
+                team=self.team,
+                state="merged",
+                merged_at=timezone.make_aware(timezone.datetime(2024, 1, 10, 12, 0)),
+            )
+            survey = PRSurveyFactory(team=self.team, pull_request=pr)
+            PRSurveyReviewFactory(
+                team=self.team,
+                survey=survey,
+                reviewer=reviewer,
+                responded_at=timezone.make_aware(timezone.datetime(2024, 1, 11, 12, i)),
+            )
+
+        result = dashboard_service.get_review_distribution(self.team, self.start_date, self.end_date, limit=5)
+
+        # Should return only 5 reviewers
+        self.assertEqual(len(result), 5)
+
+    def test_get_review_distribution_limit_returns_top_reviewers(self):
+        """Test that limit returns reviewers with highest counts."""
+        # Create reviewers with varying review counts
+        review_counts = [5, 1, 10, 3, 8, 2]
+        for i, count in enumerate(review_counts):
+            reviewer = TeamMemberFactory(team=self.team, display_name=f"Reviewer{i}")
+            for j in range(count):
+                pr = PullRequestFactory(
+                    team=self.team,
+                    state="merged",
+                    merged_at=timezone.make_aware(timezone.datetime(2024, 1, 10 + j % 20, 12, 0)),
+                )
+                survey = PRSurveyFactory(team=self.team, pull_request=pr)
+                PRSurveyReviewFactory(
+                    team=self.team,
+                    survey=survey,
+                    reviewer=reviewer,
+                    responded_at=timezone.make_aware(timezone.datetime(2024, 1, 11 + j % 20, 12, 0)),
+                )
+
+        result = dashboard_service.get_review_distribution(self.team, self.start_date, self.end_date, limit=3)
+
+        # Should return top 3: Reviewer2 (10), Reviewer4 (8), Reviewer0 (5)
+        self.assertEqual(len(result), 3)
+        self.assertEqual(result[0]["count"], 10)
+        self.assertEqual(result[1]["count"], 8)
+        self.assertEqual(result[2]["count"], 5)
+
+    def test_get_review_distribution_limit_handles_fewer_reviewers(self):
+        """Test that limit works when fewer reviewers exist than limit."""
+        # Create only 2 reviewers
+        for i in range(2):
+            reviewer = TeamMemberFactory(team=self.team, display_name=f"Reviewer{i}")
+            pr = PullRequestFactory(
+                team=self.team,
+                state="merged",
+                merged_at=timezone.make_aware(timezone.datetime(2024, 1, 10, 12, 0)),
+            )
+            survey = PRSurveyFactory(team=self.team, pull_request=pr)
+            PRSurveyReviewFactory(
+                team=self.team,
+                survey=survey,
+                reviewer=reviewer,
+                responded_at=timezone.make_aware(timezone.datetime(2024, 1, 11, 12, i)),
+            )
+
+        result = dashboard_service.get_review_distribution(self.team, self.start_date, self.end_date, limit=5)
+
+        # Should return all 2 reviewers (less than limit)
+        self.assertEqual(len(result), 2)
+
 
 class TestGetReviewTimeTrend(TestCase):
     """Tests for get_review_time_trend function."""

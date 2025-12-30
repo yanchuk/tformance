@@ -4,7 +4,8 @@
   {% if chart_data %}
   <div class="space-y-3">
     {% for row in chart_data %}
-    <div class="flex items-center gap-3">
+    <a href="{% url 'metrics:pr_list' %}?reviewer={{ row.reviewer_id }}&days={{ days }}"
+       class="flex items-center gap-3 hover:bg-base-200 rounded-lg p-1 -m-1 transition-colors group">
       <div class="avatar{% if not row.avatar_url %} placeholder{% endif %} flex-shrink-0">
         <div class="bg-neutral text-neutral-content rounded-full w-8 overflow-hidden">
           {% if row.avatar_url %}
@@ -16,14 +17,23 @@
       </div>
       <div class="flex-1 min-w-0">
         <div class="flex items-center justify-between mb-1">
-          <span class="text-sm font-medium truncate">{{ row.reviewer_name }}</span>
+          <span class="text-sm font-medium truncate group-hover:text-primary transition-colors">{{ row.reviewer_name }}</span>
           <span class="text-sm text-base-content/80">{{ row.count }} {% trans "reviews" %}</span>
         </div>
         <progress class="progress progress-primary w-full" value="{{ row.count }}" max="{{ chart_data.0.count }}"></progress>
       </div>
-    </div>
+    </a>
     {% endfor %}
   </div>
+  {% if has_more %}
+  <div class="mt-4 pt-3 border-t border-base-300">
+    <p class="text-sm text-base-content/70 text-center">
+      {% blocktrans with showing=showing_count total=total_count %}
+      Showing {{ showing }} of {{ total }} reviewers
+      {% endblocktrans %}
+    </p>
+  </div>
+  {% endif %}
   {% else %}
   <div class="flex flex-col items-center justify-center h-48">
     <div class="w-12 h-12 mb-3 rounded-full bg-accent-primary/10 flex items-center justify-center">

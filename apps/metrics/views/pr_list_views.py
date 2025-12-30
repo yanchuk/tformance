@@ -55,6 +55,7 @@ def _get_filters_from_request(request: HttpRequest, default_days: int = 30) -> d
         "review_friction",
         "date_from",
         "date_to",
+        "issue_type",  # For "needs attention" filters: revert, hotfix, long_cycle, large_pr, missing_jira
     ]
 
     # Extract only filters that are present in GET params

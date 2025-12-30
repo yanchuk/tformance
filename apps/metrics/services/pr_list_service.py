@@ -221,6 +221,22 @@ def get_prs_queryset(team: Team, filters: dict[str, Any]) -> QuerySet[PullReques
         if date_to:
             qs = qs.filter(merged_at__date__lte=date_to)
 
+    # Filter by issue type (for "needs attention" filters)
+    issue_type = filters.get("issue_type")
+    if issue_type == "revert":
+        qs = qs.filter(is_revert=True)
+    elif issue_type == "hotfix":
+        qs = qs.filter(is_hotfix=True)
+    elif issue_type == "long_cycle":
+        # Long cycle time: > 2x team average (using 48h as threshold)
+        qs = qs.filter(cycle_time_hours__gt=48)
+    elif issue_type == "large_pr":
+        # Large PR: > 500 lines changed
+        qs = qs.annotate(total_lines_issue=F("additions") + F("deletions"))
+        qs = qs.filter(total_lines_issue__gt=500)
+    elif issue_type == "missing_jira":
+        qs = qs.filter(jira_key="")
+
     return qs
 
 

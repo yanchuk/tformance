@@ -521,37 +521,49 @@ def get_ai_detective_leaderboard(team: Team, start_date: date, end_date: date, r
     ]
 
 
-def get_review_distribution(team: Team, start_date: date, end_date: date, repo: str | None = None) -> list[dict]:
-    """Get review distribution by reviewer (for pie chart).
+def get_review_distribution(
+    team: Team, start_date: date, end_date: date, repo: str | None = None, limit: int | None = None
+) -> list[dict]:
+    """Get review distribution by reviewer (for bar chart).
+
+    Uses actual GitHub PR reviews (not survey responses) filtered by review submission date.
 
     Args:
         team: Team instance
         start_date: Start date (inclusive)
         end_date: End date (inclusive)
         repo: Optional repository to filter by (owner/repo format)
+        limit: Optional maximum number of reviewers to return (default: all)
 
     Returns:
         list of dicts with keys:
             - reviewer_name (str): Reviewer display name
+            - avatar_url (str): GitHub avatar URL
+            - initials (str): Initials for fallback display
             - count (int): Number of reviews
     """
     filters = {
         "team": team,
-        "responded_at__gte": start_of_day(start_date),
-        "responded_at__lte": end_of_day(end_date),
+        "submitted_at__gte": start_of_day(start_date),
+        "submitted_at__lte": end_of_day(end_date),
     }
     if repo:
-        filters["survey__pull_request__github_repo"] = repo
+        filters["pull_request__github_repo"] = repo
 
     reviews = (
-        PRSurveyReview.objects.filter(**filters)  # noqa: TEAM001 - team in filters
-        .values("reviewer__display_name", "reviewer__github_id")
+        PRReview.objects.filter(**filters)  # noqa: TEAM001 - team in filters
+        .values("reviewer__id", "reviewer__display_name", "reviewer__github_id")
         .annotate(count=Count("id"))
         .order_by("-count")
     )
 
+    # Apply limit if specified
+    if limit is not None:
+        reviews = reviews[:limit]
+
     return [
         {
+            "reviewer_id": r["reviewer__id"],
             "reviewer_name": r["reviewer__display_name"],
             "avatar_url": _avatar_url_from_github_id(r["reviewer__github_id"]),
             "initials": _compute_initials(r["reviewer__display_name"]),

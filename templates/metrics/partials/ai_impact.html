@@ -1,52 +1,42 @@
 {% load i18n %}
 <div class="ai-impact-container">
   {% if stats.total_prs > 0 %}
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-    <!-- AI Adoption -->
-    <div class="stat bg-base-200 rounded-lg">
-      <div class="stat-title">{% trans "AI Adoption" %}</div>
-      <div class="stat-value text-primary">{{ stats.ai_adoption_pct|floatformat:0 }}%</div>
-      <div class="stat-desc">{{ stats.ai_prs }} / {{ stats.total_prs }} {% trans "PRs" %}</div>
+  <div class="space-y-4">
+    <!-- AI Adoption with Impact -->
+    <div class="flex items-center justify-between">
+      <div>
+        <div class="text-sm text-base-content/70">{% trans "AI Adoption" %}</div>
+        <div class="text-3xl font-bold text-primary tabular-nums">{{ stats.ai_adoption_pct|floatformat:0 }}%</div>
+        <div class="text-sm text-base-content/60">{{ stats.ai_prs }} / {{ stats.total_prs }} {% trans "PRs" %}</div>
+      </div>
+      {% if stats.cycle_time_difference_pct %}
+      <div class="text-right">
+        <div class="text-sm text-base-content/70">{% trans "Cycle Impact" %}</div>
+        <div class="text-2xl font-bold tabular-nums {% if stats.cycle_time_difference_pct < 0 %}text-success{% else %}text-warning{% endif %}">
+          {% if stats.cycle_time_difference_pct > 0 %}+{% endif %}{{ stats.cycle_time_difference_pct|floatformat:0 }}%
+        </div>
+        <div class="text-sm {% if stats.cycle_time_difference_pct < 0 %}text-success{% else %}text-warning{% endif %}">
+          {% if stats.cycle_time_difference_pct < 0 %}{% trans "Faster" %}{% else %}{% trans "Slower" %}{% endif %}
+        </div>
+      </div>
+      {% endif %}
     </div>
 
     <!-- Cycle Time Comparison -->
-    <div class="stat bg-base-200 rounded-lg">
-      <div class="stat-title">{% trans "Avg Cycle Time" %}</div>
-      <div class="flex items-baseline gap-2">
-        <div>
-          <span class="text-lg font-bold text-primary">
-            {% if stats.avg_cycle_with_ai %}{{ stats.avg_cycle_with_ai|floatformat:1 }}h{% else %}-{% endif %}
-          </span>
-          <span class="text-xs text-base-content/60">{% trans "with AI" %}</span>
+    <div class="flex items-center gap-3 pt-3 border-t border-base-300">
+      <div class="flex-1 text-center">
+        <div class="text-xl font-bold text-primary tabular-nums">
+          {% if stats.avg_cycle_with_ai %}{{ stats.avg_cycle_with_ai|floatformat:1 }}h{% else %}-{% endif %}
         </div>
-        <span class="text-base-content/40">vs</span>
-        <div>
-          <span class="text-lg font-bold">
-            {% if stats.avg_cycle_without_ai %}{{ stats.avg_cycle_without_ai|floatformat:1 }}h{% else %}-{% endif %}
-          </span>
-          <span class="text-xs text-base-content/60">{% trans "without" %}</span>
+        <div class="text-xs text-base-content/60">{% trans "with AI" %}</div>
+      </div>
+      <div class="text-base-content/30">vs</div>
+      <div class="flex-1 text-center">
+        <div class="text-xl font-bold tabular-nums">
+          {% if stats.avg_cycle_without_ai %}{{ stats.avg_cycle_without_ai|floatformat:1 }}h{% else %}-{% endif %}
         </div>
+        <div class="text-xs text-base-content/60">{% trans "without AI" %}</div>
       </div>
-    </div>
-
-    <!-- Impact -->
-    <div class="stat bg-base-200 rounded-lg">
-      <div class="stat-title">{% trans "Impact" %}</div>
-      {% if stats.cycle_time_difference_pct %}
-      <div class="stat-value {% if stats.cycle_time_difference_pct < 0 %}text-success{% else %}text-warning{% endif %}">
-        {% if stats.cycle_time_difference_pct > 0 %}+{% endif %}{{ stats.cycle_time_difference_pct|floatformat:0 }}%
-      </div>
-      <div class="stat-desc">
-        {% if stats.cycle_time_difference_pct < 0 %}
-        {% trans "Faster with AI" %}
-        {% else %}
-        {% trans "Slower with AI" %}
-        {% endif %}
-      </div>
-      {% else %}
-      <div class="stat-value text-base-content/40">-</div>
-      <div class="stat-desc">{% trans "Not enough data" %}</div>
-      {% endif %}
     </div>
   </div>
   {% else %}

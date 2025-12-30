@@ -150,10 +150,19 @@ def leaderboard_table(request: HttpRequest) -> HttpResponse:
 
 @login_and_team_required
 def review_distribution_chart(request: HttpRequest) -> HttpResponse:
-    """Review distribution by reviewer (all members)."""
+    """Review distribution by reviewer (all members).
+
+    Displays top 5 reviewers by default for a cleaner dashboard view.
+    """
     start_date, end_date = get_date_range_from_request(request)
     repo = _get_repo_filter(request)
-    data = dashboard_service.get_review_distribution(request.team, start_date, end_date, repo=repo)
+    limit = int(request.GET.get("limit", 5))  # Default to top 5 reviewers
+    days = int(request.GET.get("days", 30))
+
+    # Get all reviewers first for total count, then slice for display
+    all_data = dashboard_service.get_review_distribution(request.team, start_date, end_date, repo=repo)
+    total_count = len(all_data)
+    data = all_data[:limit] if limit else all_data
 
     # Check for bottleneck (reviewer with >3x average pending reviews)
     bottleneck = dashboard_service.detect_review_bottleneck(request.team, start_date, end_date, repo=repo)
@@ -164,6 +173,10 @@ def review_distribution_chart(request: HttpRequest) -> HttpResponse:
         {
             "chart_data": data,
             "bottleneck": bottleneck,
+            "total_count": total_count,
+            "showing_count": len(data),
+            "has_more": total_count > len(data),
+            "days": days,
         },
     )
 
@@ -628,26 +641,87 @@ def benchmark_panel(request: HttpRequest, metric: str) -> HttpResponse:
 def needs_attention_view(request: HttpRequest) -> HttpResponse:
     """Needs attention PR list (admin only).
 
-    Returns prioritized list of PRs with issues (reverts, hotfixes, long cycle, etc.).
+    Returns summary badges showing counts by issue type, with expandable details.
+    Option A approach: Quick glance at totals, click to see PRs.
     """
     start_date, end_date = get_date_range_from_request(request)
-    page = int(request.GET.get("page", 1))
 
-    result = dashboard_service.get_needs_attention_prs(request.team, start_date, end_date, page=page)
+    # Get all flagged PRs (up to 100 for counting)
+    result = dashboard_service.get_needs_attention_prs(request.team, start_date, end_date, page=1, per_page=100)
 
-    # Calculate total pages from total and per_page
-    per_page = result["per_page"]
-    total = result["total"]
-    total_pages = (total + per_page - 1) // per_page if total > 0 else 1
+    # Group by issue type for summary badges
+    issue_counts = {}
+    for pr in result["items"]:
+        issue_type = pr["issue_type"]
+        if issue_type not in issue_counts:
+            issue_counts[issue_type] = 0
+        issue_counts[issue_type] += 1
+
+    # Get days param for links
+    days = int(request.GET.get("days", 30))
+
+    # Define badge order, labels, colors, and tooltips for horizontal bar
+    badge_config = {
+        "revert": {
+            "label": "Reverts",
+            "priority": 1,
+            "color": "#ef4444",  # red
+            "tooltip": "Reverted PRs indicate rolled-back changes",
+        },
+        "hotfix": {
+            "label": "Hotfixes",
+            "priority": 2,
+            "color": "#f59e0b",  # amber
+            "tooltip": "Emergency fixes that bypassed normal review",
+        },
+        "long_cycle": {
+            "label": "Slow",
+            "priority": 3,
+            "color": "#06b6d4",  # cyan
+            "tooltip": "PRs with cycle time >48h (slower than team norm)",
+        },
+        "large_pr": {
+            "label": "Large",
+            "priority": 4,
+            "color": "#8b5cf6",  # violet
+            "tooltip": "Large PRs (>500 lines) are harder to review",
+        },
+        "missing_jira": {
+            "label": "No Jira",
+            "priority": 5,
+            "color": "#6b7280",  # gray
+            "tooltip": "PRs without linked Jira tickets",
+        },
+    }
+
+    # Build ordered summary for template with percentages
+    total = result["total"] or 1  # avoid division by zero
+    summary = []
+    for issue_type, config in sorted(badge_config.items(), key=lambda x: x[1]["priority"]):
+        count = issue_counts.get(issue_type, 0)
+        if count > 0:
+            summary.append(
+                {
+                    "type": issue_type,
+                    "label": config["label"],
+                    "color": config["color"],
+                    "tooltip": config["tooltip"],
+                    "count": count,
+                    "percent": round(count / total * 100, 1),
+                }
+            )
+
+    # Top 5 PRs for expanded view
+    top_prs = result["items"][:5]
 
     return TemplateResponse(
         request,
         "metrics/partials/needs_attention.html",
         {
-            "prs": result["items"],
-            "page": result["page"],
-            "total_pages": total_pages,
-            "total_count": total,
+            "summary": summary,
+            "prs": top_prs,
+            "total_count": result["total"],
+            "days": days,
         },
     )
 
@@ -679,6 +753,7 @@ def team_velocity_view(request: HttpRequest) -> HttpResponse:
     """
     start_date, end_date = get_date_range_from_request(request)
     limit = int(request.GET.get("limit", 5))
+    days = int(request.GET.get("days", 30))
 
     contributors = dashboard_service.get_team_velocity(request.team, start_date, end_date, limit=limit)
 
@@ -687,5 +762,6 @@ def team_velocity_view(request: HttpRequest) -> HttpResponse:
         "metrics/partials/team_velocity.html",
         {
             "contributors": contributors,
+            "days": days,
         },
     )
