@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, Page } from '@playwright/test';
 import { loginAs } from './fixtures/test-users';
 
 /**
@@ -7,6 +7,16 @@ import { loginAs } from './fixtures/test-users';
  * Run with: npx playwright test interactive.spec.ts
  * Tag: @interactive
  */
+
+/**
+ * Wait for HTMX request to complete.
+ */
+async function waitForHtmxComplete(page: Page, timeout = 5000): Promise<void> {
+  await page.waitForFunction(
+    () => !document.body.classList.contains('htmx-request'),
+    { timeout }
+  );
+}
 
 test.describe('Interactive Elements @interactive', () => {
   test.beforeEach(async ({ page }) => {
@@ -67,8 +77,7 @@ test.describe('Interactive Elements @interactive', () => {
       const button = page.getByRole('button', { name: /7 days/i });
       if (await button.isVisible()) {
         await button.click();
-        // Wait for HTMX content update
-        await page.waitForTimeout(500);
+        await waitForHtmxComplete(page);
         // Button should have active state
         await expect(button).toBeVisible();
       }
@@ -78,7 +87,7 @@ test.describe('Interactive Elements @interactive', () => {
       const button = page.getByRole('button', { name: /30 days/i });
       if (await button.isVisible()) {
         await button.click();
-        await page.waitForTimeout(500);
+        await waitForHtmxComplete(page);
         await expect(button).toBeVisible();
       }
     });
@@ -87,7 +96,7 @@ test.describe('Interactive Elements @interactive', () => {
       const button = page.getByRole('button', { name: /90 days/i });
       if (await button.isVisible()) {
         await button.click();
-        await page.waitForTimeout(500);
+        await waitForHtmxComplete(page);
         await expect(button).toBeVisible();
       }
     });
@@ -103,8 +112,8 @@ test.describe('Interactive Elements @interactive', () => {
         await button7d.click();
         await button30d.click();
 
-        // Wait for final state
-        await page.waitForTimeout(1000);
+        // Wait for final HTMX request to complete
+        await waitForHtmxComplete(page);
 
         // Page should still be functional
         await expect(page.locator('.stat').first()).toBeVisible();
@@ -179,8 +188,7 @@ test.describe('Interactive Elements @interactive', () => {
       if (await syncButton.isVisible()) {
         // Click should trigger sync (not navigate)
         await syncButton.click();
-        // Should show loading or success state
-        await page.waitForTimeout(500);
+        await waitForHtmxComplete(page);
         // Page should still be on integrations
         await expect(page).toHaveURL(/\/integrations/);
       }
@@ -222,7 +230,7 @@ test.describe('Interactive Elements @interactive', () => {
         const initialState = await firstToggle.isChecked();
         await firstToggle.click();
         // State should change (or HTMX should process)
-        await page.waitForTimeout(500);
+        await waitForHtmxComplete(page);
       }
     });
 
@@ -238,7 +246,7 @@ test.describe('Interactive Elements @interactive', () => {
       if (count > 0) {
         const firstToggle = toggles.first();
         await firstToggle.click();
-        await page.waitForTimeout(500);
+        await waitForHtmxComplete(page);
       }
     });
   });
@@ -248,7 +256,7 @@ test.describe('Interactive Elements @interactive', () => {
       await page.goto('/app/metrics/dashboard/team/');
       await page.waitForLoadState('domcontentloaded');
       // Wait for HTMX tables to load
-      await page.waitForTimeout(2000);
+      await waitForHtmxComplete(page);
 
       // Look for any table headers (HTMX may load them dynamically)
       const tableHeaders = page.locator('th');
@@ -260,9 +268,7 @@ test.describe('Interactive Elements @interactive', () => {
     test('recent PRs table has clickable rows or links', async ({ page }) => {
       await page.goto('/app/metrics/dashboard/team/');
       await page.waitForLoadState('domcontentloaded');
-
-      // Wait for HTMX tables to load
-      await page.waitForTimeout(1000);
+      await waitForHtmxComplete(page);
 
       // Look for PR links in tables
       const prLinks = page.locator('table a').or(
@@ -276,7 +282,7 @@ test.describe('Interactive Elements @interactive', () => {
     test('leaderboard table displays when data exists', async ({ page }) => {
       await page.goto('/app/metrics/dashboard/team/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(1000);
+      await waitForHtmxComplete(page);
 
       // Look for leaderboard section
       const leaderboard = page.locator('[data-testid="leaderboard"]').or(
@@ -291,7 +297,7 @@ test.describe('Interactive Elements @interactive', () => {
     test('cycle time chart canvas is rendered', async ({ page }) => {
       await page.goto('/app/metrics/dashboard/team/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(1000);
+      await waitForHtmxComplete(page);
 
       // Chart.js renders to canvas
       const canvases = page.locator('canvas');
@@ -303,7 +309,7 @@ test.describe('Interactive Elements @interactive', () => {
     test('charts respond to hover (no errors)', async ({ page }) => {
       await page.goto('/app/metrics/dashboard/team/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(1000);
+      await waitForHtmxComplete(page);
 
       const canvas = page.locator('canvas').first();
       if (await canvas.isVisible()) {
@@ -365,13 +371,8 @@ test.describe('Interactive Elements @interactive', () => {
 
       if (await userMenu.isVisible()) {
         await userMenu.click();
-        await page.waitForTimeout(200);
-
-        // Dropdown content should appear
-        const dropdown = page.locator('.dropdown-content').or(
-          page.locator('[role="menu"]')
-        );
-        // May or may not be visible depending on UI implementation
+        // Wait for dropdown animation
+        await expect(page.locator('.dropdown-content').or(page.locator('[role="menu"]'))).toBeVisible({ timeout: 1000 });
       }
     });
 
@@ -392,61 +393,66 @@ test.describe('Interactive Elements @interactive', () => {
   });
 
   test.describe('Modal Dialogs', () => {
+    // Note: These tests require a disconnect button which only appears when integrations are connected.
+    // They will pass with early return if no disconnect button is available.
+
     test('disconnect confirmation modal appears when triggered', async ({ page }) => {
       await page.goto('/app/integrations/');
       await page.waitForLoadState('domcontentloaded');
+      await waitForHtmxComplete(page);
 
-      // Look for disconnect button
+      // Look for disconnect button - skip if not present (no integrations connected)
       const disconnectButton = page.getByRole('button', { name: /disconnect/i }).first();
-
-      if (await disconnectButton.isVisible()) {
-        await disconnectButton.click();
-        await page.waitForTimeout(300);
-
-        // Modal should appear
-        const modal = page.locator('[role="dialog"]').or(
-          page.locator('.modal')
-        );
-
-        // Check for modal or inline confirmation
+      if ((await disconnectButton.count()) === 0) {
+        return; // No disconnect button - test passes (feature not available without connected integrations)
       }
+
+      await disconnectButton.click();
+      // Wait for modal to appear
+      const modal = page.locator('[role="dialog"]').or(page.locator('.modal.modal-open'));
+      await expect(modal).toBeVisible({ timeout: 5000 });
     });
 
     test('modal can be closed with cancel button', async ({ page }) => {
       await page.goto('/app/integrations/');
       await page.waitForLoadState('domcontentloaded');
+      await waitForHtmxComplete(page);
 
       const disconnectButton = page.getByRole('button', { name: /disconnect/i }).first();
-
-      if (await disconnectButton.isVisible()) {
-        await disconnectButton.click();
-        await page.waitForTimeout(300);
-
-        const cancelButton = page.getByRole('button', { name: 'Cancel' });
-        if (await cancelButton.isVisible()) {
-          await cancelButton.click();
-          await page.waitForTimeout(200);
-          // Modal should close
-        }
+      if ((await disconnectButton.count()) === 0) {
+        return; // No disconnect button - test passes
       }
+
+      await disconnectButton.click();
+      // Wait for modal
+      const modal = page.locator('[role="dialog"]').or(page.locator('.modal.modal-open'));
+      await expect(modal).toBeVisible({ timeout: 5000 });
+
+      const cancelButton = page.getByRole('button', { name: 'Cancel' });
+      await cancelButton.click();
+      // Modal should close
+      await expect(modal).not.toBeVisible({ timeout: 3000 });
     });
 
     test('modal can be closed with escape key', async ({ page }) => {
       await page.goto('/app/integrations/');
       await page.waitForLoadState('domcontentloaded');
+      await waitForHtmxComplete(page);
 
       const disconnectButton = page.getByRole('button', { name: /disconnect/i }).first();
-
-      if (await disconnectButton.isVisible()) {
-        await disconnectButton.click();
-        await page.waitForTimeout(300);
-
-        // Press Escape
-        await page.keyboard.press('Escape');
-        await page.waitForTimeout(200);
-
-        // Modal should close
+      if ((await disconnectButton.count()) === 0) {
+        return; // No disconnect button - test passes
       }
+
+      await disconnectButton.click();
+      // Wait for modal
+      const modal = page.locator('[role="dialog"]').or(page.locator('.modal.modal-open'));
+      await expect(modal).toBeVisible({ timeout: 5000 });
+
+      // Press Escape
+      await page.keyboard.press('Escape');
+      // Modal should close
+      await expect(modal).not.toBeVisible({ timeout: 3000 });
     });
   });
 
@@ -512,8 +518,8 @@ test.describe('Interactive Elements @interactive', () => {
       await page.getByLabel('Toggle color theme').click();
       await page.getByRole('button', { name: 'Light' }).click();
 
-      // Wait for localStorage to be updated
-      await page.waitForTimeout(200);
+      // Wait for theme to be applied
+      await expect(page.locator('html')).toHaveAttribute('data-theme', 'tformance-light');
 
       // Refresh the page
       await page.reload();
@@ -546,7 +552,7 @@ test.describe('Interactive Elements @interactive', () => {
     test('HTMX partials load without duplication', async ({ page }) => {
       await page.goto('/app/metrics/dashboard/team/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(1000);
+      await waitForHtmxComplete(page);
 
       // Check that stat cards don't duplicate
       const statCards = page.locator('.stat');
@@ -566,7 +572,7 @@ test.describe('Interactive Elements @interactive', () => {
       const filterButton = page.getByRole('button', { name: /30 days/i });
       if (await filterButton.isVisible()) {
         await filterButton.click();
-        await page.waitForTimeout(500);
+        await waitForHtmxComplete(page);
       }
 
       // Navigation should still work
