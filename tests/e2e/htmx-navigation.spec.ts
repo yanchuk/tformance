@@ -6,9 +6,32 @@
  * - Tab navigation
  * - Browser back/forward
  */
-import { test, expect } from '@playwright/test';
+import { test, expect, Page } from '@playwright/test';
 
 test.use({ browserName: 'chromium' });
+
+/**
+ * Wait for Alpine.js dateRange store to be initialized.
+ */
+async function waitForAlpineStore(page: Page, timeout = 5000): Promise<void> {
+  await page.waitForFunction(
+    () => {
+      const Alpine = (window as any).Alpine;
+      return Alpine && Alpine.store && Alpine.store('dateRange') !== undefined;
+    },
+    { timeout }
+  );
+}
+
+/**
+ * Wait for HTMX request to complete.
+ */
+async function waitForHtmxComplete(page: Page, timeout = 5000): Promise<void> {
+  await page.waitForFunction(
+    () => !document.body.classList.contains('htmx-request'),
+    { timeout }
+  );
+}
 
 test.describe('HTMX Navigation State', () => {
   test.beforeEach(async ({ page }) => {
@@ -27,12 +50,12 @@ test.describe('HTMX Navigation State', () => {
       // Navigate to analytics overview
       await page.goto('/app/metrics/analytics/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(2000);
+      await waitForAlpineStore(page);
 
       // Click 90d button to select it
       const btn90d = page.locator('button:has-text("90d"), a:has-text("90d")').first();
       await btn90d.click();
-      await page.waitForTimeout(1500);
+      await waitForHtmxComplete(page);
 
       // Verify 90d is highlighted (has btn-primary class)
       const is90dActive = await btn90d.evaluate((el) => {
@@ -43,7 +66,8 @@ test.describe('HTMX Navigation State', () => {
       // Now click on Quality tab (HTMX navigation)
       const qualityTab = page.getByRole('tab', { name: 'Quality' });
       await qualityTab.click();
-      await page.waitForTimeout(2000);
+      await page.waitForURL(/\/quality/);
+      await waitForHtmxComplete(page);
 
       // After HTMX swap, 90d should still be highlighted
       const btn90dAfterSwap = page.locator('button:has-text("90d"), a:has-text("90d")').first();
@@ -57,7 +81,7 @@ test.describe('HTMX Navigation State', () => {
       // Navigate to analytics and select 7d
       await page.goto('/app/metrics/analytics/?days=7');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(2000);
+      await waitForAlpineStore(page);
 
       // Verify 7d is highlighted
       const btn7d = page.locator('button:has-text("7d"), a:has-text("7d")').first();
@@ -69,7 +93,8 @@ test.describe('HTMX Navigation State', () => {
       // Click on AI Adoption tab
       const aiTab = page.getByRole('tab', { name: 'AI Adoption' });
       await aiTab.click();
-      await page.waitForTimeout(2000);
+      await page.waitForURL(/\/ai-adoption/);
+      await waitForHtmxComplete(page);
 
       // 7d should still be highlighted after swap
       const btn7dAfterSwap = page.locator('button:has-text("7d"), a:has-text("7d")').first();
@@ -83,7 +108,7 @@ test.describe('HTMX Navigation State', () => {
       // Start with 90d param
       await page.goto('/app/metrics/analytics/?days=90');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(2000);
+      await waitForAlpineStore(page);
 
       // Verify URL has days=90
       expect(page.url()).toContain('days=90');
@@ -91,7 +116,7 @@ test.describe('HTMX Navigation State', () => {
       // Click on Delivery tab
       const deliveryTab = page.getByRole('tab', { name: 'Delivery' });
       await deliveryTab.click();
-      await page.waitForTimeout(2000);
+      await page.waitForURL(/days=90/);
 
       // URL should still have days=90
       expect(page.url()).toContain('days=90');
@@ -103,7 +128,7 @@ test.describe('HTMX Navigation State', () => {
       // Start at analytics overview with 7d
       await page.goto('/app/metrics/analytics/?days=7');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(2000);
+      await waitForAlpineStore(page);
 
       // Verify 7d is highlighted
       const btn7dInitial = page.locator('button:has-text("7d"), a:has-text("7d")').first();
@@ -112,7 +137,7 @@ test.describe('HTMX Navigation State', () => {
       // Click AI Adoption tab (pushes new URL to history)
       const aiTab = page.getByRole('tab', { name: 'AI Adoption' });
       await aiTab.click();
-      await page.waitForTimeout(2000);
+      await page.waitForURL(/ai-adoption/);
 
       // URL should have days=7 on AI Adoption page
       expect(page.url()).toContain('days=7');
@@ -121,7 +146,7 @@ test.describe('HTMX Navigation State', () => {
       // Go back to overview
       await page.goBack();
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(2000);
+      await waitForAlpineStore(page);
 
       // Should be back at overview with days=7
       expect(page.url()).toContain('days=7');
@@ -141,7 +166,7 @@ test.describe('HTMX Navigation State', () => {
     test('active tab updates after HTMX navigation', async ({ page }) => {
       await page.goto('/app/metrics/analytics/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(2000);
+      await waitForAlpineStore(page);
 
       // Overview tab should be active initially
       const overviewTab = page.getByRole('tab', { name: 'Overview' });
@@ -153,7 +178,8 @@ test.describe('HTMX Navigation State', () => {
       // Click on Team tab
       const teamTab = page.getByRole('tab', { name: 'Team' });
       await teamTab.click();
-      await page.waitForTimeout(2000);
+      await page.waitForURL(/\/team/);
+      await waitForHtmxComplete(page);
 
       // Team tab should now be active
       const isTeamActive = await teamTab.evaluate((el) => {
@@ -174,7 +200,7 @@ test.describe('HTMX Navigation State', () => {
       // Navigate to Delivery page with 90d date range
       await page.goto('/app/metrics/analytics/delivery/?days=90');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(2000);
+      await waitForAlpineStore(page);
 
       // Verify we're on Delivery page with 90d
       expect(page.url()).toContain('days=90');
@@ -182,7 +208,7 @@ test.describe('HTMX Navigation State', () => {
       // Click "All Pull Requests" link
       const prLink = page.getByRole('link', { name: 'All Pull Requests' });
       await prLink.click();
-      await page.waitForTimeout(2000);
+      await page.waitForURL(/pull-requests/);
 
       // PR list URL should include days=90
       expect(page.url()).toContain('pull-requests');
@@ -193,12 +219,12 @@ test.describe('HTMX Navigation State', () => {
       // Navigate to Overview page with 7d date range
       await page.goto('/app/metrics/analytics/?days=7');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(2000);
+      await waitForAlpineStore(page);
 
       // Click "AI-Assisted PRs" link
       const aiPrLink = page.getByRole('link', { name: 'AI-Assisted PRs' });
       await aiPrLink.click();
-      await page.waitForTimeout(2000);
+      await page.waitForURL(/pull-requests.*ai=yes/);
 
       // PR list URL should include days=7 and ai=yes
       expect(page.url()).toContain('pull-requests');
@@ -210,12 +236,12 @@ test.describe('HTMX Navigation State', () => {
       // Navigate to Delivery page with preset=12_months
       await page.goto('/app/metrics/analytics/delivery/?preset=12_months');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(2000);
+      await waitForAlpineStore(page);
 
       // Click "All Pull Requests" link
       const prLink = page.getByRole('link', { name: 'All Pull Requests' });
       await prLink.click();
-      await page.waitForTimeout(2000);
+      await page.waitForURL(/pull-requests/);
 
       // PR list URL should include days parameter (12_months = 365 days)
       expect(page.url()).toContain('pull-requests');
@@ -231,7 +257,7 @@ test.describe('HTMX Navigation State', () => {
       // Navigate to Pull Requests page (which doesn't show date range picker)
       await page.goto('/app/metrics/pull-requests/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(2000);
+      await waitForHtmxComplete(page);
 
       // Verify date range picker is NOT visible on Pull Requests page
       const timeRangeLabelBefore = page.locator('text=Time range:');
@@ -240,7 +266,8 @@ test.describe('HTMX Navigation State', () => {
       // Click on Delivery tab (HTMX navigation)
       const deliveryTab = page.getByRole('tab', { name: 'Delivery' });
       await deliveryTab.click();
-      await page.waitForTimeout(2000);
+      await page.waitForURL(/\/delivery/);
+      await waitForHtmxComplete(page);
 
       // After HTMX navigation, date range picker SHOULD be visible
       const timeRangeLabel = page.locator('text=Time range:');
@@ -258,12 +285,13 @@ test.describe('HTMX Navigation State', () => {
       // Navigate to Pull Requests page
       await page.goto('/app/metrics/pull-requests/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(2000);
+      await waitForHtmxComplete(page);
 
       // Click on Overview tab (HTMX navigation)
       const overviewTab = page.getByRole('tab', { name: 'Overview' });
       await overviewTab.click();
-      await page.waitForTimeout(2000);
+      await page.waitForURL(/\/analytics/);
+      await waitForHtmxComplete(page);
 
       // Date range picker SHOULD be visible after navigation
       const timeRangeLabel = page.locator('text=Time range:');
@@ -274,7 +302,7 @@ test.describe('HTMX Navigation State', () => {
       // Start at Delivery page (has date range picker)
       await page.goto('/app/metrics/analytics/delivery/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(2000);
+      await waitForAlpineStore(page);
 
       // Verify date range picker is visible
       const timeRangeLabelBefore = page.locator('text=Time range:');
@@ -283,7 +311,8 @@ test.describe('HTMX Navigation State', () => {
       // Navigate to Quality tab
       const qualityTab = page.getByRole('tab', { name: 'Quality' });
       await qualityTab.click();
-      await page.waitForTimeout(2000);
+      await page.waitForURL(/\/quality/);
+      await waitForHtmxComplete(page);
 
       // Date range picker should still be visible
       const timeRangeLabelAfter = page.locator('text=Time range:');
