@@ -45,7 +45,7 @@
             {% if pr.issue_type == "revert" %}{% trans "Revert" %}{% elif pr.issue_type == "hotfix" %}{% trans "Hotfix" %}{% elif pr.issue_type == "long_cycle" %}{% trans "Slow" %}{% elif pr.issue_type == "large_pr" %}{% trans "Large" %}{% else %}{% trans "No Jira" %}{% endif %}
           </span>
           <span class="text-xs text-base-content/50">
-            {% if pr.issue_type == "revert" %}{% trans "Rolled-back changes need review" %}{% elif pr.issue_type == "hotfix" %}{% trans "Emergency fix bypassed review" %}{% elif pr.issue_type == "long_cycle" %}{% trans "Took >48h to merge" %}{% elif pr.issue_type == "large_pr" %}{% trans ">500 lines changed" %}{% else %}{% trans "Missing ticket reference" %}{% endif %}
+            {% if pr.issue_type == "revert" %}{% trans "Rolled-back changes need review" %}{% elif pr.issue_type == "hotfix" %}{% trans "Emergency fix bypassed review" %}{% elif pr.issue_type == "long_cycle" %}{% trans "Slower than 2x team average" %}{% elif pr.issue_type == "large_pr" %}{% trans ">500 lines changed" %}{% else %}{% trans "Missing ticket reference" %}{% endif %}
           </span>
         </div>
         <div class="text-sm text-base-content group-hover:text-primary line-clamp-1">{{ pr.title }}</div>

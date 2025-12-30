@@ -678,7 +678,7 @@ def needs_attention_view(request: HttpRequest) -> HttpResponse:
             "label": "Slow",
             "priority": 3,
             "color": "#06b6d4",  # cyan
-            "tooltip": "PRs with cycle time >48h (slower than team norm)",
+            "tooltip": "PRs with cycle time >2x team average",
         },
         "large_pr": {
             "label": "Large",
