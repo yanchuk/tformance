@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, Page } from '@playwright/test';
 
 /**
  * Dashboard Tests
@@ -7,6 +7,16 @@ import { test, expect } from '@playwright/test';
  *
  * These tests require a logged-in session.
  */
+
+/**
+ * Wait for HTMX request to complete.
+ */
+async function waitForHtmxComplete(page: Page, timeout = 5000): Promise<void> {
+  await page.waitForFunction(
+    () => !document.body.classList.contains('htmx-request'),
+    { timeout }
+  );
+}
 
 test.describe('Dashboard Tests @dashboard', () => {
   // Login before each test
@@ -79,7 +89,7 @@ test.describe('Dashboard Tests @dashboard', () => {
     test('key metrics cards load via HTMX', async ({ page }) => {
       await page.goto('/app/metrics/dashboard/team/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(1000); // Allow HTMX to load
+      await waitForHtmxComplete(page);
 
       // Check for metric labels
       await expect(page.getByText('PRs Merged').first()).toBeVisible();
@@ -97,7 +107,7 @@ test.describe('Dashboard Tests @dashboard', () => {
     test('review distribution section loads', async ({ page }) => {
       await page.goto('/app/metrics/dashboard/team/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(1000); // Allow HTMX to load
+      await waitForHtmxComplete(page);
 
       await expect(page.getByRole('heading', { name: 'Review Distribution' })).toBeVisible();
     });
@@ -105,7 +115,7 @@ test.describe('Dashboard Tests @dashboard', () => {
     test('AI detective leaderboard section loads', async ({ page }) => {
       await page.goto('/app/metrics/dashboard/team/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(1000); // Allow HTMX to load
+      await waitForHtmxComplete(page);
 
       await expect(page.getByRole('heading', { name: 'AI Detective Leaderboard' })).toBeVisible();
     });
@@ -113,7 +123,7 @@ test.describe('Dashboard Tests @dashboard', () => {
     test('recent pull requests table loads', async ({ page }) => {
       await page.goto('/app/metrics/dashboard/team/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(1000); // Allow HTMX to load
+      await waitForHtmxComplete(page);
 
       await expect(page.getByRole('heading', { name: 'Recent Pull Requests' })).toBeVisible();
 
@@ -151,7 +161,7 @@ test.describe('Dashboard Tests @dashboard', () => {
       // Click 30d filter (triggers HTMX request)
       await page.getByRole('link', { name: '30d' }).click();
       await page.waitForURL(/\?days=30/);
-      await page.waitForTimeout(500); // Allow HTMX swap to complete
+      await waitForHtmxComplete(page);
 
       // Verify navigation is NOT duplicated after HTMX swap
       const afterSwapNavCount = await page.locator('nav[aria-label="Main navigation"]').count();
@@ -174,12 +184,12 @@ test.describe('Dashboard Tests @dashboard', () => {
       // First click: 7d -> 30d
       await page.getByRole('link', { name: '30d' }).click();
       await expect(page).toHaveURL(/\?days=30/);
-      await page.waitForTimeout(300); // Allow HTMX swap
+      await waitForHtmxComplete(page);
 
       // Second click: 30d -> 90d (this would fail before the fix)
       await page.getByRole('link', { name: '90d' }).click();
       await expect(page).toHaveURL(/\?days=90/);
-      await page.waitForTimeout(300);
+      await waitForHtmxComplete(page);
 
       // Third click: 90d -> 7d (verify it still works)
       await page.getByRole('link', { name: '7d' }).click();
