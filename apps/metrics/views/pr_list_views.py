@@ -165,10 +165,10 @@ def pr_list(request: HttpRequest) -> HttpResponse:
     context = _get_pr_list_context(team, filters, page_number, sort, order)
 
     # Add page-specific context
-    context["active_page"] = "pull_requests"  # For tab highlighting
+    context["active_tab"] = "pull_requests"  # For sidebar highlighting
     context["filter_options"] = get_filter_options(team)
 
-    # Determine days for tab highlighting - check URL param or calculate from date range
+    # Determine days for date range
     days_param = request.GET.get("days")
     if days_param:
         try:
@@ -182,11 +182,11 @@ def pr_list(request: HttpRequest) -> HttpResponse:
     if request.headers.get("HX-Request"):
         return TemplateResponse(
             request,
-            "metrics/analytics/pull_requests.html#page-content",
+            "metrics/pull_requests/list_standalone.html#page-content",
             context,
         )
 
-    return TemplateResponse(request, "metrics/analytics/pull_requests.html", context)
+    return TemplateResponse(request, "metrics/pull_requests/list_standalone.html", context)
 
 
 @login_and_team_required
