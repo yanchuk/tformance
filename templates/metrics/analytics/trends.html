@@ -61,10 +61,15 @@
              const params = new URLSearchParams(window.location.search);
              const days = params.get('days') || '{{ days }}';
              const preset = params.get('preset') || '{{ preset }}';
+             // Update wide trend chart
              htmx.ajax('GET', '{% url 'metrics:chart_wide_trend' %}?metrics=' + metricsParam + '&days=' + days + '&preset=' + preset + '&granularity=' + this.granularity, {target:'#wide-chart-container', swap:'innerHTML'});
+             // Update benchmark panel for single metric
              if (this.selectedMetrics.length === 1) {
                htmx.ajax('GET', '{% url 'metrics:benchmark_panel' metric='cycle_time' %}'.replace('cycle_time', this.selectedMetrics[0]) + '?days=' + days, {target:'#benchmark-panel-container', swap:'innerHTML'});
              }
+             // Update Tech and PR Type breakdown charts with new granularity
+             htmx.ajax('GET', '{% url 'metrics:chart_tech_breakdown' %}?days=' + days + '&preset=' + preset + '&granularity=' + this.granularity, {target:'#tech-chart-container', swap:'innerHTML'});
+             htmx.ajax('GET', '{% url 'metrics:chart_pr_type_breakdown' %}?days=' + days + '&preset=' + preset + '&granularity=' + this.granularity, {target:'#pr-type-chart-container', swap:'innerHTML'});
            }
          }">
 

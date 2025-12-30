@@ -453,3 +453,312 @@ class TestTechBreakdownChartAIFilter(TestCase):
         # Should still return 200, defaulting to 'all'
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["ai_filter"], "all")
+
+
+class TestTechBreakdownChartGranularity(TestCase):
+    """Tests for granularity handling in tech breakdown chart view."""
+
+    def setUp(self):
+        """Set up test fixtures using factories."""
+        self.team = TeamFactory()
+        self.admin_user = UserFactory()
+        self.team.members.add(self.admin_user, through_defaults={"role": ROLE_ADMIN})
+        self.member = TeamMemberFactory(team=self.team)
+        self.client = Client()
+
+        # Create some merged PRs with tech categories for the test data
+        # Use dates within last 30 days for weekly granularity
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from apps.metrics.factories import PRFileFactory
+
+        now = timezone.now()
+        for i in range(5):
+            pr = PullRequestFactory(
+                team=self.team,
+                author=self.member,
+                state="merged",
+                pr_created_at=now - timedelta(days=i + 1),
+                merged_at=now - timedelta(days=i),
+            )
+            # Add a file to each PR so tech categories are populated
+            PRFileFactory(team=self.team, pull_request=pr, filename=f"src/components/Component{i}.tsx")
+
+    def test_tech_chart_accepts_granularity_parameter(self):
+        """Test that tech chart view accepts granularity query parameter."""
+        self.client.force_login(self.admin_user)
+        url = reverse("metrics:chart_tech_breakdown")
+        response = self.client.get(f"{url}?granularity=weekly")
+        self.assertEqual(response.status_code, 200)
+
+    def test_tech_chart_passes_granularity_to_context(self):
+        """Test that granularity parameter is passed to template context."""
+        self.client.force_login(self.admin_user)
+        url = reverse("metrics:chart_tech_breakdown")
+
+        # Test weekly granularity
+        response = self.client.get(f"{url}?granularity=weekly&days=30")
+        self.assertIn("granularity", response.context)
+        self.assertEqual(response.context["granularity"], "weekly")
+
+        # Test monthly granularity
+        response = self.client.get(f"{url}?granularity=monthly&days=30")
+        self.assertIn("granularity", response.context)
+        self.assertEqual(response.context["granularity"], "monthly")
+
+    def test_tech_chart_weekly_returns_weekly_labels(self):
+        """Test that weekly granularity returns week-formatted labels in chart data."""
+        self.client.force_login(self.admin_user)
+        url = reverse("metrics:chart_tech_breakdown")
+        response = self.client.get(f"{url}?granularity=weekly&days=30")
+
+        self.assertEqual(response.status_code, 200)
+        chart_data = response.context["chart_data"]
+
+        # Labels should be week format (e.g., "2024-W01")
+        if chart_data["labels"]:
+            for label in chart_data["labels"]:
+                self.assertRegex(label, r"^\d{4}-W\d{2}$", f"Weekly label '{label}' should match format YYYY-WNN")
+
+    def test_tech_chart_monthly_returns_monthly_labels(self):
+        """Test that monthly granularity returns month-formatted labels in chart data."""
+        self.client.force_login(self.admin_user)
+        url = reverse("metrics:chart_tech_breakdown")
+        response = self.client.get(f"{url}?granularity=monthly&days=365")
+
+        self.assertEqual(response.status_code, 200)
+        chart_data = response.context["chart_data"]
+
+        # Labels should be month format (e.g., "2024-01")
+        if chart_data["labels"]:
+            for label in chart_data["labels"]:
+                self.assertRegex(label, r"^\d{4}-\d{2}$", f"Monthly label '{label}' should match format YYYY-MM")
+
+    def test_tech_chart_different_granularity_different_labels(self):
+        """Test that weekly and monthly granularity produce different label formats."""
+        self.client.force_login(self.admin_user)
+        url = reverse("metrics:chart_tech_breakdown")
+
+        # Get weekly data
+        weekly_response = self.client.get(f"{url}?granularity=weekly&days=30")
+        weekly_labels = weekly_response.context["chart_data"]["labels"]
+
+        # Get monthly data
+        monthly_response = self.client.get(f"{url}?granularity=monthly&days=30")
+        monthly_labels = monthly_response.context["chart_data"]["labels"]
+
+        # If we have data in both, labels should have different formats
+        if weekly_labels and monthly_labels:
+            # Weekly: "2024-W01", Monthly: "2024-01"
+            self.assertNotEqual(
+                weekly_labels[0], monthly_labels[0], "Weekly and monthly labels should have different formats"
+            )
+
+
+class TestPRTypeBreakdownChartGranularity(TestCase):
+    """Tests for granularity handling in PR type breakdown chart view."""
+
+    def setUp(self):
+        """Set up test fixtures using factories."""
+        self.team = TeamFactory()
+        self.admin_user = UserFactory()
+        self.team.members.add(self.admin_user, through_defaults={"role": ROLE_ADMIN})
+        self.member = TeamMemberFactory(team=self.team)
+        self.client = Client()
+
+        # Create some merged PRs for the test data
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        now = timezone.now()
+        for i in range(5):
+            PullRequestFactory(
+                team=self.team,
+                author=self.member,
+                state="merged",
+                pr_created_at=now - timedelta(days=i + 1),
+                merged_at=now - timedelta(days=i),
+            )
+
+    def test_pr_type_chart_accepts_granularity_parameter(self):
+        """Test that PR type chart view accepts granularity query parameter."""
+        self.client.force_login(self.admin_user)
+        url = reverse("metrics:chart_pr_type_breakdown")
+        response = self.client.get(f"{url}?granularity=weekly")
+        self.assertEqual(response.status_code, 200)
+
+    def test_pr_type_chart_passes_granularity_to_context(self):
+        """Test that granularity parameter is passed to template context."""
+        self.client.force_login(self.admin_user)
+        url = reverse("metrics:chart_pr_type_breakdown")
+
+        # Test weekly granularity
+        response = self.client.get(f"{url}?granularity=weekly&days=30")
+        self.assertIn("granularity", response.context)
+        self.assertEqual(response.context["granularity"], "weekly")
+
+        # Test monthly granularity
+        response = self.client.get(f"{url}?granularity=monthly&days=30")
+        self.assertIn("granularity", response.context)
+        self.assertEqual(response.context["granularity"], "monthly")
+
+    def test_pr_type_chart_weekly_returns_weekly_labels(self):
+        """Test that weekly granularity returns week-formatted labels in chart data."""
+        self.client.force_login(self.admin_user)
+        url = reverse("metrics:chart_pr_type_breakdown")
+        response = self.client.get(f"{url}?granularity=weekly&days=30")
+
+        self.assertEqual(response.status_code, 200)
+        chart_data = response.context["chart_data"]
+
+        # Labels should be week format (e.g., "2024-W01")
+        if chart_data["labels"]:
+            for label in chart_data["labels"]:
+                self.assertRegex(label, r"^\d{4}-W\d{2}$", f"Weekly label '{label}' should match format YYYY-WNN")
+
+    def test_pr_type_chart_monthly_returns_monthly_labels(self):
+        """Test that monthly granularity returns month-formatted labels in chart data."""
+        self.client.force_login(self.admin_user)
+        url = reverse("metrics:chart_pr_type_breakdown")
+        response = self.client.get(f"{url}?granularity=monthly&days=365")
+
+        self.assertEqual(response.status_code, 200)
+        chart_data = response.context["chart_data"]
+
+        # Labels should be month format (e.g., "2024-01")
+        if chart_data["labels"]:
+            for label in chart_data["labels"]:
+                self.assertRegex(label, r"^\d{4}-\d{2}$", f"Monthly label '{label}' should match format YYYY-MM")
+
+    def test_pr_type_chart_different_granularity_different_labels(self):
+        """Test that weekly and monthly granularity produce different label formats."""
+        self.client.force_login(self.admin_user)
+        url = reverse("metrics:chart_pr_type_breakdown")
+
+        # Get weekly data
+        weekly_response = self.client.get(f"{url}?granularity=weekly&days=30")
+        weekly_labels = weekly_response.context["chart_data"]["labels"]
+
+        # Get monthly data
+        monthly_response = self.client.get(f"{url}?granularity=monthly&days=30")
+        monthly_labels = monthly_response.context["chart_data"]["labels"]
+
+        # If we have data in both, labels should have different formats
+        if weekly_labels and monthly_labels:
+            # Weekly: "2024-W01", Monthly: "2024-01"
+            self.assertNotEqual(
+                weekly_labels[0], monthly_labels[0], "Weekly and monthly labels should have different formats"
+            )
+
+
+class TestGranularityToggleIntegration(TestCase):
+    """Integration tests verifying granularity toggle works across all trend chart endpoints.
+
+    These tests document the expected API contract for the granularity toggle feature.
+    When the user clicks "Weekly" or "Monthly" in the UI, the frontend must pass
+    the `granularity` parameter to these endpoints for charts to update correctly.
+
+    Bug context: The frontend was not passing granularity to PR Type and Tech
+    breakdown charts when the toggle was clicked. These tests verify the backend
+    correctly handles granularity and returns different data for each setting.
+    """
+
+    def setUp(self):
+        """Set up test fixtures using factories."""
+        self.team = TeamFactory()
+        self.admin_user = UserFactory()
+        self.team.members.add(self.admin_user, through_defaults={"role": ROLE_ADMIN})
+        self.member = TeamMemberFactory(team=self.team)
+        self.client = Client()
+
+        # Create merged PRs with files for testing
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from apps.metrics.factories import PRFileFactory
+
+        now = timezone.now()
+        for i in range(5):
+            pr = PullRequestFactory(
+                team=self.team,
+                author=self.member,
+                state="merged",
+                pr_created_at=now - timedelta(days=i + 1),
+                merged_at=now - timedelta(days=i),
+            )
+            PRFileFactory(team=self.team, pull_request=pr, filename=f"src/app{i}.py")
+
+    def test_all_chart_endpoints_support_granularity_parameter(self):
+        """Test that all trend chart endpoints accept and use granularity parameter.
+
+        This verifies the backend API contract that the frontend relies on.
+        """
+        self.client.force_login(self.admin_user)
+
+        endpoints = [
+            ("metrics:chart_pr_type_breakdown", "pr_type_chart"),
+            ("metrics:chart_tech_breakdown", "tech_chart"),
+            ("metrics:chart_wide_trend", "wide_trend_chart"),
+        ]
+
+        for url_name, chart_name in endpoints:
+            url = reverse(url_name)
+
+            # Test weekly granularity
+            response = self.client.get(f"{url}?granularity=weekly&days=30")
+            self.assertEqual(response.status_code, 200, f"{chart_name} should accept weekly granularity")
+            self.assertEqual(
+                response.context["granularity"],
+                "weekly",
+                f"{chart_name} should return weekly in context",
+            )
+
+            # Test monthly granularity
+            response = self.client.get(f"{url}?granularity=monthly&days=30")
+            self.assertEqual(response.status_code, 200, f"{chart_name} should accept monthly granularity")
+            self.assertEqual(
+                response.context["granularity"],
+                "monthly",
+                f"{chart_name} should return monthly in context",
+            )
+
+    def test_granularity_changes_chart_data_format(self):
+        """Test that different granularity settings produce appropriately grouped data.
+
+        This is the key test for the bug fix - when granularity changes, the
+        chart data labels should reflect the new grouping (weekly vs monthly format).
+        """
+        self.client.force_login(self.admin_user)
+
+        # Test for both chart types affected by the bug
+        for url_name in ["metrics:chart_pr_type_breakdown", "metrics:chart_tech_breakdown"]:
+            url = reverse(url_name)
+
+            # Weekly should return YYYY-WNN formatted labels
+            weekly = self.client.get(f"{url}?granularity=weekly&days=30")
+            weekly_data = weekly.context["chart_data"]
+
+            # Monthly should return YYYY-MM formatted labels
+            monthly = self.client.get(f"{url}?granularity=monthly&days=30")
+            monthly_data = monthly.context["chart_data"]
+
+            # If we have labels, verify formats are different
+            if weekly_data["labels"] and monthly_data["labels"]:
+                weekly_label = weekly_data["labels"][0]
+                monthly_label = monthly_data["labels"][0]
+
+                # Weekly format: "2024-W01", Monthly format: "2024-01"
+                self.assertIn(
+                    "-W",
+                    weekly_label,
+                    f"{url_name}: Weekly label '{weekly_label}' should contain '-W' (week format)",
+                )
+                self.assertNotIn(
+                    "-W",
+                    monthly_label,
+                    f"{url_name}: Monthly label '{monthly_label}' should NOT contain '-W'",
+                )
