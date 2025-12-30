@@ -3,7 +3,7 @@
   <!-- PRs Merged -->
   <div class="stat bg-base-100 shadow rounded-lg overflow-hidden p-4">
     <div class="stat-title text-xs">{% trans "PRs Merged" %}</div>
-    <div class="stat-value text-primary text-lg sm:text-xl md:text-2xl lg:text-3xl truncate" id="prs_merged-value">{{ metrics.prs_merged|default:0 }}</div>
+    <div class="font-bold text-primary text-2xl md:text-3xl truncate" id="prs_merged-value">{{ metrics.prs_merged|default:0 }}</div>
     {% if sparklines.prs_merged.values %}
     <div class="h-8 mt-1 -mx-4 px-1">
       <canvas
@@ -29,7 +29,7 @@
   <!-- Avg Cycle Time -->
   <div class="stat bg-base-100 shadow rounded-lg overflow-hidden p-4">
     <div class="stat-title text-xs">{% trans "Avg Cycle Time" %}</div>
-    <div class="stat-value text-secondary text-lg sm:text-xl md:text-2xl lg:text-3xl truncate" id="cycle_time-value">
+    <div class="font-bold text-secondary text-2xl md:text-3xl truncate" id="cycle_time-value">
       {% if metrics.avg_cycle_time %}{{ metrics.avg_cycle_time|floatformat:1 }}h{% else %}-{% endif %}
     </div>
     {% if sparklines.cycle_time.values %}
@@ -57,7 +57,7 @@
   <!-- AI Adoption -->
   <div class="stat bg-base-100 shadow rounded-lg overflow-hidden p-4">
     <div class="stat-title text-xs">{% trans "AI Adoption" %}</div>
-    <div class="stat-value text-accent text-lg sm:text-xl md:text-2xl lg:text-3xl truncate" id="ai_adoption-value">
+    <div class="font-bold text-accent text-2xl md:text-3xl truncate" id="ai_adoption-value">
       {% if metrics.ai_assisted_pct %}{{ metrics.ai_assisted_pct|floatformat:0 }}%{% else %}-{% endif %}
     </div>
     {% if sparklines.ai_adoption.values %}
@@ -85,7 +85,7 @@
   <!-- Review Time -->
   <div class="stat bg-base-100 shadow rounded-lg overflow-hidden p-4">
     <div class="stat-title text-xs">{% trans "Review Time" %}</div>
-    <div class="stat-value text-info text-lg sm:text-xl md:text-2xl lg:text-3xl truncate" id="review_time-value">
+    <div class="font-bold text-info text-2xl md:text-3xl truncate" id="review_time-value">
       {% if metrics.avg_review_time %}{{ metrics.avg_review_time|floatformat:1 }}h{% else %}-{% endif %}
     </div>
     {% if sparklines.review_time.values %}
