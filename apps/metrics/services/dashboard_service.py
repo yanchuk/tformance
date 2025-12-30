@@ -12,6 +12,7 @@ from django.core.cache import cache
 from django.db.models import Avg, Case, CharField, Count, Q, QuerySet, Sum, Value, When
 from django.db.models.functions import TruncMonth, TruncWeek
 
+from apps.integrations.models import JiraIntegration
 from apps.metrics.models import (
     AIUsageDaily,
     Deployment,
@@ -34,6 +35,24 @@ PR_SIZE_XS_MAX = 10
 PR_SIZE_S_MAX = 50
 PR_SIZE_M_MAX = 200
 PR_SIZE_L_MAX = 500
+
+
+def _apply_repo_filter(qs: QuerySet, repo: str | None) -> QuerySet:
+    """Apply repository filter to a queryset if repo is specified.
+
+    Helper function to filter querysets by repository. Used across all
+    dashboard service functions that support repo filtering.
+
+    Args:
+        qs: Base queryset to filter (must have github_repo field)
+        repo: Repository name (owner/repo format) or None/empty for all repos
+
+    Returns:
+        Filtered queryset if repo specified, otherwise original queryset
+    """
+    if repo:
+        return qs.filter(github_repo=repo)
+    return qs
 
 
 def _get_merged_prs_in_range(team: Team, start_date: date, end_date: date) -> QuerySet[PullRequest]:
@@ -136,7 +155,7 @@ def _get_key_metrics_cache_key(team_id: int, start_date: date, end_date: date) -
     return f"key_metrics:{team_id}:{start_date}:{end_date}"
 
 
-def get_key_metrics(team: Team, start_date: date, end_date: date) -> dict:
+def get_key_metrics(team: Team, start_date: date, end_date: date, repo: str | None = None) -> dict:
     """Get key metrics for a team within a date range.
 
     Results are cached for 5 minutes to improve dashboard performance.
@@ -145,6 +164,7 @@ def get_key_metrics(team: Team, start_date: date, end_date: date) -> dict:
         team: Team instance
         start_date: Start date (inclusive)
         end_date: End date (inclusive)
+        repo: Optional repository to filter by (owner/repo format)
 
     Returns:
         dict with keys:
@@ -154,14 +174,15 @@ def get_key_metrics(team: Team, start_date: date, end_date: date) -> dict:
             - avg_quality_rating (Decimal or None): Average quality rating
             - ai_assisted_pct (Decimal): Percentage of AI-assisted PRs (0.00 to 100.00)
     """
-    # Check cache first
-    cache_key = _get_key_metrics_cache_key(team.id, start_date, end_date)
+    # Check cache first (include repo in cache key)
+    cache_key = _get_key_metrics_cache_key(team.id, start_date, end_date) + f":{repo or 'all'}"
     cached_result = cache.get(cache_key)
     if cached_result is not None:
         return cached_result
 
     # Compute metrics
     prs = _get_merged_prs_in_range(team, start_date, end_date)
+    prs = _apply_repo_filter(prs, repo)
 
     prs_merged = prs.count()
 
@@ -193,13 +214,14 @@ def get_key_metrics(team: Team, start_date: date, end_date: date) -> dict:
     return result
 
 
-def get_ai_adoption_trend(team: Team, start_date: date, end_date: date) -> list[dict]:
+def get_ai_adoption_trend(team: Team, start_date: date, end_date: date, repo: str | None = None) -> list[dict]:
     """Get AI adoption trend by week.
 
     Args:
         team: Team instance
         start_date: Start date (inclusive)
         end_date: End date (inclusive)
+        repo: Optional repository to filter by (owner/repo format)
 
     Returns:
         list of dicts with keys:
@@ -208,6 +230,7 @@ def get_ai_adoption_trend(team: Team, start_date: date, end_date: date) -> list[
     """
     # Get merged PRs in date range with surveys
     prs = _get_merged_prs_in_range(team, start_date, end_date).filter(survey__isnull=False)
+    prs = _apply_repo_filter(prs, repo)
 
     # Group by week and calculate AI percentage
     weekly_data = (
@@ -230,13 +253,14 @@ def get_ai_adoption_trend(team: Team, start_date: date, end_date: date) -> list[
     return result
 
 
-def get_ai_quality_comparison(team: Team, start_date: date, end_date: date) -> dict:
+def get_ai_quality_comparison(team: Team, start_date: date, end_date: date, repo: str | None = None) -> dict:
     """Get quality comparison between AI-assisted and non-AI PRs.
 
     Args:
         team: Team instance
         start_date: Start date (inclusive)
         end_date: End date (inclusive)
+        repo: Optional repository to filter by (owner/repo format)
 
     Returns:
         dict with keys:
@@ -244,6 +268,7 @@ def get_ai_quality_comparison(team: Team, start_date: date, end_date: date) -> d
             - non_ai_avg (Decimal or None): Average quality rating for non-AI PRs
     """
     prs = _get_merged_prs_in_range(team, start_date, end_date)
+    prs = _apply_repo_filter(prs, repo)
 
     # Get quality ratings for AI-assisted PRs
     ai_reviews = PRSurveyReview.objects.filter(survey__pull_request__in=prs, survey__author_ai_assisted=True)
@@ -260,7 +285,12 @@ def get_ai_quality_comparison(team: Team, start_date: date, end_date: date) -> d
 
 
 def _get_metric_trend(
-    team: Team, start_date: date, end_date: date, metric_field: str, result_key: str = "avg_metric"
+    team: Team,
+    start_date: date,
+    end_date: date,
+    metric_field: str,
+    result_key: str = "avg_metric",
+    repo: str | None = None,
 ) -> list[dict]:
     """Get weekly trend for a given metric field.
 
@@ -272,6 +302,7 @@ def _get_metric_trend(
         end_date: End date (inclusive)
         metric_field: Name of the PR model field to average
         result_key: Key name for the aggregated result in the query
+        repo: Optional repository to filter by (owner/repo format)
 
     Returns:
         list of dicts with keys:
@@ -279,6 +310,7 @@ def _get_metric_trend(
             - value (float): Average metric value for that week (0.0 if None)
     """
     prs = _get_merged_prs_in_range(team, start_date, end_date)
+    prs = _apply_repo_filter(prs, repo)
 
     # Group by week and calculate average metric
     weekly_data = (
@@ -304,24 +336,30 @@ def _get_metric_trend(
     return result
 
 
-def get_cycle_time_trend(team: Team, start_date: date, end_date: date) -> list[dict]:
+def get_cycle_time_trend(team: Team, start_date: date, end_date: date, repo: str | None = None) -> list[dict]:
     """Get cycle time trend by week.
 
     Args:
         team: Team instance
         start_date: Start date (inclusive)
         end_date: End date (inclusive)
+        repo: Optional repository to filter by (owner/repo format)
 
     Returns:
         list of dicts with keys:
             - week (str): Week start date in ISO format (YYYY-MM-DD)
             - value (float): Average cycle time in hours for that week
     """
-    return _get_metric_trend(team, start_date, end_date, "cycle_time_hours", "avg_cycle_time")
+    return _get_metric_trend(team, start_date, end_date, "cycle_time_hours", "avg_cycle_time", repo)
 
 
 def get_team_breakdown(
-    team: Team, start_date: date, end_date: date, sort_by: str = "prs_merged", order: str = "desc"
+    team: Team,
+    start_date: date,
+    end_date: date,
+    sort_by: str = "prs_merged",
+    order: str = "desc",
+    repo: str | None = None,
 ) -> list[dict]:
     """Get team breakdown with metrics per member.
 
@@ -331,6 +369,7 @@ def get_team_breakdown(
         end_date: End date (inclusive)
         sort_by: Field to sort by (prs_merged, cycle_time, ai_pct, name)
         order: Sort order (asc or desc)
+        repo: Optional repository to filter by (owner/repo format)
 
     Returns:
         list of dicts with keys:
@@ -341,6 +380,7 @@ def get_team_breakdown(
             - ai_pct (float): AI adoption percentage (0.0 to 100.0)
     """
     prs = _get_merged_prs_in_range(team, start_date, end_date)
+    prs = _apply_repo_filter(prs, repo)
 
     # Map sort_by to actual field names
     SORT_FIELDS = {
@@ -434,13 +474,14 @@ def get_team_breakdown(
     return result
 
 
-def get_ai_detective_leaderboard(team: Team, start_date: date, end_date: date) -> list[dict]:
+def get_ai_detective_leaderboard(team: Team, start_date: date, end_date: date, repo: str | None = None) -> list[dict]:
     """Get AI detective leaderboard data.
 
     Args:
         team: Team instance
         start_date: Start date (inclusive)
         end_date: End date (inclusive)
+        repo: Optional repository filter (owner/repo format)
 
     Returns:
         list of dicts with keys:
@@ -450,14 +491,16 @@ def get_ai_detective_leaderboard(team: Team, start_date: date, end_date: date) -
             - percentage (float): Accuracy percentage (0.0 to 100.0)
     """
     # Query PRSurveyReview for guess accuracy
+    reviews = PRSurveyReview.objects.filter(
+        team=team,
+        responded_at__gte=start_of_day(start_date),
+        responded_at__lte=end_of_day(end_date),
+        guess_correct__isnull=False,
+    )
+    if repo:
+        reviews = reviews.filter(survey__pull_request__github_repo=repo)
     reviews = (
-        PRSurveyReview.objects.filter(
-            team=team,
-            responded_at__gte=start_of_day(start_date),
-            responded_at__lte=end_of_day(end_date),
-            guess_correct__isnull=False,
-        )
-        .values("reviewer__display_name", "reviewer__github_id")
+        reviews.values("reviewer__display_name", "reviewer__github_id")
         .annotate(
             total=Count("id"),
             correct=Count("id", filter=Q(guess_correct=True)),
@@ -513,23 +556,26 @@ def get_review_distribution(team: Team, start_date: date, end_date: date) -> lis
     ]
 
 
-def get_review_time_trend(team: Team, start_date: date, end_date: date) -> list[dict]:
+def get_review_time_trend(team: Team, start_date: date, end_date: date, repo: str | None = None) -> list[dict]:
     """Get review time trend by week.
 
     Args:
         team: Team instance
         start_date: Start date (inclusive)
         end_date: End date (inclusive)
+        repo: Optional repository to filter by (owner/repo format)
 
     Returns:
         list of dicts with keys:
             - week (date): Week start date
             - value (float): Average review time in hours for that week
     """
-    return _get_metric_trend(team, start_date, end_date, "review_time_hours", "avg_review_time")
+    return _get_metric_trend(team, start_date, end_date, "review_time_hours", "avg_review_time", repo)
 
 
-def get_recent_prs(team: Team, start_date: date, end_date: date, limit: int = 10) -> list[dict]:
+def get_recent_prs(
+    team: Team, start_date: date, end_date: date, limit: int = 10, repo: str | None = None
+) -> list[dict]:
     """Get recent PRs with AI status and quality scores.
 
     Args:
@@ -537,6 +583,7 @@ def get_recent_prs(team: Team, start_date: date, end_date: date, limit: int = 10
         start_date: Start date (inclusive)
         end_date: End date (inclusive)
         limit: Maximum number of PRs to return (default 10)
+        repo: Optional repository to filter by (owner/repo format)
 
     Returns:
         list of dicts with keys:
@@ -550,12 +597,9 @@ def get_recent_prs(team: Team, start_date: date, end_date: date, limit: int = 10
             - avg_quality (float or None): Average quality rating, None if no reviews
             - url (str): PR URL
     """
-    prs = (
-        _get_merged_prs_in_range(team, start_date, end_date)
-        .select_related("author")
-        .prefetch_related("survey", "survey__reviews")
-        .order_by("-merged_at")[:limit]
-    )
+    prs = _get_merged_prs_in_range(team, start_date, end_date)
+    prs = _apply_repo_filter(prs, repo)
+    prs = prs.select_related("author").prefetch_related("survey", "survey__reviews").order_by("-merged_at")[:limit]
 
     result = []
     for pr in prs:
@@ -594,13 +638,14 @@ def get_recent_prs(team: Team, start_date: date, end_date: date, limit: int = 10
     return result
 
 
-def get_revert_hotfix_stats(team: Team, start_date: date, end_date: date) -> dict:
+def get_revert_hotfix_stats(team: Team, start_date: date, end_date: date, repo: str | None = None) -> dict:
     """Get revert and hotfix statistics.
 
     Args:
         team: Team instance
         start_date: Start date (inclusive)
         end_date: End date (inclusive)
+        repo: Optional repository to filter by (owner/repo format)
 
     Returns:
         dict with keys:
@@ -611,6 +656,7 @@ def get_revert_hotfix_stats(team: Team, start_date: date, end_date: date) -> dic
             - hotfix_pct (float): Percentage of hotfixes (0.0 to 100.0)
     """
     prs = _get_merged_prs_in_range(team, start_date, end_date)
+    prs = _apply_repo_filter(prs, repo)
 
     # Use DB aggregation to count total, revert, and hotfix PRs in a single query
     stats = prs.aggregate(
@@ -635,7 +681,7 @@ def get_revert_hotfix_stats(team: Team, start_date: date, end_date: date) -> dic
     }
 
 
-def get_pr_size_distribution(team: Team, start_date: date, end_date: date) -> list[dict]:
+def get_pr_size_distribution(team: Team, start_date: date, end_date: date, repo: str | None = None) -> list[dict]:
     """Get PR size distribution by category.
 
     Categories based on additions + deletions:
@@ -649,6 +695,7 @@ def get_pr_size_distribution(team: Team, start_date: date, end_date: date) -> li
         team: Team instance
         start_date: Start date (inclusive)
         end_date: End date (inclusive)
+        repo: Optional repository to filter by (owner/repo format)
 
     Returns:
         list of dicts with keys:
@@ -656,6 +703,7 @@ def get_pr_size_distribution(team: Team, start_date: date, end_date: date) -> li
             - count (int): Number of PRs in this category
     """
     prs = _get_merged_prs_in_range(team, start_date, end_date)
+    prs = _apply_repo_filter(prs, repo)
 
     # Use database aggregation to count PRs by size category
     # Annotate each PR with its size category, then count by category
@@ -683,7 +731,9 @@ def get_pr_size_distribution(team: Team, start_date: date, end_date: date) -> li
     return [{"category": cat, "count": counts_by_category.get(cat, 0)} for cat in ["XS", "S", "M", "L", "XL"]]
 
 
-def get_unlinked_prs(team: Team, start_date: date, end_date: date, limit: int = 10) -> list[dict]:
+def get_unlinked_prs(
+    team: Team, start_date: date, end_date: date, limit: int = 10, repo: str | None = None
+) -> list[dict]:
     """Get merged PRs without Jira links.
 
     Returns PRs that have been merged within the date range but lack a Jira issue
@@ -695,6 +745,7 @@ def get_unlinked_prs(team: Team, start_date: date, end_date: date, limit: int = 
         start_date: Start date (inclusive)
         end_date: End date (inclusive)
         limit: Maximum number of PRs to return (default 10)
+        repo: Optional repository to filter by (owner/repo format)
 
     Returns:
         list of dicts with keys:
@@ -703,12 +754,9 @@ def get_unlinked_prs(team: Team, start_date: date, end_date: date, limit: int = 
             - merged_at (datetime): Merge timestamp
             - url (str): PR URL
     """
-    prs = (
-        _get_merged_prs_in_range(team, start_date, end_date)
-        .filter(jira_key="")
-        .select_related("author")
-        .order_by("-merged_at")[:limit]
-    )
+    prs = _get_merged_prs_in_range(team, start_date, end_date)
+    prs = _apply_repo_filter(prs, repo)
+    prs = prs.filter(jira_key="").select_related("author").order_by("-merged_at")[:limit]
 
     return [
         {
@@ -721,7 +769,7 @@ def get_unlinked_prs(team: Team, start_date: date, end_date: date, limit: int = 
     ]
 
 
-def get_reviewer_workload(team: Team, start_date: date, end_date: date) -> list[dict]:
+def get_reviewer_workload(team: Team, start_date: date, end_date: date, repo: str | None = None) -> list[dict]:
     """Get reviewer workload with classification.
 
     Uses PRReview model (GitHub reviews). Classifies workload as:
@@ -733,6 +781,7 @@ def get_reviewer_workload(team: Team, start_date: date, end_date: date) -> list[
         team: Team instance
         start_date: Start date (inclusive)
         end_date: End date (inclusive)
+        repo: Optional repository to filter by (owner/repo format)
 
     Returns:
         list of dicts with keys:
@@ -740,16 +789,15 @@ def get_reviewer_workload(team: Team, start_date: date, end_date: date) -> list[
             - review_count (int): Number of reviews
             - workload_level (str): Classification (low, normal, high)
     """
-    reviews = (
-        PRReview.objects.filter(
-            team=team,
-            submitted_at__gte=start_of_day(start_date),
-            submitted_at__lte=end_of_day(end_date),
-        )
-        .values("reviewer__display_name")
-        .annotate(review_count=Count("id"))
-        .order_by("-review_count")
+    reviews = PRReview.objects.filter(
+        team=team,
+        submitted_at__gte=start_of_day(start_date),
+        submitted_at__lte=end_of_day(end_date),
     )
+    # Filter by repository through the pull_request relationship
+    if repo:
+        reviews = reviews.filter(pull_request__github_repo=repo)
+    reviews = reviews.values("reviewer__display_name").annotate(review_count=Count("id")).order_by("-review_count")
 
     if not reviews:
         return []
@@ -776,13 +824,14 @@ def get_reviewer_workload(team: Team, start_date: date, end_date: date) -> list[
     ]
 
 
-def get_copilot_metrics(team: Team, start_date: date, end_date: date) -> dict:
+def get_copilot_metrics(team: Team, start_date: date, end_date: date, repo: str | None = None) -> dict:
     """Get Copilot metrics summary for a team within a date range.
 
     Args:
         team: Team instance
         start_date: Start date (inclusive)
         end_date: End date (inclusive)
+        repo: Optional repository filter (not applicable - Copilot data is not repo-specific)
 
     Returns:
         dict with keys:
@@ -790,7 +839,12 @@ def get_copilot_metrics(team: Team, start_date: date, end_date: date) -> dict:
             - total_accepted (int): Total suggestions accepted
             - acceptance_rate (Decimal): Acceptance rate percentage (0.00 to 100.00)
             - active_users (int): Count of distinct members using Copilot
+
+    Note:
+        repo parameter is accepted for API consistency but has no effect since
+        Copilot usage is tracked at the member level, not per-repository.
     """
+    # Note: AIUsageDaily doesn't have repo field - Copilot data is not repo-specific
     copilot_usage = AIUsageDaily.objects.filter(
         team=team,
         source="copilot",
@@ -823,19 +877,25 @@ def get_copilot_metrics(team: Team, start_date: date, end_date: date) -> dict:
     }
 
 
-def get_copilot_trend(team: Team, start_date: date, end_date: date) -> list[dict]:
+def get_copilot_trend(team: Team, start_date: date, end_date: date, repo: str | None = None) -> list[dict]:
     """Get Copilot acceptance rate trend by week.
 
     Args:
         team: Team instance
         start_date: Start date (inclusive)
         end_date: End date (inclusive)
+        repo: Optional repository filter (not applicable - Copilot data is not repo-specific)
 
     Returns:
         list of dicts with keys:
             - week (date): Week start date
             - acceptance_rate (Decimal): Acceptance rate percentage for that week
+
+    Note:
+        repo parameter is accepted for API consistency but has no effect since
+        Copilot usage is tracked at the member level, not per-repository.
     """
+    # Note: AIUsageDaily doesn't have repo field - Copilot data is not repo-specific
     copilot_usage = AIUsageDaily.objects.filter(
         team=team,
         source="copilot",
@@ -874,7 +934,7 @@ def get_copilot_trend(team: Team, start_date: date, end_date: date) -> list[dict
     return result
 
 
-def get_iteration_metrics(team: Team, start_date: date, end_date: date) -> dict:
+def get_iteration_metrics(team: Team, start_date: date, end_date: date, repo: str | None = None) -> dict:
     """Get iteration metrics averages for merged PRs within a date range.
 
     Aggregates iteration metrics (review rounds, fix response time, etc.)
@@ -884,6 +944,7 @@ def get_iteration_metrics(team: Team, start_date: date, end_date: date) -> dict:
         team: Team instance
         start_date: Start date (inclusive)
         end_date: End date (inclusive)
+        repo: Optional repository to filter by (owner/repo format)
 
     Returns:
         dict with keys:
@@ -894,6 +955,7 @@ def get_iteration_metrics(team: Team, start_date: date, end_date: date) -> dict:
             - prs_with_metrics (int): Count of PRs with iteration metrics
     """
     prs = _get_merged_prs_in_range(team, start_date, end_date)
+    prs = _apply_repo_filter(prs, repo)
 
     # Get PRs with at least one non-null iteration metric
     prs_with_metrics = prs.filter(review_rounds__isnull=False)
@@ -959,7 +1021,9 @@ def get_reviewer_correlations(team: Team) -> list[dict]:
     ]
 
 
-def get_copilot_by_member(team: Team, start_date: date, end_date: date, limit: int = 5) -> list[dict]:
+def get_copilot_by_member(
+    team: Team, start_date: date, end_date: date, limit: int = 5, repo: str | None = None
+) -> list[dict]:
     """Get Copilot metrics breakdown by member.
 
     Args:
@@ -967,6 +1031,7 @@ def get_copilot_by_member(team: Team, start_date: date, end_date: date, limit: i
         start_date: Start date (inclusive)
         end_date: End date (inclusive)
         limit: Maximum number of members to return (default 5)
+        repo: Optional repository filter (not applicable - Copilot data is not repo-specific)
 
     Returns:
         list of dicts with keys:
@@ -974,7 +1039,12 @@ def get_copilot_by_member(team: Team, start_date: date, end_date: date, limit: i
             - suggestions (int): Total suggestions shown
             - accepted (int): Total suggestions accepted
             - acceptance_rate (Decimal): Acceptance rate percentage
+
+    Note:
+        repo parameter is accepted for API consistency but has no effect since
+        Copilot usage is tracked at the member level, not per-repository.
     """
+    # Note: AIUsageDaily doesn't have repo field - Copilot data is not repo-specific
     copilot_usage = AIUsageDaily.objects.filter(
         team=team,
         source="copilot",
@@ -1013,7 +1083,7 @@ def get_copilot_by_member(team: Team, start_date: date, end_date: date, limit: i
     return result[:limit] if limit else result
 
 
-def get_cicd_pass_rate(team: Team, start_date: date, end_date: date) -> dict:
+def get_cicd_pass_rate(team: Team, start_date: date, end_date: date, repo: str | None = None) -> dict:
     """Get CI/CD pass rate metrics for a team within a date range.
 
     Aggregates check run results to show overall CI/CD health and
@@ -1023,6 +1093,7 @@ def get_cicd_pass_rate(team: Team, start_date: date, end_date: date) -> dict:
         team: Team instance
         start_date: Start date (inclusive)
         end_date: End date (inclusive)
+        repo: Optional repository to filter by (owner/repo format)
 
     Returns:
         dict with keys:
@@ -1038,6 +1109,8 @@ def get_cicd_pass_rate(team: Team, start_date: date, end_date: date) -> dict:
         pull_request__merged_at__lte=end_of_day(end_date),
         status="completed",
     )
+    if repo:
+        check_runs = check_runs.filter(pull_request__github_repo=repo)
 
     total_runs = check_runs.count()
     success_count = check_runs.filter(conclusion="success").count()
@@ -1075,7 +1148,7 @@ def get_cicd_pass_rate(team: Team, start_date: date, end_date: date) -> dict:
     }
 
 
-def get_deployment_metrics(team: Team, start_date: date, end_date: date) -> dict:
+def get_deployment_metrics(team: Team, start_date: date, end_date: date, repo: str | None = None) -> dict:
     """Get DORA-style deployment metrics for a team within a date range.
 
     Calculates deployment frequency and success rate, key DevOps metrics.
@@ -1084,6 +1157,7 @@ def get_deployment_metrics(team: Team, start_date: date, end_date: date) -> dict
         team: Team instance
         start_date: Start date (inclusive)
         end_date: End date (inclusive)
+        repo: Optional repository to filter by (owner/repo format)
 
     Returns:
         dict with keys:
@@ -1098,6 +1172,8 @@ def get_deployment_metrics(team: Team, start_date: date, end_date: date) -> dict
         deployed_at__gte=start_of_day(start_date),
         deployed_at__lte=end_of_day(end_date),
     )
+    if repo:
+        deployments = deployments.filter(github_repo=repo)
 
     total = deployments.count()
     production = deployments.filter(environment="production").count()
@@ -1141,7 +1217,7 @@ def get_deployment_metrics(team: Team, start_date: date, end_date: date) -> dict
     }
 
 
-def get_file_category_breakdown(team: Team, start_date: date, end_date: date) -> dict:
+def get_file_category_breakdown(team: Team, start_date: date, end_date: date, repo: str | None = None) -> dict:
     """Get file change breakdown by category for a team within a date range.
 
     Categorizes files changed in PRs to show where development effort
@@ -1151,6 +1227,7 @@ def get_file_category_breakdown(team: Team, start_date: date, end_date: date) ->
         team: Team instance
         start_date: Start date (inclusive)
         end_date: End date (inclusive)
+        repo: Optional repository to filter by (owner/repo format)
 
     Returns:
         dict with keys:
@@ -1163,6 +1240,8 @@ def get_file_category_breakdown(team: Team, start_date: date, end_date: date) ->
         pull_request__merged_at__gte=start_of_day(start_date),
         pull_request__merged_at__lte=end_of_day(end_date),
     )
+    if repo:
+        files = files.filter(pull_request__github_repo=repo)
 
     total_files = files.count()
     total_changes = files.aggregate(total=Sum("additions") + Sum("deletions"))["total"] or 0
@@ -1207,7 +1286,7 @@ def get_file_category_breakdown(team: Team, start_date: date, end_date: date) ->
 # and ai_reviewer_type fields populated by the ai_detector service during seeding.
 
 
-def get_ai_detected_metrics(team: Team, start_date: date, end_date: date) -> dict:
+def get_ai_detected_metrics(team: Team, start_date: date, end_date: date, repo: str | None = None) -> dict:
     """Get AI detection metrics based on PR content analysis.
 
     Unlike get_key_metrics which uses survey responses, this uses direct
@@ -1217,6 +1296,7 @@ def get_ai_detected_metrics(team: Team, start_date: date, end_date: date) -> dic
         team: Team instance
         start_date: Start date (inclusive)
         end_date: End date (inclusive)
+        repo: Optional repository to filter by (owner/repo format)
 
     Returns:
         dict with keys:
@@ -1225,6 +1305,7 @@ def get_ai_detected_metrics(team: Team, start_date: date, end_date: date) -> dic
             - ai_assisted_pct (Decimal): Percentage (0.00 to 100.00)
     """
     prs = _get_merged_prs_in_range(team, start_date, end_date)
+    prs = _apply_repo_filter(prs, repo)
 
     stats = prs.aggregate(
         total_prs=Count("id"),
@@ -1243,7 +1324,7 @@ def get_ai_detected_metrics(team: Team, start_date: date, end_date: date) -> dic
     }
 
 
-def get_ai_tool_breakdown(team: Team, start_date: date, end_date: date) -> list[dict]:
+def get_ai_tool_breakdown(team: Team, start_date: date, end_date: date, repo: str | None = None) -> list[dict]:
     """Get breakdown of AI tools detected in PRs.
 
     Counts how many PRs used each AI tool (claude_code, copilot, cursor, etc.)
@@ -1253,6 +1334,7 @@ def get_ai_tool_breakdown(team: Team, start_date: date, end_date: date) -> list[
         team: Team instance
         start_date: Start date (inclusive)
         end_date: End date (inclusive)
+        repo: Optional repository to filter by (owner/repo format)
 
     Returns:
         list of dicts with keys:
@@ -1264,6 +1346,7 @@ def get_ai_tool_breakdown(team: Team, start_date: date, end_date: date) -> list[
     from apps.metrics.services.ai_categories import get_tool_category, is_excluded_tool
 
     prs = _get_merged_prs_in_range(team, start_date, end_date).filter(is_ai_assisted=True)
+    prs = _apply_repo_filter(prs, repo)
 
     # Count occurrences of each tool
     tool_counts: dict[str, int] = {}
@@ -1286,13 +1369,14 @@ def get_ai_tool_breakdown(team: Team, start_date: date, end_date: date) -> list[
     return result
 
 
-def get_ai_category_breakdown(team: Team, start_date: date, end_date: date) -> dict:
+def get_ai_category_breakdown(team: Team, start_date: date, end_date: date, repo: str | None = None) -> dict:
     """Get breakdown of PRs by AI category (code vs review).
 
     Args:
         team: Team instance
         start_date: Start date (inclusive)
         end_date: End date (inclusive)
+        repo: Optional repository to filter by (owner/repo format)
 
     Returns:
         dict with keys:
@@ -1311,6 +1395,7 @@ def get_ai_category_breakdown(team: Team, start_date: date, end_date: date) -> d
     )
 
     prs = _get_merged_prs_in_range(team, start_date, end_date).filter(is_ai_assisted=True)
+    prs = _apply_repo_filter(prs, repo)
 
     code_count = 0
     review_count = 0
@@ -1340,7 +1425,7 @@ def get_ai_category_breakdown(team: Team, start_date: date, end_date: date) -> d
     }
 
 
-def get_ai_bot_review_stats(team: Team, start_date: date, end_date: date) -> dict:
+def get_ai_bot_review_stats(team: Team, start_date: date, end_date: date, repo: str | None = None) -> dict:
     """Get statistics about AI bot reviews.
 
     Uses the is_ai_review and ai_reviewer_type fields on PRReview model
@@ -1350,6 +1435,7 @@ def get_ai_bot_review_stats(team: Team, start_date: date, end_date: date) -> dic
         team: Team instance
         start_date: Start date (inclusive)
         end_date: End date (inclusive)
+        repo: Optional repository to filter by (owner/repo format)
 
     Returns:
         dict with keys:
@@ -1363,6 +1449,9 @@ def get_ai_bot_review_stats(team: Team, start_date: date, end_date: date) -> dic
         submitted_at__gte=start_of_day(start_date),
         submitted_at__lte=end_of_day(end_date),
     )
+    # Filter by repository through the pull_request relationship
+    if repo:
+        reviews = reviews.filter(pull_request__github_repo=repo)
 
     stats = reviews.aggregate(
         total_reviews=Count("id"),
@@ -1426,7 +1515,9 @@ def _calculate_channel_percentages(stats: dict, channels: list[str]) -> dict:
     return {channel: Decimal("0.00") for channel in channels}
 
 
-def get_response_channel_distribution(team: Team, start_date: date = None, end_date: date = None) -> dict:
+def get_response_channel_distribution(
+    team: Team, start_date: date = None, end_date: date = None, repo: str | None = None
+) -> dict:
     """Get survey response channel distribution for authors and reviewers.
 
     Counts responses by channel (github, slack, web, auto) to show which
@@ -1436,6 +1527,7 @@ def get_response_channel_distribution(team: Team, start_date: date = None, end_d
         team: Team instance
         start_date: Start date (inclusive), optional
         end_date: End date (inclusive), optional
+        repo: Optional repository to filter by (owner/repo format)
 
     Returns:
         dict with keys:
@@ -1446,6 +1538,8 @@ def get_response_channel_distribution(team: Team, start_date: date = None, end_d
     # Build base queryset for surveys filtered by date range
     surveys_qs = PRSurvey.objects.filter(team=team)
     surveys_qs = _filter_by_date_range(surveys_qs, "pull_request__merged_at", start_date, end_date)
+    if repo:
+        surveys_qs = surveys_qs.filter(pull_request__github_repo=repo)
 
     # Count author responses by channel (only where author_responded_at is not null)
     author_responses_qs = surveys_qs.filter(author_responded_at__isnull=False)
@@ -1460,6 +1554,8 @@ def get_response_channel_distribution(team: Team, start_date: date = None, end_d
     # Build base queryset for reviewer responses filtered by date range
     reviews_qs = PRSurveyReview.objects.filter(team=team)
     reviews_qs = _filter_by_date_range(reviews_qs, "survey__pull_request__merged_at", start_date, end_date)
+    if repo:
+        reviews_qs = reviews_qs.filter(survey__pull_request__github_repo=repo)
 
     # Count reviewer responses by channel (only where responded_at is not null)
     reviewer_responses_qs = reviews_qs.filter(responded_at__isnull=False)
@@ -1495,7 +1591,9 @@ def get_response_channel_distribution(team: Team, start_date: date = None, end_d
     }
 
 
-def get_ai_detection_metrics(team: Team, start_date: date = None, end_date: date = None) -> dict:
+def get_ai_detection_metrics(
+    team: Team, start_date: date = None, end_date: date = None, repo: str | None = None
+) -> dict:
     """Get AI auto-detection metrics for dashboard analytics.
 
     Analyzes survey responses to show how well AI auto-detection performs
@@ -1505,6 +1603,7 @@ def get_ai_detection_metrics(team: Team, start_date: date = None, end_date: date
         team: Team instance
         start_date: Start date (inclusive), optional
         end_date: End date (inclusive), optional
+        repo: Optional repository to filter by (owner/repo format)
 
     Returns:
         dict with keys:
@@ -1519,6 +1618,8 @@ def get_ai_detection_metrics(team: Team, start_date: date = None, end_date: date
     # Build base queryset for surveys filtered by date range
     surveys_qs = PRSurvey.objects.filter(team=team)
     surveys_qs = _filter_by_date_range(surveys_qs, "pull_request__merged_at", start_date, end_date)
+    if repo:
+        surveys_qs = surveys_qs.filter(pull_request__github_repo=repo)
 
     # Aggregate counts using conditional aggregation
     stats = surveys_qs.aggregate(
@@ -1589,7 +1690,9 @@ def _calculate_average_response_times(response_times: list[Decimal], by_channel:
     return overall_avg, channel_avgs
 
 
-def get_response_time_metrics(team: Team, start_date: date = None, end_date: date = None) -> dict:
+def get_response_time_metrics(
+    team: Team, start_date: date = None, end_date: date = None, repo: str | None = None
+) -> dict:
     """Get survey response time metrics for authors and reviewers.
 
     Calculates average response times from PR merge to survey response,
@@ -1600,6 +1703,7 @@ def get_response_time_metrics(team: Team, start_date: date = None, end_date: dat
         team: Team instance
         start_date: Start date (inclusive), optional
         end_date: End date (inclusive), optional
+        repo: Optional repository to filter by (owner/repo format)
 
     Returns:
         dict with keys:
@@ -1612,6 +1716,8 @@ def get_response_time_metrics(team: Team, start_date: date = None, end_date: dat
     # Build base queryset for surveys filtered by date range
     surveys_qs = PRSurvey.objects.filter(team=team)
     surveys_qs = _filter_by_date_range(surveys_qs, "pull_request__merged_at", start_date, end_date)
+    if repo:
+        surveys_qs = surveys_qs.filter(pull_request__github_repo=repo)
 
     # Get author responses (excluding auto-detected, only real responses from github/slack/web)
     author_responses = surveys_qs.filter(
@@ -1640,6 +1746,8 @@ def get_response_time_metrics(team: Team, start_date: date = None, end_date: dat
     # Build base queryset for reviewer responses filtered by date range
     reviews_qs = PRSurveyReview.objects.filter(team=team)
     reviews_qs = _filter_by_date_range(reviews_qs, "survey__pull_request__merged_at", start_date, end_date)
+    if repo:
+        reviews_qs = reviews_qs.filter(survey__pull_request__github_repo=repo)
 
     # Get reviewer responses
     reviewer_responses = reviews_qs.filter(responded_at__isnull=False).select_related("survey__pull_request")
@@ -1681,7 +1789,12 @@ def get_response_time_metrics(team: Team, start_date: date = None, end_date: dat
 
 
 def _get_monthly_metric_trend(
-    team: Team, start_date: date, end_date: date, metric_field: str, result_key: str = "avg_metric"
+    team: Team,
+    start_date: date,
+    end_date: date,
+    metric_field: str,
+    result_key: str = "avg_metric",
+    repo: str | None = None,
 ) -> list[dict]:
     """Get monthly trend for a given metric field.
 
@@ -1693,6 +1806,7 @@ def _get_monthly_metric_trend(
         end_date: End date (inclusive)
         metric_field: Name of the PR model field to average
         result_key: Key name for the aggregated result in the query
+        repo: Optional repository to filter by (owner/repo format)
 
     Returns:
         list of dicts with keys:
@@ -1700,6 +1814,7 @@ def _get_monthly_metric_trend(
             - value (float): Average metric value for that month (0.0 if None)
     """
     prs = _get_merged_prs_in_range(team, start_date, end_date)
+    prs = _apply_repo_filter(prs, repo)
 
     # Group by month and calculate average metric
     monthly_data = (
@@ -1724,45 +1839,48 @@ def _get_monthly_metric_trend(
     return result
 
 
-def get_monthly_cycle_time_trend(team: Team, start_date: date, end_date: date) -> list[dict]:
+def get_monthly_cycle_time_trend(team: Team, start_date: date, end_date: date, repo: str | None = None) -> list[dict]:
     """Get cycle time trend by month.
 
     Args:
         team: Team instance
         start_date: Start date (inclusive)
         end_date: End date (inclusive)
+        repo: Optional repository to filter by (owner/repo format)
 
     Returns:
         list of dicts with keys:
             - month (str): Month in YYYY-MM format
             - value (float): Average cycle time in hours for that month
     """
-    return _get_monthly_metric_trend(team, start_date, end_date, "cycle_time_hours", "avg_cycle_time")
+    return _get_monthly_metric_trend(team, start_date, end_date, "cycle_time_hours", "avg_cycle_time", repo)
 
 
-def get_monthly_review_time_trend(team: Team, start_date: date, end_date: date) -> list[dict]:
+def get_monthly_review_time_trend(team: Team, start_date: date, end_date: date, repo: str | None = None) -> list[dict]:
     """Get review time trend by month.
 
     Args:
         team: Team instance
         start_date: Start date (inclusive)
         end_date: End date (inclusive)
+        repo: Optional repository to filter by (owner/repo format)
 
     Returns:
         list of dicts with keys:
             - month (str): Month in YYYY-MM format
             - value (float): Average review time in hours for that month
     """
-    return _get_monthly_metric_trend(team, start_date, end_date, "review_time_hours", "avg_review_time")
+    return _get_monthly_metric_trend(team, start_date, end_date, "review_time_hours", "avg_review_time", repo)
 
 
-def get_monthly_pr_count(team: Team, start_date: date, end_date: date) -> list[dict]:
+def get_monthly_pr_count(team: Team, start_date: date, end_date: date, repo: str | None = None) -> list[dict]:
     """Get PR count by month.
 
     Args:
         team: Team instance
         start_date: Start date (inclusive)
         end_date: End date (inclusive)
+        repo: Optional repository to filter by (owner/repo format)
 
     Returns:
         list of dicts with keys:
@@ -1770,6 +1888,7 @@ def get_monthly_pr_count(team: Team, start_date: date, end_date: date) -> list[d
             - value (int): Number of merged PRs for that month
     """
     prs = _get_merged_prs_in_range(team, start_date, end_date)
+    prs = _apply_repo_filter(prs, repo)
 
     # Group by month and count
     monthly_data = (
@@ -1788,13 +1907,14 @@ def get_monthly_pr_count(team: Team, start_date: date, end_date: date) -> list[d
     return result
 
 
-def get_weekly_pr_count(team: Team, start_date: date, end_date: date) -> list[dict]:
+def get_weekly_pr_count(team: Team, start_date: date, end_date: date, repo: str | None = None) -> list[dict]:
     """Get PR count by week.
 
     Args:
         team: Team instance
         start_date: Start date (inclusive)
         end_date: End date (inclusive)
+        repo: Optional repository filter (owner/repo format)
 
     Returns:
         list of dicts with keys:
@@ -1802,6 +1922,7 @@ def get_weekly_pr_count(team: Team, start_date: date, end_date: date) -> list[di
             - value (int): Number of merged PRs for that week
     """
     prs = _get_merged_prs_in_range(team, start_date, end_date)
+    prs = _apply_repo_filter(prs, repo)
 
     # Group by week and count
     weekly_data = prs.annotate(week=TruncWeek("merged_at")).values("week").annotate(count=Count("id")).order_by("week")
@@ -1818,13 +1939,14 @@ def get_weekly_pr_count(team: Team, start_date: date, end_date: date) -> list[di
     return result
 
 
-def get_monthly_ai_adoption(team: Team, start_date: date, end_date: date) -> list[dict]:
+def get_monthly_ai_adoption(team: Team, start_date: date, end_date: date, repo: str | None = None) -> list[dict]:
     """Get AI adoption percentage by month.
 
     Args:
         team: Team instance
         start_date: Start date (inclusive)
         end_date: End date (inclusive)
+        repo: Optional repository to filter by (owner/repo format)
 
     Returns:
         list of dicts with keys:
@@ -1832,6 +1954,7 @@ def get_monthly_ai_adoption(team: Team, start_date: date, end_date: date) -> lis
             - value (float): Percentage of AI-assisted PRs (0.0 to 100.0)
     """
     prs = _get_merged_prs_in_range(team, start_date, end_date)
+    prs = _apply_repo_filter(prs, repo)
 
     # Group by month with AI count and total count
     monthly_data = (
@@ -1866,6 +1989,7 @@ def get_trend_comparison(
     current_end: date,
     compare_start: date,
     compare_end: date,
+    repo: str | None = None,
 ) -> dict:
     """Get trend comparison between two periods (e.g., YoY).
 
@@ -1876,6 +2000,7 @@ def get_trend_comparison(
         current_end: End of current period
         compare_start: Start of comparison period
         compare_end: End of comparison period
+        repo: Optional repository to filter by (owner/repo format)
 
     Returns:
         dict with keys:
@@ -1893,8 +2018,8 @@ def get_trend_comparison(
 
     func = metric_functions.get(metric, get_monthly_cycle_time_trend)
 
-    current_data = func(team, current_start, current_end)
-    compare_data = func(team, compare_start, compare_end)
+    current_data = func(team, current_start, current_end, repo=repo)
+    compare_data = func(team, compare_start, compare_end, repo=repo)
 
     # Calculate averages for change percentage
     current_values = [d["value"] for d in current_data if d["value"]]
@@ -1918,7 +2043,7 @@ def get_trend_comparison(
 # =============================================================================
 
 
-def get_sparkline_data(team: Team, start_date: date, end_date: date) -> dict:
+def get_sparkline_data(team: Team, start_date: date, end_date: date, repo: str | None = None) -> dict:
     """Get sparkline data for key metric cards.
 
     Returns 12 weeks of data for each metric, along with change percentage
@@ -1928,6 +2053,7 @@ def get_sparkline_data(team: Team, start_date: date, end_date: date) -> dict:
         team: Team instance
         start_date: Start date (inclusive)
         end_date: End date (inclusive)
+        repo: Optional repository filter (owner/repo format)
 
     Returns:
         dict with keys for each metric (prs_merged, cycle_time, ai_adoption, review_time).
@@ -1937,6 +2063,7 @@ def get_sparkline_data(team: Team, start_date: date, end_date: date) -> dict:
             - trend (str): Direction ("up", "down", or "flat")
     """
     prs = _get_merged_prs_in_range(team, start_date, end_date)
+    prs = _apply_repo_filter(prs, repo)
 
     # Get weekly PR counts
     pr_count_data = (
@@ -2024,7 +2151,9 @@ def get_sparkline_data(team: Team, start_date: date, end_date: date) -> dict:
     }
 
 
-def get_pr_type_breakdown(team: Team, start_date: date, end_date: date, ai_assisted: str = "all") -> list[dict]:
+def get_pr_type_breakdown(
+    team: Team, start_date: date, end_date: date, ai_assisted: str = "all", repo: str | None = None
+) -> list[dict]:
     """Get PR breakdown by type (feature, bugfix, refactor, etc.).
 
     Uses LLM-detected PR types from llm_summary.summary.type,
@@ -2035,6 +2164,7 @@ def get_pr_type_breakdown(team: Team, start_date: date, end_date: date, ai_assis
         start_date: Start date (inclusive)
         end_date: End date (inclusive)
         ai_assisted: Filter by AI assistance - "all", "yes", or "no"
+        repo: Optional repository filter (owner/repo format)
 
     Returns:
         list of dicts with keys:
@@ -2043,6 +2173,7 @@ def get_pr_type_breakdown(team: Team, start_date: date, end_date: date, ai_assis
             - percentage (float): Percentage of total PRs
     """
     prs = _get_merged_prs_in_range(team, start_date, end_date)
+    prs = _apply_repo_filter(prs, repo)
 
     # Use Python to iterate since we need the effective_pr_type property
     type_counts: dict[str, int] = {}
@@ -2077,7 +2208,7 @@ def get_pr_type_breakdown(team: Team, start_date: date, end_date: date, ai_assis
 
 
 def get_monthly_pr_type_trend(
-    team: Team, start_date: date, end_date: date, ai_assisted: str = "all"
+    team: Team, start_date: date, end_date: date, ai_assisted: str = "all", repo: str | None = None
 ) -> dict[str, list[dict]]:
     """Get PR type breakdown trend by month.
 
@@ -2086,6 +2217,7 @@ def get_monthly_pr_type_trend(
         start_date: Start date (inclusive)
         end_date: End date (inclusive)
         ai_assisted: Filter by AI assistance - "all", "yes", or "no"
+        repo: Optional repository to filter by (owner/repo format)
 
     Returns:
         dict mapping PR type to list of monthly counts:
@@ -2096,6 +2228,7 @@ def get_monthly_pr_type_trend(
         }
     """
     prs = _get_merged_prs_in_range(team, start_date, end_date)
+    prs = _apply_repo_filter(prs, repo)
 
     # Group by month and type using Python (need effective_pr_type property)
     monthly_type_counts: dict[str, dict[str, int]] = {}  # {month: {type: count}}
@@ -2137,7 +2270,7 @@ def get_monthly_pr_type_trend(
 
 
 def get_weekly_pr_type_trend(
-    team: Team, start_date: date, end_date: date, ai_assisted: str = "all"
+    team: Team, start_date: date, end_date: date, ai_assisted: str = "all", repo: str | None = None
 ) -> dict[str, list[dict]]:
     """Get PR type breakdown trend by week.
 
@@ -2146,6 +2279,7 @@ def get_weekly_pr_type_trend(
         start_date: Start date (inclusive)
         end_date: End date (inclusive)
         ai_assisted: Filter by AI assistance - "all", "yes", or "no"
+        repo: Optional repository to filter by (owner/repo format)
 
     Returns:
         dict mapping PR type to list of weekly counts:
@@ -2156,6 +2290,7 @@ def get_weekly_pr_type_trend(
         }
     """
     prs = _get_merged_prs_in_range(team, start_date, end_date)
+    prs = _apply_repo_filter(prs, repo)
 
     # Group by week and type using Python
     weekly_type_counts: dict[str, dict[str, int]] = {}  # {week: {type: count}}
@@ -2204,7 +2339,9 @@ def _is_valid_category(category: str) -> bool:
     return bool(category_str) and category_str not in ("{}", "[]", "None", "null")
 
 
-def get_tech_breakdown(team: Team, start_date: date, end_date: date, ai_assisted: str = "all") -> list[dict]:
+def get_tech_breakdown(
+    team: Team, start_date: date, end_date: date, ai_assisted: str = "all", repo: str | None = None
+) -> list[dict]:
     """Get PR breakdown by technology category (frontend, backend, devops, etc.).
 
     Uses LLM-detected categories from llm_summary.tech.categories,
@@ -2217,6 +2354,7 @@ def get_tech_breakdown(team: Team, start_date: date, end_date: date, ai_assisted
         start_date: Start date (inclusive)
         end_date: End date (inclusive)
         ai_assisted: Filter by AI assistance - "all", "yes", or "no"
+        repo: Optional repository filter (owner/repo format)
 
     Returns:
         list of dicts with keys:
@@ -2225,6 +2363,7 @@ def get_tech_breakdown(team: Team, start_date: date, end_date: date, ai_assisted
             - percentage (float): Percentage of total PRs
     """
     prs = _get_merged_prs_in_range(team, start_date, end_date)
+    prs = _apply_repo_filter(prs, repo)
 
     # Use Python to iterate since we need the effective_tech_categories property
     category_counts: dict[str, int] = {}
@@ -2264,7 +2403,7 @@ def get_tech_breakdown(team: Team, start_date: date, end_date: date, ai_assisted
 
 
 def get_monthly_tech_trend(
-    team: Team, start_date: date, end_date: date, ai_assisted: str = "all"
+    team: Team, start_date: date, end_date: date, ai_assisted: str = "all", repo: str | None = None
 ) -> dict[str, list[dict]]:
     """Get tech category breakdown trend by month.
 
@@ -2273,6 +2412,7 @@ def get_monthly_tech_trend(
         start_date: Start date (inclusive)
         end_date: End date (inclusive)
         ai_assisted: Filter by AI assistance - "all", "yes", or "no"
+        repo: Optional repository to filter by (owner/repo format)
 
     Returns:
         dict mapping category to list of monthly counts:
@@ -2283,6 +2423,7 @@ def get_monthly_tech_trend(
         }
     """
     prs = _get_merged_prs_in_range(team, start_date, end_date)
+    prs = _apply_repo_filter(prs, repo)
 
     # Group by month and category using Python
     monthly_category_counts: dict[str, dict[str, int]] = {}  # {month: {category: count}}
@@ -2330,7 +2471,7 @@ def get_monthly_tech_trend(
 
 
 def get_weekly_tech_trend(
-    team: Team, start_date: date, end_date: date, ai_assisted: str = "all"
+    team: Team, start_date: date, end_date: date, ai_assisted: str = "all", repo: str | None = None
 ) -> dict[str, list[dict]]:
     """Get tech category breakdown trend by week.
 
@@ -2339,6 +2480,7 @@ def get_weekly_tech_trend(
         start_date: Start date (inclusive)
         end_date: End date (inclusive)
         ai_assisted: Filter by AI assistance - "all", "yes", or "no"
+        repo: Optional repository to filter by (owner/repo format)
 
     Returns:
         dict mapping category to list of weekly counts:
@@ -2349,6 +2491,7 @@ def get_weekly_tech_trend(
         }
     """
     prs = _get_merged_prs_in_range(team, start_date, end_date)
+    prs = _apply_repo_filter(prs, repo)
 
     # Group by week and category using Python
     weekly_category_counts: dict[str, dict[str, int]] = {}  # {week: {category: count}}
@@ -2393,3 +2536,324 @@ def get_weekly_tech_trend(
             result[category].append({"week": week, "value": count})
 
     return result
+
+
+# =============================================================================
+# Dashboard Merge: Needs Attention & AI Impact Functions
+# =============================================================================
+
+
+def get_needs_attention_prs(
+    team: Team,
+    start_date: date,
+    end_date: date,
+    page: int = 1,
+    per_page: int = 10,
+) -> dict:
+    """Get PRs that need attention, prioritized by issue severity.
+
+    Identifies PRs with potential issues and returns them sorted by priority:
+    1. Reverts (is_revert=True) - Priority 1
+    2. Hotfixes (is_hotfix=True) - Priority 2
+    3. Long cycle time (> 2x team average) - Priority 3
+    4. Large PRs (> 500 lines changed) - Priority 4
+    5. Missing Jira link (only if team has Jira connected) - Priority 5
+
+    Args:
+        team: Team instance
+        start_date: Start date (inclusive)
+        end_date: End date (inclusive)
+        page: Page number (1-indexed)
+        per_page: Number of items per page
+
+    Returns:
+        dict with keys:
+            - items: list of PR dicts with issue info
+            - total: total count of flagged PRs
+            - page: current page number
+            - per_page: items per page
+            - has_next: True if more pages exist
+            - has_prev: True if previous pages exist
+    """
+    # Get all merged PRs in range
+    prs = _get_merged_prs_in_range(team, start_date, end_date).select_related("author")
+
+    # Calculate team average cycle time for long cycle detection
+    avg_cycle_result = prs.filter(cycle_time_hours__isnull=False).aggregate(avg_cycle=Avg("cycle_time_hours"))
+    team_avg_cycle = avg_cycle_result["avg_cycle"] or Decimal("0")
+    long_cycle_threshold = team_avg_cycle * 2
+
+    # Check if team has Jira connected
+    has_jira = JiraIntegration.objects.filter(team=team).exists()
+
+    # Identify PRs with issues and assign priority
+    flagged_prs = []
+    for pr in prs:
+        issue_type = None
+        issue_priority = None
+
+        # Check issues in priority order (first match wins)
+        if pr.is_revert:
+            issue_type = "revert"
+            issue_priority = 1
+        elif pr.is_hotfix:
+            issue_type = "hotfix"
+            issue_priority = 2
+        elif pr.cycle_time_hours and long_cycle_threshold > 0 and pr.cycle_time_hours > long_cycle_threshold:
+            issue_type = "long_cycle"
+            issue_priority = 3
+        elif (pr.additions or 0) + (pr.deletions or 0) > 500:
+            issue_type = "large_pr"
+            issue_priority = 4
+        elif has_jira and not pr.jira_key:
+            issue_type = "missing_jira"
+            issue_priority = 5
+
+        if issue_type:
+            flagged_prs.append(
+                {
+                    "id": pr.id,
+                    "title": pr.title,
+                    "url": _get_github_url(pr),
+                    "author": _get_author_name(pr),
+                    "author_avatar_url": pr.author.avatar_url if pr.author else "",
+                    "issue_type": issue_type,
+                    "issue_priority": issue_priority,
+                    "merged_at": pr.merged_at,
+                }
+            )
+
+    # Sort by priority (ascending), then by merged_at (descending)
+    flagged_prs.sort(key=lambda x: (x["issue_priority"], -x["merged_at"].timestamp()))
+
+    # Pagination
+    total = len(flagged_prs)
+    start_idx = (page - 1) * per_page
+    end_idx = start_idx + per_page
+    items = flagged_prs[start_idx:end_idx]
+
+    return {
+        "items": items,
+        "total": total,
+        "page": page,
+        "per_page": per_page,
+        "has_next": end_idx < total,
+        "has_prev": page > 1,
+    }
+
+
+def get_ai_impact_stats(team: Team, start_date: date, end_date: date) -> dict:
+    """Get AI impact statistics comparing AI-assisted vs non-AI PRs.
+
+    Uses the `effective_is_ai_assisted` property which prioritizes:
+    LLM detection > pattern detection > survey data
+
+    Args:
+        team: Team instance
+        start_date: Start date (inclusive)
+        end_date: End date (inclusive)
+
+    Returns:
+        dict with keys:
+            - ai_adoption_pct: Decimal percentage of AI-assisted PRs (0.00 to 100.00)
+            - avg_cycle_with_ai: Decimal average cycle time in hours for AI PRs (or None)
+            - avg_cycle_without_ai: Decimal average cycle time in hours for non-AI PRs (or None)
+            - cycle_time_difference_pct: Decimal percentage difference (negative = AI faster)
+            - total_prs: int total PRs in period
+            - ai_prs: int count of AI-assisted PRs
+    """
+    # Get all merged PRs in range
+    prs = list(_get_merged_prs_in_range(team, start_date, end_date))
+
+    total_prs = len(prs)
+
+    if total_prs == 0:
+        return {
+            "ai_adoption_pct": Decimal("0.00"),
+            "avg_cycle_with_ai": None,
+            "avg_cycle_without_ai": None,
+            "cycle_time_difference_pct": None,
+            "total_prs": 0,
+            "ai_prs": 0,
+        }
+
+    # Separate PRs by AI status using effective_is_ai_assisted property
+    ai_prs = []
+    non_ai_prs = []
+
+    for pr in prs:
+        if pr.effective_is_ai_assisted:
+            ai_prs.append(pr)
+        else:
+            non_ai_prs.append(pr)
+
+    ai_count = len(ai_prs)
+
+    # Calculate adoption percentage
+    ai_adoption_pct = Decimal(str(round(ai_count * 100.0 / total_prs, 2)))
+
+    # Calculate average cycle times (only PRs with cycle_time_hours)
+    ai_cycle_times = [pr.cycle_time_hours for pr in ai_prs if pr.cycle_time_hours is not None]
+    non_ai_cycle_times = [pr.cycle_time_hours for pr in non_ai_prs if pr.cycle_time_hours is not None]
+
+    avg_cycle_with_ai = None
+    avg_cycle_without_ai = None
+    cycle_time_difference_pct = None
+
+    if ai_cycle_times:
+        avg_cycle_with_ai = Decimal(str(round(sum(ai_cycle_times) / len(ai_cycle_times), 2)))
+
+    if non_ai_cycle_times:
+        avg_cycle_without_ai = Decimal(str(round(sum(non_ai_cycle_times) / len(non_ai_cycle_times), 2)))
+
+    # Calculate difference percentage if both averages are available
+    if avg_cycle_with_ai is not None and avg_cycle_without_ai is not None and avg_cycle_without_ai > 0:
+        diff = ((avg_cycle_with_ai - avg_cycle_without_ai) / avg_cycle_without_ai) * 100
+        cycle_time_difference_pct = Decimal(str(round(float(diff), 2)))
+
+    return {
+        "ai_adoption_pct": ai_adoption_pct,
+        "avg_cycle_with_ai": avg_cycle_with_ai,
+        "avg_cycle_without_ai": avg_cycle_without_ai,
+        "cycle_time_difference_pct": cycle_time_difference_pct,
+        "total_prs": total_prs,
+        "ai_prs": ai_count,
+    }
+
+
+def get_team_velocity(team: Team, start_date: date, end_date: date, limit: int = 5) -> list[dict]:
+    """Get top contributors by PR count with average cycle time.
+
+    Args:
+        team: Team instance
+        start_date: Start date (inclusive)
+        end_date: End date (inclusive)
+        limit: Maximum number of contributors to return (default 5)
+
+    Returns:
+        list of dicts ordered by PR count descending, then display_name alphabetically:
+            - member_id: int TeamMember ID
+            - display_name: str member's display name
+            - avatar_url: str member's avatar URL
+            - pr_count: int number of PRs merged
+            - avg_cycle_time: Decimal average cycle time in hours (or None)
+    """
+    # Get all merged PRs in range with author info
+    prs = _get_merged_prs_in_range(team, start_date, end_date).select_related("author")
+
+    # Group PRs by author
+    author_prs: dict[int, list] = {}
+    author_info: dict[int, dict] = {}
+
+    for pr in prs:
+        if not pr.author:
+            continue
+
+        author_id = pr.author.id
+        if author_id not in author_prs:
+            author_prs[author_id] = []
+            author_info[author_id] = {
+                "member_id": pr.author.id,
+                "display_name": pr.author.display_name or "Unknown",
+                "avatar_url": _avatar_url_from_github_id(pr.author.github_id),
+            }
+        author_prs[author_id].append(pr)
+
+    # Calculate stats for each author
+    results = []
+    for author_id, prs_list in author_prs.items():
+        pr_count = len(prs_list)
+
+        # Calculate avg cycle time (only PRs with cycle_time_hours)
+        cycle_times = [pr.cycle_time_hours for pr in prs_list if pr.cycle_time_hours is not None]
+        avg_cycle_time = None
+        if cycle_times:
+            avg = sum(cycle_times) / len(cycle_times)
+            avg_cycle_time = Decimal(str(round(float(avg), 1)))
+
+        results.append(
+            {
+                **author_info[author_id],
+                "pr_count": pr_count,
+                "avg_cycle_time": avg_cycle_time,
+            }
+        )
+
+    # Sort by pr_count descending, then display_name ascending
+    results.sort(key=lambda x: (-x["pr_count"], x["display_name"]))
+
+    return results[:limit]
+
+
+def detect_review_bottleneck(
+    team: Team,
+    start_date: date,
+    end_date: date,  # noqa: ARG001
+) -> dict | None:
+    """Detect if any reviewer has > 3x average pending reviews.
+
+    "Pending reviews" are defined as open PRs that a reviewer has reviewed.
+    This represents ongoing review work where PRs haven't been merged yet.
+
+    Note: Date parameters are accepted for API consistency but not used.
+    We look at ALL currently open PRs since pending work is independent of
+    when the PR was created.
+
+    Args:
+        team: Team instance
+        start_date: Unused (kept for API consistency)
+        end_date: Unused (kept for API consistency)
+
+    Returns:
+        dict with bottleneck info if detected:
+            - reviewer_name: str display name of bottleneck reviewer
+            - pending_count: int number of open PRs they've reviewed
+            - team_avg: float average pending reviews across all reviewers
+        None if no bottleneck detected (no one exceeds 3x threshold)
+    """
+    # Get distinct open PRs per reviewer
+    # Count distinct PRs (not reviews) - a reviewer might review same PR multiple times
+    reviewer_stats = list(
+        PRReview.objects.filter(
+            team=team,
+            pull_request__state="open",
+        )
+        .values("reviewer__id", "reviewer__display_name")
+        .annotate(pending_count=Count("pull_request", distinct=True))
+    )
+
+    if not reviewer_stats:
+        return None
+
+    # Build list of reviewer counts
+    reviewer_counts = [
+        {
+            "reviewer_name": stat["reviewer__display_name"] or "Unknown",
+            "pending_count": stat["pending_count"],
+        }
+        for stat in reviewer_stats
+    ]
+
+    if len(reviewer_counts) < 2:
+        # Can't have a bottleneck with only 1 reviewer (no comparison)
+        return None
+
+    # Calculate team average
+    total = sum(r["pending_count"] for r in reviewer_counts)
+    team_avg = total / len(reviewer_counts)
+    threshold = team_avg * 3
+
+    # Find bottlenecks (> 3x threshold)
+    bottlenecks = [r for r in reviewer_counts if r["pending_count"] > threshold]
+
+    if not bottlenecks:
+        return None
+
+    # Return the worst bottleneck (highest pending count)
+    worst = max(bottlenecks, key=lambda x: x["pending_count"])
+
+    return {
+        "reviewer_name": worst["reviewer_name"],
+        "pending_count": worst["pending_count"],
+        "team_avg": round(team_avg, 1),
+    }

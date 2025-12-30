@@ -1,0 +1,93 @@
+{% load i18n %}
+{# Repository Selector Component - Filter analytics by repository #}
+{# Usage: {% include "metrics/partials/repo_selector.html" with repos=repos selected_repo=selected_repo %} #}
+
+<div x-data="repoSelector({{ repos|safe }})"
+     @click.outside="close()"
+     @keydown.escape.window="close()"
+     data-testid="repo-selector"
+     class="relative">
+
+  {# Dropdown Trigger Button #}
+  <button type="button"
+          @click="toggle()"
+          class="btn btn-sm btn-ghost gap-1"
+          :class="{'btn-primary': !isAll()}">
+    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+    </svg>
+    <span x-text="getDisplayName()">{% trans "All Repositories" %}</span>
+    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+    </svg>
+  </button>
+
+  {# Dropdown Menu #}
+  <div x-show="open"
+       x-transition:enter="transition ease-out duration-100"
+       x-transition:enter-start="opacity-0 scale-95"
+       x-transition:enter-end="opacity-100 scale-100"
+       x-transition:leave="transition ease-in duration-75"
+       x-transition:leave-start="opacity-100 scale-100"
+       x-transition:leave-end="opacity-0 scale-95"
+       class="absolute z-50 mt-2 w-64 origin-top-left left-0 menu p-2 shadow-lg bg-base-200 rounded-lg border border-base-300">
+
+    {# Search Input (only show if many repos) #}
+    <template x-if="repos.length > 5">
+      <div class="px-2 pb-2">
+        <input type="text"
+               x-model="searchQuery"
+               @keydown.escape="close()"
+               placeholder="{% trans 'Search repositories...' %}"
+               class="input input-bordered input-sm w-full"
+               autocomplete="off" />
+      </div>
+    </template>
+
+    {# All Repositories Option #}
+    <li>
+      <a @click="selectAll()"
+         :class="{'bg-primary/10 text-primary': isAll()}"
+         class="flex items-center gap-2">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+        </svg>
+        {% trans "All Repositories" %}
+      </a>
+    </li>
+
+    <template x-if="repos.length > 0">
+      <li class="divider my-1"></li>
+    </template>
+
+    {# Repository List #}
+    <div class="max-h-48 overflow-y-auto">
+      <template x-for="repo in filteredRepos" :key="repo">
+        <li>
+          <a @click="selectRepo(repo)"
+             :class="{'bg-primary/10 text-primary': isSelected(repo)}"
+             class="flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+            </svg>
+            <span class="truncate" x-text="getShortName(repo)"></span>
+          </a>
+        </li>
+      </template>
+    </div>
+
+    {# Empty State #}
+    <template x-if="repos.length === 0">
+      <li class="text-base-content/50 px-3 py-2 text-sm">
+        {% trans "No repositories available" %}
+      </li>
+    </template>
+
+    {# No Search Results #}
+    <template x-if="repos.length > 0 && filteredRepos.length === 0">
+      <li class="text-base-content/50 px-3 py-2 text-sm">
+        {% trans "No matching repositories" %}
+      </li>
+    </template>
+  </div>
+</div>

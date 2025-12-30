@@ -1,10 +1,14 @@
 """Trends analytics views - Long-horizon trend charts and YoY comparison."""
 
+import json
+
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.template.response import TemplateResponse
 
 from apps.metrics.services import dashboard_service
 from apps.metrics.view_utils import get_extended_date_range
+from apps.metrics.views.analytics_views import _get_repos_for_team
+from apps.metrics.views.chart_views import _get_repo_filter
 from apps.teams.decorators import team_admin_required
 
 # Metric configuration with colors from chart-theme.js
@@ -60,6 +64,14 @@ def _get_trends_context(request: HttpRequest) -> dict:
         date_range = get_extended_date_range(request)
         default_preset = request.GET.get("preset", "")
 
+    # Get available repositories for the team
+    repos = _get_repos_for_team(request.team)
+
+    # Get selected repo from request (validated against available repos)
+    selected_repo = request.GET.get("repo", "")
+    if selected_repo and selected_repo not in repos:
+        selected_repo = ""  # Invalid repo, reset to all
+
     return {
         "active_tab": "metrics",
         "active_page": "trends",
@@ -70,6 +82,9 @@ def _get_trends_context(request: HttpRequest) -> dict:
         "preset": default_preset,
         "compare_start": date_range.get("compare_start"),
         "compare_end": date_range.get("compare_end"),
+        # Repository filter
+        "repos": json.dumps(repos),  # JSON for Alpine.js component
+        "selected_repo": selected_repo,
     }
 
 
@@ -146,8 +161,11 @@ def trend_chart_data(request: HttpRequest) -> HttpResponse:
     else:
         func = weekly_functions.get(metric) or metric_functions.get(metric)
 
+    # Get repo filter
+    repo = _get_repo_filter(request)
+
     # Get current period data
-    current_data = func(request.team, start_date, end_date)
+    current_data = func(request.team, start_date, end_date, repo=repo)
 
     # Prepare chart.js format
     labels = []
@@ -171,7 +189,7 @@ def trend_chart_data(request: HttpRequest) -> HttpResponse:
 
     # Add comparison data if YoY preset
     if date_range.get("compare_start") and date_range.get("compare_end"):
-        compare_data = func(request.team, date_range["compare_start"], date_range["compare_end"])
+        compare_data = func(request.team, date_range["compare_start"], date_range["compare_end"], repo=repo)
         compare_values = [entry["value"] for entry in compare_data]
 
         # Pad or trim to match current period length
@@ -252,6 +270,9 @@ def wide_trend_chart(request: HttpRequest) -> HttpResponse:
             "ai_adoption": dashboard_service.get_monthly_ai_adoption,
         }
 
+    # Get repo filter
+    repo = _get_repo_filter(request)
+
     # Build multi-metric chart data
     all_datasets = []
     labels = None
@@ -260,7 +281,7 @@ def wide_trend_chart(request: HttpRequest) -> HttpResponse:
     for metric in metrics:
         config = METRIC_CONFIG.get(metric, METRIC_CONFIG["cycle_time"])
         func = metric_functions.get(metric, metric_functions["cycle_time"])
-        data = func(request.team, date_range["start_date"], date_range["end_date"])
+        data = func(request.team, date_range["start_date"], date_range["end_date"], repo=repo)
 
         # Use first metric's labels
         if labels is None:
@@ -295,7 +316,7 @@ def wide_trend_chart(request: HttpRequest) -> HttpResponse:
     if date_range.get("compare_start") and date_range.get("compare_end") and len(metrics) == 1:
         metric = metrics[0]
         func = metric_functions.get(metric, metric_functions["cycle_time"])
-        comparison_data = func(request.team, date_range["compare_start"], date_range["compare_end"])
+        comparison_data = func(request.team, date_range["compare_start"], date_range["compare_end"], repo=repo)
 
     # Build display info
     if len(metrics) == 1:
@@ -349,14 +370,17 @@ def pr_type_breakdown_chart(request: HttpRequest) -> HttpResponse:
     if ai_filter not in ("all", "yes", "no"):
         ai_filter = "all"
 
+    # Get repo filter
+    repo = _get_repo_filter(request)
+
     # Get type trend data based on granularity
     if granularity == "weekly":
         type_data = dashboard_service.get_weekly_pr_type_trend(
-            request.team, date_range["start_date"], date_range["end_date"], ai_assisted=ai_filter
+            request.team, date_range["start_date"], date_range["end_date"], ai_assisted=ai_filter, repo=repo
         )
     else:
         type_data = dashboard_service.get_monthly_pr_type_trend(
-            request.team, date_range["start_date"], date_range["end_date"], ai_assisted=ai_filter
+            request.team, date_range["start_date"], date_range["end_date"], ai_assisted=ai_filter, repo=repo
         )
 
     # Build datasets for chart
@@ -382,7 +406,7 @@ def pr_type_breakdown_chart(request: HttpRequest) -> HttpResponse:
 
     # Get overall breakdown for the period (also filtered)
     breakdown = dashboard_service.get_pr_type_breakdown(
-        request.team, date_range["start_date"], date_range["end_date"], ai_assisted=ai_filter
+        request.team, date_range["start_date"], date_range["end_date"], ai_assisted=ai_filter, repo=repo
     )
 
     context = {
@@ -434,14 +458,17 @@ def tech_breakdown_chart(request: HttpRequest) -> HttpResponse:
     if ai_filter not in ("all", "yes", "no"):
         ai_filter = "all"
 
+    # Get repo filter
+    repo = _get_repo_filter(request)
+
     # Get tech trend data based on granularity
     if granularity == "weekly":
         tech_data = dashboard_service.get_weekly_tech_trend(
-            request.team, date_range["start_date"], date_range["end_date"], ai_assisted=ai_filter
+            request.team, date_range["start_date"], date_range["end_date"], ai_assisted=ai_filter, repo=repo
         )
     else:
         tech_data = dashboard_service.get_monthly_tech_trend(
-            request.team, date_range["start_date"], date_range["end_date"], ai_assisted=ai_filter
+            request.team, date_range["start_date"], date_range["end_date"], ai_assisted=ai_filter, repo=repo
         )
 
     # Build datasets for chart
@@ -467,7 +494,7 @@ def tech_breakdown_chart(request: HttpRequest) -> HttpResponse:
 
     # Get overall breakdown for the period (also filtered)
     breakdown = dashboard_service.get_tech_breakdown(
-        request.team, date_range["start_date"], date_range["end_date"], ai_assisted=ai_filter
+        request.team, date_range["start_date"], date_range["end_date"], ai_assisted=ai_filter, repo=repo
     )
 
     context = {

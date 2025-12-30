@@ -3,7 +3,7 @@
   {% if chart_data %}
   <div class="space-y-3">
     {% for item in chart_data %}
-    <a href="{% url 'pullrequests:pr_list' %}?size={{ item.category }}"
+    <a href="{% url 'pullrequests:pr_list' %}?size={{ item.category }}{% if selected_repo %}&repo={{ selected_repo }}{% endif %}"
        target="_blank"
        rel="noopener"
        class="flex items-center gap-3 group cursor-pointer"

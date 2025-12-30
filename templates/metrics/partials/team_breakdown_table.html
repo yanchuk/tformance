@@ -7,28 +7,28 @@
     <thead>
       <tr>
         <th class="cursor-pointer hover:bg-base-300 select-none"
-            hx-get="{% url 'metrics:table_breakdown' %}?sort=name&order={% if sort == 'name' and order == 'asc' %}desc{% else %}asc{% endif %}&days={{ days|default:30 }}"
+            hx-get="{% url 'metrics:table_breakdown' %}?sort=name&order={% if sort == 'name' and order == 'asc' %}desc{% else %}asc{% endif %}&days={{ days|default:30 }}{% if selected_repo %}&repo={{ selected_repo }}{% endif %}"
             hx-target="#team-breakdown-container"
             hx-swap="innerHTML">
           {% trans "Team Member" %}
           {% if sort == 'name' %}<span class="ml-1">{% if order == 'asc' %}▲{% else %}▼{% endif %}</span>{% endif %}
         </th>
         <th class="text-right cursor-pointer hover:bg-base-300 select-none"
-            hx-get="{% url 'metrics:table_breakdown' %}?sort=prs_merged&order={% if sort == 'prs_merged' and order == 'desc' %}asc{% else %}desc{% endif %}&days={{ days|default:30 }}"
+            hx-get="{% url 'metrics:table_breakdown' %}?sort=prs_merged&order={% if sort == 'prs_merged' and order == 'desc' %}asc{% else %}desc{% endif %}&days={{ days|default:30 }}{% if selected_repo %}&repo={{ selected_repo }}{% endif %}"
             hx-target="#team-breakdown-container"
             hx-swap="innerHTML">
           {% trans "PRs Merged" %}
           {% if sort == 'prs_merged' %}<span class="ml-1">{% if order == 'asc' %}▲{% else %}▼{% endif %}</span>{% endif %}
         </th>
         <th class="text-right cursor-pointer hover:bg-base-300 select-none"
-            hx-get="{% url 'metrics:table_breakdown' %}?sort=cycle_time&order={% if sort == 'cycle_time' and order == 'asc' %}desc{% else %}asc{% endif %}&days={{ days|default:30 }}"
+            hx-get="{% url 'metrics:table_breakdown' %}?sort=cycle_time&order={% if sort == 'cycle_time' and order == 'asc' %}desc{% else %}asc{% endif %}&days={{ days|default:30 }}{% if selected_repo %}&repo={{ selected_repo }}{% endif %}"
             hx-target="#team-breakdown-container"
             hx-swap="innerHTML">
           {% trans "Avg Cycle Time" %}
           {% if sort == 'cycle_time' %}<span class="ml-1">{% if order == 'asc' %}▲{% else %}▼{% endif %}</span>{% endif %}
         </th>
         <th class="text-right cursor-pointer hover:bg-base-300 select-none"
-            hx-get="{% url 'metrics:table_breakdown' %}?sort=ai_pct&order={% if sort == 'ai_pct' and order == 'desc' %}asc{% else %}desc{% endif %}&days={{ days|default:30 }}"
+            hx-get="{% url 'metrics:table_breakdown' %}?sort=ai_pct&order={% if sort == 'ai_pct' and order == 'desc' %}asc{% else %}desc{% endif %}&days={{ days|default:30 }}{% if selected_repo %}&repo={{ selected_repo }}{% endif %}"
             hx-target="#team-breakdown-container"
             hx-swap="innerHTML">
           {% trans "AI-Assisted" %}
@@ -50,7 +50,7 @@
                 {% endif %}
               </div>
             </div>
-            <a href="{% url 'pullrequests:pr_list' %}?author={{ row.member_id }}"
+            <a href="{% url 'pullrequests:pr_list' %}?author={{ row.member_id }}{% if selected_repo %}&repo={{ selected_repo }}{% endif %}"
                target="_blank"
                rel="noopener"
                class="link link-hover text-primary"

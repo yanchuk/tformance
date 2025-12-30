@@ -1,5 +1,6 @@
 import Alpine from 'alpinejs';
 import { registerDateRangePicker } from './components/date-range-picker.js';
+import { registerRepoSelector } from './components/repo-selector.js';
 
 /**
  * Alpine.js Stores
@@ -118,6 +119,80 @@ document.addEventListener('alpine:init', () => {
   });
 
   /**
+   * Repository Filter Store
+   * Manages the selected repository for analytics filtering
+   */
+  Alpine.store('repoFilter', {
+    selectedRepo: '',
+    repos: [],
+
+    /**
+     * Set the selected repository
+     * @param {string} repo - Repository in owner/repo format, or '' for all
+     */
+    setRepo(repo) {
+      this.selectedRepo = repo;
+    },
+
+    /**
+     * Check if "All Repositories" is selected
+     */
+    isAll() {
+      return !this.selectedRepo;
+    },
+
+    /**
+     * Check if a specific repo is selected
+     * @param {string} repo - Repository to check
+     */
+    isSelected(repo) {
+      return this.selectedRepo === repo;
+    },
+
+    /**
+     * Get display name for the selected repo
+     * Returns short repo name (without owner) for display
+     */
+    getDisplayName() {
+      if (!this.selectedRepo) {
+        return 'All Repositories';
+      }
+      // Extract repo name from owner/repo format
+      const parts = this.selectedRepo.split('/');
+      return parts.length > 1 ? parts[1] : this.selectedRepo;
+    },
+
+    /**
+     * Sync from URL params (call on page load)
+     */
+    syncFromUrl() {
+      const params = new URLSearchParams(window.location.search);
+      if (params.has('repo')) {
+        this.selectedRepo = params.get('repo');
+      }
+    },
+
+    /**
+     * Build URL param string for the repo filter
+     * Returns empty string if no repo selected
+     */
+    toUrlParam() {
+      if (!this.selectedRepo) {
+        return '';
+      }
+      return `repo=${encodeURIComponent(this.selectedRepo)}`;
+    },
+
+    /**
+     * Set available repositories
+     * @param {string[]} repos - Array of repository names
+     */
+    setRepos(repos) {
+      this.repos = repos;
+    }
+  });
+
+  /**
    * Metrics Store
    * Manages selected metrics for comparison views
    */
@@ -162,11 +237,13 @@ document.addEventListener('alpine:init', () => {
     }
   });
 
-  // Sync dateRange store from URL on init
+  // Sync stores from URL on init
   Alpine.store('dateRange').syncFromUrl();
+  Alpine.store('repoFilter').syncFromUrl();
 
   // Register reusable Alpine components
   registerDateRangePicker();
+  registerRepoSelector();
 });
 
 // Expose Alpine globally

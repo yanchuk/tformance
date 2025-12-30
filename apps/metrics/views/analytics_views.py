@@ -1,12 +1,35 @@
 """Analytics views - Overview and tabbed analytics pages."""
 
+import json
+
 from django.http import HttpRequest, HttpResponse
 from django.template.response import TemplateResponse
 
+from apps.metrics.models import PullRequest
 from apps.metrics.services import insight_service
 from apps.metrics.view_utils import get_extended_date_range
 from apps.teams.decorators import team_admin_required
 from apps.utils.analytics import track_event
+
+
+def _get_repos_for_team(team) -> list[str]:
+    """Get distinct repository names for a team.
+
+    Args:
+        team: Team instance
+
+    Returns:
+        Sorted list of repository names (owner/repo format)
+    """
+    repos = (
+        PullRequest.objects.filter(team=team)
+        .exclude(github_repo__isnull=True)
+        .exclude(github_repo="")
+        .values_list("github_repo", flat=True)
+        .distinct()
+        .order_by("github_repo")
+    )
+    return list(repos)
 
 
 def _get_analytics_context(request: HttpRequest, active_page: str) -> dict:
@@ -22,6 +45,14 @@ def _get_analytics_context(request: HttpRequest, active_page: str) -> dict:
     # Use extended date range for full preset support
     date_range = get_extended_date_range(request)
 
+    # Get available repositories for the team
+    repos = _get_repos_for_team(request.team)
+
+    # Get selected repo from request (validated against available repos)
+    selected_repo = request.GET.get("repo", "")
+    if selected_repo and selected_repo not in repos:
+        selected_repo = ""  # Invalid repo, reset to all
+
     return {
         "active_tab": "metrics",
         "active_page": active_page,
@@ -33,6 +64,9 @@ def _get_analytics_context(request: HttpRequest, active_page: str) -> dict:
         # For YoY comparison
         "compare_start": date_range.get("compare_start"),
         "compare_end": date_range.get("compare_end"),
+        # Repository filter
+        "repos": json.dumps(repos),  # JSON for Alpine.js component
+        "selected_repo": selected_repo,
     }
 
 

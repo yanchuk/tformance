@@ -11,12 +11,23 @@
     <!-- Tab Navigation - Uses Alpine store for dynamic date params via hx-vals -->
     <div role="tablist" class="tabs tabs-boxed bg-base-200 w-fit" x-data="{
       getDateParams() {
-        const store = $store.dateRange;
-        // Preserve preset if set, otherwise use days
-        if (store.preset) {
-          return JSON.stringify({ preset: store.preset });
+        const dateStore = $store.dateRange;
+        const repoStore = $store.repoFilter;
+        const params = {};
+
+        // Add date params
+        if (dateStore.preset) {
+          params.preset = dateStore.preset;
+        } else {
+          params.days = dateStore.days || 30;
         }
-        return JSON.stringify({ days: store.days || 30 });
+
+        // Add repo param if selected
+        if (repoStore.selectedRepo) {
+          params.repo = repoStore.selectedRepo;
+        }
+
+        return JSON.stringify(params);
       }
     }">
       <a role="tab"
@@ -81,12 +92,21 @@
       </a>
     </div>
 
-    <!-- Date Range Filter Container (updated via OOB swap on HTMX navigation) -->
-    <div id="date-range-picker-container">
+    <!-- Filter Controls Container -->
+    <div id="filter-controls-container" class="flex flex-wrap gap-4 items-center">
+      <!-- Date Range Filter -->
       <div class="flex gap-2 items-center">
         <span class="text-sm text-base-content/70">{% trans "Time range:" %}</span>
         {% include "metrics/partials/date_range_picker.html" with days=days start_date=start_date end_date=end_date preset=preset %}
       </div>
+
+      <!-- Repository Filter (only show if multiple repos) -->
+      {% if repos|length > 1 %}
+      <div class="flex gap-2 items-center">
+        <span class="text-sm text-base-content/70">{% trans "Repository:" %}</span>
+        {% include "metrics/partials/repo_selector.html" with repos=repos selected_repo=selected_repo %}
+      </div>
+      {% endif %}
     </div>
   </div>
 

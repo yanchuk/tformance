@@ -222,8 +222,8 @@ class TestGetKeyMetricsCache(TestCase):
         # First call - should compute and cache
         result1 = dashboard_service.get_key_metrics(self.team, self.start_date, self.end_date)
 
-        # Verify cache is populated
-        cache_key = dashboard_service._get_key_metrics_cache_key(self.team.id, self.start_date, self.end_date)
+        # Verify cache is populated (cache key includes repo suffix - 'all' when no repo specified)
+        cache_key = dashboard_service._get_key_metrics_cache_key(self.team.id, self.start_date, self.end_date) + ":all"
         cached_value = cache.get(cache_key)
         self.assertIsNotNone(cached_value)
         self.assertEqual(cached_value["prs_merged"], 1)

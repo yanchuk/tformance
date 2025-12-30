@@ -1028,3 +1028,91 @@ class TestCopilotMembersTable(TestCase):
         # Should return empty list even with no data
         self.assertIn("rows", response.context)
         self.assertIsInstance(response.context["rows"], list)
+
+
+# =============================================================================
+# Phase 2: Repository Filter Tests for Chart Views
+# =============================================================================
+
+
+class TestChartViewsRepoFilter(TestCase):
+    """Tests for repository filtering in chart views.
+
+    🔴 RED Phase: Tests should FAIL until repo param is added to views.
+
+    These tests verify that chart views:
+    1. Accept the 'repo' query parameter
+    2. Pass repo to service layer functions
+    3. Return filtered data when repo is specified
+    """
+
+    def setUp(self):
+        """Set up test fixtures."""
+        from apps.metrics.factories import PullRequestFactory, TeamMemberFactory
+
+        self.team = TeamFactory()
+        self.admin_user = UserFactory()
+        self.team.members.add(self.admin_user, through_defaults={"role": ROLE_ADMIN})
+        self.client = Client()
+
+        # Create team member
+        self.member = TeamMemberFactory(team=self.team)
+
+        # Create PRs in different repos
+        from django.utils import timezone
+
+        self.frontend_pr = PullRequestFactory(
+            team=self.team,
+            github_repo="acme/frontend",
+            author=self.member,
+            state="merged",
+            merged_at=timezone.now(),
+        )
+        self.backend_pr = PullRequestFactory(
+            team=self.team,
+            github_repo="acme/backend",
+            author=self.member,
+            state="merged",
+            merged_at=timezone.now(),
+        )
+
+    def test_key_metrics_cards_accepts_repo_param(self):
+        """Test that key_metrics_cards accepts repo query parameter."""
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(reverse("metrics:cards_metrics"), {"repo": "acme/frontend"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("metrics", response.context)
+
+    def test_ai_adoption_chart_accepts_repo_param(self):
+        """Test that ai_adoption_chart accepts repo query parameter."""
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(reverse("metrics:chart_ai_adoption"), {"repo": "acme/frontend"})
+
+        self.assertEqual(response.status_code, 200)
+
+    def test_cycle_time_chart_accepts_repo_param(self):
+        """Test that cycle_time_chart accepts repo query parameter."""
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(reverse("metrics:chart_cycle_time"), {"repo": "acme/frontend"})
+
+        self.assertEqual(response.status_code, 200)
+
+    def test_team_breakdown_table_accepts_repo_param(self):
+        """Test that team_breakdown_table accepts repo query parameter."""
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(reverse("metrics:table_breakdown"), {"repo": "acme/frontend"})
+
+        self.assertEqual(response.status_code, 200)
+
+    def test_recent_prs_table_accepts_repo_param(self):
+        """Test that recent_prs_table accepts repo query parameter."""
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(reverse("metrics:table_recent_prs"), {"repo": "acme/frontend"})
+
+        self.assertEqual(response.status_code, 200)

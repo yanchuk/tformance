@@ -10,11 +10,25 @@ from apps.metrics.view_utils import get_date_range_from_request
 from apps.teams.decorators import login_and_team_required, team_admin_required
 
 
+def _get_repo_filter(request: HttpRequest) -> str | None:
+    """Extract repository filter from request.
+
+    Args:
+        request: HTTP request
+
+    Returns:
+        Repository name (owner/repo format) or None if not specified
+    """
+    repo = request.GET.get("repo", "")
+    return repo if repo else None
+
+
 @team_admin_required
 def ai_adoption_chart(request: HttpRequest) -> HttpResponse:
     """AI adoption trend line chart (admin only)."""
     start_date, end_date = get_date_range_from_request(request)
-    data = dashboard_service.get_ai_adoption_trend(request.team, start_date, end_date)
+    repo = _get_repo_filter(request)
+    data = dashboard_service.get_ai_adoption_trend(request.team, start_date, end_date, repo=repo)
     chart_data = chart_formatters.format_time_series(data)
     return TemplateResponse(
         request,
@@ -29,7 +43,8 @@ def ai_adoption_chart(request: HttpRequest) -> HttpResponse:
 def ai_quality_chart(request: HttpRequest) -> HttpResponse:
     """AI vs non-AI quality comparison (admin only)."""
     start_date, end_date = get_date_range_from_request(request)
-    chart_data = dashboard_service.get_ai_quality_comparison(request.team, start_date, end_date)
+    repo = _get_repo_filter(request)
+    chart_data = dashboard_service.get_ai_quality_comparison(request.team, start_date, end_date, repo=repo)
     return TemplateResponse(
         request,
         "metrics/partials/ai_quality_chart.html",
@@ -43,7 +58,8 @@ def ai_quality_chart(request: HttpRequest) -> HttpResponse:
 def cycle_time_chart(request: HttpRequest) -> HttpResponse:
     """Cycle time trend (all members)."""
     start_date, end_date = get_date_range_from_request(request)
-    data = dashboard_service.get_cycle_time_trend(request.team, start_date, end_date)
+    repo = _get_repo_filter(request)
+    data = dashboard_service.get_cycle_time_trend(request.team, start_date, end_date, repo=repo)
     chart_data = chart_formatters.format_time_series(data)
     return TemplateResponse(
         request,
@@ -58,18 +74,19 @@ def cycle_time_chart(request: HttpRequest) -> HttpResponse:
 def key_metrics_cards(request: HttpRequest) -> HttpResponse:
     """Key metrics stat cards (all team members)."""
     start_date, end_date = get_date_range_from_request(request)
-    metrics = dashboard_service.get_key_metrics(request.team, start_date, end_date)
+    repo = _get_repo_filter(request)
+    metrics = dashboard_service.get_key_metrics(request.team, start_date, end_date, repo=repo)
 
     # Calculate previous period for comparison
     period_length = (end_date - start_date).days
     prev_end = start_date - timedelta(days=1)
     prev_start = prev_end - timedelta(days=period_length)
-    previous_metrics = dashboard_service.get_key_metrics(request.team, prev_start, prev_end)
+    previous_metrics = dashboard_service.get_key_metrics(request.team, prev_start, prev_end, repo=repo)
 
     # Get sparkline data (12 weeks of weekly data)
     sparkline_end = end_date
     sparkline_start = end_date - timedelta(days=84)  # 12 weeks
-    sparklines = dashboard_service.get_sparkline_data(request.team, sparkline_start, sparkline_end)
+    sparklines = dashboard_service.get_sparkline_data(request.team, sparkline_start, sparkline_end, repo=repo)
 
     return TemplateResponse(
         request,
@@ -86,6 +103,7 @@ def key_metrics_cards(request: HttpRequest) -> HttpResponse:
 def team_breakdown_table(request: HttpRequest) -> HttpResponse:
     """Team breakdown table (admin only)."""
     start_date, end_date = get_date_range_from_request(request)
+    repo = _get_repo_filter(request)
     days = int(request.GET.get("days", 30))
     sort = request.GET.get("sort", "prs_merged")
     order = request.GET.get("order", "desc")
@@ -99,7 +117,9 @@ def team_breakdown_table(request: HttpRequest) -> HttpResponse:
     if order not in ("asc", "desc"):
         order = "desc"
 
-    rows = dashboard_service.get_team_breakdown(request.team, start_date, end_date, sort_by=sort, order=order)
+    rows = dashboard_service.get_team_breakdown(
+        request.team, start_date, end_date, sort_by=sort, order=order, repo=repo
+    )
     return TemplateResponse(
         request,
         "metrics/partials/team_breakdown_table.html",
@@ -108,6 +128,7 @@ def team_breakdown_table(request: HttpRequest) -> HttpResponse:
             "sort": sort,
             "order": order,
             "days": days,
+            "selected_repo": repo or "",
         },
     )
 
@@ -116,7 +137,8 @@ def team_breakdown_table(request: HttpRequest) -> HttpResponse:
 def leaderboard_table(request: HttpRequest) -> HttpResponse:
     """AI detective leaderboard (all members)."""
     start_date, end_date = get_date_range_from_request(request)
-    rows = dashboard_service.get_ai_detective_leaderboard(request.team, start_date, end_date)
+    repo = _get_repo_filter(request)
+    rows = dashboard_service.get_ai_detective_leaderboard(request.team, start_date, end_date, repo=repo)
     return TemplateResponse(
         request,
         "metrics/partials/leaderboard_table.html",
@@ -130,7 +152,8 @@ def leaderboard_table(request: HttpRequest) -> HttpResponse:
 def review_distribution_chart(request: HttpRequest) -> HttpResponse:
     """Review distribution by reviewer (all members)."""
     start_date, end_date = get_date_range_from_request(request)
-    data = dashboard_service.get_review_distribution(request.team, start_date, end_date)
+    repo = _get_repo_filter(request)
+    data = dashboard_service.get_review_distribution(request.team, start_date, end_date, repo=repo)
     return TemplateResponse(
         request,
         "metrics/partials/review_distribution_chart.html",
@@ -144,7 +167,8 @@ def review_distribution_chart(request: HttpRequest) -> HttpResponse:
 def recent_prs_table(request: HttpRequest) -> HttpResponse:
     """Recent PRs with AI status (all members)."""
     start_date, end_date = get_date_range_from_request(request)
-    rows = dashboard_service.get_recent_prs(request.team, start_date, end_date, limit=10)
+    repo = _get_repo_filter(request)
+    rows = dashboard_service.get_recent_prs(request.team, start_date, end_date, limit=10, repo=repo)
     return TemplateResponse(
         request,
         "metrics/partials/recent_prs_table.html",
@@ -158,7 +182,8 @@ def recent_prs_table(request: HttpRequest) -> HttpResponse:
 def review_time_chart(request: HttpRequest) -> HttpResponse:
     """Review time trend (all members)."""
     start_date, end_date = get_date_range_from_request(request)
-    data = dashboard_service.get_review_time_trend(request.team, start_date, end_date)
+    repo = _get_repo_filter(request)
+    data = dashboard_service.get_review_time_trend(request.team, start_date, end_date, repo=repo)
     chart_data = chart_formatters.format_time_series(data)
     return TemplateResponse(
         request,
@@ -173,12 +198,14 @@ def review_time_chart(request: HttpRequest) -> HttpResponse:
 def pr_size_chart(request: HttpRequest) -> HttpResponse:
     """PR size distribution (all members)."""
     start_date, end_date = get_date_range_from_request(request)
-    data = dashboard_service.get_pr_size_distribution(request.team, start_date, end_date)
+    repo = _get_repo_filter(request)
+    data = dashboard_service.get_pr_size_distribution(request.team, start_date, end_date, repo=repo)
     return TemplateResponse(
         request,
         "metrics/partials/pr_size_chart.html",
         {
             "chart_data": data,
+            "selected_repo": repo or "",
         },
     )
 
@@ -187,7 +214,8 @@ def pr_size_chart(request: HttpRequest) -> HttpResponse:
 def revert_rate_card(request: HttpRequest) -> HttpResponse:
     """Revert and hotfix rate stats (all members)."""
     start_date, end_date = get_date_range_from_request(request)
-    stats = dashboard_service.get_revert_hotfix_stats(request.team, start_date, end_date)
+    repo = _get_repo_filter(request)
+    stats = dashboard_service.get_revert_hotfix_stats(request.team, start_date, end_date, repo=repo)
     return TemplateResponse(
         request,
         "metrics/partials/revert_rate_card.html",
@@ -201,7 +229,8 @@ def revert_rate_card(request: HttpRequest) -> HttpResponse:
 def unlinked_prs_table(request: HttpRequest) -> HttpResponse:
     """PRs without Jira links (all members)."""
     start_date, end_date = get_date_range_from_request(request)
-    rows = dashboard_service.get_unlinked_prs(request.team, start_date, end_date, limit=10)
+    repo = _get_repo_filter(request)
+    rows = dashboard_service.get_unlinked_prs(request.team, start_date, end_date, limit=10, repo=repo)
     return TemplateResponse(
         request,
         "metrics/partials/unlinked_prs_table.html",
@@ -215,7 +244,8 @@ def unlinked_prs_table(request: HttpRequest) -> HttpResponse:
 def reviewer_workload_table(request: HttpRequest) -> HttpResponse:
     """Reviewer workload analysis (all members)."""
     start_date, end_date = get_date_range_from_request(request)
-    rows = dashboard_service.get_reviewer_workload(request.team, start_date, end_date)
+    repo = _get_repo_filter(request)
+    rows = dashboard_service.get_reviewer_workload(request.team, start_date, end_date, repo=repo)
     return TemplateResponse(
         request,
         "metrics/partials/reviewer_workload_table.html",
@@ -229,7 +259,8 @@ def reviewer_workload_table(request: HttpRequest) -> HttpResponse:
 def copilot_metrics_card(request: HttpRequest) -> HttpResponse:
     """Copilot metrics card (admin only)."""
     start_date, end_date = get_date_range_from_request(request)
-    metrics = dashboard_service.get_copilot_metrics(request.team, start_date, end_date)
+    repo = _get_repo_filter(request)
+    metrics = dashboard_service.get_copilot_metrics(request.team, start_date, end_date, repo=repo)
     return TemplateResponse(
         request,
         "metrics/partials/copilot_metrics_card.html",
@@ -243,7 +274,8 @@ def copilot_metrics_card(request: HttpRequest) -> HttpResponse:
 def copilot_trend_chart(request: HttpRequest) -> HttpResponse:
     """Copilot usage trend chart (admin only)."""
     start_date, end_date = get_date_range_from_request(request)
-    data = dashboard_service.get_copilot_trend(request.team, start_date, end_date)
+    repo = _get_repo_filter(request)
+    data = dashboard_service.get_copilot_trend(request.team, start_date, end_date, repo=repo)
     chart_data = chart_formatters.format_time_series(data, date_key="week", value_key="acceptance_rate")
     return TemplateResponse(
         request,
@@ -258,7 +290,8 @@ def copilot_trend_chart(request: HttpRequest) -> HttpResponse:
 def copilot_members_table(request: HttpRequest) -> HttpResponse:
     """Copilot usage by member table (admin only)."""
     start_date, end_date = get_date_range_from_request(request)
-    rows = dashboard_service.get_copilot_by_member(request.team, start_date, end_date)
+    repo = _get_repo_filter(request)
+    rows = dashboard_service.get_copilot_by_member(request.team, start_date, end_date, repo=repo)
     return TemplateResponse(
         request,
         "metrics/partials/copilot_members_table.html",
@@ -276,7 +309,8 @@ def iteration_metrics_card(request: HttpRequest) -> HttpResponse:
     and total comments for PRs in the date range.
     """
     start_date, end_date = get_date_range_from_request(request)
-    metrics = dashboard_service.get_iteration_metrics(request.team, start_date, end_date)
+    repo = _get_repo_filter(request)
+    metrics = dashboard_service.get_iteration_metrics(request.team, start_date, end_date, repo=repo)
     return TemplateResponse(
         request,
         "metrics/partials/iteration_metrics_card.html",
@@ -310,7 +344,8 @@ def cicd_pass_rate_card(request: HttpRequest) -> HttpResponse:
     Shows overall CI/CD health including pass rate and top failing checks.
     """
     start_date, end_date = get_date_range_from_request(request)
-    metrics = dashboard_service.get_cicd_pass_rate(request.team, start_date, end_date)
+    repo = _get_repo_filter(request)
+    metrics = dashboard_service.get_cicd_pass_rate(request.team, start_date, end_date, repo=repo)
     return TemplateResponse(
         request,
         "metrics/partials/cicd_pass_rate_card.html",
@@ -327,7 +362,8 @@ def deployment_metrics_card(request: HttpRequest) -> HttpResponse:
     Shows DORA-style deployment frequency and success metrics.
     """
     start_date, end_date = get_date_range_from_request(request)
-    metrics = dashboard_service.get_deployment_metrics(request.team, start_date, end_date)
+    repo = _get_repo_filter(request)
+    metrics = dashboard_service.get_deployment_metrics(request.team, start_date, end_date, repo=repo)
     return TemplateResponse(
         request,
         "metrics/partials/deployment_metrics_card.html",
@@ -344,7 +380,8 @@ def file_category_card(request: HttpRequest) -> HttpResponse:
     Shows distribution of file changes by category (frontend, backend, etc).
     """
     start_date, end_date = get_date_range_from_request(request)
-    metrics = dashboard_service.get_file_category_breakdown(request.team, start_date, end_date)
+    repo = _get_repo_filter(request)
+    metrics = dashboard_service.get_file_category_breakdown(request.team, start_date, end_date, repo=repo)
     return TemplateResponse(
         request,
         "metrics/partials/file_category_card.html",
@@ -367,7 +404,8 @@ def ai_detected_metrics_card(request: HttpRequest) -> HttpResponse:
     Distinct from survey-based AI tracking.
     """
     start_date, end_date = get_date_range_from_request(request)
-    metrics = dashboard_service.get_ai_detected_metrics(request.team, start_date, end_date)
+    repo = _get_repo_filter(request)
+    metrics = dashboard_service.get_ai_detected_metrics(request.team, start_date, end_date, repo=repo)
     return TemplateResponse(
         request,
         "metrics/partials/ai_detected_metrics_card.html",
@@ -385,7 +423,8 @@ def ai_tool_breakdown_chart(request: HttpRequest) -> HttpResponse:
     based on detected signatures in PR content.
     """
     start_date, end_date = get_date_range_from_request(request)
-    chart_data = dashboard_service.get_ai_tool_breakdown(request.team, start_date, end_date)
+    repo = _get_repo_filter(request)
+    chart_data = dashboard_service.get_ai_tool_breakdown(request.team, start_date, end_date, repo=repo)
     return TemplateResponse(
         request,
         "metrics/partials/ai_tool_breakdown_chart.html",
@@ -402,7 +441,8 @@ def ai_bot_reviews_card(request: HttpRequest) -> HttpResponse:
     Shows statistics about AI bot reviewers (CodeRabbit, Copilot, etc.)
     """
     start_date, end_date = get_date_range_from_request(request)
-    metrics = dashboard_service.get_ai_bot_review_stats(request.team, start_date, end_date)
+    repo = _get_repo_filter(request)
+    metrics = dashboard_service.get_ai_bot_review_stats(request.team, start_date, end_date, repo=repo)
     return TemplateResponse(
         request,
         "metrics/partials/ai_bot_reviews_card.html",
@@ -424,7 +464,8 @@ def survey_channel_distribution_card(request: HttpRequest) -> HttpResponse:
     Shows breakdown of survey responses by channel (GitHub, Slack, Web, Auto-detected).
     """
     start_date, end_date = get_date_range_from_request(request)
-    metrics = dashboard_service.get_response_channel_distribution(request.team, start_date, end_date)
+    repo = _get_repo_filter(request)
+    metrics = dashboard_service.get_response_channel_distribution(request.team, start_date, end_date, repo=repo)
     return TemplateResponse(
         request,
         "metrics/partials/survey_channel_distribution_card.html",
@@ -441,7 +482,8 @@ def survey_ai_detection_card(request: HttpRequest) -> HttpResponse:
     Shows auto-detected vs self-reported AI usage stats from surveys.
     """
     start_date, end_date = get_date_range_from_request(request)
-    metrics = dashboard_service.get_ai_detection_metrics(request.team, start_date, end_date)
+    repo = _get_repo_filter(request)
+    metrics = dashboard_service.get_ai_detection_metrics(request.team, start_date, end_date, repo=repo)
     return TemplateResponse(
         request,
         "metrics/partials/survey_ai_detection_card.html",
@@ -458,7 +500,8 @@ def survey_response_time_card(request: HttpRequest) -> HttpResponse:
     Shows average survey response times by channel.
     """
     start_date, end_date = get_date_range_from_request(request)
-    metrics = dashboard_service.get_response_time_metrics(request.team, start_date, end_date)
+    repo = _get_repo_filter(request)
+    metrics = dashboard_service.get_response_time_metrics(request.team, start_date, end_date, repo=repo)
     return TemplateResponse(
         request,
         "metrics/partials/survey_response_time_card.html",
