@@ -23,6 +23,7 @@ from apps.metrics.models import (
     PullRequest,
 )
 from apps.teams.models import Team
+from apps.utils.date_utils import end_of_day, start_of_day
 
 # Cache TTL for dashboard metrics (5 minutes)
 DASHBOARD_CACHE_TTL = 300
@@ -51,8 +52,8 @@ def _get_merged_prs_in_range(team: Team, start_date: date, end_date: date) -> Qu
     return PullRequest.objects.filter(
         team=team,
         state="merged",
-        merged_at__gte=start_date,
-        merged_at__lte=end_date,
+        merged_at__gte=start_of_day(start_date),
+        merged_at__lte=end_of_day(end_date),
     )
 
 
@@ -452,8 +453,8 @@ def get_ai_detective_leaderboard(team: Team, start_date: date, end_date: date) -
     reviews = (
         PRSurveyReview.objects.filter(
             team=team,
-            responded_at__gte=start_date,
-            responded_at__lte=end_date,
+            responded_at__gte=start_of_day(start_date),
+            responded_at__lte=end_of_day(end_date),
             guess_correct__isnull=False,
         )
         .values("reviewer__display_name", "reviewer__github_id")
@@ -493,8 +494,8 @@ def get_review_distribution(team: Team, start_date: date, end_date: date) -> lis
     reviews = (
         PRSurveyReview.objects.filter(
             team=team,
-            responded_at__gte=start_date,
-            responded_at__lte=end_date,
+            responded_at__gte=start_of_day(start_date),
+            responded_at__lte=end_of_day(end_date),
         )
         .values("reviewer__display_name", "reviewer__github_id")
         .annotate(count=Count("id"))
@@ -742,8 +743,8 @@ def get_reviewer_workload(team: Team, start_date: date, end_date: date) -> list[
     reviews = (
         PRReview.objects.filter(
             team=team,
-            submitted_at__gte=start_date,
-            submitted_at__lte=end_date,
+            submitted_at__gte=start_of_day(start_date),
+            submitted_at__lte=end_of_day(end_date),
         )
         .values("reviewer__display_name")
         .annotate(review_count=Count("id"))
@@ -1033,8 +1034,8 @@ def get_cicd_pass_rate(team: Team, start_date: date, end_date: date) -> dict:
     """
     check_runs = PRCheckRun.objects.filter(
         team=team,
-        pull_request__merged_at__gte=start_date,
-        pull_request__merged_at__lte=end_date,
+        pull_request__merged_at__gte=start_of_day(start_date),
+        pull_request__merged_at__lte=end_of_day(end_date),
         status="completed",
     )
 
@@ -1094,8 +1095,8 @@ def get_deployment_metrics(team: Team, start_date: date, end_date: date) -> dict
     """
     deployments = Deployment.objects.filter(
         team=team,
-        deployed_at__gte=start_date,
-        deployed_at__lte=end_date,
+        deployed_at__gte=start_of_day(start_date),
+        deployed_at__lte=end_of_day(end_date),
     )
 
     total = deployments.count()
@@ -1159,8 +1160,8 @@ def get_file_category_breakdown(team: Team, start_date: date, end_date: date) ->
     """
     files = PRFile.objects.filter(
         team=team,
-        pull_request__merged_at__gte=start_date,
-        pull_request__merged_at__lte=end_date,
+        pull_request__merged_at__gte=start_of_day(start_date),
+        pull_request__merged_at__lte=end_of_day(end_date),
     )
 
     total_files = files.count()
@@ -1359,8 +1360,8 @@ def get_ai_bot_review_stats(team: Team, start_date: date, end_date: date) -> dic
     """
     reviews = PRReview.objects.filter(
         team=team,
-        submitted_at__gte=start_date,
-        submitted_at__lte=end_date,
+        submitted_at__gte=start_of_day(start_date),
+        submitted_at__lte=end_of_day(end_date),
     )
 
     stats = reviews.aggregate(
@@ -1395,7 +1396,7 @@ def _filter_by_date_range(
 
     Args:
         queryset: Django QuerySet to filter
-        date_field: Name of the date field to filter on
+        date_field: Name of the date field to filter on (must be a DateTimeField)
         start_date: Start date (inclusive), optional
         end_date: End date (inclusive), optional
 
@@ -1403,7 +1404,9 @@ def _filter_by_date_range(
         Filtered QuerySet (unchanged if no dates provided)
     """
     if start_date and end_date:
-        return queryset.filter(**{f"{date_field}__gte": start_date, f"{date_field}__lte": end_date})
+        return queryset.filter(
+            **{f"{date_field}__gte": start_of_day(start_date), f"{date_field}__lte": end_of_day(end_date)}
+        )
     return queryset
 
 

@@ -1,0 +1,14 @@
+{% load i18n %}
+{# OOB swap for date range picker - only rendered for HTMX requests #}
+{# For pages that show date picker: include with show_picker=True #}
+{# For pages that hide it (PR list): include with show_picker=False or omit #}
+{% if request.htmx %}
+<div id="date-range-picker-container" hx-swap-oob="true">
+  {% if show_picker %}
+  <div class="flex gap-2 items-center">
+    <span class="text-sm text-base-content/70">{% trans "Time range:" %}</span>
+    {% include "metrics/partials/date_range_picker.html" with days=days start_date=start_date end_date=end_date preset=preset %}
+  </div>
+  {% endif %}
+</div>
+{% endif %}

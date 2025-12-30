@@ -135,5 +135,7 @@
     </div>
   </div>
 </div>
+{# OOB swap to update date range picker when navigating via HTMX #}
+{% include "metrics/partials/date_range_picker_oob.html" with show_picker=True %}
 {% endpartialdef page-content %}
 {% endblock %}

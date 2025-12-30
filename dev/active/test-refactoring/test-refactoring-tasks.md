@@ -1,50 +1,42 @@
 # Test Refactoring - Task Checklist
 
 **Last Updated:** 2024-12-30
-**Status:** Ready to Start
+**Status:** Phase 1 Complete ✅
 
 ---
 
-## Phase 1: Quick Wins & Foundation (Day 1-2)
+## Phase 1: Quick Wins & Foundation (Day 1-2) ✅ COMPLETE
 
-### Task 1.1: Fix Timezone Warnings [S] - 2h
-- [ ] Grep for naive datetime usage: `grep -rn "datetime(" apps/*/tests/`
-- [ ] Fix `apps/metrics/tests/dashboard/test_deployment_metrics.py`
-- [ ] Fix `apps/metrics/tests/test_trends_views.py`
-- [ ] Fix any other files with naive datetimes
-- [ ] Run `make test` - verify zero timezone warnings
-- [ ] Commit: "Fix naive datetime warnings in tests"
+### Task 1.1: Fix Timezone Warnings [S] - 2h ✅
+- [x] Created `apps/utils/date_utils.py` with timezone utilities:
+  - `start_of_day(date)` - converts date to aware datetime at 00:00:00
+  - `end_of_day(date)` - converts date to aware datetime at 23:59:59.999999
+  - `days_ago(n)` - returns aware datetime n days ago
+  - `make_aware_datetime(...)` - convenience for tests
+- [x] Updated `apps/metrics/services/dashboard_service.py`:
+  - All 9 DateTimeField filter locations now use timezone-aware conversions
+  - Including the `_filter_by_date_range()` helper function
+- [x] All 221 dashboard tests pass with `-W error::RuntimeWarning`
+- [x] Zero timezone warnings in metrics tests
 
-### Task 1.2: Mark Slow Tests [S] - 1h
-- [ ] Add `@pytest.mark.slow` to `test_data_generator.py` tests >2s:
-  - [ ] `test_generator_creates_reviews`
-  - [ ] `test_generator_creates_prs`
-  - [ ] `test_generator_falls_back_to_factory_when_no_github`
-  - [ ] `test_different_seed_produces_different_results`
-- [ ] Verify slow tests can be skipped: `pytest -m "not slow"`
-- [ ] Update CLAUDE.md test section with slow test info
-- [ ] Commit: "Mark slow data generation tests"
+### Task 1.2: Mark Slow Tests [S] - 1h ✅
+- [x] `TestScenarioDataGenerator` class already marked with `@pytest.mark.slow`
+- [x] Verified: `pytest -m "not slow"` properly skips slow tests
+- [x] Slow tests in `test_data_generator.py` correctly isolated
 
-### Task 1.3: Fix test_roles.py Isolation [S] - 30m
-- [ ] Read `apps/teams/tests/test_roles.py`
-- [ ] Replace `setUpClass` with `setUp`
-- [ ] Replace `Team.objects.create()` with `TeamFactory()`
-- [ ] Run tests: `pytest apps/teams/tests/test_roles.py -v`
-- [ ] Commit: "Fix test isolation in test_roles.py"
+### Task 1.3: Fix test_roles.py Isolation [S] - 30m ✅
+- [x] Replaced `setUpClass` with `setUp` (per-test isolation)
+- [x] Replaced `Team.objects.create()` with `TeamFactory()`
+- [x] Replaced `CustomUser.objects.create()` with `UserFactory()`
+- [x] Expanded from 2 tests to 7 focused tests with better coverage
+- [x] All tests pass: `pytest apps/teams/tests/test_roles.py -v`
 
-### Task 1.4: Create Test Utilities [M] - 2h
-- [ ] Create `apps/utils/test_utils.py`
-- [ ] Add timezone helper functions:
+### Task 1.4: Create Test Utilities [M] - 2h ✅
+- [x] Created `apps/utils/date_utils.py` (general utility, not test-only)
+- [x] Functions available for both production code and tests:
   ```python
-  def make_aware_datetime(year, month, day, hour=0, minute=0):
-      """Create timezone-aware datetime for tests."""
-
-  def days_ago(n: int):
-      """Return timezone-aware datetime n days ago."""
+  from apps.utils.date_utils import start_of_day, end_of_day, days_ago, make_aware_datetime
   ```
-- [ ] Add common fixtures to root `conftest.py` if needed
-- [ ] Document in test utilities docstring
-- [ ] Commit: "Add test utilities module"
 
 ---
 

@@ -168,4 +168,69 @@ test.describe('HTMX Navigation State', () => {
       expect(isOverviewStillActive).toBe(false);
     });
   });
+
+  test.describe('Date Range Picker Visibility', () => {
+    test('date range picker appears when navigating from Pull Requests to Delivery', async ({ page }) => {
+      // Navigate to Pull Requests page (which doesn't show date range picker)
+      await page.goto('/app/metrics/pull-requests/');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForTimeout(2000);
+
+      // Verify date range picker is NOT visible on Pull Requests page
+      const timeRangeLabelBefore = page.locator('text=Time range:');
+      await expect(timeRangeLabelBefore).not.toBeVisible();
+
+      // Click on Delivery tab (HTMX navigation)
+      const deliveryTab = page.getByRole('tab', { name: 'Delivery' });
+      await deliveryTab.click();
+      await page.waitForTimeout(2000);
+
+      // After HTMX navigation, date range picker SHOULD be visible
+      const timeRangeLabel = page.locator('text=Time range:');
+      await expect(timeRangeLabel).toBeVisible({ timeout: 5000 });
+
+      // Also verify the time buttons are present
+      const btn7d = page.locator('button:has-text("7d"), a:has-text("7d")').first();
+      await expect(btn7d).toBeVisible();
+
+      const btn30d = page.locator('button:has-text("30d"), a:has-text("30d")').first();
+      await expect(btn30d).toBeVisible();
+    });
+
+    test('date range picker appears when navigating from Pull Requests to Overview', async ({ page }) => {
+      // Navigate to Pull Requests page
+      await page.goto('/app/metrics/pull-requests/');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForTimeout(2000);
+
+      // Click on Overview tab (HTMX navigation)
+      const overviewTab = page.getByRole('tab', { name: 'Overview' });
+      await overviewTab.click();
+      await page.waitForTimeout(2000);
+
+      // Date range picker SHOULD be visible after navigation
+      const timeRangeLabel = page.locator('text=Time range:');
+      await expect(timeRangeLabel).toBeVisible({ timeout: 5000 });
+    });
+
+    test('date range picker stays visible when navigating between analytics pages', async ({ page }) => {
+      // Start at Delivery page (has date range picker)
+      await page.goto('/app/metrics/analytics/delivery/');
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForTimeout(2000);
+
+      // Verify date range picker is visible
+      const timeRangeLabelBefore = page.locator('text=Time range:');
+      await expect(timeRangeLabelBefore).toBeVisible();
+
+      // Navigate to Quality tab
+      const qualityTab = page.getByRole('tab', { name: 'Quality' });
+      await qualityTab.click();
+      await page.waitForTimeout(2000);
+
+      // Date range picker should still be visible
+      const timeRangeLabelAfter = page.locator('text=Time range:');
+      await expect(timeRangeLabelAfter).toBeVisible();
+    });
+  });
 });
