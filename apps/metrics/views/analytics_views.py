@@ -1,7 +1,5 @@
 """Analytics views - Overview and tabbed analytics pages."""
 
-import json
-
 from django.http import HttpRequest, HttpResponse
 from django.template.response import TemplateResponse
 
@@ -65,7 +63,8 @@ def _get_analytics_context(request: HttpRequest, active_page: str) -> dict:
         "compare_start": date_range.get("compare_start"),
         "compare_end": date_range.get("compare_end"),
         # Repository filter
-        "repos": json.dumps(repos),  # JSON for Alpine.js component
+        "repos": repos,  # List for template logic and json_script filter
+        "repos_count": len(repos),  # Count for conditional display
         "selected_repo": selected_repo,
     }
 

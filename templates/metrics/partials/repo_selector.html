@@ -2,7 +2,11 @@
 {# Repository Selector Component - Filter analytics by repository #}
 {# Usage: {% include "metrics/partials/repo_selector.html" with repos=repos selected_repo=selected_repo %} #}
 
-<div x-data="repoSelector({{ repos|safe }})"
+{# Store repos data in a script tag to avoid HTML attribute escaping issues #}
+{{ repos|json_script:"repo-selector-data" }}
+
+<div x-data="repoSelector()"
+     x-init="initFromElement('repo-selector-data')"
      @click.outside="close()"
      @keydown.escape.window="close()"
      data-testid="repo-selector"

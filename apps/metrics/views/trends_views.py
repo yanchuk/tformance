@@ -1,7 +1,5 @@
 """Trends analytics views - Long-horizon trend charts and YoY comparison."""
 
-import json
-
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.template.response import TemplateResponse
 
@@ -83,7 +81,8 @@ def _get_trends_context(request: HttpRequest) -> dict:
         "compare_start": date_range.get("compare_start"),
         "compare_end": date_range.get("compare_end"),
         # Repository filter
-        "repos": json.dumps(repos),  # JSON for Alpine.js component
+        "repos": repos,  # List for template logic and json_script filter
+        "repos_count": len(repos),  # Count for conditional display
         "selected_repo": selected_repo,
     }
 

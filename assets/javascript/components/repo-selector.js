@@ -16,18 +16,34 @@ export function registerRepoSelector() {
     return;
   }
 
-  window.Alpine.data('repoSelector', (initialRepos = []) => ({
+  window.Alpine.data('repoSelector', () => ({
     // UI-only state
     open: false,
     searchQuery: '',
 
-    init() {
-      // Set available repos from template data
-      if (initialRepos && initialRepos.length > 0) {
-        this.$store.repoFilter.setRepos(initialRepos);
+    /**
+     * Initialize from a JSON script element
+     * Called via x-init="initFromElement('repo-selector-data')"
+     */
+    initFromElement(elementId) {
+      const el = document.getElementById(elementId);
+      if (el) {
+        try {
+          const repos = JSON.parse(el.textContent);
+          if (repos && Array.isArray(repos) && repos.length > 0) {
+            this.$store.repoFilter.setRepos(repos);
+          }
+        } catch (e) {
+          console.warn('Failed to parse repo data:', e);
+        }
       }
 
       // Sync from URL on init
+      this.$store.repoFilter.syncFromUrl();
+    },
+
+    init() {
+      // Legacy support - sync from URL if not initialized via initFromElement
       this.$store.repoFilter.syncFromUrl();
     },
 
