@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, Page } from '@playwright/test';
 
 /**
  * AI Insights E2E Tests
@@ -8,6 +8,16 @@ import { test, expect } from '@playwright/test';
  * Tests for the LLM-powered insights feature on the CTO dashboard.
  * These tests verify the UI integration works correctly.
  */
+
+/**
+ * Wait for HTMX request to complete.
+ */
+async function waitForHtmxComplete(page: Page, timeout = 5000): Promise<void> {
+  await page.waitForFunction(
+    () => !document.body.classList.contains('htmx-request'),
+    { timeout }
+  );
+}
 
 test.describe('AI Insights Tests @insights', () => {
   // Login before each test
@@ -31,13 +41,11 @@ test.describe('AI Insights Tests @insights', () => {
     test('AI Summary loads via HTMX', async ({ page }) => {
       await page.goto('/app/metrics/overview/');
       await page.waitForLoadState('domcontentloaded');
-
-      // Wait for HTMX to load the summary
-      await page.waitForTimeout(1000);
+      await waitForHtmxComplete(page);
 
       // Should show either a summary or an error message (API not configured)
       const summaryCard = page.locator('#ai-summary-card');
-      await expect(summaryCard).toBeVisible();
+      await expect(summaryCard).toBeVisible({ timeout: 10000 });
 
       // Check for content (either summary text or error about API not configured)
       const hasContent = await summaryCard.locator('#ai-summary-content').textContent();
@@ -55,14 +63,14 @@ test.describe('AI Insights Tests @insights', () => {
     test('refresh button triggers HTMX request', async ({ page }) => {
       await page.goto('/app/metrics/overview/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(500);
+      await waitForHtmxComplete(page);
 
       // Click refresh button
       const refreshButton = page.getByRole('button', { name: 'Refresh summary' });
       await refreshButton.click();
 
       // Wait for response
-      await page.waitForTimeout(1000);
+      await waitForHtmxComplete(page, 10000);
 
       // Summary content should still be visible (either refreshed or error)
       const summaryContent = page.locator('#ai-summary-content');
@@ -99,7 +107,7 @@ test.describe('AI Insights Tests @insights', () => {
     test('suggested questions load via HTMX', async ({ page }) => {
       await page.goto('/app/metrics/overview/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(1000);
+      await waitForHtmxComplete(page);
 
       // Should have "Try asking:" text
       await expect(page.getByText('Try asking:')).toBeVisible();
@@ -111,27 +119,32 @@ test.describe('AI Insights Tests @insights', () => {
     test('clicking suggested question fills input and submits', async ({ page }) => {
       await page.goto('/app/metrics/overview/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(1000);
+      await waitForHtmxComplete(page);
 
       // Click a suggested question
       await page.getByRole('button', { name: 'How is the team doing this month?' }).click();
 
-      // Wait for HTMX response
-      await page.waitForTimeout(1500);
+      // Wait for HTMX response (LLM calls can be slow)
+      await waitForHtmxComplete(page, 15000);
 
-      // Response area should have content
+      // Response area should have content - wait for it to appear and have text
       const response = page.locator('#qa-response');
-      await expect(response).toBeVisible();
+      await response.waitFor({ state: 'attached', timeout: 15000 });
 
-      // Should have some response (either answer or error about API not configured)
-      const responseText = await response.textContent();
-      expect(responseText).toBeTruthy();
+      // Wait for actual content (not just container)
+      await page.waitForFunction(
+        () => {
+          const el = document.getElementById('qa-response');
+          return el && el.textContent && el.textContent.trim().length > 0;
+        },
+        { timeout: 15000 }
+      );
     });
 
     test('typing and submitting question works', async ({ page }) => {
       await page.goto('/app/metrics/overview/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(500);
+      await waitForHtmxComplete(page);
 
       // Type a question
       const input = page.getByRole('textbox', { name: /How is the team doing/i });
@@ -141,17 +154,17 @@ test.describe('AI Insights Tests @insights', () => {
       await page.getByRole('button', { name: 'Ask' }).click();
 
       // Wait for HTMX response
-      await page.waitForTimeout(1500);
+      await waitForHtmxComplete(page, 10000);
 
       // Response area should have content
       const response = page.locator('#qa-response');
-      await expect(response).toBeVisible();
+      await expect(response).toBeVisible({ timeout: 10000 });
     });
 
     test('empty question shows validation (HTML5 required)', async ({ page }) => {
       await page.goto('/app/metrics/overview/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(500);
+      await waitForHtmxComplete(page);
 
       // Clear input and try to submit
       const input = page.getByRole('textbox', { name: /How is the team doing/i });
@@ -232,7 +245,7 @@ test.describe('AI Insights Tests @insights', () => {
 
       // Click 30d filter
       await page.getByRole('link', { name: '30d' }).click();
-      await page.waitForTimeout(500);
+      await waitForHtmxComplete(page);
 
       // AI Insights should still be visible after filter change
       await expect(page.getByRole('heading', { name: 'AI Insights' })).toBeVisible();
