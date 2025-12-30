@@ -1785,6 +1785,36 @@ def get_monthly_pr_count(team: Team, start_date: date, end_date: date) -> list[d
     return result
 
 
+def get_weekly_pr_count(team: Team, start_date: date, end_date: date) -> list[dict]:
+    """Get PR count by week.
+
+    Args:
+        team: Team instance
+        start_date: Start date (inclusive)
+        end_date: End date (inclusive)
+
+    Returns:
+        list of dicts with keys:
+            - week (str): Week in YYYY-WNN format
+            - value (int): Number of merged PRs for that week
+    """
+    prs = _get_merged_prs_in_range(team, start_date, end_date)
+
+    # Group by week and count
+    weekly_data = prs.annotate(week=TruncWeek("merged_at")).values("week").annotate(count=Count("id")).order_by("week")
+
+    result = []
+    for entry in weekly_data:
+        week_str = entry["week"].strftime("%Y-W%W") if entry["week"] else None
+        result.append(
+            {
+                "week": week_str,
+                "value": entry["count"],
+            }
+        )
+    return result
+
+
 def get_monthly_ai_adoption(team: Team, start_date: date, end_date: date) -> list[dict]:
     """Get AI adoption percentage by month.
 

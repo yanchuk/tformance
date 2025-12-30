@@ -132,7 +132,7 @@ def trend_chart_data(request: HttpRequest) -> HttpResponse:
     weekly_functions = {
         "cycle_time": dashboard_service.get_cycle_time_trend,
         "review_time": dashboard_service.get_review_time_trend,
-        "pr_count": None,  # No weekly PR count function
+        "pr_count": dashboard_service.get_weekly_pr_count,
         "ai_adoption": dashboard_service.get_ai_adoption_trend,
     }
 
@@ -241,7 +241,7 @@ def wide_trend_chart(request: HttpRequest) -> HttpResponse:
         metric_functions = {
             "cycle_time": dashboard_service.get_cycle_time_trend,
             "review_time": dashboard_service.get_review_time_trend,
-            "pr_count": dashboard_service.get_monthly_pr_count,  # No weekly, fallback to monthly
+            "pr_count": dashboard_service.get_weekly_pr_count,
             "ai_adoption": dashboard_service.get_ai_adoption_trend,
         }
     else:  # monthly
