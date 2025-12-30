@@ -1,194 +1,160 @@
-# Trends Charts Fix - Tasks (v5)
+# Trends Charts Fix - Tasks (v6)
 
-**Last Updated:** 2025-12-30 (Session 4 End)
-**Status:** All Phases Complete ✅
+**Last Updated:** 2025-12-30 (Session 5 End)
+**Status:** Phase 5 - Two New Bugs to Fix
 
 ---
 
 ## Overview
 
-Fix 6 issues on the Trends & Comparison page for complete ICP experience:
-1. Multi-metric comparison chart blank
-2. Tech breakdown shows `{}` entries
-3. Cycle time missing "h" suffix
-4. PRs Merged stat card missing + no sparklines
-5. Charts only display after page reload
-6. Need 100% Stacked Area Charts for composition trends
+Fix issues on the Trends & Comparison page for complete ICP experience.
 
 ---
 
-## Phase 1: Previous Session (Complete) ✅
+## Phase 5: Session 5 Bugs (IN PROGRESS)
 
-- [x] Fix Benchmark 500 error
-- [x] Add `initPrTypeChart()` and `initTechChart()` to app.js
-- [x] Remove inline scripts from HTMX partials
-- [x] Increase chart heights to 320px
-- [x] Create E2E test file
+### Task 5.1: Fix Weekly Granularity Toggle
+**Status:** NOT STARTED
+**Priority:** HIGH
 
----
+**Symptom:** Clicking "Weekly" button does nothing - chart doesn't change
 
-## Phase 2A: Critical Bug Fixes ✅
+**Root Cause Analysis Needed:**
+- [ ] Verify `setGranularity()` is called when button clicked
+- [ ] Check if hidden input `granularity` is updated
+- [ ] Verify wide chart HTMX request includes granularity param
+- [ ] Check if Tech/PR Type charts are being refreshed
 
-### Task 2A.1: Fix Multi-Metric Comparison Chart
-**Status:** COMPLETE
+**Suspected Issue:**
+The `updateChart()` function only refreshes:
+1. Wide trend chart (`#wide-chart-container`)
+2. Benchmark panel (`#benchmark-panel-container`)
 
-- [x] Add defensive checks in `createMultiMetricChart()` for missing datasets
-- [x] Ensure `unit` field is stored directly on Chart.js dataset
-- [x] Filter empty datasets before chart creation
-- [x] Add `formatMetricValue()` helper for consistent formatting
+It does NOT explicitly refresh:
+- Tech Breakdown chart (`#tech-chart-container`)
+- PR Type chart (`#pr-type-chart-container`)
 
-### Task 2A.2: Fix Chart Initialization Race Condition
-**Status:** COMPLETE
+These charts rely on `@htmx:afterSwap.window` event handler, which only fires when the wide chart swaps. If the granularity change doesn't trigger a wide chart refresh properly, Tech/PR charts won't update.
 
-- [x] Wrap `chartManager.initAll()` in `requestAnimationFrame`
-- [x] Add retry logic (max 3 attempts, 100ms delay)
-- [x] Add `data-chart-initialized` attribute to prevent double-init
+**Fix Approach:**
+- [ ] Add explicit HTMX refresh for Tech/PR charts in `setGranularity()` or `updateChart()`
+- [ ] OR: Trigger page-level refresh with new granularity param
 
----
+### Task 5.2: Fix Default Time Range to "Last 12 Months"
+**Status:** NOT STARTED
+**Priority:** HIGH
 
-## Phase 2B: Data Quality & Formatting ✅
+**Symptom:** Default shows "Last Year" instead of "Last 12 Months" rolling
 
-### Task 2B.1: Filter Empty Dict Entries from Tech Breakdown
-**Status:** COMPLETE
+**Current Behavior:**
+- `preset=12_months` → shows 365 days from today backward
+- User expects: Last 12 calendar months
 
-- [x] Add `_is_valid_category()` helper function
-- [x] Filter categories in tech breakdown functions
-
-### Task 2B.2: Apply Format Functions Consistently
-**Status:** COMPLETE
-
-- [x] Created `formatMetricValue(value, unit)` function
-- [x] Used in tooltip and Y-axis callbacks
-
----
-
-## Phase 2C: UX Enhancements ✅
-
-### Task 2C.1: Add PRs Merged Stat Card
-**Status:** COMPLETE
-
-- [x] Load full `key_metrics_cards.html` partial
-
-### Task 2C.2: Add Sparklines to Stat Cards
-**Status:** COMPLETE
-
-- [x] Fixed Review Time card showing wrong metric
+**Fix Approach:**
+- [ ] Investigate `_get_trends_context()` to understand current default logic
+- [ ] Verify `preset=12_months` calculates correct date range
+- [ ] If different from "This Year" (Jan 1 - today), may need clarification
+- [ ] May need to add/modify preset options
 
 ---
 
-## Phase 2D: 100% Stacked Area Charts ✅
+## Phase 4: Session 4 Features ✅ COMPLETE
 
-- [x] Add `createStackedAreaChart()` factory
-- [x] Update Technology Breakdown to stacked area
-- [x] Update PR Types to stacked area
-
----
-
-## Phase 3: Session 3 Fixes ✅
-
-- [x] Task 3.1: Fix Chart Resize After HTMX Swap (nested RAF)
-- [x] Task 3.2: Default Period for Trends (365 days/monthly)
-- [x] Task 3.3: Fix `{}` Entries (added `chore`/`ci` to TECH_CONFIG)
-- [x] Task 3.4: Fix Benchmark Panel Comments
-
----
-
-## Phase 4: Session 4 Features ✅
-
-### Task 4.0: 12-Month Default (Already Complete)
-**Status:** COMPLETE - Verified in Session 3
-
-### Task 4.1: AI Assisted Filter for Tech/PR Type Charts (TDD)
+### Task 4.1: AI Assisted Filter (TDD)
 **Status:** COMPLETE
 
-- [x] RED: Write failing tests for ai_filter parameter on Tech breakdown
-- [x] GREEN: Implement `ai_assisted` param in 6 service functions:
-  - `get_tech_breakdown()`
-  - `get_monthly_tech_trend()`
-  - `get_weekly_tech_trend()`
-  - `get_pr_type_breakdown()`
-  - `get_monthly_pr_type_trend()`
-  - `get_weekly_pr_type_trend()`
-- [x] GREEN: Add `ai_filter` to views (`tech_breakdown_chart`, `pr_type_breakdown_chart`)
-- [x] GREEN: Add filter UI buttons to both templates
-- [x] Filter uses `effective_is_ai_assisted` property (LLM priority)
-- [x] Tests: 221 dashboard tests pass, 57 trends views tests pass
-
-**Files Modified:**
-- `apps/metrics/services/dashboard_service.py`
-- `apps/metrics/views/trends_views.py`
-- `templates/metrics/analytics/trends/tech_chart.html`
-- `templates/metrics/analytics/trends/pr_type_chart.html`
-- `apps/metrics/tests/dashboard/test_file_categories.py`
-- `apps/metrics/tests/test_trends_views.py`
+- [x] AI filter (All/No/Yes) on Tech and PR Type charts
+- [x] Filter uses `effective_is_ai_assisted` property
+- [x] Tests: 221 dashboard tests pass
 
 ### Task 4.2: Fix Review Time Display
 **Status:** COMPLETE
 
-- [x] Root cause: `get_key_metrics()` didn't return `avg_review_time` key
-- [x] RED: Added tests expecting `avg_review_time` in result
-- [x] GREEN: Added `avg_review_time = prs.aggregate(avg=Avg("review_time_hours"))["avg"]`
-- [x] GREEN: Added key to result dict
-- [x] Tests: All 12 key_metrics tests pass
-
-**Files Modified:**
-- `apps/metrics/services/dashboard_service.py` (lines 169-170, 183)
-- `apps/metrics/tests/dashboard/test_key_metrics.py`
+- [x] Added `avg_review_time` to `get_key_metrics()`
 
 ### Task 4.3: Fix AI Filter Losing Granularity
 **Status:** COMPLETE
 
-- [x] Root cause: `hx-include` didn't include `[name='granularity']`
-- [x] Fix: Added `[name='granularity']` to hx-include in both templates
-- [x] Now AI filter preserves granularity when switching
-
-**Files Modified:**
-- `templates/metrics/analytics/trends/tech_chart.html` (lines 30, 40, 50)
-- `templates/metrics/analytics/trends/pr_type_chart.html` (lines 30, 40, 50)
+- [x] Added `[name='granularity']` to hx-include
+- [x] Added hidden inputs to trends.html
+- [x] Updated setGranularity() to sync hidden input
 
 ### Task 4.4: Disable Zoom on Comparison Chart
 **Status:** COMPLETE
 
-- [x] User requested disabling zoom/pan on multi-metric comparison chart
-- [x] Set `enabled: false` for pan, wheel, and pinch zoom
-- [x] JS rebuilt with `npm run build`
+- [x] Disabled pan, wheel, and pinch zoom
 
-**Files Modified:**
-- `assets/javascript/dashboard/trend-charts.js` (lines 392-405)
+### Task 4.5: Remove Zoom Controls
+**Status:** COMPLETE
 
----
-
-## All Tests Passing ✅
-
-- Dashboard tests: 221 passed
-- Trends views tests: 57 passed
-- E2E tests: 71/72 passed (1 Firefox CSP false positive)
-- Code formatted with ruff
+- [x] Removed Reset Zoom button (refresh icon)
+- [x] Removed "Scroll to zoom, drag to pan" instructions
+- [x] Removed zoom tip from Tips section
 
 ---
 
-## Files Modified Summary (Session 4)
+## Previous Phases (All Complete) ✅
 
-| File | Changes |
+### Phase 1: Foundation
+- [x] Fix Benchmark 500 error
+- [x] Add chart init functions to app.js
+- [x] Remove inline scripts from HTMX partials
+
+### Phase 2A: Critical Bug Fixes
+- [x] Fix Multi-Metric Comparison Chart
+- [x] Fix Chart Initialization Race Condition
+
+### Phase 2B: Data Quality
+- [x] Filter Empty Dict Entries from Tech Breakdown
+- [x] Apply Format Functions Consistently
+
+### Phase 2C: UX Enhancements
+- [x] Add PRs Merged Stat Card
+- [x] Add Sparklines to Stat Cards
+
+### Phase 2D: Stacked Area Charts
+- [x] Add createStackedAreaChart() factory
+- [x] Update charts to stacked area
+
+### Phase 3: Session 3 Fixes
+- [x] Fix Chart Resize After HTMX Swap
+- [x] Default Period for Trends
+- [x] Fix {} Entries
+- [x] Fix Benchmark Panel Comments
+
+---
+
+## Commits This Session
+
+| Commit | Message |
+|--------|---------|
+| `3b58e76` | Add AI Assisted filter to Tech/PR Type charts and fix granularity bug |
+| `be6c8a4` | Remove zoom controls and instructions from Trends charts |
+
+---
+
+## Test Status
+
+- Dashboard tests: 221 passed ✅
+- Trends views tests: 37 passed ✅
+- Code formatted with ruff ✅
+
+---
+
+## Key Files for Next Session
+
+| File | Purpose |
 |------|---------|
-| `apps/metrics/services/dashboard_service.py` | AI filter param (6 functions), avg_review_time in get_key_metrics |
-| `apps/metrics/views/trends_views.py` | ai_filter handling in tech/PR type views |
-| `templates/metrics/analytics/trends/tech_chart.html` | AI filter buttons, fixed hx-include |
-| `templates/metrics/analytics/trends/pr_type_chart.html` | AI filter buttons, fixed hx-include |
-| `assets/javascript/dashboard/trend-charts.js` | Disabled zoom on comparison chart |
-| `apps/metrics/tests/dashboard/test_key_metrics.py` | avg_review_time tests |
-| `apps/metrics/tests/dashboard/test_file_categories.py` | AI filter tests |
-| `apps/metrics/tests/test_trends_views.py` | AI filter view tests |
+| `templates/metrics/analytics/trends.html` | Alpine.js granularity toggle, hidden inputs |
+| `apps/metrics/views/trends_views.py` | `_get_trends_context()`, default date range logic |
+| `templates/metrics/analytics/trends/tech_chart.html` | Tech chart partial |
+| `templates/metrics/analytics/trends/pr_type_chart.html` | PR Type chart partial |
 
 ---
 
-## Definition of Done ✅
+## Definition of Done for Phase 5
 
-- [x] AI Assisted filter works on Tech and PR Type charts
-- [x] Filter uses `effective_is_ai_assisted` (LLM priority)
-- [x] Review Time stat card shows actual value
-- [x] AI filter preserves granularity when switching
-- [x] Comparison chart has no zoom/pan
-- [x] All unit tests pass
-- [x] All E2E tests pass
-- [x] Code formatted with ruff
+- [ ] Weekly granularity toggle works - clicking Weekly changes all charts
+- [ ] Default time range is "Last 12 Months" (rolling 365 days)
+- [ ] All existing tests still pass
+- [ ] Code formatted with ruff
