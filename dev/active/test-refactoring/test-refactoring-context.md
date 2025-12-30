@@ -1,15 +1,64 @@
 # Test Refactoring - Context & Key Information
 
-**Last Updated:** 2024-12-30 (Session 3)
-**Current Status:** Phase 1 COMPLETE ✅, Phase 2 COMPLETE ✅
+**Last Updated:** 2024-12-30 (Session 4)
+**Current Status:** Phase 1 ✅, Phase 2 ✅, Phase 3 IN PROGRESS
 
 ---
 
-## Session 3 Summary (Current)
+## Session 4 Summary (Current)
 
 ### Completed This Session
 
-**Phase 2: Dashboard Service Coverage - COMPLETE ✅**
+**Phase 3: E2E Reliability - IN PROGRESS**
+
+Replaced hardcoded `waitForTimeout` calls with conditional waits:
+
+| File | Waits Replaced | Status |
+|------|----------------|--------|
+| `alpine-htmx-integration.spec.ts` | 13 | ✅ Tests pass 3/3 |
+| `analytics.spec.ts` | 42 | ✅ Tests pass 2/2 (500 tests) |
+| Remaining files | ~123 | Pending |
+
+### E2E Wait Helper Functions
+
+Created reusable helpers for conditional waits:
+
+```typescript
+// Wait for Alpine.js store to be initialized
+async function waitForAlpineStore(page: Page, timeout = 5000): Promise<void> {
+  await page.waitForFunction(
+    () => {
+      const Alpine = (window as any).Alpine;
+      return Alpine && Alpine.store && Alpine.store('dateRange') !== undefined;
+    },
+    { timeout }
+  );
+}
+
+// Wait for HTMX request to complete
+async function waitForHtmxComplete(page: Page, timeout = 5000): Promise<void> {
+  await page.waitForFunction(
+    () => !document.body.classList.contains('htmx-request'),
+    { timeout }
+  );
+}
+
+// Wait for chart canvas to be present
+async function waitForChart(page: Page, chartId: string, timeout = 5000): Promise<void> {
+  await page.waitForSelector(`#${chartId}`, { state: 'attached', timeout });
+  await waitForHtmxComplete(page, timeout);
+}
+```
+
+### Commits Made This Session
+
+1. `99ce708` - Replace hardcoded waits in analytics.spec.ts
+
+---
+
+## Previous Sessions Summary
+
+### Session 3: Phase 2 Dashboard Tests
 
 Added **89 new TDD tests** for previously untested dashboard functions:
 
@@ -17,178 +66,141 @@ Added **89 new TDD tests** for previously untested dashboard functions:
 |-----------|-------|-------------------|
 | `test_sparkline_data.py` | 16 | `get_sparkline_data()` |
 | `test_ai_detective_leaderboard.py` | 17 | `get_ai_detective_leaderboard()` |
-| `test_trend_comparison.py` | 28 | `get_trend_comparison()`, `get_monthly_cycle_time_trend()`, `get_monthly_review_time_trend()`, `get_monthly_pr_count()`, `get_weekly_pr_count()`, `get_monthly_ai_adoption()` |
+| `test_trend_comparison.py` | 28 | `get_trend_comparison()`, monthly/weekly trends |
 | `test_pr_type_breakdown.py` | 14 | `get_pr_type_breakdown()` |
 | `test_ai_bot_reviews.py` | 14 | `get_ai_bot_review_stats()` |
 
 **Dashboard test total: 310 tests (221 existing + 89 new)**
 
-### Functions Now Tested (Previously Had No Tests)
+### Session 2: Phase 1 Foundation
 
-| Function | Tests |
-|----------|-------|
-| `get_sparkline_data` | 16 |
-| `get_ai_detective_leaderboard` | 17 |
-| `get_trend_comparison` | 12 |
-| `get_monthly_cycle_time_trend` | 5 |
-| `get_monthly_review_time_trend` | 2 |
-| `get_monthly_pr_count` | 3 |
-| `get_weekly_pr_count` | 3 |
-| `get_monthly_ai_adoption` | 4 |
-| `get_pr_type_breakdown` | 14 |
-| `get_ai_bot_review_stats` | 14 |
-
-### Files Created This Session
-
-| File | Tests |
-|------|-------|
-| `apps/metrics/tests/dashboard/test_sparkline_data.py` | 16 |
-| `apps/metrics/tests/dashboard/test_ai_detective_leaderboard.py` | 17 |
-| `apps/metrics/tests/dashboard/test_trend_comparison.py` | 28 |
-| `apps/metrics/tests/dashboard/test_pr_type_breakdown.py` | 14 |
-| `apps/metrics/tests/dashboard/test_ai_bot_reviews.py` | 14 |
-
-### No Migrations Needed
-- No model changes were made this session
+1. Created `apps/utils/date_utils.py` for timezone-aware filtering
+2. Fixed test isolation in `test_roles.py`
+3. Marked slow tests with `@pytest.mark.slow`
 
 ---
 
-## Previous Session (Session 2) Summary
+## Database Deadlock Mitigation
 
-**Phase 1: Quick Wins & Foundation - COMPLETE ✅**
+When running tests in parallel, database deadlocks can occur. Solutions:
 
-1. **Task 1.1: Timezone Warnings Fixed**
-   - Created `apps/utils/date_utils.py` with utilities
-   - Updated `apps/metrics/services/dashboard_service.py` with 9 timezone fixes
-
-2. **Task 1.2: Slow Tests** (Already Done)
-   - `@pytest.mark.slow` already on `TestScenarioDataGenerator` class
-
-3. **Task 1.3: test_roles.py Isolation Fixed**
-   - Replaced `setUpClass` with `setUp`
-   - Uses factories for all data creation
-
-4. **Task 1.4: Test Utilities**
-   - Combined with Task 1.1 - `apps/utils/date_utils.py` serves both production and tests
-
----
-
-## Next Steps: Phase 3
-
-**Starting:** E2E Reliability (eliminate hardcoded waits)
-
-**Phase 3 Tasks:**
-1. Audit `waitForTimeout` usage in E2E tests
-2. Replace hardcoded waits with conditional waits
-3. Create E2E best practices guide
-
-**Commands to run on restart:**
+### Option 1: Run Tests Serially (Recommended for CI stability)
 ```bash
-# Verify Phase 2 tests work
-.venv/bin/pytest apps/metrics/tests/dashboard/ -v --tb=short
-
-# Check current dashboard test count (should be 310)
-.venv/bin/pytest apps/metrics/tests/dashboard/ --collect-only | tail -5
-
-# Audit E2E waits
-grep -rn "waitForTimeout" tests/e2e/*.spec.ts | wc -l
+make test-serial  # Runs with -p no:xdist
 ```
+
+### Option 2: Reduce Parallelism
+```bash
+pytest -n 2  # Use fewer workers instead of auto
+```
+
+### Option 3: Use pytest-django Transaction Isolation
+```python
+# In conftest.py or test class
+@pytest.mark.django_db(transaction=True)
+class TestMyFeature:
+    ...
+```
+
+### Option 4: loadfile Distribution (Group tests by file)
+```bash
+pytest --dist=loadfile  # Tests from same file run on same worker
+```
+
+### Current Project Configuration
+
+The project uses `pytest-xdist` with auto workers. For stability:
+- Production CI should use `make test` (parallel)
+- If flaky, fall back to `make test-serial`
+- E2E tests run separately via Playwright
 
 ---
 
-## Source Documents
+## E2E Wait Pattern Guidelines
 
-- **QA Review:** `dev/active/test-suite-qa-review.md`
-- **Main Plan:** `dev/active/test-refactoring/test-refactoring-plan.md`
-- **Tasks Checklist:** `dev/active/test-refactoring/test-refactoring-tasks.md`
+### Replace These Patterns:
 
----
+```typescript
+// ❌ BAD: Hardcoded timeout
+await page.waitForTimeout(500);
 
-## Test Patterns Established
-
-### Timezone-Aware Date Filtering
-```python
-# In service layer (dashboard_service.py)
-from apps.utils.date_utils import end_of_day, start_of_day
-
-merged_at__gte=start_of_day(start_date),
-merged_at__lte=end_of_day(end_date),
+// ✅ GOOD: Wait for specific condition
+await waitForAlpineStore(page);
+await waitForHtmxComplete(page);
+await expect(element).toBeVisible({ timeout: 5000 });
+await page.waitForURL(/pattern/);
 ```
 
-### Factory Usage for Tests
-```python
-# Correct imports
-from apps.metrics.factories import TeamFactory, TeamMemberFactory, PullRequestFactory
-from apps.integrations.factories import UserFactory
-
-# Proper usage - share the team
-team = TeamFactory()
-member = TeamMemberFactory(team=team)
-pr = PullRequestFactory(team=team, author=member)
+### When Waiting for HTMX Content:
+```typescript
+// Wait for element that appears after HTMX load
+await expect(page.getByRole('heading', { name: 'Title' })).toBeVisible({ timeout: 10000 });
 ```
 
-### Test Isolation Pattern
-```python
-class TestRoles(TestCase):
-    def setUp(self):  # NOT setUpClass
-        self.team = TeamFactory()  # Fresh team per test
+### When Waiting for Charts:
+```typescript
+// Charts need longer timeouts
+await expect(page.locator('#chart-canvas')).toBeAttached({ timeout: 10000 });
 ```
 
 ---
 
 ## Current Test Counts
 
-| Category | Count |
-|----------|-------|
-| Dashboard Tests | 310 (all passing) |
-| Roles Tests | 7 (all passing) |
-| Timezone Warnings | 0 in dashboard tests |
+| Category | Count | Status |
+|----------|-------|--------|
+| Dashboard Tests | 310 | ✅ All passing |
+| E2E Analytics | 500 | ✅ All passing |
+| E2E Alpine-HTMX | 48 | ✅ All passing |
+| Total waitForTimeout remaining | ~123 | Pending |
 
 ---
 
 ## Commands Reference
 
 ```bash
-# Run dashboard tests
-.venv/bin/pytest apps/metrics/tests/dashboard/ -v
+# Run all tests
+make test
 
-# Run with warnings as errors
-.venv/bin/pytest apps/metrics/tests/dashboard/ -W error::RuntimeWarning
+# Run tests serially (avoid deadlocks)
+make test-serial
 
-# Skip slow tests
-pytest -m "not slow"
+# Run E2E tests
+make e2e
 
-# Run specific test file
-pytest apps/metrics/tests/dashboard/test_sparkline_data.py -v
+# Run specific E2E file
+npx playwright test tests/e2e/analytics.spec.ts
 
-# Check test count
-pytest apps/metrics/tests/dashboard/ --collect-only | tail -5
+# Check remaining waits
+grep -rn "waitForTimeout" tests/e2e/*.spec.ts | wc -l
 ```
+
+---
+
+## Next Steps
+
+1. **Phase 3.3:** Fix remaining E2E files with waitForTimeout:
+   - `htmx-navigation.spec.ts` (24 waits)
+   - `interactive.spec.ts` (21 waits)
+   - Other files with fewer waits
+
+2. **Phase 4:** Auth & Models TDD coverage
+
+3. **Phase 5:** Factory & Performance optimization
 
 ---
 
 ## Handoff Notes
 
-**Last action:** Completed Phase 2 with 89 new tests.
+**Last action:** Committed analytics.spec.ts E2E fixes.
 
-**Uncommitted changes:**
-- `apps/metrics/tests/dashboard/test_sparkline_data.py` (new)
-- `apps/metrics/tests/dashboard/test_ai_detective_leaderboard.py` (new)
-- `apps/metrics/tests/dashboard/test_trend_comparison.py` (new)
-- `apps/metrics/tests/dashboard/test_pr_type_breakdown.py` (new)
-- `apps/metrics/tests/dashboard/test_ai_bot_reviews.py` (new)
-- `dev/active/test-refactoring/test-refactoring-context.md` (updated)
-- `dev/active/test-refactoring/test-refactoring-tasks.md` (needs update)
+**Uncommitted changes:** None - all committed.
 
 **To verify on restart:**
 ```bash
-# Check all changes work
-.venv/bin/pytest apps/metrics/tests/dashboard/ -v --tb=short
+# E2E tests
+npx playwright test tests/e2e/analytics.spec.ts --reporter=list | tail -5
 
-# Should show 310 passed
+# Dashboard tests
+.venv/bin/pytest apps/metrics/tests/dashboard/ --tb=short | tail -5
 ```
-
-**Next task:**
-- Start Phase 3 by auditing E2E hardcoded waits
-- Replace `waitForTimeout` with conditional waits
-- Create E2E best practices guide
