@@ -1,81 +1,97 @@
 # Test Refactoring - Context & Key Information
 
-**Last Updated:** 2024-12-30 (Session 2)
-**Current Status:** Phase 1 COMPLETE ✅, Phase 2 Starting
+**Last Updated:** 2024-12-30 (Session 3)
+**Current Status:** Phase 1 COMPLETE ✅, Phase 2 COMPLETE ✅
 
 ---
 
-## Session 2 Summary (Current)
+## Session 3 Summary (Current)
 
 ### Completed This Session
 
-**Phase 1: Quick Wins & Foundation - COMPLETE ✅**
+**Phase 2: Dashboard Service Coverage - COMPLETE ✅**
 
-1. **Task 1.1: Timezone Warnings Fixed**
-   - Created `apps/utils/date_utils.py` with utilities:
-     - `start_of_day(date)` → timezone-aware datetime at 00:00:00
-     - `end_of_day(date)` → timezone-aware datetime at 23:59:59.999999
-     - `days_ago(n)` → timezone-aware datetime n days ago
-     - `make_aware_datetime(...)` → convenience constructor
-   - Updated `apps/metrics/services/dashboard_service.py` with 9 timezone fixes:
-     - Lines 56-57: `_get_merged_prs_in_range()`
-     - Lines 457-458, 498-499: `responded_at` filters
-     - Lines 747-748: `submitted_at` filter
-     - Lines 1038-1039, 1164-1165: `pull_request__merged_at` filters
-     - Lines 1099-1100: `deployed_at` filter
-     - Lines 1364-1365: `submitted_at` filter
-     - Lines 1407-1410: `_filter_by_date_range()` helper
-   - All 221 dashboard tests pass with `-W error::RuntimeWarning`
+Added **89 new TDD tests** for previously untested dashboard functions:
 
-2. **Task 1.2: Slow Tests** (Already Done)
-   - `@pytest.mark.slow` already on `TestScenarioDataGenerator` class
-   - Verified: `pytest -m "not slow"` works correctly
+| Test File | Tests | Functions Covered |
+|-----------|-------|-------------------|
+| `test_sparkline_data.py` | 16 | `get_sparkline_data()` |
+| `test_ai_detective_leaderboard.py` | 17 | `get_ai_detective_leaderboard()` |
+| `test_trend_comparison.py` | 28 | `get_trend_comparison()`, `get_monthly_cycle_time_trend()`, `get_monthly_review_time_trend()`, `get_monthly_pr_count()`, `get_weekly_pr_count()`, `get_monthly_ai_adoption()` |
+| `test_pr_type_breakdown.py` | 14 | `get_pr_type_breakdown()` |
+| `test_ai_bot_reviews.py` | 14 | `get_ai_bot_review_stats()` |
 
-3. **Task 1.3: test_roles.py Isolation Fixed**
-   - Replaced `setUpClass` with `setUp`
-   - Uses `TeamFactory()` and `UserFactory()` instead of direct creation
-   - Expanded from 2 to 7 focused tests
-   - Factory imports: `from apps.metrics.factories import TeamFactory` and `from apps.integrations.factories import UserFactory`
+**Dashboard test total: 310 tests (221 existing + 89 new)**
 
-4. **Task 1.4: Test Utilities**
-   - Combined with Task 1.1 - `apps/utils/date_utils.py` serves both production and tests
+### Functions Now Tested (Previously Had No Tests)
 
-### Files Modified This Session
+| Function | Tests |
+|----------|-------|
+| `get_sparkline_data` | 16 |
+| `get_ai_detective_leaderboard` | 17 |
+| `get_trend_comparison` | 12 |
+| `get_monthly_cycle_time_trend` | 5 |
+| `get_monthly_review_time_trend` | 2 |
+| `get_monthly_pr_count` | 3 |
+| `get_weekly_pr_count` | 3 |
+| `get_monthly_ai_adoption` | 4 |
+| `get_pr_type_breakdown` | 14 |
+| `get_ai_bot_review_stats` | 14 |
 
-| File | Change |
-|------|--------|
-| `apps/utils/date_utils.py` | **CREATED** - Timezone utilities |
-| `apps/metrics/services/dashboard_service.py` | 9 timezone fixes + import |
-| `apps/teams/tests/test_roles.py` | Refactored for isolation |
-| `dev/active/test-refactoring/test-refactoring-tasks.md` | Updated with completion status |
+### Files Created This Session
+
+| File | Tests |
+|------|-------|
+| `apps/metrics/tests/dashboard/test_sparkline_data.py` | 16 |
+| `apps/metrics/tests/dashboard/test_ai_detective_leaderboard.py` | 17 |
+| `apps/metrics/tests/dashboard/test_trend_comparison.py` | 28 |
+| `apps/metrics/tests/dashboard/test_pr_type_breakdown.py` | 14 |
+| `apps/metrics/tests/dashboard/test_ai_bot_reviews.py` | 14 |
 
 ### No Migrations Needed
 - No model changes were made this session
 
 ---
 
-## Next Steps: Phase 2
+## Previous Session (Session 2) Summary
 
-**Starting:** Dashboard Service Coverage - TDD
+**Phase 1: Quick Wins & Foundation - COMPLETE ✅**
 
-The dashboard test files already exist with good coverage:
-- `apps/metrics/tests/dashboard/test_key_metrics.py` - EXISTS (12 tests)
-- `apps/metrics/tests/dashboard/test_ai_metrics.py` - EXISTS (many tests)
-- `apps/metrics/tests/dashboard/test_team_breakdown.py` - EXISTS
-- `apps/metrics/tests/dashboard/test_pr_metrics.py` - EXISTS
+1. **Task 1.1: Timezone Warnings Fixed**
+   - Created `apps/utils/date_utils.py` with utilities
+   - Updated `apps/metrics/services/dashboard_service.py` with 9 timezone fixes
 
-**Phase 2 Goal:** Review existing coverage, identify gaps, add missing tests using TDD.
+2. **Task 1.2: Slow Tests** (Already Done)
+   - `@pytest.mark.slow` already on `TestScenarioDataGenerator` class
+
+3. **Task 1.3: test_roles.py Isolation Fixed**
+   - Replaced `setUpClass` with `setUp`
+   - Uses factories for all data creation
+
+4. **Task 1.4: Test Utilities**
+   - Combined with Task 1.1 - `apps/utils/date_utils.py` serves both production and tests
+
+---
+
+## Next Steps: Phase 3
+
+**Starting:** E2E Reliability (eliminate hardcoded waits)
+
+**Phase 3 Tasks:**
+1. Audit `waitForTimeout` usage in E2E tests
+2. Replace hardcoded waits with conditional waits
+3. Create E2E best practices guide
 
 **Commands to run on restart:**
 ```bash
-# Verify Phase 1 changes work
+# Verify Phase 2 tests work
 .venv/bin/pytest apps/metrics/tests/dashboard/ -v --tb=short
 
-# Check current dashboard test count
-.venv/bin/pytest apps/metrics/tests/dashboard/ --collect-only | grep "test session starts" -A 1
+# Check current dashboard test count (should be 310)
+.venv/bin/pytest apps/metrics/tests/dashboard/ --collect-only | tail -5
 
-# Run with warnings as errors (should pass)
-.venv/bin/pytest apps/metrics/tests/dashboard/ -W error::RuntimeWarning
+# Audit E2E waits
+grep -rn "waitForTimeout" tests/e2e/*.spec.ts | wc -l
 ```
 
 ---
@@ -85,52 +101,6 @@ The dashboard test files already exist with good coverage:
 - **QA Review:** `dev/active/test-suite-qa-review.md`
 - **Main Plan:** `dev/active/test-refactoring/test-refactoring-plan.md`
 - **Tasks Checklist:** `dev/active/test-refactoring/test-refactoring-tasks.md`
-
----
-
-## Key Files Modified (Phase 1)
-
-### Created: `apps/utils/date_utils.py`
-```python
-from apps.utils.date_utils import start_of_day, end_of_day, days_ago, make_aware_datetime
-
-# For ORM filtering on DateTimeFields
-prs = PullRequest.objects.filter(
-    merged_at__gte=start_of_day(start_date),
-    merged_at__lte=end_of_day(end_date),
-)
-```
-
-### Refactored: `apps/teams/tests/test_roles.py`
-- Now uses `setUp` (not `setUpClass`)
-- Uses factories for all data creation
-- 7 focused tests for `is_admin()` and `is_member()` functions
-
----
-
-## Phase 2: Dashboard Service Coverage
-
-### Existing Test Files (Already Have Tests)
-| File | Tests | Status |
-|------|-------|--------|
-| `test_key_metrics.py` | 12 | Review for gaps |
-| `test_ai_metrics.py` | Many | Review for gaps |
-| `test_team_breakdown.py` | Many | Review for gaps |
-| `test_pr_metrics.py` | Many | Review for gaps |
-| `test_cycle_time.py` | Several | Review for gaps |
-| `test_channel_metrics.py` | 53+ | Good coverage |
-| `test_deployment_metrics.py` | Several | Review for gaps |
-| `test_review_metrics.py` | Many | Review for gaps |
-
-### Functions That May Need More Tests
-```python
-# From dashboard_service.py - check if these have tests:
-get_metrics_trend(team, days) -> dict
-get_ai_detective_leaderboard(team, limit=10) -> list
-get_copilot_metrics(team, start_date, end_date) -> dict
-get_copilot_trend(team, days) -> list
-get_sparkline_data(team, days) -> dict
-```
 
 ---
 
@@ -170,7 +140,7 @@ class TestRoles(TestCase):
 
 | Category | Count |
 |----------|-------|
-| Dashboard Tests | 221 (all passing) |
+| Dashboard Tests | 310 (all passing) |
 | Roles Tests | 7 (all passing) |
 | Timezone Warnings | 0 in dashboard tests |
 
@@ -189,7 +159,7 @@ class TestRoles(TestCase):
 pytest -m "not slow"
 
 # Run specific test file
-pytest apps/metrics/tests/dashboard/test_key_metrics.py -v
+pytest apps/metrics/tests/dashboard/test_sparkline_data.py -v
 
 # Check test count
 pytest apps/metrics/tests/dashboard/ --collect-only | tail -5
@@ -199,23 +169,26 @@ pytest apps/metrics/tests/dashboard/ --collect-only | tail -5
 
 ## Handoff Notes
 
-**Last action:** Completed Phase 1, about to start Phase 2.
+**Last action:** Completed Phase 2 with 89 new tests.
 
 **Uncommitted changes:**
-- `apps/utils/date_utils.py` (new file)
-- `apps/metrics/services/dashboard_service.py` (timezone fixes)
-- `apps/teams/tests/test_roles.py` (refactored)
-- `dev/active/test-refactoring/test-refactoring-tasks.md` (updated)
+- `apps/metrics/tests/dashboard/test_sparkline_data.py` (new)
+- `apps/metrics/tests/dashboard/test_ai_detective_leaderboard.py` (new)
+- `apps/metrics/tests/dashboard/test_trend_comparison.py` (new)
+- `apps/metrics/tests/dashboard/test_pr_type_breakdown.py` (new)
+- `apps/metrics/tests/dashboard/test_ai_bot_reviews.py` (new)
+- `dev/active/test-refactoring/test-refactoring-context.md` (updated)
+- `dev/active/test-refactoring/test-refactoring-tasks.md` (needs update)
 
 **To verify on restart:**
 ```bash
 # Check all changes work
-.venv/bin/pytest apps/metrics/tests/dashboard/ apps/teams/tests/test_roles.py -v --tb=short
+.venv/bin/pytest apps/metrics/tests/dashboard/ -v --tb=short
 
-# Should show 228 passed (221 dashboard + 7 roles)
+# Should show 310 passed
 ```
 
 **Next task:**
-- Start Phase 2 by reviewing existing dashboard test coverage
-- Identify gaps in `dashboard_service.py` test coverage
-- Add missing tests using TDD (Red-Green-Refactor)
+- Start Phase 3 by auditing E2E hardcoded waits
+- Replace `waitForTimeout` with conditional waits
+- Create E2E best practices guide
