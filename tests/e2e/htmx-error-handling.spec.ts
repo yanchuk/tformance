@@ -4,7 +4,29 @@
  * Tests that failed HTMX requests show user-friendly error messages
  * instead of infinite loading spinners.
  */
-import { test, expect } from '@playwright/test';
+import { test, expect, Page } from '@playwright/test';
+
+/**
+ * Wait for HTMX request to complete (success or failure).
+ */
+async function waitForHtmxComplete(page: Page, timeout = 5000): Promise<void> {
+  await page.waitForFunction(
+    () => !document.body.classList.contains('htmx-request'),
+    { timeout }
+  );
+}
+
+/**
+ * Wait for error alerts to appear after HTMX failure.
+ */
+async function waitForErrorAlert(page: Page, timeout = 5000): Promise<void> {
+  await page.locator('[role="alert"], [data-htmx-error], .alert-error').first().waitFor({
+    state: 'attached',
+    timeout,
+  }).catch(() => {
+    // Error alert might not appear immediately, that's okay
+  });
+}
 
 // Use only chromium for faster feedback during development
 test.use({ browserName: 'chromium' });
@@ -56,7 +78,8 @@ test.describe('HTMX Error Handling', () => {
     await page.waitForLoadState('domcontentloaded');
 
     // Wait for HTMX requests to fail and error handling to process
-    await page.waitForTimeout(4000);
+    await waitForHtmxComplete(page, 10000);
+    await waitForErrorAlert(page, 5000);
 
     console.log('Intercepted requests:', interceptedRequests);
     console.log('Console messages with htmx.js:', consoleMessages.filter(m => m.includes('[htmx.js]')));
@@ -96,7 +119,8 @@ test.describe('HTMX Error Handling', () => {
     await page.waitForLoadState('domcontentloaded');
 
     // Wait for HTMX requests to fail and error handling to process
-    await page.waitForTimeout(3000);
+    await waitForHtmxComplete(page, 10000);
+    await waitForErrorAlert(page, 5000);
 
     // Check that we have an error alert and not just a stuck loading spinner
     const errorAlert = page.locator('[role="alert"], [data-htmx-error]');
@@ -133,7 +157,7 @@ test.describe('HTMX Error Handling', () => {
     await page.waitForLoadState('domcontentloaded');
 
     // Wait for HTMX requests to fail and console errors to be logged
-    await page.waitForTimeout(4000);
+    await waitForHtmxComplete(page, 10000);
 
     // There should be console errors logged for failed HTMX requests
     const htmxErrors = consoleErrors.filter(e =>

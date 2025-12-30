@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, Page } from '@playwright/test';
 import { loginAs } from './fixtures/test-users';
 
 /**
@@ -7,6 +7,16 @@ import { loginAs } from './fixtures/test-users';
  * Run with: npx playwright test teams.spec.ts
  * Tag: @teams
  */
+
+/**
+ * Wait for HTMX request to complete.
+ */
+async function waitForHtmxComplete(page: Page, timeout = 5000): Promise<void> {
+  await page.waitForFunction(
+    () => !document.body.classList.contains('htmx-request'),
+    { timeout }
+  );
+}
 
 test.describe('Team Management @teams', () => {
   test.beforeEach(async ({ page }) => {
@@ -133,7 +143,7 @@ test.describe('Team Management @teams', () => {
         await submitButton.click();
 
         // Wait for response
-        await page.waitForTimeout(500);
+        await waitForHtmxComplete(page);
 
         // Should show error or form should stay visible
         const isStillOnPage = await page.getByRole('textbox', { name: /email/i }).isVisible();

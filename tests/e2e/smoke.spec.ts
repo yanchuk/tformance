@@ -1,10 +1,20 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, Page } from '@playwright/test';
 
 /**
  * Smoke Tests - Critical Path Verification
  * Run with: npx playwright test smoke.spec.ts
  * Tag: @smoke
  */
+
+/**
+ * Wait for initial JS to be loaded.
+ */
+async function waitForJsInit(page: Page, timeout = 2000): Promise<void> {
+  await page.waitForFunction(
+    () => typeof window !== 'undefined' && document.readyState === 'complete',
+    { timeout }
+  );
+}
 
 test.describe('Smoke Tests @smoke', () => {
   test('homepage loads', async ({ page }) => {
@@ -51,8 +61,8 @@ test.describe('Smoke Tests @smoke', () => {
     await page.goto('/');
     // Use domcontentloaded instead of networkidle (faster, more reliable in dev)
     await page.waitForLoadState('domcontentloaded');
-    // Give a brief moment for initial JS to load
-    await page.waitForTimeout(500);
+    // Wait for initial JS to be loaded
+    await waitForJsInit(page);
 
     // No critical asset failures
     expect(failedRequests).toHaveLength(0);

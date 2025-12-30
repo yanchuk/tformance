@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, Page } from '@playwright/test';
 import { loginAs } from './fixtures/test-users';
 
 /**
@@ -7,6 +7,16 @@ import { loginAs } from './fixtures/test-users';
  * Run with: npx playwright test profile.spec.ts
  * Tag: @profile
  */
+
+/**
+ * Wait for HTMX request to complete.
+ */
+async function waitForHtmxComplete(page: Page, timeout = 5000): Promise<void> {
+  await page.waitForFunction(
+    () => !document.body.classList.contains('htmx-request'),
+    { timeout }
+  );
+}
 
 test.describe('User Profile @profile', () => {
   test.beforeEach(async ({ page }) => {
@@ -83,7 +93,7 @@ test.describe('User Profile @profile', () => {
         const saveButton = page.getByRole('button', { name: /save|update/i });
         if (await saveButton.isVisible()) {
           await saveButton.click();
-          await page.waitForTimeout(500);
+          await waitForHtmxComplete(page);
 
           // Should show success or stay on page
         }

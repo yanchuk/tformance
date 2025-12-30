@@ -2,6 +2,16 @@ import { test as base, expect, Page } from '@playwright/test';
 import { loginAs, TestUserRole, TEST_USERS } from './test-users';
 
 /**
+ * Wait for HTMX request to complete.
+ */
+async function waitForHtmxComplete(page: Page, timeout = 5000): Promise<void> {
+  await page.waitForFunction(
+    () => !document.body.classList.contains('htmx-request'),
+    { timeout }
+  );
+}
+
+/**
  * Extended test fixtures for common e2e test patterns.
  *
  * Usage:
@@ -106,8 +116,8 @@ export async function waitForHtmxContent(
   timeout: number = 10000
 ): Promise<void> {
   await page.waitForSelector(selector, { timeout });
-  // Small delay to ensure HTMX has finished processing
-  await page.waitForTimeout(100);
+  // Ensure HTMX has finished processing
+  await waitForHtmxComplete(page, timeout);
 }
 
 /**
@@ -128,7 +138,7 @@ export async function selectDateRange(
 
   await page.getByRole('button', { name: buttonText }).click();
   // Wait for HTMX to update content
-  await page.waitForTimeout(500);
+  await waitForHtmxComplete(page);
 }
 
 /**
@@ -183,8 +193,8 @@ export async function navigateTo(page: Page, linkText: string): Promise<void> {
  */
 export async function openDropdown(page: Page, buttonText: string): Promise<void> {
   await page.getByRole('button', { name: buttonText }).click();
-  // Wait for dropdown animation
-  await page.waitForTimeout(200);
+  // Wait for dropdown to be visible
+  await page.locator('[role="menu"], .dropdown-content').first().waitFor({ state: 'visible', timeout: 2000 }).catch(() => {});
 }
 
 /**
@@ -198,7 +208,8 @@ export async function confirmModal(
   confirmText: string = 'Confirm'
 ): Promise<void> {
   await page.getByRole('button', { name: confirmText }).click();
-  await page.waitForTimeout(300);
+  // Wait for modal to close
+  await page.locator('dialog[open], .modal.modal-open').waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
 }
 
 /**
@@ -212,5 +223,6 @@ export async function cancelModal(
   cancelText: string = 'Cancel'
 ): Promise<void> {
   await page.getByRole('button', { name: cancelText }).click();
-  await page.waitForTimeout(200);
+  // Wait for modal to close
+  await page.locator('dialog[open], .modal.modal-open').waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
 }

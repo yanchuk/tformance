@@ -157,7 +157,7 @@ test.describe('Metric Toggle on Trends Page', () => {
 
       // Try to deselect the only metric (click label) - should not uncheck
       await cycleTimeLabel.click();
-      await page.waitForTimeout(500); // Wait for any potential state change
+      await waitForAlpine(page); // Wait for Alpine to process click
 
       // Should still be checked (can't deselect the last metric)
       await expect(cycleTimeCheckbox).toBeChecked();
@@ -178,7 +178,7 @@ test.describe('Metric Toggle on Trends Page', () => {
 
       // Try to select a 4th metric (click label) - should not check
       await aiAdoptionLabel.click();
-      await page.waitForTimeout(500);
+      await waitForAlpine(page); // Wait for Alpine to process click
 
       // Should still be unchecked (max 3 reached)
       await expect(aiAdoptionCheckbox).not.toBeChecked();

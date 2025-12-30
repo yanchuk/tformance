@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
 /**
@@ -12,6 +12,16 @@ import AxeBuilder from '@axe-core/playwright';
  * Color Contrast Status: ✅ VERIFIED WCAG AA COMPLIANT
  * The "Sunset Dashboard" color palette passes all contrast requirements.
  */
+
+/**
+ * Wait for HTMX request to complete.
+ */
+async function waitForHtmxComplete(page: Page, timeout = 5000): Promise<void> {
+  await page.waitForFunction(
+    () => !document.body.classList.contains('htmx-request'),
+    { timeout }
+  );
+}
 
 test.describe('Accessibility Tests @accessibility', () => {
   // Clear localStorage before each test to prevent theme state leakage
@@ -81,7 +91,7 @@ test.describe('Accessibility Tests @accessibility', () => {
       await page.waitForLoadState('domcontentloaded');
 
       // Wait for HTMX-loaded content
-      await page.waitForTimeout(1000);
+      await waitForHtmxComplete(page);
 
       const accessibilityScanResults = await new AxeBuilder({ page })
         .withTags(['wcag2a', 'wcag2aa'])
@@ -179,7 +189,7 @@ test.describe('Accessibility Tests @accessibility', () => {
       // Go to dashboard
       await page.goto('/app/metrics/dashboard/team/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(1000);
+      await waitForHtmxComplete(page);
 
       // Find all interactive elements (buttons, links, inputs)
       const interactiveElements = page.locator('main button, main a, main select, main input');

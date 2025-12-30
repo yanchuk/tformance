@@ -1,10 +1,17 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, Page } from '@playwright/test';
 
 /**
  * Authentication Tests
  * Run with: npx playwright test auth.spec.ts
  * Tag: @auth
  */
+
+/**
+ * Wait for form submission to complete.
+ */
+async function waitForFormSubmit(page: Page, timeout = 5000): Promise<void> {
+  await page.waitForLoadState('domcontentloaded', { timeout });
+}
 
 test.describe('Authentication Tests @auth', () => {
   test.describe('Login Flow', () => {
@@ -238,7 +245,7 @@ test.describe('Authentication Tests @auth', () => {
         await submitButton.click();
 
         // Should show success message or redirect to done page
-        await page.waitForTimeout(500);
+        await waitForFormSubmit(page);
 
         const hasSuccess = await page.getByText(/sent|check.*email|reset.*link/i).isVisible().catch(() => false);
         const onDonePage = page.url().includes('done');
