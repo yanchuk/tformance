@@ -224,16 +224,66 @@ if (typeof document !== 'undefined') {
 }
 
 /**
+ * Format a metric value based on its unit
+ * @param {number} value - The numeric value
+ * @param {string} unit - Unit type: 'hours', '%', 'count', or undefined
+ * @returns {string} Formatted value with unit suffix
+ */
+export function formatMetricValue(value, unit) {
+  if (value === null || value === undefined) return '--';
+  if (unit === 'hours') return `${value.toFixed(1)}h`;
+  if (unit === '%') return `${value.toFixed(1)}%`;
+  if (unit === 'count') return Math.round(value).toLocaleString();
+  return typeof value === 'number' ? value.toFixed(1) : String(value);
+}
+
+/**
  * Create a multi-metric comparison chart with dual Y-axes
  * @param {HTMLCanvasElement} canvas - Canvas element to render chart
  * @param {Object} chartData - Chart data with labels, datasets, and hasY2Axis
  * @returns {Chart} Chart.js instance
  */
 export function createMultiMetricChart(canvas, chartData) {
+  // Defensive checks
+  if (!chartData) {
+    console.warn('createMultiMetricChart: No chartData provided');
+    return null;
+  }
+
   const { labels, datasets, hasY2Axis } = chartData;
 
-  // Build Chart.js datasets from our format
-  const chartDatasets = datasets.map((ds) => ({
+  if (!labels || !Array.isArray(labels) || labels.length === 0) {
+    console.warn('createMultiMetricChart: No labels provided');
+    return null;
+  }
+
+  if (!datasets || !Array.isArray(datasets) || datasets.length === 0) {
+    console.warn('createMultiMetricChart: No datasets provided');
+    return null;
+  }
+
+  // Filter out datasets with no data
+  const validDatasets = datasets.filter(ds => {
+    if (!ds.data || !Array.isArray(ds.data)) {
+      console.warn(`createMultiMetricChart: Dataset "${ds.label}" has no data array`);
+      return false;
+    }
+    // Check if has at least some non-null values
+    const hasValues = ds.data.some(v => v !== null && v !== undefined);
+    if (!hasValues) {
+      console.warn(`createMultiMetricChart: Dataset "${ds.label}" has all null values`);
+      return false;
+    }
+    return true;
+  });
+
+  if (validDatasets.length === 0) {
+    console.warn('createMultiMetricChart: No valid datasets after filtering');
+    return null;
+  }
+
+  // Build Chart.js datasets from our format (use validDatasets)
+  const chartDatasets = validDatasets.map((ds) => ({
     label: ds.label,
     data: ds.data,
     borderColor: ds.color,
@@ -244,11 +294,16 @@ export function createMultiMetricChart(canvas, chartData) {
     pointHoverRadius: 6,
     pointBackgroundColor: ds.color,
     pointBorderWidth: 2,
-    yAxisID: ds.yAxisID,
+    yAxisID: ds.yAxisID || 'y',
+    // Store unit for tooltip access
+    unit: ds.unit,
   }));
 
   // Get base chart defaults
   const defaults = getChartDefaults();
+
+  // Recalculate hasY2Axis based on validDatasets (some might have been filtered)
+  const needsY2Axis = hasY2Axis && validDatasets.some(ds => ds.yAxisID === 'y2');
 
   // Build scales configuration
   const scales = {
@@ -273,11 +328,15 @@ export function createMultiMetricChart(canvas, chartData) {
         text: 'Hours',
         ...defaults.scales.y.title,
       },
+      ticks: {
+        ...defaults.scales.y.ticks,
+        callback: (value) => formatMetricValue(value, 'hours'),
+      },
     },
   };
 
   // Add secondary Y axis if needed
-  if (hasY2Axis) {
+  if (needsY2Axis) {
     scales.y2 = {
       ...defaults.scales.y,
       type: 'linear',
@@ -322,17 +381,11 @@ export function createMultiMetricChart(canvas, chartData) {
           ...defaults.plugins.tooltip,
           callbacks: {
             label: (context) => {
-              const ds = datasets[context.datasetIndex];
+              // Use the unit stored on the Chart.js dataset (not the original data)
+              const unit = context.dataset.unit;
               const value = context.raw;
-              let formatted;
-              if (ds.unit === 'hours') {
-                formatted = `${value.toFixed(1)}h`;
-              } else if (ds.unit === '%') {
-                formatted = `${value.toFixed(1)}%`;
-              } else {
-                formatted = Math.round(value).toString();
-              }
-              return `${ds.label}: ${formatted}`;
+              const formatted = formatMetricValue(value, unit);
+              return `${context.dataset.label}: ${formatted}`;
             },
           },
         },
@@ -369,3 +422,4 @@ export function createMultiMetricChart(canvas, chartData) {
 window.createWideTrendChart = createWideTrendChart;
 window.createMultiMetricChart = createMultiMetricChart;
 window.resetChartZoom = resetChartZoom;
+window.formatMetricValue = formatMetricValue;

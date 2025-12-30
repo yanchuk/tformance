@@ -1,7 +1,7 @@
 {% load i18n %}
 {% load pr_list_tags %}
 {# Technology Breakdown Chart Partial - Loaded via HTMX #}
-{# Shows stacked bar chart of tech categories over time #}
+{# Shows 100% stacked area chart of tech category composition over time #}
 
 {# Store chart data as JSON in script tags for safe JavaScript access #}
 {{ chart_data|json_script:"tech-chart-data" }}
@@ -12,7 +12,7 @@
     <div>
       <h2 class="text-lg font-semibold text-base-content">{% trans "Technology Breakdown" %}</h2>
       <p class="text-sm text-base-content/60">
-        {{ start_date|date:"M j, Y" }} - {{ end_date|date:"M j, Y" }}
+        {% trans "Composition trends showing share of each technology" %}
         <span class="ml-2 badge badge-ghost badge-sm">{{ granularity }}</span>
       </p>
     </div>

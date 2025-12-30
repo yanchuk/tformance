@@ -64,16 +64,16 @@ function registerCharts() {
     return AppDashboardCharts.weeklyBarChart(ctx, data, "Copilot Acceptance Rate (%)", { ai: true });
   }, { dataId: 'copilot-trend-data' });
 
-  // PR Type Chart - stacked bar chart
+  // PR Type Chart - 100% stacked area chart (shows composition trend)
   chartManager.register('pr-type-chart', (canvas, data) => {
     if (!data || !data.labels) return null;
-    return chartManager.createStackedBarChart(canvas.getContext('2d'), data, { yAxisLabel: 'PR Count' });
+    return chartManager.createStackedAreaChart(canvas.getContext('2d'), data, { yAxisLabel: 'PR Type Share %' });
   }, { dataId: 'pr-type-chart-data' });
 
-  // Tech Chart - stacked bar chart
+  // Tech Chart - 100% stacked area chart (shows composition trend)
   chartManager.register('tech-chart', (canvas, data) => {
     if (!data || !data.labels) return null;
-    return chartManager.createStackedBarChart(canvas.getContext('2d'), data, { yAxisLabel: 'PR Count' });
+    return chartManager.createStackedAreaChart(canvas.getContext('2d'), data, { yAxisLabel: 'Tech Share %' });
   }, { dataId: 'tech-chart-data' });
 
   // Wide Trend Chart - complex chart with multiple modes
@@ -138,12 +138,15 @@ function initWideTrendChartInternal(canvas) {
 registerCharts();
 
 // Initialize charts after HTMX swaps content
+// Use requestAnimationFrame to ensure DOM is fully settled before initializing charts
 document.addEventListener('htmx:afterSwap', function(event) {
-  // Use ChartManager to initialize all registered charts
-  chartManager.initAll();
+  requestAnimationFrame(() => {
+    // Use ChartManager to initialize all registered charts
+    chartManager.initAll();
 
-  // Also check for charts with data attributes (declarative approach)
-  chartManager.initFromDataAttributes();
+    // Also check for charts with data attributes (declarative approach)
+    chartManager.initFromDataAttributes();
+  });
 });
 
 // Legacy function exports for backward compatibility

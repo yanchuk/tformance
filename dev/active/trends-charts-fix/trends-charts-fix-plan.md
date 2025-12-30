@@ -1,227 +1,413 @@
-# Trends Charts Fix - Implementation Plan
+# Trends Charts Fix - Implementation Plan (v2)
 
-## Summary
-
-Fix three issues on the Trends page (`/app/metrics/analytics/trends/`):
-1. PR Types Over Time and Technology Breakdown charts not rendering
-2. Layout wrong - charts should be full-width, not side-by-side
-3. Industry Benchmark endpoint returns 500 error
-
-## Validation
-
-**E2E Test Created:** `tests/e2e/trends-charts.spec.ts`
-- Tests will FAIL until fixes are implemented (TDD approach)
-- Run with: `npx playwright test trends-charts.spec.ts` (requires AUTH_MODE=all)
+**Last Updated:** 2025-12-30
+**Status:** Planning Phase 2
+**Priority:** High
+**Estimated Effort:** L (Large)
 
 ---
 
-## Phase 1: Fix Benchmark 500 Error (Priority: High)
+## Executive Summary
 
-### Root Cause Analysis
-The benchmark endpoint `/app/metrics/panels/benchmark/cycle_time/?days=359` returns 500. Need to identify:
-- Missing error handling for edge cases
-- Null reference when no benchmark data exists
-- Query issues with large day ranges
+The Trends & Comparison page (`/app/metrics/analytics/trends/`) has several bugs and UX improvements needed. Previous session fixed basic chart rendering; this phase addresses 6 remaining issues for a complete ICP experience.
 
-### Implementation Steps
-
-1. **Reproduce and Debug**
-   ```bash
-   curl -v "http://localhost:8000/app/metrics/panels/benchmark/cycle_time/?days=359"
-   ```
-   - Check Django logs for exception traceback
-   - Identify exact line causing 500
-
-2. **Fix Error Handling** in `apps/metrics/views/chart_views.py:505`
-   ```python
-   def benchmark_panel(request):
-       try:
-           benchmark_data = benchmark_service.get_benchmark_for_team(...)
-           if not benchmark_data:
-               return render(request, 'metrics/panels/benchmark_empty.html')
-           return render(request, 'metrics/panels/benchmark.html', {'data': benchmark_data})
-       except Exception as e:
-           logger.error(f"Benchmark panel error: {e}")
-           return render(request, 'metrics/panels/benchmark_error.html')
-   ```
-
-3. **Fix Service Layer** in `apps/metrics/services/benchmark_service.py`
-   - Add null checks for missing IndustryBenchmark records
-   - Handle edge case of days > 365
-
-### Files to Modify
-- `apps/metrics/views/chart_views.py` - Add try/except, null handling
-- `apps/metrics/services/benchmark_service.py` - Add defensive checks
-- `templates/metrics/panels/benchmark_error.html` - Create error template (optional)
+**Key Outcome:** CTOs can compare multiple metrics over time, see percentage-based trend charts for technology/PR type composition, and have a reliable, properly formatted chart experience.
 
 ---
 
-## Phase 2: Fix Chart.js Initialization (Priority: High)
+## Current State Analysis
 
-### Root Cause Analysis
-Charts have canvas elements and data, but Chart.js instances aren't created. The issue is likely:
-- Inline `<script>` in HTMX-swapped partials doesn't execute
-- Chart.js not loaded when partial script runs
-- DOM timing issues with HTMX swap
+### What Was Fixed in Phase 1 (Dec 29)
+- [x] Benchmark panel 500 error → Fixed response structure
+- [x] Basic chart initialization → Added `initPrTypeChart()`, `initTechChart()` to app.js
+- [x] Layout → Already full-width, increased height to 320px
+- [x] Inline scripts → Removed from HTMX partials
 
-### Implementation Steps
+### New Issues Identified (Dec 30)
 
-1. **Verify Data is Present**
-   - Add console.log to pr_type_chart.html to trace execution
-   - Confirm `{{ chart_data|json_script }}` outputs valid JSON
+| # | Issue | Severity | Root Cause |
+|---|-------|----------|------------|
+| 1 | Comparison chart blank when multiple metrics selected | Critical | `createMultiMetricChart()` fails when datasets don't match expected format |
+| 2 | Technology breakdown shows `{}` entries | Medium | Empty dict categories from `effective_tech_categories` not filtered |
+| 3 | Cycle time missing "h" suffix | Low | Format functions not applied in multi-metric tooltip callbacks |
+| 4 | PRs Merged stat card not showing + no sparklines | Medium | Missing stat card, sparkline component not integrated |
+| 5 | Charts only display after page reload | High | Race condition still exists between HTMX swap and chart init |
+| 6 | Need 100% Stacked Area Charts | Feature | ICP needs composition trends, not just absolute bar charts |
 
-2. **Fix Script Execution** - Use HTMX `htmx:afterSwap` event:
+---
+
+## Architecture Overview
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `apps/metrics/views/trends_views.py` | View functions: `trends_overview()`, `wide_trend_chart()`, `pr_type_breakdown_chart()`, `tech_breakdown_chart()` |
+| `apps/metrics/services/dashboard_service.py:1989-2184` | Data aggregation for PR types and tech breakdown |
+| `templates/metrics/analytics/trends.html` | Main page with Alpine controls |
+| `templates/metrics/analytics/trends/wide_chart.html` | Single/multi-metric trend chart partial |
+| `templates/metrics/analytics/trends/pr_type_chart.html` | PR type stacked bar partial |
+| `templates/metrics/analytics/trends/tech_chart.html` | Technology stacked bar partial |
+| `assets/javascript/dashboard/trend-charts.js` | `createMultiMetricChart()`, METRIC_CONFIG |
+| `assets/javascript/dashboard/chart-manager.js` | ChartManager, `createStackedBarChart()` |
+| `assets/javascript/app.js:88-273` | Chart init functions, HTMX handlers |
+
+### Data Flow
+
+```
+User selects metrics → Alpine updates URL params → HTMX GET to wide_trend_chart()
+→ View builds {labels, datasets} → Template serializes as JSON
+→ htmx:afterSwap fires → chartManager.initAll() → createMultiMetricChart()
+```
+
+---
+
+## Implementation Phases
+
+### Phase 2A: Critical Bug Fixes (Issues 1, 5)
+**Goal:** Make comparison charts work reliably
+
+### Phase 2B: Data Quality & Formatting (Issues 2, 3)
+**Goal:** Clean data and proper unit formatting
+
+### Phase 2C: UX Enhancements (Issue 4)
+**Goal:** Add PRs Merged stat card and sparklines
+
+### Phase 2D: 100% Stacked Area Charts (Issue 6)
+**Goal:** Better composition trend visualization
+
+---
+
+## Detailed Task Breakdown
+
+### Phase 2A: Critical Bug Fixes
+
+#### Task 2A.1: Fix Multi-Metric Comparison Chart
+**Effort:** M
+**Files:**
+- `assets/javascript/dashboard/trend-charts.js` - `createMultiMetricChart()`
+- `apps/metrics/views/trends_views.py` - `wide_trend_chart()`
+- `templates/metrics/analytics/trends/wide_chart.html`
+
+**Root Cause Analysis:**
+In `trend-charts.js:232-366`, `createMultiMetricChart()` expects:
+- `chartData.labels` - array of month/week strings
+- `chartData.datasets[].label`, `.data`, `.color`, `.yAxisID`, `.unit`
+
+The view at `trends_views.py:262-278` builds this structure, but:
+1. If `ds.unit` is undefined, tooltip formatter fails silently
+2. Empty datasets (no data for a metric) cause rendering issues
+
+**Changes:**
+1. Add defensive checks in `createMultiMetricChart()`:
    ```javascript
-   // In main app.js or trends.html
-   document.body.addEventListener('htmx:afterSwap', function(evt) {
-     if (evt.detail.target.id === 'pr-type-chart-container') {
-       initPrTypeChart();
-     }
-     if (evt.detail.target.id === 'tech-chart-container') {
-       initTechChart();
-     }
+   if (!chartData?.datasets?.length) {
+     console.warn('No datasets provided to createMultiMetricChart');
+     return null;
+   }
+   ```
+2. Ensure `unit` field is always set in view:
+   ```python
+   dataset["unit"] = config.get("unit", "")  # Default to empty string
+   ```
+3. Filter empty datasets before chart creation
+4. Add console logging for debugging
+
+**Acceptance Criteria:**
+- [ ] Select Cycle Time + Review Time → chart renders with both lines
+- [ ] Select all 4 metrics → chart renders with dual Y-axes
+- [ ] Console shows helpful warnings if data invalid
+
+#### Task 2A.2: Fix Chart Initialization Race Condition
+**Effort:** M
+**Files:**
+- `assets/javascript/app.js` - `htmx:afterSwap` handler
+- `assets/javascript/dashboard/chart-manager.js` - `initAll()`
+
+**Root Cause Analysis:**
+The `htmx:afterSwap` handler at `app.js:141-147` calls `chartManager.initAll()` immediately, but:
+1. DOM may not be fully settled after HTMX swap
+2. JSON script elements may not be accessible yet
+3. No retry mechanism for transient failures
+
+**Changes:**
+1. Wrap `initAll()` in `requestAnimationFrame`:
+   ```javascript
+   htmx.on('htmx:afterSwap', (evt) => {
+     requestAnimationFrame(() => {
+       chartManager.initAll();
+     });
    });
    ```
+2. Add retry logic with max 3 attempts:
+   ```javascript
+   initAll(retryCount = 0) {
+     const initialized = this._doInit();
+     if (!initialized && retryCount < 3) {
+       setTimeout(() => this.initAll(retryCount + 1), 100);
+     }
+   }
+   ```
+3. Add `data-chart-initialized` attribute to prevent double-init
+4. Check canvas exists before each chart creation
 
-3. **Alternative: Use `hx-on` Attribute**
-   ```html
-   <div id="pr-type-chart-container"
-        hx-get="..."
-        hx-trigger="load"
-        hx-on::after-swap="initPrTypeChart()">
+**Acceptance Criteria:**
+- [ ] Charts render on first HTMX load without page refresh
+- [ ] No duplicate chart instances
+- [ ] Works across all chart types
+
+### Phase 2B: Data Quality & Formatting
+
+#### Task 2B.1: Filter Empty Dict Entries from Tech Breakdown
+**Effort:** S
+**Files:**
+- `apps/metrics/services/dashboard_service.py` - `get_tech_breakdown()`
+- `apps/metrics/views/trends_views.py` - `tech_breakdown_chart()`
+
+**Root Cause Analysis:**
+In `dashboard_service.py`, when `pr.effective_tech_categories` returns `{}` (empty dict), it's still included in aggregation. Template then tries `get_item` filter on `{}` which breaks.
+
+**Changes:**
+1. In service, skip invalid categories:
+   ```python
+   for pr in prs:
+       categories = pr.effective_tech_categories
+       if not categories or categories == {} or not isinstance(categories, (list, set)):
+           continue
+   ```
+2. In view, filter breakdown before template:
+   ```python
+   breakdown = [b for b in breakdown if b.get('category') and b['category'] != '{}']
    ```
 
-4. **Move Chart Functions to Global Scope**
-   - Extract `initPrTypeChart()` and `initTechChart()` to a shared module
-   - Register them on `window` or use a chart registry
+**Acceptance Criteria:**
+- [ ] No `{}` entries in tech breakdown legend
+- [ ] Percentages sum correctly
+- [ ] Empty categories don't appear in chart
 
-### Files to Modify
-- `templates/metrics/analytics/trends/pr_type_chart.html` - Script execution fix
-- `templates/metrics/analytics/trends/tech_chart.html` - Script execution fix
-- `assets/javascript/app.js` - Add global chart init functions (if using Option B)
+#### Task 2B.2: Apply Format Functions Consistently
+**Effort:** S
+**Files:**
+- `assets/javascript/dashboard/trend-charts.js` - tooltip callbacks, METRIC_CONFIG
+- `assets/javascript/dashboard/chart-manager.js` - axis tick callbacks
 
----
+**Root Cause Analysis:**
+`METRIC_CONFIG` at `trend-charts.js:20-45` defines format functions, but they're not consistently used in `createMultiMetricChart()` tooltip callbacks.
 
-## Phase 3: Make Charts Full-Width (Priority: Medium)
+**Changes:**
+1. Create centralized `formatMetricValue(value, unit)`:
+   ```javascript
+   function formatMetricValue(value, unit) {
+     if (unit === 'hours') return `${value.toFixed(1)}h`;
+     if (unit === '%') return `${value.toFixed(1)}%`;
+     if (unit === 'count') return Math.round(value).toLocaleString();
+     return value;
+   }
+   ```
+2. Use in all tooltip label callbacks
+3. Use in Y-axis tick callbacks
 
-### Current Layout (Broken)
-```html
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-  <!-- PR Type Chart - half width on lg screens -->
-  <!-- Tech Chart - half width on lg screens -->
-</div>
-```
+**Acceptance Criteria:**
+- [ ] Cycle time shows "14.8h" in tooltips
+- [ ] AI Adoption shows "56%" in tooltips
+- [ ] Y-axis labels include units
 
-### Target Layout (Fixed)
-```html
-<!-- PR Type Chart - full width -->
-<div class="app-card p-0 overflow-hidden mb-6">
-  <div id="pr-type-chart-container" hx-get="..." hx-trigger="load">
-  </div>
-</div>
+### Phase 2C: UX Enhancements
 
-<!-- Tech Chart - full width -->
-<div class="app-card p-0 overflow-hidden">
-  <div id="tech-chart-container" hx-get="..." hx-trigger="load">
-  </div>
-</div>
-```
+#### Task 2C.1: Add PRs Merged Stat Card
+**Effort:** S
+**Files:**
+- `templates/metrics/analytics/trends.html` - stat cards section
+- `apps/metrics/views/trends_views.py` - `trends_overview()`
 
-### Implementation Steps
+**Changes:**
+1. Verify `pr_count` is in view context (already should be from METRIC_CONFIG)
+2. Add stat card in template matching existing pattern:
+   ```html
+   <div class="app-card p-4">
+     <h4 class="text-sm text-base-content/70">PRs Merged</h4>
+     <div class="app-stat-value font-mono">{{ pr_count }}</div>
+     <div class="text-xs {{ pr_count_change_class }}">{{ pr_count_change }}%</div>
+   </div>
+   ```
+3. Calculate period-over-period change in view
 
-1. **Update trends.html Layout**
-   - Remove the 2-column grid wrapper
-   - Make each chart container full-width (same as wide_chart.html)
+**Acceptance Criteria:**
+- [ ] PRs Merged card displays with count
+- [ ] Shows percentage change vs previous period
+- [ ] Consistent styling with other stat cards
 
-2. **Update Chart Heights**
-   - Increase from 280px to 320px to match main chart
-   - Add consistent padding and styling
+#### Task 2C.2: Add Sparklines to Stat Cards
+**Effort:** M
+**Files:**
+- `templates/metrics/analytics/trends.html` - stat cards
+- `assets/javascript/dashboard/sparkline.js` - new file
+- `apps/metrics/views/trends_views.py` - add sparkline data
 
-3. **Update Partial Templates**
-   - Match header styling with wide_chart.html
-   - Ensure responsive canvas sizing
+**Changes:**
+1. Create `createSparkline(canvas, data, color)` function:
+   ```javascript
+   export function createSparkline(canvas, data, color) {
+     return new Chart(canvas, {
+       type: 'line',
+       data: { labels: data.map((_, i) => i), datasets: [{ data, borderColor: color, fill: false }] },
+       options: {
+         plugins: { legend: { display: false }, tooltip: { enabled: false } },
+         scales: { x: { display: false }, y: { display: false } },
+         elements: { point: { radius: 0 } }
+       }
+     });
+   }
+   ```
+2. Add `<canvas class="sparkline" width="80" height="24">` to each stat card
+3. Pass last 12 data points for each metric from view
+4. Initialize sparklines in `chartManager.initAll()`
 
-### Files to Modify
-- `templates/metrics/analytics/trends.html` - Layout changes
-- `templates/metrics/analytics/trends/pr_type_chart.html` - Height, styling
-- `templates/metrics/analytics/trends/tech_chart.html` - Height, styling
+**Acceptance Criteria:**
+- [ ] Each stat card has mini trend line
+- [ ] Sparklines use metric-appropriate colors
+- [ ] Sparklines render after HTMX swap
 
----
+### Phase 2D: 100% Stacked Area Charts
 
-## Phase 4: Polish and Consistency (Priority: Low)
+#### Task 2D.1: Create Stacked Area Chart Factory
+**Effort:** M
+**Files:**
+- `assets/javascript/dashboard/chart-manager.js` - new factory method
 
-### Implementation Steps
+**Changes:**
+1. Add `createStackedAreaChart(ctx, data, options)`:
+   ```javascript
+   createStackedAreaChart(ctx, data, options = {}) {
+     // Normalize data to percentages
+     const normalizedDatasets = this.normalizeToPercentages(data.datasets, data.labels.length);
 
-1. **Match Chart Styling**
-   - Use DM Sans for labels, JetBrains Mono for values
-   - Apply chart-theme.js color palette
-   - Add "Scroll to zoom, drag to pan" hint
+     return new Chart(ctx, {
+       type: 'line',
+       data: {
+         labels: data.labels,
+         datasets: normalizedDatasets.map((ds, i) => ({
+           label: ds.label,
+           data: ds.data,
+           fill: i === 0 ? 'origin' : '-1',
+           backgroundColor: ds.color + '80', // 50% opacity
+           borderColor: ds.color,
+           tension: 0.3,
+         }))
+       },
+       options: {
+         scales: {
+           y: { stacked: true, max: 100, ticks: { callback: v => v + '%' } },
+           x: { stacked: true }
+         },
+         plugins: {
+           tooltip: {
+             callbacks: {
+               label: (ctx) => `${ctx.dataset.label}: ${ctx.raw.toFixed(1)}%`
+             }
+           }
+         }
+       }
+     });
+   }
 
-2. **Add Reset Zoom Button**
-   - Match wide_chart.html pattern
-   - Position consistently
+   normalizeToPercentages(datasets, labelCount) {
+     // For each time point, calculate total and convert to %
+     const totals = Array(labelCount).fill(0);
+     datasets.forEach(ds => ds.data.forEach((v, i) => totals[i] += v));
 
-3. **Test Granularity Toggle**
-   - Verify weekly/monthly switch updates all charts
-   - Test with various date ranges
+     return datasets.map(ds => ({
+       ...ds,
+       data: ds.data.map((v, i) => totals[i] ? (v / totals[i]) * 100 : 0)
+     }));
+   }
+   ```
 
-### Files to Modify
-- `templates/metrics/analytics/trends/pr_type_chart.html` - Zoom controls
-- `templates/metrics/analytics/trends/tech_chart.html` - Zoom controls
+**Acceptance Criteria:**
+- [ ] Factory creates valid stacked area chart
+- [ ] Data normalized to percentages per time point
+- [ ] Areas stack smoothly
 
----
+#### Task 2D.2: Update Technology Breakdown Chart
+**Effort:** M
+**Files:**
+- `templates/metrics/analytics/trends/tech_chart.html`
+- `apps/metrics/views/trends_views.py` - `tech_breakdown_chart()`
+- `assets/javascript/app.js` - chart registration
 
-## Testing Strategy
+**Changes:**
+1. Update view to return time-series data per category (not aggregated totals)
+2. Change `initTechChart()` to use `createStackedAreaChart`
+3. Update template canvas attributes
 
-### Unit Tests
-No new Django unit tests needed - this is a frontend rendering issue.
+**Acceptance Criteria:**
+- [ ] Tech breakdown shows as 100% stacked area chart
+- [ ] Areas stack to 100% at each time point
+- [ ] Legend shows category names with current percentages
 
-### E2E Tests
-Created `tests/e2e/trends-charts.spec.ts` with tests for:
-- Chart canvas renders with Chart.js instance
-- Charts are full-width (not lg:grid-cols-2)
-- Benchmark panel loads without 500
-- Chart heights are 300px+
-- No JavaScript console errors
+#### Task 2D.3: Update PR Types Chart
+**Effort:** M
+**Files:**
+- `templates/metrics/analytics/trends/pr_type_chart.html`
+- `apps/metrics/views/trends_views.py` - `pr_type_breakdown_chart()`
+- `assets/javascript/app.js` - chart registration
 
-### Manual Testing
-1. Load `/app/metrics/analytics/trends/`
-2. Verify all 3 charts render
-3. Toggle granularity (weekly/monthly)
-4. Test date range presets (7d, 30d, 90d)
-5. Check responsive layout on mobile
+**Changes:**
+1. Same pattern as Task 2D.2
+2. Data already has time-series structure from `get_monthly_pr_type_trend()`
+3. Change from stacked bar to stacked area
 
----
-
-## Definition of Done
-
-- [ ] All tests in `tests/e2e/trends-charts.spec.ts` pass
-- [ ] PR Types Over Time renders as full-width stacked bar
-- [ ] Technology Breakdown renders as full-width stacked bar
-- [ ] Industry Benchmark panel loads without 500 error
-- [ ] Granularity toggle updates all charts correctly
-- [ ] No console errors on page load
-- [ ] Visual consistency with main trend chart
+**Acceptance Criteria:**
+- [ ] PR types shows as 100% stacked area chart
+- [ ] Feature/Bugfix/etc areas stack to 100%
+- [ ] ICP sees composition trend clearly
 
 ---
 
 ## Risk Assessment
 
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| HTMX script timing | High | Use htmx:afterSwap event |
-| Chart.js version conflict | Medium | Check Chart.js is loaded before init |
-| Benchmark service edge cases | Medium | Add comprehensive null checks |
-| Mobile layout regression | Low | Test with mobile viewport |
+| Risk | Likelihood | Impact | Mitigation |
+|------|------------|--------|------------|
+| Chart.js stacked area edge cases | Medium | Medium | Thorough testing with real data; fallback option |
+| Race condition fix incomplete | Low | High | Comprehensive retry logic with logging |
+| Data normalization division by zero | Medium | Low | Handle zero-sum periods gracefully |
+| Sparkline performance | Low | Low | Limit to 12 data points |
 
 ---
 
-## Estimated Effort
+## Success Metrics
 
-| Phase | Effort |
-|-------|--------|
-| Phase 1: Benchmark Fix | ~30 min |
-| Phase 2: Chart Init Fix | ~45 min |
-| Phase 3: Full-Width Layout | ~20 min |
-| Phase 4: Polish | ~30 min |
-| **Total** | ~2-3 hours |
+1. **Reliability:** All chart types render on first load (no refresh needed)
+2. **Data Quality:** No empty/invalid entries in any chart
+3. **Formatting:** All values display with correct units
+4. **UX:** All 4 stat cards visible with sparklines
+5. **Visualization:** Stacked area charts show clear composition trends
+
+---
+
+## Testing Strategy
+
+1. **E2E Tests:** Update `tests/e2e/trends-charts.spec.ts`
+   - Test multi-metric selection
+   - Test chart rendering without refresh
+   - Test sparklines
+   - Test stacked area charts
+
+2. **Manual Testing:** Antiwork team
+   - All time range presets
+   - All metric combinations
+   - Weekly vs monthly granularity
+
+---
+
+## Definition of Done
+
+- [ ] Multi-metric comparison chart renders reliably
+- [ ] No `{}` entries in tech breakdown
+- [ ] Cycle time shows "h" suffix
+- [ ] PRs Merged stat card with sparkline
+- [ ] All charts render on first HTMX load
+- [ ] Tech breakdown as 100% stacked area
+- [ ] PR types as 100% stacked area
+- [ ] E2E tests pass
+- [ ] No console errors

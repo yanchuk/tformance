@@ -86,7 +86,7 @@
   <div class="stat bg-base-100 shadow rounded-lg overflow-hidden p-4">
     <div class="stat-title text-xs">{% trans "Review Time" %}</div>
     <div class="stat-value text-info text-lg sm:text-xl md:text-2xl lg:text-3xl truncate" id="review_time-value">
-      {% if metrics.avg_quality_rating %}{{ metrics.avg_quality_rating|floatformat:1 }}{% else %}-{% endif %}
+      {% if metrics.avg_review_time %}{{ metrics.avg_review_time|floatformat:1 }}h{% else %}-{% endif %}
     </div>
     {% if sparklines.review_time.values %}
     <div class="h-8 mt-1 -mx-4 px-1">

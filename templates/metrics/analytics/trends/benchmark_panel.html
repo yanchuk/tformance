@@ -1,5 +1,5 @@
 {% load i18n %}
-{#
+{% comment %}
   Benchmark Panel Component
 
   Shows team's performance against industry benchmarks with:
@@ -10,7 +10,7 @@
   Context variables:
   - benchmark: dict with team_value, percentile, interpretation, metric_name
   - benchmark.benchmarks: dict with p25, p50, p75, p90
-#}
+{% endcomment %}
 
 <div class="app-card p-4"
      x-data="{ loading: false }"

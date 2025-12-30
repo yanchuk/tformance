@@ -45,7 +45,28 @@ def _get_trends_context(request: HttpRequest) -> dict:
     Returns:
         Dictionary with common trends context
     """
-    date_range = get_extended_date_range(request)
+    # For trends page, default to 365 days (last 12 months) with monthly granularity
+    # if no date params are explicitly provided
+    has_date_params = any(request.GET.get(p) for p in ["days", "start", "end", "preset"])
+    if not has_date_params:
+        # Apply default 12-month range
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        today = timezone.now().date()
+        default_days = 365
+        default_start = today - timedelta(days=default_days)
+
+        # Create a modified request-like object or just compute directly
+        date_range = {
+            "days": default_days,
+            "start_date": default_start,
+            "end_date": today,
+            "granularity": "monthly",
+        }
+    else:
+        date_range = get_extended_date_range(request)
 
     return {
         "active_tab": "metrics",
@@ -393,6 +414,9 @@ TECH_CONFIG = {
     "config": {"name": "Config", "color": "#6B7280"},  # dark gray
     "javascript": {"name": "JS/TS", "color": "#FACC15"},  # yellow
     "other": {"name": "Other", "color": "#9CA3AF"},  # neutral gray
+    # LLM sometimes returns PR types as tech categories - handle gracefully
+    "chore": {"name": "Chore", "color": "#78716C"},  # stone
+    "ci": {"name": "CI/CD", "color": "#F59E0B"},  # amber (matches devops family)
 }
 
 

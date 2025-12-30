@@ -2131,6 +2131,14 @@ def get_weekly_pr_type_trend(team: Team, start_date: date, end_date: date) -> di
     return result
 
 
+def _is_valid_category(category: str) -> bool:
+    """Check if a category is valid (not empty, not '{}', not None)."""
+    if not category or isinstance(category, dict):
+        return False
+    category_str = str(category).strip()
+    return bool(category_str) and category_str not in ("{}", "[]", "None", "null")
+
+
 def get_tech_breakdown(team: Team, start_date: date, end_date: date) -> list[dict]:
     """Get PR breakdown by technology category (frontend, backend, devops, etc.).
 
@@ -2158,9 +2166,11 @@ def get_tech_breakdown(team: Team, start_date: date, end_date: date) -> list[dic
 
     for pr in prs.only("id", "llm_summary").prefetch_related("files"):
         categories = pr.effective_tech_categories
-        if not categories:
-            categories = ["other"]
-        for category in categories:
+        # Filter out invalid categories (empty, {}, etc.)
+        valid_categories = [c for c in categories if _is_valid_category(c)] if categories else []
+        if not valid_categories:
+            valid_categories = ["other"]
+        for category in valid_categories:
             category_counts[category] = category_counts.get(category, 0) + 1
         total_prs += 1
 
@@ -2207,13 +2217,15 @@ def get_monthly_tech_trend(team: Team, start_date: date, end_date: date) -> dict
             continue
         month_str = pr.merged_at.strftime("%Y-%m")
         categories = pr.effective_tech_categories
-        if not categories:
-            categories = ["other"]
+        # Filter out invalid categories (empty, {}, etc.)
+        valid_categories = [c for c in categories if _is_valid_category(c)] if categories else []
+        if not valid_categories:
+            valid_categories = ["other"]
 
         if month_str not in monthly_category_counts:
             monthly_category_counts[month_str] = {}
 
-        for category in categories:
+        for category in valid_categories:
             monthly_category_counts[month_str][category] = monthly_category_counts[month_str].get(category, 0) + 1
 
     # Get all months in order
@@ -2261,13 +2273,15 @@ def get_weekly_tech_trend(team: Team, start_date: date, end_date: date) -> dict[
             continue
         week_str = pr.merged_at.strftime("%Y-W%V")
         categories = pr.effective_tech_categories
-        if not categories:
-            categories = ["other"]
+        # Filter out invalid categories (empty, {}, etc.)
+        valid_categories = [c for c in categories if _is_valid_category(c)] if categories else []
+        if not valid_categories:
+            valid_categories = ["other"]
 
         if week_str not in weekly_category_counts:
             weekly_category_counts[week_str] = {}
 
-        for category in categories:
+        for category in valid_categories:
             weekly_category_counts[week_str][category] = weekly_category_counts[week_str].get(category, 0) + 1
 
     # Get all weeks in order

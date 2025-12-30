@@ -1,7 +1,7 @@
 {% load i18n %}
 {% load pr_list_tags %}
 {# PR Type Breakdown Chart Partial - Loaded via HTMX #}
-{# Shows stacked bar chart of PR types over time #}
+{# Shows 100% stacked area chart of PR type composition over time #}
 
 {# Store chart data as JSON in script tags for safe JavaScript access #}
 {{ chart_data|json_script:"pr-type-chart-data" }}
@@ -12,7 +12,7 @@
     <div>
       <h2 class="text-lg font-semibold text-base-content">{% trans "PR Types Over Time" %}</h2>
       <p class="text-sm text-base-content/60">
-        {{ start_date|date:"M j, Y" }} - {{ end_date|date:"M j, Y" }}
+        {% trans "Composition trends showing share of each PR type" %}
         <span class="ml-2 badge badge-ghost badge-sm">{{ granularity }}</span>
       </p>
     </div>
