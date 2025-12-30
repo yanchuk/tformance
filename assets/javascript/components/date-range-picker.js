@@ -23,6 +23,7 @@ export function registerDateRangePicker() {
 
     // Translations (injected from template)
     labels: {
+      last12Months: 'Last 12 Months',
       thisYear: 'This Year',
       lastYear: 'Last Year',
       thisQuarter: 'This Quarter',
@@ -85,6 +86,7 @@ export function registerDateRangePicker() {
 
     getActiveLabel() {
       const store = this.$store.dateRange;
+      if (store.preset === '12_months') return this.labels.last12Months;
       if (store.preset === 'this_year') return this.labels.thisYear;
       if (store.preset === 'last_year') return this.labels.lastYear;
       if (store.preset === 'this_quarter') return this.labels.thisQuarter;
@@ -104,6 +106,12 @@ export function registerDateRangePicker() {
       const store = this.$store.dateRange;
       if (store.customStart && store.customEnd) {
         return `${store.customStart} - ${store.customEnd}`;
+      }
+      if (store.preset === '12_months') {
+        const now = new Date();
+        const start = new Date(now);
+        start.setDate(start.getDate() - 365);
+        return `${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} - Today`;
       }
       if (store.preset === 'this_year') {
         const year = new Date().getFullYear();

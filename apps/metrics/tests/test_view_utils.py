@@ -155,6 +155,20 @@ class TestGetExtendedDateRange(TestCase):
         self.assertEqual(result["start_date"], expected_start)
         self.assertEqual(result["end_date"], today)
 
+    def test_preset_12_months(self):
+        """Test preset=12_months returns rolling 365 days from today."""
+        request = MagicMock()
+        request.GET = {"preset": "12_months"}
+
+        result = get_extended_date_range(request)
+
+        today = timezone.now().date()
+        expected_start = today - timedelta(days=365)
+        self.assertEqual(result["start_date"], expected_start)
+        self.assertEqual(result["end_date"], today)
+        self.assertEqual(result["days"], 365)
+        self.assertEqual(result["granularity"], "monthly")
+
     def test_preset_last_year(self):
         """Test preset=last_year returns full previous year."""
         request = MagicMock()

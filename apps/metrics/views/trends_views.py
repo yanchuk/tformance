@@ -45,32 +45,20 @@ def _get_trends_context(request: HttpRequest) -> dict:
     Returns:
         Dictionary with common trends context
     """
-    # For trends page, default to 365 days (last 12 months) with monthly granularity
+    # For trends page, default to "Last 12 Months" preset with monthly granularity
     # if no date params are explicitly provided
     has_date_params = any(request.GET.get(p) for p in ["days", "start", "end", "preset"])
     if not has_date_params:
-        # Apply default 12-month range
-        from datetime import timedelta
-
-        from django.utils import timezone
-
-        today = timezone.now().date()
-        default_days = 365
-        default_start = today - timedelta(days=default_days)
-
-        # Create a modified request-like object or just compute directly
-        date_range = {
-            "days": default_days,
-            "start_date": default_start,
-            "end_date": today,
-            "granularity": "monthly",
-        }
+        # Use 12_months preset as default (rolling 365 days from today)
+        date_range = get_extended_date_range(request, default_preset="12_months")
         # Respect explicit granularity parameter even with default date range
         explicit_granularity = request.GET.get("granularity")
         if explicit_granularity in ("weekly", "monthly"):
             date_range["granularity"] = explicit_granularity
+        default_preset = "12_months"
     else:
         date_range = get_extended_date_range(request)
+        default_preset = request.GET.get("preset", "")
 
     return {
         "active_tab": "metrics",
@@ -79,7 +67,7 @@ def _get_trends_context(request: HttpRequest) -> dict:
         "start_date": date_range["start_date"],
         "end_date": date_range["end_date"],
         "granularity": date_range["granularity"],
-        "preset": request.GET.get("preset", ""),
+        "preset": default_preset,
         "compare_start": date_range.get("compare_start"),
         "compare_end": date_range.get("compare_end"),
     }

@@ -37,17 +37,18 @@ def get_date_range_from_request(request: HttpRequest) -> tuple[date, date]:
     return start_date, end_date
 
 
-def get_extended_date_range(request: HttpRequest) -> ExtendedDateRange:
+def get_extended_date_range(request: HttpRequest, default_preset: str | None = None) -> ExtendedDateRange:
     """Extract extended date range from request with custom dates and granularity.
 
     Supports:
     - days=N: Simple N days from today (default: 30)
     - start=YYYY-MM-DD, end=YYYY-MM-DD: Custom date range
-    - preset=this_year|last_year|this_quarter|yoy: Quick presets
+    - preset=12_months|this_year|last_year|this_quarter|yoy: Quick presets
     - granularity=daily|weekly|monthly: Data grouping (auto-adjusts for long ranges)
 
     Args:
         request: The HTTP request object
+        default_preset: Optional default preset to use when no date params provided
 
     Returns:
         ExtendedDateRange dict with start_date, end_date, granularity, days,
@@ -55,8 +56,8 @@ def get_extended_date_range(request: HttpRequest) -> ExtendedDateRange:
     """
     today = timezone.now().date()
 
-    # Check for preset first
-    preset = request.GET.get("preset", "").lower()
+    # Check for preset first (from URL or default)
+    preset = request.GET.get("preset", "").lower() or (default_preset or "").lower()
     if preset:
         return _get_date_range_from_preset(preset, today)
 
@@ -136,13 +137,25 @@ def _get_date_range_from_preset(preset: str, today: date) -> ExtendedDateRange:
     """Get date range from a preset value.
 
     Args:
-        preset: Preset name (this_year, last_year, this_quarter, yoy)
+        preset: Preset name (12_months, this_year, last_year, this_quarter, yoy)
         today: Today's date
 
     Returns:
         ExtendedDateRange for the preset
     """
     year = today.year
+
+    if preset == "12_months":
+        # Rolling 12 months from today (365 days)
+        from datetime import timedelta
+
+        start = today - timedelta(days=365)
+        return ExtendedDateRange(
+            start_date=start,
+            end_date=today,
+            granularity="monthly",
+            days=365,
+        )
 
     if preset == "this_year":
         start = date(year, 1, 1)

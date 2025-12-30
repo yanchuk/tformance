@@ -39,6 +39,9 @@
       </svg>
     </div>
     <ul tabindex="0" class="dropdown-content z-50 menu p-2 shadow-lg bg-base-200 rounded-lg w-52 border border-base-300">
+      <li><a @click="setPreset('12_months')" :class="{'bg-primary/10 text-primary': preset === '12_months'}">
+        {% trans "Last 12 Months" %}
+      </a></li>
       <li><a @click="setPreset('this_year')" :class="{'bg-primary/10 text-primary': preset === 'this_year'}">
         {% trans "This Year" %}
       </a></li>
