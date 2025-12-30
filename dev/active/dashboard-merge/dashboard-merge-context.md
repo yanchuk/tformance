@@ -1,7 +1,7 @@
 # Dashboard Merge - Technical Context
 
 **Last Updated:** 2024-12-30
-**Current Phase:** Phase 2 Complete, Ready for Phase 3 (Templates)
+**Current Phase:** Phase 3 (Templates) - Starting with TDD
 
 ---
 
@@ -436,3 +436,87 @@ make migrations
 - Total metrics app tests: 2217 passing
 - New dashboard service tests: 59
 - New view tests: 30
+
+---
+
+## Phase 3 Plan (Templates)
+
+### Goal
+Rewrite `templates/web/app_home.html` to be the unified dashboard with HTMX lazy-loaded sections.
+
+### Layout Design
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ Header: "Dashboard" + Time Range Selector (7d/30d/90d)          │
+├─────────────────────────────────────────────────────────────────┤
+│ Key Metrics Cards (4 cards: PRs Merged, Cycle Time, AI%, Review)│
+├─────────────────────────────────────────────────────────────────┤
+│ ┌─────────────────────────┐  ┌─────────────────────────────────┐│
+│ │   Needs Attention       │  │   AI Impact Stats               ││
+│ │   (paginated list)      │  │   (3 stats)                     ││
+│ └─────────────────────────┘  └─────────────────────────────────┘│
+├─────────────────────────────────────────────────────────────────┤
+│ ┌─────────────────────────┐  ┌─────────────────────────────────┐│
+│ │   Team Velocity         │  │   Review Distribution           ││
+│ │   (top contributors)    │  │   + Bottleneck Alert            ││
+│ └─────────────────────────┘  └─────────────────────────────────┘│
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### TDD Implementation Steps
+
+#### Step 1: TDD - Update team_home() view
+**RED Phase:** Write failing tests in `apps/web/tests/test_views.py`
+- `test_default_days_is_30` - Context should have days=30 by default
+- `test_accepts_days_query_param` - Should accept ?days=7 param
+
+**GREEN Phase:** Update `apps/web/views.py`
+```python
+days = int(request.GET.get("days", 30))  # Default 30, was 7
+context["days"] = days  # Add to context
+```
+
+#### Step 2: Create bottleneck alert template (HTML only)
+**File:** `templates/metrics/partials/bottleneck_alert.html`
+
+#### Step 3: Update review_distribution_chart.html (HTML only)
+- Include bottleneck alert at top
+
+#### Step 4: Rewrite app_home.html (HTML only)
+- HTMX containers with lazy loading
+- Time range selector
+- Keep setup wizard for non-connected teams
+
+#### Step 5: E2E Testing
+- Update `tests/e2e/dashboard.spec.ts`
+
+### Key Files to Modify
+
+| File | Action |
+|------|--------|
+| `apps/web/views.py` | Add `days` param to team_home() |
+| `apps/web/tests/test_views.py` | Add tests for days param |
+| `templates/web/app_home.html` | REWRITE with HTMX layout |
+| `templates/metrics/partials/bottleneck_alert.html` | CREATE |
+| `templates/metrics/partials/review_distribution_chart.html` | Add bottleneck include |
+
+### Key Decisions Made
+- 30-day default (changed from 7)
+- Simple 7d/30d/90d buttons (not full date picker)
+- Skeleton loaders for all lazy-loaded sections
+- Remove "View Analytics" button (dashboard IS analytics now)
+
+### HTMX Pattern
+
+```html
+<div id="needs-attention-container"
+     hx-get="{% url 'metrics:needs_attention' %}?days={{ days }}&page=1"
+     hx-trigger="load"
+     hx-swap="innerHTML">
+  <div class="skeleton h-80 w-full rounded-lg"></div>
+</div>
+```
+
+### No Database Changes
+All changes are template/view layer only.

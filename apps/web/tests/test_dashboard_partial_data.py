@@ -207,8 +207,9 @@ class TestDashboardPartialDataDisplay(TestCase):
         # Assert: Should now be in data view
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.context["integration_status"]["has_data"])
-        # Should show "Welcome back" instead of "Waiting for Data"
-        self.assertContains(response, "Welcome back")
+        # Should show the dashboard layout instead of "Waiting for Data"
+        self.assertContains(response, "Dashboard")
+        self.assertContains(response, "key-metrics-container")  # HTMX lazy-loaded section
         self.assertNotContains(response, "Waiting for Data")
 
 

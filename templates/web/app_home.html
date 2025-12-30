@@ -3,9 +3,9 @@
 {% load static %}
 
 {% block app %}
-<div class="space-y-6">
+<div id="page-content" class="space-y-6">
   {% if integration_status.has_data %}
-    {# User has data - show dashboard overview #}
+    {# User has data - show unified dashboard #}
 
     {# Sync indicator banner - shown when repos are actively syncing #}
     {% include "web/components/sync_indicator.html" %}
@@ -13,139 +13,130 @@
     {# Setup prompt for missing integrations #}
     {% include "web/components/setup_prompt.html" %}
 
-    {# Page Header #}
+    {# Page Header with Time Range Selector #}
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <div>
-        <h1 class="text-2xl font-bold">{% trans "Welcome back" %}</h1>
-        <p class="text-base-content/70">{% trans "Here's what's happening with your team this week." %}</p>
+        <h1 class="text-2xl font-bold">{% trans "Dashboard" %}</h1>
+        <p class="text-base-content/70">{% trans "Team performance overview for the selected period." %}</p>
       </div>
-      <div class="flex gap-2">
-        <a href="{% url 'metrics:team_dashboard' %}" class="btn btn-primary btn-sm">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-          </svg>
-          {% trans "View Analytics" %}
-        </a>
-        <a href="{% url 'integrations:integrations_home' %}" class="btn btn-ghost btn-sm">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-          </svg>
-          {% trans "Integrations" %}
-        </a>
+      <div class="flex gap-2 items-center">
+        {% include "metrics/partials/filters.html" %}
       </div>
     </div>
 
-    {# Quick Stats Cards #}
-    {% if quick_stats %}
-      {% include "web/components/quick_stats.html" %}
-    {% endif %}
-
-    {# Two-column layout for activity and status #}
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      {# Recent Activity (2/3 width) #}
-      <div class="lg:col-span-2">
-        {% include "web/components/recent_activity.html" %}
+    {# Key Metrics Cards - Lazy Loaded #}
+    <div id="key-metrics-container"
+         hx-get="{% url 'metrics:cards_metrics' %}?days={{ days }}"
+         hx-trigger="load"
+         hx-swap="innerHTML">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {% for _ in "1234" %}
+        <div class="skeleton h-28 w-full rounded-lg"></div>
+        {% endfor %}
       </div>
+    </div>
 
-      {# Integration Status (1/3 width) #}
-      <div>
-        <div class="card bg-base-100 shadow">
-          <div class="card-body">
-            <h2 class="card-title text-base">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-              </svg>
-              {% trans "Integrations" %}
-            </h2>
-
-            <div class="space-y-3 mt-2">
-              {# GitHub Status #}
-              <div class="flex items-center justify-between">
-                <div class="flex items-center gap-2">
-                  <svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
-                  </svg>
-                  <span class="text-sm font-medium">{% trans "GitHub" %}</span>
-                </div>
-                {% if integration_status.github.connected %}
-                  <span class="badge badge-success badge-sm whitespace-nowrap">{% trans "Connected" %}</span>
-                {% else %}
-                  <span class="badge badge-ghost badge-sm whitespace-nowrap">{% trans "Not connected" %}</span>
-                {% endif %}
-              </div>
-
-              {# Jira Status #}
-              <div class="flex items-center justify-between">
-                <div class="flex items-center gap-2">
-                  <svg class="h-5 w-5 text-info" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M11.571 11.513H0a5.218 5.218 0 0 0 5.232 5.215h2.13v2.057A5.215 5.215 0 0 0 12.575 24V12.518a1.005 1.005 0 0 0-1.005-1.005zm5.723-5.756H5.736a5.215 5.215 0 0 0 5.215 5.214h2.129v2.058a5.218 5.218 0 0 0 5.215 5.214V6.758a1.001 1.001 0 0 0-1.001-1.001zM23.013 0H11.455a5.215 5.215 0 0 0 5.215 5.215h2.129v2.057A5.215 5.215 0 0 0 24 12.483V1.005A1.005 1.005 0 0 0 23.013 0z"/>
-                  </svg>
-                  <span class="text-sm font-medium">{% trans "Jira" %}</span>
-                </div>
-                {% if integration_status.jira.connected %}
-                  <span class="badge badge-success badge-sm whitespace-nowrap">{% trans "Connected" %}</span>
-                {% else %}
-                  <span class="badge badge-ghost badge-sm whitespace-nowrap">{% trans "Not connected" %}</span>
-                {% endif %}
-              </div>
-
-              {# Slack Status #}
-              <div class="flex items-center justify-between">
-                <div class="flex items-center gap-2">
-                  <svg class="h-5 w-5" viewBox="0 0 24 24" fill="#E01E5A">
-                    <path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zM6.313 15.165a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zM8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zM8.834 6.313a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312zM18.956 8.834a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zM17.688 8.834a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1-2.52-2.521V2.522A2.527 2.527 0 0 1 15.165 0a2.528 2.528 0 0 1 2.523 2.522v6.312zM15.165 18.956a2.528 2.528 0 0 1 2.523 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zM15.165 17.688a2.527 2.527 0 0 1-2.52-2.523 2.526 2.526 0 0 1 2.52-2.52h6.313A2.527 2.527 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.523h-6.313z"/>
-                  </svg>
-                  <span class="text-sm font-medium">{% trans "Slack" %}</span>
-                </div>
-                {% if integration_status.slack.connected %}
-                  <span class="badge badge-success badge-sm whitespace-nowrap">{% trans "Connected" %}</span>
-                {% else %}
-                  <span class="badge badge-ghost badge-sm whitespace-nowrap">{% trans "Not connected" %}</span>
-                {% endif %}
-              </div>
-            </div>
-
-            <div class="card-actions justify-end mt-4">
-              <a href="{% url 'integrations:integrations_home' %}" class="btn btn-ghost btn-sm">
-                {% trans "Manage" %}
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                </svg>
-              </a>
-            </div>
-          </div>
-        </div>
-
-        {# Quick Team Stats #}
-        <div class="card bg-base-100 shadow mt-4">
-          <div class="card-body">
-            <h2 class="card-title text-base">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-              </svg>
-              {% trans "Team Overview" %}
-            </h2>
-            <div class="space-y-2 mt-2">
-              <div class="flex justify-between text-sm">
-                <span class="text-base-content/70">{% trans "Team Members" %}</span>
-                <span class="font-medium">{{ integration_status.github.member_count }}</span>
-              </div>
-              <div class="flex justify-between text-sm">
-                <span class="text-base-content/70">{% trans "Tracked Repos" %}</span>
-                <span class="font-medium">{{ integration_status.github.repo_count }}</span>
-              </div>
-              <div class="flex justify-between text-sm">
-                <span class="text-base-content/70">{% trans "Total PRs" %}</span>
-                <span class="font-medium">{{ integration_status.pr_count }}</span>
-              </div>
-              <div class="flex justify-between text-sm">
-                <span class="text-base-content/70">{% trans "Survey Responses" %}</span>
-                <span class="font-medium">{{ integration_status.survey_count }}</span>
-              </div>
+    {# Two-column grid: Needs Attention + AI Impact #}
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {# Needs Attention Section #}
+      <div class="card bg-base-100 shadow">
+        <div class="card-body">
+          <h2 class="card-title text-base">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-warning" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            {% trans "Needs Attention" %}
+          </h2>
+          <div id="needs-attention-container"
+               hx-get="{% url 'metrics:needs_attention' %}?days={{ days }}&page=1"
+               hx-trigger="load"
+               hx-swap="innerHTML"
+               class="min-h-[280px]">
+            <div class="flex items-center justify-center h-64">
+              <span class="loading loading-spinner loading-lg"></span>
             </div>
           </div>
         </div>
       </div>
+
+      {# AI Impact Section #}
+      <div class="card bg-base-100 shadow">
+        <div class="card-body">
+          <h2 class="card-title text-base">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+            </svg>
+            {% trans "AI Impact" %}
+          </h2>
+          <div id="ai-impact-container"
+               hx-get="{% url 'metrics:ai_impact' %}?days={{ days }}"
+               hx-trigger="load"
+               hx-swap="innerHTML"
+               class="min-h-[280px]">
+            <div class="flex items-center justify-center h-64">
+              <span class="loading loading-spinner loading-lg"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {# Two-column grid: Team Velocity + Review Distribution #}
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {# Team Velocity Section #}
+      <div class="card bg-base-100 shadow">
+        <div class="card-body">
+          <h2 class="card-title text-base">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+            </svg>
+            {% trans "Top Contributors" %}
+          </h2>
+          <div id="team-velocity-container"
+               hx-get="{% url 'metrics:team_velocity' %}?days={{ days }}"
+               hx-trigger="load"
+               hx-swap="innerHTML"
+               class="min-h-[280px]">
+            <div class="flex items-center justify-center h-64">
+              <span class="loading loading-spinner loading-lg"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {# Review Distribution Section #}
+      <div class="card bg-base-100 shadow">
+        <div class="card-body">
+          <h2 class="card-title text-base">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+            {% trans "Review Distribution" %}
+          </h2>
+          <div id="review-distribution-container"
+               hx-get="{% url 'metrics:chart_review_distribution' %}?days={{ days }}"
+               hx-trigger="load"
+               hx-swap="innerHTML"
+               class="min-h-[280px]">
+            <div class="flex items-center justify-center h-64">
+              <span class="loading loading-spinner loading-lg"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {# Integration Status Sidebar (collapsed to footer link) #}
+    <div class="flex justify-center">
+      <a href="{% url 'integrations:integrations_home' %}" class="btn btn-ghost btn-sm gap-2">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+        </svg>
+        {% trans "Manage Integrations" %}
+        {% if integration_status.github.connected %}<span class="badge badge-success badge-xs">GitHub</span>{% endif %}
+        {% if integration_status.jira.connected %}<span class="badge badge-success badge-xs">Jira</span>{% endif %}
+        {% if integration_status.slack.connected %}<span class="badge badge-success badge-xs">Slack</span>{% endif %}
+      </a>
     </div>
 
   {% elif integration_status.github.connected %}

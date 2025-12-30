@@ -1,7 +1,7 @@
 # Dashboard Merge - Implementation Tasks
 
 **Last Updated:** 2024-12-30
-**Status:** Phase 2 Complete ✅
+**Status:** Phase 3 In Progress (TDD)
 
 ---
 
@@ -97,74 +97,62 @@ New view functions for lazy-loaded sections.
 
 ---
 
-## Phase 3: Templates (Effort: L)
+## Phase 3: Templates (Effort: L) 🔄 IN PROGRESS
 
 New and modified templates for the unified dashboard.
 
-### 3.1 Needs Attention Component
-- [ ] Create `templates/web/components/needs_attention.html`
-- [ ] Implement prioritized list with icons (🔴🟡⚪)
-- [ ] Add pagination controls
-- [ ] Implement "All Clear" empty state
-- [ ] Add loading skeleton
-- [ ] Style with DaisyUI/Tailwind
+### 3.0 TDD - team_home() View (PRIORITY)
+- [ ] 🔴 RED: Write tests for days parameter in `apps/web/tests/test_views.py`
+  - [ ] `test_default_days_is_30` - Context should have days=30
+  - [ ] `test_accepts_days_query_param` - Should accept ?days=7
+- [ ] 🟢 GREEN: Update `apps/web/views.py` team_home()
+  - [ ] Add `days = int(request.GET.get("days", 30))`
+  - [ ] Add `days` to context
+- [ ] 🔵 REFACTOR: Evaluate for improvements
 
-**Acceptance:** Component displays issues correctly with pagination and empty state.
+**Acceptance:** View tests pass, days parameter works correctly.
 
-### 3.2 AI Impact Component
-- [ ] Create `templates/web/components/ai_impact.html`
-- [ ] Show adoption percentage with change indicator
-- [ ] Show cycle time comparison
-- [ ] Show percentage difference highlight
-- [ ] Implement empty state (no AI data)
-- [ ] Add "View AI Analytics" link
-
-**Acceptance:** Component displays AI metrics with proper empty state handling.
-
-### 3.3 Team Velocity Component
-- [ ] Create `templates/web/components/team_velocity.html`
-- [ ] Show ranked list of contributors
-- [ ] Include avatar, name, PR count, avg cycle
-- [ ] Implement empty state
-- [ ] Add "View All Members" link
-
-**Acceptance:** Component displays top contributors with proper formatting.
-
-### 3.4 Bottleneck Alert Component
-- [ ] Create `templates/web/components/bottleneck_alert.html`
+### 3.1 Bottleneck Alert Component (HTML only)
+- [ ] Create `templates/metrics/partials/bottleneck_alert.html`
 - [ ] Warning style alert with reviewer name
 - [ ] Show pending count vs team average
 - [ ] Conditionally rendered (only when bottleneck exists)
 
 **Acceptance:** Alert appears when bottleneck detected, hidden otherwise.
 
-### 3.5 Integration Health Component
-- [ ] Create `templates/web/components/integration_health.html`
-- [ ] Show alerts for integration issues only
-- [ ] Hidden when all integrations healthy
-- [ ] Different messages for different issues (rate limit, auth expired, etc.)
-
-**Acceptance:** Component shows relevant alerts, hidden when healthy.
-
-### 3.6 Unified Dashboard Layout
-- [ ] Rewrite `templates/web/app_home.html`
-- [ ] Header with time range selector
-- [ ] Key metrics row (reuse existing cards)
-- [ ] Two-column grid: Needs Attention + AI Impact
-- [ ] Two-column grid: Review Distribution + Team Velocity
-- [ ] Conditional Integration Health
-- [ ] Footer links to detailed views
-- [ ] Responsive layout (mobile single column)
-
-**Acceptance:** New layout matches wireframe with all sections loading correctly.
-
-### 3.7 Modify Review Distribution Template
+### 3.2 Update Review Distribution Template
 - [ ] Update `templates/metrics/partials/review_distribution_chart.html`
-- [ ] Add bottleneck alert section above chart
-- [ ] Add pagination for large teams
+- [ ] Add `{% include bottleneck_alert.html %}` at top
 - [ ] Fixed height container
 
-**Acceptance:** Chart includes bottleneck alert and pagination.
+**Acceptance:** Chart includes bottleneck alert when present.
+
+### 3.3 Unified Dashboard Layout
+- [ ] Rewrite `templates/web/app_home.html`
+- [ ] Header with time range selector (7d/30d/90d buttons)
+- [ ] Key metrics row (lazy loaded via HTMX)
+- [ ] Two-column grid: Needs Attention + AI Impact
+- [ ] Two-column grid: Team Velocity + Review Distribution
+- [ ] Skeleton loaders for all HTMX containers
+- [ ] Keep setup wizard for non-connected teams
+- [ ] Remove "View Analytics" button
+
+**Acceptance:** New layout with all sections lazy loading correctly.
+
+### 3.4 E2E Tests
+- [ ] Update `tests/e2e/dashboard.spec.ts`
+- [ ] Test dashboard loads with lazy-loaded sections
+- [ ] Test time range selector functionality
+
+**Acceptance:** E2E tests pass.
+
+### DEFERRED Components (Move to Phase 4)
+The following components already exist as partials in `templates/metrics/partials/`:
+- needs_attention.html ✅ (created in Phase 2)
+- ai_impact.html ✅ (created in Phase 2)
+- team_velocity.html ✅ (created in Phase 2)
+
+No need to create web/components versions - reuse existing partials.
 
 ---
 

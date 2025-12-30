@@ -1,5 +1,6 @@
 {% load i18n %}
 <div>
+  {% include "metrics/partials/bottleneck_alert.html" %}
   {% if chart_data %}
   <div class="space-y-3">
     {% for row in chart_data %}

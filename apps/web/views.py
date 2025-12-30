@@ -86,11 +86,16 @@ def team_home(request):
     and recent activity for users with data.
     """
     team = request.team
+    try:
+        days = int(request.GET.get("days", 30))
+    except (ValueError, TypeError):
+        days = 30
     integration_status = get_team_integration_status(team)
     sync_status = get_team_sync_status(team)
 
     context = {
         "team": team,
+        "days": days,
         "active_tab": "dashboard",
         "page_title": _("{team} Dashboard").format(team=team),
         "integration_status": integration_status,
