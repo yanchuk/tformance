@@ -193,41 +193,22 @@ Existing test files:
 
 ---
 
-## Phase 5: Factory & Performance (Day 11-12)
+## Phase 5: Factory & Performance (DEFERRED)
 
-### Task 5.1: Deterministic Factories [M] - 2h
-- [ ] Read `apps/metrics/factories.py`
-- [ ] Identify all `random` usage (lines 76, 160-182, etc.)
-- [ ] Replace with deterministic alternatives:
-  ```python
-  # BEFORE
-  additions = factory.LazyFunction(lambda: random.randint(10, 500))
+**Status:** Deferred - not critical for MVP. Tests pass with current implementation.
 
-  # AFTER
-  additions = factory.LazyAttribute(lambda o: (o.github_pr_id * 17) % 490 + 10)
-  ```
-- [ ] Test determinism: `pytest --randomly-seed=12345` (run twice, same results)
-- [ ] Update factory docstrings
-- [ ] Commit: "Make factories deterministic"
+**Reason:** The scope is larger than estimated (52 random usages across 15+ factories). Each factory requires a different seed source, making this a 4-6 hour refactoring effort.
 
-### Task 5.2: Optimize Factory Usage [M] - 2h
-- [ ] Audit tests for `create()` vs `build()` usage
-- [ ] Identify tests that don't need DB:
-  - [ ] Unit tests for pure functions
-  - [ ] Tests only checking return values
-- [ ] Replace `create()` with `build()` where safe
-- [ ] Run tests to verify no breakage
-- [ ] Commit: "Optimize factory usage with build() vs create()"
+**When to revisit:**
+- If test flakiness issues arise related to random data
+- If reproducibility is needed for debugging specific test failures
+- After MVP when there's bandwidth for technical debt cleanup
 
-### Task 5.3: Slow Test Optimization [M] - 2h
-- [ ] Profile top 10 slow tests: `pytest --durations=10`
-- [ ] For each slow test, evaluate:
-  - [ ] Can batch size be reduced?
-  - [ ] Can `build()` replace `create()`?
-  - [ ] Is all data actually needed?
-- [ ] Apply optimizations
-- [ ] Verify no test >3s
-- [ ] Commit: "Optimize slow tests"
+### Original Tasks (Deferred)
+
+- [ ] Task 5.1: Deterministic Factories (52 random usages to replace)
+- [ ] Task 5.2: Optimize Factory Usage (build() vs create())
+- [ ] Task 5.3: Slow Test Optimization
 
 ---
 
@@ -255,10 +236,12 @@ Existing test files:
 - [x] Model methods have 31 tests (target: 15+)
 - [x] Integration views have 171 tests (target: 10+)
 
-### After Phase 5
+### After Phase 5 (DEFERRED)
 - [ ] No `import random` in factories
 - [ ] Tests deterministic with seed
 - [ ] No test >3s duration
+
+**Note:** Phase 5 deferred - tests pass with current random factories.
 
 ---
 
