@@ -6,9 +6,42 @@
  * - Components reinitialize after swap
  * - State is preserved during navigation
  */
-import { test, expect } from '@playwright/test';
+import { test, expect, Page } from '@playwright/test';
 
 test.use({ browserName: 'chromium' });
+
+/**
+ * Wait for Alpine.js to be fully initialized with stores.
+ * More reliable than hardcoded timeout.
+ */
+async function waitForAlpineStore(page: Page, storeName: string, timeout = 5000): Promise<void> {
+  await page.waitForFunction(
+    (name) => {
+      const Alpine = (window as any).Alpine;
+      return Alpine && Alpine.store && Alpine.store(name) !== undefined;
+    },
+    storeName,
+    { timeout }
+  );
+}
+
+/**
+ * Wait for HTMX swap to complete by checking for content change.
+ */
+async function waitForHtmxSwap(page: Page, timeout = 5000): Promise<void> {
+  await page.waitForFunction(
+    () => !document.body.classList.contains('htmx-request'),
+    { timeout }
+  );
+  // Also wait for any pending Alpine initialization
+  await page.waitForFunction(
+    () => {
+      const Alpine = (window as any).Alpine;
+      return Alpine && Alpine.version;
+    },
+    { timeout }
+  );
+}
 
 test.describe('Alpine.js + HTMX Integration', () => {
   test.beforeEach(async ({ page }) => {
@@ -26,7 +59,7 @@ test.describe('Alpine.js + HTMX Integration', () => {
     test('dateRange store exists and has initial values', async ({ page }) => {
       await page.goto('/app/metrics/analytics/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(2000);
+      await waitForAlpineStore(page, 'dateRange');
 
       // Check that Alpine store exists and has expected structure
       const storeExists = await page.evaluate(() => {
@@ -50,7 +83,7 @@ test.describe('Alpine.js + HTMX Integration', () => {
     test('metrics store exists and has toggle functionality', async ({ page }) => {
       await page.goto('/app/metrics/analytics/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(2000);
+      await waitForAlpineStore(page, 'metrics');
 
       // Test metrics store
       const metricsStore = await page.evaluate(() => {
@@ -80,7 +113,7 @@ test.describe('Alpine.js + HTMX Integration', () => {
     test('dateRange store persists across HTMX tab navigation', async ({ page }) => {
       await page.goto('/app/metrics/analytics/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(2000);
+      await waitForAlpineStore(page, 'dateRange');
 
       // Set store value directly
       await page.evaluate(() => {
@@ -97,7 +130,7 @@ test.describe('Alpine.js + HTMX Integration', () => {
       // Navigate to another tab via HTMX
       const qualityTab = page.getByRole('tab', { name: 'Quality' });
       await qualityTab.click();
-      await page.waitForTimeout(2000);
+      await waitForHtmxSwap(page);
 
       // Check store value after HTMX swap
       const afterNav = await page.evaluate(() => {
@@ -111,7 +144,7 @@ test.describe('Alpine.js + HTMX Integration', () => {
     test('metrics store persists selected metrics across HTMX navigation', async ({ page }) => {
       await page.goto('/app/metrics/analytics/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(2000);
+      await waitForAlpineStore(page, 'metrics');
 
       // Select some metrics
       await page.evaluate(() => {
@@ -131,7 +164,7 @@ test.describe('Alpine.js + HTMX Integration', () => {
       // Navigate via HTMX
       const deliveryTab = page.getByRole('tab', { name: 'Delivery' });
       await deliveryTab.click();
-      await page.waitForTimeout(2000);
+      await waitForHtmxSwap(page);
 
       // Check store persisted
       const afterNav = await page.evaluate(() => {
@@ -146,12 +179,12 @@ test.describe('Alpine.js + HTMX Integration', () => {
     test('Alpine components in swapped content initialize', async ({ page }) => {
       await page.goto('/app/metrics/analytics/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(2000);
+      await waitForAlpineStore(page, 'dateRange');
 
       // Navigate to trigger HTMX swap
       const teamTab = page.getByRole('tab', { name: 'Team' });
       await teamTab.click();
-      await page.waitForTimeout(2000);
+      await waitForHtmxSwap(page);
 
       // Check that Alpine components exist in the swapped content
       // Look for any x-data attributes that should have been initialized
@@ -176,18 +209,19 @@ test.describe('Alpine.js + HTMX Integration', () => {
     test('date picker Alpine component works after HTMX swap', async ({ page }) => {
       await page.goto('/app/metrics/analytics/');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(2000);
+      await waitForAlpineStore(page, 'dateRange');
 
       // Navigate to trigger swap
       const aiTab = page.getByRole('tab', { name: 'AI Adoption' });
       await aiTab.click();
-      await page.waitForTimeout(2000);
+      await waitForHtmxSwap(page);
 
       // Find and click a date button (should be in the swapped content)
       const btn7d = page.locator('button:has-text("7d")').first();
       if (await btn7d.isVisible()) {
         await btn7d.click();
-        await page.waitForTimeout(1000);
+        // Wait for URL to update (navigation triggered)
+        await page.waitForURL(/days=/, { timeout: 5000 });
 
         // The button should respond (Alpine component initialized)
         // Check if it has the active class or triggered navigation
@@ -203,7 +237,7 @@ test.describe('Alpine.js + HTMX Integration', () => {
       // Load page with specific days param
       await page.goto('/app/metrics/analytics/?days=90');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(2000);
+      await waitForAlpineStore(page, 'dateRange');
 
       // Check store synced from URL
       const storeDays = await page.evaluate(() => {
@@ -217,7 +251,7 @@ test.describe('Alpine.js + HTMX Integration', () => {
       // Load page with preset param
       await page.goto('/app/metrics/analytics/?preset=this_year');
       await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(2000);
+      await waitForAlpineStore(page, 'dateRange');
 
       // Check store synced preset
       const storeState = await page.evaluate(() => {
