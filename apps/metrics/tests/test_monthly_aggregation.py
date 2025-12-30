@@ -1,10 +1,11 @@
-"""Tests for monthly aggregation in dashboard_service.
+"""Tests for time-based aggregation in dashboard_service.
 
 This test module covers:
 - get_monthly_cycle_time_trend: Monthly aggregation of cycle time
 - get_monthly_pr_count: Monthly aggregation of PR counts
 - get_monthly_ai_adoption: Monthly aggregation of AI adoption %
 - get_monthly_review_time: Monthly aggregation of review time
+- get_weekly_pr_count: Weekly aggregation of PR counts
 """
 
 from datetime import date
@@ -290,3 +291,99 @@ class TestGetTrendComparison(TestCase):
 
         # Change should be -20%
         self.assertAlmostEqual(float(result["change_pct"]), -20.0, places=1)
+
+
+class TestGetWeeklyPRCount(TestCase):
+    """Tests for weekly PR count aggregation."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.team = TeamFactory()
+
+    def test_returns_empty_list_for_no_data(self):
+        """Test that empty list returned when no PRs exist."""
+        result = dashboard_service.get_weekly_pr_count(self.team, date(2024, 1, 1), date(2024, 12, 31))
+
+        self.assertEqual(result, [])
+
+    def test_counts_prs_per_week(self):
+        """Test that PRs are counted correctly per week."""
+        # 3 PRs in week 2 (Jan 8-14)
+        for _ in range(3):
+            PullRequestFactory(
+                team=self.team,
+                state="merged",
+                merged_at=make_aware_date(2024, 1, 10),
+            )
+        # 5 PRs in week 3 (Jan 15-21)
+        for _ in range(5):
+            PullRequestFactory(
+                team=self.team,
+                state="merged",
+                merged_at=make_aware_date(2024, 1, 17),
+            )
+
+        result = dashboard_service.get_weekly_pr_count(self.team, date(2024, 1, 1), date(2024, 1, 31))
+
+        self.assertEqual(len(result), 2)
+        # Find week 2 and week 3 data
+        week2_data = next((r for r in result if "W02" in r["week"]), None)
+        week3_data = next((r for r in result if "W03" in r["week"]), None)
+        self.assertIsNotNone(week2_data)
+        self.assertIsNotNone(week3_data)
+        self.assertEqual(week2_data["value"], 3)
+        self.assertEqual(week3_data["value"], 5)
+
+    def test_respects_date_range(self):
+        """Test that only PRs in date range are included."""
+        PullRequestFactory(
+            team=self.team,
+            state="merged",
+            merged_at=make_aware_date(2024, 1, 15),
+        )
+        PullRequestFactory(
+            team=self.team,
+            state="merged",
+            merged_at=make_aware_date(2024, 6, 15),  # Outside range
+        )
+
+        result = dashboard_service.get_weekly_pr_count(self.team, date(2024, 1, 1), date(2024, 1, 31))
+
+        self.assertEqual(len(result), 1)
+
+    def test_week_format_is_yyyy_wnn(self):
+        """Test that week key is in YYYY-WNN format."""
+        PullRequestFactory(
+            team=self.team,
+            state="merged",
+            merged_at=make_aware_date(2024, 3, 15),
+        )
+
+        result = dashboard_service.get_weekly_pr_count(self.team, date(2024, 1, 1), date(2024, 12, 31))
+
+        self.assertEqual(len(result), 1)
+        # March 15 2024 is week 11
+        self.assertRegex(result[0]["week"], r"^\d{4}-W\d{2}$")
+
+    def test_excludes_non_merged_prs(self):
+        """Test that only merged PRs are included."""
+        PullRequestFactory(
+            team=self.team,
+            state="merged",
+            merged_at=make_aware_date(2024, 1, 15),
+        )
+        PullRequestFactory(
+            team=self.team,
+            state="open",
+            merged_at=None,
+        )
+        PullRequestFactory(
+            team=self.team,
+            state="closed",
+            merged_at=None,
+        )
+
+        result = dashboard_service.get_weekly_pr_count(self.team, date(2024, 1, 1), date(2024, 1, 31))
+
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["value"], 1)
