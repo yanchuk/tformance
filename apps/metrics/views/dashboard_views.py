@@ -60,11 +60,16 @@ def cto_overview(request: HttpRequest) -> HttpResponse:
 
 @login_and_team_required
 def team_dashboard(request: HttpRequest) -> HttpResponse:
-    """Team Dashboard - All team members."""
-    context = _get_date_range_context(request)
-    # Return partial for HTMX requests (e.g., days filter changes)
-    template = "metrics/team_dashboard.html#page-content" if request.htmx else "metrics/team_dashboard.html"
-    return TemplateResponse(request, template, context)
+    """Team Dashboard - Redirects to unified dashboard at /app/.
+
+    The old team_dashboard URL (/app/metrics/dashboard/team/) is deprecated.
+    All dashboard functionality is now available at /app/ (unified dashboard).
+    """
+    # Preserve days query parameter in redirect
+    days = request.GET.get("days")
+    if days:
+        return redirect(f"/app/?days={days}")
+    return redirect("web_team:home")
 
 
 @require_POST

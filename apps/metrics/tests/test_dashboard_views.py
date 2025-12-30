@@ -209,7 +209,11 @@ class TestCTOOverview(TestCase):
 
 
 class TestTeamDashboard(TestCase):
-    """Tests for team_dashboard view (member-accessible individual dashboard)."""
+    """Tests for team_dashboard view (deprecated - redirects to unified dashboard).
+
+    The team_dashboard URL (/app/metrics/dashboard/team/) is deprecated and now
+    redirects to the unified dashboard at /app/.
+    """
 
     def setUp(self):
         """Set up test fixtures using factories."""
@@ -236,117 +240,38 @@ class TestTeamDashboard(TestCase):
 
         self.assertEqual(response.status_code, 404)
 
-    def test_team_dashboard_returns_200_for_member(self):
-        """Test that team_dashboard returns 200 for regular team members."""
+    def test_team_dashboard_redirects_to_unified_dashboard(self):
+        """Test that team_dashboard redirects to unified dashboard at /app/."""
         self.client.force_login(self.member_user)
 
         response = self.client.get(reverse("metrics:team_dashboard"))
 
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, "/app/")
 
-    def test_team_dashboard_returns_200_for_admin(self):
-        """Test that team_dashboard returns 200 for admin users (admins can see member view too)."""
+    def test_team_dashboard_redirects_for_admin(self):
+        """Test that team_dashboard redirects for admin users too."""
         self.client.force_login(self.admin_user)
 
         response = self.client.get(reverse("metrics:team_dashboard"))
 
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, "/app/")
 
-    def test_team_dashboard_renders_correct_template(self):
-        """Test that team_dashboard renders team_dashboard.html template."""
-        self.client.force_login(self.member_user)
-
-        response = self.client.get(reverse("metrics:team_dashboard"))
-
-        self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, "metrics/team_dashboard.html")
-
-    def test_team_dashboard_context_has_required_keys(self):
-        """Test that team_dashboard context contains required keys."""
-        self.client.force_login(self.member_user)
-
-        response = self.client.get(reverse("metrics:team_dashboard"))
-
-        self.assertEqual(response.status_code, 200)
-        self.assertIn("days", response.context)
-        self.assertIn("start_date", response.context)
-        self.assertIn("end_date", response.context)
-        self.assertIn("active_tab", response.context)
-
-    def test_team_dashboard_active_tab_is_metrics(self):
-        """Test that team_dashboard sets active_tab to 'metrics'."""
-        self.client.force_login(self.member_user)
-
-        response = self.client.get(reverse("metrics:team_dashboard"))
-
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.context["active_tab"], "metrics")
-
-    def test_team_dashboard_default_days_is_30(self):
-        """Test that team_dashboard defaults to 30 days if no query param provided."""
-        self.client.force_login(self.member_user)
-
-        response = self.client.get(reverse("metrics:team_dashboard"))
-
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.context["days"], 30)
-
-    def test_team_dashboard_accepts_days_query_param_7(self):
-        """Test that team_dashboard accepts days=7 query parameter."""
+    def test_team_dashboard_preserves_days_param_in_redirect(self):
+        """Test that team_dashboard preserves days query param when redirecting."""
         self.client.force_login(self.member_user)
 
         response = self.client.get(reverse("metrics:team_dashboard"), {"days": "7"})
 
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.context["days"], 7)
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, "/app/?days=7")
 
-    def test_team_dashboard_accepts_days_query_param_30(self):
-        """Test that team_dashboard accepts days=30 query parameter."""
-        self.client.force_login(self.member_user)
-
-        response = self.client.get(reverse("metrics:team_dashboard"), {"days": "30"})
-
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.context["days"], 30)
-
-    def test_team_dashboard_accepts_days_query_param_90(self):
-        """Test that team_dashboard accepts days=90 query parameter."""
+    def test_team_dashboard_preserves_days_param_90(self):
+        """Test that team_dashboard preserves days=90 query param when redirecting."""
         self.client.force_login(self.member_user)
 
         response = self.client.get(reverse("metrics:team_dashboard"), {"days": "90"})
 
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.context["days"], 90)
-
-    def test_team_dashboard_date_range_calculation(self):
-        """Test that team_dashboard correctly calculates date range based on days parameter."""
-        self.client.force_login(self.member_user)
-
-        response = self.client.get(reverse("metrics:team_dashboard"), {"days": "7"})
-
-        self.assertEqual(response.status_code, 200)
-
-        # Get dates from context
-        start_date = response.context["start_date"]
-        end_date = response.context["end_date"]
-
-        # end_date should be today
-        self.assertEqual(end_date, timezone.now().date())
-
-        # start_date should be 7 days ago
-        expected_start = timezone.now().date() - timedelta(days=7)
-        self.assertEqual(start_date, expected_start)
-
-    def test_team_dashboard_htmx_request_returns_partial_template(self):
-        """Test that team_dashboard returns partial template for HTMX requests."""
-        self.client.force_login(self.member_user)
-
-        # Make HTMX request (indicated by HX-Request header)
-        response = self.client.get(reverse("metrics:team_dashboard"), HTTP_HX_REQUEST="true")
-
-        self.assertEqual(response.status_code, 200)
-        # For HTMX, should use partial template (with #page-content or similar)
-        # The exact template depends on implementation, but it should be different from full template
-        # We can check that it's still a valid response with the same context
-        self.assertIn("days", response.context)
-        self.assertIn("active_tab", response.context)
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, "/app/?days=90")
