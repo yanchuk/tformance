@@ -250,6 +250,30 @@ test.describe('HTMX Navigation State', () => {
       const hasDateRange = url.includes('days=') || (url.includes('date_from=') && url.includes('date_to='));
       expect(hasDateRange).toBe(true);
     });
+
+    test('12_months preset preserved when navigating between tabs', async ({ page }) => {
+      // Go to Team page with 12_months preset
+      await page.goto('/app/metrics/analytics/team/?preset=12_months');
+      await page.waitForLoadState('domcontentloaded');
+      await waitForAlpineStore(page);
+
+      // Verify store has preset
+      const presetBefore = await page.evaluate(() => {
+        return (window as any).Alpine.store('dateRange').preset;
+      });
+      expect(presetBefore).toBe('12_months');
+
+      // Navigate to Quality tab via HTMX
+      const qualityTab = page.getByRole('tab', { name: 'Quality' });
+      await qualityTab.click();
+      await waitForHtmxComplete(page);
+
+      // URL should have preset=12_months, not days=90 or days=30
+      await page.waitForURL(/preset=12_months/, { timeout: 5000 });
+      const url = page.url();
+      expect(url).toContain('preset=12_months');
+      expect(url).not.toMatch(/days=\d+/);
+    });
   });
 
   test.describe('Date Range Picker Visibility', () => {

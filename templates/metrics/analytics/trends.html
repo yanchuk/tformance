@@ -30,13 +30,18 @@
            toggleMetric(id) {
              const idx = this.selectedMetrics.indexOf(id);
              if (idx > -1) {
+               // Don't deselect if it's the last metric
                if (this.selectedMetrics.length > 1) {
-                 this.selectedMetrics.splice(idx, 1);
+                 // Use filter() for proper Alpine reactivity (creates new array reference)
+                 this.selectedMetrics = this.selectedMetrics.filter((_, i) => i !== idx);
+                 this.updateUrlAndChart();
                }
              } else if (this.selectedMetrics.length < this.maxMetrics) {
-               this.selectedMetrics.push(id);
+               // Use spread for proper Alpine reactivity (creates new array reference)
+               this.selectedMetrics = [...this.selectedMetrics, id];
+               this.updateUrlAndChart();
              }
-             this.updateUrlAndChart();
+             // Don't call updateUrlAndChart if no change was made
            },
            setGranularity(g) {
              this.granularity = g;
@@ -98,11 +103,11 @@
       <div class="flex flex-wrap gap-3 items-center">
         <span class="text-sm text-base-content/70">{% trans "Compare:" %}</span>
         {% for m in available_metrics %}
-        <label class="flex items-center gap-1.5 cursor-pointer select-none">
+        <label class="flex items-center gap-1.5 cursor-pointer select-none"
+               @click.prevent="toggleMetric('{{ m.id }}')">
           <input type="checkbox"
                  class="checkbox checkbox-sm"
                  :checked="selectedMetrics.includes('{{ m.id }}')"
-                 @change="toggleMetric('{{ m.id }}')"
                  :style="selectedMetrics.includes('{{ m.id }}') ? 'border-color: {{ m.color }}; background-color: {{ m.color }}' : ''">
           <span class="text-sm"
                 :class="selectedMetrics.includes('{{ m.id }}') ? 'text-base-content font-medium' : 'text-base-content/70'">

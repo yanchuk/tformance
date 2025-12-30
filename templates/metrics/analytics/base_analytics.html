@@ -9,7 +9,16 @@
   <!-- Analytics Header with tabs and date filter -->
   <div class="flex flex-col gap-4 mb-6">
     <!-- Tab Navigation - Uses Alpine store for dynamic date params via hx-vals -->
-    <div role="tablist" class="tabs tabs-boxed bg-base-200 w-fit" x-data="{ getDateParams() { return JSON.stringify({days: $store.dateRange.days || 30}) } }">
+    <div role="tablist" class="tabs tabs-boxed bg-base-200 w-fit" x-data="{
+      getDateParams() {
+        const store = $store.dateRange;
+        // Preserve preset if set, otherwise use days
+        if (store.preset) {
+          return JSON.stringify({ preset: store.preset });
+        }
+        return JSON.stringify({ days: store.days || 30 });
+      }
+    }">
       <a role="tab"
          href="{% url 'metrics:analytics_overview' %}"
          class="tab {% if active_page == 'overview' %}tab-active{% endif %}"

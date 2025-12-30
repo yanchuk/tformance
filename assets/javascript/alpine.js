@@ -127,13 +127,16 @@ document.addEventListener('alpine:init', () => {
 
     /**
      * Toggle a metric selection
+     * Uses immutable operations for proper Alpine.js reactivity
      */
     toggle(metric) {
       const index = this.selected.indexOf(metric);
       if (index > -1) {
-        this.selected.splice(index, 1);
+        // Use filter() for proper reactivity (creates new array reference)
+        this.selected = this.selected.filter((_, i) => i !== index);
       } else if (this.selected.length < this.maxMetrics) {
-        this.selected.push(metric);
+        // Use spread for proper reactivity (creates new array reference)
+        this.selected = [...this.selected, metric];
       }
     },
 
