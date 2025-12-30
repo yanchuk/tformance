@@ -8,12 +8,13 @@
 <div class="app-card">
   <!-- Analytics Header with tabs and date filter -->
   <div class="flex flex-col gap-4 mb-6">
-    <!-- Tab Navigation -->
-    <div role="tablist" class="tabs tabs-boxed bg-base-200 w-fit">
+    <!-- Tab Navigation - Uses Alpine store for dynamic date params via hx-vals -->
+    <div role="tablist" class="tabs tabs-boxed bg-base-200 w-fit" x-data="{ getDateParams() { return JSON.stringify({days: $store.dateRange.days || 30}) } }">
       <a role="tab"
          href="{% url 'metrics:analytics_overview' %}"
          class="tab {% if active_page == 'overview' %}tab-active{% endif %}"
-         hx-get="{% url 'metrics:analytics_overview' %}?days={{ days }}"
+         hx-get="{% url 'metrics:analytics_overview' %}"
+         :hx-vals="getDateParams()"
          hx-target="#page-content"
          hx-swap="outerHTML"
          hx-push-url="true">
@@ -22,7 +23,8 @@
       <a role="tab"
          href="{% url 'metrics:analytics_ai_adoption' %}"
          class="tab {% if active_page == 'ai_adoption' %}tab-active{% endif %}"
-         hx-get="{% url 'metrics:analytics_ai_adoption' %}?days={{ days }}"
+         hx-get="{% url 'metrics:analytics_ai_adoption' %}"
+         :hx-vals="getDateParams()"
          hx-target="#page-content"
          hx-swap="outerHTML"
          hx-push-url="true">
@@ -31,7 +33,8 @@
       <a role="tab"
          href="{% url 'metrics:analytics_delivery' %}"
          class="tab {% if active_page == 'delivery' %}tab-active{% endif %}"
-         hx-get="{% url 'metrics:analytics_delivery' %}?days={{ days }}"
+         hx-get="{% url 'metrics:analytics_delivery' %}"
+         :hx-vals="getDateParams()"
          hx-target="#page-content"
          hx-swap="outerHTML"
          hx-push-url="true">
@@ -40,7 +43,8 @@
       <a role="tab"
          href="{% url 'metrics:analytics_quality' %}"
          class="tab {% if active_page == 'quality' %}tab-active{% endif %}"
-         hx-get="{% url 'metrics:analytics_quality' %}?days={{ days }}"
+         hx-get="{% url 'metrics:analytics_quality' %}"
+         :hx-vals="getDateParams()"
          hx-target="#page-content"
          hx-swap="outerHTML"
          hx-push-url="true">
@@ -49,7 +53,8 @@
       <a role="tab"
          href="{% url 'metrics:analytics_team' %}"
          class="tab {% if active_page == 'team' %}tab-active{% endif %}"
-         hx-get="{% url 'metrics:analytics_team' %}?days={{ days }}"
+         hx-get="{% url 'metrics:analytics_team' %}"
+         :hx-vals="getDateParams()"
          hx-target="#page-content"
          hx-swap="outerHTML"
          hx-push-url="true">
@@ -58,7 +63,8 @@
       <a role="tab"
          href="{% url 'metrics:trends_overview' %}"
          class="tab {% if active_page == 'trends' %}tab-active{% endif %}"
-         hx-get="{% url 'metrics:trends_overview' %}?days={{ days }}"
+         hx-get="{% url 'metrics:trends_overview' %}"
+         :hx-vals="getDateParams()"
          hx-target="#page-content"
          hx-swap="outerHTML"
          hx-push-url="true">

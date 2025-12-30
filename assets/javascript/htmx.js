@@ -186,3 +186,23 @@ htmx.on('htmx:afterSwap', function(evt) {
     window.Alpine.initTree(evt.detail.target);
   }
 });
+
+/**
+ * Re-initialize Alpine.js components after OOB (Out-of-Band) swap
+ * OOB swaps replace elements outside the main swap target and need
+ * their own Alpine initialization to enable reactive bindings
+ */
+htmx.on('htmx:oobAfterSwap', function(evt) {
+  if (window.Alpine && evt.detail.target) {
+    // Initialize Alpine on the OOB-swapped element
+    window.Alpine.initTree(evt.detail.target);
+
+    // Also sync dateRange store from URL if the date picker was swapped
+    if (evt.detail.target.id === 'date-range-picker-container') {
+      const store = window.Alpine.store('dateRange');
+      if (store && store.syncFromUrl) {
+        store.syncFromUrl();
+      }
+    }
+  }
+});
