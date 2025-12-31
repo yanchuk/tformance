@@ -38,13 +38,29 @@ class TestNoteForm(TestCase):
         self.assertFalse(form.is_valid())
         self.assertIn("content", form.errors)
 
-    def test_content_required(self):
-        """Test that content is required."""
+    def test_content_or_flag_required(self):
+        """Test that either content or flag is required."""
         from apps.notes.forms import NoteForm
 
+        # Empty content AND empty flag should be invalid (non-field error)
         form = NoteForm(data={"content": "", "flag": ""})
         self.assertFalse(form.is_valid())
-        self.assertIn("content", form.errors)
+        self.assertIn("__all__", form.errors)
+        self.assertIn("content or", form.errors["__all__"][0].lower())
+
+    def test_content_optional_when_flag_provided(self):
+        """Test that content is optional if flag is provided."""
+        from apps.notes.forms import NoteForm
+
+        form = NoteForm(data={"content": "", "flag": "important"})
+        self.assertTrue(form.is_valid())
+
+    def test_flag_optional_when_content_provided(self):
+        """Test that flag is optional if content is provided."""
+        from apps.notes.forms import NoteForm
+
+        form = NoteForm(data={"content": "Some note text", "flag": ""})
+        self.assertTrue(form.is_valid())
 
     def test_flag_choices(self):
         """Test that flag accepts valid choices."""

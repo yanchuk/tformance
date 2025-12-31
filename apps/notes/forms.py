@@ -32,6 +32,8 @@ class NoteForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         # Override choices to include empty option with better label
         self.fields["flag"].choices = FLAG_CHOICES
+        # Make content optional (can save with just a flag)
+        self.fields["content"].required = False
 
     def clean_content(self):
         """Validate content length."""
@@ -39,3 +41,15 @@ class NoteForm(forms.ModelForm):
         if len(content) > 2000:
             raise forms.ValidationError("Content cannot exceed 2000 characters.")
         return content
+
+    def clean(self):
+        """Validate that either content or flag is provided."""
+        cleaned_data = super().clean()
+        content = cleaned_data.get("content", "").strip()
+        flag = cleaned_data.get("flag", "")
+
+        # At least one of content or flag must be provided
+        if not content and not flag:
+            raise forms.ValidationError("Please provide content or select a flag to mark this PR.")
+
+        return cleaned_data

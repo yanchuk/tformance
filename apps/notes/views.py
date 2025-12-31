@@ -181,3 +181,61 @@ def toggle_resolve(request, note_id):
         )
 
     return redirect("notes:my_notes")
+
+
+def _get_pr_and_note(pr_id, user):
+    """Fetch PR and optional user note."""
+    try:
+        pr = PullRequest.for_team.get(pk=pr_id)
+    except PullRequest.DoesNotExist as err:
+        raise Http404("Pull request not found") from err
+    try:
+        note = PRNote.objects.get(user=user, pull_request=pr)
+    except PRNote.DoesNotExist:
+        note = None
+    return pr, note
+
+
+@login_and_team_required
+def inline_note(request, pr_id):
+    """
+    Inline note form/preview for PR list.
+
+    GET: Returns form (new) or preview (existing note)
+    POST: Creates/updates note and returns preview
+    DELETE: Removes note and returns empty response
+    """
+    pr, note = _get_pr_and_note(pr_id, request.user)
+
+    if request.method == "DELETE":
+        if note:
+            note.delete()
+        return HttpResponse("", status=200)
+
+    if request.method == "POST":
+        form = NoteForm(request.POST, instance=note)
+        if form.is_valid():
+            note = form.save(commit=False)
+            note.user = request.user
+            note.pull_request = pr
+            note.save()
+            # Return preview template after save
+            return render(
+                request,
+                "notes/partials/inline_note_preview.html",
+                {"pr": pr, "note": note, "form": NoteForm(instance=note)},
+            )
+        # Return form with errors
+        return render(
+            request,
+            "notes/partials/inline_note_form.html",
+            {"pr": pr, "note": note, "form": form},
+        )
+
+    # GET: Return preview if note exists, form if not
+    template = "notes/partials/inline_note_preview.html" if note else "notes/partials/inline_note_form.html"
+    return render(
+        request,
+        template,
+        {"pr": pr, "note": note, "form": NoteForm(instance=note)},
+    )

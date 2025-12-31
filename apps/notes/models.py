@@ -40,7 +40,9 @@ class PRNote(BaseModel):
     )
     content = models.TextField(
         max_length=2000,
-        help_text="The note content (max 2000 characters)",
+        blank=True,
+        default="",
+        help_text="Optional note content (max 2000 characters)",
     )
     flag = models.CharField(
         max_length=20,

@@ -1,0 +1,52 @@
+{% load i18n %}
+{# Inline note form - inserted as a table row below the PR row #}
+<tr class="inline-note-row bg-base-200/50" x-data="{ submitting: false }">
+  <td colspan="11" class="p-0 border-l-4 border-primary">
+    <form method="post"
+          action="{% url 'notes:inline_note' pr.id %}"
+          hx-post="{% url 'notes:inline_note' pr.id %}"
+          hx-target="closest tr"
+          hx-swap="outerHTML"
+          @submit="submitting = true"
+          @keydown.meta.enter.prevent="$el.requestSubmit()"
+          @keydown.ctrl.enter.prevent="$el.requestSubmit()"
+          @keydown.escape="$dispatch('inline-closed'); $el.closest('tr').remove()"
+          class="flex items-start gap-3 p-3">
+      {% csrf_token %}
+
+      {# Textarea for note content #}
+      <div class="flex-1">
+        <textarea name="content"
+                  rows="2"
+                  class="textarea textarea-bordered w-full text-sm {% if form.content.errors or form.non_field_errors %}textarea-error{% endif %}"
+                  placeholder="{% trans 'Optional: Add your observations...' %}"
+                  x-init="$el.focus()">{{ form.content.value|default:'' }}</textarea>
+        {% if form.content.errors %}
+          <span class="text-error text-xs mt-1">{{ form.content.errors.0 }}</span>
+        {% elif form.non_field_errors %}
+          <span class="text-error text-xs mt-1">{{ form.non_field_errors.0 }}</span>
+        {% endif %}
+      </div>
+
+      {# Flag dropdown #}
+      <select name="flag" class="select select-bordered select-sm w-36">
+        {% for value, label in form.flag.field.choices %}
+          <option value="{{ value }}" {% if form.flag.value == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+
+      {# Action buttons #}
+      <button type="submit"
+              class="btn btn-primary btn-sm"
+              :disabled="submitting"
+              :class="{ 'loading': submitting }">
+        {% trans "Save" %}
+      </button>
+      <button type="button"
+              class="btn btn-ghost btn-sm"
+              @click="$dispatch('inline-closed'); $el.closest('tr').remove()">
+        {% trans "Cancel" %}
+      </button>
+    </form>
+  </td>
+</tr>

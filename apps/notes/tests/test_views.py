@@ -188,17 +188,18 @@ class TestNoteForm(NotesViewTestCase):
         self.assertEqual(response.status_code, 404)
 
     def test_form_validation_error(self):
-        """Test that form validation errors are shown."""
+        """Test that form validation errors are shown when both content and flag are empty."""
         response = self.client.post(
             self.get_note_form_url(self.pr.id),
             data={
-                "content": "",  # Empty content should fail
-                "flag": "",
+                "content": "",  # Empty content
+                "flag": "",  # Empty flag - should fail
             },
         )
         # Should return 200 with form errors (not redirect)
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "required")
+        # Check for the new validation message (either content OR flag must be provided)
+        self.assertContains(response, "content or")
 
 
 class TestDeleteNote(NotesViewTestCase):
@@ -434,3 +435,252 @@ class TestToggleResolve(NotesViewTestCase):
         self.assertEqual(response.status_code, 200)
         note.refresh_from_db()
         self.assertTrue(note.is_resolved)
+
+
+class TestNoteIconTemplate(NotesViewTestCase):
+    """Tests for the note_icon.html template rendering.
+
+    TDD RED phase tests for inline notes fixes.
+    """
+
+    # Star SVG path from Heroicons - this is what the filled star should use
+    STAR_PATH = "M9.049 2.927c.3-.921 1.603-.921 1.902 0"
+
+    # Music note path (the bug we're fixing)
+    MUSIC_NOTE_PATH = "M18 3a1 1 0 00-1.196-.98l-10 2"
+
+    def test_note_icon_with_note_shows_star_not_music_note(self):
+        """Test that PRs with notes show a filled STAR icon, not a music note.
+
+        BUG: Currently shows music note icon instead of filled star.
+        The icon should match the outline star used for PRs without notes.
+        """
+        from django.template import Context, Template
+
+        # Create a note for this PR
+        note = PRNoteFactory(user=self.user, pull_request=self.pr, flag="important")
+
+        # Render the note_icon template
+        template = Template('{% load i18n %}{% include "notes/partials/note_icon.html" with pr=pr note=note %}')
+        context = Context({"pr": self.pr, "note": note})
+        rendered = template.render(context)
+
+        # Should contain star path, NOT music note path
+        self.assertIn(
+            self.STAR_PATH,
+            rendered,
+            "Filled icon should use STAR SVG path, not music note",
+        )
+        self.assertNotIn(
+            self.MUSIC_NOTE_PATH,
+            rendered,
+            "Filled icon should NOT contain music note SVG path",
+        )
+
+    def test_note_icon_without_note_shows_outline_star(self):
+        """Test that PRs without notes show an outline star icon."""
+        from django.template import Context, Template
+
+        # No note for this PR
+        template = Template('{% load i18n %}{% include "notes/partials/note_icon.html" with pr=pr note=note %}')
+        context = Context({"pr": self.pr, "note": None})
+        rendered = template.render(context)
+
+        # Should contain star path (outline version)
+        self.assertIn(
+            "M11.049 2.927c.3-.921 1.603-.921 1.902 0",  # Outline star path
+            rendered,
+            "Empty state should use outline star SVG",
+        )
+
+    def test_note_icon_uses_afterend_swap_on_closest_tr(self):
+        """Test that inline row is inserted AFTER the current PR row.
+
+        BUG: Currently uses hx-target='closest tbody' with hx-swap='afterbegin'
+        which inserts at the TOP of the table.
+        Should use hx-target='closest tr' with hx-swap='afterend'
+        to insert below the current row.
+        """
+        from django.template import Context, Template
+
+        template = Template('{% load i18n %}{% include "notes/partials/note_icon.html" with pr=pr note=note %}')
+        context = Context({"pr": self.pr, "note": None})
+        rendered = template.render(context)
+
+        # Should target closest tr, not tbody
+        self.assertIn(
+            'hx-target="closest tr"',
+            rendered,
+            "Note icon should target 'closest tr' to insert row after current PR",
+        )
+        # Should NOT target tbody
+        self.assertNotIn(
+            'hx-target="closest tbody"',
+            rendered,
+            "Note icon should NOT target 'closest tbody' (inserts at wrong position)",
+        )
+        # Should use afterend swap to insert after the row
+        self.assertIn(
+            'hx-swap="afterend"',
+            rendered,
+            "Note icon should use 'afterend' swap to insert row below current PR",
+        )
+        # Should NOT use afterbegin swap
+        self.assertNotIn(
+            'hx-swap="afterbegin"',
+            rendered,
+            "Note icon should NOT use 'afterbegin' (inserts at top of table)",
+        )
+
+
+class TestInlineNoteMultipleRenderPrevention(NotesViewTestCase):
+    """Tests for preventing multiple inline row renders.
+
+    BUG: Clicking the note icon multiple times creates duplicate rows.
+    Solution: Use Alpine.js state to prevent multiple clicks.
+    """
+
+    def test_note_icon_prevents_multiple_clicks(self):
+        """Test that note icon has Alpine guard to prevent duplicate rows.
+
+        The icon should check inlineOpen state before triggering HTMX.
+        """
+        from django.template import Context, Template
+
+        template = Template('{% load i18n %}{% include "notes/partials/note_icon.html" with pr=pr note=note %}')
+        context = Context({"pr": self.pr, "note": None})
+        rendered = template.render(context)
+
+        # Should have an Alpine click handler that sets inlineOpen
+        # or prevents action if already open
+        self.assertIn(
+            "inlineOpen",
+            rendered,
+            "Note icon should reference inlineOpen state to prevent multiple renders",
+        )
+
+    def test_inline_form_dispatches_close_event(self):
+        """Test that inline form dispatches close event when cancelled.
+
+        The form's Cancel button should dispatch 'inline-closed' event
+        so the parent can reset its state.
+        """
+        from django.template import Context, Template
+
+        # Create form (no existing note)
+        template = Template(
+            '{% load i18n %}{% include "notes/partials/inline_note_form.html" with pr=pr note=None form=form %}'
+        )
+        from apps.notes.forms import NoteForm
+
+        context = Context({"pr": self.pr, "note": None, "form": NoteForm()})
+        rendered = template.render(context)
+
+        # Cancel button should dispatch inline-closed event
+        self.assertIn(
+            "inline-closed",
+            rendered,
+            "Inline form should dispatch 'inline-closed' event on cancel/close",
+        )
+
+    def test_inline_preview_dispatches_close_event(self):
+        """Test that inline preview dispatches close event when closed.
+
+        The preview's Close button should dispatch 'inline-closed' event
+        so the parent can reset its state.
+        """
+        from django.template import Context, Template
+
+        from apps.notes.factories import PRNoteFactory
+        from apps.notes.forms import NoteForm
+
+        note = PRNoteFactory(user=self.user, pull_request=self.pr)
+
+        template = Template(
+            '{% load i18n %}{% include "notes/partials/inline_note_preview.html" with pr=pr note=note form=form %}'
+        )
+        context = Context({"pr": self.pr, "note": note, "form": NoteForm(instance=note)})
+        rendered = template.render(context)
+
+        # Close button should dispatch inline-closed event
+        self.assertIn(
+            "inline-closed",
+            rendered,
+            "Inline preview should dispatch 'inline-closed' event on close",
+        )
+
+
+class TestOptionalContent(NotesViewTestCase):
+    """Tests for optional note content.
+
+    Enhancement: Allow marking PRs as Important without requiring note text.
+    User can save a note with just a flag (no content required).
+    """
+
+    def get_inline_note_url(self, pr_id):
+        """Get the inline note URL."""
+        return f"/app/notes/pr/{pr_id}/inline/"
+
+    def test_inline_note_post_creates_note_with_flag_only(self):
+        """Test that a note can be created with a flag but no content.
+
+        Enhancement: Users should be able to mark a PR as "Important"
+        without writing any text.
+        """
+        response = self.client.post(
+            self.get_inline_note_url(self.pr.id),
+            data={
+                "content": "",  # Empty content
+                "flag": "important",  # But has a flag
+            },
+            HTTP_HX_REQUEST="true",
+        )
+
+        # Should succeed (not return form with errors)
+        self.assertEqual(response.status_code, 200)
+
+        # Note should be created with the flag
+        note = PRNote.objects.get(user=self.user, pull_request=self.pr)
+        self.assertEqual(note.content, "")
+        self.assertEqual(note.flag, "important")
+
+    def test_inline_note_post_requires_flag_if_no_content(self):
+        """Test that either content OR flag must be provided.
+
+        Both empty content AND empty flag should be rejected.
+        """
+        response = self.client.post(
+            self.get_inline_note_url(self.pr.id),
+            data={
+                "content": "",  # Empty content
+                "flag": "",  # And no flag
+            },
+            HTTP_HX_REQUEST="true",
+        )
+
+        # Should return form with error (status 200 but no note created)
+        self.assertEqual(response.status_code, 200)
+
+        # Note should NOT be created
+        self.assertFalse(PRNote.objects.filter(user=self.user, pull_request=self.pr).exists())
+
+        # Response should contain error message
+        self.assertContains(response, "content or")  # "Please provide content or..."
+
+    def test_inline_note_post_accepts_content_without_flag(self):
+        """Test that content-only notes still work (regression check)."""
+        response = self.client.post(
+            self.get_inline_note_url(self.pr.id),
+            data={
+                "content": "This is my note content",
+                "flag": "",  # No flag
+            },
+            HTTP_HX_REQUEST="true",
+        )
+
+        self.assertEqual(response.status_code, 200)
+
+        # Note should be created with content
+        note = PRNote.objects.get(user=self.user, pull_request=self.pr)
+        self.assertEqual(note.content, "This is my note content")
+        self.assertEqual(note.flag, "")
