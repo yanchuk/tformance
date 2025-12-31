@@ -20,10 +20,8 @@ from groq import Groq
 
 from apps.metrics.services.dashboard_service import (
     get_ai_impact_stats,
-    get_needs_attention_prs,
     get_quality_metrics,
     get_team_health_metrics,
-    get_team_velocity,
     get_velocity_comparison,
 )
 
@@ -75,7 +73,7 @@ INSIGHT_JSON_SCHEMA = {
         },
         "actions": {
             "type": "array",
-            "description": "2-3 actionable links - MUST match issues discussed in detail/recommendation",
+            "description": "1-3 actionable links - MUST match issues discussed in detail/recommendation",
             "items": {
                 "type": "object",
                 "properties": {
@@ -96,7 +94,7 @@ INSIGHT_JSON_SCHEMA = {
                 "required": ["action_type", "label"],
                 "additionalProperties": False,
             },
-            "minItems": 2,
+            "minItems": 1,
             "maxItems": 3,
         },
     },
@@ -112,42 +110,24 @@ INSIGHT_SYSTEM_PROMPT = """You are an engineering metrics analyst providing acti
 
 ## OUTPUT FORMAT
 Return a JSON object with these fields:
-- headline: Executive summary (MAX 12 WORDS, 1 sentence only)
-- detail: 2-4 SHORT bullet points explaining WHAT happened. Each bullet = one fact with number.
-  Use @username when referencing contributors. Format: "• Cycle time up 54% to 39h"
-- possible_causes: 1-2 bullet points for WHY - each with specific numbers from data
-- recommendation: ONE actionable sentence with @username or specific target
-- metric_cards: COPY EXACTLY from the PRE-COMPUTED METRIC CARDS section
-- actions: 2-3 buttons matching issues discussed (MINIMUM 2 REQUIRED)
+- headline: Executive summary of the MOST SIGNIFICANT finding (MAX 15 WORDS, 1 sentence only)
+- detail: 2-3 sentences explaining WHAT happened, with specific numbers
+- possible_causes: 1-2 hypotheses for WHY this is happening (must be an array of strings)
+- recommendation: One specific action that addresses an issue from 'detail'
+- metric_cards: COPY EXACTLY from the PRE-COMPUTED METRIC CARDS section in the data
+- actions: 1-3 buttons matching issues discussed in detail/recommendation
 
-## DETAIL FORMAT (CRITICAL - USE BULLETS)
-Write detail as SHORT bullet points, NOT paragraphs. Each bullet = one insight.
-GOOD:
-  "• Cycle time increased 54.6% to 39.3h\\n• Non-AI PRs: 40.4h avg cycle\\n• AI PRs: 0.8h (98% faster)"
-BAD:
-  "The cycle time has increased by 54.6% to 39.3 hours, indicating a significant slowdown..."
-
-## @USERNAME FORMAT (IMPORTANT)
-When referencing contributors in detail or recommendation, use @username format from the ACTIONABLE DATA section.
-- Use EXACT usernames from the Top Contributors table: @johndoe, @janesmith
-- The @username will become a clickable link to their PRs
-- Example: "Review @johndoe's 3 slow PRs averaging 156h cycle time"
-- Example: "Redistribute reviews from @bob who has 15 pending"
-
-## HEADLINE RULES (CRITICAL - STRICT WORD LIMIT)
-- MAXIMUM 12 WORDS - Count carefully! Headlines over 12 words will be rejected.
-- Single sentence only, no filler words like "drastically", "significantly", "overall"
-- Focus on ONE key finding: the ROOT CAUSE, not the symptom
-- Be specific: include ONE key metric value AND the actionable issue
-- Name people when there's a clear bottleneck (reviewer with 10+ pending)
+## HEADLINE RULES (CRITICAL)
+- Maximum 12 words
+- Single sentence only
+- Focus on ONE key finding, not multiple metrics
+- Be specific: include the metric value and direction
 - Examples:
-  - GOOD: "Review bottleneck: crazywoola has 22 pending reviews." (7 words, names person)
-  - GOOD: "Cycle time critical at 174h, review delays +129%." (8 words, specific)
-  - GOOD: "Bus factor risk: one contributor handles 56% of PRs." (9 words)
-  - GOOD: "AI PRs taking 5x longer to merge than non-AI." (10 words)
-  - BAD: "AI-assisted PRs are drastically slowing cycle time, increasing overall delays." (10 words but wordy)
-  - BAD: "Throughput dropped 56%." (symptom only, no root cause)
-  - BAD: "Cycle time increased this period." (vague, no specifics)
+  - GOOD: "Review bottleneck: one reviewer has 22 pending reviews."
+  - GOOD: "Cycle time doubled to 48h despite improved AI adoption."
+  - GOOD: "Throughput dropped 31% as work concentrated on one contributor."
+  - BAD: "AI adoption 95% but cycle time +205% as AI PRs 43% faster." (too many metrics)
+  - BAD: "Various metrics changed this period." (too vague)
 
 ## CRITICAL RULES
 
@@ -157,66 +137,38 @@ When referencing contributors in detail or recommendation, use @username format 
 - Use EXACT percentages from the data (e.g., if data says "33.2%", use "33.2%")
 
 ### Rule 2: ROOT CAUSE HYPOTHESIS
-For possible_causes, hypothesize WHY based on data patterns. Include specific numbers:
-- Large PR % high + slow cycle time → "Large PRs (32% over 500 lines) add review cycles"
-- AI PRs slower + high AI adoption → "AI code (45% of PRs) takes 2.3x longer to review"
-- Top contributor > 50% → "56% from one contributor creates bottleneck risk"
-- Throughput drop + stable contributors → "40% drop despite stable team = blocked work"
-- Cycle time up + review time up → "Review time 12h→28h suggests capacity constraints"
+For possible_causes, hypothesize WHY based on data patterns:
+- Large PR % high + slow cycle time → "Large PRs (>500 lines) require more review cycles"
+- AI PRs slower + high AI adoption → "AI-generated code may need more thorough review"
+- Top contributor > 50% → "Work concentration creates bottleneck when key person is unavailable"
+- Throughput drop + stable contributors → "May indicate sprint planning, holidays, or blocked work"
+- Cycle time up + review time up → "Review delays suggest reviewer capacity constraints"
 
-BAD: "Large PRs may cause delays" (no specific numbers)
-GOOD: "Large PRs (32% over 500 lines) are adding 40h to average cycle time"
-
-### Rule 3: RECOMMENDATION COHERENCE (MUST BE SPECIFIC)
+### Rule 3: RECOMMENDATION COHERENCE
 Your recommendation MUST:
 1. Address a specific issue mentioned in 'detail'
 2. Be actionable (start with a verb: "Investigate...", "Review...", "Implement...")
-3. Include a specific target: person name, number, or measurable goal
-4. Connect logically to the actions you provide
+3. Connect logically to the actions you provide
 
-BAD: "Consider improving code review practices" (vague, no specific target)
-BAD: "Review team workflows" (generic, doesn't mention the issue)
-GOOD: "Investigate the 15 PRs taking >120h to identify common blockers"
-GOOD: "Redistribute reviews from crazywoola (22 pending) to balance workload"
-GOOD: "Focus AI tooling guidance on the 8 PRs where AI slowed delivery by 50%+"
+BAD: detail mentions AI slowness, recommendation talks about code reviews (unrelated)
+GOOD: detail mentions AI slowness, recommendation says "Review AI-assisted PR workflows"
 
-### Rule 4: ACTION ALIGNMENT (MINIMUM 2 REQUIRED)
-You MUST provide 2-3 actions that correspond to issues discussed:
+### Rule 4: ACTION ALIGNMENT
+Actions MUST correspond to issues discussed:
 - If detail mentions AI impact → include view_ai_prs
 - If detail mentions slow PRs → include view_slow_prs
 - If detail mentions contributor concentration → include view_contributors
 - If detail mentions review bottleneck → include view_review_bottlenecks
-- If detail mentions quality/reverts → include view_reverts
-- If detail mentions large PRs → include view_large_prs
 
-Example: If headline is about cycle time and AI PRs are involved:
-  actions: [
-    {"action_type": "view_slow_prs", "label": "View slow PRs"},
-    {"action_type": "view_ai_prs", "label": "Analyze AI-assisted PRs"}
-  ]
-
-Example: If headline is about bus factor risk:
-  actions: [
-    {"action_type": "view_contributors", "label": "View contributor stats"},
-    {"action_type": "view_large_prs", "label": "Review large PRs"}
-  ]
-
-## PRIORITY ORDER FOR HEADLINE (ROOT CAUSE FIRST)
-Pick the FIRST that applies - always identify root cause, not just symptom:
-1. Named bottleneck: reviewer with pending_count > 10 → Name the person in headline
-2. Quality crisis: revert_rate > 8% → Lead with quality/reverts
-3. AI slowing things down: AI PRs >25% slower than non-AI → Lead with AI slowdown
-4. Bus factor risk: top_contributor > 50% → Lead with work concentration (root cause of throughput issues)
-5. Review bottleneck: review_time > 2x previous → Lead with review delays
-6. Critical cycle time: cycle_time > 120h → Lead with critical zone warning (even without AI data)
-7. Severe slowdown: cycle_time change > 50% → Lead with cycle time (but mention cause if known)
-8. Major throughput change: |throughput change| > 30% → BUT look for root cause first
-9. Otherwise: Most notable change with actionable insight
-
-IMPORTANT: Lead with ROOT CAUSE, not symptom:
-- Throughput dropped + top_contributor > 50% → lead with bus factor
-- Cycle time up + AI PRs slower → lead with AI impact
-- Cycle time >120h + no AI data → lead with critical cycle time + contributing factor
+## PRIORITY ORDER FOR HEADLINE
+Pick the FIRST that applies:
+1. Quality crisis: revert_rate > 8% → Lead with quality/reverts
+2. AI impact significant: adoption > 40% AND |cycle_time_diff| > 25% → Lead with AI impact
+3. Severe slowdown: cycle_time change > 50% → Lead with cycle time
+4. Major throughput change: |throughput change| > 30% → Lead with throughput
+5. Review bottleneck detected → Lead with bottleneck
+6. Bus factor: top_contributor > 50% → Lead with work concentration
+7. Otherwise: Most notable change
 
 ## AI IMPACT INTERPRETATION
 - cycle_time_difference_pct = (AI_cycle - NonAI_cycle) / NonAI_cycle * 100
@@ -280,39 +232,6 @@ def resolve_action_url(action: dict, days: int) -> str:
     return f"{base}?{urlencode(params)}"
 
 
-def _build_issue_by_person(attention_items: list[dict]) -> dict[str, list[str]]:
-    """Build a summary of issues grouped by person.
-
-    Groups the attention PRs by author and issue type to identify
-    who has the most issues of each type.
-
-    Args:
-        attention_items: List of PR dicts from get_needs_attention_prs
-
-    Returns:
-        Dict mapping issue_type to list of "@username (count)" strings.
-        Example: {"revert": ["@johndoe (2)", "@janesmith (1)"], "long_cycle": ["@bob (3)"]}
-    """
-    from collections import defaultdict
-
-    # Count issues by person and type
-    person_issues: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
-
-    for item in attention_items:
-        author_github = item.get("author_github", "") or item.get("author", "Unknown")
-        issue_type = item.get("issue_type", "")
-        if author_github and issue_type:
-            person_issues[issue_type][author_github] += 1
-
-    # Format as sorted list per issue type
-    result = {}
-    for issue_type, authors in person_issues.items():
-        sorted_authors = sorted(authors.items(), key=lambda x: -x[1])  # Sort by count desc
-        result[issue_type] = [f"@{author} ({count})" for author, count in sorted_authors[:3]]
-
-    return result
-
-
 def gather_insight_data(
     team: Team,
     start_date: date,
@@ -360,35 +279,6 @@ def gather_insight_data(
         "cycle_time_difference_pct": ai_impact_raw.get("cycle_time_difference_pct"),
     }
 
-    # Get top contributors (actionable: names with PR counts and cycle times)
-    top_contributors_raw = get_team_velocity(team, start_date, end_date, limit=5)
-    top_contributors = [
-        {
-            "github_username": c.get("github_username", ""),
-            "display_name": c.get("display_name", "Unknown"),
-            "pr_count": c.get("pr_count", 0),
-            "avg_cycle_time": float(c["avg_cycle_time"]) if c.get("avg_cycle_time") else None,
-        }
-        for c in top_contributors_raw
-    ]
-
-    # Get PRs needing attention (actionable: specific PRs with titles and authors)
-    attention_prs_raw = get_needs_attention_prs(team, start_date, end_date, page=1, per_page=5)
-    attention_prs = [
-        {
-            "title": pr.get("title", "")[:60],  # Truncate for prompt efficiency
-            "author": pr.get("author", "Unknown"),
-            "author_github": pr.get("author_github", ""),  # GitHub username for linking
-            "issue_type": pr.get("issue_type", ""),
-            "github_url": pr.get("url", ""),
-            "cycle_time": pr.get("cycle_time_hours"),
-        }
-        for pr in attention_prs_raw.get("items", [])
-    ]
-
-    # Build issue summary by person (actionable: who has most issues)
-    issue_by_person = _build_issue_by_person(attention_prs_raw.get("items", []))
-
     # Build metadata
     metadata = {
         "start_date": start_date.isoformat(),
@@ -402,9 +292,6 @@ def gather_insight_data(
         "quality": quality,
         "team_health": team_health,
         "ai_impact": ai_impact,
-        "top_contributors": top_contributors,
-        "attention_prs": attention_prs,
-        "issue_by_person": issue_by_person,
         "metadata": metadata,
     }
 
@@ -507,17 +394,15 @@ def _create_fallback_insight(data: dict) -> dict:
         },
     ]
 
-    # Build contextual actions based on the insight (minimum 2 required)
+    # Build contextual actions based on the insight
     actions = []
     if revert_rate > 5:
         actions.append({"action_type": "view_reverts", "label": "View reverted PRs"})
     if ai_adoption >= 30:
         actions.append({"action_type": "view_ai_prs", "label": "View AI-assisted PRs"})
-    # Always add view_slow_prs as a relevant action
-    actions.append({"action_type": "view_slow_prs", "label": "View slow PRs"})
-    # Ensure we always have at least 2 actions
-    if len(actions) < 2:
-        actions.append({"action_type": "view_contributors", "label": "View contributors"})
+    # Ensure we always have at least one action
+    if not actions:
+        actions.append({"action_type": "view_slow_prs", "label": "View slow PRs"})
 
     # Build possible causes based on data patterns
     possible_causes = []

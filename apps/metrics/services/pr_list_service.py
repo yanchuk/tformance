@@ -6,7 +6,7 @@ from typing import Any
 from django.contrib.postgres.aggregates import ArrayAgg
 from django.db.models import Avg, Count, Exists, F, OuterRef, Q, QuerySet, Subquery, Sum, Value
 
-from apps.metrics.models import PRFile, PRReview, PullRequest, TeamMember
+from apps.metrics.models import PRFile, PRReview, PullRequest
 from apps.metrics.services.ai_categories import (
     AI_CATEGORY_DISPLAY_NAMES,
     CATEGORY_BOTH,
@@ -135,23 +135,9 @@ def get_prs_queryset(team: Team, filters: dict[str, Any]) -> QuerySet[PullReques
     if filters.get("repo"):
         qs = qs.filter(github_repo=filters["repo"])
 
-    # Filter by author (by ID)
+    # Filter by author
     if filters.get("author"):
         qs = qs.filter(author_id=filters["author"])
-
-    # Filter by author GitHub username (e.g., "@johndoe" or "johndoe")
-    # Security: Only matches team members within the specified team
-    github_name = filters.get("github_name")
-    if github_name:
-        # Strip @ prefix if present
-        username = github_name.lstrip("@")
-        # Look up team member by github_username within team (team-scoped = secure)
-        try:
-            member = TeamMember.objects.get(team=team, github_username__iexact=username)
-            qs = qs.filter(author=member)
-        except TeamMember.DoesNotExist:
-            # No matching team member - return empty queryset
-            qs = qs.none()
 
     # Filter by reviewer
     # When filtering by reviewer, also filter by review submitted_at date range

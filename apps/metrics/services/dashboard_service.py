@@ -2638,12 +2638,10 @@ def get_needs_attention_prs(
                     "title": pr.title,
                     "url": _get_github_url(pr),
                     "author": _get_author_name(pr),
-                    "author_github": pr.author.github_username if pr.author else "",
                     "author_avatar_url": pr.author.avatar_url if pr.author else "",
                     "issue_type": issue_type,
                     "issue_priority": issue_priority,
                     "merged_at": pr.merged_at,
-                    "cycle_time_hours": float(pr.cycle_time_hours) if pr.cycle_time_hours else None,
                 }
             )
 
@@ -2779,7 +2777,6 @@ def get_team_velocity(team: Team, start_date: date, end_date: date, limit: int =
             author_info[author_id] = {
                 "member_id": pr.author.id,
                 "display_name": pr.author.display_name or "Unknown",
-                "github_username": pr.author.github_username or "",
                 "avatar_url": _avatar_url_from_github_id(pr.author.github_id),
             }
         author_prs[author_id].append(pr)

@@ -635,11 +635,11 @@ class TestInsightJsonSchemaActions(TestCase):
         self.assertEqual(set(action_type_schema["enum"]), expected_types)
 
     def test_actions_min_max_items(self):
-        """Test that actions array has 2-3 items constraint (minimum 2 required)."""
+        """Test that actions array has 1-3 items constraint."""
         from apps.metrics.services.insight_llm import INSIGHT_JSON_SCHEMA
 
         actions_schema = INSIGHT_JSON_SCHEMA["properties"]["actions"]
-        self.assertEqual(actions_schema["minItems"], 2)  # Changed from 1 to ensure richer insights
+        self.assertEqual(actions_schema["minItems"], 1)
         self.assertEqual(actions_schema["maxItems"], 3)
 
 

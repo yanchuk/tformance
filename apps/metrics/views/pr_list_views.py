@@ -43,7 +43,6 @@ def _get_filters_from_request(request: HttpRequest, default_days: int = 30) -> d
     filter_keys = [
         "repo",
         "author",
-        "github_name",  # Filter by GitHub username (e.g., "@johndoe")
         "reviewer",
         "ai",
         "ai_tool",
