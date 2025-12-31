@@ -472,11 +472,10 @@ class TestSyncQuickDataTaskHandlesErrors(TestCase):
 
     @patch("apps.integrations.tasks._sync_with_graphql_or_rest")
     def test_saves_error_message_on_failure(self, mock_sync):
-        """Test that last_sync_error is populated on failure."""
+        """Test that sanitized last_sync_error is populated on failure."""
         from apps.integrations.tasks import sync_quick_data_task
 
-        error_message = "GitHub API rate limit exceeded"
-        mock_sync.side_effect = Exception(error_message)
+        mock_sync.side_effect = Exception("GitHub API rate limit exceeded")
 
         with patch.object(sync_quick_data_task, "retry") as mock_retry:
             mock_retry.side_effect = Exception("Max retries exceeded")
@@ -486,7 +485,8 @@ class TestSyncQuickDataTaskHandlesErrors(TestCase):
 
         self.tracked_repo.refresh_from_db()
         self.assertIsNotNone(self.tracked_repo.last_sync_error)
-        self.assertIn(error_message, self.tracked_repo.last_sync_error)
+        # Sanitized message should be user-friendly, not exposing internal details
+        self.assertIn("error occurred", self.tracked_repo.last_sync_error.lower())
 
 
 class TestSyncFullHistoryTaskExists(TestCase):

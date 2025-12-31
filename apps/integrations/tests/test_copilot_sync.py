@@ -113,7 +113,9 @@ class TestSyncCopilotMetricsTask(TestCase):
         # Assert - Task should not raise exception, return error status
         self.assertIsInstance(result, dict)
         self.assertIn("error", result)
-        self.assertIn("403", result["error"])
+        # Error message is sanitized (no internal details like "403" exposed)
+        self.assertIsNotNone(result["error"])
+        # Key behavior: copilot_available flag should be False for 403 errors
         self.assertIn("copilot_available", result)
         self.assertFalse(result["copilot_available"])
 

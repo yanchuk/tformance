@@ -1,8 +1,12 @@
 """Copilot metrics service - stub for testing."""
 
+import json
+import logging
 from decimal import Decimal
 
 import requests
+
+logger = logging.getLogger(__name__)
 
 # GitHub API constants
 GITHUB_API_BASE_URL = "https://api.github.com"
@@ -64,12 +68,22 @@ def _make_github_api_request(url, headers, params=None, error_prefix="GitHub API
         response = requests.get(url, headers=headers, params=params, timeout=30)
 
         if response.status_code == 403:
-            raise CopilotMetricsError(
-                f"{error_prefix} unavailable (403): {response.json().get('message', 'Forbidden')}"
-            )
+            # Try to get error message from JSON, fallback if response isn't valid JSON
+            try:
+                error_message = response.json().get("message", "Forbidden")
+            except json.JSONDecodeError:
+                logger.warning("Invalid JSON in 403 response from %s", url)
+                error_message = "Forbidden"
+            raise CopilotMetricsError(f"{error_prefix} unavailable (403): {error_message}")
 
         response.raise_for_status()
-        return response.json()
+
+        # Parse JSON response with error handling
+        try:
+            return response.json()
+        except json.JSONDecodeError as e:
+            logger.error("Invalid JSON response from %s: %s", url, e)
+            raise CopilotMetricsError(f"Invalid response from {error_prefix}") from e
 
     except CopilotMetricsError:
         raise

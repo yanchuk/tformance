@@ -28,10 +28,13 @@
 </li>
 {% endif %}
 <li>
-  <a href="{% url 'account_logout' %}" {% if 'accounts/logout' in request.path %}class="menu-active"{% endif %}>
-    <i class="fa fa-sign-out h-4 w-4"></i>
-    {% translate "Sign out" %}
-  </a>
+  <form method="post" action="{% url 'account_logout' %}" class="m-0 p-0">
+    {% csrf_token %}
+    <button type="submit" class="w-full text-left flex items-center gap-2 py-2 px-3 hover:bg-base-300 rounded-lg">
+      <i class="fa fa-sign-out h-4 w-4"></i>
+      {% translate "Sign out" %}
+    </button>
+  </form>
 </li>
 {% endif %}
 {% if user.is_superuser %}

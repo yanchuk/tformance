@@ -109,10 +109,9 @@ class GitHubIntegration(BaseTeamModel):
         verbose_name="Organization ID",
         help_text="GitHub organization ID",
     )
-    webhook_secret = models.CharField(
-        max_length=100,
+    webhook_secret = EncryptedTextField(
         verbose_name="Webhook secret",
-        help_text="Secret for validating GitHub webhook payloads",
+        help_text="Secret for validating GitHub webhook payloads (encrypted at rest)",
     )
     last_sync_at = models.DateTimeField(
         null=True,

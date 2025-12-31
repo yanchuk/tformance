@@ -17,6 +17,8 @@ import logging
 from celery import chain, shared_task
 from celery.result import AsyncResult
 
+from apps.utils.errors import sanitize_error
+
 logger = logging.getLogger(__name__)
 
 
@@ -73,7 +75,7 @@ def handle_pipeline_failure(
     """
     from apps.teams.models import Team
 
-    error_message = str(exc) if exc else "Unknown error"
+    error_message = sanitize_error(exc) if exc else "Unknown error"
 
     if team_id is None:
         logger.error(f"Pipeline failure handler called without team_id: {error_message}")

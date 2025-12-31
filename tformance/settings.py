@@ -242,6 +242,8 @@ LOGIN_REDIRECT_URL = "/"
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SECURE = not DEBUG
 SESSION_COOKIE_SAMESITE = "Lax"
+SESSION_COOKIE_AGE = 86400 * 7  # 7 days in seconds
+SESSION_SAVE_EVERY_REQUEST = True  # Extend session on activity
 
 CSRF_COOKIE_HTTPONLY = True
 CSRF_COOKIE_SECURE = not DEBUG
@@ -285,18 +287,27 @@ ACCOUNT_UNIQUE_EMAIL = True
 # You can change the ID or remove it entirely to disable the honeypot.
 ACCOUNT_SIGNUP_FORM_HONEYPOT_FIELD = "phone_number_x"
 ACCOUNT_SESSION_REMEMBER = True
-ACCOUNT_LOGOUT_ON_GET = True
+# SECURITY: Require POST for logout to prevent CSRF-triggered logouts
+ACCOUNT_LOGOUT_ON_GET = False
 ACCOUNT_LOGIN_ON_EMAIL_CONFIRMATION = True
 ACCOUNT_LOGIN_BY_CODE_ENABLED = False  # Disabled - using OAuth only (GitHub/Google)
 ACCOUNT_USER_DISPLAY = lambda user: user.get_display_name()  # noqa: E731
 
-# Disable rate limits in DEBUG mode and during tests
-# (E2E: Playwright runs multiple workers; unit tests: avoid flaky failures)
-
+# Rate limiting configuration
+# Disabled in DEBUG mode and during tests to avoid flaky test failures
+# Enabled in production to prevent brute force attacks
 TESTING = "pytest" in sys.modules or "test" in sys.argv
 if DEBUG or TESTING:
     ACCOUNT_RATE_LIMITS = False  # Disable allauth rate limits (must be False, not {})
     RATELIMIT_ENABLE = False  # Disable django-ratelimit
+else:
+    # Production rate limits
+    ACCOUNT_RATE_LIMITS = {
+        "login_failed": "5/m,20/h",  # 5 per minute, 20 per hour for failed logins
+        "signup": "5/m",  # 5 signups per minute
+        "password_reset": "3/h",  # 3 password resets per hour
+    }
+    RATELIMIT_ENABLE = True  # Enable django-ratelimit for webhooks etc.
 
 ACCOUNT_FORMS = {
     "signup": "apps.teams.forms.TeamSignupForm",
@@ -314,6 +325,10 @@ ACCOUNT_EMAIL_VERIFICATION = env("ACCOUNT_EMAIL_VERIFICATION", default="none")
 AUTH_MODE = env("AUTH_MODE", default="all" if DEBUG else "github_only")
 ALLOW_EMAIL_AUTH = AUTH_MODE == "all"
 ALLOW_GOOGLE_AUTH = False  # Disabled - GitHub only for simplicity
+
+# Django-Hijack settings - "login as" functionality for admins
+# SECURITY: Only superusers can hijack (login as) other users
+HIJACK_PERMISSION_CHECK = "hijack.permissions.superusers_only"
 
 AUTHENTICATION_BACKENDS = (
     # Needed to login by username in Django admin, regardless of `allauth`

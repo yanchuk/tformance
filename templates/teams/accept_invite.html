@@ -42,15 +42,18 @@
                     What would you like to do?
                     {% endblocktranslate %}
                   </p>
-                  <p class="buttons my-3">
+                  <p class="buttons my-3 flex flex-wrap gap-2">
                     <a class="pg-button-primary" href="{% url 'account_email' %}">
                       {% blocktranslate trimmed with email=invitation.email %}
                         Add '{{ email }}' to your account
                       {% endblocktranslate %}
                     </a>
-                    <a class="pg-button-secondary" href="{% url 'account_logout' %}?invitation_id={{ invitation.id }}">
-                      {% translate "Sign out" %}
-                    </a>
+                    <form method="post" action="{% url 'account_logout' %}?next={% url 'teams:accept_invitation' invitation.id %}" class="inline">
+                      {% csrf_token %}
+                      <button type="submit" class="pg-button-secondary">
+                        {% translate "Sign out" %}
+                      </button>
+                    </form>
                   </p>
                   <p class="pg-text-muted">
                     {% translate "The email address must be verified before accepting the invitation." %}

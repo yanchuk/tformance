@@ -231,13 +231,12 @@ class TestSyncRepositoryTask(TestCase):
 
     @patch("apps.integrations.tasks.sync_repository_incremental")
     def test_sync_repository_task_saves_error_message_on_failure(self, mock_sync):
-        """Test that sync_repository_task saves error message to last_sync_error on failure."""
+        """Test that sync_repository_task saves sanitized error message to last_sync_error on failure."""
         from apps.integrations.models import TrackedRepository
         from apps.integrations.tasks import sync_repository_task
 
         # Mock sync to raise an exception
-        error_message = "GitHub API rate limit exceeded"
-        mock_sync.side_effect = Exception(error_message)
+        mock_sync.side_effect = Exception("GitHub API rate limit exceeded")
 
         # Mock retry to simulate max retries exhausted
         with patch.object(sync_repository_task, "retry") as mock_retry:
@@ -248,10 +247,12 @@ class TestSyncRepositoryTask(TestCase):
                 # Call the task
                 sync_repository_task(self.tracked_repo.id)
 
-                # Reload from database and verify error message is saved
+                # Reload from database and verify sanitized error message is saved
+                # (raw exception details should NOT be exposed)
                 repo = TrackedRepository.objects.get(id=self.tracked_repo.id)
                 self.assertIsNotNone(repo.last_sync_error)
-                self.assertIn(error_message, repo.last_sync_error)
+                # Sanitized message should be user-friendly, not exposing internal details
+                self.assertIn("error occurred", repo.last_sync_error.lower())
 
     @patch("apps.integrations.tasks.sync_repository_incremental")
     def test_sync_repository_task_clears_last_sync_error_on_successful_sync(self, mock_sync):
@@ -1237,13 +1238,12 @@ class TestSyncGitHubMembersTaskStatusUpdates(TestCase):
     @patch("sentry_sdk.capture_exception")
     @patch("apps.integrations.tasks._sync_members_with_graphql_or_rest")
     def test_task_stores_error_message_in_member_sync_error_on_failure(self, mock_sync, mock_sentry):
-        """Test that task stores error message in member_sync_error on failure."""
+        """Test that task stores sanitized error message in member_sync_error on failure."""
         from apps.integrations.models import GitHubIntegration
         from apps.integrations.tasks import sync_github_members_task
 
         # Mock sync to raise an exception
-        error_message = "GitHub API rate limit exceeded"
-        mock_sync.side_effect = Exception(error_message)
+        mock_sync.side_effect = Exception("GitHub API rate limit exceeded")
 
         # Verify initial state
         self.assertEqual(self.integration.member_sync_error, "")
@@ -1255,7 +1255,9 @@ class TestSyncGitHubMembersTaskStatusUpdates(TestCase):
             # Call the task
             sync_github_members_task(self.integration.id)
 
-            # Reload from database and verify error message is stored
+            # Reload from database and verify sanitized error message is stored
+            # (raw exception details should NOT be exposed)
             integration = GitHubIntegration.objects.get(id=self.integration.id)
             self.assertIsNotNone(integration.member_sync_error)
-            self.assertIn(error_message, integration.member_sync_error)
+            # Sanitized message should be user-friendly, not exposing internal details
+            self.assertIn("error occurred", integration.member_sync_error.lower())

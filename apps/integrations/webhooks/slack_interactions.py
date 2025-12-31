@@ -8,7 +8,7 @@ import logging
 from urllib.parse import parse_qs
 
 from django.conf import settings
-from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
+from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseForbidden, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django_ratelimit.decorators import ratelimit
 from slack_sdk.signature import SignatureVerifier
@@ -69,6 +69,12 @@ def verify_slack_signature(request) -> bool:
         return False
 
 
+class InvalidSlackPayloadError(Exception):
+    """Raised when Slack payload cannot be parsed as valid JSON."""
+
+    pass
+
+
 def parse_slack_payload(request) -> dict:
     """Parse Slack interaction payload from request.
 
@@ -77,11 +83,19 @@ def parse_slack_payload(request) -> dict:
 
     Returns:
         Parsed payload dict
+
+    Raises:
+        InvalidSlackPayloadError: If the payload is not valid JSON
     """
     body = request.body.decode("utf-8")
     parsed = parse_qs(body)
     payload_str = parsed.get("payload", ["{}"])[0]
-    return json.loads(payload_str)
+
+    try:
+        return json.loads(payload_str)
+    except json.JSONDecodeError as e:
+        logger.warning("Invalid JSON in Slack payload: %s", e)
+        raise InvalidSlackPayloadError("Invalid JSON payload") from e
 
 
 def handle_author_response(survey_id: str, ai_assisted: bool) -> None:
@@ -213,8 +227,11 @@ def slack_interactions(request):
     if not verify_slack_signature(request):
         return HttpResponseForbidden("Invalid signature")
 
-    # Parse payload
-    payload = parse_slack_payload(request)
+    # Parse payload with error handling
+    try:
+        payload = parse_slack_payload(request)
+    except InvalidSlackPayloadError:
+        return HttpResponseBadRequest("Invalid payload")
 
     # Route by action_id
     for action in payload.get("actions", []):
