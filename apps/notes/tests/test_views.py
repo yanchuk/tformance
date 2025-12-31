@@ -187,19 +187,23 @@ class TestNoteForm(NotesViewTestCase):
         response = self.client.get(self.get_note_form_url(other_pr.id))
         self.assertEqual(response.status_code, 404)
 
-    def test_form_validation_error(self):
-        """Test that form validation errors are shown when both content and flag are empty."""
+    def test_form_allows_quick_star_no_content_no_flag(self):
+        """Test that form accepts empty content and empty flag (quick star)."""
         response = self.client.post(
             self.get_note_form_url(self.pr.id),
             data={
                 "content": "",  # Empty content
-                "flag": "",  # Empty flag - should fail
+                "flag": "",  # Empty flag - now valid for quick star
             },
         )
-        # Should return 200 with form errors (not redirect)
-        self.assertEqual(response.status_code, 200)
-        # Check for the new validation message (either content OR flag must be provided)
-        self.assertContains(response, "content or")
+        # Should redirect after successful save
+        self.assertEqual(response.status_code, 302)
+        # Note should be created
+        from apps.notes.models import PRNote
+
+        note = PRNote.objects.get(user=self.user, pull_request=self.pr)
+        self.assertEqual(note.content, "")
+        self.assertEqual(note.flag, "")
 
 
 class TestDeleteNote(NotesViewTestCase):
@@ -644,28 +648,27 @@ class TestOptionalContent(NotesViewTestCase):
         self.assertEqual(note.content, "")
         self.assertEqual(note.flag, "important")
 
-    def test_inline_note_post_requires_flag_if_no_content(self):
-        """Test that either content OR flag must be provided.
+    def test_inline_note_post_allows_quick_star_no_content_no_flag(self):
+        """Test that empty content AND empty flag is valid (quick star).
 
-        Both empty content AND empty flag should be rejected.
+        Users should be able to just star a PR without adding content or flag.
         """
         response = self.client.post(
             self.get_inline_note_url(self.pr.id),
             data={
                 "content": "",  # Empty content
-                "flag": "",  # And no flag
+                "flag": "",  # And no flag - just starring
             },
             HTTP_HX_REQUEST="true",
         )
 
-        # Should return form with error (status 200 but no note created)
+        # Should succeed and create starred note
         self.assertEqual(response.status_code, 200)
 
-        # Note should NOT be created
-        self.assertFalse(PRNote.objects.filter(user=self.user, pull_request=self.pr).exists())
-
-        # Response should contain error message
-        self.assertContains(response, "content or")  # "Please provide content or..."
+        # Note SHOULD be created (starred without content/flag)
+        note = PRNote.objects.get(user=self.user, pull_request=self.pr)
+        self.assertEqual(note.content, "")
+        self.assertEqual(note.flag, "")
 
     def test_inline_note_post_accepts_content_without_flag(self):
         """Test that content-only notes still work (regression check)."""

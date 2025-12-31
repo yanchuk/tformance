@@ -38,15 +38,13 @@ class TestNoteForm(TestCase):
         self.assertFalse(form.is_valid())
         self.assertIn("content", form.errors)
 
-    def test_content_or_flag_required(self):
-        """Test that either content or flag is required."""
+    def test_empty_form_allowed_for_starring(self):
+        """Test that empty content AND empty flag is valid (just starred)."""
         from apps.notes.forms import NoteForm
 
-        # Empty content AND empty flag should be invalid (non-field error)
+        # Empty content AND empty flag should be valid - allows quick starring
         form = NoteForm(data={"content": "", "flag": ""})
-        self.assertFalse(form.is_valid())
-        self.assertIn("__all__", form.errors)
-        self.assertIn("content or", form.errors["__all__"][0].lower())
+        self.assertTrue(form.is_valid())
 
     def test_content_optional_when_flag_provided(self):
         """Test that content is optional if flag is provided."""

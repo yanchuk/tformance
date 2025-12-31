@@ -41,9 +41,86 @@ class TestGeneratorStats(TestCase):
 
 @pytest.mark.slow
 class TestScenarioDataGenerator(TestCase):
-    """Tests for the ScenarioDataGenerator class.
+    """Tests for the ScenarioDataGenerator class - shared data tests.
 
-    Marked as slow because these tests create full scenario data (members, PRs, reviews, commits).
+    Uses setUpTestData() to generate data ONCE for all test methods.
+    Tests in this class should be read-only and not modify the shared data.
+    """
+
+    @classmethod
+    def setUpTestData(cls):
+        """Generate test data ONCE for all test methods in this class.
+
+        This is the key optimization - generator.generate() is called once
+        instead of once per test method, saving ~20 seconds per test.
+        """
+        cls.team = Team.objects.create(name="Test Team", slug="test-team")
+        cls.scenario = get_scenario("ai-success")
+
+        # Patch GitHubPublicFetcher at class level
+        cls.patcher = patch("apps.metrics.seeding.data_generator.GitHubPublicFetcher")
+        cls.mock_fetcher_class = cls.patcher.start()
+        cls.mock_fetcher_class.return_value.fetch_prs.return_value = []
+
+        # Generate data ONCE
+        cls.generator = ScenarioDataGenerator(
+            scenario=cls.scenario,
+            seed=42,
+            fetch_github=False,
+        )
+        cls.stats = cls.generator.generate(cls.team)
+
+    @classmethod
+    def tearDownClass(cls):
+        """Clean up class-level patches."""
+        cls.patcher.stop()
+        super().tearDownClass()
+
+    def test_generator_creates_team_members(self):
+        """Generator should create team members based on archetypes."""
+        # ai-success has 5 members (2 early_adopter, 2 follower, 1 skeptic)
+        self.assertEqual(self.stats.team_members_created, 5)
+        self.assertEqual(TeamMember.objects.filter(team=self.team).count(), 5)
+
+    def test_generator_creates_prs(self):
+        """Generator should create PRs for each week."""
+        self.assertGreater(self.stats.prs_created, 0)
+        self.assertEqual(
+            PullRequest.objects.filter(team=self.team).count(),
+            self.stats.prs_created,
+        )
+
+    def test_generator_creates_reviews(self):
+        """Generator should create reviews for non-open PRs."""
+        self.assertGreater(self.stats.reviews_created, 0)
+        self.assertEqual(
+            PRReview.objects.filter(team=self.team).count(),
+            self.stats.reviews_created,
+        )
+
+    def test_generator_creates_commits(self):
+        """Generator should create commits for PRs."""
+        self.assertGreater(self.stats.commits_created, 0)
+        self.assertEqual(
+            Commit.objects.filter(team=self.team).count(),
+            self.stats.commits_created,
+        )
+
+    def test_generator_creates_weekly_metrics(self):
+        """Generator should create WeeklyMetrics records."""
+        self.assertGreater(self.stats.weekly_metrics_created, 0)
+        self.assertEqual(
+            WeeklyMetrics.objects.filter(team=self.team).count(),
+            self.stats.weekly_metrics_created,
+        )
+
+
+@pytest.mark.slow
+class TestScenarioDataGeneratorReproducibility(TestCase):
+    """Tests for seed reproducibility - requires multiple generator runs.
+
+    These tests CANNOT use setUpTestData() because they need to compare
+    results from different generator runs with different seeds.
     """
 
     def setUp(self):
@@ -53,7 +130,6 @@ class TestScenarioDataGenerator(TestCase):
 
     def tearDown(self):
         """Clean up test data."""
-        # Clean up in reverse dependency order
         WeeklyMetrics.objects.filter(team=self.team).delete()
         AIUsageDaily.objects.filter(team=self.team).delete()
         PRReview.objects.filter(team=self.team).delete()
@@ -62,100 +138,6 @@ class TestScenarioDataGenerator(TestCase):
         PullRequest.objects.filter(team=self.team).delete()
         TeamMember.objects.filter(team=self.team).delete()
         self.team.delete()
-
-    @patch("apps.metrics.seeding.data_generator.GitHubPublicFetcher")
-    def test_generator_creates_team_members(self, mock_fetcher_class):
-        """Generator should create team members based on archetypes."""
-        mock_fetcher_class.return_value.fetch_prs.return_value = []
-
-        generator = ScenarioDataGenerator(
-            scenario=self.scenario,
-            seed=42,
-            fetch_github=False,
-        )
-
-        stats = generator.generate(self.team)
-
-        # ai-success has 5 members (2 early_adopter, 2 follower, 1 skeptic)
-        self.assertEqual(stats.team_members_created, 5)
-        self.assertEqual(TeamMember.objects.filter(team=self.team).count(), 5)
-
-    @patch("apps.metrics.seeding.data_generator.GitHubPublicFetcher")
-    def test_generator_creates_prs(self, mock_fetcher_class):
-        """Generator should create PRs for each week."""
-        mock_fetcher_class.return_value.fetch_prs.return_value = []
-
-        generator = ScenarioDataGenerator(
-            scenario=self.scenario,
-            seed=42,
-            fetch_github=False,
-        )
-
-        stats = generator.generate(self.team)
-
-        # Should have created PRs
-        self.assertGreater(stats.prs_created, 0)
-        self.assertEqual(
-            PullRequest.objects.filter(team=self.team).count(),
-            stats.prs_created,
-        )
-
-    @patch("apps.metrics.seeding.data_generator.GitHubPublicFetcher")
-    def test_generator_creates_reviews(self, mock_fetcher_class):
-        """Generator should create reviews for non-open PRs."""
-        mock_fetcher_class.return_value.fetch_prs.return_value = []
-
-        generator = ScenarioDataGenerator(
-            scenario=self.scenario,
-            seed=42,
-            fetch_github=False,
-        )
-
-        stats = generator.generate(self.team)
-
-        self.assertGreater(stats.reviews_created, 0)
-        self.assertEqual(
-            PRReview.objects.filter(team=self.team).count(),
-            stats.reviews_created,
-        )
-
-    @patch("apps.metrics.seeding.data_generator.GitHubPublicFetcher")
-    def test_generator_creates_commits(self, mock_fetcher_class):
-        """Generator should create commits for PRs."""
-        mock_fetcher_class.return_value.fetch_prs.return_value = []
-
-        generator = ScenarioDataGenerator(
-            scenario=self.scenario,
-            seed=42,
-            fetch_github=False,
-        )
-
-        stats = generator.generate(self.team)
-
-        self.assertGreater(stats.commits_created, 0)
-        self.assertEqual(
-            Commit.objects.filter(team=self.team).count(),
-            stats.commits_created,
-        )
-
-    @patch("apps.metrics.seeding.data_generator.GitHubPublicFetcher")
-    def test_generator_creates_weekly_metrics(self, mock_fetcher_class):
-        """Generator should create WeeklyMetrics records."""
-        mock_fetcher_class.return_value.fetch_prs.return_value = []
-
-        generator = ScenarioDataGenerator(
-            scenario=self.scenario,
-            seed=42,
-            fetch_github=False,
-        )
-
-        stats = generator.generate(self.team)
-
-        self.assertGreater(stats.weekly_metrics_created, 0)
-        self.assertEqual(
-            WeeklyMetrics.objects.filter(team=self.team).count(),
-            stats.weekly_metrics_created,
-        )
 
     @patch("apps.metrics.seeding.data_generator.GitHubPublicFetcher")
     def test_same_seed_produces_same_counts(self, mock_fetcher_class):
@@ -213,14 +195,36 @@ class TestScenarioDataGenerator(TestCase):
         stats2 = generator2.generate(self.team)
 
         # At least one count should differ (very likely with different seeds)
-        # We check the reviews since they have more variance
-        # Note: It's theoretically possible they match, but extremely unlikely
         different = (
             stats1.prs_created != stats2.prs_created
             or stats1.reviews_created != stats2.reviews_created
             or stats1.commits_created != stats2.commits_created
         )
         self.assertTrue(different, "Different seeds should produce different results")
+
+
+@pytest.mark.slow
+class TestScenarioDataGeneratorGitHubIntegration(TestCase):
+    """Tests for GitHub data fetching - requires specific mock setups.
+
+    These tests need different mock configurations per test method.
+    """
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.team = Team.objects.create(name="Test Team", slug="test-team")
+        self.scenario = get_scenario("ai-success")
+
+    def tearDown(self):
+        """Clean up test data."""
+        WeeklyMetrics.objects.filter(team=self.team).delete()
+        AIUsageDaily.objects.filter(team=self.team).delete()
+        PRReview.objects.filter(team=self.team).delete()
+        Commit.objects.filter(team=self.team).delete()
+        PRSurvey.objects.filter(team=self.team).delete()
+        PullRequest.objects.filter(team=self.team).delete()
+        TeamMember.objects.filter(team=self.team).delete()
+        self.team.delete()
 
     @patch("apps.metrics.seeding.data_generator.GitHubPublicFetcher")
     def test_generator_uses_github_data_when_enabled(self, mock_fetcher_class):
@@ -245,15 +249,12 @@ class TestScenarioDataGenerator(TestCase):
             scenario=self.scenario,
             seed=42,
             fetch_github=True,
-            github_percentage=1.0,  # Use GitHub for all PRs
+            github_percentage=1.0,
         )
 
         stats = generator.generate(self.team)
 
-        # Should have used GitHub PRs
         self.assertGreater(stats.github_prs_used, 0)
-
-        # Check that some PRs have the GitHub title
         github_titled_prs = PullRequest.objects.filter(
             team=self.team,
             title="GitHub PR Title",
@@ -274,7 +275,6 @@ class TestScenarioDataGenerator(TestCase):
 
         stats = generator.generate(self.team)
 
-        # Should have used factory for all PRs
         self.assertEqual(stats.github_prs_used, 0)
         self.assertGreater(stats.factory_prs_used, 0)
 
@@ -283,39 +283,36 @@ class TestScenarioDataGenerator(TestCase):
 class TestScenarioDataGeneratorWithBottleneck(TestCase):
     """Tests for data generator with review-bottleneck scenario.
 
-    Marked as slow because these tests create full scenario data.
+    Uses setUpTestData() to generate data once for the class.
     """
 
-    def setUp(self):
-        """Set up test fixtures."""
-        self.team = Team.objects.create(name="Bottleneck Team", slug="bottleneck")
-        self.scenario = get_scenario("review-bottleneck")
+    @classmethod
+    def setUpTestData(cls):
+        """Generate bottleneck scenario data ONCE."""
+        cls.team = Team.objects.create(name="Bottleneck Team", slug="bottleneck")
+        cls.scenario = get_scenario("review-bottleneck")
 
-    def tearDown(self):
-        """Clean up test data."""
-        WeeklyMetrics.objects.filter(team=self.team).delete()
-        AIUsageDaily.objects.filter(team=self.team).delete()
-        PRReview.objects.filter(team=self.team).delete()
-        Commit.objects.filter(team=self.team).delete()
-        PRSurvey.objects.filter(team=self.team).delete()
-        PullRequest.objects.filter(team=self.team).delete()
-        TeamMember.objects.filter(team=self.team).delete()
-        self.team.delete()
+        # Patch GitHubPublicFetcher at class level
+        cls.patcher = patch("apps.metrics.seeding.data_generator.GitHubPublicFetcher")
+        cls.mock_fetcher_class = cls.patcher.start()
+        cls.mock_fetcher_class.return_value.fetch_prs.return_value = []
 
-    @patch("apps.metrics.seeding.data_generator.GitHubPublicFetcher")
-    def test_bottleneck_reviewer_gets_more_reviews(self, mock_fetcher_class):
-        """Bottleneck reviewer should handle majority of reviews."""
-        mock_fetcher_class.return_value.fetch_prs.return_value = []
-
-        generator = ScenarioDataGenerator(
-            scenario=self.scenario,
+        # Generate data ONCE
+        cls.generator = ScenarioDataGenerator(
+            scenario=cls.scenario,
             seed=42,
             fetch_github=False,
         )
+        cls.stats = cls.generator.generate(cls.team)
 
-        generator.generate(self.team)
+    @classmethod
+    def tearDownClass(cls):
+        """Clean up class-level patches."""
+        cls.patcher.stop()
+        super().tearDownClass()
 
-        # Find the bottleneck reviewer (should have most reviews)
+    def test_bottleneck_reviewer_gets_more_reviews(self):
+        """Bottleneck reviewer should handle majority of reviews."""
         members = TeamMember.objects.filter(team=self.team)
         review_counts = {}
         for member in members:
@@ -324,14 +321,11 @@ class TestScenarioDataGeneratorWithBottleneck(TestCase):
                 reviewer=member,
             ).count()
 
-        # The member with most reviews should have significantly more
         max_reviews = max(review_counts.values())
         total_reviews = sum(review_counts.values())
 
         if total_reviews > 0:
             bottleneck_ratio = max_reviews / total_reviews
-            # Bottleneck should have noticeably more than average (1/5 = 20%)
-            # With 60% weight, expect ~30%+ after accounting for randomness
             self.assertGreater(
                 bottleneck_ratio,
                 0.25,

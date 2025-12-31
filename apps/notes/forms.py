@@ -43,13 +43,10 @@ class NoteForm(forms.ModelForm):
         return content
 
     def clean(self):
-        """Validate that either content or flag is provided."""
+        """Clean form data - allow saving with no content and no flag (just starred)."""
         cleaned_data = super().clean()
-        content = cleaned_data.get("content", "").strip()
-        flag = cleaned_data.get("flag", "")
-
-        # At least one of content or flag must be provided
-        if not content and not flag:
-            raise forms.ValidationError("Please provide content or select a flag to mark this PR.")
-
+        # Strip whitespace from content
+        content = cleaned_data.get("content", "")
+        if content:
+            cleaned_data["content"] = content.strip()
         return cleaned_data
