@@ -14,6 +14,7 @@ import logging
 import os
 from datetime import date
 from typing import TYPE_CHECKING
+from urllib.parse import urlencode
 
 from groq import Groq
 
@@ -31,36 +32,192 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 # Model configuration for insight generation
-# Using reasoning model for synthesis tasks
-INSIGHT_MODEL = "deepseek-r1-distill-qwen-32b"
+# Primary: openai/gpt-oss-20b - fast, cheap ($0.0375/1M input), good for structured JSON
+# Fallback: llama-3.3-70b-versatile - proven reliable, better reasoning
+INSIGHT_MODEL = "openai/gpt-oss-20b"
 INSIGHT_FALLBACK_MODEL = "llama-3.3-70b-versatile"
 
-# System prompt for insight generation
-INSIGHT_SYSTEM_PROMPT = """You are an engineering metrics analyst helping CTOs understand their team's performance.
-
-Analyze the provided metrics data and generate insights in JSON format.
-
-Your response MUST be valid JSON with this exact structure:
-{
-  "headline": "1-2 sentence headline insight (most important finding)",
-  "detail": "2-3 sentences of context and supporting details",
-  "recommendation": "One specific, actionable recommendation",
-  "metric_cards": [
-    {"label": "Metric Name", "value": "+X%", "trend": "positive|negative|neutral|warning"},
-    {"label": "Metric Name", "value": "-X%", "trend": "positive|negative|neutral|warning"},
-    {"label": "Metric Name", "value": "XX%", "trend": "positive|negative|neutral|warning"},
-    {"label": "Metric Name", "value": "description", "trend": "positive|negative|neutral|warning"}
-  ]
+# JSON Schema for structured output validation
+# Note: additionalProperties must be false on all objects for Groq strict mode
+INSIGHT_JSON_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "headline": {"type": "string", "description": "1-2 sentence headline insight"},
+        "detail": {"type": "string", "description": "2-3 sentences explaining what happened and why it matters"},
+        "possible_causes": {
+            "type": "array",
+            "description": "1-2 hypotheses for WHY this is happening based on data patterns",
+            "items": {"type": "string"},
+            "minItems": 1,
+            "maxItems": 2,
+        },
+        "recommendation": {
+            "type": "string",
+            "description": "Actionable recommendation that addresses an issue mentioned in detail",
+        },
+        "metric_cards": {
+            "type": "array",
+            "description": "MUST use exact values from PRE-COMPUTED METRIC CARDS section",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "label": {"type": "string"},
+                    "value": {"type": "string"},
+                    "trend": {"type": "string", "enum": ["positive", "negative", "neutral", "warning"]},
+                },
+                "required": ["label", "value", "trend"],
+                "additionalProperties": False,
+            },
+            "minItems": 4,
+            "maxItems": 4,
+        },
+        "actions": {
+            "type": "array",
+            "description": "1-3 actionable links - MUST match issues discussed in detail/recommendation",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "action_type": {
+                        "type": "string",
+                        "enum": [
+                            "view_ai_prs",
+                            "view_non_ai_prs",
+                            "view_slow_prs",
+                            "view_reverts",
+                            "view_large_prs",
+                            "view_contributors",
+                            "view_review_bottlenecks",
+                        ],
+                    },
+                    "label": {"type": "string", "description": "Button text for the action"},
+                },
+                "required": ["action_type", "label"],
+                "additionalProperties": False,
+            },
+            "minItems": 1,
+            "maxItems": 3,
+        },
+    },
+    "required": ["headline", "detail", "possible_causes", "recommendation", "metric_cards", "actions"],
+    "additionalProperties": False,
 }
 
-Guidelines:
-- headline: Focus on the most significant finding (velocity change, AI impact, quality issue)
-- detail: Explain the key numbers and what they mean for the team
-- recommendation: Be specific and actionable (not generic advice)
-- metric_cards: Exactly 4 cards showing: throughput, cycle time, AI adoption, and quality indicator
-- trend values: "positive" = good (green), "negative" = bad (red), "neutral" = stable, "warning" = needs attention
+# Models that support json_schema response format (strict JSON)
+MODELS_WITH_JSON_SCHEMA = {"openai/gpt-oss-20b", "openai/gpt-oss-120b"}
 
-Respond with ONLY the JSON object, no additional text."""
+# System prompt for insight generation
+INSIGHT_SYSTEM_PROMPT = """You are an engineering metrics analyst providing actionable insights to CTOs.
+
+## OUTPUT FORMAT
+Return a JSON object with these fields:
+- headline: 1-2 sentence executive summary of the MOST SIGNIFICANT finding
+- detail: 2-3 sentences explaining WHAT happened, with specific numbers
+- possible_causes: 1-2 hypotheses for WHY this is happening
+- recommendation: One specific action that addresses an issue from 'detail'
+- metric_cards: COPY EXACTLY from the PRE-COMPUTED METRIC CARDS section in the data
+- actions: 1-3 buttons matching issues discussed in detail/recommendation
+
+## CRITICAL RULES
+
+### Rule 1: DATA FIDELITY
+- metric_cards: Copy the EXACT values from "PRE-COMPUTED METRIC CARDS" section
+- Do NOT recalculate or round differently - use the provided values verbatim
+- Use EXACT percentages from the data (e.g., if data says "33.2%", use "33.2%")
+
+### Rule 2: ROOT CAUSE HYPOTHESIS
+For possible_causes, hypothesize WHY based on data patterns:
+- Large PR % high + slow cycle time → "Large PRs (>500 lines) require more review cycles"
+- AI PRs slower + high AI adoption → "AI-generated code may need more thorough review"
+- Top contributor > 50% → "Work concentration creates bottleneck when key person is unavailable"
+- Throughput drop + stable contributors → "May indicate sprint planning, holidays, or blocked work"
+- Cycle time up + review time up → "Review delays suggest reviewer capacity constraints"
+
+### Rule 3: RECOMMENDATION COHERENCE
+Your recommendation MUST:
+1. Address a specific issue mentioned in 'detail'
+2. Be actionable (start with a verb: "Investigate...", "Review...", "Implement...")
+3. Connect logically to the actions you provide
+
+BAD: detail mentions AI slowness, recommendation talks about code reviews (unrelated)
+GOOD: detail mentions AI slowness, recommendation says "Review AI-assisted PR workflows"
+
+### Rule 4: ACTION ALIGNMENT
+Actions MUST correspond to issues discussed:
+- If detail mentions AI impact → include view_ai_prs
+- If detail mentions slow PRs → include view_slow_prs
+- If detail mentions contributor concentration → include view_contributors
+- If detail mentions review bottleneck → include view_review_bottlenecks
+
+## PRIORITY ORDER FOR HEADLINE
+Pick the FIRST that applies:
+1. Quality crisis: revert_rate > 8% → Lead with quality/reverts
+2. AI impact significant: adoption > 40% AND |cycle_time_diff| > 25% → Lead with AI impact
+3. Severe slowdown: cycle_time change > 50% → Lead with cycle time
+4. Major throughput change: |throughput change| > 30% → Lead with throughput
+5. Review bottleneck detected → Lead with bottleneck
+6. Bus factor: top_contributor > 50% → Lead with work concentration
+7. Otherwise: Most notable change
+
+## AI IMPACT INTERPRETATION
+- cycle_time_difference_pct = (AI_cycle - NonAI_cycle) / NonAI_cycle * 100
+- NEGATIVE = AI PRs are FASTER (good)
+- POSITIVE = AI PRs are SLOWER (needs investigation)
+
+## BENCHMARKS (for context)
+| Metric | Healthy | Warning | Critical |
+|--------|---------|---------|----------|
+| Cycle Time | <48h | 48-120h | >120h |
+| Revert Rate | <2% | 2-5% | >5% |
+| AI Adoption | >40% | 20-40% | <20% |
+| Top Contributor | <30% | 30-50% | >50% |
+
+## ACTION TYPES
+- view_ai_prs: AI adoption or AI vs non-AI comparison
+- view_non_ai_prs: Comparing AI vs non-AI performance
+- view_slow_prs: Cycle time concerns
+- view_reverts: Quality/revert issues
+- view_large_prs: PR size mentioned
+- view_contributors: Work distribution/bus factor
+- view_review_bottlenecks: Review delays
+
+## TREND VALUES
+- positive: Good for the team (faster, more PRs, better quality)
+- negative: Bad for the team (slower, fewer PRs, worse quality)
+- neutral: Stable, no significant change
+- warning: Needs attention but not critical
+
+Return ONLY valid JSON."""
+
+# Action type to URL filter mapping
+# Maps LLM-generated action_type to PR list query parameters
+ACTION_URL_MAP: dict[str, dict[str, str]] = {
+    "view_ai_prs": {"ai": "yes"},
+    "view_non_ai_prs": {"ai": "no"},
+    "view_slow_prs": {"issue_type": "long_cycle"},
+    "view_reverts": {"issue_type": "revert"},
+    "view_large_prs": {"issue_type": "large_pr"},
+    "view_contributors": {"view": "contributors"},
+    "view_review_bottlenecks": {"view": "reviews", "sort": "pending"},
+}
+
+
+def resolve_action_url(action: dict, days: int) -> str:
+    """Convert action_type to PR list URL with filters.
+
+    Takes an action dict from LLM output and converts it to a valid
+    URL for the PR list page with appropriate filters.
+
+    Args:
+        action: Dict with action_type and label from LLM response
+        days: Number of days for the filter period
+
+    Returns:
+        URL string like "/app/pull-requests/?days=30&ai=yes"
+    """
+    base = "/app/pull-requests/"
+    params = {"days": days}
+    params.update(ACTION_URL_MAP.get(action.get("action_type", ""), {}))
+    return f"{base}?{urlencode(params)}"
 
 
 def gather_insight_data(
@@ -225,11 +382,35 @@ def _create_fallback_insight(data: dict) -> dict:
         },
     ]
 
+    # Build contextual actions based on the insight
+    actions = []
+    if revert_rate > 5:
+        actions.append({"action_type": "view_reverts", "label": "View reverted PRs"})
+    if ai_adoption >= 30:
+        actions.append({"action_type": "view_ai_prs", "label": "View AI-assisted PRs"})
+    # Ensure we always have at least one action
+    if not actions:
+        actions.append({"action_type": "view_slow_prs", "label": "View slow PRs"})
+
+    # Build possible causes based on data patterns
+    possible_causes = []
+    if throughput_change is not None and throughput_change < -20:
+        possible_causes.append("Throughput drop may indicate sprint planning, holidays, or blocked work")
+    if revert_rate > 5:
+        possible_causes.append("High revert rate suggests rushed reviews or insufficient testing")
+    if ai_adoption < 30:
+        possible_causes.append("Low AI adoption may limit potential velocity improvements")
+    # Ensure we always have at least one cause
+    if not possible_causes:
+        possible_causes.append("Metrics are within normal ranges for the team")
+
     return {
         "headline": headline,
         "detail": detail,
+        "possible_causes": possible_causes,
         "recommendation": recommendation,
         "metric_cards": metric_cards,
+        "actions": actions,
         "is_fallback": True,
     }
 
@@ -242,7 +423,8 @@ def generate_insight(
     """Generate insight using GROQ LLM API.
 
     Calls GROQ API with the insight prompt and parses the JSON response.
-    Falls back to rule-based insight on any error.
+    Uses two-pass approach: primary model first, fallback model on error.
+    Falls back to rule-based insight only if both LLM calls fail.
 
     Args:
         data: Dict from gather_insight_data with all metrics
@@ -257,41 +439,68 @@ def generate_insight(
             - metric_cards: List of 4 metric card dicts
             - is_fallback: True if fallback was used
     """
-    try:
-        # Initialize GROQ client
-        client = Groq(api_key=api_key or os.environ.get("GROQ_API_KEY"))
+    # Initialize GROQ client
+    client = Groq(api_key=api_key or os.environ.get("GROQ_API_KEY"))
 
-        # Build the user prompt from data
-        user_prompt = build_insight_prompt(data)
+    # Build the user prompt from data
+    user_prompt = build_insight_prompt(data)
 
-        # Call GROQ API
-        response = client.chat.completions.create(
-            model=model or INSIGHT_MODEL,
-            messages=[
-                {"role": "system", "content": INSIGHT_SYSTEM_PROMPT},
-                {"role": "user", "content": user_prompt},
-            ],
-            response_format={"type": "json_object"},
-            temperature=0.3,
-            max_tokens=1000,
-        )
+    # Try primary model first, then fallback
+    models_to_try = [model or INSIGHT_MODEL, INSIGHT_FALLBACK_MODEL]
 
-        # Parse JSON response
-        content = response.choices[0].message.content
-        result = json.loads(content)
+    for current_model in models_to_try:
+        try:
+            # Build API call parameters
+            api_params = {
+                "model": current_model,
+                "messages": [
+                    {"role": "system", "content": INSIGHT_SYSTEM_PROMPT},
+                    {"role": "user", "content": user_prompt},
+                ],
+                "temperature": 0.3,
+                "max_tokens": 1500,
+            }
 
-        # Add is_fallback=False to indicate successful LLM response
-        result["is_fallback"] = False
+            # Use json_schema for models that support it, json_object for others
+            if current_model in MODELS_WITH_JSON_SCHEMA:
+                api_params["response_format"] = {
+                    "type": "json_schema",
+                    "json_schema": {
+                        "name": "insight_response",
+                        "schema": INSIGHT_JSON_SCHEMA,
+                        "strict": True,
+                    },
+                }
+                # Disable reasoning output for OSS models
+                api_params["include_reasoning"] = False
+            else:
+                # Fallback to json_object for other models
+                api_params["response_format"] = {"type": "json_object"}
 
-        return result
+            # Call GROQ API
+            response = client.chat.completions.create(**api_params)
 
-    except json.JSONDecodeError as e:
-        logger.warning(f"Failed to parse LLM JSON response: {e}")
-        return _create_fallback_insight(data)
+            # Parse JSON response
+            content = response.choices[0].message.content
+            result = json.loads(content)
 
-    except Exception as e:
-        logger.warning(f"LLM insight generation failed: {e}")
-        return _create_fallback_insight(data)
+            # Add is_fallback=False to indicate successful LLM response
+            result["is_fallback"] = False
+
+            logger.info(f"Insight generated successfully with {current_model}")
+            return result
+
+        except json.JSONDecodeError as e:
+            logger.warning(f"Failed to parse JSON from {current_model}: {e}")
+            continue  # Try next model
+
+        except Exception as e:
+            logger.warning(f"LLM insight generation failed with {current_model}: {e}")
+            continue  # Try next model
+
+    # All models failed, use rule-based fallback
+    logger.warning("All LLM models failed, using rule-based fallback")
+    return _create_fallback_insight(data)
 
 
 def cache_insight(

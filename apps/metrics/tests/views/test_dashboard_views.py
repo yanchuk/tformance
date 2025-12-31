@@ -369,34 +369,15 @@ class TestEngineeringInsightsView(TestCase):
         self.assertTemplateUsed(response, "metrics/partials/engineering_insights.html")
 
     def test_context_contains_required_keys(self):
-        """Test that context contains cadence, days, insight, and error keys."""
+        """Test that context contains days, insight, and error keys."""
         self.client.force_login(self.member_user)
 
         response = self.client.get(reverse("metrics:engineering_insights"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertIn("cadence", response.context)
         self.assertIn("days", response.context)
         self.assertIn("insight", response.context)
         self.assertIn("error", response.context)
-
-    def test_default_cadence_is_weekly(self):
-        """Test that default cadence is weekly."""
-        self.client.force_login(self.member_user)
-
-        response = self.client.get(reverse("metrics:engineering_insights"))
-
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.context["cadence"], "weekly")
-
-    def test_accepts_cadence_query_param(self):
-        """Test that engineering_insights accepts cadence query param."""
-        self.client.force_login(self.member_user)
-
-        response = self.client.get(reverse("metrics:engineering_insights"), {"cadence": "monthly"})
-
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.context["cadence"], "monthly")
 
     def test_default_days_is_30(self):
         """Test that default days is 30."""
@@ -424,6 +405,120 @@ class TestEngineeringInsightsView(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertIsNone(response.context["insight"])
+
+    def test_insight_actions_are_resolved_to_urls(self):
+        """Test that insight actions are resolved to proper URLs."""
+        from apps.metrics.models import DailyInsight
+
+        # Create cached insight with actions
+        insight_data = {
+            "headline": "Test headline",
+            "detail": "Test detail",
+            "recommendation": "Test recommendation",
+            "metric_cards": [
+                {"label": "Throughput", "value": "+10%", "trend": "positive"},
+                {"label": "Cycle Time", "value": "-5%", "trend": "positive"},
+                {"label": "AI Adoption", "value": "50%", "trend": "neutral"},
+                {"label": "Quality", "value": "2% reverts", "trend": "positive"},
+            ],
+            "actions": [
+                {"action_type": "view_slow_prs", "label": "View Slow PRs"},
+                {"action_type": "view_ai_prs", "label": "Analyze AI PRs"},
+            ],
+        }
+        DailyInsight.objects.create(
+            team=self.team,
+            date="2024-01-15",
+            category="llm_insight",
+            comparison_period="30",
+            title="Test",
+            metric_value=insight_data,
+        )
+
+        self.client.force_login(self.member_user)
+        response = self.client.get(reverse("metrics:engineering_insights"), {"days": "30"})
+
+        self.assertEqual(response.status_code, 200)
+        insight = response.context["insight"]
+        self.assertIsNotNone(insight)
+        self.assertIn("actions", insight)
+        self.assertEqual(len(insight["actions"]), 2)
+
+        # Verify actions have resolved URLs, not just action_types
+        first_action = insight["actions"][0]
+        self.assertIn("url", first_action)
+        self.assertIn("label", first_action)
+        self.assertIn("/app/pull-requests/", first_action["url"])
+        self.assertIn("days=30", first_action["url"])
+
+    def test_insight_actions_include_correct_filter_params(self):
+        """Test that action URLs include correct filter parameters."""
+        from apps.metrics.models import DailyInsight
+
+        insight_data = {
+            "headline": "Test",
+            "detail": "Test",
+            "recommendation": "Test",
+            "metric_cards": [
+                {"label": "Throughput", "value": "10", "trend": "neutral"},
+                {"label": "Cycle Time", "value": "24h", "trend": "neutral"},
+                {"label": "AI Adoption", "value": "50%", "trend": "neutral"},
+                {"label": "Quality", "value": "2%", "trend": "positive"},
+            ],
+            "actions": [
+                {"action_type": "view_reverts", "label": "View Reverts"},
+            ],
+        }
+        DailyInsight.objects.create(
+            team=self.team,
+            date="2024-01-15",
+            category="llm_insight",
+            comparison_period="7",
+            title="Test",
+            metric_value=insight_data,
+        )
+
+        self.client.force_login(self.member_user)
+        response = self.client.get(reverse("metrics:engineering_insights"), {"days": "7"})
+
+        insight = response.context["insight"]
+        action = insight["actions"][0]
+        self.assertIn("issue_type=revert", action["url"])
+        self.assertIn("days=7", action["url"])
+
+    def test_insight_without_actions_has_empty_actions_list(self):
+        """Test that insights without actions field get empty actions list."""
+        from apps.metrics.models import DailyInsight
+
+        # Legacy insight without actions field
+        insight_data = {
+            "headline": "Legacy headline",
+            "detail": "Legacy detail",
+            "recommendation": "Legacy recommendation",
+            "metric_cards": [
+                {"label": "Throughput", "value": "10", "trend": "neutral"},
+                {"label": "Cycle Time", "value": "24h", "trend": "neutral"},
+                {"label": "AI Adoption", "value": "50%", "trend": "neutral"},
+                {"label": "Quality", "value": "2%", "trend": "positive"},
+            ],
+            # No actions field
+        }
+        DailyInsight.objects.create(
+            team=self.team,
+            date="2024-01-15",
+            category="llm_insight",
+            comparison_period="30",
+            title="Test",
+            metric_value=insight_data,
+        )
+
+        self.client.force_login(self.member_user)
+        response = self.client.get(reverse("metrics:engineering_insights"), {"days": "30"})
+
+        insight = response.context["insight"]
+        self.assertIsNotNone(insight)
+        self.assertIn("actions", insight)
+        self.assertEqual(insight["actions"], [])
 
 
 class TestRefreshInsightView(TestCase):

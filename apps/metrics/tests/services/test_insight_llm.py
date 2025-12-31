@@ -313,7 +313,7 @@ class TestGenerateInsight(TestCase):
 
         # Verify call parameters
         call_kwargs = mock_client.chat.completions.create.call_args.kwargs
-        self.assertEqual(call_kwargs["model"], "deepseek-r1-distill-qwen-32b")
+        self.assertEqual(call_kwargs["model"], "openai/gpt-oss-20b")
         self.assertEqual(len(call_kwargs["messages"]), 2)  # system + user
         self.assertIn("json", call_kwargs["response_format"]["type"].lower())
 
@@ -513,3 +513,158 @@ class TestCacheInsight(TestCase):
             category="llm_insight",
         ).count()
         self.assertEqual(count, 2)
+
+
+class TestResolveActionUrl(TestCase):
+    """Tests for resolve_action_url function.
+
+    Tests that action_type + days are converted to proper PR list URLs.
+    """
+
+    def test_view_ai_prs_action(self):
+        """Test that view_ai_prs action generates correct URL."""
+        from apps.metrics.services.insight_llm import resolve_action_url
+
+        action = {"action_type": "view_ai_prs", "label": "View AI PRs"}
+        result = resolve_action_url(action, days=30)
+
+        self.assertEqual(result, "/app/pull-requests/?days=30&ai=yes")
+
+    def test_view_non_ai_prs_action(self):
+        """Test that view_non_ai_prs action generates correct URL."""
+        from apps.metrics.services.insight_llm import resolve_action_url
+
+        action = {"action_type": "view_non_ai_prs", "label": "View Non-AI PRs"}
+        result = resolve_action_url(action, days=30)
+
+        self.assertEqual(result, "/app/pull-requests/?days=30&ai=no")
+
+    def test_view_slow_prs_action(self):
+        """Test that view_slow_prs action generates correct URL."""
+        from apps.metrics.services.insight_llm import resolve_action_url
+
+        action = {"action_type": "view_slow_prs", "label": "View Slow PRs"}
+        result = resolve_action_url(action, days=7)
+
+        self.assertEqual(result, "/app/pull-requests/?days=7&issue_type=long_cycle")
+
+    def test_view_reverts_action(self):
+        """Test that view_reverts action generates correct URL."""
+        from apps.metrics.services.insight_llm import resolve_action_url
+
+        action = {"action_type": "view_reverts", "label": "View Reverts"}
+        result = resolve_action_url(action, days=90)
+
+        self.assertEqual(result, "/app/pull-requests/?days=90&issue_type=revert")
+
+    def test_view_large_prs_action(self):
+        """Test that view_large_prs action generates correct URL."""
+        from apps.metrics.services.insight_llm import resolve_action_url
+
+        action = {"action_type": "view_large_prs", "label": "View Large PRs"}
+        result = resolve_action_url(action, days=30)
+
+        self.assertEqual(result, "/app/pull-requests/?days=30&issue_type=large_pr")
+
+    def test_unknown_action_type_returns_base_url(self):
+        """Test that unknown action_type returns base PR list URL."""
+        from apps.metrics.services.insight_llm import resolve_action_url
+
+        action = {"action_type": "unknown_action", "label": "Unknown"}
+        result = resolve_action_url(action, days=30)
+
+        # Should still return valid URL with just days parameter
+        self.assertEqual(result, "/app/pull-requests/?days=30")
+
+    def test_different_days_values(self):
+        """Test that days parameter is correctly included in URL."""
+        from apps.metrics.services.insight_llm import resolve_action_url
+
+        action = {"action_type": "view_ai_prs", "label": "View AI PRs"}
+
+        # Test 7 days
+        result_7 = resolve_action_url(action, days=7)
+        self.assertIn("days=7", result_7)
+
+        # Test 90 days
+        result_90 = resolve_action_url(action, days=90)
+        self.assertIn("days=90", result_90)
+
+
+class TestInsightJsonSchemaActions(TestCase):
+    """Tests for actions field in INSIGHT_JSON_SCHEMA."""
+
+    def test_schema_includes_actions_field(self):
+        """Test that INSIGHT_JSON_SCHEMA includes actions field."""
+        from apps.metrics.services.insight_llm import INSIGHT_JSON_SCHEMA
+
+        self.assertIn("actions", INSIGHT_JSON_SCHEMA["properties"])
+
+    def test_actions_field_is_array(self):
+        """Test that actions field is defined as an array."""
+        from apps.metrics.services.insight_llm import INSIGHT_JSON_SCHEMA
+
+        actions_schema = INSIGHT_JSON_SCHEMA["properties"]["actions"]
+        self.assertEqual(actions_schema["type"], "array")
+
+    def test_actions_item_has_required_fields(self):
+        """Test that action items require action_type and label."""
+        from apps.metrics.services.insight_llm import INSIGHT_JSON_SCHEMA
+
+        item_schema = INSIGHT_JSON_SCHEMA["properties"]["actions"]["items"]
+        self.assertIn("action_type", item_schema["properties"])
+        self.assertIn("label", item_schema["properties"])
+        self.assertIn("action_type", item_schema["required"])
+        self.assertIn("label", item_schema["required"])
+
+    def test_action_type_has_valid_enum(self):
+        """Test that action_type uses enum with predefined values."""
+        from apps.metrics.services.insight_llm import INSIGHT_JSON_SCHEMA
+
+        action_type_schema = INSIGHT_JSON_SCHEMA["properties"]["actions"]["items"]["properties"]["action_type"]
+        self.assertIn("enum", action_type_schema)
+        expected_types = {
+            "view_ai_prs",
+            "view_non_ai_prs",
+            "view_slow_prs",
+            "view_reverts",
+            "view_large_prs",
+            "view_contributors",
+            "view_review_bottlenecks",
+        }
+        self.assertEqual(set(action_type_schema["enum"]), expected_types)
+
+    def test_actions_min_max_items(self):
+        """Test that actions array has 1-3 items constraint."""
+        from apps.metrics.services.insight_llm import INSIGHT_JSON_SCHEMA
+
+        actions_schema = INSIGHT_JSON_SCHEMA["properties"]["actions"]
+        self.assertEqual(actions_schema["minItems"], 1)
+        self.assertEqual(actions_schema["maxItems"], 3)
+
+
+class TestInsightJsonSchemaPossibleCauses(TestCase):
+    """Test cases for possible_causes field in INSIGHT_JSON_SCHEMA."""
+
+    def test_schema_includes_possible_causes_field(self):
+        """Test that schema has possible_causes field."""
+        from apps.metrics.services.insight_llm import INSIGHT_JSON_SCHEMA
+
+        self.assertIn("possible_causes", INSIGHT_JSON_SCHEMA["properties"])
+        self.assertIn("possible_causes", INSIGHT_JSON_SCHEMA["required"])
+
+    def test_possible_causes_is_array_of_strings(self):
+        """Test that possible_causes is an array of strings."""
+        from apps.metrics.services.insight_llm import INSIGHT_JSON_SCHEMA
+
+        causes_schema = INSIGHT_JSON_SCHEMA["properties"]["possible_causes"]
+        self.assertEqual(causes_schema["type"], "array")
+        self.assertEqual(causes_schema["items"]["type"], "string")
+
+    def test_possible_causes_min_max_items(self):
+        """Test that possible_causes has 1-2 items constraint."""
+        from apps.metrics.services.insight_llm import INSIGHT_JSON_SCHEMA
+
+        causes_schema = INSIGHT_JSON_SCHEMA["properties"]["possible_causes"]
+        self.assertEqual(causes_schema["minItems"], 1)
+        self.assertEqual(causes_schema["maxItems"], 2)

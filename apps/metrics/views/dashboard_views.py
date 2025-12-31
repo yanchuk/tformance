@@ -8,6 +8,7 @@ from django.views.decorators.http import require_POST
 
 from apps.metrics.models import DailyInsight
 from apps.metrics.services import insight_service
+from apps.metrics.services.insight_llm import resolve_action_url
 from apps.metrics.view_utils import get_date_range_from_request
 from apps.teams.decorators import login_and_team_required, team_admin_required
 
@@ -88,25 +89,23 @@ def engineering_insights(request: HttpRequest) -> HttpResponse:
     """Render LLM-generated engineering insights (HTMX endpoint).
 
     Query params:
-        cadence: "weekly" or "monthly" (default: weekly)
-        days: Number of days for date range context
+        days: Number of days for the insight period (7, 30, or 90)
     """
-    cadence = request.GET.get("cadence", "weekly")
     days = int(request.GET.get("days", 30))
 
-    # Get the most recent cached insight for this cadence
+    # Get the most recent cached insight for this days period
+    # Uses days as comparison_period (e.g., "7", "30", "90")
     insight_record = (
         DailyInsight.objects.filter(
             team=request.team,
             category="llm_insight",
-            comparison_period=cadence,
+            comparison_period=str(days),
         )
         .order_by("-date")
         .first()
     )
 
     context = {
-        "cadence": cadence,
         "days": days,
         "insight": None,
         "error": None,
@@ -115,11 +114,18 @@ def engineering_insights(request: HttpRequest) -> HttpResponse:
     if insight_record and insight_record.metric_value:
         # Parse the stored JSON insight
         insight_data = insight_record.metric_value
+
+        # Resolve action URLs
+        raw_actions = insight_data.get("actions", [])
+        resolved_actions = [{"label": a.get("label", ""), "url": resolve_action_url(a, days)} for a in raw_actions]
+
         context["insight"] = {
             "headline": insight_data.get("headline", ""),
             "detail": insight_data.get("detail", ""),
+            "possible_causes": insight_data.get("possible_causes", []),
             "recommendation": insight_data.get("recommendation", ""),
             "metric_cards": insight_data.get("metric_cards", []),
+            "actions": resolved_actions,
             "is_fallback": insight_data.get("is_fallback", False),
             "generated_at": insight_record.updated_at,
         }

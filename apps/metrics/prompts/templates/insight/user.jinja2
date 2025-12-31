@@ -1,96 +1,112 @@
 # Engineering Metrics Analysis for {{ metadata.team_name }}
+# Period: {{ metadata.start_date }} to {{ metadata.end_date }} ({{ metadata.days }} days)
 
-## Period: {{ metadata.start_date }} to {{ metadata.end_date }} ({{ metadata.days }} days)
+---
 
-## Velocity Metrics
+## PRE-COMPUTED METRIC CARDS (USE THESE EXACT VALUES)
 
-### Throughput
-- Current period: {{ velocity.throughput.current }} PRs merged
-- Previous period: {{ velocity.throughput.previous }} PRs merged
-{% if velocity.throughput.pct_change is not none %}
-- Change: {{ "%.1f"|format(velocity.throughput.pct_change) }}%
-{% else %}
-- Change: N/A (no baseline)
-{% endif %}
+You MUST use these exact values for metric_cards. Do NOT recalculate.
 
-### Cycle Time (hours from PR open to merge)
-{% if velocity.cycle_time.current is not none %}
-- Current period: {{ "%.1f"|format(velocity.cycle_time.current) }} hours
-{% else %}
-- Current period: N/A
-{% endif %}
-{% if velocity.cycle_time.previous is not none %}
-- Previous period: {{ "%.1f"|format(velocity.cycle_time.previous) }} hours
-{% else %}
-- Previous period: N/A
-{% endif %}
-{% if velocity.cycle_time.pct_change is not none %}
-- Change: {{ "%.1f"|format(velocity.cycle_time.pct_change) }}% (negative = faster)
-{% else %}
-- Change: N/A
-{% endif %}
+{% set throughput_change = velocity.throughput.pct_change %}
+{% set cycle_time_change = velocity.cycle_time.pct_change %}
+{% set ai_adoption = ai_impact.ai_adoption_pct %}
+{% set revert_rate = quality.revert_rate %}
 
-### Review Time (hours to first review)
-{% if velocity.review_time.current is not none %}
-- Current period: {{ "%.1f"|format(velocity.review_time.current) }} hours
-{% else %}
-- Current period: N/A
-{% endif %}
-{% if velocity.review_time.previous is not none %}
-- Previous period: {{ "%.1f"|format(velocity.review_time.previous) }} hours
-{% else %}
-- Previous period: N/A
-{% endif %}
-{% if velocity.review_time.pct_change is not none %}
-- Change: {{ "%.1f"|format(velocity.review_time.pct_change) }}% (negative = faster)
-{% else %}
-- Change: N/A
-{% endif %}
+1. **Throughput**
+   - value: "{% if throughput_change is not none %}{{ "%+.1f"|format(throughput_change) }}%{% else %}{{ velocity.throughput.current }} PRs{% endif %}"
+   - trend: {% if throughput_change is not none %}{% if throughput_change > 10 %}"positive"{% elif throughput_change < -10 %}"negative"{% else %}"neutral"{% endif %}{% else %}"neutral"{% endif %}
 
-## Quality Metrics
+2. **Cycle Time**
+   - value: "{% if cycle_time_change is not none %}{{ "%+.1f"|format(cycle_time_change) }}%{% elif velocity.cycle_time.current is not none %}{{ "%.1f"|format(velocity.cycle_time.current) }}h{% else %}N/A{% endif %}"
+   - trend: {% if cycle_time_change is not none %}{% if cycle_time_change < -10 %}"positive"{% elif cycle_time_change > 20 %}"negative"{% elif cycle_time_change > 10 %}"warning"{% else %}"neutral"{% endif %}{% else %}"neutral"{% endif %}
 
-- Reverts: {{ quality.revert_count }} ({{ "%.1f"|format(quality.revert_rate) }}% of merged PRs)
-- Hotfixes: {{ quality.hotfix_count }} ({{ "%.1f"|format(quality.hotfix_rate) }}% of merged PRs)
-{% if quality.avg_review_rounds is not none %}
-- Average review rounds: {{ "%.1f"|format(quality.avg_review_rounds) }}
-{% else %}
-- Average review rounds: N/A
-{% endif %}
-- Large PRs (>500 lines): {{ "%.1f"|format(quality.large_pr_pct) }}%
+3. **AI Adoption**
+   - value: "{{ "%.1f"|format(ai_adoption) }}%"
+   - trend: {% if ai_adoption >= 40 %}"positive"{% elif ai_adoption >= 20 %}"neutral"{% else %}"warning"{% endif %}
 
-## Team Health
+4. **Quality**
+   - value: "{{ "%.1f"|format(revert_rate) }}% reverts"
+   - trend: {% if revert_rate <= 2 %}"positive"{% elif revert_rate <= 5 %}"warning"{% else %}"negative"{% endif %}
+
+---
+
+## RAW METRICS DATA
+
+### Velocity
+
+**Throughput (PRs merged)**
+- Current: {{ velocity.throughput.current }} PRs
+- Previous: {{ velocity.throughput.previous }} PRs
+- Change: {% if velocity.throughput.pct_change is not none %}{{ "%.1f"|format(velocity.throughput.pct_change) }}%{% else %}N/A{% endif %}
+
+**Cycle Time (hours from PR open to merge)**
+- Current: {% if velocity.cycle_time.current is not none %}{{ "%.1f"|format(velocity.cycle_time.current) }}h{% else %}N/A{% endif %}
+- Previous: {% if velocity.cycle_time.previous is not none %}{{ "%.1f"|format(velocity.cycle_time.previous) }}h{% else %}N/A{% endif %}
+- Change: {% if velocity.cycle_time.pct_change is not none %}{{ "%.1f"|format(velocity.cycle_time.pct_change) }}% (positive = slower){% else %}N/A{% endif %}
+
+**Review Time (hours to first review)**
+- Current: {% if velocity.review_time.current is not none %}{{ "%.1f"|format(velocity.review_time.current) }}h{% else %}N/A{% endif %}
+- Previous: {% if velocity.review_time.previous is not none %}{{ "%.1f"|format(velocity.review_time.previous) }}h{% else %}N/A{% endif %}
+- Change: {% if velocity.review_time.pct_change is not none %}{{ "%.1f"|format(velocity.review_time.pct_change) }}%{% else %}N/A{% endif %}
+
+### Quality
+
+- Reverts: {{ quality.revert_count }} ({{ "%.1f"|format(quality.revert_rate) }}% rate) {% if quality.revert_rate > 5 %}⚠️ ABOVE THRESHOLD{% endif %}
+- Hotfixes: {{ quality.hotfix_count }} ({{ "%.1f"|format(quality.hotfix_rate) }}% rate)
+- Avg review rounds: {% if quality.avg_review_rounds is not none %}{{ "%.1f"|format(quality.avg_review_rounds) }}{% else %}N/A{% endif %}
+- Large PRs (>500 lines): {{ "%.1f"|format(quality.large_pr_pct) }}% {% if quality.large_pr_pct > 30 %}⚠️ HIGH{% endif %}
+
+### Team Health
 
 - Active contributors: {{ team_health.active_contributors }}
-- Top contributor share: {{ "%.1f"|format(team_health.pr_distribution.top_contributor_pct) }}% of PRs
-- Work concentration: {{ "High risk" if team_health.pr_distribution.is_concentrated else "Healthy distribution" }}
+- Top contributor share: {{ "%.1f"|format(team_health.pr_distribution.top_contributor_pct) }}% {% if team_health.pr_distribution.top_contributor_pct > 50 %}⚠️ BUS FACTOR RISK{% endif %}
+- Work concentration: {{ "HIGH RISK" if team_health.pr_distribution.is_concentrated else "Healthy" }}
 {% if team_health.review_distribution.avg_reviews_per_reviewer is not none %}
 - Avg reviews per reviewer: {{ "%.1f"|format(team_health.review_distribution.avg_reviews_per_reviewer) }}
 {% endif %}
-- Max reviews by single reviewer: {{ team_health.review_distribution.max_reviews }}
+- Max reviews (single person): {{ team_health.review_distribution.max_reviews }}
 {% if team_health.bottleneck %}
-- BOTTLENECK DETECTED: {{ team_health.bottleneck.reviewer_name }} has {{ team_health.bottleneck.pending_count }} pending reviews (team avg: {{ team_health.bottleneck.team_avg }})
+- ⚠️ BOTTLENECK: {{ team_health.bottleneck.reviewer_name }} has {{ team_health.bottleneck.pending_count }} pending reviews (team avg: {{ team_health.bottleneck.team_avg }})
 {% else %}
 - No review bottleneck detected
 {% endif %}
 
-## AI Impact
+### AI Impact
 
 - AI-assisted PRs: {{ ai_impact.ai_pr_count }} ({{ "%.1f"|format(ai_impact.ai_adoption_pct) }}% adoption)
 - Non-AI PRs: {{ ai_impact.non_ai_pr_count }}
-{% if ai_impact.ai_avg_cycle_time is not none %}
-- AI PR avg cycle time: {{ "%.1f"|format(ai_impact.ai_avg_cycle_time) }} hours
+{% if ai_impact.ai_avg_cycle_time is not none and ai_impact.non_ai_avg_cycle_time is not none %}
+- AI PR cycle time: {{ "%.1f"|format(ai_impact.ai_avg_cycle_time) }}h
+- Non-AI PR cycle time: {{ "%.1f"|format(ai_impact.non_ai_avg_cycle_time) }}h
+{% set ai_diff_pct = ((ai_impact.ai_avg_cycle_time - ai_impact.non_ai_avg_cycle_time) / ai_impact.non_ai_avg_cycle_time * 100) if ai_impact.non_ai_avg_cycle_time > 0 else 0 %}
+{% if ai_diff_pct < -10 %}
+- ✅ AI HELPS: AI PRs are {{ "%.1f"|format(ai_diff_pct|abs) }}% FASTER
+{% elif ai_diff_pct > 10 %}
+- ⚠️ AI HURTS: AI PRs are {{ "%.1f"|format(ai_diff_pct) }}% SLOWER
+{% else %}
+- AI PRs have similar cycle time to non-AI PRs
 {% endif %}
-{% if ai_impact.non_ai_avg_cycle_time is not none %}
-- Non-AI PR avg cycle time: {{ "%.1f"|format(ai_impact.non_ai_avg_cycle_time) }} hours
-{% endif %}
-{% if ai_impact.cycle_time_difference_pct is not none %}
-- AI cycle time difference: {{ "%.1f"|format(ai_impact.cycle_time_difference_pct) }}% (negative = AI is faster)
 {% endif %}
 
 ---
 
-Analyze these metrics and provide:
-1. A 1-2 sentence headline insight (most important finding)
-2. 2-3 sentences of context and detail
-3. One actionable recommendation
-4. Key metric cards for: throughput change, cycle time change, AI adoption rate, quality indicator
+## BENCHMARK CONTEXT
+
+| Metric | Current | Benchmark | Status |
+|--------|---------|-----------|--------|
+| Cycle Time | {% if velocity.cycle_time.current is not none %}{{ "%.0f"|format(velocity.cycle_time.current) }}h{% else %}N/A{% endif %} | <48h healthy, >120h critical | {% if velocity.cycle_time.current is not none %}{% if velocity.cycle_time.current < 48 %}✅ Healthy{% elif velocity.cycle_time.current < 120 %}⚠️ Warning{% else %}🔴 Critical{% endif %}{% else %}N/A{% endif %} |
+| Revert Rate | {{ "%.1f"|format(quality.revert_rate) }}% | <2% healthy, >5% critical | {% if quality.revert_rate < 2 %}✅ Healthy{% elif quality.revert_rate < 5 %}⚠️ Warning{% else %}🔴 Critical{% endif %} |
+| AI Adoption | {{ "%.0f"|format(ai_impact.ai_adoption_pct) }}% | >40% healthy, <20% low | {% if ai_impact.ai_adoption_pct >= 40 %}✅ Healthy{% elif ai_impact.ai_adoption_pct >= 20 %}⚠️ Moderate{% else %}📊 Low{% endif %} |
+| Top Contributor | {{ "%.0f"|format(team_health.pr_distribution.top_contributor_pct) }}% | <30% healthy, >50% risk | {% if team_health.pr_distribution.top_contributor_pct < 30 %}✅ Healthy{% elif team_health.pr_distribution.top_contributor_pct < 50 %}⚠️ Warning{% else %}🔴 Bus Factor{% endif %} |
+
+---
+
+## YOUR TASK
+
+Based on this data:
+1. Write a headline identifying the MOST SIGNIFICANT issue (use priority order from system prompt)
+2. Provide 2-3 sentences of detail with SPECIFIC numbers from the data
+3. List 1-2 possible causes (hypothesize WHY based on data patterns)
+4. Give ONE actionable recommendation that addresses an issue from your detail
+5. Use the PRE-COMPUTED METRIC CARDS exactly as shown above
+6. Select 1-3 actions that match the issues you discussed
