@@ -1,0 +1,134 @@
+{% load i18n %}
+<div class="engineering-insights-container" x-data="{ cadence: '{{ cadence|default:'weekly' }}' }">
+  {% if insight %}
+  <!-- Insight Content -->
+  <div class="space-y-4">
+    <!-- Headline -->
+    <div>
+      <h3 class="text-lg font-semibold text-base-content leading-tight">
+        {{ insight.headline }}
+      </h3>
+      {% if insight.is_fallback %}
+      <span class="badge badge-ghost badge-sm mt-1">{% trans "Auto-generated" %}</span>
+      {% endif %}
+    </div>
+
+    <!-- Detail -->
+    <p class="text-sm text-base-content/80">
+      {{ insight.detail }}
+    </p>
+
+    <!-- Recommendation -->
+    {% if insight.recommendation %}
+    <div class="bg-primary/10 rounded-lg p-3 border-l-4 border-primary">
+      <div class="flex items-start gap-2">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-primary flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+        </svg>
+        <div>
+          <div class="text-xs font-medium text-primary uppercase tracking-wide mb-1">{% trans "Recommendation" %}</div>
+          <p class="text-sm text-base-content">{{ insight.recommendation }}</p>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Metric Cards -->
+    {% if insight.metric_cards %}
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
+      {% for card in insight.metric_cards %}
+      <div class="bg-base-200 rounded-lg p-3 text-center">
+        <div class="text-xl font-bold tabular-nums
+          {% if card.trend == 'positive' %}text-success
+          {% elif card.trend == 'negative' %}text-error
+          {% elif card.trend == 'warning' %}text-warning
+          {% else %}text-base-content{% endif %}">
+          {{ card.value }}
+        </div>
+        <div class="text-xs text-base-content/60 mt-1">{{ card.label }}</div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Footer: Cadence + Refresh -->
+  <div class="flex items-center justify-between pt-4 mt-4 border-t border-base-300">
+    <div class="flex items-center gap-2">
+      <!-- Cadence Toggle -->
+      <div class="join">
+        <button type="button"
+                class="join-item btn btn-xs"
+                :class="cadence === 'weekly' ? 'btn-primary' : 'btn-ghost'"
+                @click="cadence = 'weekly'"
+                hx-get="{% url 'metrics:engineering_insights' %}?cadence=weekly&days={{ days }}"
+                hx-target="#engineering-insights-container"
+                hx-swap="innerHTML">
+          {% trans "Weekly" %}
+        </button>
+        <button type="button"
+                class="join-item btn btn-xs"
+                :class="cadence === 'monthly' ? 'btn-primary' : 'btn-ghost'"
+                @click="cadence = 'monthly'"
+                hx-get="{% url 'metrics:engineering_insights' %}?cadence=monthly&days={{ days }}"
+                hx-target="#engineering-insights-container"
+                hx-swap="innerHTML">
+          {% trans "Monthly" %}
+        </button>
+      </div>
+      {% if insight.generated_at %}
+      <span class="text-xs text-base-content/50">
+        {% trans "Updated" %} {{ insight.generated_at|timesince }} {% trans "ago" %}
+      </span>
+      {% endif %}
+    </div>
+
+    <!-- Refresh Button -->
+    <button type="button"
+            class="btn btn-ghost btn-xs gap-1"
+            hx-post="{% url 'metrics:refresh_insight' %}?cadence={{ cadence }}"
+            hx-target="#engineering-insights-container"
+            hx-swap="innerHTML"
+            hx-indicator="#insight-refresh-spinner">
+      <span id="insight-refresh-spinner" class="loading loading-spinner loading-xs htmx-indicator"></span>
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+      </svg>
+      {% trans "Refresh" %}
+    </button>
+  </div>
+
+  {% elif error %}
+  <!-- Error State -->
+  <div class="flex flex-col items-center justify-center py-8">
+    <div class="w-12 h-12 mb-3 rounded-full bg-error/10 flex items-center justify-center">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+      </svg>
+    </div>
+    <p class="text-base-content/80 font-medium">{% trans "Unable to Load Insight" %}</p>
+    <p class="text-base-content/60 text-sm mb-4">{{ error }}</p>
+    <button type="button"
+            class="btn btn-sm btn-primary"
+            hx-get="{% url 'metrics:engineering_insights' %}?cadence={{ cadence|default:'weekly' }}&days={{ days }}"
+            hx-target="#engineering-insights-container"
+            hx-swap="innerHTML">
+      {% trans "Try Again" %}
+    </button>
+  </div>
+
+  {% else %}
+  <!-- No Data State -->
+  <div class="flex flex-col items-center justify-center py-8">
+    <div class="w-12 h-12 mb-3 rounded-full bg-base-300 flex items-center justify-center">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-base-content/60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+      </svg>
+    </div>
+    <p class="text-base-content/80 font-medium">{% trans "No Insights Yet" %}</p>
+    <p class="text-base-content/60 text-sm text-center max-w-xs">
+      {% trans "Insights are generated weekly on Mondays. Check back soon for your team's performance summary." %}
+    </p>
+  </div>
+  {% endif %}
+</div>
