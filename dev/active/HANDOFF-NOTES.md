@@ -1,67 +1,77 @@
 # Session Handoff Notes
 
-**Last Updated: 2025-12-26 23:30 UTC**
+**Last Updated: 2025-12-31**
 
-## Current Status: Trends Charts Fix - COMPLETED
+## Current Status: Performance Optimization - IN PROGRESS
 
-All issues on the Trends page at `/app/metrics/analytics/trends/` have been fixed.
+Branch: `perf-optimization`
+Worktree: `/Users/yanchuk/Documents/GitHub/tformance-perf-optimization`
 
----
-
-## Fixes Applied
-
-### 1. Benchmark 500 Error (FIXED)
-- **Root cause**: KeyError in `chart_views.py` - accessing `result["benchmarks"]` when service returns `result["benchmark"]` (singular)
-- **Fix**: Changed key name and added `.get()` for safety
-
-### 2. Charts Not Rendering (FIXED)
-- **Root cause**: Chart.js imported as ES module but not exposed globally
-- **Fix**: Added `window.Chart = Chart;` in `assets/javascript/app.js`
-
-### 3. Full-Width Layout (FIXED)
-- **Change**: Updated `templates/metrics/analytics/trends.html` to use `space-y-6` instead of `grid grid-cols-1 lg:grid-cols-2`
-- PR Types Over Time and Technology Breakdown charts now render full-width
+**IMPORTANT**: Worktree was recreated fresh this session. All changes are uncommitted.
 
 ---
 
-## Completed Work This Session
+## What Was Completed ✅
 
-### Trends Charts Fix
-- Fixed benchmark panel 500 error (KeyError bug)
-- Exposed Chart.js globally for HTMX partial scripts
-- Changed PR Types and Tech charts to full-width layout
-- All 124 tests passing
+### 1. Generator Pattern for PR Fetching
+Modified `apps/integrations/services/github_sync.py`:
+- `get_repository_pull_requests()` now returns generator (not list)
+- Added `days_back` parameter for filtering PRs by updated_at
+- Memory stays constant for repos with 100k+ PRs
 
-### Previous Work (Already Committed)
-- PR List Row Click Improvements
-- Trends URL Parameters Fix
-- PR List LLM Enrichment
+### 2. Test Updates
+- Created `apps/integrations/tests/test_github_sync_days_back.py` (3 tests)
+- Updated `apps/integrations/tests/github_sync/test_pr_fetch.py` (6 tests fixed)
+- All 15 tests pass
 
----
-
-## Files Changed
-
-```
-apps/metrics/views/chart_views.py - Fixed benchmark KeyError
-assets/javascript/app.js - Exposed Chart.js globally
-templates/metrics/analytics/trends.html - Full-width layout
-dev/active/trends-charts-fix/ - Dev documentation
-```
+### 3. GIN Indexes Migration (Partial)
+Created `apps/metrics/migrations/0033_add_jsonb_gin_indexes.py`
 
 ---
 
-## Commands Reference
+## What Was In Progress 🔄
+
+### Add GIN indexes to PullRequest model
+
+**File:** `apps/metrics/models/github.py`
+
+**Goal:** Add GinIndex imports and indexes to model Meta class
+
+---
+
+## Commands to Run on Restart
 
 ```bash
-# Run trends tests
-.venv/bin/pytest apps/metrics/tests/test_trends_views.py -v
+# 1. Navigate to worktree
+cd /Users/yanchuk/Documents/GitHub/tformance-perf-optimization
 
-# Run benchmark tests
-.venv/bin/pytest apps/metrics/tests/test_benchmarks.py -v
+# 2. Run tests
+/Users/yanchuk/Documents/GitHub/tformance/.venv/bin/pytest apps/integrations/tests/test_github_sync_days_back.py apps/integrations/tests/github_sync/test_pr_fetch.py -v
 
-# Run all tests
-make test
+# 3. Check status
+git status
 
-# View trends page
-open "http://localhost:8000/app/metrics/analytics/trends/?preset=this_year&granularity=monthly&metrics=cycle_time,review_time,pr_count"
+# 4. Commit if tests pass
+git add -A && git commit -m "feat(perf): add days_back filter and generator pattern for memory-efficient PR sync"
+```
+
+---
+
+## Remaining Tasks
+
+1. Add GinIndex to PullRequest model Meta
+2. Run migration
+3. Add CELERY_RESULT_EXPIRES to settings
+4. Document Celery worker split for production
+
+---
+
+## Files with Uncommitted Changes
+
+```
+apps/integrations/services/github_sync.py
+apps/integrations/tests/github_sync/test_pr_fetch.py
+apps/integrations/tests/test_github_sync_days_back.py  # NEW
+apps/metrics/migrations/0033_add_jsonb_gin_indexes.py  # NEW
+dev/active/performance-optimization/*  # NEW docs
 ```

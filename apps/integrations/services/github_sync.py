@@ -70,7 +70,8 @@ def get_repository_pull_requests(
     repo_full_name: str,
     state: str = "all",
     per_page: int = 100,
-) -> list[dict]:
+    days_back: int | None = None,
+):
     """Fetch pull requests from a GitHub repository.
 
     Args:
@@ -78,13 +79,20 @@ def get_repository_pull_requests(
         repo_full_name: Repository in "owner/repo" format
         state: PR state filter ("all", "open", "closed")
         per_page: Results per page (max 100, ignored - PyGithub handles pagination)
+        days_back: If set, only return PRs updated within this many days.
+                  PRs are sorted by updated_at desc and iteration stops when
+                  hitting old PRs, preventing loading all PRs into memory.
 
-    Returns:
-        List of PR dictionaries with all required attributes
+    Yields:
+        PR dictionaries with all required attributes (generator for memory efficiency)
 
     Raises:
         GitHubOAuthError: If API request fails
     """
+    from datetime import timedelta
+
+    from django.utils import timezone
+
     try:
         # Create GitHub client
         github = Github(access_token)
@@ -92,11 +100,20 @@ def get_repository_pull_requests(
         # Get repository
         repo = github.get_repo(repo_full_name)
 
-        # Get pull requests - PyGithub returns PaginatedList that handles pagination automatically
-        prs = repo.get_pulls(state=state)
+        # Get pull requests sorted by updated_at desc for efficient date filtering
+        prs = repo.get_pulls(state=state, sort="updated", direction="desc")
 
-        # Convert each PR to dict with all required attributes
-        return [_convert_pr_to_dict(pr) for pr in prs]
+        # Calculate cutoff date if days_back is specified
+        cutoff_date = None
+        if days_back is not None:
+            cutoff_date = timezone.now() - timedelta(days=days_back)
+
+        # Yield PRs one at a time (generator pattern for memory efficiency)
+        for pr in prs:
+            # Stop iteration when hitting PRs older than cutoff
+            if cutoff_date is not None and pr.updated_at < cutoff_date:
+                break
+            yield _convert_pr_to_dict(pr)
 
     except GithubException as e:
         raise GitHubOAuthError(f"GitHub API error: {e.status}") from e
@@ -503,14 +520,14 @@ def sync_pr_files(
 
 
 def _process_prs(
-    prs_data: list[dict],
+    prs_data,
     tracked_repo: "TrackedRepository",  # noqa: F821
     access_token: str,
 ) -> dict:
-    """Process a list of PR data and sync to database.
+    """Process PR data and sync to database.
 
     Args:
-        prs_data: List of PR dictionaries from GitHub API
+        prs_data: Iterable of PR dictionaries from GitHub API (list or generator)
         tracked_repo: TrackedRepository instance to sync
         access_token: Decrypted GitHub access token
 
@@ -650,7 +667,7 @@ def sync_repository_history(
 
     Args:
         tracked_repo: TrackedRepository instance to sync
-        days_back: Number of days of history to sync (default 90, not yet implemented)
+        days_back: Number of days of history to sync (default 90)
 
     Returns:
         Dict with sync stats for PRs, reviews, commits, check_runs, files, comments, deployments
@@ -660,10 +677,10 @@ def sync_repository_history(
     # EncryptedTextField auto-decrypts access_token
     access_token = tracked_repo.integration.credential.access_token
 
-    # Fetch PRs from GitHub
-    prs_data = get_repository_pull_requests(access_token, tracked_repo.full_name)
+    # Fetch PRs from GitHub with days_back filter (generator for memory efficiency)
+    prs_data = get_repository_pull_requests(access_token, tracked_repo.full_name, days_back=days_back)
 
-    # Process PRs and sync all related data
+    # Process PRs and sync all related data (iterates generator one PR at a time)
     result = _process_prs(prs_data, tracked_repo, access_token)
 
     # Sync deployments for this repository

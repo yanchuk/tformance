@@ -1,5 +1,6 @@
 """GitHub-related models: PullRequest, PRReview, PRCheckRun, PRFile, PRComment, Commit."""
 
+from django.contrib.postgres.indexes import GinIndex
 from django.db import models
 
 from apps.teams.models import BaseTeamModel
@@ -284,6 +285,11 @@ class PullRequest(BaseTeamModel):
             models.Index(fields=["team", "state", "merged_at"], name="pr_team_state_merged_idx"),
             models.Index(fields=["team", "author", "merged_at"], name="pr_team_author_merged_idx"),
             models.Index(fields=["team", "pr_created_at"], name="pr_team_created_idx"),
+            # GIN indexes for JSONB fields - faster queries on AI tools and LLM summary
+            # Note: These indexes already exist from migration 0020 (created via raw SQL)
+            # Adding to Meta ensures Django tracks them and they're recreated on fresh DBs
+            GinIndex(fields=["ai_tools_detected"], name="pr_llm_ai_tools_gin_idx", opclasses=["jsonb_path_ops"]),
+            GinIndex(fields=["llm_summary"], name="pr_llm_summary_gin_idx", opclasses=["jsonb_path_ops"]),
         ]
 
     def __str__(self):
