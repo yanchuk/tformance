@@ -11,10 +11,13 @@
   </div>
   <div class="flex items-center gap-4">
     <span class="text-sm text-base-content/70">{{ request.user.email }}</span>
-    <a href="{% url 'account_logout' %}" class="app-btn-ghost text-sm gap-2" aria-label="{% translate 'Log out' %}">
-      <i class="fa-solid fa-right-from-bracket"></i>
-      <span class="hidden sm:inline">{% translate "Log out" %}</span>
-    </a>
+    <form method="post" action="{% url 'account_logout' %}" class="inline">
+      {% csrf_token %}
+      <button type="submit" class="app-btn-ghost text-sm gap-2" aria-label="{% translate 'Log out' %}">
+        <i class="fa-solid fa-right-from-bracket"></i>
+        <span class="hidden sm:inline">{% translate "Log out" %}</span>
+      </button>
+    </form>
   </div>
 </nav>
 {% endblock %}

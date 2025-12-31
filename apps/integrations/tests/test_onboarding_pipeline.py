@@ -91,19 +91,19 @@ class TestHandlePipelineFailureTask(TestCase):
         self.assertEqual(self.team.onboarding_pipeline_status, "failed")
 
     def test_handle_pipeline_failure_stores_error_message(self):
-        """Test that task stores the error message."""
+        """Test that task stores a sanitized error message."""
         from apps.integrations.onboarding_pipeline import handle_pipeline_failure
 
-        error_msg = "Connection timeout during sync"
         handle_pipeline_failure(
             None,
-            Exception(error_msg),
+            Exception("Connection timeout during sync"),
             None,
             team_id=self.team.id,
         )
 
         self.team.refresh_from_db()
-        self.assertIn(error_msg, self.team.onboarding_pipeline_error)
+        # Sanitized message should be user-friendly, not exposing internal details
+        self.assertIn("error occurred", self.team.onboarding_pipeline_error.lower())
 
 
 class TestStartOnboardingPipeline(TestCase):

@@ -34,8 +34,9 @@ from apps.web.decorators import (
 
 logger = logging.getLogger(__name__)
 
-# Webhook replay protection: cache timeout in seconds (1 hour)
-WEBHOOK_REPLAY_CACHE_TIMEOUT = 3600
+# Webhook replay protection: cache timeout in seconds
+# 5 minutes is sufficient since GitHub retries complete within seconds
+WEBHOOK_REPLAY_CACHE_TIMEOUT = 300
 
 # Webhook rate limit: 100 requests per minute per IP
 WEBHOOK_RATE_LIMIT = "100/m"
@@ -186,15 +187,23 @@ def github_webhook(request):
     if not github_repo_id:
         return JsonResponse({"error": "Missing repository ID in payload"}, status=400)
 
-    # Look up the tracked repository
-    try:
-        tracked_repo = TrackedRepository.objects.select_related("integration").get(github_repo_id=github_repo_id)  # noqa: TEAM001 - Webhook lookup, validated after
-    except TrackedRepository.DoesNotExist:
+    # Look up all tracked repositories for this GitHub repo ID
+    # Multiple teams may track the same repository, so we use filter() instead of get()
+    tracked_repos = TrackedRepository.objects.select_related("integration").filter(github_repo_id=github_repo_id)  # noqa: TEAM001 - Webhook lookup, signature validated below
+
+    if not tracked_repos.exists():
         return JsonResponse({"error": "Repository not tracked"}, status=404)
 
-    # Validate the webhook signature
-    webhook_secret = tracked_repo.integration.webhook_secret
-    if not validate_webhook_signature(request.body, signature_header, webhook_secret):
+    # Find the repo whose integration webhook secret matches the signature
+    # This handles the case where multiple teams track the same GitHub repository
+    tracked_repo = None
+    for candidate in tracked_repos:
+        webhook_secret = candidate.integration.webhook_secret
+        if validate_webhook_signature(request.body, signature_header, webhook_secret):
+            tracked_repo = candidate
+            break
+
+    if tracked_repo is None:
         return JsonResponse({"error": "Invalid signature"}, status=401)
 
     # Extract event type from header

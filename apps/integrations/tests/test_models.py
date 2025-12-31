@@ -392,6 +392,87 @@ class TestGitHubIntegrationModel(TestCase):
 
         self.assertEqual(integration.last_sync_at, sync_time)
 
+    def test_webhook_secret_is_encrypted_in_database(self):
+        """Test that webhook_secret is stored encrypted in the database.
+
+        This verifies that the webhook_secret field uses EncryptedTextField
+        and that the raw database value is different from the plaintext value.
+        """
+        from django.db import connection
+
+        plain_secret = "my_plain_webhook_secret_12345"
+        integration = GitHubIntegrationFactory(
+            team=self.team,
+            credential=self.credential,
+            webhook_secret=plain_secret,
+        )
+
+        # Access via model returns plaintext
+        self.assertEqual(integration.webhook_secret, plain_secret)
+
+        # Query raw database value
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT webhook_secret FROM integrations_githubintegration WHERE id = %s",
+                [integration.id],
+            )
+            raw_value = cursor.fetchone()[0]
+
+        # Raw value should NOT equal plaintext (it's encrypted)
+        self.assertNotEqual(raw_value, plain_secret)
+        # Raw value should start with gAAAAA (Fernet encrypted prefix)
+        self.assertTrue(
+            raw_value.startswith("gAAAAA"),
+            f"Expected encrypted value to start with Fernet prefix, got: {raw_value[:20]}...",
+        )
+
+    def test_webhook_secret_decrypts_correctly_after_save_and_reload(self):
+        """Test that webhook_secret can be saved and reloaded with correct decryption."""
+        plain_secret = "reloadable_webhook_secret_67890"
+        integration = GitHubIntegrationFactory(
+            team=self.team,
+            credential=self.credential,
+            webhook_secret=plain_secret,
+        )
+
+        # Clear Django's cache by reloading from DB
+        integration.refresh_from_db()
+
+        # Should still return plaintext after reload
+        self.assertEqual(integration.webhook_secret, plain_secret)
+
+    def test_webhook_validation_works_with_encrypted_secret(self):
+        """Test that webhook signature validation works when secret is encrypted.
+
+        This is a critical integration test - the webhook validation must work
+        correctly even though the secret is stored encrypted in the database.
+        """
+        import hashlib
+        import hmac
+
+        from apps.integrations.services.github_webhooks import validate_webhook_signature
+
+        plain_secret = "webhook_secret_for_validation_test"
+        integration = GitHubIntegrationFactory(
+            team=self.team,
+            credential=self.credential,
+            webhook_secret=plain_secret,
+        )
+
+        # Simulate a webhook payload
+        payload = b'{"action": "opened", "pull_request": {"number": 1}}'
+
+        # Create signature using the same secret
+        mac = hmac.new(plain_secret.encode(), msg=payload, digestmod=hashlib.sha256)
+        signature = f"sha256={mac.hexdigest()}"
+
+        # Reload from DB to ensure we're testing encrypted storage
+        integration.refresh_from_db()
+
+        # Validate should succeed with encrypted-then-decrypted secret
+        is_valid = validate_webhook_signature(payload, signature, integration.webhook_secret)
+        self.assertTrue(is_valid, "Webhook signature validation should pass with encrypted secret")
+
 
 class TestTrackedRepositoryModel(TestCase):
     """Tests for TrackedRepository model."""

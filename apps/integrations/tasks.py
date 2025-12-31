@@ -42,6 +42,7 @@ from apps.metrics.models import PRReview, PRSurveyReview, PullRequest
 from apps.metrics.services.aggregation_service import aggregate_team_weekly_metrics
 from apps.metrics.services.survey_service import create_pr_survey, create_reviewer_survey, get_reviewer_accuracy_stats
 from apps.teams.models import Team
+from apps.utils.errors import sanitize_error
 
 logger = logging.getLogger(__name__)
 
@@ -105,10 +106,10 @@ def sync_repository_task(self, repo_id: int) -> dict:
 
             # Set status to error and save error message
             tracked_repo.sync_status = TrackedRepository.SYNC_STATUS_ERROR
-            tracked_repo.last_sync_error = str(exc)
+            tracked_repo.last_sync_error = sanitize_error(exc)
             tracked_repo.save(update_fields=["sync_status", "last_sync_error"])
 
-            return {"error": str(exc)}
+            return {"error": sanitize_error(exc)}
 
 
 def _sync_with_graphql_or_rest(tracked_repo, days_back: int) -> dict:
@@ -340,10 +341,10 @@ def sync_repository_initial_task(self, repo_id: int, days_back: int = 30) -> dic
 
             # Set status to error and save error message
             tracked_repo.sync_status = TrackedRepository.SYNC_STATUS_ERROR
-            tracked_repo.last_sync_error = str(exc)
+            tracked_repo.last_sync_error = sanitize_error(exc)
             tracked_repo.save(update_fields=["sync_status", "last_sync_error"])
 
-            return {"error": str(exc)}
+            return {"error": sanitize_error(exc)}
 
 
 @shared_task
@@ -395,10 +396,10 @@ def sync_repository_manual_task(repo_id: int) -> dict:
 
         # Set status to error and save error message
         tracked_repo.sync_status = TrackedRepository.SYNC_STATUS_ERROR
-        tracked_repo.last_sync_error = str(exc)
+        tracked_repo.last_sync_error = sanitize_error(exc)
         tracked_repo.save(update_fields=["sync_status", "last_sync_error"])
 
-        return {"error": str(exc)}
+        return {"error": sanitize_error(exc)}
 
 
 @shared_task
@@ -553,10 +554,10 @@ def sync_github_members_task(self, integration_id: int) -> dict:
 
             # Set status to error on failure
             integration.member_sync_status = GitHubIntegration.SYNC_STATUS_ERROR
-            integration.member_sync_error = str(exc)
+            integration.member_sync_error = sanitize_error(exc)
             integration.save(update_fields=["member_sync_status", "member_sync_error"])
 
-            return {"error": str(exc)}
+            return {"error": sanitize_error(exc)}
 
 
 @shared_task
@@ -653,10 +654,10 @@ def sync_jira_project_task(self, project_id: int) -> dict:
 
             # Set status to error and save error message
             tracked_project.sync_status = TrackedJiraProject.SYNC_STATUS_ERROR
-            tracked_project.last_sync_error = str(exc)
+            tracked_project.last_sync_error = sanitize_error(exc)
             tracked_project.save(update_fields=["sync_status", "last_sync_error"])
 
-            return {"error": str(exc)}
+            return {"error": sanitize_error(exc)}
 
 
 @shared_task
@@ -725,7 +726,7 @@ def sync_jira_users_task(team_id: int) -> dict:
         return result
     except Exception as exc:
         logger.error(f"Failed to sync Jira users for team {team.name}: {exc}")
-        return {"error": str(exc)}
+        return {"error": sanitize_error(exc)}
 
 
 @shared_task
@@ -974,7 +975,7 @@ def sync_slack_users_task(team_id: int) -> dict:
         return result
     except Exception as exc:
         logger.error(f"Failed to sync Slack users for team {team.name}: {exc}")
-        return {"error": str(exc)}
+        return {"error": sanitize_error(exc)}
 
 
 @shared_task
@@ -1170,7 +1171,7 @@ def sync_copilot_metrics_task(self, team_id: int) -> dict:
         # Check if it's a 403 error (Copilot not available)
         if "403" in str(exc):
             logger.info(f"Copilot not available for team {team.name}: {exc}")
-            return {"error": str(exc), "copilot_available": False}
+            return {"error": sanitize_error(exc), "copilot_available": False}
         # For other CopilotMetricsError, treat as transient and retry
         countdown = self.default_retry_delay * (2**self.request.retries)
         try:
@@ -1183,7 +1184,7 @@ def sync_copilot_metrics_task(self, team_id: int) -> dict:
 
             logger.error(f"Copilot sync failed permanently for {team.name}: {exc}")
             capture_exception(exc)
-            return {"error": str(exc)}
+            return {"error": sanitize_error(exc)}
 
     except Exception as exc:
         # Calculate exponential backoff
@@ -1202,7 +1203,7 @@ def sync_copilot_metrics_task(self, team_id: int) -> dict:
 
             logger.error(f"Copilot sync failed permanently for {team.name}: {exc}")
             capture_exception(exc)
-            return {"error": str(exc)}
+            return {"error": sanitize_error(exc)}
 
 
 @shared_task
@@ -1899,10 +1900,10 @@ def sync_quick_data_task(self, repo_id: int) -> dict:
 
                 # Set status to error and save error message
                 tracked_repo.sync_status = TrackedRepository.SYNC_STATUS_ERROR
-                tracked_repo.last_sync_error = str(exc)
+                tracked_repo.last_sync_error = sanitize_error(exc)
                 tracked_repo.save(update_fields=["sync_status", "last_sync_error"])
 
-                return {"error": str(exc)}
+                return {"error": sanitize_error(exc)}
 
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
@@ -1974,10 +1975,10 @@ def sync_full_history_task(self, repo_id: int, days_back: int = 90) -> dict:
 
             # Set status to error and save error message
             tracked_repo.sync_status = TrackedRepository.SYNC_STATUS_ERROR
-            tracked_repo.last_sync_error = str(exc)
+            tracked_repo.last_sync_error = sanitize_error(exc)
             tracked_repo.save(update_fields=["sync_status", "last_sync_error"])
 
-            return {"error": str(exc)}
+            return {"error": sanitize_error(exc)}
 
 
 @shared_task(bind=True)

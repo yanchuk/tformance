@@ -454,3 +454,47 @@ class TestSlackInteractionsWebhook(TestCase):
         # Verify response_source='slack' is passed
         kwargs = mock_record.call_args[1]
         self.assertEqual(kwargs.get("response_source"), "slack")
+
+    @override_settings(SLACK_SIGNING_SECRET="test_signing_secret_12345")
+    def test_handles_malformed_json_payload_gracefully(self):
+        """Test that endpoint handles malformed JSON payload without crashing."""
+        # Arrange - Create a request with valid signature but invalid JSON payload
+        timestamp = str(int(time.time()))
+        body = urlencode({"payload": "not valid json {{{"})
+        signature = self._create_slack_signature(timestamp, body)
+
+        # Act
+        response = self.client.post(
+            self.webhook_url,
+            data=body,
+            content_type="application/x-www-form-urlencoded",
+            HTTP_X_SLACK_SIGNATURE=signature,
+            HTTP_X_SLACK_REQUEST_TIMESTAMP=timestamp,
+        )
+
+        # Assert - Should return 400 Bad Request, not 500 Server Error
+        self.assertEqual(response.status_code, 400)
+
+    @override_settings(SLACK_SIGNING_SECRET="test_signing_secret_12345")
+    def test_handles_empty_json_payload_gracefully(self):
+        """Test that endpoint handles empty/missing payload parameter gracefully.
+
+        When payload parameter is empty or missing, it defaults to '{}' which is valid JSON.
+        This is intentional - an empty payload with no actions just returns 200.
+        """
+        # Arrange - Create a request with valid signature but empty payload
+        timestamp = str(int(time.time()))
+        body = urlencode({"payload": ""})
+        signature = self._create_slack_signature(timestamp, body)
+
+        # Act
+        response = self.client.post(
+            self.webhook_url,
+            data=body,
+            content_type="application/x-www-form-urlencoded",
+            HTTP_X_SLACK_SIGNATURE=signature,
+            HTTP_X_SLACK_REQUEST_TIMESTAMP=timestamp,
+        )
+
+        # Assert - Empty payload defaults to {} which is valid, returns 200
+        self.assertEqual(response.status_code, 200)

@@ -280,6 +280,50 @@ class TestFetchCopilotMetrics(TestCase):
         self.assertEqual(call_kwargs["headers"]["Authorization"], f"Bearer {access_token}")
         self.assertEqual(call_kwargs["headers"]["Accept"], "application/vnd.github+json")
 
+    @patch("apps.integrations.services.copilot_metrics.requests.get")
+    def test_fetch_copilot_metrics_handles_invalid_json_response(self, mock_get):
+        """Test that fetch_copilot_metrics handles malformed JSON response gracefully."""
+        import json
+
+        # Arrange - Mock a response with invalid JSON
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.url = "https://api.github.com/orgs/test-org/copilot/usage"
+        mock_response.json.side_effect = json.JSONDecodeError("Expecting value", "not json {{{", 0)
+        mock_get.return_value = mock_response
+
+        access_token = "gho_token"
+        org_slug = "test-org"
+
+        # Act & Assert - Should raise CopilotMetricsError, not JSONDecodeError
+        with self.assertRaises(CopilotMetricsError) as context:
+            fetch_copilot_metrics(access_token, org_slug)
+
+        # The error message should be user-friendly
+        self.assertIn("Invalid", str(context.exception))
+
+    @patch("apps.integrations.services.copilot_metrics.requests.get")
+    def test_fetch_copilot_metrics_handles_invalid_json_in_403_response(self, mock_get):
+        """Test that fetch_copilot_metrics handles malformed JSON in 403 error response."""
+        import json
+
+        # Arrange - Mock a 403 response with invalid JSON body
+        mock_response = MagicMock()
+        mock_response.status_code = 403
+        mock_response.url = "https://api.github.com/orgs/test-org/copilot/usage"
+        mock_response.json.side_effect = json.JSONDecodeError("Expecting value", "", 0)
+        mock_get.return_value = mock_response
+
+        access_token = "gho_token"
+        org_slug = "test-org"
+
+        # Act & Assert - Should raise CopilotMetricsError with generic 403 message
+        with self.assertRaises(CopilotMetricsError) as context:
+            fetch_copilot_metrics(access_token, org_slug)
+
+        # Should contain 403 reference since that's the status code
+        self.assertIn("403", str(context.exception))
+
 
 class TestParseMetricsResponse(TestCase):
     """Tests for parsing and normalizing Copilot metrics API response."""

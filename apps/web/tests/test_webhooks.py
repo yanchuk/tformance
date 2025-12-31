@@ -371,3 +371,152 @@ class TestGitHubWebhookEventDispatch(TestCase):
         # Verify handlers were NOT called
         mock_pr_handler.assert_not_called()
         mock_review_handler.assert_not_called()
+
+
+class TestGitHubWebhookMultiTeam(TestCase):
+    """Tests for webhook handling when multiple teams track the same repository.
+
+    This test class covers the critical multi-team bug where .get() fails with
+    MultipleObjectsReturned when multiple teams track the same GitHub repository.
+    The webhook must validate signatures against ALL matching repos to find
+    the correct team.
+    """
+
+    def setUp(self):
+        """Set up test fixtures with two teams tracking the same repository."""
+        # Create two integrations with different webhook secrets
+        self.integration1 = GitHubIntegrationFactory(webhook_secret="team1_secret_abc123")
+        self.integration2 = GitHubIntegrationFactory(webhook_secret="team2_secret_xyz789")
+
+        # Both teams track the same GitHub repository
+        self.shared_repo_id = 12345
+        self.tracked_repo1 = TrackedRepositoryFactory(
+            integration=self.integration1,
+            github_repo_id=self.shared_repo_id,
+            full_name="shared-org/shared-repo",
+        )
+        self.tracked_repo2 = TrackedRepositoryFactory(
+            integration=self.integration2,
+            github_repo_id=self.shared_repo_id,
+            full_name="shared-org/shared-repo",
+        )
+        self.webhook_url = reverse("web:github_webhook")
+
+    def _create_valid_signature(self, payload_bytes, secret):
+        """Create a valid HMAC-SHA256 signature for webhook payload."""
+        mac = hmac.new(secret.encode(), msg=payload_bytes, digestmod=hashlib.sha256)
+        return f"sha256={mac.hexdigest()}"
+
+    def _create_webhook_payload(self, repo_id=None):
+        """Create a GitHub webhook payload for the shared repository."""
+        return {
+            "action": "opened",
+            "repository": {
+                "id": repo_id or self.shared_repo_id,
+                "full_name": "shared-org/shared-repo",
+            },
+            "pull_request": {
+                "number": 456,
+                "title": "Multi-team Test PR",
+            },
+        }
+
+    @patch("apps.metrics.processors.handle_pull_request_event")
+    def test_webhook_processes_for_team1_with_team1_signature(self, mock_handler):
+        """Test that webhook routes to team1 when signed with team1's secret."""
+        payload = self._create_webhook_payload()
+        payload_bytes = json.dumps(payload).encode()
+        signature = self._create_valid_signature(payload_bytes, self.integration1.webhook_secret)
+
+        response = self.client.post(
+            self.webhook_url,
+            data=payload_bytes,
+            content_type="application/json",
+            HTTP_X_GITHUB_EVENT="pull_request",
+            HTTP_X_GITHUB_DELIVERY="multi-team-test-1",
+            HTTP_X_HUB_SIGNATURE_256=signature,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        mock_handler.assert_called_once()
+        # Verify the handler was called with team1's team
+        call_args = mock_handler.call_args
+        self.assertEqual(call_args[0][0], self.integration1.team)
+
+    @patch("apps.metrics.processors.handle_pull_request_event")
+    def test_webhook_processes_for_team2_with_team2_signature(self, mock_handler):
+        """Test that webhook routes to team2 when signed with team2's secret."""
+        payload = self._create_webhook_payload()
+        payload_bytes = json.dumps(payload).encode()
+        signature = self._create_valid_signature(payload_bytes, self.integration2.webhook_secret)
+
+        response = self.client.post(
+            self.webhook_url,
+            data=payload_bytes,
+            content_type="application/json",
+            HTTP_X_GITHUB_EVENT="pull_request",
+            HTTP_X_GITHUB_DELIVERY="multi-team-test-2",
+            HTTP_X_HUB_SIGNATURE_256=signature,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        mock_handler.assert_called_once()
+        # Verify the handler was called with team2's team
+        call_args = mock_handler.call_args
+        self.assertEqual(call_args[0][0], self.integration2.team)
+
+    def test_webhook_returns_401_when_no_signature_matches(self):
+        """Test that webhook returns 401 when signature doesn't match any team."""
+        payload = self._create_webhook_payload()
+        payload_bytes = json.dumps(payload).encode()
+        # Create signature with a wrong secret
+        signature = self._create_valid_signature(payload_bytes, "wrong_secret_not_matching")
+
+        response = self.client.post(
+            self.webhook_url,
+            data=payload_bytes,
+            content_type="application/json",
+            HTTP_X_GITHUB_EVENT="pull_request",
+            HTTP_X_GITHUB_DELIVERY="multi-team-test-3",
+            HTTP_X_HUB_SIGNATURE_256=signature,
+        )
+
+        self.assertEqual(response.status_code, 401)
+        self.assertIn("signature", response.json().get("error", "").lower())
+
+    @patch("apps.metrics.processors.handle_pull_request_event")
+    def test_webhook_does_not_crash_with_multiple_teams(self, mock_handler):
+        """Regression test: webhook must not raise MultipleObjectsReturned.
+
+        Previously, the webhook used .get() which fails when multiple teams
+        track the same repository. This test ensures the fix handles this
+        case gracefully by iterating through all matching repos.
+        """
+        # Add a third team also tracking the same repo
+        integration3 = GitHubIntegrationFactory(webhook_secret="team3_secret_def456")
+        TrackedRepositoryFactory(
+            integration=integration3,
+            github_repo_id=self.shared_repo_id,
+            full_name="shared-org/shared-repo",
+        )
+
+        payload = self._create_webhook_payload()
+        payload_bytes = json.dumps(payload).encode()
+        # Sign with team3's secret
+        signature = self._create_valid_signature(payload_bytes, integration3.webhook_secret)
+
+        # This MUST NOT raise MultipleObjectsReturned
+        response = self.client.post(
+            self.webhook_url,
+            data=payload_bytes,
+            content_type="application/json",
+            HTTP_X_GITHUB_EVENT="pull_request",
+            HTTP_X_GITHUB_DELIVERY="multi-team-test-4",
+            HTTP_X_HUB_SIGNATURE_256=signature,
+        )
+
+        # Should succeed and route to team3
+        self.assertEqual(response.status_code, 200)
+        mock_handler.assert_called_once()
+        call_args = mock_handler.call_args
+        self.assertEqual(call_args[0][0], integration3.team)
