@@ -985,10 +985,20 @@ def calculate_pr_iteration_metrics(pr: "PullRequest") -> None:  # noqa: F821
 
     from apps.metrics.models import Commit, PRComment, PRReview
 
-    # Count total comments
-    pr.total_comments = PRComment.objects.filter(  # noqa: TEAM001 - filtering by PR which is team-scoped
+    # Count total comments: PRComment records + PRReview records with body text
+    # PRComment tracks issue/review comments, PRReview tracks review submissions
+    comment_count = PRComment.objects.filter(  # noqa: TEAM001 - filtering by PR which is team-scoped
         pull_request=pr
     ).count()
+    review_comment_count = (
+        PRReview.objects.filter(  # noqa: TEAM001 - filtering by PR which is team-scoped
+            pull_request=pr
+        )
+        .exclude(body="")
+        .exclude(body__isnull=True)
+        .count()
+    )
+    pr.total_comments = comment_count + review_comment_count
 
     # Get first review timestamp
     first_review = (

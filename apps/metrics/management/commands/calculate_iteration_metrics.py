@@ -93,8 +93,9 @@ class Command(BaseCommand):
             # Review rounds = number of distinct reviewers
             pr.review_rounds = reviews.values("reviewer").distinct().count()
 
-            # Total comments = reviews with non-empty body
-            pr.total_comments = reviews.exclude(body="").count()
+            # Total comments = PRReview records with non-empty body
+            # Note: PRComment records are synced separately during GitHub sync
+            pr.total_comments = reviews.exclude(body="").exclude(body__isnull=True).count()
 
             # Commits after first review
             first_review = reviews.first()
