@@ -115,14 +115,22 @@ def engineering_insights(request: HttpRequest) -> HttpResponse:
         # Parse the stored JSON insight
         insight_data = insight_record.metric_value
 
-        # Resolve action URLs
+        # Resolve action URLs - handle both string and object formats
         raw_actions = insight_data.get("actions", [])
-        resolved_actions = [{"label": a.get("label", ""), "url": resolve_action_url(a, days)} for a in raw_actions]
+        resolved_actions = []
+        for a in raw_actions:
+            # Legacy format: string → convert to object; otherwise use as-is
+            action = {"action_type": a, "label": a.replace("_", " ").title()} if isinstance(a, str) else a
+            resolved_actions.append({"label": action.get("label", ""), "url": resolve_action_url(action, days)})
+
+        # Normalize possible_causes to always be a list (LLM sometimes returns string)
+        raw_causes = insight_data.get("possible_causes", [])
+        possible_causes = ([raw_causes] if raw_causes else []) if isinstance(raw_causes, str) else raw_causes
 
         context["insight"] = {
             "headline": insight_data.get("headline", ""),
             "detail": insight_data.get("detail", ""),
-            "possible_causes": insight_data.get("possible_causes", []),
+            "possible_causes": possible_causes,
             "recommendation": insight_data.get("recommendation", ""),
             "metric_cards": insight_data.get("metric_cards", []),
             "actions": resolved_actions,

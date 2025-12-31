@@ -110,12 +110,24 @@ INSIGHT_SYSTEM_PROMPT = """You are an engineering metrics analyst providing acti
 
 ## OUTPUT FORMAT
 Return a JSON object with these fields:
-- headline: 1-2 sentence executive summary of the MOST SIGNIFICANT finding
+- headline: Executive summary of the MOST SIGNIFICANT finding (MAX 15 WORDS, 1 sentence only)
 - detail: 2-3 sentences explaining WHAT happened, with specific numbers
-- possible_causes: 1-2 hypotheses for WHY this is happening
+- possible_causes: 1-2 hypotheses for WHY this is happening (must be an array of strings)
 - recommendation: One specific action that addresses an issue from 'detail'
 - metric_cards: COPY EXACTLY from the PRE-COMPUTED METRIC CARDS section in the data
 - actions: 1-3 buttons matching issues discussed in detail/recommendation
+
+## HEADLINE RULES (CRITICAL)
+- Maximum 12 words
+- Single sentence only
+- Focus on ONE key finding, not multiple metrics
+- Be specific: include the metric value and direction
+- Examples:
+  - GOOD: "Review bottleneck: one reviewer has 22 pending reviews."
+  - GOOD: "Cycle time doubled to 48h despite improved AI adoption."
+  - GOOD: "Throughput dropped 31% as work concentrated on one contributor."
+  - BAD: "AI adoption 95% but cycle time +205% as AI PRs 43% faster." (too many metrics)
+  - BAD: "Various metrics changed this period." (too vague)
 
 ## CRITICAL RULES
 
