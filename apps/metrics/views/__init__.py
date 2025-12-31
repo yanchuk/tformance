@@ -41,7 +41,15 @@ from apps.metrics.views.chart_views import (
     team_velocity_view,
     unlinked_prs_table,
 )
-from apps.metrics.views.dashboard_views import cto_overview, dashboard_redirect, dismiss_insight, home, team_dashboard
+from apps.metrics.views.dashboard_views import (
+    cto_overview,
+    dashboard_redirect,
+    dismiss_insight,
+    engineering_insights,
+    home,
+    refresh_insight,
+    team_dashboard,
+)
 from apps.metrics.views.pr_list_views import pr_list, pr_list_export, pr_list_table
 from apps.metrics.views.trends_views import (
     pr_type_breakdown_chart,
@@ -84,6 +92,8 @@ __all__ = [
     "cto_overview",
     "team_dashboard",
     "dismiss_insight",
+    "engineering_insights",
+    "refresh_insight",
     "pr_list",
     "pr_list_table",
     "pr_list_export",

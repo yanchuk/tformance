@@ -74,6 +74,7 @@ See conftest.py for shared fixtures: team_with_members, sample_prs, team_context
 """
 
 import random
+import uuid
 from datetime import timedelta
 from decimal import Decimal
 
@@ -103,13 +104,17 @@ from .models import (
 
 
 class TeamFactory(DjangoModelFactory):
-    """Factory for Team model."""
+    """Factory for Team model.
+
+    Uses UUID-based slugs to avoid collisions in parallel test workers.
+    Sequence counters are per-process, so xdist workers all start at 0.
+    """
 
     class Meta:
         model = Team
 
-    name = factory.Sequence(lambda n: f"Team {n}")
-    slug = factory.Sequence(lambda n: f"team-{n}")
+    name = factory.LazyFunction(lambda: f"Team {uuid.uuid4().hex[:8]}")
+    slug = factory.LazyFunction(lambda: f"team-{uuid.uuid4().hex[:12]}")
 
 
 class TeamMemberFactory(DjangoModelFactory):

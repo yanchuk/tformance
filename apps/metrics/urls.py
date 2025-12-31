@@ -70,6 +70,8 @@ team_urlpatterns = (
         path("partials/needs-attention/", views.needs_attention_view, name="needs_attention"),
         path("partials/ai-impact/", views.ai_impact_view, name="ai_impact"),
         path("partials/team-velocity/", views.team_velocity_view, name="team_velocity"),
+        path("partials/engineering-insights/", views.engineering_insights, name="engineering_insights"),
+        path("partials/engineering-insights/refresh/", views.refresh_insight, name="refresh_insight"),
     ],
     "metrics",
 )

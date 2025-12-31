@@ -262,3 +262,120 @@ EXAMPLE_MINIMAL_RESPONSE = {
         "insights": [],
     },
 }
+
+
+# ============================================================================
+# Dashboard Insight Schemas (for insight_llm.py)
+# ============================================================================
+
+# Schema for metric card in insight response
+METRIC_CARD_SCHEMA = {
+    "type": "object",
+    "required": ["label", "value", "trend"],
+    "properties": {
+        "label": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 50,
+            "description": "Metric name (e.g., 'Throughput', 'Cycle Time')",
+        },
+        "value": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 50,
+            "description": "Formatted value (e.g., '+25%', '10 PRs')",
+        },
+        "trend": {
+            "type": "string",
+            "enum": ["positive", "negative", "neutral", "warning"],
+            "description": "Trend indicator for styling",
+        },
+    },
+    "additionalProperties": False,
+}
+
+# Complete schema for dashboard insight response
+INSIGHT_RESPONSE_SCHEMA = {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "Dashboard Insight Response",
+    "description": "LLM response schema for dashboard insights",
+    "type": "object",
+    "required": ["headline", "detail", "recommendation", "metric_cards"],
+    "properties": {
+        "headline": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 200,
+            "description": "1-2 sentence headline insight",
+        },
+        "detail": {
+            "type": "string",
+            "minLength": 20,
+            "maxLength": 500,
+            "description": "2-3 sentences of context and detail",
+        },
+        "recommendation": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 300,
+            "description": "One actionable recommendation",
+        },
+        "metric_cards": {
+            "type": "array",
+            "items": METRIC_CARD_SCHEMA,
+            "minItems": 4,
+            "maxItems": 4,
+            "description": "Exactly 4 metric cards",
+        },
+        "is_fallback": {
+            "type": "boolean",
+            "description": "True if fallback insight was used",
+        },
+    },
+    "additionalProperties": False,
+}
+
+# Validator for insight responses
+_insight_validator = Draft202012Validator(INSIGHT_RESPONSE_SCHEMA)
+
+
+def validate_insight_response(response: dict[str, Any]) -> tuple[bool, list[str]]:
+    """Validate a dashboard insight response against the schema.
+
+    Args:
+        response: The parsed JSON response from the LLM
+
+    Returns:
+        Tuple of (is_valid, errors) where:
+        - is_valid: True if response matches schema
+        - errors: List of error messages (empty if valid)
+
+    Example:
+        >>> response = {"headline": "...", "detail": "...", ...}
+        >>> is_valid, errors = validate_insight_response(response)
+        >>> if not is_valid:
+        ...     print(f"Errors: {errors}")
+    """
+    errors = []
+
+    for error in _insight_validator.iter_errors(response):
+        path = " -> ".join(str(p) for p in error.absolute_path) if error.absolute_path else "root"
+        errors.append(f"{path}: {error.message}")
+
+    return len(errors) == 0, errors
+
+
+# Example valid insight response
+EXAMPLE_VALID_INSIGHT = {
+    "headline": "Velocity up 25% with strong AI adoption driving faster cycles",
+    "detail": "The team merged 10 PRs this period, up from 8 last period. "
+    "AI-assisted PRs show 33% faster cycle times. No review bottlenecks detected.",
+    "recommendation": "Continue current AI tool adoption while monitoring code quality metrics.",
+    "metric_cards": [
+        {"label": "Throughput", "value": "+25%", "trend": "positive"},
+        {"label": "Cycle Time", "value": "-20%", "trend": "positive"},
+        {"label": "AI Adoption", "value": "60%", "trend": "neutral"},
+        {"label": "Quality", "value": "10% reverts", "trend": "warning"},
+    ],
+    "is_fallback": False,
+}

@@ -77,16 +77,16 @@ class TestNeedsAttentionView(TestCase):
         self.assertIn("prs", response.context)
         self.assertIsInstance(response.context["prs"], list)
 
-    def test_context_contains_pagination_metadata(self):
-        """Test that context contains pagination metadata."""
+    def test_context_contains_summary_and_counts(self):
+        """Test that context contains summary badges and total_count."""
         self.client.force_login(self.admin_user)
 
         response = self.client.get(reverse("metrics:needs_attention"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertIn("page", response.context)
-        self.assertIn("total_pages", response.context)
+        self.assertIn("summary", response.context)
         self.assertIn("total_count", response.context)
+        self.assertIn("days", response.context)
 
     def test_accepts_days_query_param(self):
         """Test that needs_attention_view accepts days query param."""
@@ -95,15 +95,7 @@ class TestNeedsAttentionView(TestCase):
         response = self.client.get(reverse("metrics:needs_attention"), {"days": "7"})
 
         self.assertEqual(response.status_code, 200)
-
-    def test_accepts_page_query_param(self):
-        """Test that needs_attention_view accepts page query param."""
-        self.client.force_login(self.admin_user)
-
-        response = self.client.get(reverse("metrics:needs_attention"), {"page": "2"})
-
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.context["page"], 2)
+        self.assertEqual(response.context["days"], 7)
 
     def test_default_days_is_30(self):
         """Test that default date range is 30 days."""
@@ -112,16 +104,7 @@ class TestNeedsAttentionView(TestCase):
         response = self.client.get(reverse("metrics:needs_attention"))
 
         self.assertEqual(response.status_code, 200)
-        # Service is called with 30-day date range by default
-
-    def test_default_page_is_1(self):
-        """Test that default page is 1."""
-        self.client.force_login(self.admin_user)
-
-        response = self.client.get(reverse("metrics:needs_attention"))
-
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.context["page"], 1)
+        self.assertEqual(response.context["days"], 30)
 
 
 class TestAiImpactView(TestCase):
@@ -330,3 +313,232 @@ class TestReviewDistributionBottleneck(TestCase):
         self.assertEqual(response.status_code, 200)
         # Bottleneck may be None or a dict - just verify the key exists
         self.assertIn("bottleneck", response.context)
+
+
+class TestEngineeringInsightsView(TestCase):
+    """Tests for engineering_insights view (HTMX endpoint)."""
+
+    def setUp(self):
+        """Set up test fixtures using factories."""
+        self.team = TeamFactory()
+        self.admin_user = UserFactory()
+        self.member_user = UserFactory()
+        self.team.members.add(self.admin_user, through_defaults={"role": ROLE_ADMIN})
+        self.team.members.add(self.member_user, through_defaults={"role": ROLE_MEMBER})
+        self.client = Client()
+
+    def test_requires_login(self):
+        """Test that engineering_insights redirects to login if not authenticated."""
+        response = self.client.get(reverse("metrics:engineering_insights"))
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/accounts/login/", response.url)
+
+    def test_requires_team_membership(self):
+        """Test that engineering_insights returns 404 for non-team-members."""
+        non_member = UserFactory()
+        self.client.force_login(non_member)
+
+        response = self.client.get(reverse("metrics:engineering_insights"))
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_returns_200_for_member(self):
+        """Test that engineering_insights returns 200 for team members."""
+        self.client.force_login(self.member_user)
+
+        response = self.client.get(reverse("metrics:engineering_insights"))
+
+        self.assertEqual(response.status_code, 200)
+
+    def test_returns_200_for_admin(self):
+        """Test that engineering_insights returns 200 for admin users."""
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(reverse("metrics:engineering_insights"))
+
+        self.assertEqual(response.status_code, 200)
+
+    def test_renders_correct_template(self):
+        """Test that engineering_insights renders correct partial template."""
+        self.client.force_login(self.member_user)
+
+        response = self.client.get(reverse("metrics:engineering_insights"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "metrics/partials/engineering_insights.html")
+
+    def test_context_contains_required_keys(self):
+        """Test that context contains cadence, days, insight, and error keys."""
+        self.client.force_login(self.member_user)
+
+        response = self.client.get(reverse("metrics:engineering_insights"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("cadence", response.context)
+        self.assertIn("days", response.context)
+        self.assertIn("insight", response.context)
+        self.assertIn("error", response.context)
+
+    def test_default_cadence_is_weekly(self):
+        """Test that default cadence is weekly."""
+        self.client.force_login(self.member_user)
+
+        response = self.client.get(reverse("metrics:engineering_insights"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["cadence"], "weekly")
+
+    def test_accepts_cadence_query_param(self):
+        """Test that engineering_insights accepts cadence query param."""
+        self.client.force_login(self.member_user)
+
+        response = self.client.get(reverse("metrics:engineering_insights"), {"cadence": "monthly"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["cadence"], "monthly")
+
+    def test_default_days_is_30(self):
+        """Test that default days is 30."""
+        self.client.force_login(self.member_user)
+
+        response = self.client.get(reverse("metrics:engineering_insights"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["days"], 30)
+
+    def test_accepts_days_query_param(self):
+        """Test that engineering_insights accepts days query param."""
+        self.client.force_login(self.member_user)
+
+        response = self.client.get(reverse("metrics:engineering_insights"), {"days": "90"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["days"], 90)
+
+    def test_insight_is_none_when_no_cached_insight(self):
+        """Test that insight is None when no cached insight exists."""
+        self.client.force_login(self.member_user)
+
+        response = self.client.get(reverse("metrics:engineering_insights"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNone(response.context["insight"])
+
+
+class TestRefreshInsightView(TestCase):
+    """Tests for refresh_insight view (HTMX POST endpoint)."""
+
+    def setUp(self):
+        """Set up test fixtures using factories."""
+        self.team = TeamFactory()
+        self.admin_user = UserFactory()
+        self.member_user = UserFactory()
+        self.team.members.add(self.admin_user, through_defaults={"role": ROLE_ADMIN})
+        self.team.members.add(self.member_user, through_defaults={"role": ROLE_MEMBER})
+        self.client = Client()
+
+    def test_requires_login(self):
+        """Test that refresh_insight redirects to login if not authenticated."""
+        response = self.client.post(reverse("metrics:refresh_insight"))
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/accounts/login/", response.url)
+
+    def test_requires_team_membership(self):
+        """Test that refresh_insight returns 404 for non-team-members."""
+        non_member = UserFactory()
+        self.client.force_login(non_member)
+
+        response = self.client.post(reverse("metrics:refresh_insight"))
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_requires_post_method(self):
+        """Test that refresh_insight only accepts POST requests."""
+        self.client.force_login(self.member_user)
+
+        response = self.client.get(reverse("metrics:refresh_insight"))
+
+        self.assertEqual(response.status_code, 405)
+
+    def test_returns_200_for_member(self):
+        """Test that refresh_insight returns 200 for team members (with mocked LLM)."""
+        from unittest.mock import patch
+
+        self.client.force_login(self.member_user)
+
+        with patch("apps.metrics.services.insight_llm.generate_insight") as mock_generate:
+            mock_generate.return_value = {
+                "headline": "Test Insight",
+                "detail": "Test detail",
+                "recommendation": "Test recommendation",
+                "metric_cards": [],
+                "is_fallback": False,
+            }
+            with patch("apps.metrics.services.insight_llm.gather_insight_data") as mock_gather:
+                mock_gather.return_value = {}
+                with patch("apps.metrics.services.insight_llm.cache_insight"):
+                    response = self.client.post(reverse("metrics:refresh_insight"))
+
+        self.assertEqual(response.status_code, 200)
+
+    def test_renders_correct_template(self):
+        """Test that refresh_insight renders correct partial template."""
+        from unittest.mock import patch
+
+        self.client.force_login(self.member_user)
+
+        with patch("apps.metrics.services.insight_llm.generate_insight") as mock_generate:
+            mock_generate.return_value = {
+                "headline": "Test",
+                "detail": "Test",
+                "recommendation": "",
+                "metric_cards": [],
+                "is_fallback": False,
+            }
+            with (
+                patch("apps.metrics.services.insight_llm.gather_insight_data"),
+                patch("apps.metrics.services.insight_llm.cache_insight"),
+            ):
+                response = self.client.post(reverse("metrics:refresh_insight"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "metrics/partials/engineering_insights.html")
+
+    def test_accepts_cadence_query_param(self):
+        """Test that refresh_insight accepts cadence query param."""
+        from unittest.mock import patch
+
+        self.client.force_login(self.member_user)
+
+        with patch("apps.metrics.services.insight_llm.generate_insight") as mock_generate:
+            mock_generate.return_value = {
+                "headline": "Test",
+                "detail": "Test",
+                "recommendation": "",
+                "metric_cards": [],
+                "is_fallback": False,
+            }
+            with (
+                patch("apps.metrics.services.insight_llm.gather_insight_data"),
+                patch("apps.metrics.services.insight_llm.cache_insight"),
+            ):
+                response = self.client.post(reverse("metrics:refresh_insight") + "?cadence=monthly")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["cadence"], "monthly")
+
+    def test_context_contains_error_on_exception(self):
+        """Test that context contains error message when LLM call fails."""
+        from unittest.mock import patch
+
+        self.client.force_login(self.member_user)
+
+        with patch("apps.metrics.services.insight_llm.gather_insight_data") as mock_gather:
+            mock_gather.side_effect = Exception("LLM API error")
+            response = self.client.post(reverse("metrics:refresh_insight"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNotNone(response.context["error"])
+        self.assertIn("LLM API error", response.context["error"])
