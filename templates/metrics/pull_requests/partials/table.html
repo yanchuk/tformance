@@ -54,8 +54,8 @@
       </tr>
     </thead>
     {% for pr in prs %}
-      {# Each PR uses its own tbody with Alpine scope for expand/collapse #}
-      <tbody x-data="{ expanded: false }">
+      {# Each PR uses its own tbody with Alpine scope for expand/collapse and inline notes #}
+      <tbody x-data="{ expanded: false, inlineOpen: false }" @inline-closed.window="inlineOpen = false">
       <tr @click="expanded = !expanded" class="cursor-pointer hover:bg-base-200/50 transition-colors" :class="{ 'border-b-0': expanded }">
         <td class="max-w-xs">
           <div class="flex items-center gap-2">

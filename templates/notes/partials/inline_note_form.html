@@ -10,7 +10,7 @@
           @submit="submitting = true"
           @keydown.meta.enter.prevent="$el.requestSubmit()"
           @keydown.ctrl.enter.prevent="$el.requestSubmit()"
-          @keydown.escape="$el.closest('tr').remove()"
+          @keydown.escape="$dispatch('inline-closed'); $el.closest('tr').remove()"
           class="flex items-start gap-3 p-3">
       {% csrf_token %}
 
@@ -18,12 +18,13 @@
       <div class="flex-1">
         <textarea name="content"
                   rows="2"
-                  class="textarea textarea-bordered w-full text-sm {% if form.content.errors %}textarea-error{% endif %}"
-                  placeholder="{% trans 'Add your observations about this PR...' %}"
-                  x-init="$el.focus()"
-                  required>{{ form.content.value|default:'' }}</textarea>
+                  class="textarea textarea-bordered w-full text-sm {% if form.content.errors or form.non_field_errors %}textarea-error{% endif %}"
+                  placeholder="{% trans 'Optional: Add your observations...' %}"
+                  x-init="$el.focus()">{{ form.content.value|default:'' }}</textarea>
         {% if form.content.errors %}
-          <span class="text-error text-xs mt-1">{% trans "This field is required." %}</span>
+          <span class="text-error text-xs mt-1">{{ form.content.errors.0 }}</span>
+        {% elif form.non_field_errors %}
+          <span class="text-error text-xs mt-1">{{ form.non_field_errors.0 }}</span>
         {% endif %}
       </div>
 
@@ -43,7 +44,7 @@
       </button>
       <button type="button"
               class="btn btn-ghost btn-sm"
-              @click="$el.closest('tr').remove()">
+              @click="$dispatch('inline-closed'); $el.closest('tr').remove()">
         {% trans "Cancel" %}
       </button>
     </form>

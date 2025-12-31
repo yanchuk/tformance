@@ -22,10 +22,16 @@
         <span class="badge badge-success badge-sm">{% trans "Resolved" %}</span>
       {% endif %}
 
-      {# Note content #}
-      <p class="flex-1 text-sm text-base-content/80 truncate" title="{{ note.content }}">
-        {{ note.content|truncatechars:150 }}
-      </p>
+      {# Note content (may be empty if only flag is set) #}
+      {% if note.content %}
+        <p class="flex-1 text-sm text-base-content/80 truncate" title="{{ note.content }}">
+          {{ note.content|truncatechars:150 }}
+        </p>
+      {% else %}
+        <p class="flex-1 text-sm text-base-content/50 italic">
+          {% trans "No note text" %}
+        </p>
+      {% endif %}
 
       {# Action buttons #}
       <button @click="editing = true" class="btn btn-ghost btn-xs">
@@ -38,7 +44,7 @@
               class="btn btn-ghost btn-xs text-error">
         {% trans "Delete" %}
       </button>
-      <button @click="$el.closest('tr').remove()" class="btn btn-ghost btn-xs">
+      <button @click="$dispatch('inline-closed'); $el.closest('tr').remove()" class="btn btn-ghost btn-xs">
         {% trans "Close" %}
       </button>
     </div>
@@ -62,9 +68,8 @@
         <textarea name="content"
                   rows="2"
                   class="textarea textarea-bordered w-full text-sm"
-                  placeholder="{% trans 'Add your observations about this PR...' %}"
-                  x-init="if (editing) $el.focus()"
-                  required>{{ note.content }}</textarea>
+                  placeholder="{% trans 'Optional: Add your observations...' %}"
+                  x-init="if (editing) $el.focus()">{{ note.content }}</textarea>
       </div>
 
       {# Flag dropdown #}

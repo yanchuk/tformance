@@ -21,9 +21,16 @@
       <form method="post" class="mt-4">
         {% csrf_token %}
 
+        {# Non-field errors (e.g., "Please provide content or select a flag") #}
+        {% if form.non_field_errors %}
+          <div class="alert alert-error mb-4">
+            <span>{{ form.non_field_errors.0 }}</span>
+          </div>
+        {% endif %}
+
         <div class="form-control mb-4">
           <label class="label">
-            <span class="label-text">{% trans "Note" %} *</span>
+            <span class="label-text">{% trans "Note" %}</span>
           </label>
           {{ form.content }}
           {% if form.content.errors %}
