@@ -1,0 +1,26 @@
+{% load i18n %}
+<dialog id="note-dialog" class="modal modal-open">
+  <div class="modal-box">
+    <div class="text-center py-4">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto text-success mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+      <h3 class="font-bold text-lg">
+        {% if is_edit %}
+          {% trans "Note saved!" %}
+        {% else %}
+          {% trans "Note added!" %}
+        {% endif %}
+      </h3>
+      <p class="py-2 text-base-content/70">
+        {% trans "Your note for PR" %} #{{ pr.github_pr_id }} {% trans "has been saved." %}
+      </p>
+    </div>
+    <div class="modal-action justify-center">
+      <button type="button" class="btn btn-primary" onclick="this.closest('dialog').remove()">
+        {% trans "Done" %}
+      </button>
+    </div>
+  </div>
+  <div class="modal-backdrop" onclick="this.closest('dialog').remove()"></div>
+</dialog>

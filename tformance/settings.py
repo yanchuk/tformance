@@ -117,6 +117,7 @@ PROJECT_APPS = [
     "apps.onboarding.apps.OnboardingConfig",
     "apps.feedback.apps.FeedbackConfig",
     "apps.auth.apps.AuthConfig",
+    "apps.notes.apps.NotesConfig",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + PROJECT_APPS + WAGTAIL_APPS

@@ -1,0 +1,62 @@
+{% load i18n %}
+<dialog id="note-dialog" class="modal modal-open">
+  <div class="modal-box">
+    <h3 class="font-bold text-lg mb-4">
+      {% if is_edit %}
+        {% trans "Edit Note" %} - PR #{{ pr.github_pr_id }}
+      {% else %}
+        {% trans "Add Note" %} - PR #{{ pr.github_pr_id }}
+      {% endif %}
+    </h3>
+    <p class="text-base-content/70 text-sm mb-4 truncate">{{ pr.title }}</p>
+
+    <form method="post"
+          action="{% url 'notes:note_form' pr.id %}"
+          hx-post="{% url 'notes:note_form' pr.id %}"
+          hx-target="closest dialog"
+          hx-swap="outerHTML">
+      {% csrf_token %}
+
+      <div class="form-control mb-4">
+        <label class="label">
+          <span class="label-text">{% trans "Note" %} *</span>
+        </label>
+        {{ form.content }}
+        {% if form.content.errors %}
+        <label class="label">
+          <span class="label-text-alt text-error">{{ form.content.errors.0 }}</span>
+        </label>
+        {% endif %}
+        <label class="label">
+          <span class="label-text-alt text-base-content/50">{% trans "Max 2000 characters" %}</span>
+        </label>
+      </div>
+
+      <div class="form-control mb-4">
+        <label class="label">
+          <span class="label-text">{% trans "Flag" %}</span>
+        </label>
+        {{ form.flag }}
+        {% if form.flag.errors %}
+        <label class="label">
+          <span class="label-text-alt text-error">{{ form.flag.errors.0 }}</span>
+        </label>
+        {% endif %}
+      </div>
+
+      <div class="modal-action">
+        <button type="button" class="btn btn-ghost" onclick="this.closest('dialog').remove()">
+          {% trans "Cancel" %}
+        </button>
+        <button type="submit" class="btn btn-primary">
+          {% if is_edit %}
+            {% trans "Save" %}
+          {% else %}
+            {% trans "Add Note" %}
+          {% endif %}
+        </button>
+      </div>
+    </form>
+  </div>
+  <div class="modal-backdrop" onclick="this.closest('dialog').remove()"></div>
+</dialog>

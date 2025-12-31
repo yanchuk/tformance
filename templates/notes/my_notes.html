@@ -1,0 +1,122 @@
+{% extends "web/app/app_base.html" %}
+{% load i18n %}
+
+{% block page_title %}{% trans "My Notes" %}{% endblock page_title %}
+
+{% block app %}
+<div class="container mx-auto max-w-4xl py-8 px-4">
+  <div class="flex items-center justify-between mb-6">
+    <h1 class="text-2xl font-bold text-base-content">{% trans "My Notes" %}</h1>
+  </div>
+
+  {# Filters #}
+  <div class="card bg-base-200 shadow-sm mb-6">
+    <div class="card-body py-4">
+      <div class="flex flex-wrap gap-4 items-center">
+        <div class="form-control">
+          <label class="label py-0">
+            <span class="label-text">{% trans "Flag" %}</span>
+          </label>
+          <select class="select select-bordered select-sm"
+                  onchange="window.location.href = updateQueryParam('flag', this.value)">
+            <option value="">{% trans "All Flags" %}</option>
+            {% for value, label in flag_choices %}
+              {% if value %}
+                <option value="{{ value }}" {% if current_flag == value %}selected{% endif %}>{{ label }}</option>
+              {% endif %}
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="form-control">
+          <label class="label py-0">
+            <span class="label-text">{% trans "Status" %}</span>
+          </label>
+          <select class="select select-bordered select-sm"
+                  onchange="window.location.href = updateQueryParam('resolved', this.value)">
+            <option value="">{% trans "All Status" %}</option>
+            <option value="false" {% if current_resolved == "false" %}selected{% endif %}>{% trans "Open" %}</option>
+            <option value="true" {% if current_resolved == "true" %}selected{% endif %}>{% trans "Resolved" %}</option>
+          </select>
+        </div>
+
+        {% if current_flag or current_resolved %}
+          <a href="{% url 'notes:my_notes' %}" class="btn btn-ghost btn-sm">
+            {% trans "Clear Filters" %}
+          </a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {# Notes List #}
+  {% if notes %}
+    <div class="space-y-4">
+      {% for note in notes %}
+        <div class="card bg-base-200 shadow-sm {% if note.is_resolved %}opacity-60{% endif %}">
+          <div class="card-body py-4">
+            <div class="flex items-start justify-between gap-4">
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 mb-2">
+                  <a href="{% url 'notes:note_form' pr_id=note.pull_request.id %}"
+                     class="link link-primary font-medium">
+                    PR #{{ note.pull_request.github_pr_id }}
+                  </a>
+                  {% if note.flag %}
+                    <span class="badge badge-sm
+                      {% if note.flag == 'false_positive' %}badge-warning
+                      {% elif note.flag == 'review_later' %}badge-info
+                      {% elif note.flag == 'important' %}badge-primary
+                      {% elif note.flag == 'concern' %}badge-error
+                      {% endif %}">
+                      {{ note.get_flag_display }}
+                    </span>
+                  {% endif %}
+                  {% if note.is_resolved %}
+                    <span class="badge badge-sm badge-success">{% trans "Resolved" %}</span>
+                  {% endif %}
+                </div>
+                <p class="text-sm text-base-content/70 truncate mb-2">
+                  {{ note.pull_request.title }}
+                </p>
+                <p class="text-base-content">{{ note.content }}</p>
+                <p class="text-xs text-base-content/50 mt-2">
+                  {{ note.created_at|date:"M j, Y" }}
+                </p>
+              </div>
+              <div class="flex gap-2">
+                <a href="{% url 'notes:note_form' pr_id=note.pull_request.id %}"
+                   class="btn btn-ghost btn-sm">
+                  {% trans "Edit" %}
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="card bg-base-200 shadow-sm">
+      <div class="card-body text-center py-12">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto text-base-content/30 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+        <p class="text-base-content/70">{% trans "No notes yet." %}</p>
+        <p class="text-sm text-base-content/50">{% trans "Add notes to PRs from the Pull Requests page." %}</p>
+      </div>
+    </div>
+  {% endif %}
+</div>
+
+<script>
+function updateQueryParam(key, value) {
+  const url = new URL(window.location.href);
+  if (value) {
+    url.searchParams.set(key, value);
+  } else {
+    url.searchParams.delete(key);
+  }
+  return url.toString();
+}
+</script>
+{% endblock app %}

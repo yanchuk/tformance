@@ -856,3 +856,36 @@ def has_llm_summary(pr) -> bool:
         {% if pr|has_llm_summary %}...{% endif %}
     """
     return bool(pr.llm_summary)
+
+
+# =============================================================================
+# Personal Notes Tags
+# =============================================================================
+
+
+@register.simple_tag(takes_context=True)
+def user_note_for_pr(context, pr):
+    """Get the current user's note for a PR.
+
+    Args:
+        context: Template context with request
+        pr: PullRequest instance
+
+    Returns:
+        PRNote instance if exists, None otherwise
+
+    Usage:
+        {% user_note_for_pr pr as note %}
+        {% if note %}...{% endif %}
+    """
+    request = context.get("request")
+    if not request or not hasattr(request, "user") or not request.user.is_authenticated:
+        return None
+
+    # Import here to avoid circular imports
+    from apps.notes.models import PRNote
+
+    try:
+        return PRNote.objects.get(user=request.user, pull_request=pr)
+    except PRNote.DoesNotExist:
+        return None

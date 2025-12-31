@@ -31,6 +31,7 @@ from apps.feedback.urls import team_urlpatterns as feedback_team_urls
 from apps.insights.urls import team_urlpatterns as insights_team_urls
 from apps.integrations.urls import team_urlpatterns as integrations_team_urls
 from apps.metrics.urls import team_urlpatterns as metrics_team_urls
+from apps.notes.urls import team_urlpatterns as notes_team_urls
 from apps.pullrequests.urls import team_urlpatterns as pullrequests_team_urls
 from apps.subscriptions.urls import team_urlpatterns as subscriptions_team_urls
 from apps.teams.urls import team_urlpatterns as single_team_urls
@@ -54,6 +55,7 @@ team_urlpatterns = [
     path("pull-requests/", include(pullrequests_team_urls)),  # Standalone PR page
     path("insights/", include(insights_team_urls)),
     path("feedback/", include(feedback_team_urls)),
+    path("notes/", include(notes_team_urls)),
 ]
 
 urlpatterns = [

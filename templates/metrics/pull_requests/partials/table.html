@@ -85,6 +85,21 @@
                 {% if pr.jira_key %}
                   <span class="badge badge-ghost badge-xs flex-shrink-0">{{ pr.jira_key }}</span>
                 {% endif %}
+                {% user_note_for_pr pr as note %}
+                {% if note %}
+                  <span class="badge badge-xs flex-shrink-0
+                    {% if note.flag == 'false_positive' %}badge-warning
+                    {% elif note.flag == 'review_later' %}badge-info
+                    {% elif note.flag == 'important' %}badge-primary
+                    {% elif note.flag == 'concern' %}badge-error
+                    {% else %}badge-ghost
+                    {% endif %}"
+                    title="{{ note.get_flag_display|default:'Note' }}{% if note.is_resolved %} (Resolved){% endif %}">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                  </span>
+                {% endif %}
               </div>
             </div>
           </div>

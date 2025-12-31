@@ -188,4 +188,44 @@
       <p class="text-xs mt-1">{% trans "This PR has not been analyzed yet." %}</p>
     </div>
   {% endif %}
+
+  {# Personal Note Section #}
+  <div class="border-t border-base-300 mt-4 pt-4">
+    {% user_note_for_pr pr as note %}
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-base-content/60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+        </svg>
+        <span class="text-sm font-medium text-base-content/80">{% trans "Personal Note" %}</span>
+        {% if note %}
+          {% if note.flag %}
+            <span class="badge badge-sm
+              {% if note.flag == 'false_positive' %}badge-warning
+              {% elif note.flag == 'review_later' %}badge-info
+              {% elif note.flag == 'important' %}badge-primary
+              {% elif note.flag == 'concern' %}badge-error
+              {% endif %}">
+              {{ note.get_flag_display }}
+            </span>
+          {% endif %}
+          {% if note.is_resolved %}
+            <span class="badge badge-sm badge-success badge-outline">{% trans "Resolved" %}</span>
+          {% endif %}
+        {% endif %}
+      </div>
+      <a href="{% url 'notes:note_form' pr_id=pr.id %}"
+         class="btn btn-ghost btn-sm"
+         @click.stop>
+        {% if note %}
+          {% trans "Edit Note" %}
+        {% else %}
+          {% trans "Add Note" %}
+        {% endif %}
+      </a>
+    </div>
+    {% if note %}
+      <p class="text-sm text-base-content/70 mt-2 pl-6">{{ note.content|truncatechars:200 }}</p>
+    {% endif %}
+  </div>
 </div>
