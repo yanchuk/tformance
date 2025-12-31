@@ -59,6 +59,9 @@
       <tr @click="expanded = !expanded" class="cursor-pointer hover:bg-base-200/50 transition-colors" :class="{ 'border-b-0': expanded }">
         <td class="max-w-xs">
           <div class="flex items-center gap-2">
+            {# Note icon - at the very left for quick access #}
+            {% user_note_for_pr pr as note %}
+            {% include 'notes/partials/note_icon.html' with pr=pr note=note %}
             {# Expand/collapse indicator #}
             <button @click.stop="expanded = !expanded"
                     class="btn btn-ghost btn-xs btn-square flex-shrink-0"

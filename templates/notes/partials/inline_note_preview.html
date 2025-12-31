@@ -1,0 +1,87 @@
+{% load i18n %}
+{# Inline note preview - inserted as a table row below the PR row #}
+<tr class="inline-note-row bg-base-200/50" x-data="{ editing: false }">
+  <td colspan="11" class="p-0 border-l-4 border-primary">
+
+    {# Preview Mode #}
+    <div x-show="!editing" class="flex items-center gap-3 px-4 py-2">
+      {# Flag badge #}
+      {% if note.flag %}
+        <span class="badge badge-sm
+          {% if note.flag == 'false_positive' %}badge-warning
+          {% elif note.flag == 'review_later' %}badge-info
+          {% elif note.flag == 'important' %}badge-secondary
+          {% elif note.flag == 'concern' %}badge-error
+          {% else %}badge-ghost{% endif %}">
+          {{ note.get_flag_display }}
+        </span>
+      {% endif %}
+
+      {# Resolved badge #}
+      {% if note.is_resolved %}
+        <span class="badge badge-success badge-sm">{% trans "Resolved" %}</span>
+      {% endif %}
+
+      {# Note content #}
+      <p class="flex-1 text-sm text-base-content/80 truncate" title="{{ note.content }}">
+        {{ note.content|truncatechars:150 }}
+      </p>
+
+      {# Action buttons #}
+      <button @click="editing = true" class="btn btn-ghost btn-xs">
+        {% trans "Edit" %}
+      </button>
+      <button hx-delete="{% url 'notes:inline_note' pr.id %}"
+              hx-target="closest tr"
+              hx-swap="outerHTML"
+              hx-confirm="{% trans 'Delete this note?' %}"
+              class="btn btn-ghost btn-xs text-error">
+        {% trans "Delete" %}
+      </button>
+      <button @click="$el.closest('tr').remove()" class="btn btn-ghost btn-xs">
+        {% trans "Close" %}
+      </button>
+    </div>
+
+    {# Edit Mode #}
+    <form x-show="editing"
+          x-cloak
+          method="post"
+          action="{% url 'notes:inline_note' pr.id %}"
+          hx-post="{% url 'notes:inline_note' pr.id %}"
+          hx-target="closest tr"
+          hx-swap="outerHTML"
+          @keydown.meta.enter.prevent="$el.requestSubmit()"
+          @keydown.ctrl.enter.prevent="$el.requestSubmit()"
+          @keydown.escape="editing = false"
+          class="flex items-start gap-3 p-3">
+      {% csrf_token %}
+
+      {# Textarea for note content #}
+      <div class="flex-1">
+        <textarea name="content"
+                  rows="2"
+                  class="textarea textarea-bordered w-full text-sm"
+                  placeholder="{% trans 'Add your observations about this PR...' %}"
+                  x-init="if (editing) $el.focus()"
+                  required>{{ note.content }}</textarea>
+      </div>
+
+      {# Flag dropdown #}
+      <select name="flag" class="select select-bordered select-sm w-36">
+        {% for value, label in form.flag.field.choices %}
+          <option value="{{ value }}" {% if note.flag == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+
+      {# Action buttons #}
+      <button type="submit" class="btn btn-primary btn-sm">
+        {% trans "Save" %}
+      </button>
+      <button type="button" @click="editing = false" class="btn btn-ghost btn-sm">
+        {% trans "Cancel" %}
+      </button>
+    </form>
+
+  </td>
+</tr>
