@@ -6,7 +6,8 @@
         hx-get="{% url 'notes:inline_note' pr_id=pr.pk %}"
         hx-target="closest tr"
         hx-swap="afterend"
-        @click.stop="if(inlineOpen) { $event.preventDefault(); return; } inlineOpen = true">
+        hx-trigger="open-note"
+        @click.stop="if(!inlineOpen) { inlineOpen = true; htmx.trigger($el, 'open-note'); }">
   {% if note %}
     {# Filled star icon with flag color #}
     <svg xmlns="http://www.w3.org/2000/svg"
