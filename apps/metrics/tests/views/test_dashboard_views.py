@@ -77,16 +77,16 @@ class TestNeedsAttentionView(TestCase):
         self.assertIn("prs", response.context)
         self.assertIsInstance(response.context["prs"], list)
 
-    def test_context_contains_pagination_metadata(self):
-        """Test that context contains pagination metadata."""
+    def test_context_contains_summary_and_counts(self):
+        """Test that context contains summary badges and total_count."""
         self.client.force_login(self.admin_user)
 
         response = self.client.get(reverse("metrics:needs_attention"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertIn("page", response.context)
-        self.assertIn("total_pages", response.context)
+        self.assertIn("summary", response.context)
         self.assertIn("total_count", response.context)
+        self.assertIn("days", response.context)
 
     def test_accepts_days_query_param(self):
         """Test that needs_attention_view accepts days query param."""
@@ -95,15 +95,7 @@ class TestNeedsAttentionView(TestCase):
         response = self.client.get(reverse("metrics:needs_attention"), {"days": "7"})
 
         self.assertEqual(response.status_code, 200)
-
-    def test_accepts_page_query_param(self):
-        """Test that needs_attention_view accepts page query param."""
-        self.client.force_login(self.admin_user)
-
-        response = self.client.get(reverse("metrics:needs_attention"), {"page": "2"})
-
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.context["page"], 2)
+        self.assertEqual(response.context["days"], 7)
 
     def test_default_days_is_30(self):
         """Test that default date range is 30 days."""
@@ -112,16 +104,7 @@ class TestNeedsAttentionView(TestCase):
         response = self.client.get(reverse("metrics:needs_attention"))
 
         self.assertEqual(response.status_code, 200)
-        # Service is called with 30-day date range by default
-
-    def test_default_page_is_1(self):
-        """Test that default page is 1."""
-        self.client.force_login(self.admin_user)
-
-        response = self.client.get(reverse("metrics:needs_attention"))
-
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.context["page"], 1)
+        self.assertEqual(response.context["days"], 30)
 
 
 class TestAiImpactView(TestCase):
