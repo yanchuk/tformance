@@ -4,11 +4,14 @@ from django.test import TestCase
 
 from apps.metrics.prompts.schemas import (
     EXAMPLE_MINIMAL_RESPONSE,
+    EXAMPLE_VALID_INSIGHT,
     EXAMPLE_VALID_RESPONSE,
+    INSIGHT_RESPONSE_SCHEMA,
     PR_ANALYSIS_RESPONSE_SCHEMA,
     SCHEMA_VERSION,
     get_schema_as_json,
     validate_ai_response,
+    validate_insight_response,
     validate_llm_response,
 )
 
@@ -365,3 +368,113 @@ class TestGetSchemaAsJson(TestCase):
         """Should have $schema field."""
         schema = get_schema_as_json()
         self.assertIn("$schema", schema)
+
+
+class TestInsightSchemaValidation(TestCase):
+    """Tests for dashboard insight schema validation."""
+
+    def test_valid_insight_passes(self):
+        """Example valid insight should pass validation."""
+        is_valid, errors = validate_insight_response(EXAMPLE_VALID_INSIGHT)
+        self.assertTrue(is_valid, f"Expected valid but got errors: {errors}")
+        self.assertEqual(len(errors), 0)
+
+    def test_empty_dict_fails(self):
+        """Empty response should fail validation."""
+        is_valid, errors = validate_insight_response({})
+        self.assertFalse(is_valid)
+        self.assertGreater(len(errors), 0)
+
+    def test_missing_headline_fails(self):
+        """Response missing 'headline' should fail."""
+        response = {
+            "detail": "Some detail",
+            "recommendation": "Some recommendation",
+            "metric_cards": EXAMPLE_VALID_INSIGHT["metric_cards"],
+        }
+        is_valid, errors = validate_insight_response(response)
+        self.assertFalse(is_valid)
+        self.assertTrue(any("headline" in e for e in errors))
+
+    def test_missing_metric_cards_fails(self):
+        """Response missing 'metric_cards' should fail."""
+        response = {
+            "headline": "Test headline with enough length",
+            "detail": "Some detail with enough characters.",
+            "recommendation": "Some recommendation",
+        }
+        is_valid, errors = validate_insight_response(response)
+        self.assertFalse(is_valid)
+        self.assertTrue(any("metric_cards" in e for e in errors))
+
+    def test_wrong_metric_cards_count_fails(self):
+        """Response with wrong number of metric cards should fail."""
+        response = {
+            "headline": "Test headline with enough length",
+            "detail": "Some detail with enough characters for validation.",
+            "recommendation": "Some recommendation here",
+            "metric_cards": [
+                {"label": "Test", "value": "10", "trend": "positive"},
+                {"label": "Test2", "value": "20", "trend": "negative"},
+            ],  # Only 2 cards, need exactly 4
+        }
+        is_valid, errors = validate_insight_response(response)
+        self.assertFalse(is_valid)
+
+    def test_invalid_trend_fails(self):
+        """Metric card with invalid trend should fail."""
+        response = {
+            "headline": "Test headline with enough length",
+            "detail": "Some detail with enough characters for validation.",
+            "recommendation": "Some recommendation here",
+            "metric_cards": [
+                {"label": "Test", "value": "10", "trend": "invalid_trend"},
+                {"label": "Test2", "value": "20", "trend": "positive"},
+                {"label": "Test3", "value": "30", "trend": "negative"},
+                {"label": "Test4", "value": "40", "trend": "neutral"},
+            ],
+        }
+        is_valid, errors = validate_insight_response(response)
+        self.assertFalse(is_valid)
+
+    def test_all_valid_trends_pass(self):
+        """All valid trend values should pass."""
+        for trend in ["positive", "negative", "neutral", "warning"]:
+            response = {
+                "headline": "Test headline with enough length",
+                "detail": "Some detail with enough characters for validation.",
+                "recommendation": "Some recommendation here",
+                "metric_cards": [
+                    {"label": "Test1", "value": "10", "trend": trend},
+                    {"label": "Test2", "value": "20", "trend": trend},
+                    {"label": "Test3", "value": "30", "trend": trend},
+                    {"label": "Test4", "value": "40", "trend": trend},
+                ],
+            }
+            is_valid, errors = validate_insight_response(response)
+            self.assertTrue(is_valid, f"Trend '{trend}' should be valid: {errors}")
+
+    def test_is_fallback_optional(self):
+        """is_fallback field should be optional."""
+        response = {
+            "headline": "Test headline with enough length",
+            "detail": "Some detail with enough characters for validation.",
+            "recommendation": "Some recommendation here",
+            "metric_cards": [
+                {"label": "Test1", "value": "10", "trend": "positive"},
+                {"label": "Test2", "value": "20", "trend": "negative"},
+                {"label": "Test3", "value": "30", "trend": "neutral"},
+                {"label": "Test4", "value": "40", "trend": "warning"},
+            ],
+            # No is_fallback field - should still pass
+        }
+        is_valid, errors = validate_insight_response(response)
+        self.assertTrue(is_valid, f"Response without is_fallback should be valid: {errors}")
+
+    def test_insight_schema_has_required_fields(self):
+        """Insight schema should require headline, detail, recommendation, metric_cards."""
+        required = INSIGHT_RESPONSE_SCHEMA["required"]
+        self.assertIn("headline", required)
+        self.assertIn("detail", required)
+        self.assertIn("recommendation", required)
+        self.assertIn("metric_cards", required)

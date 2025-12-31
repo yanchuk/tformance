@@ -645,6 +645,16 @@ SCHEDULED_TASKS = {
         "schedule": schedules.crontab(minute=0, hour=2, day_of_month=1),  # 1st of month 2 AM UTC
         "expire_seconds": 60 * 60,  # 1 hour expiry
     },
+    "generate-weekly-llm-insights": {
+        "task": "apps.metrics.tasks.generate_weekly_insights",
+        "schedule": schedules.crontab(minute=0, hour=6, day_of_week=1),  # Monday 6 AM UTC
+        "expire_seconds": 60 * 60 * 2,  # 2 hour expiry
+    },
+    "generate-monthly-llm-insights": {
+        "task": "apps.metrics.tasks.generate_monthly_insights",
+        "schedule": schedules.crontab(minute=0, hour=6, day_of_month=1),  # 1st of month 6 AM UTC
+        "expire_seconds": 60 * 60 * 2,  # 2 hour expiry
+    },
 }
 
 # Channels / Daphne setup

@@ -17,6 +17,7 @@ class DailyInsight(BaseTeamModel):
         ("anomaly", "Anomaly"),
         ("comparison", "Comparison"),
         ("action", "Action"),
+        ("llm_insight", "LLM Insight"),  # For LLM-generated dashboard insights
     ]
 
     PRIORITY_CHOICES = [

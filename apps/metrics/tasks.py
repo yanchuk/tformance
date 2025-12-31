@@ -4,7 +4,7 @@ import json
 import logging
 import os
 import time
-from datetime import date
+from datetime import date, timedelta
 
 from celery import shared_task
 
@@ -19,6 +19,11 @@ from apps.metrics.insights.rules import (
     UnlinkedPRsRule,
 )
 from apps.metrics.models import PullRequest
+from apps.metrics.services.insight_llm import (
+    cache_insight,
+    gather_insight_data,
+    generate_insight,
+)
 from apps.metrics.services.llm_prompts import (
     PR_ANALYSIS_SYSTEM_PROMPT,
     PROMPT_VERSION,
@@ -283,3 +288,101 @@ def cleanup_old_metrics_data(days: int = 365) -> dict:
     logger.info(f"Deleted {weekly_deleted} WeeklyMetrics records older than {weekly_cutoff}")
 
     return results
+
+
+@shared_task
+def generate_weekly_insights() -> dict:
+    """Generate LLM-powered weekly insights for all teams.
+
+    Uses a 7-day period (last week) and stores insights with 'weekly' cadence.
+
+    Returns:
+        Dict with teams_processed count and errors count
+    """
+    teams = Team.objects.all()
+    today = date.today()
+    end_date = today
+    start_date = today - timedelta(days=7)
+
+    teams_processed = 0
+    errors = 0
+
+    for team in teams:
+        try:
+            # Gather metrics data for the team
+            data = gather_insight_data(
+                team=team,
+                start_date=start_date,
+                end_date=end_date,
+            )
+
+            # Generate insight using LLM
+            insight = generate_insight(data)
+
+            # Cache the result
+            cache_insight(
+                team=team,
+                insight=insight,
+                target_date=today,
+                cadence="weekly",
+            )
+
+            teams_processed += 1
+            logger.info(f"Generated weekly insight for team {team.name}")
+
+        except Exception as e:
+            logger.exception(f"Failed to generate weekly insight for team {team.name}: {e}")
+            errors += 1
+            continue
+
+    logger.info(f"Weekly insights complete: {teams_processed} processed, {errors} errors")
+    return {"teams_processed": teams_processed, "errors": errors}
+
+
+@shared_task
+def generate_monthly_insights() -> dict:
+    """Generate LLM-powered monthly insights for all teams.
+
+    Uses a 30-day period (last month) and stores insights with 'monthly' cadence.
+
+    Returns:
+        Dict with teams_processed count and errors count
+    """
+    teams = Team.objects.all()
+    today = date.today()
+    end_date = today
+    start_date = today - timedelta(days=30)
+
+    teams_processed = 0
+    errors = 0
+
+    for team in teams:
+        try:
+            # Gather metrics data for the team
+            data = gather_insight_data(
+                team=team,
+                start_date=start_date,
+                end_date=end_date,
+            )
+
+            # Generate insight using LLM
+            insight = generate_insight(data)
+
+            # Cache the result
+            cache_insight(
+                team=team,
+                insight=insight,
+                target_date=today,
+                cadence="monthly",
+            )
+
+            teams_processed += 1
+            logger.info(f"Generated monthly insight for team {team.name}")
+
+        except Exception as e:
+            logger.exception(f"Failed to generate monthly insight for team {team.name}: {e}")
+            errors += 1
+            continue
+
+    logger.info(f"Monthly insights complete: {teams_processed} processed, {errors} errors")
+    return {"teams_processed": teams_processed, "errors": errors}
