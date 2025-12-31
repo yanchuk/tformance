@@ -620,3 +620,79 @@ class TestAICategoryBadgeClassFilter(TestCase):
         from apps.metrics.templatetags.pr_list_tags import ai_category_badge_class
 
         self.assertEqual(ai_category_badge_class(["snyk"]), "badge-ghost")
+
+
+class TestLinkifyMentionsFilter(TestCase):
+    """Tests for linkify_mentions template filter."""
+
+    def test_converts_mention_to_link(self):
+        """Test that @username is converted to a link."""
+        from apps.metrics.templatetags.pr_list_tags import linkify_mentions
+
+        result = linkify_mentions("See @alice for details", 30)
+
+        self.assertIn("href=", result)
+        self.assertIn("@alice", result)
+        self.assertIn("github_name=@alice", result)
+        self.assertIn("days=30", result)
+        self.assertIn('target="_blank"', result)
+
+    def test_converts_multiple_mentions(self):
+        """Test that multiple @mentions are all converted."""
+        from apps.metrics.templatetags.pr_list_tags import linkify_mentions
+
+        result = linkify_mentions("@alice and @bob worked on this", 30)
+
+        self.assertIn("github_name=@alice", result)
+        self.assertIn("github_name=@bob", result)
+
+    def test_uses_days_parameter(self):
+        """Test that days parameter is included in URL."""
+        from apps.metrics.templatetags.pr_list_tags import linkify_mentions
+
+        result = linkify_mentions("By @alice", 7)
+
+        self.assertIn("days=7", result)
+
+    def test_handles_hyphenated_usernames(self):
+        """Test that hyphenated GitHub usernames work."""
+        from apps.metrics.templatetags.pr_list_tags import linkify_mentions
+
+        result = linkify_mentions("Contact @alice-dev-user", 30)
+
+        self.assertIn("github_name=@alice-dev-user", result)
+
+    def test_escapes_html(self):
+        """Test that HTML in text is escaped to prevent XSS."""
+        from apps.metrics.templatetags.pr_list_tags import linkify_mentions
+
+        result = linkify_mentions("Hello <script>alert('xss')</script> @alice", 30)
+
+        self.assertNotIn("<script>", result)
+        self.assertIn("&lt;script&gt;", result)
+
+    def test_empty_text_returns_empty(self):
+        """Test that empty text returns empty string."""
+        from apps.metrics.templatetags.pr_list_tags import linkify_mentions
+
+        self.assertEqual(linkify_mentions("", 30), "")
+        self.assertEqual(linkify_mentions(None, 30), "")
+
+    def test_text_without_mentions_unchanged(self):
+        """Test that text without @mentions is returned unchanged (except escaping)."""
+        from apps.metrics.templatetags.pr_list_tags import linkify_mentions
+
+        result = linkify_mentions("Just some normal text", 30)
+
+        self.assertEqual(result, "Just some normal text")
+        self.assertNotIn("href=", result)
+
+    def test_email_not_treated_as_mention(self):
+        """Test that email addresses are not treated as mentions."""
+        from apps.metrics.templatetags.pr_list_tags import linkify_mentions
+
+        result = linkify_mentions("Email user@example.com for help", 30)
+
+        # The @ in email should not create a mention link
+        # (because our pattern requires @ at word boundary)
+        self.assertNotIn("github_name=@example", result)

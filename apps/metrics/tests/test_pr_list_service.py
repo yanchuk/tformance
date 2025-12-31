@@ -61,6 +61,58 @@ class TestGetPrsQueryset(TestCase):
         self.assertEqual(result.count(), 1)
         self.assertEqual(result.first(), pr1)
 
+    def test_filter_by_github_name(self):
+        """Test filtering by GitHub username (e.g., @alice)."""
+        # Create member with known github_username
+        member = TeamMemberFactory(team=self.team, github_username="alice-dev")
+        pr1 = PullRequestFactory(team=self.team, author=member)
+        PullRequestFactory(team=self.team, author=self.member1)
+
+        # Test with @ prefix
+        result = get_prs_queryset(self.team, {"github_name": "@alice-dev"})
+        self.assertEqual(result.count(), 1)
+        self.assertEqual(result.first(), pr1)
+
+        # Test without @ prefix
+        result = get_prs_queryset(self.team, {"github_name": "alice-dev"})
+        self.assertEqual(result.count(), 1)
+        self.assertEqual(result.first(), pr1)
+
+    def test_filter_by_github_name_case_insensitive(self):
+        """Test that github_name filter is case-insensitive."""
+        member = TeamMemberFactory(team=self.team, github_username="Alice-Dev")
+        pr1 = PullRequestFactory(team=self.team, author=member)
+
+        result = get_prs_queryset(self.team, {"github_name": "@alice-dev"})
+
+        self.assertEqual(result.count(), 1)
+        self.assertEqual(result.first(), pr1)
+
+    def test_filter_by_github_name_not_found_returns_empty(self):
+        """Test that non-existent github_name returns empty queryset."""
+        PullRequestFactory(team=self.team, author=self.member1)
+
+        result = get_prs_queryset(self.team, {"github_name": "@nonexistent"})
+
+        self.assertEqual(result.count(), 0)
+
+    def test_filter_by_github_name_team_scoped(self):
+        """Test that github_name filter is scoped to the current team only (security)."""
+        # Create same username in different team
+        other_team = TeamFactory()
+        other_member = TeamMemberFactory(team=other_team, github_username="shared-user")
+        PullRequestFactory(team=other_team, author=other_member)
+
+        # Create in our team
+        our_member = TeamMemberFactory(team=self.team, github_username="shared-user")
+        pr1 = PullRequestFactory(team=self.team, author=our_member)
+
+        result = get_prs_queryset(self.team, {"github_name": "@shared-user"})
+
+        # Should only find PR from our team
+        self.assertEqual(result.count(), 1)
+        self.assertEqual(result.first(), pr1)
+
     def test_filter_by_reviewer(self):
         """Test filtering by reviewer (team member ID)."""
         pr1 = PullRequestFactory(team=self.team, author=self.member1)

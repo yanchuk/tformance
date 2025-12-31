@@ -90,6 +90,41 @@ You MUST use these exact values for metric_cards. Do NOT recalculate.
 
 ---
 
+## ACTIONABLE DATA (USE FOR SPECIFIC RECOMMENDATIONS)
+
+### Top Contributors (reference by @username)
+{% if top_contributors %}
+| Contributor | GitHub | PRs | Avg Cycle |
+|-------------|--------|-----|-----------|
+{% for c in top_contributors %}
+| {{ c.display_name }} | @{{ c.github_username }} | {{ c.pr_count }} | {% if c.avg_cycle_time %}{{ "%.1f"|format(c.avg_cycle_time) }}h{% else %}N/A{% endif %} |
+{% endfor %}
+{% else %}
+No contributor data available.
+{% endif %}
+
+### PRs Needing Attention (specific issues to investigate)
+{% if attention_prs %}
+| Title | Author | Issue | Cycle Time |
+|-------|--------|-------|------------|
+{% for pr in attention_prs %}
+| {{ pr.title }} | @{{ pr.author_github or pr.author }} | {{ pr.issue_type }} | {% if pr.cycle_time %}{{ "%.0f"|format(pr.cycle_time) }}h{% else %}N/A{% endif %} |
+{% endfor %}
+{% else %}
+No PRs flagged for attention.
+{% endif %}
+
+### Issue Ownership (who has the most issues by type)
+{% if issue_by_person %}
+{% for issue_type, authors in issue_by_person.items() %}
+- {{ issue_type }}: {{ authors|join(", ") }}
+{% endfor %}
+{% else %}
+No issue patterns detected by person.
+{% endif %}
+
+---
+
 ## BENCHMARK CONTEXT
 
 | Metric | Current | Benchmark | Status |

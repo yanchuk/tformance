@@ -1,14 +1,31 @@
 # Dashboard Insights Feature - Context
 
-**Last Updated**: 2025-12-31 (Session 2 - Actionable Links)
-**Branch**: `main` (was `feature/dashboard-insights`, now merged)
-**Status**: Implementation Complete + Actionable Links Added
+**Last Updated**: 2026-01-01 (Session 3 - @Mentions Linking)
+**Branch**: `main`
+**Status**: ✅ Complete - Actionable Links + @Mentions Implemented
 
 ## Overview
 
-LLM-powered engineering insights displayed on the main dashboard. Uses Groq API with openai/gpt-oss-20b model to generate weekly/monthly summaries of team performance metrics. Now includes **actionable insight links** that let users click through to investigate specific PRs.
+LLM-powered engineering insights displayed on the main dashboard. Uses Groq API with openai/gpt-oss-20b model to generate weekly/monthly summaries of team performance metrics. Now includes:
+- **Actionable insight buttons** - Click "View slow PRs" to filter PR list
+- **Clickable @mentions** - @username links open filtered PR list for that user
 
-## Latest Session: Actionable Insight Links
+## Latest Session: @Mentions Linking (2026-01-01)
+
+### What Was Implemented
+
+1. **Clickable @username mentions** - When insights reference contributors like @MrChaker, clicking opens a new tab with PRs filtered to that author
+2. **github_name filter for PR list** - Secure endpoint filter `?github_name=@username` (team-scoped)
+3. **Enhanced user prompt** - Added Top Contributors, Attention PRs, Issue Ownership sections for more actionable recommendations
+4. **linkify_mentions template filter** - Converts @username text to clickable links
+
+### Verified Working
+
+- Generated insight for activepieces-demo team with @MrChaker mention
+- Clicking @MrChaker opened new tab with 33 PRs filtered correctly by Chaker Atallah
+- Email addresses like user@example.com are NOT treated as mentions (negative lookbehind regex)
+
+## Previous Session: Actionable Insight Links
 
 ### What Was Implemented
 
@@ -20,39 +37,48 @@ Added clickable action buttons to insights that link to filtered PR lists. For e
 2. **Backend resolves to URLs** - Safe, validated URL generation via `resolve_action_url()`
 3. **Template renders buttons** - DaisyUI styled links below recommendation
 
-### Key Code Changes This Session
+### Key Code Changes - @Mentions Session
+
+**`apps/metrics/templatetags/pr_list_tags.py`**:
+- Added `linkify_mentions` template filter with regex for @usernames:
+  ```python
+  MENTION_PATTERN = re.compile(r"(?<![a-zA-Z0-9])@([a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?)")
+
+  @register.filter
+  def linkify_mentions(text: str | None, days: int = 30) -> str:
+      # Converts @username to clickable link, escapes HTML, opens in new tab
+  ```
+
+**`apps/metrics/services/pr_list_service.py`**:
+- Added `github_name` filter to `get_prs_queryset()` - team-scoped lookup
+
+**`apps/metrics/prompts/templates/insight/user.jinja2`**:
+- Added ACTIONABLE DATA section with Top Contributors, Attention PRs, Issue Ownership
+
+**`templates/metrics/partials/engineering_insights.html`**:
+- Applied `linkify_mentions:days` filter to detail, recommendation, possible_causes
+
+### Key Code Changes - Actionable Links Session
 
 **`apps/metrics/services/insight_llm.py`**:
-- Added `actions` array to `INSIGHT_JSON_SCHEMA`:
-  ```python
-  "actions": {
-      "type": "array",
-      "items": {
-          "type": "object",
-          "properties": {
-              "action_type": {"type": "string", "enum": ["view_ai_prs", "view_non_ai_prs", "view_slow_prs", "view_reverts", "view_large_prs"]},
-              "label": {"type": "string"}
-          },
-          "required": ["action_type", "label"],
-          "additionalProperties": False
-      },
-      "minItems": 1,
-      "maxItems": 3
-  }
-  ```
+- Added `actions` array to `INSIGHT_JSON_SCHEMA` with enum types
 - Added `ACTION_URL_MAP` and `resolve_action_url()` function
-- Updated `INSIGHT_SYSTEM_PROMPT` with action type instructions
-- Updated `_create_fallback_insight()` to include contextual actions
+- Updated `INSIGHT_SYSTEM_PROMPT` with @username format instructions
+- Added `_build_issue_by_person()` helper for issue aggregation
 
 **`apps/metrics/views/dashboard_views.py`**:
-- Added import: `from apps.metrics.services.insight_llm import resolve_action_url`
-- Updated `engineering_insights()` to resolve action URLs from LLM output
+- Import and use `resolve_action_url()` for action URL resolution
 
 **`templates/metrics/partials/engineering_insights.html`**:
 - Added action buttons section after recommendation
 
 ### Tests Added
 
+**@Mentions Tests:**
+- `TestLinkifyMentionsFilter` (8 tests) - Mention rendering, XSS, emails, hyphens
+- `github_name` filter tests (4 tests) - Team-scoped security, case insensitivity
+
+**Actionable Links Tests:**
 - `TestResolveActionUrl` (7 tests) - URL resolution logic
 - `TestInsightJsonSchemaActions` (5 tests) - Schema validation for actions
 - 3 view tests for action URL resolution
@@ -157,29 +183,37 @@ Removed/fixed 3 outdated tests checking for `cadence` in context (was removed in
 | `view_slow_prs` | `issue_type=long_cycle` | When cycle time is a concern |
 | `view_reverts` | `issue_type=revert` | When quality/revert rate is highlighted |
 | `view_large_prs` | `issue_type=large_pr` | When PR size is mentioned |
+| `view_contributors` | `view=contributors` | When work distribution is discussed |
+| `view_review_bottlenecks` | `view=reviews&sort=pending` | When review delays are highlighted |
 
-## Remaining Work
+## @Mentions URL Format
 
-**Uncommitted changes** - needs commit after session:
-- `apps/metrics/services/insight_llm.py` - ACTION_URL_MAP, resolve_action_url(), updated schema/prompt
-- `apps/metrics/views/dashboard_views.py` - Import and use resolve_action_url()
-- `templates/metrics/partials/engineering_insights.html` - Action buttons HTML
-- `apps/metrics/tests/services/test_insight_llm.py` - 12 new tests
-- `apps/metrics/tests/views/test_dashboard_views.py` - 3 new tests, 3 fixed tests
+`?github_name=@username&days=30` - Opens PR list filtered by author's GitHub username (team-scoped)
+
+## Status: Complete ✅
+
+All features implemented and tested:
+- ✅ Action buttons with enum-based types
+- ✅ Clickable @mentions in insight text
+- ✅ Team-scoped github_name filter
+- ✅ Enhanced user prompt with actionable data
+- ✅ 34 insight_llm tests passing
+- ✅ 8 linkify_mentions tests passing
+- ✅ 4 github_name filter tests passing
 
 ## Commands
 
 ```bash
 # Verify all tests pass
-DJANGO_SETTINGS_MODULE=tformance.settings .venv/bin/pytest apps/metrics/tests/services/test_insight_llm.py apps/metrics/tests/views/test_dashboard_views.py::TestEngineeringInsightsView -v
+DJANGO_SETTINGS_MODULE=tformance.settings .venv/bin/pytest apps/metrics/tests/services/test_insight_llm.py apps/metrics/tests/test_pr_list_tags.py::TestLinkifyMentionsFilter apps/metrics/tests/test_pr_list_service.py -k github_name -v
 
-# Generate insight for Antiwork team (for testing)
+# Generate insight for any team (for testing)
 DJANGO_SETTINGS_MODULE=tformance.settings .venv/bin/python manage.py shell -c "
 from apps.teams.models import Team
 from apps.metrics.services.insight_llm import gather_insight_data, generate_insight, cache_insight
 from datetime import date, timedelta
 
-team = Team.objects.get(slug='antiwork')
+team = Team.objects.get(slug='activepieces-demo')
 end_date = date.today()
 start_date = end_date - timedelta(days=30)
 
@@ -189,17 +223,4 @@ cache_insight(team, insight, end_date, cadence='30')
 print('Headline:', insight.get('headline'))
 print('Actions:', insight.get('actions'))
 "
-
-# Commit the changes
-git add -A && git commit -m "feat(insights): add actionable insight links with TDD
-
-- Add actions array to JSON schema (enum-based action types)
-- Add resolve_action_url() for backend URL resolution
-- Update system prompt with action type instructions
-- Add action buttons to insight template
-- Update fallback insight to include contextual actions
-- Add 15 tests for URL resolution and schema validation
-- Fix 3 outdated tests checking for removed cadence context
-
-Action types: view_ai_prs, view_non_ai_prs, view_slow_prs, view_reverts, view_large_prs"
 ```

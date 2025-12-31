@@ -1,4 +1,4 @@
-{% load i18n %}
+{% load i18n pr_list_tags %}
 <div class="engineering-insights-container">
   {% if insight %}
   <!-- Insight Content -->
@@ -13,10 +13,10 @@
       {% endif %}
     </div>
 
-    <!-- Detail -->
-    <p class="text-sm text-base-content/80">
-      {{ insight.detail }}
-    </p>
+    <!-- Detail (with @mentions linked to PR list, supports bullet points) -->
+    <div class="text-sm text-base-content/80 space-y-1">
+      {{ insight.detail|linkify_mentions:days|linebreaksbr }}
+    </div>
 
     <!-- Possible Causes -->
     {% if insight.possible_causes %}
@@ -26,7 +26,7 @@
         {% for cause in insight.possible_causes %}
         <li class="flex items-start gap-2">
           <span class="text-primary mt-0.5">•</span>
-          <span>{{ cause }}</span>
+          <span>{{ cause|linkify_mentions:days }}</span>
         </li>
         {% endfor %}
       </ul>
@@ -42,7 +42,7 @@
         </svg>
         <div>
           <div class="text-xs font-medium text-primary uppercase tracking-wide mb-1">{% trans "Recommendation" %}</div>
-          <p class="text-sm text-base-content">{{ insight.recommendation }}</p>
+          <p class="text-sm text-base-content">{{ insight.recommendation|linkify_mentions:days }}</p>
         </div>
       </div>
     </div>
