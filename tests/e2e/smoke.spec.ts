@@ -52,8 +52,15 @@ test.describe('Smoke Tests @smoke', () => {
     const failedRequests: string[] = [];
     page.on('requestfailed', request => {
       const url = request.url();
-      // Only track critical assets, ignore favicon
-      if ((url.includes('.js') || url.includes('.css')) && !url.includes('favicon')) {
+      // Only track critical app assets, ignore:
+      // - favicon
+      // - external third-party scripts (PostHog, analytics, etc.)
+      const isAppAsset = url.includes('localhost') || url.includes('127.0.0.1');
+      const isCritical = url.includes('.js') || url.includes('.css');
+      const isIgnored = url.includes('favicon') || url.includes('posthog') ||
+                        url.includes('analytics') || url.includes('gtag');
+
+      if (isAppAsset && isCritical && !isIgnored) {
         failedRequests.push(url);
       }
     });
@@ -64,7 +71,7 @@ test.describe('Smoke Tests @smoke', () => {
     // Wait for initial JS to be loaded
     await waitForJsInit(page);
 
-    // No critical asset failures
+    // No critical app asset failures
     expect(failedRequests).toHaveLength(0);
   });
 });

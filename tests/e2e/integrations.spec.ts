@@ -1,20 +1,26 @@
 import { test, expect } from '@playwright/test';
+import { waitForHtmxComplete } from './helpers';
+import { loginAs } from './fixtures/test-users';
 
 /**
  * Integration Page Tests
  * Tests the integrations management pages (GitHub, Jira, Slack, Copilot)
  * Run with: npx playwright test integrations.spec.ts
  * Tag: @integrations
+ *
+ * Tests cover:
+ * - Integration hub display and navigation
+ * - GitHub integration (connected state, members, repos)
+ * - Jira integration card
+ * - Slack integration card
+ * - GitHub Copilot integration
+ * - Connection/disconnection flows
  */
 
 test.describe('Integration Tests @integrations', () => {
-  // Login before each test
+  // Login before each test using shared helper
   test.beforeEach(async ({ page }) => {
-    await page.goto('/accounts/login/');
-    await page.getByRole('textbox', { name: 'Email' }).fill('admin@example.com');
-    await page.getByRole('textbox', { name: 'Password' }).fill('admin123');
-    await page.getByRole('button', { name: 'Sign In' }).click();
-    await expect(page).toHaveURL(/\/app/);
+    await loginAs(page);
   });
 
   test.describe('Integrations Home Page', () => {
