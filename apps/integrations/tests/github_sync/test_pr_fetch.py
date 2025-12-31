@@ -108,7 +108,7 @@ class TestGetRepositoryPullRequests(TestCase):
         access_token = "gho_test_token"
         repo_full_name = "acme-corp/backend-api"
 
-        result = get_repository_pull_requests(access_token, repo_full_name)
+        result = list(get_repository_pull_requests(access_token, repo_full_name))
 
         # Verify result contains PRs
         self.assertIsInstance(result, list)
@@ -125,7 +125,7 @@ class TestGetRepositoryPullRequests(TestCase):
         # Verify PyGithub was called correctly
         mock_github_class.assert_called_once_with(access_token)
         mock_github.get_repo.assert_called_once_with(repo_full_name)
-        mock_repo.get_pulls.assert_called_once_with(state="all")
+        mock_repo.get_pulls.assert_called_once_with(state="all", sort="updated", direction="desc")
 
     @patch("apps.integrations.services.github_sync.Github")
     def test_get_repository_pull_requests_handles_empty_list(self, mock_github_class):
@@ -140,7 +140,7 @@ class TestGetRepositoryPullRequests(TestCase):
         access_token = "gho_test_token"
         repo_full_name = "acme-corp/backend-api"
 
-        result = get_repository_pull_requests(access_token, repo_full_name)
+        result = list(get_repository_pull_requests(access_token, repo_full_name))
 
         # Verify result is an empty list
         self.assertIsInstance(result, list)
@@ -149,7 +149,7 @@ class TestGetRepositoryPullRequests(TestCase):
         # Verify PyGithub was called correctly
         mock_github_class.assert_called_once_with(access_token)
         mock_github.get_repo.assert_called_once_with(repo_full_name)
-        mock_repo.get_pulls.assert_called_once()
+        mock_repo.get_pulls.assert_called_once_with(state="all", sort="updated", direction="desc")
 
     @patch("apps.integrations.services.github_sync.Github")
     def test_get_repository_pull_requests_handles_pagination(self, mock_github_class):
@@ -177,7 +177,7 @@ class TestGetRepositoryPullRequests(TestCase):
         access_token = "gho_test_token"
         repo_full_name = "acme-corp/backend-api"
 
-        result = get_repository_pull_requests(access_token, repo_full_name)
+        result = list(get_repository_pull_requests(access_token, repo_full_name))
 
         # Verify all PRs were returned (PyGithub handled pagination internally)
         self.assertIsInstance(result, list)
@@ -186,7 +186,7 @@ class TestGetRepositoryPullRequests(TestCase):
         self.assertEqual(result[-1]["number"], 250)
 
         # Verify only one call was made to get_pulls (PyGithub handles pagination internally)
-        mock_repo.get_pulls.assert_called_once()
+        mock_repo.get_pulls.assert_called_once_with(state="all", sort="updated", direction="desc")
 
     @patch("apps.integrations.services.github_sync.Github")
     def test_get_repository_pull_requests_filters_by_state(self, mock_github_class):
@@ -201,23 +201,23 @@ class TestGetRepositoryPullRequests(TestCase):
         access_token = "gho_test_token"
         repo_full_name = "test-org/test-repo"
 
-        # Test with state="open"
-        get_repository_pull_requests(access_token, repo_full_name, state="open")
-        mock_repo.get_pulls.assert_called_with(state="open")
+        # Test with state="open" - consume generator to trigger API call
+        list(get_repository_pull_requests(access_token, repo_full_name, state="open"))
+        mock_repo.get_pulls.assert_called_with(state="open", sort="updated", direction="desc")
 
         # Reset mock
         mock_repo.get_pulls.reset_mock()
 
         # Test with state="closed"
-        get_repository_pull_requests(access_token, repo_full_name, state="closed")
-        mock_repo.get_pulls.assert_called_with(state="closed")
+        list(get_repository_pull_requests(access_token, repo_full_name, state="closed"))
+        mock_repo.get_pulls.assert_called_with(state="closed", sort="updated", direction="desc")
 
         # Reset mock
         mock_repo.get_pulls.reset_mock()
 
         # Test with state="all" (default)
-        get_repository_pull_requests(access_token, repo_full_name, state="all")
-        mock_repo.get_pulls.assert_called_with(state="all")
+        list(get_repository_pull_requests(access_token, repo_full_name, state="all"))
+        mock_repo.get_pulls.assert_called_with(state="all", sort="updated", direction="desc")
 
     @patch("apps.integrations.services.github_sync.Github")
     def test_get_repository_pull_requests_raises_on_api_error(self, mock_github_class):
@@ -235,7 +235,8 @@ class TestGetRepositoryPullRequests(TestCase):
         repo_full_name = "org/nonexistent-repo"
 
         with self.assertRaises(GitHubOAuthError) as context:
-            get_repository_pull_requests(access_token, repo_full_name)
+            # Must consume generator to trigger the API call and error
+            list(get_repository_pull_requests(access_token, repo_full_name))
 
         self.assertIn("404", str(context.exception))
 
@@ -274,7 +275,7 @@ class TestGetRepositoryPullRequests(TestCase):
         access_token = "gho_test_token"
         repo_full_name = "org/repo"
 
-        result = get_repository_pull_requests(access_token, repo_full_name)
+        result = list(get_repository_pull_requests(access_token, repo_full_name))
 
         # Verify all attributes are present in result
         self.assertEqual(len(result), 1)
