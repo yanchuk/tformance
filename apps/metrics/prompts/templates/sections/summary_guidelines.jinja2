@@ -1,0 +1,101 @@
+## Summary Guidelines
+
+### PR Type Decision Tree
+
+**Follow this order - use the FIRST match:**
+
+1. Is it a CI/CD pipeline change?
+   - `.github/workflows/`, Jenkins, CircleCI config → **ci**
+
+2. Does it ONLY change documentation?
+   - README, docs/, *.md only → **docs**
+
+3. Does it ONLY add/modify tests?
+   - test files only, no production code → **test**
+
+4. Does it fix broken behavior?
+   - Bug report reference, "fix", "resolve", error handling → **bugfix**
+
+5. Does it add NEW user-facing capability?
+   - New feature, new endpoint, new UI component → **feature**
+
+6. Does it restructure code WITHOUT changing behavior?
+   - Rename, extract method, split file, "refactor" → **refactor**
+
+7. Everything else (dependencies, Docker, local dev, maintenance):
+   - → **chore**
+
+### Common Classification Mistakes
+
+**Infrastructure PRs:**
+- Adding Docker/K8s for LOCAL DEV → **chore** (developer tooling)
+- Adding Docker/K8s for PRODUCTION deployment → **feature** (if new) or **ci** (if pipeline)
+- Terraform for new infrastructure → **feature** (adds capability)
+
+**Database migrations:**
+- Schema changes enabling new features → **feature**
+- Schema changes fixing data issues → **bugfix**
+- Pure performance indexes → **chore**
+
+### Title Rules
+
+- 5-10 words maximum
+- Start with action verb: "Add", "Fix", "Update", "Remove", "Refactor"
+- Focus on WHAT changed, not HOW
+- No issue numbers or technical jargon
+
+<example id="summary-title-good">
+Good: "Add user notification preferences"
+Good: "Fix payment timeout errors"
+Good: "Remove deprecated API endpoints"
+</example>
+
+<example id="summary-title-bad">
+Bad: "Implement NotificationPreferencesViewSet with CRUD" (too technical)
+Bad: "JIRA-1234: Update stuff" (no context)
+Bad: "WIP changes" (meaningless)
+</example>
+
+### Description Rules
+
+- 1-2 sentences maximum
+- Answer: "Why does this matter to the business?"
+- Use business language, not implementation details
+- Include user/customer impact when applicable
+
+<example id="summary-description-good">
+Good: "Users can now customize which notifications they receive, reducing alert fatigue."
+Good: "Prevents checkout failures when payment provider times out."
+</example>
+
+<example id="summary-description-bad">
+Bad: "Added serializer, viewset, and URL routing for preferences model." (implementation, not business value)
+Bad: "Fixed the thing." (no context)
+</example>
+
+### Type Examples with Reasoning
+
+<example id="type-ci">
+PR: "Add GitHub Actions for PR checks"
+Files: .github/workflows/ci.yml, .github/workflows/lint.yml
+→ type: "ci" (CI/CD pipeline = ci)
+</example>
+
+<example id="type-chore-docker">
+PR: "Add Docker Compose for local development"
+Files: docker-compose.yml, Dockerfile, .dockerignore
+→ type: "chore" (local dev tooling = chore, NOT feature)
+</example>
+
+<example id="type-feature-infra">
+PR: "Add Terraform for EKS cluster"
+Files: terraform/eks/*.tf
+→ type: "feature" (new production capability = feature)
+</example>
+
+<example id="type-feature-db">
+PR: "Add analytics tables for user tracking"
+Files: migrations/*.sql
+→ type: "feature" (enables new functionality = feature)
+</example>
+
