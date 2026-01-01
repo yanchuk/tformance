@@ -357,3 +357,104 @@ def start_onboarding_pipeline(team_id: int, repo_ids: list[int]) -> AsyncResult:
         AsyncResult from the Phase 1 chain execution
     """
     return start_phase1_pipeline(team_id, repo_ids)
+
+
+# =============================================================================
+# Jira Onboarding Pipeline
+# =============================================================================
+# Parallel pipeline for Jira sync during onboarding.
+# Runs independently from GitHub pipeline (Jira is optional).
+
+
+@shared_task(bind=True)
+def sync_jira_users_onboarding(self, team_id: int) -> dict:
+    """
+    Sync Jira users to TeamMembers during onboarding.
+
+    Delegates to the existing sync_jira_users_task which handles:
+    - Fetching users from Jira API
+    - Matching by email to existing TeamMembers
+    - Setting jira_account_id on matched members
+
+    Args:
+        team_id: The team's ID
+
+    Returns:
+        dict with matched/unmatched counts from sync_jira_users_task
+    """
+    from apps.integrations.tasks import sync_jira_users_task
+
+    logger.info(f"Jira onboarding: syncing users for team {team_id}")
+    return sync_jira_users_task(team_id)
+
+
+@shared_task(bind=True)
+def sync_jira_projects_onboarding(self, team_id: int, project_ids: list[int]) -> dict:
+    """
+    Sync Jira projects sequentially during onboarding.
+
+    Syncs each project in the list, aggregating results.
+    Continues on individual project failure (silent retry pattern).
+
+    Args:
+        team_id: The team's ID
+        project_ids: List of TrackedJiraProject IDs to sync
+
+    Returns:
+        dict with synced/failed counts and total issues_created
+    """
+    from apps.integrations.models import TrackedJiraProject
+    from apps.integrations.services.jira_sync import sync_project_issues
+
+    results = {"synced": 0, "failed": 0, "issues_created": 0}
+
+    if not project_ids:
+        logger.info(f"Jira onboarding: no projects to sync for team {team_id}")
+        return results
+
+    logger.info(f"Jira onboarding: syncing {len(project_ids)} projects for team {team_id}")
+
+    for project_id in project_ids:
+        try:
+            project = TrackedJiraProject.objects.get(id=project_id)  # noqa: TEAM001 - ID from Celery task
+            result = sync_project_issues(project, full_sync=True)
+            results["synced"] += 1
+            results["issues_created"] += result.get("issues_created", 0)
+            logger.info(f"Jira project {project.jira_project_key} synced: {result}")
+        except TrackedJiraProject.DoesNotExist:
+            results["failed"] += 1
+            logger.error(f"Jira project not found: {project_id}")
+        except Exception as e:
+            results["failed"] += 1
+            logger.error(f"Jira project sync failed: {project_id}: {e}")
+
+    logger.info(f"Jira onboarding complete for team {team_id}: {results}")
+    return results
+
+
+def start_jira_onboarding_pipeline(team_id: int, project_ids: list[int]) -> AsyncResult:
+    """
+    Start Jira onboarding pipeline (runs parallel to GitHub).
+
+    Pipeline sequence:
+    1. Sync Jira users to TeamMembers (email matching)
+    2. Sync all selected Jira projects (fetch issues)
+
+    This pipeline runs independently from the GitHub pipeline.
+    Jira sync failure does not affect GitHub pipeline or dashboard access.
+
+    Args:
+        team_id: The team's ID
+        project_ids: List of TrackedJiraProject IDs to sync
+
+    Returns:
+        AsyncResult from the chain execution
+    """
+    logger.info(f"Starting Jira onboarding pipeline: team={team_id}, projects={project_ids}")
+
+    pipeline = chain(
+        sync_jira_users_onboarding.si(team_id),
+        sync_jira_projects_onboarding.si(team_id, project_ids),
+    )
+
+    return pipeline.apply_async()

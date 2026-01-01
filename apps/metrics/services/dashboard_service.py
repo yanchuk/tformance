@@ -3106,3 +3106,107 @@ def get_team_health_metrics(team: Team, start_date: date, end_date: date, repo: 
         },
         "bottleneck": bottleneck,
     }
+
+
+# =============================================================================
+# Jira Metrics Functions
+# =============================================================================
+
+
+def get_jira_sprint_metrics(team: Team, start_date: date, end_date: date) -> dict:
+    """Get sprint-level metrics from Jira issues.
+
+    Aggregates metrics for issues resolved within the date range.
+
+    Args:
+        team: The team to get metrics for
+        start_date: Start of date range
+        end_date: End of date range
+
+    Returns:
+        dict with:
+            - issues_resolved: Count of issues resolved in range
+            - story_points_completed: Sum of story points
+            - avg_cycle_time_hours: Average cycle time
+            - issue_types: Breakdown by issue type
+    """
+    from apps.metrics.models import JiraIssue
+
+    issues = JiraIssue.objects.filter(
+        team=team,
+        resolved_at__gte=start_of_day(start_date),
+        resolved_at__lte=end_of_day(end_date),
+    )
+
+    # Aggregate metrics
+    aggregates = issues.aggregate(
+        count=Count("id"),
+        story_points=Sum("story_points"),
+        avg_cycle_time=Avg("cycle_time_hours"),
+    )
+
+    # Get breakdown by issue type
+    issue_types = dict(issues.values("issue_type").annotate(count=Count("id")).values_list("issue_type", "count"))
+
+    return {
+        "issues_resolved": aggregates["count"] or 0,
+        "story_points_completed": aggregates["story_points"] or 0,
+        "avg_cycle_time_hours": aggregates["avg_cycle_time"],
+        "issue_types": issue_types,
+    }
+
+
+def get_pr_jira_correlation(team: Team, start_date: date, end_date: date) -> dict:
+    """Correlate PR metrics with Jira linkage.
+
+    Compares metrics between PRs that have Jira keys and those that don't.
+
+    Args:
+        team: The team to analyze
+        start_date: Start of date range
+        end_date: End of date range
+
+    Returns:
+        dict with:
+            - total_prs: Total merged PRs in range
+            - linked_count: PRs with jira_key
+            - unlinked_count: PRs without jira_key
+            - linkage_rate: Percentage of PRs with Jira links
+            - linked_avg_cycle_time: Average cycle time for linked PRs
+            - unlinked_avg_cycle_time: Average cycle time for unlinked PRs
+    """
+    prs = _get_merged_prs_in_range(team, start_date, end_date)
+
+    total = prs.count()
+
+    if total == 0:
+        return {
+            "total_prs": 0,
+            "linked_count": 0,
+            "unlinked_count": 0,
+            "linkage_rate": 0,
+            "linked_avg_cycle_time": None,
+            "unlinked_avg_cycle_time": None,
+        }
+
+    linked = prs.exclude(jira_key="")
+    unlinked = prs.filter(jira_key="")
+
+    linked_count = linked.count()
+    unlinked_count = unlinked.count()
+
+    # Calculate linkage rate
+    linkage_rate = round(linked_count / total * 100, 1)
+
+    # Calculate average cycle times
+    linked_avg = linked.aggregate(avg=Avg("cycle_time_hours"))["avg"]
+    unlinked_avg = unlinked.aggregate(avg=Avg("cycle_time_hours"))["avg"]
+
+    return {
+        "total_prs": total,
+        "linked_count": linked_count,
+        "unlinked_count": unlinked_count,
+        "linkage_rate": linkage_rate,
+        "linked_avg_cycle_time": linked_avg,
+        "unlinked_avg_cycle_time": unlinked_avg,
+    }

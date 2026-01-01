@@ -593,6 +593,15 @@ def select_jira_projects(request):
         else:
             messages.info(request, _("No new projects selected."))
 
+        # Start Jira sync pipeline if projects were selected
+        project_ids = list(TrackedJiraProject.objects.filter(team=team, is_active=True).values_list("id", flat=True))
+        if project_ids:
+            from apps.integrations.onboarding_pipeline import start_jira_onboarding_pipeline
+
+            task = start_jira_onboarding_pipeline(team.id, project_ids)
+            request.session["jira_sync_task_id"] = task.id
+            logger.info(f"Started Jira pipeline for team {team.id}: {len(project_ids)} projects")
+
         return redirect("onboarding:connect_slack")
 
     # GET: Fetch projects and display selection form
@@ -619,6 +628,60 @@ def select_jira_projects(request):
             "step": 3,
             "sync_task_id": request.session.get("sync_task_id"),
         },
+    )
+
+
+@login_required
+def jira_sync_status(request):
+    """Return Jira sync status for polling.
+
+    Used by inline progress indicator on select_jira_projects page
+    to show real-time sync status.
+
+    Returns:
+        JsonResponse with overall_status, projects list, and issues_synced count.
+    """
+    from django.http import JsonResponse
+
+    from apps.integrations.models import TrackedJiraProject
+    from apps.metrics.models import JiraIssue
+
+    if not request.user.teams.exists():
+        return JsonResponse({"error": "No team found"}, status=400)
+
+    team = request.user.teams.first()
+
+    # Get all active tracked projects
+    projects = list(
+        TrackedJiraProject.objects.filter(team=team, is_active=True).values(
+            "id", "name", "jira_project_key", "sync_status", "last_sync_at"
+        )
+    )
+
+    # Get total issues synced for this team
+    issues_count = JiraIssue.objects.filter(team=team).count()
+
+    # Determine overall status from project statuses
+    statuses = [p["sync_status"] for p in projects]
+    if "syncing" in statuses:
+        overall = "syncing"
+    elif "pending" in statuses:
+        overall = "pending"
+    elif all(s == "complete" for s in statuses) and statuses:
+        overall = "completed"
+    elif "error" in statuses:
+        overall = "error"
+    elif not statuses:
+        overall = "pending"
+    else:
+        overall = "completed"
+
+    return JsonResponse(
+        {
+            "overall_status": overall,
+            "projects": projects,
+            "issues_synced": issues_count,
+        }
     )
 
 
@@ -714,6 +777,7 @@ def connect_slack(request):
             "page_title": _("Connect Slack"),
             "step": 4,
             "sync_task_id": request.session.get("sync_task_id"),
+            "jira_sync_task_id": request.session.get("jira_sync_task_id"),
             "slack_integration": slack_integration,
         },
     )
@@ -806,6 +870,7 @@ def onboarding_complete(request):
             "page_title": _("Setup Complete"),
             "step": 5,
             "sync_task_id": sync_task_id,
+            "jira_sync_task_id": request.session.get("jira_sync_task_id"),
             "jira_connected": jira_connected,
             "slack_connected": slack_connected,
         },

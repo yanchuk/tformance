@@ -664,3 +664,90 @@ class TestInsightJsonSchemaActions(TestCase):
         actions_schema = INSIGHT_JSON_SCHEMA["properties"]["actions"]
         self.assertEqual(actions_schema["minItems"], 2)
         self.assertEqual(actions_schema["maxItems"], 3)
+
+
+class TestGatherInsightDataWithJira(TestCase):
+    """Tests for Jira data in gather_insight_data function."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.team = TeamFactory()
+        self.member1 = TeamMemberFactory(team=self.team, display_name="Alice")
+        self.start_date = date(2024, 1, 1)
+        self.end_date = date(2024, 1, 31)
+
+    def test_gather_insight_data_includes_jira_when_connected(self):
+        """Should include jira section when JiraIntegration exists."""
+        from apps.integrations.factories import (
+            IntegrationCredentialFactory,
+            JiraIntegrationFactory,
+        )
+        from apps.metrics.services.insight_llm import gather_insight_data
+
+        # Create Jira integration
+        credential = IntegrationCredentialFactory(team=self.team, provider="jira")
+        JiraIntegrationFactory(team=self.team, credential=credential)
+
+        result = gather_insight_data(self.team, self.start_date, self.end_date)
+
+        self.assertIn("jira", result)
+        self.assertIsNotNone(result["jira"])
+
+    def test_gather_insight_data_excludes_jira_when_not_connected(self):
+        """Should set jira=None when no JiraIntegration."""
+        from apps.metrics.services.insight_llm import gather_insight_data
+
+        result = gather_insight_data(self.team, self.start_date, self.end_date)
+
+        self.assertIn("jira", result)
+        self.assertIsNone(result["jira"])
+
+    def test_gather_insight_data_jira_has_sprint_metrics(self):
+        """Jira section should include sprint_metrics with issues and points."""
+        from apps.integrations.factories import (
+            IntegrationCredentialFactory,
+            JiraIntegrationFactory,
+        )
+        from apps.metrics.factories import JiraIssueFactory
+        from apps.metrics.services.insight_llm import gather_insight_data
+
+        # Create Jira integration and issues
+        credential = IntegrationCredentialFactory(team=self.team, provider="jira")
+        JiraIntegrationFactory(team=self.team, credential=credential)
+        JiraIssueFactory(
+            team=self.team,
+            assignee=self.member1,
+            status="Done",
+            resolved_at=timezone.make_aware(timezone.datetime(2024, 1, 15, 12, 0)),
+        )
+
+        result = gather_insight_data(self.team, self.start_date, self.end_date)
+
+        self.assertIn("sprint_metrics", result["jira"])
+        self.assertIn("issues_resolved", result["jira"]["sprint_metrics"])
+
+    def test_gather_insight_data_jira_has_pr_correlation(self):
+        """Jira section should include pr_correlation with linkage rate."""
+        from apps.integrations.factories import (
+            IntegrationCredentialFactory,
+            JiraIntegrationFactory,
+        )
+        from apps.metrics.services.insight_llm import gather_insight_data
+
+        # Create Jira integration
+        credential = IntegrationCredentialFactory(team=self.team, provider="jira")
+        JiraIntegrationFactory(team=self.team, credential=credential)
+
+        # Create PRs with/without Jira links
+        PullRequestFactory(
+            team=self.team,
+            author=self.member1,
+            jira_key="PROJ-123",
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 15, 12, 0)),
+        )
+
+        result = gather_insight_data(self.team, self.start_date, self.end_date)
+
+        self.assertIn("pr_correlation", result["jira"])
+        self.assertIn("linkage_rate", result["jira"]["pr_correlation"])

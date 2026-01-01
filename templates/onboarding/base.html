@@ -124,6 +124,56 @@
   </script>
   {% endif %}
 
+  {# Jira background sync indicator - floating at bottom right #}
+  {% if jira_sync_task_id %}
+  <div id="jira-sync-indicator"
+       class="fixed bottom-4 {% if sync_task_id %}right-80{% else %}right-4{% endif %} z-50 animate-bounce-in"
+       x-data="{ status: 'syncing', issuesCount: 0 }"
+       x-init="
+         const poll = setInterval(async () => {
+           try {
+             const res = await fetch('{% url 'onboarding:jira_sync_status' %}');
+             const data = await res.json();
+             status = data.overall_status;
+             issuesCount = data.issues_synced;
+             if (status === 'completed' || status === 'error') {
+               clearInterval(poll);
+               setTimeout(() => { $el.style.display = 'none'; }, 5000);
+             }
+           } catch (e) {
+             console.error('Jira sync poll error:', e);
+           }
+         }, 2000);
+       ">
+    <div class="flex items-center gap-3 bg-base-200 border border-accent/30 rounded-lg px-4 py-3 shadow-lg">
+      <div class="relative">
+        <i class="fa-brands fa-jira text-accent"
+           :class="{ 'animate-pulse': status === 'syncing' || status === 'pending' }"></i>
+        <template x-if="status === 'completed'">
+          <i class="fa-solid fa-check-circle text-success absolute -top-1 -right-1 text-xs"></i>
+        </template>
+        <template x-if="status === 'error'">
+          <i class="fa-solid fa-exclamation-circle text-error absolute -top-1 -right-1 text-xs"></i>
+        </template>
+      </div>
+      <div class="text-sm">
+        <div class="font-medium text-base-content">{% translate "Jira sync" %}</div>
+        <div class="text-base-content/70">
+          <template x-if="status === 'syncing' || status === 'pending'">
+            <span><span x-text="issuesCount"></span> {% translate "issues synced..." %}</span>
+          </template>
+          <template x-if="status === 'completed'">
+            <span class="text-success"><span x-text="issuesCount"></span> {% translate "issues synced" %}</span>
+          </template>
+          <template x-if="status === 'error'">
+            <span class="text-error">{% translate "Sync failed" %}</span>
+          </template>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
   {# Main content #}
   <div class="max-w-2xl mx-auto px-4 py-12">
     {% if messages %}

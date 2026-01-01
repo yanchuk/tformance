@@ -16,6 +16,7 @@ urlpatterns = [
     path("sync/status/", views.sync_status, name="sync_status"),
     path("jira/", views.connect_jira, name="connect_jira"),
     path("jira/projects/", views.select_jira_projects, name="select_jira_projects"),
+    path("jira/sync-status/", views.jira_sync_status, name="jira_sync_status"),
     path("slack/", views.connect_slack, name="connect_slack"),
     path("complete/", views.onboarding_complete, name="complete"),
 ]

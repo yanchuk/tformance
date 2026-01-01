@@ -347,4 +347,64 @@ test.describe('Onboarding Flow @onboarding', () => {
       }
     });
   });
+
+  test.describe('Jira Sync Status API', () => {
+    test('jira sync status endpoint requires authentication', async ({ page }) => {
+      await page.context().clearCookies();
+      // Navigate to the endpoint directly - should redirect to login
+      await page.goto('/onboarding/jira/sync-status/');
+      // Should be redirected to login page
+      await expect(page).toHaveURL(/\/accounts\/login.*next=.*jira.*sync-status/);
+    });
+
+    test.describe('Authenticated', () => {
+      test.beforeEach(async ({ page }) => {
+        await page.goto('/accounts/login/');
+        await page.getByRole('textbox', { name: 'Email' }).fill('admin@example.com');
+        await page.getByRole('textbox', { name: 'Password' }).fill('admin123');
+        await page.getByRole('button', { name: 'Sign In' }).click();
+        await expect(page).toHaveURL(/\/app/);
+      });
+
+      test('jira sync status endpoint returns JSON', async ({ page }) => {
+        const response = await page.request.get('/onboarding/jira/sync-status/');
+        expect(response.status()).toBe(200);
+        const contentType = response.headers()['content-type'];
+        expect(contentType).toContain('application/json');
+      });
+
+      test('jira sync status returns expected structure', async ({ page }) => {
+        const response = await page.request.get('/onboarding/jira/sync-status/');
+        expect(response.status()).toBe(200);
+
+        const data = await response.json();
+        // Should have required fields
+        expect(data).toHaveProperty('overall_status');
+        expect(data).toHaveProperty('projects');
+        expect(data).toHaveProperty('issues_synced');
+
+        // overall_status should be one of valid values
+        expect(['pending', 'syncing', 'completed', 'error']).toContain(data.overall_status);
+
+        // projects should be an array
+        expect(Array.isArray(data.projects)).toBe(true);
+
+        // issues_synced should be a number
+        expect(typeof data.issues_synced).toBe('number');
+      });
+
+      test('jira sync status projects have expected fields', async ({ page }) => {
+        const response = await page.request.get('/onboarding/jira/sync-status/');
+        const data = await response.json();
+
+        // If there are projects, verify structure
+        if (data.projects.length > 0) {
+          const project = data.projects[0];
+          expect(project).toHaveProperty('id');
+          expect(project).toHaveProperty('jira_project_key');
+          expect(project).toHaveProperty('sync_status');
+        }
+      });
+    });
+  });
 });

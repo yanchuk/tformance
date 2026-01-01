@@ -20,6 +20,8 @@ from groq import Groq
 
 from apps.metrics.services.dashboard_service import (
     get_ai_impact_stats,
+    get_jira_sprint_metrics,
+    get_pr_jira_correlation,
     get_quality_metrics,
     get_team_health_metrics,
     get_velocity_comparison,
@@ -331,11 +333,22 @@ def gather_insight_data(
         "team_name": team.name,
     }
 
+    # Add Jira metrics if connected
+    from apps.integrations.models import JiraIntegration
+
+    jira_data = None
+    if JiraIntegration.objects.filter(team=team).exists():
+        jira_data = {
+            "sprint_metrics": get_jira_sprint_metrics(team, start_date, end_date),
+            "pr_correlation": get_pr_jira_correlation(team, start_date, end_date),
+        }
+
     return {
         "velocity": velocity,
         "quality": quality,
         "team_health": team_health,
         "ai_impact": ai_impact,
+        "jira": jira_data,
         "metadata": metadata,
     }
 

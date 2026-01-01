@@ -56,6 +56,21 @@
 - AI PRs have similar cycle time to non-AI PRs
 {% endif %}
 {% endif %}
+{% if jira %}
+
+### Jira Integration
+
+**Sprint Performance:**
+- Issues resolved: {{ jira.sprint_metrics.issues_resolved }}
+- Story points completed: {{ jira.sprint_metrics.story_points_completed }}
+- Avg issue cycle time: {% if jira.sprint_metrics.avg_cycle_time_hours is not none %}{{ "%.1f"|format(jira.sprint_metrics.avg_cycle_time_hours) }}h{% else %}N/A{% endif %}
+
+**PR-Jira Correlation:**
+- PRs with Jira links: {{ jira.pr_correlation.linked_count }}/{{ jira.pr_correlation.total_prs }} ({{ "%.1f"|format(jira.pr_correlation.linkage_rate) }}%)
+{% if jira.pr_correlation.linkage_rate < 50 %}⚠️ LOW LINKAGE - many PRs lack Jira context{% endif %}
+- Linked PRs avg cycle time: {% if jira.pr_correlation.linked_avg_cycle_time is not none %}{{ "%.1f"|format(jira.pr_correlation.linked_avg_cycle_time) }}h{% else %}N/A{% endif %}
+- Unlinked PRs avg cycle time: {% if jira.pr_correlation.unlinked_avg_cycle_time is not none %}{{ "%.1f"|format(jira.pr_correlation.unlinked_avg_cycle_time) }}h{% else %}N/A{% endif %}
+{% endif %}
 
 </metrics_context>
 
