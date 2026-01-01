@@ -1,8 +1,105 @@
 ## Technology Detection
 
-Identify technologies from:
-- File paths provided (e.g., .py → Python, .tsx → TypeScript/React)
-- Repository languages provided
-- Framework/library names in description (React, Django, FastAPI, Next.js, etc.)
-- Infrastructure mentions (Docker, Kubernetes, Terraform, etc.)
-- Database mentions (PostgreSQL, Redis, MongoDB, etc.)
+Analyze file paths, repository languages, and PR content to identify technologies.
+
+### Step 1: Map File Extensions to Languages
+
+| Extension | Language |
+|-----------|----------|
+| .py, .pyi | python |
+| .js, .mjs, .cjs | javascript |
+| .ts | typescript |
+| .tsx | typescript (with react) |
+| .jsx | javascript (with react) |
+| .go | go |
+| .rs | rust |
+| .java | java |
+| .kt, .kts | kotlin |
+| .swift | swift |
+| .rb | ruby |
+| .php | php |
+| .c, .h | c |
+| .cpp, .hpp, .cc | cpp |
+| .cs | csharp |
+| .sql | sql |
+| .sh, .bash | shell |
+| .yaml, .yml | yaml |
+| .tf | terraform |
+| .vue | vue |
+| .svelte | svelte |
+
+### Step 2: Detect Frameworks from Signals
+
+| Signal File/Pattern | Framework |
+|---------------------|-----------|
+| manage.py, settings.py, urls.py | django |
+| requirements.txt + "flask" | flask |
+| requirements.txt + "fastapi" | fastapi |
+| next.config.*, app/ or pages/ dirs | nextjs |
+| package.json + "react" | react |
+| package.json + "vue" | vue |
+| package.json + "angular" | angular |
+| package.json + "express" | express |
+| Gemfile + "rails" | rails |
+| Dockerfile, docker-compose.* | docker |
+| *.tf files | terraform |
+| .github/workflows/ | github-actions |
+| k8s/, kubernetes/ | kubernetes |
+| tailwind.config.* | tailwindcss |
+| Cargo.toml | rust (cargo) |
+| go.mod, go.sum | go (modules) |
+
+### Step 3: Assign Categories
+
+**Single category assignment rules:**
+- **backend**: Server code, APIs, ORM models. Signals: .py, .go, .java, .rb with views/controllers
+- **frontend**: Browser code, UI components. Signals: .tsx, .jsx, .vue, CSS, no backend APIs
+- **devops**: CI/CD, infrastructure. Signals: .github/workflows/, Dockerfile, .tf, k8s/
+- **mobile**: Mobile apps. Signals: .swift (iOS), .kt with Android/, React Native
+- **data**: SQL/database work, analytics, ETL. Signals: .sql files, .ipynb, analytics/metrics mentions
+
+**SQL category disambiguation:**
+- SQL with "analytics", "metrics", "reporting", "ETL", "warehouse" → **data**
+- SQL with ORM migrations in app codebase → **backend**
+- Pure SQL files (.sql only, no app code) → **data**
+
+**Multi-category rules:**
+- Files in BOTH frontend/ and apps/ or api/ → ["backend", "frontend"]
+- Backend + Dockerfile → ["backend", "devops"]
+- .tsx files + API routes (app/api/) → ["frontend", "backend"]
+
+### Examples
+
+<example id="tech-backend-python">
+Files: apps/api/views.py, apps/models.py, requirements.txt
+Repo languages: Python
+→ languages: ["python"], frameworks: ["django"], categories: ["backend"]
+</example>
+
+<example id="tech-frontend-react">
+Files: src/components/Button.tsx, src/pages/Home.tsx, package.json
+Repo languages: TypeScript
+→ languages: ["typescript"], frameworks: ["react"], categories: ["frontend"]
+</example>
+
+<example id="tech-fullstack">
+Files: backend/main.py, frontend/src/App.tsx, docker-compose.yml
+Repo languages: Python, TypeScript
+→ languages: ["python", "typescript"], frameworks: ["fastapi", "react", "docker"],
+  categories: ["backend", "frontend", "devops"]
+</example>
+
+<example id="tech-devops-only">
+Files: .github/workflows/ci.yml, Dockerfile, k8s/deployment.yaml
+Repo languages: None
+→ languages: ["yaml"], frameworks: ["github-actions", "docker", "kubernetes"], categories: ["devops"]
+</example>
+
+<example id="tech-data-sql">
+PR Title: "Add user analytics tables"
+Files: migrations/analytics_tables.sql, sql/user_metrics.sql
+Repo languages: PLpgSQL
+→ languages: ["sql"], frameworks: [], categories: ["data"]
+Note: "analytics" in title + pure SQL files = data category
+</example>
+
