@@ -8,6 +8,7 @@ from django.test import TestCase
 from apps.integrations.factories import IntegrationCredentialFactory
 from apps.integrations.services.jira_client import (
     JiraClientError,
+    _convert_issue_to_dict,
     get_accessible_projects,
     get_jira_client,
     get_project_issues,
@@ -379,3 +380,132 @@ class TestGetProjectIssuesIncrementalSync(TestCase):
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]["key"], "PROJ-125")
         self.assertEqual(result[0]["summary"], "Recently updated issue")
+
+
+class TestJiraClientFieldExtraction(TestCase):
+    """Tests for _convert_issue_to_dict field extraction.
+
+    These tests verify that new fields (description, labels, priority, parent_issue_key)
+    are correctly extracted from Jira API response objects.
+    """
+
+    def _create_base_mock_issue(self):
+        """Create a base mock issue with all required fields.
+
+        Returns a mock issue object with standard fields set to sensible defaults.
+        Tests can override specific fields as needed.
+        """
+        mock_issue = MagicMock()
+        mock_issue.key = "PROJ-123"
+        mock_issue.id = "12345"
+        mock_issue.fields.summary = "Test issue"
+        mock_issue.fields.issuetype.name = "Bug"
+        mock_issue.fields.status.name = "Open"
+        mock_issue.fields.assignee = None
+        mock_issue.fields.customfield_10016 = None  # story_points
+        mock_issue.fields.created = "2024-01-01T00:00:00Z"
+        mock_issue.fields.updated = "2024-01-02T00:00:00Z"
+        mock_issue.fields.resolutiondate = None
+        return mock_issue
+
+    def test_convert_issue_includes_description(self):
+        """Test that _convert_issue_to_dict extracts description field."""
+        # Arrange
+        mock_issue = self._create_base_mock_issue()
+        mock_issue.fields.description = "This is the issue description with details."
+
+        # Act
+        result = _convert_issue_to_dict(mock_issue)
+
+        # Assert
+        self.assertEqual(result["description"], "This is the issue description with details.")
+
+    def test_convert_issue_includes_labels(self):
+        """Test that _convert_issue_to_dict extracts labels as list of strings."""
+        # Arrange
+        mock_issue = self._create_base_mock_issue()
+        mock_issue.fields.labels = ["bug", "high-priority", "frontend"]
+
+        # Act
+        result = _convert_issue_to_dict(mock_issue)
+
+        # Assert
+        self.assertEqual(result["labels"], ["bug", "high-priority", "frontend"])
+        self.assertIsInstance(result["labels"], list)
+
+    def test_convert_issue_includes_priority(self):
+        """Test that _convert_issue_to_dict extracts priority.name from nested object."""
+        # Arrange
+        mock_issue = self._create_base_mock_issue()
+        mock_priority = MagicMock()
+        mock_priority.name = "High"
+        mock_issue.fields.priority = mock_priority
+
+        # Act
+        result = _convert_issue_to_dict(mock_issue)
+
+        # Assert
+        self.assertEqual(result["priority"], "High")
+
+    def test_convert_issue_includes_parent_key(self):
+        """Test that _convert_issue_to_dict extracts parent.key for subtasks."""
+        # Arrange
+        mock_issue = self._create_base_mock_issue()
+        mock_parent = MagicMock()
+        mock_parent.key = "PROJ-100"
+        mock_issue.fields.parent = mock_parent
+
+        # Act
+        result = _convert_issue_to_dict(mock_issue)
+
+        # Assert
+        self.assertEqual(result["parent_issue_key"], "PROJ-100")
+
+    def test_convert_issue_handles_none_description(self):
+        """Test that _convert_issue_to_dict handles None description gracefully."""
+        # Arrange
+        mock_issue = self._create_base_mock_issue()
+        mock_issue.fields.description = None
+
+        # Act
+        result = _convert_issue_to_dict(mock_issue)
+
+        # Assert
+        self.assertIsNone(result["description"])
+
+    def test_convert_issue_handles_empty_labels(self):
+        """Test that _convert_issue_to_dict handles empty labels list."""
+        # Arrange
+        mock_issue = self._create_base_mock_issue()
+        mock_issue.fields.labels = []
+
+        # Act
+        result = _convert_issue_to_dict(mock_issue)
+
+        # Assert
+        self.assertEqual(result["labels"], [])
+        self.assertIsInstance(result["labels"], list)
+
+    def test_convert_issue_handles_none_priority(self):
+        """Test that _convert_issue_to_dict handles None priority gracefully."""
+        # Arrange
+        mock_issue = self._create_base_mock_issue()
+        mock_issue.fields.priority = None
+
+        # Act
+        result = _convert_issue_to_dict(mock_issue)
+
+        # Assert
+        self.assertIsNone(result["priority"])
+
+    def test_convert_issue_handles_none_parent(self):
+        """Test that _convert_issue_to_dict handles None parent (non-subtasks)."""
+        # Arrange
+        mock_issue = self._create_base_mock_issue()
+        mock_issue.fields.parent = None
+
+        # Act
+        result = _convert_issue_to_dict(mock_issue)
+
+        # Assert
+        self.assertIsNone(result["parent_issue_key"])

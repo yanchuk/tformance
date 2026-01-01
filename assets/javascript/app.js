@@ -76,6 +76,174 @@ function registerCharts() {
     return chartManager.createStackedAreaChart(canvas.getContext('2d'), data, { yAxisLabel: 'Tech Share %' });
   }, { dataId: 'tech-chart-data' });
 
+  // Jira Linkage Chart - doughnut chart showing PR-Jira linkage
+  chartManager.register('jira-linkage-chart', (canvas, data) => {
+    if (!data) return null;
+    const ctx = canvas.getContext('2d');
+    return new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: ['Linked', 'Unlinked'],
+        datasets: [{
+          data: [data.linked_count || 0, data.unlinked_count || 0],
+          backgroundColor: ['rgba(16, 185, 129, 0.8)', 'rgba(156, 163, 175, 0.3)'],  // success green, muted gray
+          borderColor: ['#10B981', '#9CA3AF'],
+          borderWidth: 2,
+        }]
+      },
+      options: {
+        cutout: '70%',
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: (context) => {
+                const total = data.linked_count + data.unlinked_count;
+                const pct = total > 0 ? Math.round((context.raw / total) * 100) : 0;
+                return `${context.label}: ${context.raw} (${pct}%)`;
+              }
+            }
+          }
+        }
+      }
+    });
+  }, { dataId: 'jira-linkage-data' });
+
+  // SP Correlation Chart - grouped bar chart showing expected vs actual hours by bucket
+  chartManager.register('sp-correlation-chart', (canvas, data) => {
+    if (!data || !data.buckets || data.buckets.length === 0) return null;
+    const ctx = canvas.getContext('2d');
+    const labels = data.buckets.map(b => b.sp_range);
+    const expectedHours = data.buckets.map(b => b.expected_hours);
+    const actualHours = data.buckets.map(b => b.avg_hours);
+    return new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [
+          {
+            label: 'Expected Hours',
+            data: expectedHours,
+            backgroundColor: 'rgba(90, 153, 151, 0.7)',  // accent teal
+            borderColor: '#5a9997',
+            borderWidth: 1,
+          },
+          {
+            label: 'Actual Hours',
+            data: actualHours,
+            backgroundColor: 'rgba(249, 115, 22, 0.7)',  // primary orange
+            borderColor: '#F97316',
+            borderWidth: 1,
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: {
+            title: {
+              display: true,
+              text: 'Story Points',
+              color: '#9CA3AF',
+            },
+            ticks: { color: '#9CA3AF' },
+            grid: { color: 'rgba(156, 163, 175, 0.1)' },
+          },
+          y: {
+            title: {
+              display: true,
+              text: 'Hours',
+              color: '#9CA3AF',
+            },
+            ticks: { color: '#9CA3AF' },
+            grid: { color: 'rgba(156, 163, 175, 0.1)' },
+            beginAtZero: true,
+          }
+        },
+        plugins: {
+          legend: {
+            display: true,
+            position: 'top',
+            labels: { color: '#9CA3AF' },
+          },
+          tooltip: {
+            callbacks: {
+              afterBody: (context) => {
+                const idx = context[0].dataIndex;
+                const bucket = data.buckets[idx];
+                return bucket ? `PRs: ${bucket.pr_count}` : '';
+              }
+            }
+          }
+        }
+      }
+    });
+  }, { dataId: 'sp-correlation-data' });
+
+  // Velocity Trend Chart - line chart showing story points over time
+  chartManager.register('velocity-trend-chart', (canvas, data) => {
+    if (!data || !data.periods || data.periods.length === 0) return null;
+    const ctx = canvas.getContext('2d');
+    const labels = data.periods.map(p => p.period_name);
+    const storyPoints = data.periods.map(p => p.story_points);
+    return new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [
+          {
+            label: 'Story Points',
+            data: storyPoints,
+            borderColor: '#F97316',  // primary orange
+            backgroundColor: 'rgba(249, 115, 22, 0.1)',
+            borderWidth: 2,
+            fill: true,
+            tension: 0.3,
+            pointRadius: 4,
+            pointBackgroundColor: '#F97316',
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: {
+            ticks: { color: '#9CA3AF' },
+            grid: { color: 'rgba(156, 163, 175, 0.1)' },
+          },
+          y: {
+            title: {
+              display: true,
+              text: 'Story Points',
+              color: '#9CA3AF',
+            },
+            ticks: { color: '#9CA3AF' },
+            grid: { color: 'rgba(156, 163, 175, 0.1)' },
+            beginAtZero: true,
+          }
+        },
+        plugins: {
+          legend: {
+            display: false,
+          },
+          tooltip: {
+            callbacks: {
+              afterBody: (context) => {
+                const idx = context[0].dataIndex;
+                const period = data.periods[idx];
+                return period ? `Issues: ${period.issues_resolved}` : '';
+              }
+            }
+          }
+        }
+      }
+    });
+  }, { dataId: 'velocity-trend-data' });
+
   // Wide Trend Chart - complex chart with multiple modes
   chartManager.register('trend-chart', (canvas) => {
     // This chart has complex initialization logic

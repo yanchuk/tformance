@@ -22,6 +22,9 @@ team_urlpatterns = (
         path("charts/pr-size/", views.pr_size_chart, name="chart_pr_size"),
         path("charts/review-distribution/", views.review_distribution_chart, name="chart_review_distribution"),
         path("charts/copilot-trend/", views.copilot_trend_chart, name="chart_copilot_trend"),
+        path("charts/jira-linkage/", views.jira_linkage_chart, name="jira_linkage_chart"),
+        path("charts/sp-correlation/", views.sp_correlation_chart, name="sp_correlation_chart"),
+        path("charts/velocity-trend/", views.velocity_trend_chart, name="velocity_trend_chart"),
         # Card partials
         path("cards/metrics/", views.key_metrics_cards, name="cards_metrics"),
         path("cards/revert-rate/", views.revert_rate_card, name="cards_revert_rate"),

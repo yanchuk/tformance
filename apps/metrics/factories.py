@@ -361,8 +361,12 @@ class JiraIssueFactory(DjangoModelFactory):
     jira_key = factory.Sequence(lambda n: f"PROJ-{n + 100}")
     jira_id = factory.Sequence(lambda n: str(20000 + n))
     summary = factory.Faker("sentence", nb_words=8)
+    description = factory.Faker("paragraph", nb_sentences=3)
     issue_type = factory.Iterator(["Story", "Story", "Bug", "Task", "Subtask"])
     status = factory.Iterator(["Done", "Done", "In Progress", "To Do", "In Review"])
+    labels = factory.LazyFunction(lambda: random.sample(["backend", "frontend", "bug", "feature", "tech-debt"], k=2))
+    priority = factory.Iterator(["High", "Medium", "Low", "Medium", "High"])
+    parent_issue_key = ""  # Most issues don't have a parent
     assignee = factory.SubFactory(TeamMemberFactory, team=factory.SelfAttribute("..team"))
     story_points = factory.LazyFunction(lambda: Decimal(str(random.choice([1, 2, 3, 5, 8, 13]))))
     sprint_id = factory.Sequence(lambda n: str(100 + (n % 10)))

@@ -1,0 +1,62 @@
+{% load i18n %}
+<div id="jira-linkage-chart-container">
+  {% if linkage_data.total_prs > 0 %}
+  <div class="flex flex-col lg:flex-row gap-4 items-center">
+    <!-- Donut Chart -->
+    <div class="w-48 h-48 relative">
+      <canvas id="jira-linkage-chart"></canvas>
+      <div class="absolute inset-0 flex flex-col items-center justify-center">
+        <span class="text-3xl font-bold text-base-content">{{ linkage_data.linkage_rate|floatformat:0 }}%</span>
+        <span class="text-xs text-base-content/70">{% trans "Linked" %}</span>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="flex-1">
+      <div class="stats stats-vertical shadow w-full">
+        <div class="stat py-2">
+          <div class="stat-title text-xs">{% trans "PRs with Jira Link" %}</div>
+          <div class="stat-value text-lg text-success">{{ linkage_data.linked_count }}</div>
+        </div>
+        <div class="stat py-2">
+          <div class="stat-title text-xs">{% trans "PRs without Jira Link" %}</div>
+          <div class="stat-value text-lg text-base-content/50">{{ linkage_data.unlinked_count }}</div>
+        </div>
+      </div>
+
+      {% if trend_data %}
+      <!-- Trend Indicator -->
+      <div class="mt-2 text-sm text-base-content/80">
+        {% with first=trend_data.0 last=trend_data|last %}
+        {% if first and last and first.linkage_rate != last.linkage_rate %}
+          {% if last.linkage_rate > first.linkage_rate %}
+          <span class="text-success">↑ {% trans "Improving" %}</span>
+          {% else %}
+          <span class="text-warning">↓ {% trans "Declining" %}</span>
+          {% endif %}
+          <span class="text-base-content/60">{% trans "over last 4 weeks" %}</span>
+        {% else %}
+          <span class="text-base-content/60">{% trans "Stable over last 4 weeks" %}</span>
+        {% endif %}
+        {% endwith %}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Chart Data -->
+  {{ linkage_data|json_script:"jira-linkage-data" }}
+  {{ trend_data|json_script:"jira-linkage-trend" }}
+
+  {% else %}
+  <div class="flex flex-col items-center justify-center h-48">
+    <div class="w-12 h-12 mb-3 rounded-full bg-primary/10 flex items-center justify-center">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+      </svg>
+    </div>
+    <p class="text-base-content/80 font-medium">{% trans "No PR data for this period" %}</p>
+    <p class="text-sm text-base-content/60 mt-1">{% trans "Merge some PRs to see linkage stats" %}</p>
+  </div>
+  {% endif %}
+</div>

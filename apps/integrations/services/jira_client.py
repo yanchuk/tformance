@@ -11,6 +11,7 @@ __all__ = [
     "get_jira_client",
     "get_accessible_projects",
     "get_project_issues",
+    "_convert_issue_to_dict",
 ]
 
 
@@ -112,7 +113,7 @@ def get_project_issues(credential, project_key: str, since: datetime | None = No
         issues = jira.search_issues(
             jql,
             maxResults=False,  # Get all results
-            fields="summary,status,issuetype,assignee,created,updated,resolutiondate,customfield_10016",
+            fields="summary,status,issuetype,assignee,created,updated,resolutiondate,customfield_10016,description,labels,priority,parent",
         )
 
         return [_convert_issue_to_dict(issue) for issue in issues]
@@ -129,8 +130,20 @@ def _convert_issue_to_dict(issue) -> dict:
 
     Returns:
         Dictionary with issue data in standardized format with keys:
-        key, id, summary, issue_type, status, assignee_account_id,
-        story_points, created, updated, resolution_date
+        - key: Issue key (e.g., "PROJ-123")
+        - id: Issue ID
+        - summary: Issue title
+        - issue_type: Issue type name (e.g., "Bug", "Story")
+        - status: Issue status name (e.g., "Open", "In Progress")
+        - assignee_account_id: Atlassian account ID of assignee (or None)
+        - story_points: Story points from customfield_10016 (or None)
+        - created: Creation timestamp string
+        - updated: Last update timestamp string
+        - resolution_date: Resolution timestamp string (or None)
+        - description: Issue description text (or None)
+        - labels: List of label strings (empty list if none)
+        - priority: Priority name (e.g., "High") or None
+        - parent_issue_key: Parent issue key for subtasks (or None)
     """
     fields = issue.fields
 
@@ -145,4 +158,8 @@ def _convert_issue_to_dict(issue) -> dict:
         "created": fields.created,
         "updated": fields.updated,
         "resolution_date": fields.resolutiondate,
+        "description": fields.description,
+        "labels": fields.labels if fields.labels else [],
+        "priority": fields.priority.name if fields.priority else None,
+        "parent_issue_key": fields.parent.key if fields.parent else None,
     }

@@ -266,6 +266,76 @@
       </div>
     </div>
 
+    <!-- Jira Integration Section -->
+    <div class="divider text-lg font-semibold mt-2 mb-4">
+      {% trans "Jira Integration" %}
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+      <!-- PR-Jira Linkage -->
+      <div class="card bg-base-100 shadow-md">
+        <div class="card-body">
+          <h2 class="card-title text-base">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+            </svg>
+            {% trans "PR-Jira Linkage" %}
+          </h2>
+          <p class="text-sm text-base-content/80 mb-2">{% trans "PRs linked to Jira issues" %}</p>
+          <div id="jira-linkage-container"
+               hx-get="{% url 'metrics:jira_linkage_chart' %}?days={{ days }}"
+               hx-trigger="load"
+               hx-swap="innerHTML">
+            <div class="flex justify-center items-center h-48">
+              <span class="loading loading-spinner loading-lg"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Story Point Correlation Chart -->
+      <div class="card bg-base-100 shadow-md">
+        <div class="card-body">
+          <h2 class="card-title text-base">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+            {% trans "Story Point Correlation" %}
+          </h2>
+          <p class="text-sm text-base-content/80 mb-2">{% trans "Compare estimated vs actual delivery time" %}</p>
+          <div id="sp-correlation-container"
+               hx-get="{% url 'metrics:sp_correlation_chart' %}?days={{ days }}"
+               hx-trigger="load"
+               hx-swap="innerHTML">
+            <div class="flex justify-center items-center h-48">
+              <span class="loading loading-spinner loading-lg"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Velocity Trend Chart -->
+    <div class="card bg-base-100 shadow-md mb-6">
+      <div class="card-body">
+        <h2 class="card-title text-base">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+          </svg>
+          {% trans "Velocity Trend" %}
+        </h2>
+        <p class="text-sm text-base-content/80 mb-2">{% trans "Story points completed per week" %}</p>
+        <div id="velocity-trend-container"
+             hx-get="{% url 'metrics:velocity_trend_chart' %}?days={{ days }}"
+             hx-trigger="load"
+             hx-swap="innerHTML">
+          <div class="flex justify-center items-center h-48">
+            <span class="loading loading-spinner loading-lg"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Cycle Time and Review Time Trends -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
       <!-- Cycle Time Trend -->

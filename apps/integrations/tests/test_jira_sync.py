@@ -448,3 +448,272 @@ class TestSyncProjectIssuesReturnValue(TestCase):
         self.assertEqual(result["issues_created"], 1)
         self.assertEqual(result["issues_updated"], 1)
         self.assertEqual(result["errors"], 0)
+
+
+class TestJiraSyncNewFields(TestCase):
+    """Tests for new field mapping: description, labels, priority, parent_issue_key."""
+
+    def test_convert_jira_issue_includes_description(self):
+        """Test that _convert_jira_issue_to_dict extracts description field."""
+        # Arrange
+        issue_data = {
+            "key": "PROJ-123",
+            "id": "12345",
+            "fields": {
+                "summary": "Test issue",
+                "description": "This is a detailed description of the issue.",
+                "issuetype": {"name": "Story"},
+                "status": {"name": "To Do"},
+                "assignee": None,
+                "customfield_10016": None,
+                "created": "2025-01-01T10:00:00.000+0000",
+                "resolutiondate": None,
+            },
+        }
+
+        # Act
+        result = _convert_jira_issue_to_dict(issue_data)
+
+        # Assert
+        self.assertIn("description", result)
+        self.assertEqual(result["description"], "This is a detailed description of the issue.")
+
+    def test_convert_jira_issue_includes_labels(self):
+        """Test that _convert_jira_issue_to_dict extracts labels field as a list."""
+        # Arrange
+        issue_data = {
+            "key": "PROJ-124",
+            "id": "12346",
+            "fields": {
+                "summary": "Bug with labels",
+                "description": "",
+                "labels": ["bug", "frontend", "urgent"],
+                "issuetype": {"name": "Bug"},
+                "status": {"name": "In Progress"},
+                "assignee": None,
+                "customfield_10016": None,
+                "created": "2025-01-02T10:00:00.000+0000",
+                "resolutiondate": None,
+            },
+        }
+
+        # Act
+        result = _convert_jira_issue_to_dict(issue_data)
+
+        # Assert
+        self.assertIn("labels", result)
+        self.assertEqual(result["labels"], ["bug", "frontend", "urgent"])
+
+    def test_convert_jira_issue_includes_priority(self):
+        """Test that _convert_jira_issue_to_dict extracts priority field."""
+        # Arrange - Priority can be a dict with 'name' key
+        issue_data = {
+            "key": "PROJ-125",
+            "id": "12347",
+            "fields": {
+                "summary": "High priority task",
+                "description": "",
+                "labels": [],
+                "priority": {"name": "High"},
+                "issuetype": {"name": "Task"},
+                "status": {"name": "To Do"},
+                "assignee": None,
+                "customfield_10016": None,
+                "created": "2025-01-03T10:00:00.000+0000",
+                "resolutiondate": None,
+            },
+        }
+
+        # Act
+        result = _convert_jira_issue_to_dict(issue_data)
+
+        # Assert
+        self.assertIn("priority", result)
+        self.assertEqual(result["priority"], "High")
+
+    def test_convert_jira_issue_includes_parent_issue_key(self):
+        """Test that _convert_jira_issue_to_dict extracts parent_issue_key from nested parent."""
+        # Arrange - Parent is typically a dict with 'key' field
+        issue_data = {
+            "key": "PROJ-126",
+            "id": "12348",
+            "fields": {
+                "summary": "Sub-task of epic",
+                "description": "",
+                "labels": [],
+                "priority": None,
+                "parent": {"key": "PROJ-100", "id": "10000", "fields": {"summary": "Epic"}},
+                "issuetype": {"name": "Sub-task"},
+                "status": {"name": "To Do"},
+                "assignee": None,
+                "customfield_10016": None,
+                "created": "2025-01-04T10:00:00.000+0000",
+                "resolutiondate": None,
+            },
+        }
+
+        # Act
+        result = _convert_jira_issue_to_dict(issue_data)
+
+        # Assert
+        self.assertIn("parent_issue_key", result)
+        self.assertEqual(result["parent_issue_key"], "PROJ-100")
+
+    def test_convert_jira_issue_handles_missing_new_fields(self):
+        """Test that missing new fields default to empty values."""
+        # Arrange - Minimal issue data without new fields
+        issue_data = {
+            "key": "PROJ-127",
+            "id": "12349",
+            "fields": {
+                "summary": "Minimal issue",
+                "issuetype": {"name": "Story"},
+                "status": {"name": "Done"},
+                "assignee": None,
+                "customfield_10016": None,
+                "created": "2025-01-05T10:00:00.000+0000",
+                "resolutiondate": None,
+            },
+        }
+
+        # Act
+        result = _convert_jira_issue_to_dict(issue_data)
+
+        # Assert - New fields MUST be present with sensible defaults
+        self.assertIn("description", result)
+        self.assertIn("labels", result)
+        self.assertIn("priority", result)
+        self.assertIn("parent_issue_key", result)
+        self.assertEqual(result["description"], "")
+        self.assertEqual(result["labels"], [])
+        self.assertEqual(result["priority"], "")
+        self.assertEqual(result["parent_issue_key"], "")
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.integration = JiraIntegrationFactory()
+        self.tracked_project = TrackedJiraProjectFactory(integration=self.integration)
+
+    @patch("apps.integrations.services.jira_sync.get_project_issues")
+    def test_sync_saves_description_field(self, mock_get_issues):
+        """Test that sync_project_issues saves description to JiraIssue."""
+        # Arrange
+        mock_get_issues.return_value = [
+            {
+                "key": "PROJ-500",
+                "id": "15000",
+                "fields": {
+                    "summary": "Issue with description",
+                    "description": "Full description text here",
+                    "labels": [],
+                    "priority": None,
+                    "parent": None,
+                    "issuetype": {"name": "Story"},
+                    "status": {"name": "To Do"},
+                    "assignee": None,
+                    "customfield_10016": None,
+                    "created": "2025-01-10T10:00:00.000+0000",
+                    "resolutiondate": None,
+                },
+            }
+        ]
+
+        # Act
+        sync_project_issues(self.tracked_project, full_sync=True)
+
+        # Assert
+        issue = JiraIssue.objects.get(jira_key="PROJ-500")
+        self.assertEqual(issue.description, "Full description text here")
+
+    @patch("apps.integrations.services.jira_sync.get_project_issues")
+    def test_sync_saves_labels_field(self, mock_get_issues):
+        """Test that sync_project_issues saves labels to JiraIssue."""
+        # Arrange
+        mock_get_issues.return_value = [
+            {
+                "key": "PROJ-501",
+                "id": "15001",
+                "fields": {
+                    "summary": "Issue with labels",
+                    "description": "",
+                    "labels": ["backend", "api", "v2"],
+                    "priority": None,
+                    "parent": None,
+                    "issuetype": {"name": "Task"},
+                    "status": {"name": "In Progress"},
+                    "assignee": None,
+                    "customfield_10016": None,
+                    "created": "2025-01-11T10:00:00.000+0000",
+                    "resolutiondate": None,
+                },
+            }
+        ]
+
+        # Act
+        sync_project_issues(self.tracked_project, full_sync=True)
+
+        # Assert
+        issue = JiraIssue.objects.get(jira_key="PROJ-501")
+        self.assertEqual(issue.labels, ["backend", "api", "v2"])
+
+    @patch("apps.integrations.services.jira_sync.get_project_issues")
+    def test_sync_saves_priority_field(self, mock_get_issues):
+        """Test that sync_project_issues saves priority to JiraIssue."""
+        # Arrange
+        mock_get_issues.return_value = [
+            {
+                "key": "PROJ-502",
+                "id": "15002",
+                "fields": {
+                    "summary": "High priority bug",
+                    "description": "",
+                    "labels": [],
+                    "priority": {"name": "Critical"},
+                    "parent": None,
+                    "issuetype": {"name": "Bug"},
+                    "status": {"name": "To Do"},
+                    "assignee": None,
+                    "customfield_10016": None,
+                    "created": "2025-01-12T10:00:00.000+0000",
+                    "resolutiondate": None,
+                },
+            }
+        ]
+
+        # Act
+        sync_project_issues(self.tracked_project, full_sync=True)
+
+        # Assert
+        issue = JiraIssue.objects.get(jira_key="PROJ-502")
+        self.assertEqual(issue.priority, "Critical")
+
+    @patch("apps.integrations.services.jira_sync.get_project_issues")
+    def test_sync_saves_parent_issue_key_field(self, mock_get_issues):
+        """Test that sync_project_issues saves parent_issue_key to JiraIssue."""
+        # Arrange
+        mock_get_issues.return_value = [
+            {
+                "key": "PROJ-503",
+                "id": "15003",
+                "fields": {
+                    "summary": "Sub-task linked to parent",
+                    "description": "",
+                    "labels": [],
+                    "priority": None,
+                    "parent": {"key": "PROJ-001", "id": "10001"},
+                    "issuetype": {"name": "Sub-task"},
+                    "status": {"name": "Done"},
+                    "assignee": None,
+                    "customfield_10016": None,
+                    "created": "2025-01-13T10:00:00.000+0000",
+                    "resolutiondate": "2025-01-14T15:00:00.000+0000",
+                },
+            }
+        ]
+
+        # Act
+        sync_project_issues(self.tracked_project, full_sync=True)
+
+        # Assert
+        issue = JiraIssue.objects.get(jira_key="PROJ-503")
+        self.assertEqual(issue.parent_issue_key, "PROJ-001")

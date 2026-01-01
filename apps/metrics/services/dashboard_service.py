@@ -3210,3 +3210,258 @@ def get_pr_jira_correlation(team: Team, start_date: date, end_date: date) -> dic
         "linked_avg_cycle_time": linked_avg,
         "unlinked_avg_cycle_time": unlinked_avg,
     }
+
+
+def get_linkage_trend(team: Team, weeks: int = 4) -> list[dict]:
+    """Get PR-Jira linkage rate trend over time.
+
+    Args:
+        team: Team instance
+        weeks: Number of weeks to return (default 4)
+
+    Returns:
+        List of dicts with week_start, linkage_rate, linked_count, total_prs
+        ordered from oldest to newest
+    """
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    # Calculate date range (weeks ago from today)
+    end_date = timezone.now()
+    start_date = end_date - timedelta(weeks=weeks)
+
+    # Query merged PRs, group by week
+    weekly_data = (
+        PullRequest.objects.filter(
+            team=team,
+            state="merged",
+            merged_at__gte=start_date,
+            merged_at__lte=end_date,
+        )
+        .annotate(week=TruncWeek("merged_at"))
+        .values("week")
+        .annotate(
+            total_prs=Count("id"),
+            linked_count=Count("id", filter=Q(jira_key__gt="")),
+        )
+        .order_by("week")
+    )
+
+    result = []
+    for data in weekly_data:
+        total = data["total_prs"]
+        linked = data["linked_count"]
+        linkage_rate = (linked / total * 100) if total > 0 else 0
+        result.append(
+            {
+                "week_start": data["week"].strftime("%Y-%m-%d"),
+                "linkage_rate": round(linkage_rate, 1),
+                "linked_count": linked,
+                "total_prs": total,
+            }
+        )
+
+    # Return only the requested number of weeks (most recent)
+    return result[-weeks:] if len(result) > weeks else result
+
+
+def get_story_point_correlation(team: Team, start_date: date, end_date: date) -> dict:
+    """Correlate story points with actual PR delivery time.
+
+    Groups PRs by story point buckets and calculates average cycle time per bucket.
+    PRs are linked to Jira issues via the jira_key field (string match).
+
+    Args:
+        team: The team to analyze
+        start_date: Start of date range
+        end_date: End of date range
+
+    Returns:
+        dict with:
+            - buckets: List of dicts with sp_range, avg_hours, pr_count, expected_hours
+            - total_linked_prs: Count of PRs with jira_key
+            - total_with_sp: Count of PRs with valid story_points
+    """
+    from apps.metrics.models import JiraIssue
+
+    # Define story point bucket ranges and expected hours
+    # Buckets: 1-2, 3-5, 5-8, 8-13, 13+
+    BUCKET_CONFIG = [
+        {"sp_range": "1-2", "min_sp": 1, "max_sp": 2, "expected_hours": 4.0},
+        {"sp_range": "3-5", "min_sp": 3, "max_sp": 5, "expected_hours": 8.0},
+        {"sp_range": "5-8", "min_sp": 5, "max_sp": 8, "expected_hours": 16.0},
+        {"sp_range": "8-13", "min_sp": 8, "max_sp": 13, "expected_hours": 26.0},
+        {"sp_range": "13+", "min_sp": 13, "max_sp": None, "expected_hours": 40.0},
+    ]
+
+    # Get merged PRs in date range with jira_key
+    prs = _get_merged_prs_in_range(team, start_date, end_date)
+    linked_prs = prs.exclude(jira_key="")
+    total_linked_prs = linked_prs.count()
+
+    if total_linked_prs == 0:
+        # Return empty buckets with zero counts
+        buckets = [
+            {
+                "sp_range": bucket["sp_range"],
+                "avg_hours": None,
+                "pr_count": 0,
+                "expected_hours": bucket["expected_hours"],
+            }
+            for bucket in BUCKET_CONFIG
+        ]
+        return {
+            "buckets": buckets,
+            "total_linked_prs": 0,
+            "total_with_sp": 0,
+        }
+
+    # Build a dict of jira_key -> story_points for efficient lookup
+    jira_keys = list(linked_prs.values_list("jira_key", flat=True).distinct())
+    sp_lookup = dict(
+        JiraIssue.objects.filter(team=team, jira_key__in=jira_keys)
+        .exclude(story_points__isnull=True)
+        .values_list("jira_key", "story_points")
+    )
+
+    # Group PRs by story point buckets
+    bucket_data = {bucket["sp_range"]: {"hours": [], "count": 0} for bucket in BUCKET_CONFIG}
+
+    total_with_sp = 0
+    for pr in linked_prs.only("jira_key", "cycle_time_hours"):
+        sp = sp_lookup.get(pr.jira_key)
+        if sp is None:
+            continue  # Skip PRs without story points
+
+        total_with_sp += 1
+        sp_float = float(sp)
+
+        # Find the right bucket for this story point value
+        for bucket in BUCKET_CONFIG:
+            min_sp = bucket["min_sp"]
+            max_sp = bucket["max_sp"]
+
+            # Check if SP falls in this bucket
+            # Buckets have overlapping boundaries (e.g., 5 is in both 3-5 and 5-8)
+            # Use the first matching bucket (lower bucket takes priority)
+            if max_sp is None:
+                # 13+ bucket: anything >= 13
+                if sp_float >= min_sp:
+                    if pr.cycle_time_hours is not None:
+                        bucket_data[bucket["sp_range"]]["hours"].append(float(pr.cycle_time_hours))
+                    bucket_data[bucket["sp_range"]]["count"] += 1
+                    break
+            else:
+                # Regular bucket: min_sp <= sp <= max_sp
+                if min_sp <= sp_float <= max_sp:
+                    if pr.cycle_time_hours is not None:
+                        bucket_data[bucket["sp_range"]]["hours"].append(float(pr.cycle_time_hours))
+                    bucket_data[bucket["sp_range"]]["count"] += 1
+                    break
+
+    # Build result buckets with averages
+    buckets = []
+    for bucket in BUCKET_CONFIG:
+        sp_range = bucket["sp_range"]
+        data = bucket_data[sp_range]
+        hours_list = data["hours"]
+        pr_count = data["count"]
+
+        avg_hours = None
+        if hours_list:
+            avg_hours = sum(hours_list) / len(hours_list)
+
+        buckets.append(
+            {
+                "sp_range": sp_range,
+                "avg_hours": avg_hours,
+                "pr_count": pr_count,
+                "expected_hours": bucket["expected_hours"],
+            }
+        )
+
+    return {
+        "buckets": buckets,
+        "total_linked_prs": total_linked_prs,
+        "total_with_sp": total_with_sp,
+    }
+
+
+def get_velocity_trend(team: Team, start_date: date, end_date: date) -> dict:
+    """Get velocity trend showing story points completed per week.
+
+    Groups resolved Jira issues by calendar week and aggregates story points
+    and issue counts. Used for velocity trend line charts.
+
+    Args:
+        team: The team to analyze
+        start_date: Start of date range (inclusive)
+        end_date: End of date range (inclusive)
+
+    Returns:
+        dict with:
+            - periods: List of dicts with period_start, period_name, story_points, issues_resolved
+            - total_story_points: Sum of all story points in range
+            - total_issues: Count of all resolved issues in range
+            - grouping: String indicating grouping type ("weekly")
+    """
+    from apps.metrics.models import JiraIssue
+
+    # Query resolved issues in date range, grouped by week
+    issues = JiraIssue.objects.filter(
+        team=team,
+        resolved_at__gte=start_of_day(start_date),
+        resolved_at__lte=end_of_day(end_date),
+    )
+
+    # Group by week using TruncWeek and aggregate
+    weekly_data = (
+        issues.annotate(week=TruncWeek("resolved_at"))
+        .values("week")
+        .annotate(
+            story_points=Sum("story_points"),
+            issues_resolved=Count("id"),
+        )
+        .order_by("week")
+    )
+
+    # Build periods list
+    periods = []
+    total_story_points = Decimal("0")
+    total_issues = 0
+
+    for entry in weekly_data:
+        week_start = entry["week"]
+        if week_start is None:
+            continue
+
+        # Convert datetime to date if needed
+        if hasattr(week_start, "date"):
+            week_start = week_start.date()
+
+        # Format period_name as "Week of Mon DD"
+        period_name = f"Week of {week_start.strftime('%b %d').replace(' 0', ' ')}"
+
+        # Handle None story_points (treat as 0)
+        sp = entry["story_points"] if entry["story_points"] is not None else Decimal("0")
+        issues_count = entry["issues_resolved"]
+
+        periods.append(
+            {
+                "period_start": week_start.isoformat(),
+                "period_name": period_name,
+                "story_points": sp,
+                "issues_resolved": issues_count,
+            }
+        )
+
+        total_story_points += sp
+        total_issues += issues_count
+
+    return {
+        "periods": periods,
+        "total_story_points": total_story_points,
+        "total_issues": total_issues,
+        "grouping": "weekly",
+    }

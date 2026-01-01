@@ -1,0 +1,37 @@
+{% load i18n %}
+<div id="sp-correlation-chart-container">
+  {% if correlation_data.total_with_sp > 0 %}
+  <div class="flex flex-col gap-4">
+    <!-- Chart -->
+    <div class="h-64">
+      <canvas id="sp-correlation-chart"></canvas>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats stats-horizontal shadow w-full">
+      <div class="stat py-2">
+        <div class="stat-title text-xs">{% trans "PRs with Jira Link" %}</div>
+        <div class="stat-value text-lg">{{ correlation_data.total_linked_prs }}</div>
+      </div>
+      <div class="stat py-2">
+        <div class="stat-title text-xs">{% trans "PRs with Story Points" %}</div>
+        <div class="stat-value text-lg text-primary">{{ correlation_data.total_with_sp }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chart Data -->
+  {{ correlation_data|json_script:"sp-correlation-data" }}
+
+  {% else %}
+  <div class="flex flex-col items-center justify-center h-48">
+    <div class="w-12 h-12 mb-3 rounded-full bg-primary/10 flex items-center justify-center">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+      </svg>
+    </div>
+    <p class="text-base-content/80 font-medium">{% trans "No story point data available" %}</p>
+    <p class="text-sm text-base-content/60 mt-1">{% trans "Link PRs to Jira issues with story points" %}</p>
+  </div>
+  {% endif %}
+</div>

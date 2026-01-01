@@ -24,6 +24,7 @@ from apps.metrics.views.chart_views import (
     deployment_metrics_card,
     file_category_card,
     iteration_metrics_card,
+    jira_linkage_chart,
     key_metrics_cards,
     leaderboard_table,
     needs_attention_view,
@@ -34,12 +35,14 @@ from apps.metrics.views.chart_views import (
     review_time_chart,
     reviewer_correlations_table,
     reviewer_workload_table,
+    sp_correlation_chart,
     survey_ai_detection_card,
     survey_channel_distribution_card,
     survey_response_time_card,
     team_breakdown_table,
     team_velocity_view,
     unlinked_prs_table,
+    velocity_trend_chart,
 )
 from apps.metrics.views.dashboard_views import (
     background_progress,
@@ -74,6 +77,7 @@ __all__ = [
     "deployment_metrics_card",
     "file_category_card",
     "iteration_metrics_card",
+    "jira_linkage_chart",
     "key_metrics_cards",
     "team_breakdown_table",
     "leaderboard_table",
@@ -113,5 +117,7 @@ __all__ = [
     "needs_attention_view",
     "ai_impact_view",
     "team_velocity_view",
+    "sp_correlation_chart",
+    "velocity_trend_chart",
     "background_progress",
 ]

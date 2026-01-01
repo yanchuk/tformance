@@ -1,0 +1,37 @@
+{% load i18n %}
+<div id="velocity-trend-chart-container">
+  {% if velocity_data.periods %}
+  <div class="flex flex-col gap-4">
+    <!-- Chart -->
+    <div class="h-64">
+      <canvas id="velocity-trend-chart"></canvas>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats stats-horizontal shadow w-full">
+      <div class="stat py-2">
+        <div class="stat-title text-xs">{% trans "Total Story Points" %}</div>
+        <div class="stat-value text-lg text-primary">{{ velocity_data.total_story_points }}</div>
+      </div>
+      <div class="stat py-2">
+        <div class="stat-title text-xs">{% trans "Issues Resolved" %}</div>
+        <div class="stat-value text-lg">{{ velocity_data.total_issues }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chart Data -->
+  {{ velocity_data|json_script:"velocity-trend-data" }}
+
+  {% else %}
+  <div class="flex flex-col items-center justify-center h-48">
+    <div class="w-12 h-12 mb-3 rounded-full bg-primary/10 flex items-center justify-center">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+      </svg>
+    </div>
+    <p class="text-base-content/80 font-medium">{% trans "No velocity data available" %}</p>
+    <p class="text-sm text-base-content/60 mt-1">{% trans "Resolve Jira issues with story points to see velocity" %}</p>
+  </div>
+  {% endif %}
+</div>

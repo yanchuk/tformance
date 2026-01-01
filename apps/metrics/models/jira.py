@@ -44,6 +44,31 @@ class JiraIssue(BaseTeamModel):
         verbose_name="Status",
         help_text="Current issue status",
     )
+    description = models.TextField(
+        blank=True,
+        default="",
+        verbose_name="Description",
+        help_text="Full issue description",
+    )
+    labels = models.JSONField(
+        default=list,
+        verbose_name="Labels",
+        help_text="Issue labels as list",
+    )
+    priority = models.CharField(
+        max_length=50,
+        blank=True,
+        default="",
+        verbose_name="Priority",
+        help_text="Issue priority (High, Medium, Low)",
+    )
+    parent_issue_key = models.CharField(
+        max_length=50,
+        blank=True,
+        default="",
+        verbose_name="Parent Issue Key",
+        help_text="Parent epic/story key",
+    )
     assignee = models.ForeignKey(
         TeamMember,
         on_delete=models.SET_NULL,

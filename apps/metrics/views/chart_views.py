@@ -637,6 +637,34 @@ def benchmark_panel(request: HttpRequest, metric: str) -> HttpResponse:
     )
 
 
+@login_and_team_required
+def jira_linkage_chart(request: HttpRequest) -> HttpResponse:
+    """Jira PR linkage donut chart with trend."""
+    start_date, end_date = get_date_range_from_request(request)
+    linkage_data = dashboard_service.get_pr_jira_correlation(request.team, start_date, end_date)
+    trend_data = dashboard_service.get_linkage_trend(request.team, weeks=4)
+    return TemplateResponse(
+        request,
+        "metrics/partials/jira_linkage_chart.html",
+        {
+            "linkage_data": linkage_data,
+            "trend_data": trend_data,
+        },
+    )
+
+
+@login_and_team_required
+def sp_correlation_chart(request: HttpRequest) -> HttpResponse:
+    """Story Point correlation chart - shows estimated vs actual hours by SP bucket."""
+    start_date, end_date = get_date_range_from_request(request)
+    correlation_data = dashboard_service.get_story_point_correlation(request.team, start_date, end_date)
+    return TemplateResponse(
+        request,
+        "metrics/partials/sp_correlation_chart.html",
+        {"correlation_data": correlation_data},
+    )
+
+
 @team_admin_required
 def needs_attention_view(request: HttpRequest) -> HttpResponse:
     """Needs attention PR list (admin only).
@@ -764,4 +792,16 @@ def team_velocity_view(request: HttpRequest) -> HttpResponse:
             "contributors": contributors,
             "days": days,
         },
+    )
+
+
+@login_and_team_required
+def velocity_trend_chart(request: HttpRequest) -> HttpResponse:
+    """Velocity trend chart - shows story points completed over time."""
+    start_date, end_date = get_date_range_from_request(request)
+    velocity_data = dashboard_service.get_velocity_trend(request.team, start_date, end_date)
+    return TemplateResponse(
+        request,
+        "metrics/partials/velocity_trend_chart.html",
+        {"velocity_data": velocity_data},
     )

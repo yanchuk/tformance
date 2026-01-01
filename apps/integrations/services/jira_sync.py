@@ -79,6 +79,20 @@ def _convert_jira_issue_to_dict(issue_data: dict) -> dict:
     created = _parse_jira_datetime(fields.get("created"))
     resolved = _parse_jira_datetime(fields.get("resolutiondate"))
 
+    # Extract description
+    description = fields.get("description") or ""
+
+    # Extract labels (already a list)
+    labels = fields.get("labels") or []
+
+    # Extract priority from nested object
+    priority_obj = fields.get("priority")
+    priority = priority_obj.get("name", "") if priority_obj else ""
+
+    # Extract parent issue key from nested object
+    parent_obj = fields.get("parent")
+    parent_issue_key = parent_obj.get("key", "") if parent_obj else ""
+
     return {
         "jira_key": key,
         "jira_id": jira_id,
@@ -90,6 +104,10 @@ def _convert_jira_issue_to_dict(issue_data: dict) -> dict:
         "issue_created_at": created,
         "resolved_at": resolved,
         "cycle_time_hours": _calculate_cycle_time(created, resolved),
+        "description": description,
+        "labels": labels,
+        "priority": priority,
+        "parent_issue_key": parent_issue_key,
     }
 
 
@@ -148,6 +166,10 @@ def sync_project_issues(tracked_project: TrackedJiraProject, full_sync: bool = F
                         "issue_created_at": converted["issue_created_at"],
                         "resolved_at": converted["resolved_at"],
                         "cycle_time_hours": converted["cycle_time_hours"],
+                        "description": converted["description"],
+                        "labels": converted["labels"],
+                        "priority": converted["priority"],
+                        "parent_issue_key": converted["parent_issue_key"],
                     },
                 )
 
