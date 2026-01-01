@@ -1,8 +1,8 @@
 # Two-Phase Onboarding - Context
 
 **Last Updated**: 2026-01-01
-**Status**: Core Implementation Complete (Pipeline Orchestration Done)
-**Branch**: `main` (feature work in progress)
+**Status**: Core Implementation Complete & Pushed to Main
+**Branch**: `main`
 
 ## Overview
 
@@ -55,10 +55,24 @@ Implementing Option C (Two-Phase Quick Start) for onboarding pipeline to reduce 
 - URL: `/app/metrics/partials/background-progress/`
 - Tests: 8 new tests in test_dashboard_views.py
 
+**Error Handling** (`apps/integrations/onboarding_pipeline.py`):
+- Added `handle_phase2_failure()` - graceful error handler for Phase 2
+- Phase 1 failure: Sets status to `failed`, blocks dashboard
+- Phase 2 failure: Reverts to `phase1_complete`, dashboard stays accessible
+- Tests: 7 new tests in test_two_phase_pipeline.py
+
+**Dashboard Access Control** (`apps/metrics/views/`):
+- Added access check to `cto_overview` and `analytics_overview` views
+- Redirects to `onboarding:sync_progress` when `dashboard_accessible` is False
+- Statuses that block: `syncing`, `llm_processing`, `computing_metrics`, `computing_insights`, `failed`
+- Statuses that allow: `phase1_complete`, `background_syncing`, `background_llm`, `complete`
+- Tests: 9 new tests in test_dashboard_views.py
+
 ### 📋 Pending
 
 - Add progress tracking to sync and LLM tasks (optional enhancement)
-- Implement error handling tests (optional)
+- Integration tests (Phase 6) - optional
+- Feature flag for rollout (Phase 7) - optional
 
 ## Current Architecture
 

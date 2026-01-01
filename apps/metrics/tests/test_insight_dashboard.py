@@ -125,7 +125,8 @@ class TestCTOOverviewWithInsights(TestCase):
 
     def setUp(self):
         """Set up test fixtures using factories."""
-        self.team = TeamFactory()
+        # Use status="complete" to ensure dashboard is accessible
+        self.team = TeamFactory(onboarding_pipeline_status="complete")
         self.admin_user = UserFactory()
         self.member_user = UserFactory()
         self.team.members.add(self.admin_user, through_defaults={"role": ROLE_ADMIN})

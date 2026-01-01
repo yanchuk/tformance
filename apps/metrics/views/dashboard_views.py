@@ -51,7 +51,16 @@ def dashboard_redirect(request: HttpRequest) -> HttpResponse:
 
 @team_admin_required
 def cto_overview(request: HttpRequest) -> HttpResponse:
-    """CTO Overview Dashboard - Admin only."""
+    """CTO Overview Dashboard - Admin only.
+
+    Access is blocked during Phase 1 of onboarding (syncing, llm_processing,
+    computing_metrics, computing_insights, failed). Dashboard becomes accessible
+    once Phase 1 completes (phase1_complete, background_*, complete).
+    """
+    # Block dashboard during Phase 1 of onboarding
+    if not request.team.dashboard_accessible:
+        return redirect("onboarding:sync_progress")
+
     context = _get_date_range_context(request)
     context["insights"] = insight_service.get_recent_insights(request.team)
     # Return partial for HTMX requests (e.g., days filter changes)

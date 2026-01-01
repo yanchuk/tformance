@@ -1,8 +1,8 @@
 # Two-Phase Onboarding - TDD Task Checklist
 
 **Last Updated**: 2026-01-01
-**Status**: Planning
-**Branch**: `feature/two-phase-onboarding`
+**Status**: Core Implementation Complete (Phases 1-5.2 Done)
+**Branch**: `main`
 
 ## Phase 1: Model Changes ✅
 
@@ -63,11 +63,11 @@
 - [x] **GREEN**: Implement `run_phase2_pipeline()` task
 - [ ] **REFACTOR**: Add idempotency check (deferred)
 
-### 4.3 Error Handling
-- [ ] **RED**: Write test for Phase 1 failure blocking dashboard
-- [ ] **RED**: Write test for Phase 2 failure not affecting dashboard
-- [ ] **GREEN**: Implement separate error handlers for each phase
-- [ ] **REFACTOR**: Log clear error messages
+### 4.3 Error Handling ✅
+- [x] **RED**: Write test for Phase 1 failure blocking dashboard
+- [x] **RED**: Write test for Phase 2 failure not affecting dashboard
+- [x] **GREEN**: Implement separate error handlers for each phase
+- [x] **GREEN**: Phase 2 uses `handle_phase2_failure` (reverts to phase1_complete, dashboard stays accessible)
 
 ## Phase 5: UI Components ✅
 
@@ -79,11 +79,11 @@
 - [x] **GREEN**: Include banner in dashboard template
 - [x] **REFACTOR**: Add HTMX polling for live progress
 
-### 5.2 Dashboard Access
-- [ ] **RED**: Write test for dashboard accessible after phase1_complete
-- [ ] **RED**: Write test for dashboard blocked during phase1
-- [ ] **GREEN**: Update dashboard view permission check
-- [ ] **REFACTOR**: Clear loading state handling
+### 5.2 Dashboard Access ✅
+- [x] **RED**: Write test for dashboard accessible after phase1_complete (9 tests)
+- [x] **RED**: Write test for dashboard blocked during phase1
+- [x] **GREEN**: Update dashboard view permission check
+- [x] **GREEN**: Added access control to `cto_overview` and `analytics_overview`
 
 ## Phase 6: Integration Tests
 

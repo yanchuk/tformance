@@ -59,10 +59,10 @@ def handle_pipeline_failure(
     team_id: int | None = None,
 ) -> dict:
     """
-    Handle pipeline failure by updating team status.
+    Handle Phase 1 pipeline failure by updating team status to 'failed'.
 
-    This task is attached to the chain via on_error() and is called
-    when any task in the pipeline fails.
+    This blocks dashboard access until the issue is resolved.
+    Used for Phase 1 failures where the user hasn't seen the dashboard yet.
 
     Args:
         request: The failed task's request (from Celery)
@@ -88,6 +88,55 @@ def handle_pipeline_failure(
         return {"status": "failed", "team_id": team_id, "error": error_message}
     except Team.DoesNotExist:
         logger.error(f"Team not found during failure handling: {team_id}")
+        return {"status": "error", "error": f"Team {team_id} not found"}
+
+
+@shared_task(bind=True)
+def handle_phase2_failure(
+    self,
+    request,
+    exc,
+    traceback,
+    team_id: int | None = None,
+) -> dict:
+    """
+    Handle Phase 2 pipeline failure gracefully without blocking dashboard.
+
+    Phase 2 failures should NOT affect dashboard access since the user
+    already completed Phase 1 and has 30 days of data available.
+
+    This handler:
+    1. Logs the error for debugging
+    2. Reverts status to 'phase1_complete' (dashboard stays accessible)
+    3. Does NOT set status to 'failed'
+
+    The nightly batch will retry processing later.
+
+    Args:
+        request: The failed task's request (from Celery)
+        exc: The exception that was raised
+        traceback: The exception traceback
+        team_id: The team ID (passed as kwarg)
+
+    Returns:
+        dict with phase2_failed status
+    """
+    from apps.teams.models import Team
+
+    error_message = sanitize_error(exc) if exc else "Unknown error"
+
+    if team_id is None:
+        logger.error(f"Phase 2 failure handler called without team_id: {error_message}")
+        return {"status": "error", "error": "No team_id provided"}
+
+    try:
+        team = Team.objects.get(id=team_id)
+        # Revert to phase1_complete - keeps dashboard accessible
+        team.update_pipeline_status("phase1_complete")
+        logger.warning(f"Phase 2 failed for team {team_id} (dashboard stays accessible): {error_message}")
+        return {"status": "phase2_failed", "team_id": team_id, "error": error_message}
+    except Team.DoesNotExist:
+        logger.error(f"Team not found during Phase 2 failure handling: {team_id}")
         return {"status": "error", "error": f"Team {team_id} not found"}
 
 
@@ -183,8 +232,8 @@ def dispatch_phase2_pipeline(self, team_id: int, repo_ids: list[int]) -> dict:
         send_onboarding_complete_email.si(team_id),
     )
 
-    # Phase 2 failures don't block dashboard - silent error handling
-    pipeline = pipeline.on_error(handle_pipeline_failure.s(team_id=team_id))
+    # Phase 2 failures don't block dashboard - use graceful error handler
+    pipeline = pipeline.on_error(handle_phase2_failure.s(team_id=team_id))
 
     # Execute asynchronously
     result = pipeline.apply_async()
@@ -229,7 +278,8 @@ def run_phase2_pipeline(team_id: int, repo_ids: list[int]) -> AsyncResult:
         update_pipeline_status.si(team_id, "complete"),
     )
 
-    pipeline = pipeline.on_error(handle_pipeline_failure.s(team_id=team_id))
+    # Phase 2 failures don't block dashboard - use graceful error handler
+    pipeline = pipeline.on_error(handle_phase2_failure.s(team_id=team_id))
 
     return pipeline.apply_async()
 

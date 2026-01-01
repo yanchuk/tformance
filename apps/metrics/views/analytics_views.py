@@ -1,6 +1,7 @@
 """Analytics views - Overview and tabbed analytics pages."""
 
 from django.http import HttpRequest, HttpResponse
+from django.shortcuts import redirect
 from django.template.response import TemplateResponse
 
 from apps.metrics.models import PullRequest
@@ -74,7 +75,15 @@ def analytics_overview(request: HttpRequest) -> HttpResponse:
 
     Shows key metrics and quick links to detailed analytics pages.
     Admin-only view.
+
+    Access is blocked during Phase 1 of onboarding (syncing, llm_processing,
+    computing_metrics, computing_insights, failed). Dashboard becomes accessible
+    once Phase 1 completes (phase1_complete, background_*, complete).
     """
+    # Block dashboard during Phase 1 of onboarding
+    if not request.team.dashboard_accessible:
+        return redirect("onboarding:sync_progress")
+
     context = _get_analytics_context(request, "overview")
 
     # Track first dashboard view (once per session)

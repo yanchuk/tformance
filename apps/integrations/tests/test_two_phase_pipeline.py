@@ -238,3 +238,145 @@ class TestStartOnboardingPipelineRouting(TestCase):
 
         # Should call start_phase1_pipeline
         mock_phase1.assert_called_once_with(self.team.id, [self.repo.id])
+
+
+class TestPhase1ErrorHandling(TestCase):
+    """Tests for Phase 1 pipeline failure behavior."""
+
+    def setUp(self):
+        self.team = TeamFactory(onboarding_pipeline_status="syncing")
+        self.repo = TrackedRepositoryFactory(team=self.team)
+
+    def test_phase1_failure_sets_status_to_failed(self):
+        """Phase 1 failure should set team status to 'failed'."""
+        from apps.integrations.onboarding_pipeline import handle_pipeline_failure
+
+        # Simulate Phase 1 failure
+        handle_pipeline_failure(
+            request=MagicMock(),
+            exc=Exception("Sync failed"),
+            traceback=None,
+            team_id=self.team.id,
+        )
+
+        self.team.refresh_from_db()
+        self.assertEqual(self.team.onboarding_pipeline_status, "failed")
+
+    def test_phase1_failure_blocks_dashboard_access(self):
+        """Phase 1 failure should block dashboard access."""
+        from apps.integrations.onboarding_pipeline import handle_pipeline_failure
+
+        # Simulate Phase 1 failure
+        handle_pipeline_failure(
+            request=MagicMock(),
+            exc=Exception("LLM analysis failed"),
+            traceback=None,
+            team_id=self.team.id,
+        )
+
+        self.team.refresh_from_db()
+        self.assertFalse(self.team.dashboard_accessible)
+
+    def test_phase1_failure_stores_error_message(self):
+        """Phase 1 failure should store sanitized error message for display."""
+        from apps.integrations.onboarding_pipeline import handle_pipeline_failure
+
+        handle_pipeline_failure(
+            request=MagicMock(),
+            exc=Exception("Some internal error"),
+            traceback=None,
+            team_id=self.team.id,
+        )
+
+        self.team.refresh_from_db()
+        # Error is sanitized for security - should have generic message
+        self.assertIsNotNone(self.team.onboarding_pipeline_error)
+        self.assertTrue(len(self.team.onboarding_pipeline_error) > 0)
+
+
+class TestPhase2ErrorHandling(TestCase):
+    """Tests for Phase 2 pipeline failure behavior.
+
+    Phase 2 failures should NOT affect dashboard access since
+    Phase 1 already completed successfully.
+    """
+
+    def setUp(self):
+        # Team has completed Phase 1 and is in Phase 2
+        self.team = TeamFactory(onboarding_pipeline_status="background_syncing")
+        self.repo = TrackedRepositoryFactory(team=self.team)
+
+    def test_phase2_failure_does_not_block_dashboard(self):
+        """Phase 2 failure should NOT block dashboard access.
+
+        This is critical - users should keep dashboard access even if
+        background processing fails. They have 30 days of data already.
+        """
+        from apps.integrations.onboarding_pipeline import handle_phase2_failure
+
+        # Simulate Phase 2 failure
+        handle_phase2_failure(
+            request=MagicMock(),
+            exc=Exception("Background sync failed"),
+            traceback=None,
+            team_id=self.team.id,
+        )
+
+        self.team.refresh_from_db()
+        # Dashboard should STILL be accessible
+        self.assertTrue(self.team.dashboard_accessible)
+
+    def test_phase2_failure_keeps_phase1_complete_status(self):
+        """Phase 2 failure should revert to 'phase1_complete', not 'failed'."""
+        from apps.integrations.onboarding_pipeline import handle_phase2_failure
+
+        handle_phase2_failure(
+            request=MagicMock(),
+            exc=Exception("LLM quota exceeded"),
+            traceback=None,
+            team_id=self.team.id,
+        )
+
+        self.team.refresh_from_db()
+        # Should be phase1_complete (fallback), not failed
+        self.assertEqual(self.team.onboarding_pipeline_status, "phase1_complete")
+
+    def test_phase2_failure_logs_error_but_continues(self):
+        """Phase 2 failure should be logged but not disrupt user experience."""
+        from apps.integrations.onboarding_pipeline import handle_phase2_failure
+
+        result = handle_phase2_failure(
+            request=MagicMock(),
+            exc=Exception("Background error"),
+            traceback=None,
+            team_id=self.team.id,
+        )
+
+        # Should indicate failure was handled gracefully
+        self.assertEqual(result["status"], "phase2_failed")
+        self.assertIn("error", result)
+
+
+class TestPhase2UsesCorrectErrorHandler(TestCase):
+    """Tests that Phase 2 pipeline uses handle_phase2_failure, not handle_pipeline_failure."""
+
+    def setUp(self):
+        self.team = TeamFactory(onboarding_pipeline_status="phase1_complete")
+        self.repo = TrackedRepositoryFactory(team=self.team)
+
+    @patch("apps.integrations.onboarding_pipeline.chain")
+    @patch("apps.integrations.onboarding_pipeline.handle_phase2_failure")
+    def test_phase2_pipeline_uses_phase2_error_handler(self, mock_handler, mock_chain):
+        """Phase 2 pipeline should use handle_phase2_failure for errors."""
+        from apps.integrations.onboarding_pipeline import run_phase2_pipeline
+
+        mock_chain_instance = MagicMock()
+        mock_chain.return_value = mock_chain_instance
+        mock_chain_instance.on_error.return_value = mock_chain_instance
+
+        run_phase2_pipeline(self.team.id, [self.repo.id])
+
+        # Verify on_error was called with handle_phase2_failure
+        mock_chain_instance.on_error.assert_called_once()
+        call_args = mock_chain_instance.on_error.call_args[0][0]
+        self.assertIn("phase2_failure", str(call_args))

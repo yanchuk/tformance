@@ -69,7 +69,8 @@ class TestCTOOverview(TestCase):
 
     def setUp(self):
         """Set up test fixtures using factories."""
-        self.team = TeamFactory()
+        # Use status="complete" to ensure dashboard is accessible
+        self.team = TeamFactory(onboarding_pipeline_status="complete")
         self.admin_user = UserFactory()
         self.member_user = UserFactory()
         self.team.members.add(self.admin_user, through_defaults={"role": ROLE_ADMIN})
@@ -368,3 +369,122 @@ class TestBackgroundProgress(TestCase):
         self.assertEqual(response.status_code, 200)
         # Not in background state, so banner should not show
         self.assertNotContains(response, "progress-info")
+
+
+class TestDashboardAccessControl(TestCase):
+    """Tests for dashboard access control based on pipeline status.
+
+    Dashboard should only be accessible after Phase 1 completes.
+    During Phase 1 (syncing, llm_processing, etc.), users should see
+    the onboarding/progress page instead.
+    """
+
+    def setUp(self):
+        """Set up test fixtures using factories."""
+        self.team = TeamFactory()
+        self.admin_user = UserFactory()
+        self.team.members.add(self.admin_user, through_defaults={"role": ROLE_ADMIN})
+        self.client = Client()
+
+    def test_dashboard_accessible_after_phase1_complete(self):
+        """Dashboard should be accessible when status is 'phase1_complete'."""
+        self.team.onboarding_pipeline_status = "phase1_complete"
+        self.team.save()
+
+        self.client.force_login(self.admin_user)
+        response = self.client.get(reverse("metrics:cto_overview"))
+
+        # Should return 200, not redirect to onboarding
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "metrics/cto_overview.html")
+
+    def test_dashboard_accessible_during_background_syncing(self):
+        """Dashboard should be accessible during Phase 2 background sync."""
+        self.team.onboarding_pipeline_status = "background_syncing"
+        self.team.save()
+
+        self.client.force_login(self.admin_user)
+        response = self.client.get(reverse("metrics:cto_overview"))
+
+        self.assertEqual(response.status_code, 200)
+
+    def test_dashboard_accessible_during_background_llm(self):
+        """Dashboard should be accessible during Phase 2 background LLM."""
+        self.team.onboarding_pipeline_status = "background_llm"
+        self.team.save()
+
+        self.client.force_login(self.admin_user)
+        response = self.client.get(reverse("metrics:cto_overview"))
+
+        self.assertEqual(response.status_code, 200)
+
+    def test_dashboard_accessible_when_complete(self):
+        """Dashboard should be accessible when fully complete."""
+        self.team.onboarding_pipeline_status = "complete"
+        self.team.save()
+
+        self.client.force_login(self.admin_user)
+        response = self.client.get(reverse("metrics:cto_overview"))
+
+        self.assertEqual(response.status_code, 200)
+
+    def test_dashboard_blocked_during_syncing(self):
+        """Dashboard should redirect during Phase 1 syncing."""
+        self.team.onboarding_pipeline_status = "syncing"
+        self.team.save()
+
+        self.client.force_login(self.admin_user)
+        response = self.client.get(reverse("metrics:cto_overview"))
+
+        # Should redirect to onboarding status page
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("onboarding", response.url.lower())
+
+    def test_dashboard_blocked_during_llm_processing(self):
+        """Dashboard should redirect during Phase 1 LLM processing."""
+        self.team.onboarding_pipeline_status = "llm_processing"
+        self.team.save()
+
+        self.client.force_login(self.admin_user)
+        response = self.client.get(reverse("metrics:cto_overview"))
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("onboarding", response.url.lower())
+
+    def test_dashboard_blocked_during_computing_metrics(self):
+        """Dashboard should redirect during Phase 1 metrics computation."""
+        self.team.onboarding_pipeline_status = "computing_metrics"
+        self.team.save()
+
+        self.client.force_login(self.admin_user)
+        response = self.client.get(reverse("metrics:cto_overview"))
+
+        self.assertEqual(response.status_code, 302)
+
+    def test_dashboard_blocked_when_failed(self):
+        """Dashboard should redirect when pipeline has failed."""
+        self.team.onboarding_pipeline_status = "failed"
+        self.team.save()
+
+        self.client.force_login(self.admin_user)
+        response = self.client.get(reverse("metrics:cto_overview"))
+
+        self.assertEqual(response.status_code, 302)
+
+    def test_analytics_overview_uses_same_access_control(self):
+        """Analytics overview should follow same access rules as CTO overview."""
+        # Should be blocked during Phase 1
+        self.team.onboarding_pipeline_status = "syncing"
+        self.team.save()
+
+        self.client.force_login(self.admin_user)
+        response = self.client.get(reverse("metrics:analytics_overview"))
+
+        self.assertEqual(response.status_code, 302)
+
+        # Should be accessible after Phase 1
+        self.team.onboarding_pipeline_status = "phase1_complete"
+        self.team.save()
+
+        response = self.client.get(reverse("metrics:analytics_overview"))
+        self.assertEqual(response.status_code, 200)
