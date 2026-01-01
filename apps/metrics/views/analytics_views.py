@@ -4,7 +4,6 @@ from django.http import HttpRequest, HttpResponse
 from django.template.response import TemplateResponse
 
 from apps.metrics.models import PullRequest
-from apps.metrics.services import insight_service
 from apps.metrics.view_utils import get_extended_date_range
 from apps.teams.decorators import team_admin_required
 from apps.utils.analytics import track_event
@@ -73,11 +72,10 @@ def _get_analytics_context(request: HttpRequest, active_page: str) -> dict:
 def analytics_overview(request: HttpRequest) -> HttpResponse:
     """Analytics Overview - Team health dashboard.
 
-    Shows key metrics, insights, and quick links to detailed analytics pages.
+    Shows key metrics and quick links to detailed analytics pages.
     Admin-only view.
     """
     context = _get_analytics_context(request, "overview")
-    context["insights"] = insight_service.get_recent_insights(request.team)
 
     # Track first dashboard view (once per session)
     if not request.session.get("_posthog_dashboard_viewed"):

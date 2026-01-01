@@ -9,9 +9,6 @@
   <!-- Page Title -->
   <h1 class="pg-title mb-4">{% trans "Team Health Overview" %}</h1>
 
-  <!-- Insights Panel -->
-  {% include "metrics/partials/insights_panel.html" %}
-
   <!-- Key Metrics Cards -->
   <div id="key-metrics-container"
        hx-get="{% url 'metrics:cards_metrics' %}?days={{ days }}{% if selected_repo %}&repo={{ selected_repo }}{% endif %}"

@@ -88,15 +88,6 @@ class TestAnalyticsOverviewView(TestCase):
         # Partial should not have full HTML structure
         self.assertNotContains(response, "<html")
 
-    def test_overview_has_insights_context(self):
-        """Test that overview includes insights for the team."""
-        self.client.force_login(self.admin_user)
-        url = reverse("metrics:analytics_overview")
-
-        response = self.client.get(url)
-
-        self.assertIn("insights", response.context)
-
     def test_overview_has_analytics_tabs(self):
         """Test that overview page shows analytics tab navigation."""
         self.client.force_login(self.admin_user)
