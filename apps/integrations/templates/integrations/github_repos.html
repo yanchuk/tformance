@@ -20,14 +20,14 @@
 
   {% if repos %}
     <div class="overflow-x-auto">
-      <table class="app-table">
+      <table class="app-table table-fixed w-full">
         <thead>
           <tr>
-            <th>{% translate "Name" %}</th>
-            <th>{% translate "Description" %}</th>
-            <th>{% translate "Status" %}</th>
+            <th class="w-48">{% translate "Name" %}</th>
+            <th class="min-w-0">{% translate "Description" %}</th>
+            <th class="w-40">{% translate "Status" %}</th>
             {% if request.team_membership.role == 'admin' %}
-              <th class="text-right">{% translate "Actions" %}</th>
+              <th class="w-44 text-right">{% translate "Actions" %}</th>
             {% endif %}
           </tr>
         </thead>

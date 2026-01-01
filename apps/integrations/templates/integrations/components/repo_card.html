@@ -1,10 +1,10 @@
 {% load i18n %}
 <tr id="repo-row-{{ repo.id }}" class="hover:bg-deep/50 transition-colors">
   <td class="px-4 py-3 border-b border-elevated/50">
-    <span class="font-medium text-base-content">{{ repo.name }}</span>
+    <span class="font-medium text-base-content block truncate" title="{{ repo.name }}">{{ repo.name }}</span>
   </td>
   <td class="px-4 py-3 border-b border-elevated/50">
-    <span class="text-sm text-base-content/80">{{ repo.description|default:"" }}</span>
+    <span class="text-sm text-base-content/80 block truncate" title="{{ repo.description|default:'' }}">{{ repo.description|default:"" }}</span>
   </td>
   <td class="px-4 py-3 border-b border-elevated/50">
     <div id="sync-status-{{ repo.id }}" class="flex flex-wrap gap-1 items-center"
@@ -41,7 +41,7 @@
     </div>
   </td>
   {% if request.team_membership.role == 'admin' %}
-    <td class="px-4 py-3 border-b border-elevated/50 text-right">
+    <td class="px-4 py-3 border-b border-elevated/50 text-right whitespace-nowrap">
       <div class="flex items-center justify-end gap-1">
         <form method="post"
               action="{% url 'integrations:github_repo_toggle' repo_id=repo.id %}"
