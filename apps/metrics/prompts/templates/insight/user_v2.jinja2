@@ -1,0 +1,102 @@
+# Engineering Metrics Analysis for {{ metadata.team_name }}
+
+## Period: {{ metadata.start_date }} to {{ metadata.end_date }} ({{ metadata.days }} days)
+
+## Team Context
+- Team size: {{ team_health.active_contributors }} active contributors
+- Period type: {{ "weekly snapshot" if metadata.days <= 7 else "monthly analysis" }}
+
+## Velocity Metrics
+
+### Throughput
+- Current period: {{ velocity.throughput.current }} PRs merged
+- Previous period: {{ velocity.throughput.previous }} PRs merged
+{% if velocity.throughput.pct_change is not none %}
+- Change: {{ "%.1f"|format(velocity.throughput.pct_change) }}%{% if velocity.throughput.pct_change > 0 %} (increased){% elif velocity.throughput.pct_change < 0 %} (decreased){% else %} (unchanged){% endif %}
+{% else %}
+- Change: N/A (no baseline)
+{% endif %}
+
+### Cycle Time (hours from PR open to merge)
+{% if velocity.cycle_time.current is not none %}
+- Current period: {{ "%.1f"|format(velocity.cycle_time.current) }} hours
+{% else %}
+- Current period: N/A
+{% endif %}
+{% if velocity.cycle_time.previous is not none %}
+- Previous period: {{ "%.1f"|format(velocity.cycle_time.previous) }} hours
+{% else %}
+- Previous period: N/A
+{% endif %}
+{% if velocity.cycle_time.pct_change is not none %}
+- Change: {{ "%.1f"|format(velocity.cycle_time.pct_change) }}%{% if velocity.cycle_time.pct_change > 0 %} (slower - bad){% elif velocity.cycle_time.pct_change < 0 %} (faster - good){% else %} (unchanged){% endif %}
+{% else %}
+- Change: N/A
+{% endif %}
+
+### Review Time (hours to first review)
+{% if velocity.review_time.current is not none %}
+- Current period: {{ "%.1f"|format(velocity.review_time.current) }} hours
+{% else %}
+- Current period: N/A
+{% endif %}
+{% if velocity.review_time.previous is not none %}
+- Previous period: {{ "%.1f"|format(velocity.review_time.previous) }} hours
+{% else %}
+- Previous period: N/A
+{% endif %}
+{% if velocity.review_time.pct_change is not none %}
+- Change: {{ "%.1f"|format(velocity.review_time.pct_change) }}%{% if velocity.review_time.pct_change > 0 %} (slower reviews){% elif velocity.review_time.pct_change < 0 %} (faster reviews){% else %} (unchanged){% endif %}
+{% else %}
+- Change: N/A
+{% endif %}
+
+## Quality Metrics
+
+- Reverts: {{ quality.revert_count }} ({{ "%.1f"|format(quality.revert_rate) }}% of merged PRs){% if quality.revert_rate > 8 %} [CRITICAL: Above 8% threshold]{% elif quality.revert_rate > 5 %} [WARNING: Elevated]{% endif %}
+- Hotfixes: {{ quality.hotfix_count }} ({{ "%.1f"|format(quality.hotfix_rate) }}% of merged PRs)
+{% if quality.avg_review_rounds is not none %}
+- Average review rounds: {{ "%.1f"|format(quality.avg_review_rounds) }}{% if quality.avg_review_rounds > 3 %} [High - PRs need multiple iterations]{% endif %}
+{% else %}
+- Average review rounds: N/A
+{% endif %}
+- Large PRs (>500 lines): {{ "%.1f"|format(quality.large_pr_pct) }}%{% if quality.large_pr_pct > 25 %} [Consider breaking down PRs]{% endif %}
+
+## Team Health
+
+- Active contributors: {{ team_health.active_contributors }}
+- Top contributor share: {{ "%.1f"|format(team_health.pr_distribution.top_contributor_pct) }}% of PRs{% if team_health.active_contributors > 3 and team_health.pr_distribution.top_contributor_pct > 50 %} [BUS FACTOR RISK: Work too concentrated]{% endif %}
+- Work concentration: {{ "High risk" if team_health.pr_distribution.is_concentrated else "Healthy distribution" }}
+{% if team_health.review_distribution.avg_reviews_per_reviewer is not none %}
+- Avg reviews per reviewer: {{ "%.1f"|format(team_health.review_distribution.avg_reviews_per_reviewer) }}
+{% endif %}
+- Max reviews by single reviewer: {{ team_health.review_distribution.max_reviews }}
+{% if team_health.bottleneck %}
+- BOTTLENECK DETECTED: {{ team_health.bottleneck.reviewer_name }} has {{ team_health.bottleneck.pending_count }} pending reviews (team avg: {{ team_health.bottleneck.team_avg }})
+{% else %}
+- No review bottleneck detected
+{% endif %}
+
+## AI Impact
+{% if ai_impact.ai_adoption_pct >= 10 %}
+- AI-assisted PRs: {{ ai_impact.ai_pr_count }} ({{ "%.1f"|format(ai_impact.ai_adoption_pct) }}% adoption)
+- Non-AI PRs: {{ ai_impact.non_ai_pr_count }}
+{% if ai_impact.ai_avg_cycle_time is not none and ai_impact.non_ai_avg_cycle_time is not none %}
+- AI PR avg cycle time: {{ "%.1f"|format(ai_impact.ai_avg_cycle_time) }} hours
+- Non-AI PR avg cycle time: {{ "%.1f"|format(ai_impact.non_ai_avg_cycle_time) }} hours
+{% set diff_pct = ((ai_impact.ai_avg_cycle_time - ai_impact.non_ai_avg_cycle_time) / ai_impact.non_ai_avg_cycle_time * 100)|abs %}
+{% if ai_impact.ai_avg_cycle_time < ai_impact.non_ai_avg_cycle_time %}
+- AI HELPS: AI PRs are {{ "%.1f"|format(diff_pct) }}% FASTER than non-AI PRs
+{% elif ai_impact.ai_avg_cycle_time > ai_impact.non_ai_avg_cycle_time %}
+- AI HURTS: AI PRs are {{ "%.1f"|format(diff_pct) }}% SLOWER than non-AI PRs
+{% else %}
+- AI PRs have same cycle time as non-AI PRs
+{% endif %}
+{% endif %}
+{% else %}
+- AI adoption: {{ "%.1f"|format(ai_impact.ai_adoption_pct) }}% (low - insufficient data for impact analysis)
+{% endif %}
+
+---
+
+Analyze these metrics and provide insight in JSON format.

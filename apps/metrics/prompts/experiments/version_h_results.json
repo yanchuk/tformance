@@ -1,0 +1,1252 @@
+[
+  {
+    "headline": "Zero active contributors \u2192 no PRs merged",
+    "detail": "The team has no active contributors, resulting in zero PRs merged over the last week. This has led to a complete halt in development, with no code reviews or updates. The lack of contributors is the primary cause of the current stagnation.",
+    "recommendation": "Recruit and onboard new contributors to resume development activities",
+    "metric_cards": [
+      {
+        "name": "Throughput",
+        "value": "-100.0%",
+        "trend": "negative"
+      },
+      {
+        "name": "Cycle Time",
+        "value": "N/A",
+        "trend": "neutral"
+      },
+      {
+        "name": "AI Adoption",
+        "value": "0.0%",
+        "trend": "warning"
+      },
+      {
+        "name": "Quality",
+        "value": "0.0% reverts",
+        "trend": "positive"
+      }
+    ],
+    "actions": [
+      {
+        "action_type": "view_contributors",
+        "label": "View contributors"
+      },
+      {
+        "action_type": "view_review_bottlenecks",
+        "label": "View review bottlenecks"
+      }
+    ],
+    "_team": "Unleash",
+    "_slug": "unleash-demo",
+    "_days": 7,
+    "_error": null
+  },
+  {
+    "headline": "Cycle Time increase \u2192 slower delivery",
+    "detail": "The time it takes for PRs to go from open to merge has more than doubled, with cycle times now taking nearly 40 hours. This increase in cycle time is affecting the team's ability to deliver changes quickly. Review times have also increased significantly, with the time to first review taking several hours longer than before.",
+    "recommendation": "Investigate and address the causes of the increased review and cycle times to improve delivery speed",
+    "metric_cards": [
+      {
+        "Throughput": {
+          "value": "-10.9%",
+          "trend": "negative"
+        }
+      },
+      {
+        "Cycle Time": {
+          "value": "+173.4%",
+          "trend": "negative"
+        }
+      },
+      {
+        "AI Adoption": {
+          "value": "4.3%",
+          "trend": "warning"
+        }
+      },
+      {
+        "Quality": {
+          "value": "1.7% reverts",
+          "trend": "positive"
+        }
+      }
+    ],
+    "actions": [
+      {
+        "action_type": "view_slow_prs",
+        "label": "View slow PRs to identify patterns and bottlenecks"
+      },
+      {
+        "action_type": "view_review_bottlenecks",
+        "label": "Investigate review bottlenecks to optimize the review process"
+      }
+    ],
+    "_team": "Unleash",
+    "_slug": "unleash-demo",
+    "_days": 30,
+    "_error": null
+  },
+  {
+    "headline": "Low AI Adoption \u2192 slower non-AI PRs",
+    "detail": "The current AI adoption rate is roughly a small portion, with only 5.4% of PRs being AI-assisted. This is significantly lower than the benchmark, indicating a potential area for improvement. Non-AI PRs are taking about a day and a half to merge, which is nearly twice as long as AI-assisted PRs.",
+    "recommendation": "Increase AI adoption by providing training and support for contributors to use AI tools",
+    "metric_cards": [
+      {
+        "Throughput": {
+          "value": "+20.1%",
+          "trend": "positive"
+        }
+      },
+      {
+        "Cycle Time": {
+          "value": "-11.3%",
+          "trend": "positive"
+        }
+      },
+      {
+        "AI Adoption": {
+          "value": "5.4%",
+          "trend": "warning"
+        }
+      },
+      {
+        "Quality": {
+          "value": "1.2% reverts",
+          "trend": "positive"
+        }
+      }
+    ],
+    "actions": [
+      {
+        "action_type": "view_ai_prs",
+        "label": "View AI-assisted PRs to understand usage patterns"
+      },
+      {
+        "action_type": "view_contributors",
+        "label": "View contributor metrics to identify potential champions for AI adoption"
+      }
+    ],
+    "_team": "Unleash",
+    "_slug": "unleash-demo",
+    "_days": 90,
+    "_error": null
+  },
+  {
+    "headline": "Zero active contributors \u2192 no PRs merged",
+    "detail": "The team has no active contributors, resulting in no PRs being merged over the last week. This has led to a significant drop in throughput, with no PRs merged compared to 22 in the previous period. The lack of contributors has also meant that there are no AI-assisted PRs, with 0% adoption.",
+    "recommendation": "Recruit and onboard new contributors to increase the team's capacity and improve throughput",
+    "metric_cards": [
+      {
+        "name": "Throughput",
+        "value": "-100.0%",
+        "trend": "negative"
+      },
+      {
+        "name": "Cycle Time",
+        "value": "N/A",
+        "trend": "neutral"
+      },
+      {
+        "name": "AI Adoption",
+        "value": "0.0%",
+        "trend": "warning"
+      },
+      {
+        "name": "Quality",
+        "value": "0.0% reverts",
+        "trend": "positive"
+      }
+    ],
+    "actions": [
+      {
+        "action_type": "view_contributors",
+        "label": "View contributors"
+      },
+      {
+        "action_type": "view_ai_prs",
+        "label": "View AI-assisted PRs"
+      }
+    ],
+    "_team": "GrowthBook",
+    "_slug": "growthbook-demo",
+    "_days": 7,
+    "_error": null
+  },
+  {
+    "headline": "Cycle Time Slowing \u2192 Delivery Impacted",
+    "detail": "The time it takes for PRs to go from open to merge has increased significantly, with cycle time more than doubling. This slowdown is affecting nearly all PRs, with the average cycle time now over a week. Review time has also increased, taking several hours longer than before.",
+    "recommendation": "Implement a process to streamline PR reviews, focusing on reducing the time to first review and the overall cycle time.",
+    "metric_cards": [
+      {
+        "Throughput": {
+          "value": "+17.9%",
+          "trend": "positive"
+        }
+      },
+      {
+        "Cycle Time": {
+          "value": "+71.8%",
+          "trend": "negative"
+        }
+      },
+      {
+        "AI Adoption": {
+          "value": "0.0%",
+          "trend": "warning"
+        }
+      },
+      {
+        "Quality": {
+          "value": "0.0% reverts",
+          "trend": "positive"
+        }
+      }
+    ],
+    "actions": [
+      {
+        "action_type": "view_slow_prs",
+        "label": "Review Slow PRs"
+      },
+      {
+        "action_type": "view_review_bottlenecks",
+        "label": "Identify Review Bottlenecks"
+      }
+    ],
+    "_team": "GrowthBook",
+    "_slug": "growthbook-demo",
+    "_days": 30,
+    "_error": null
+  },
+  {
+    "headline": "Cycle Time \u2192 delivery slowing",
+    "detail": "The current cycle time of nearly 129 hours is significantly higher than the healthy benchmark of less than 48 hours, indicating a critical issue. This prolonged cycle time is likely due to the high review time of over 72 hours, which is nearly a third of the total cycle time. Furthermore, the lack of AI adoption, with zero AI-assisted PRs, may also be contributing to the slow delivery.",
+    "recommendation": "Implement AI-assisted tools to reduce review time and cycle time",
+    "metric_cards": [
+      {
+        "name": "Throughput",
+        "value": "+8.9%",
+        "trend": "neutral"
+      },
+      {
+        "name": "Cycle Time",
+        "value": "-18.2%",
+        "trend": "positive"
+      },
+      {
+        "name": "AI Adoption",
+        "value": "0.0%",
+        "trend": "warning"
+      },
+      {
+        "name": "Quality",
+        "value": "1.2% reverts",
+        "trend": "positive"
+      }
+    ],
+    "actions": [
+      {
+        "action_type": "view_slow_prs",
+        "label": "View slow PRs to identify bottlenecks"
+      },
+      {
+        "action_type": "view_ai_prs",
+        "label": "Explore AI-assisted PRs to improve adoption"
+      }
+    ],
+    "_team": "GrowthBook",
+    "_slug": "growthbook-demo",
+    "_days": 90,
+    "_error": null
+  },
+  {
+    "headline": "Zero active contributors \u2192 no PRs merged",
+    "detail": "The team has no active contributors, resulting in zero PRs being merged over the last week. This is a significant drop from the previous period, where 111 PRs were merged. The lack of contributors has also led to a complete halt in AI-assisted PRs, with zero PRs using AI assistance.",
+    "recommendation": "Recruit and onboard new contributors to resume development activity",
+    "metric_cards": [
+      {
+        "name": "Throughput",
+        "value": "-100.0%",
+        "trend": "negative"
+      },
+      {
+        "name": "Cycle Time",
+        "value": "N/A",
+        "trend": "neutral"
+      },
+      {
+        "name": "AI Adoption",
+        "value": "0.0%",
+        "trend": "warning"
+      },
+      {
+        "name": "Quality",
+        "value": "0.0% reverts",
+        "trend": "positive"
+      }
+    ],
+    "actions": [
+      {
+        "action_type": "view_contributors",
+        "label": "View contributor list to identify gaps"
+      },
+      {
+        "action_type": "view_ai_prs",
+        "label": "Investigate AI adoption to improve development efficiency"
+      }
+    ],
+    "_team": "Supabase",
+    "_slug": "supabase-demo",
+    "_days": 7,
+    "_error": null
+  },
+  {
+    "headline": "AI-assisted PRs slowing cycle time \u2192 delivery slowing",
+    "detail": "The adoption of AI-assisted PRs has reached 42.9%, but these PRs are taking 49.4% longer to cycle through, with an average cycle time of 108.1 hours compared to 72.3 hours for non-AI PRs. This slowdown is contributing to the overall decrease in throughput, with 16.8% fewer PRs being merged. The team's review process is also being impacted, with coderabbitai having 40 pending reviews, significantly higher than the team average.",
+    "recommendation": "Implement a review process optimization to handle the increased volume of AI-assisted PRs and reduce the burden on individual reviewers like coderabbitai",
+    "metric_cards": [
+      {
+        "Throughput": {
+          "value": "-16.8%",
+          "trend": "negative"
+        }
+      },
+      {
+        "Cycle Time": {
+          "value": "+0.8%",
+          "trend": "neutral"
+        }
+      },
+      {
+        "AI Adoption": {
+          "value": "42.9%",
+          "trend": "positive"
+        }
+      },
+      {
+        "Quality": {
+          "value": "1.8% reverts",
+          "trend": "positive"
+        }
+      }
+    ],
+    "actions": [
+      {
+        "action_type": "view_ai_prs",
+        "label": "Investigate AI-assisted PRs"
+      },
+      {
+        "action_type": "view_review_bottlenecks",
+        "label": "Identify review bottlenecks"
+      }
+    ],
+    "_team": "Supabase",
+    "_slug": "supabase-demo",
+    "_days": 30,
+    "_error": null
+  },
+  {
+    "headline": "Cycle Time increase \u2192 delivery slowing",
+    "detail": "The cycle time for PRs has increased significantly, with current PRs taking about 3 days to merge, which is moderately higher than the previous period. This increase is likely due to the review time also increasing, with PRs now taking several hours to get their first review. The team's work concentration is healthy, but coderabbitai has a large number of pending reviews, indicating a potential bottleneck.",
+    "recommendation": "Address the review bottleneck by reassigning some of coderabbitai's pending reviews to other team members",
+    "metric_cards": [
+      {
+        "name": "Throughput",
+        "value": "+171.5%",
+        "trend": "positive"
+      },
+      {
+        "name": "Cycle Time",
+        "value": "+67.4%",
+        "trend": "negative"
+      },
+      {
+        "name": "AI Adoption",
+        "value": "14.4%",
+        "trend": "warning"
+      },
+      {
+        "name": "Quality",
+        "value": "0.8% reverts",
+        "trend": "positive"
+      }
+    ],
+    "actions": [
+      {
+        "action_type": "view_review_bottlenecks",
+        "label": "Review Bottlenecks"
+      },
+      {
+        "action_type": "view_contributors",
+        "label": "Contributors"
+      }
+    ],
+    "_team": "Supabase",
+    "_slug": "supabase-demo",
+    "_days": 90,
+    "_error": null
+  },
+  {
+    "headline": "Zero active contributors \u2192 no PRs merged",
+    "detail": "The team has no active contributors, resulting in no PRs being merged over the last week. This has led to a significant drop in throughput, with no PRs merged compared to five in the previous period. The lack of contributors has also meant that there are no AI-assisted PRs, contributing to the low AI adoption rate.",
+    "recommendation": "Recruit and onboard new contributors to increase the team's velocity and encourage AI adoption",
+    "metric_cards": [
+      {
+        "name": "Throughput",
+        "value": "-100.0%",
+        "trend": "negative"
+      },
+      {
+        "name": "Cycle Time",
+        "value": "N/A",
+        "trend": "neutral"
+      },
+      {
+        "name": "AI Adoption",
+        "value": "0.0%",
+        "trend": "warning"
+      },
+      {
+        "name": "Quality",
+        "value": "0.0% reverts",
+        "trend": "positive"
+      }
+    ],
+    "actions": [
+      {
+        "action_type": "view_contributors",
+        "label": "View contributors"
+      },
+      {
+        "action_type": "view_ai_prs",
+        "label": "View AI-assisted PRs"
+      }
+    ],
+    "_team": "AI Pioneers",
+    "_slug": "ai-pioneers",
+    "_days": 7,
+    "_error": null
+  },
+  {
+    "headline": "Low AI adoption \u2192 slowing innovation",
+    "detail": "The team has not adopted AI tools, with 0% of PRs being AI-assisted, which is significantly lower than the benchmark of over 40%. This lack of adoption may be due to the team's current workflow or the complexity of integrating AI tools. As a result, the team may be missing out on potential efficiency gains and improved quality.",
+    "recommendation": "Integrate AI-assisted tools into the development workflow to improve efficiency and quality",
+    "metric_cards": [
+      {
+        "name": "Throughput",
+        "value": "-38.8%",
+        "trend": "negative"
+      },
+      {
+        "name": "Cycle Time",
+        "value": "-40.1%",
+        "trend": "positive"
+      },
+      {
+        "name": "AI Adoption",
+        "value": "0.0%",
+        "trend": "warning"
+      },
+      {
+        "name": "Quality",
+        "value": "0.0% reverts",
+        "trend": "positive"
+      }
+    ],
+    "actions": [
+      {
+        "action_type": "view_ai_prs",
+        "label": "View AI-assisted PRs to understand adoption"
+      },
+      {
+        "action_type": "view_contributors",
+        "label": "Analyze contributor workflow to identify AI integration opportunities"
+      }
+    ],
+    "_team": "AI Pioneers",
+    "_slug": "ai-pioneers",
+    "_days": 30,
+    "_error": null
+  },
+  {
+    "headline": "AI Adoption \u2192 stalled development",
+    "detail": "The team has not adopted AI-assisted PRs, with 0.0% adoption rate, which may hinder the development process. About half of the PRs are not large, but the lack of AI assistance might slow down the review process. The current review time is several hours, which is relatively fast, but the absence of AI assistance may impact the team's ability to handle complex PRs.",
+    "recommendation": "Explore AI-assisted PR tools to improve development efficiency",
+    "metric_cards": [
+      {
+        "name": "Throughput",
+        "value": "116 PRs",
+        "trend": "neutral"
+      },
+      {
+        "name": "Cycle Time",
+        "value": "48.5h",
+        "trend": "neutral"
+      },
+      {
+        "name": "AI Adoption",
+        "value": "0.0%",
+        "trend": "warning"
+      },
+      {
+        "name": "Quality",
+        "value": "0.0% reverts",
+        "trend": "positive"
+      }
+    ],
+    "actions": [
+      {
+        "action_type": "view_ai_prs",
+        "label": "Explore AI-assisted PRs"
+      },
+      {
+        "action_type": "view_contributors",
+        "label": "Analyze contributor workload"
+      }
+    ],
+    "_team": "AI Pioneers",
+    "_slug": "ai-pioneers",
+    "_days": 90,
+    "_error": null
+  },
+  {
+    "headline": "Zero active contributors \u2192 no PRs merged",
+    "detail": "The team has no active contributors, resulting in zero PRs merged over the last week. This is a significant drop from the previous period, where 22 PRs were merged. The lack of contributors has also led to no reviews being performed, indicating a major bottleneck in the development process.",
+    "recommendation": "Recruit and onboard new contributors to resume development and review activities",
+    "metric_cards": [
+      {
+        "name": "Throughput",
+        "value": "-100.0%",
+        "trend": "negative"
+      },
+      {
+        "name": "Cycle Time",
+        "value": "N/A",
+        "trend": "neutral"
+      },
+      {
+        "name": "AI Adoption",
+        "value": "0.0%",
+        "trend": "warning"
+      },
+      {
+        "name": "Quality",
+        "value": "0.0% reverts",
+        "trend": "positive"
+      }
+    ],
+    "actions": [
+      {
+        "action_type": "view_contributors",
+        "label": "View contributor list to identify gaps"
+      },
+      {
+        "action_type": "view_review_bottlenecks",
+        "label": "Analyze review process for potential bottlenecks"
+      }
+    ],
+    "_team": "Traefik",
+    "_slug": "traefik-demo",
+    "_days": 7,
+    "_error": null
+  },
+  {
+    "headline": "Cycle Time increase \u2192 slower delivery",
+    "detail": "The time it takes for PRs to be merged has increased significantly, with cycle time growing by a large amount. This is likely due to the moderately higher review time, which has nearly doubled. About half of the PRs are taking longer to review, slowing the pipeline.",
+    "recommendation": "Implement a review process optimization to reduce review time",
+    "metric_cards": [
+      {
+        "name": "Throughput",
+        "value": "+32.5%",
+        "trend": "positive"
+      },
+      {
+        "name": "Cycle Time",
+        "value": "+78.1%",
+        "trend": "negative"
+      },
+      {
+        "name": "AI Adoption",
+        "value": "0.0%",
+        "trend": "warning"
+      },
+      {
+        "name": "Quality",
+        "value": "0.0% reverts",
+        "trend": "positive"
+      }
+    ],
+    "actions": [
+      {
+        "action_type": "view_slow_prs",
+        "label": "View slow PRs to identify bottlenecks"
+      },
+      {
+        "action_type": "view_large_prs",
+        "label": "View large PRs to optimize review process"
+      }
+    ],
+    "_team": "Traefik",
+    "_slug": "traefik-demo",
+    "_days": 30,
+    "_error": null
+  },
+  {
+    "headline": "Cycle Time \u2192 delivery slowing",
+    "detail": "The current cycle time of 142.6 hours is critically high, with most PRs taking over a week to merge. This is despite a moderately higher throughput and a lower review time, indicating that the issue lies in the overall time it takes for PRs to go from open to merge. The revert rate is healthy at 0.6%, but the lack of AI adoption may be a contributing factor to the slow cycle time.",
+    "recommendation": "Implement AI-assisted tools to streamline the PR review process and reduce cycle time",
+    "metric_cards": [
+      {
+        "name": "Throughput",
+        "value": "+39.3%",
+        "trend": "positive"
+      },
+      {
+        "name": "Cycle Time",
+        "value": "-13.6%",
+        "trend": "positive"
+      },
+      {
+        "name": "AI Adoption",
+        "value": "0.0%",
+        "trend": "warning"
+      },
+      {
+        "name": "Quality",
+        "value": "0.6% reverts",
+        "trend": "positive"
+      }
+    ],
+    "actions": [
+      {
+        "action_type": "view_slow_prs",
+        "label": "View slow PRs to identify bottlenecks"
+      },
+      {
+        "action_type": "view_ai_prs",
+        "label": "Explore AI-assisted PRs to improve cycle time"
+      }
+    ],
+    "_team": "Traefik",
+    "_slug": "traefik-demo",
+    "_days": 90,
+    "_error": null
+  },
+  {
+    "headline": "Cycle Time \u2192 delivery slowing",
+    "detail": "The current cycle time is over 183 hours, which is significantly higher than the healthy benchmark of less than 48 hours. This slowdown is likely due to the large difference in cycle time between AI-assisted and non-AI PRs, with non-AI PRs taking around 270 hours to complete. The adoption of AI-assisted PRs, which are 96.4% faster, could help alleviate this issue.",
+    "recommendation": "Increase AI adoption to reduce cycle time",
+    "metric_cards": [
+      {
+        "name": "Throughput",
+        "value": "-25.0%",
+        "trend": "negative"
+      },
+      {
+        "name": "Cycle Time",
+        "value": "-88.0%",
+        "trend": "positive"
+      },
+      {
+        "name": "AI Adoption",
+        "value": "33.3%",
+        "trend": "neutral"
+      },
+      {
+        "name": "Quality",
+        "value": "0.0% reverts",
+        "trend": "positive"
+      }
+    ],
+    "actions": [
+      {
+        "action_type": "view_ai_prs",
+        "label": "View AI-assisted PRs to understand their impact"
+      },
+      {
+        "action_type": "view_large_prs",
+        "label": "View large PRs to identify potential bottlenecks"
+      }
+    ],
+    "_team": "Logseq",
+    "_slug": "logseq-demo",
+    "_days": 7,
+    "_error": null
+  },
+  {
+    "headline": "Cycle Time Slowing \u2192 Delivery Impacted",
+    "detail": "The cycle time has increased significantly, with most PRs taking over a week to merge. This slowdown is largely due to a longer review time, with some PRs waiting several hours to even get their first review. Nearly all PRs are experiencing this delay, which is affecting the overall delivery pipeline.",
+    "recommendation": "Implement a more efficient review process to reduce the time it takes for PRs to get their first review",
+    "metric_cards": [
+      {
+        "name": "Throughput",
+        "value": "+100.0%",
+        "trend": "positive"
+      },
+      {
+        "name": "Cycle Time",
+        "value": "+267.5%",
+        "trend": "negative"
+      },
+      {
+        "name": "AI Adoption",
+        "value": "7.1%",
+        "trend": "warning"
+      },
+      {
+        "name": "Quality",
+        "value": "0.0% reverts",
+        "trend": "positive"
+      }
+    ],
+    "actions": [
+      {
+        "action_type": "view_slow_prs",
+        "label": "View PRs with long cycle times"
+      },
+      {
+        "action_type": "view_review_bottlenecks",
+        "label": "Investigate review bottlenecks"
+      }
+    ],
+    "_team": "Logseq",
+    "_slug": "logseq-demo",
+    "_days": 30,
+    "_error": null
+  },
+  {
+    "headline": "Cycle Time increase \u2192 delivery slowing",
+    "detail": "The cycle time for PRs has more than doubled, taking significantly longer to merge, with current cycle times over a week. This slowdown is affecting nearly all PRs, regardless of their size. Review times have also increased, taking several hours to get the first review, which is slowing the pipeline.",
+    "recommendation": "Optimize the review process to reduce cycle times",
+    "metric_cards": [
+      {
+        "name": "Throughput",
+        "value": "-12.1%",
+        "trend": "negative"
+      },
+      {
+        "name": "Cycle Time",
+        "value": "+125.6%",
+        "trend": "negative"
+      },
+      {
+        "name": "AI Adoption",
+        "value": "6.9%",
+        "trend": "warning"
+      },
+      {
+        "name": "Quality",
+        "value": "0.0% reverts",
+        "trend": "positive"
+      }
+    ],
+    "actions": [
+      {
+        "action_type": "view_slow_prs",
+        "label": "View slow PRs to identify bottlenecks"
+      },
+      {
+        "action_type": "view_large_prs",
+        "label": "View large PRs to optimize review process"
+      }
+    ],
+    "_team": "Logseq",
+    "_slug": "logseq-demo",
+    "_days": 90,
+    "_error": null
+  },
+  {
+    "headline": "Zero PRs merged \u2192 stalled delivery",
+    "detail": "There are no PRs merged in the current period, indicating a complete halt in delivery. The team has no active contributors, which is likely a major factor in this stall. The lack of AI adoption, at 0.0%, may also be a contributing factor to the team's inability to deliver.",
+    "recommendation": "Recruit and onboard new contributors to restart the development pipeline",
+    "metric_cards": [
+      {
+        "name": "Throughput",
+        "value": "0 PRs",
+        "trend": "neutral"
+      },
+      {
+        "name": "Cycle Time",
+        "value": "N/A",
+        "trend": "neutral"
+      },
+      {
+        "name": "AI Adoption",
+        "value": "0.0%",
+        "trend": "warning"
+      },
+      {
+        "name": "Quality",
+        "value": "0.0% reverts",
+        "trend": "positive"
+      }
+    ],
+    "actions": [
+      {
+        "action_type": "view_contributors",
+        "label": "View contributor list to identify gaps"
+      },
+      {
+        "action_type": "view_ai_prs",
+        "label": "Explore AI-assisted PRs to improve adoption"
+      }
+    ],
+    "_team": "AppFlowy",
+    "_slug": "appflowy-demo",
+    "_days": 7,
+    "_error": null
+  },
+  {
+    "headline": "Zero active contributors \u2192 no PRs merged",
+    "detail": "The team has no active contributors, resulting in no PRs being merged over the last 30 days. This has led to a significant drop in throughput, with a change of -100.0% compared to the previous period. The lack of contributors has also meant that there are no AI-assisted PRs, resulting in 0.0% AI adoption.",
+    "recommendation": "Recruit and onboard new contributors to increase the team's capacity and improve throughput",
+    "metric_cards": [
+      {
+        "name": "Throughput",
+        "value": "-100.0%",
+        "trend": "negative"
+      },
+      {
+        "name": "Cycle Time",
+        "value": "N/A",
+        "trend": "neutral"
+      },
+      {
+        "name": "AI Adoption",
+        "value": "0.0%",
+        "trend": "warning"
+      },
+      {
+        "name": "Quality",
+        "value": "0.0% reverts",
+        "trend": "positive"
+      }
+    ],
+    "actions": [
+      {
+        "action_type": "view_contributors",
+        "label": "View contributors to identify gaps in the team"
+      },
+      {
+        "action_type": "view_ai_prs",
+        "label": "View AI-assisted PRs to understand AI adoption"
+      }
+    ],
+    "_team": "AppFlowy",
+    "_slug": "appflowy-demo",
+    "_days": 30,
+    "_error": null
+  },
+  {
+    "headline": "Cycle Time increase \u2192 delivery slowing",
+    "detail": "The time it takes for PRs to go from open to merge has more than doubled, with cycle time increasing significantly. This slowdown is affecting nearly all PRs, with most taking over a week to merge. The review process seems to be a bottleneck, with a few reviewers handling all the reviews, although no single review bottleneck was detected.",
+    "recommendation": "Implement a more efficient review process to reduce cycle time",
+    "metric_cards": [
+      {
+        "name": "Throughput",
+        "value": "-14.3%",
+        "trend": "negative"
+      },
+      {
+        "name": "Cycle Time",
+        "value": "+174.3%",
+        "trend": "negative"
+      },
+      {
+        "name": "AI Adoption",
+        "value": "0.0%",
+        "trend": "warning"
+      },
+      {
+        "name": "Quality",
+        "value": "0.0% reverts",
+        "trend": "positive"
+      }
+    ],
+    "actions": [
+      {
+        "action_type": "view_slow_prs",
+        "label": "View slow PRs to identify patterns"
+      },
+      {
+        "action_type": "view_review_bottlenecks",
+        "label": "Investigate review process for bottlenecks"
+      }
+    ],
+    "_team": "AppFlowy",
+    "_slug": "appflowy-demo",
+    "_days": 90,
+    "_error": null
+  },
+  {
+    "headline": "Zero active contributors \u2192 stalled development",
+    "detail": "The team has come to a standstill with no active contributors, resulting in zero PRs being merged over the past week. This has led to a significant drop in throughput, with a change of -100.0% from the previous period. The lack of contributors has also meant that there are no AI-assisted PRs, resulting in 0.0% AI adoption.",
+    "recommendation": "Recruit and onboard new contributors to resume development activities",
+    "metric_cards": [
+      {
+        "name": "Throughput",
+        "value": "-100.0%",
+        "trend": "negative"
+      },
+      {
+        "name": "Cycle Time",
+        "value": "N/A",
+        "trend": "neutral"
+      },
+      {
+        "name": "AI Adoption",
+        "value": "0.0%",
+        "trend": "warning"
+      },
+      {
+        "name": "Quality",
+        "value": "0.0% reverts",
+        "trend": "positive"
+      }
+    ],
+    "actions": [
+      {
+        "action_type": "view_contributors",
+        "label": "View contributor list to identify gaps"
+      },
+      {
+        "action_type": "view_ai_prs",
+        "label": "Explore AI-assisted PRs to understand adoption"
+      }
+    ],
+    "_team": "Comp AI",
+    "_slug": "compai-demo",
+    "_days": 7,
+    "_error": null
+  },
+  {
+    "headline": "Single contributor handling most work \u2192 bus factor risk",
+    "detail": "The team has a high bus factor risk due to one contributor handling over half of the work, with a top contributor share of 56.2%. This concentration of work can lead to significant disruptions if this individual is unavailable. Additionally, the lack of AI adoption, at 0%, may be hindering the team's ability to scale and reduce workload.",
+    "recommendation": "Implement a plan to distribute work more evenly among contributors and explore AI-assisted tools to reduce the workload",
+    "metric_cards": [
+      {
+        "name": "Throughput",
+        "value": "-23.8%",
+        "trend": "negative"
+      },
+      {
+        "name": "Cycle Time",
+        "value": "+90.1%",
+        "trend": "negative"
+      },
+      {
+        "name": "AI Adoption",
+        "value": "0.0%",
+        "trend": "warning"
+      },
+      {
+        "name": "Quality",
+        "value": "0.0% reverts",
+        "trend": "positive"
+      }
+    ],
+    "actions": [
+      {
+        "action_type": "view_contributors",
+        "label": "View contributors to identify work distribution"
+      },
+      {
+        "action_type": "view_ai_prs",
+        "label": "Explore AI-assisted PRs to improve adoption"
+      }
+    ],
+    "_team": "Comp AI",
+    "_slug": "compai-demo",
+    "_days": 30,
+    "_error": null
+  },
+  {
+    "headline": "Single contributor handling most work \u2192 bus factor risk",
+    "detail": "A single contributor is handling about two-thirds of the work, which poses a significant bus factor risk. This concentration of work is coupled with a moderately lower throughput, indicating potential bottlenecks in the development process. The team's health is further compromised by the lack of diversity in contribution, with no clear indication of how work would be distributed if this key contributor were absent.",
+    "recommendation": "Implement a contributor diversification plan to reduce dependency on a single contributor",
+    "metric_cards": [
+      {
+        "name": "Throughput",
+        "value": "-18.5%",
+        "trend": "negative"
+      },
+      {
+        "name": "Cycle Time",
+        "value": "+19.6%",
+        "trend": "warning"
+      },
+      {
+        "name": "AI Adoption",
+        "value": "1.9%",
+        "trend": "warning"
+      },
+      {
+        "name": "Quality",
+        "value": "0.0% reverts",
+        "trend": "positive"
+      }
+    ],
+    "actions": [
+      {
+        "action_type": "view_contributors",
+        "label": "View contributors to assess work distribution"
+      },
+      {
+        "action_type": "view_review_bottlenecks",
+        "label": "Review bottlenecks to identify potential issues"
+      }
+    ],
+    "_team": "Comp AI",
+    "_slug": "compai-demo",
+    "_days": 90,
+    "_error": null
+  },
+  {
+    "headline": "Cycle Time increase \u2192 delivery slowing",
+    "detail": "The current cycle time has increased significantly, with PRs now taking about 4-5 days to merge, which is more than double the previous time. This slowdown is affecting nearly all PRs, with non-AI PRs taking substantially longer, over a week, to merge. The team's work concentration is also at high risk, with one contributor handling most of the work.",
+    "recommendation": "Implement a review process optimization to reduce cycle time",
+    "metric_cards": [
+      {
+        "name": "Throughput",
+        "value": "-85.7%",
+        "trend": "negative"
+      },
+      {
+        "name": "Cycle Time",
+        "value": "+288.9%",
+        "trend": "negative"
+      },
+      {
+        "name": "AI Adoption",
+        "value": "14.3%",
+        "trend": "warning"
+      },
+      {
+        "name": "Quality",
+        "value": "0.0% reverts",
+        "trend": "positive"
+      }
+    ],
+    "actions": [
+      {
+        "action_type": "view_slow_prs",
+        "label": "View slow PRs to identify bottlenecks"
+      },
+      {
+        "action_type": "view_contributors",
+        "label": "View contributors to assess work distribution"
+      }
+    ],
+    "_team": "Windmill",
+    "_slug": "windmill-demo",
+    "_days": 7,
+    "_error": null
+  },
+  {
+    "headline": "Low AI adoption \u2192 slowing innovation",
+    "detail": "The current AI adoption rate is only about 5%, which is lower than the healthy benchmark of over 40%. This low adoption rate may be hindering the team's ability to innovate and work efficiently, as AI-assisted PRs have been shown to be 23.4% faster. The team has only 7 AI-assisted PRs out of 150 total PRs, indicating a significant opportunity for growth.",
+    "recommendation": "Increase AI adoption by providing training and incentives for developers to use AI tools",
+    "metric_cards": [
+      {
+        "name": "Throughput",
+        "value": "-19.8%",
+        "trend": "negative"
+      },
+      {
+        "name": "Cycle Time",
+        "value": "-16.8%",
+        "trend": "positive"
+      },
+      {
+        "name": "AI Adoption",
+        "value": "4.7%",
+        "trend": "warning"
+      },
+      {
+        "name": "Quality",
+        "value": "0.0% reverts",
+        "trend": "positive"
+      }
+    ],
+    "actions": [
+      {
+        "action_type": "view_ai_prs",
+        "label": "View AI-assisted PRs to identify successful use cases"
+      },
+      {
+        "action_type": "view_contributors",
+        "label": "View contributor metrics to identify potential AI adoption champions"
+      }
+    ],
+    "_team": "Windmill",
+    "_slug": "windmill-demo",
+    "_days": 30,
+    "_error": null
+  },
+  {
+    "headline": "Low AI adoption \u2192 slower non-AI PR cycle times",
+    "detail": "The current AI adoption rate is 4.5%, which is significantly lower than the benchmark of over 40%. This low adoption rate may be contributing to the slower cycle times for non-AI PRs, which are taking around 38.9 hours to complete. In contrast, AI-assisted PRs are being completed 44.8% faster, with a cycle time of 21.5 hours.",
+    "recommendation": "Increase AI adoption by providing training and support for contributors to use AI tools",
+    "metric_cards": [
+      {
+        "name": "Throughput",
+        "value": "+19.0%",
+        "trend": "positive"
+      },
+      {
+        "name": "Cycle Time",
+        "value": "+5.0%",
+        "trend": "neutral"
+      },
+      {
+        "name": "AI Adoption",
+        "value": "4.5%",
+        "trend": "warning"
+      },
+      {
+        "name": "Quality",
+        "value": "0.4% reverts",
+        "trend": "positive"
+      }
+    ],
+    "actions": [
+      {
+        "action_type": "view_ai_prs",
+        "label": "View AI-assisted PRs to identify best practices"
+      },
+      {
+        "action_type": "view_contributors",
+        "label": "View contributor metrics to identify training needs"
+      }
+    ],
+    "_team": "Windmill",
+    "_slug": "windmill-demo",
+    "_days": 90,
+    "_error": null
+  },
+  {
+    "headline": "Zero active contributors \u2192 stalled delivery",
+    "detail": "The team has come to a standstill with no active contributors, resulting in zero PRs being merged over the last week. This has led to a complete halt in throughput, with a drop of all PRs being merged. The lack of contributors has also meant no reviews are being conducted, which could lead to a backlog of unreviewed code if the team becomes active again.",
+    "recommendation": "Recruit and onboard new contributors to resume development activities",
+    "metric_cards": [
+      {
+        "name": "Throughput",
+        "value": "-100.0%",
+        "trend": "negative"
+      },
+      {
+        "name": "Cycle Time",
+        "value": "N/A",
+        "trend": "neutral"
+      },
+      {
+        "name": "AI Adoption",
+        "value": "0.0%",
+        "trend": "warning"
+      },
+      {
+        "name": "Quality",
+        "value": "0.0% reverts",
+        "trend": "positive"
+      }
+    ],
+    "actions": [
+      {
+        "action_type": "view_contributors",
+        "label": "View contributors to identify gaps in the team"
+      },
+      {
+        "action_type": "view_slow_prs",
+        "label": "View slow PRs to understand potential roadblocks"
+      }
+    ],
+    "_team": "Resend",
+    "_slug": "resend-demo",
+    "_days": 7,
+    "_error": null
+  },
+  {
+    "headline": "Cycle Time increase \u2192 delivery slowing",
+    "detail": "The current cycle time has increased significantly, with PRs now taking about 581 hours to merge, which is more than a week. This is having a major impact on our delivery speed. The review time has also increased dramatically, taking several hours to get the first review, which is slowing down the pipeline.",
+    "recommendation": "Implement a process to reduce review time, such as assigning reviewers as soon as a PR is opened or using AI tools to assist with reviews",
+    "metric_cards": [
+      {
+        "name": "Throughput",
+        "value": "-70.0%",
+        "trend": "negative"
+      },
+      {
+        "name": "Cycle Time",
+        "value": "+661.7%",
+        "trend": "negative"
+      },
+      {
+        "name": "AI Adoption",
+        "value": "77.8%",
+        "trend": "positive"
+      },
+      {
+        "name": "Quality",
+        "value": "0.0% reverts",
+        "trend": "positive"
+      }
+    ],
+    "actions": [
+      {
+        "action_type": "view_slow_prs",
+        "label": "View slow PRs to identify bottlenecks"
+      },
+      {
+        "action_type": "view_review_bottlenecks",
+        "label": "View review bottlenecks to optimize review process"
+      }
+    ],
+    "_team": "Resend",
+    "_slug": "resend-demo",
+    "_days": 30,
+    "_error": null
+  },
+  {
+    "headline": "Cycle Time \u2192 delivery slowing",
+    "detail": "The current cycle time of 131 hours is significantly higher than the benchmark of less than 48 hours, indicating a critical issue. This prolonged cycle time is likely due to the fact that non-AI PRs have a much longer cycle time of 502.8 hours compared to AI PRs, which are 85% faster with a cycle time of 75.3 hours. About a quarter of the PRs are not using AI assistance, which may be contributing to the slower cycle time.",
+    "recommendation": "Increase AI adoption for all PRs to reduce cycle time",
+    "metric_cards": [
+      {
+        "Throughput": {
+          "value": "+37.4%",
+          "trend": "positive"
+        }
+      },
+      {
+        "Cycle Time": {
+          "value": "-49.5%",
+          "trend": "positive"
+        }
+      },
+      {
+        "AI Adoption": {
+          "value": "87.0%",
+          "trend": "positive"
+        }
+      },
+      {
+        "Quality": {
+          "value": "0.4% reverts",
+          "trend": "positive"
+        }
+      }
+    ],
+    "actions": [
+      {
+        "action_type": "view_ai_prs",
+        "label": "View AI-assisted PRs to understand their impact on cycle time"
+      },
+      {
+        "action_type": "view_non_ai_prs",
+        "label": "View non-AI PRs to identify areas for improvement"
+      }
+    ],
+    "_team": "Resend",
+    "_slug": "resend-demo",
+    "_days": 90,
+    "_error": null
+  }
+]

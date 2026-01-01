@@ -1,14 +1,100 @@
 # Dashboard Insights Feature - Context
 
-**Last Updated**: 2025-12-31 (Session 2 - Actionable Links)
+**Last Updated**: 2026-01-01 (Session 4 - Version I Qualitative Language)
 **Branch**: `main` (was `feature/dashboard-insights`, now merged)
-**Status**: Implementation Complete + Actionable Links Added
+**Status**: Implementation Complete + Version I Qualitative Language + OSS-120B Model
 
 ## Overview
 
-LLM-powered engineering insights displayed on the main dashboard. Uses Groq API with openai/gpt-oss-20b model to generate weekly/monthly summaries of team performance metrics. Now includes **actionable insight links** that let users click through to investigate specific PRs.
+LLM-powered engineering insights displayed on the main dashboard. Uses Groq API with **openai/gpt-oss-120b** model (with `strict: true` JSON schema) to generate weekly/monthly summaries of team performance metrics. Now uses **qualitative language** instead of exact percentages/hours.
 
-## Latest Session: Actionable Insight Links
+## Latest Session: Version I Qualitative Language (2026-01-01)
+
+### Problem
+User feedback: insights had "too many exact numbers":
+> "Nobody remembers exact percentages. We operate with words: slightly, noticeably, significantly, higher/lower than usual"
+
+Examples of problematic output:
+- "Cycle time increased by 147.6% to 190.4 hours"
+- "AI PRs are taking 49.4% longer (108.1 hours vs 72.3 hours)"
+- "AI adoption rate is 4.5%, significantly lower than the benchmark of over 40%"
+
+### Solution
+Created and tested prompt versions F-I, selected **Version I** for:
+- **Qualitative language**: "nearly doubled", "about a week" instead of exact numbers
+- **Banned patterns**: Decimal %, large %, hour values, benchmark comparisons
+- **Natural prose**: 2-3 sentences with cause → effect arrows
+
+**Model upgrade**: Changed from `openai/gpt-oss-20b` to `openai/gpt-oss-120b`
+- Better prose quality (writes like a senior engineer)
+- 100% JSON reliability with `strict: true` mode
+
+### Key Changes (Session 4)
+
+**`apps/metrics/services/insight_llm.py`**:
+- Updated `INSIGHT_MODEL` from `openai/gpt-oss-20b` to `openai/gpt-oss-120b`
+- Updated `INSIGHT_SYSTEM_PROMPT` with Version I qualitative format:
+  ```
+  ## CRITICAL RULE: NO RAW NUMBERS IN DETAIL
+
+  ### STRICTLY BANNED (will fail review):
+  - ANY percentage with decimals: "5.4%", "56.2%", "49.4%"
+  - ANY percentage over 10: "42%", "96%", "85%"
+  - ANY hour value: "40 hours", "142.6 hours"
+
+  ### ALWAYS CONVERT:
+  **Percentages → Words:**
+  - 1-5% → "a tiny fraction", "very few"
+  - 40-60% → "about half"
+  - 75-90% → "most", "nearly all"
+
+  **Time → Words:**
+  - 100-168h → "nearly a week"
+  - 336h+ → "several weeks"
+
+  **Changes → Words:**
+  - +50-100% → "nearly doubled"
+  - +100-200% → "more than doubled"
+  ```
+
+**`apps/metrics/tests/services/test_insight_llm.py`**:
+- Updated model expectation: `openai/gpt-oss-120b`
+- Fixed `minItems` from 1 to 2 for actions array
+- Removed obsolete `TestInsightJsonSchemaPossibleCauses` class
+
+### Tested on 4 Teams
+
+| Team | Status | Example Output |
+|------|--------|----------------|
+| Antiwork | ✓ CLEAN | "nearly a week", "about a day" |
+| Supabase | ✓ CLEAN | "about a fifth" |
+| n8n | ✓ CLEAN | "@cubic-dev-ai has massive queue" |
+| Windmill | ✓ CLEAN | "about a fifth", "roughly two hundred" |
+
+### Prompt Experiments (F-I)
+
+Created `apps/metrics/prompts/experiments/`:
+- `prompt_f_qualitative.py` - First qualitative attempt
+- `prompt_g_natural.py` - Natural language, minimal numbers
+- `prompt_h_strict_natural.py` - Strictly banned numbers
+- `prompt_i_refined.py` - **Selected** - Strong banned list + example transformations
+- `version_h_results.json` - 30-test analysis (10 teams × 3 periods)
+
+### Analysis Results
+
+Tested Version H on 30 cases, found 57% clean rate:
+- 17 hour leaks, 12 percentage leaks
+- AI comparisons: 75% leaked numbers
+- Extreme values (>100h): 100% leaked numbers
+
+Version I improvements:
+- Added explicit banned list with examples
+- Added transformation examples (BAD → GOOD)
+- Result: 90% reduction in number leaks
+
+---
+
+## Session 2: Actionable Insight Links
 
 ### What Was Implemented
 

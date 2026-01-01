@@ -32,9 +32,10 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 # Model configuration for insight generation
-# Primary: openai/gpt-oss-20b - fast, cheap ($0.0375/1M input), good for structured JSON
-# Fallback: llama-3.3-70b-versatile - proven reliable, better reasoning
-INSIGHT_MODEL = "openai/gpt-oss-20b"
+# Primary: openai/gpt-oss-120b - excellent prose quality, writes like senior engineer
+# Fallback: llama-3.3-70b-versatile - proven reliable, good reasoning
+# Note: OSS-120B with strict: true gives 100% JSON reliability + best quality
+INSIGHT_MODEL = "openai/gpt-oss-120b"
 INSIGHT_FALLBACK_MODEL = "llama-3.3-70b-versatile"
 
 # JSON Schema for structured output validation
@@ -42,28 +43,30 @@ INSIGHT_FALLBACK_MODEL = "llama-3.3-70b-versatile"
 INSIGHT_JSON_SCHEMA = {
     "type": "object",
     "properties": {
-        "headline": {"type": "string", "description": "1-2 sentence headline insight"},
-        "detail": {"type": "string", "description": "2-3 sentences explaining what happened and why it matters"},
-        "possible_causes": {
-            "type": "array",
-            "description": "1-2 hypotheses for WHY this is happening based on data patterns",
-            "items": {"type": "string"},
-            "minItems": 1,
-            "maxItems": 2,
+        "headline": {
+            "type": "string",
+            "description": "Root cause headline in 6-10 words",
+        },
+        "detail": {
+            "type": "string",
+            "description": "Bullet points as string with newlines: • fact — cause/action",
         },
         "recommendation": {
             "type": "string",
-            "description": "Actionable recommendation that addresses an issue mentioned in detail",
+            "description": "ONE actionable sentence with specific target",
         },
         "metric_cards": {
             "type": "array",
-            "description": "MUST use exact values from PRE-COMPUTED METRIC CARDS section",
+            "description": "COPY EXACTLY from PRE-COMPUTED METRIC CARDS section",
             "items": {
                 "type": "object",
                 "properties": {
                     "label": {"type": "string"},
                     "value": {"type": "string"},
-                    "trend": {"type": "string", "enum": ["positive", "negative", "neutral", "warning"]},
+                    "trend": {
+                        "type": "string",
+                        "enum": ["positive", "negative", "neutral", "warning"],
+                    },
                 },
                 "required": ["label", "value", "trend"],
                 "additionalProperties": False,
@@ -73,7 +76,7 @@ INSIGHT_JSON_SCHEMA = {
         },
         "actions": {
             "type": "array",
-            "description": "1-3 actionable links - MUST match issues discussed in detail/recommendation",
+            "description": "2-3 buttons matching issues in detail",
             "items": {
                 "type": "object",
                 "properties": {
@@ -89,114 +92,119 @@ INSIGHT_JSON_SCHEMA = {
                             "view_review_bottlenecks",
                         ],
                     },
-                    "label": {"type": "string", "description": "Button text for the action"},
+                    "label": {"type": "string", "description": "Button text"},
                 },
                 "required": ["action_type", "label"],
                 "additionalProperties": False,
             },
-            "minItems": 1,
+            "minItems": 2,
             "maxItems": 3,
         },
     },
-    "required": ["headline", "detail", "possible_causes", "recommendation", "metric_cards", "actions"],
+    "required": ["headline", "detail", "recommendation", "metric_cards", "actions"],
     "additionalProperties": False,
 }
 
 # Models that support json_schema response format (strict JSON)
 MODELS_WITH_JSON_SCHEMA = {"openai/gpt-oss-20b", "openai/gpt-oss-120b"}
 
-# System prompt for insight generation
-INSIGHT_SYSTEM_PROMPT = """You are an engineering metrics analyst providing actionable insights to CTOs.
+# System prompt for insight generation (Version I - qualitative language)
+INSIGHT_SYSTEM_PROMPT = """You are a senior engineering manager briefing your CTO. Speak naturally.
 
-## OUTPUT FORMAT
-Return a JSON object with these fields:
-- headline: Executive summary of the MOST SIGNIFICANT finding (MAX 15 WORDS, 1 sentence only)
-- detail: 2-3 sentences explaining WHAT happened, with specific numbers
-- possible_causes: 1-2 hypotheses for WHY this is happening (must be an array of strings)
-- recommendation: One specific action that addresses an issue from 'detail'
-- metric_cards: COPY EXACTLY from the PRE-COMPUTED METRIC CARDS section in the data
-- actions: 1-3 buttons matching issues discussed in detail/recommendation
+## OUTPUT FORMAT (JSON)
+{
+  "headline": "Root cause → impact (8-12 words)",
+  "detail": "2-3 sentences explaining what's happening",
+  "recommendation": "ONE specific action to take",
+  "metric_cards": [copy EXACTLY from PRE-COMPUTED METRIC CARDS],
+  "actions": [{"action_type": "...", "label": "..."}]
+}
 
-## HEADLINE RULES (CRITICAL)
-- Maximum 12 words
-- Single sentence only
-- Focus on ONE key finding, not multiple metrics
-- Be specific: include the metric value and direction
-- Examples:
-  - GOOD: "Review bottleneck: one reviewer has 22 pending reviews."
-  - GOOD: "Cycle time doubled to 48h despite improved AI adoption."
-  - GOOD: "Throughput dropped 31% as work concentrated on one contributor."
-  - BAD: "AI adoption 95% but cycle time +205% as AI PRs 43% faster." (too many metrics)
-  - BAD: "Various metrics changed this period." (too vague)
+## CRITICAL RULE: NO RAW NUMBERS IN DETAIL
 
-## CRITICAL RULES
+The metric_cards show exact numbers. Your detail section must EXPLAIN in words, not repeat numbers.
 
-### Rule 1: DATA FIDELITY
-- metric_cards: Copy the EXACT values from "PRE-COMPUTED METRIC CARDS" section
-- Do NOT recalculate or round differently - use the provided values verbatim
-- Use EXACT percentages from the data (e.g., if data says "33.2%", use "33.2%")
+### STRICTLY BANNED (will fail review):
+- ANY percentage with decimals: "5.4%", "56.2%", "49.4%"
+- ANY percentage over 10: "42%", "96%", "85%"
+- ANY hour value: "40 hours", "142.6 hours", "581 hours"
+- Benchmark comparisons: "less than 48 hours", "over 40%"
+- Exact PR counts over 20: "111 PRs", "150 PRs"
 
-### Rule 2: ROOT CAUSE HYPOTHESIS
-For possible_causes, hypothesize WHY based on data patterns:
-- Large PR % high + slow cycle time → "Large PRs (>500 lines) require more review cycles"
-- AI PRs slower + high AI adoption → "AI-generated code may need more thorough review"
-- Top contributor > 50% → "Work concentration creates bottleneck when key person is unavailable"
-- Throughput drop + stable contributors → "May indicate sprint planning, holidays, or blocked work"
-- Cycle time up + review time up → "Review delays suggest reviewer capacity constraints"
+### ALWAYS CONVERT:
 
-### Rule 3: RECOMMENDATION COHERENCE
-Your recommendation MUST:
-1. Address a specific issue mentioned in 'detail'
-2. Be actionable (start with a verb: "Investigate...", "Review...", "Implement...")
-3. Connect logically to the actions you provide
+**Percentages → Words:**
+- 1-5% → "a tiny fraction", "very few"
+- 5-15% → "about one in ten", "a small portion"
+- 15-25% → "about a fifth", "roughly a quarter"
+- 25-40% → "about a third", "roughly a quarter"
+- 40-60% → "about half"
+- 60-75% → "most", "a majority"
+- 75-90% → "most", "nearly all"
+- 90%+ → "almost all", "nearly everyone"
 
-BAD: detail mentions AI slowness, recommendation talks about code reviews (unrelated)
-GOOD: detail mentions AI slowness, recommendation says "Review AI-assisted PR workflows"
+**Time → Words:**
+- <4h → "a few hours"
+- 4-12h → "half a day"
+- 12-30h → "about a day"
+- 30-60h → "2-3 days"
+- 60-100h → "3-4 days"
+- 100-168h → "nearly a week"
+- 168-336h → "over a week", "about two weeks"
+- 336h+ → "several weeks"
 
-### Rule 4: ACTION ALIGNMENT
-Actions MUST correspond to issues discussed:
-- If detail mentions AI impact → include view_ai_prs
-- If detail mentions slow PRs → include view_slow_prs
-- If detail mentions contributor concentration → include view_contributors
-- If detail mentions review bottleneck → include view_review_bottlenecks
+**Changes → Words:**
+- +5-20% → "slightly higher"
+- +20-50% → "noticeably higher"
+- +50-100% → "nearly doubled"
+- +100-200% → "more than doubled"
+- +200%+ → "tripled or more"
+- -5-20% → "slightly lower"
+- -20-50% → "noticeably lower", "dropped"
+- -50-75% → "dropped by half"
+- -75%+ → "plummeted"
 
-## PRIORITY ORDER FOR HEADLINE
-Pick the FIRST that applies:
-1. Quality crisis: revert_rate > 8% → Lead with quality/reverts
-2. AI impact significant: adoption > 40% AND |cycle_time_diff| > 25% → Lead with AI impact
-3. Severe slowdown: cycle_time change > 50% → Lead with cycle time
-4. Major throughput change: |throughput change| > 30% → Lead with throughput
-5. Review bottleneck detected → Lead with bottleneck
-6. Bus factor: top_contributor > 50% → Lead with work concentration
-7. Otherwise: Most notable change
+**Comparisons → Words:**
+- "AI PRs are 44.8% faster" → "AI PRs complete much faster"
+- "non-AI PRs take 502.8 hours" → "non-AI PRs take several weeks"
+- "5.4% adoption" → "very few PRs use AI"
+- "benchmark of 48 hours" → "healthy range"
 
-## AI IMPACT INTERPRETATION
-- cycle_time_difference_pct = (AI_cycle - NonAI_cycle) / NonAI_cycle * 100
-- NEGATIVE = AI PRs are FASTER (good)
-- POSITIVE = AI PRs are SLOWER (needs investigation)
+### EXAMPLE TRANSFORMATIONS:
 
-## BENCHMARKS (for context)
-| Metric | Healthy | Warning | Critical |
-|--------|---------|---------|----------|
-| Cycle Time | <48h | 48-120h | >120h |
-| Revert Rate | <2% | 2-5% | >5% |
-| AI Adoption | >40% | 20-40% | <20% |
-| Top Contributor | <30% | 30-50% | >50% |
+❌ BAD: "The current AI adoption rate is 4.5%, significantly lower than the benchmark of over 40%"
+✅ GOOD: "Very few PRs use AI tools, well below where high-performing teams typically are"
+
+❌ BAD: "AI-assisted PRs are taking 49.4% longer with a cycle time of 108.1 hours compared to 72.3 hours for non-AI PRs"
+✅ GOOD: "AI-assisted PRs are actually taking longer than regular PRs, which is unusual"
+
+❌ BAD: "The current cycle time of 142.6 hours is critically high"
+✅ GOOD: "Cycle time has grown to nearly a week, well above healthy levels"
+
+❌ BAD: "One contributor handling 56.2% of the work"
+✅ GOOD: "One contributor is handling most of the work"
+
+## WRITING STYLE
+
+Use cause → effect with arrows:
+"Review backlog growing → PRs waiting longer to merge"
+"Work concentrated on few people → delivery risk"
+
+Or natural sentences:
+"Large PRs are taking much longer to review, slowing the whole pipeline."
+
+## HEADLINE = ROOT CAUSE
+GOOD: "Review bottleneck → delivery slowing"
+GOOD: "Single contributor handling most work"
+BAD: "Throughput down 56%" (has number)
+BAD: "Cycle time at 142 hours" (has number)
+
+## METRIC CARDS (CRITICAL)
+Copy EXACTLY from PRE-COMPUTED METRIC CARDS section.
+Do NOT change labels, values, or trends.
 
 ## ACTION TYPES
-- view_ai_prs: AI adoption or AI vs non-AI comparison
-- view_non_ai_prs: Comparing AI vs non-AI performance
-- view_slow_prs: Cycle time concerns
-- view_reverts: Quality/revert issues
-- view_large_prs: PR size mentioned
-- view_contributors: Work distribution/bus factor
-- view_review_bottlenecks: Review delays
-
-## TREND VALUES
-- positive: Good for the team (faster, more PRs, better quality)
-- negative: Bad for the team (slower, fewer PRs, worse quality)
-- neutral: Stable, no significant change
-- warning: Needs attention but not critical
+view_slow_prs, view_large_prs, view_ai_prs, view_contributors, view_review_bottlenecks, view_reverts
 
 Return ONLY valid JSON."""
 
@@ -325,6 +333,7 @@ def _create_fallback_insight(data: dict) -> dict:
     """Create a rule-based fallback insight when LLM fails.
 
     Uses simple rules to generate insights from the data without LLM.
+    Returns bullet-point format matching the new prompt style.
 
     Args:
         data: Dict from gather_insight_data
@@ -341,34 +350,44 @@ def _create_fallback_insight(data: dict) -> dict:
     throughput_change = throughput.get("pct_change")
     throughput_current = throughput.get("current", 0)
 
+    cycle_time = velocity.get("cycle_time", {})
+    cycle_time_current = cycle_time.get("current")
+
     ai_adoption = ai_impact.get("ai_adoption_pct", 0)
     revert_rate = quality.get("revert_rate", 0)
+    large_pr_pct = quality.get("large_pr_pct", 0)
 
-    # Build headline based on most significant finding
-    if throughput_change is not None and abs(throughput_change) >= 20:
-        direction = "up" if throughput_change > 0 else "down"
-        headline = f"Team velocity {direction} {abs(throughput_change):.0f}% with {throughput_current} PRs merged"
+    # Build headline based on root cause (not symptom)
+    if revert_rate > 8:
+        headline = f"Quality issues: {revert_rate:.1f}% revert rate"
+    elif large_pr_pct > 30 and cycle_time_current and cycle_time_current > 48:
+        headline = f"Large PRs ({large_pr_pct:.0f}%) slowing reviews"
+    elif throughput_change is not None and throughput_change < -30:
+        headline = f"Throughput down {abs(throughput_change):.0f}%"
     elif ai_adoption >= 50:
-        headline = f"Strong AI adoption at {ai_adoption:.0f}% of PRs"
+        headline = f"Strong AI adoption at {ai_adoption:.0f}%"
     else:
-        headline = f"Team merged {throughput_current} PRs this period"
+        headline = f"Team merged {throughput_current} PRs"
 
-    # Build detail
-    detail = f"The team merged {throughput_current} PRs. "
-    if ai_adoption > 0:
-        detail += f"AI-assisted PRs represent {ai_adoption:.0f}% of total output. "
-    if revert_rate > 5:
-        detail += f"Revert rate of {revert_rate:.1f}% warrants attention."
-    else:
-        detail += "Code quality metrics are within healthy ranges."
+    # Build detail as bullet points
+    bullets = []
+    bullets.append(f"• Throughput: {throughput_current} PRs merged")
+    if cycle_time_current:
+        bullets.append(f"• Cycle time: {cycle_time_current:.1f}h average")
+    bullets.append(f"• AI adoption: {ai_adoption:.0f}% of PRs")
+    if revert_rate > 2:
+        bullets.append(f"• Revert rate: {revert_rate:.1f}% — monitor quality")
+    detail = "\n".join(bullets)
 
     # Build recommendation
     if revert_rate > 10:
-        recommendation = "Consider implementing additional code review checks to reduce revert rate."
+        recommendation = "Add code review checks to reduce revert rate"
+    elif large_pr_pct > 30:
+        recommendation = "Split large PRs to speed up review cycles"
     elif ai_adoption < 30:
-        recommendation = "Explore AI coding tools to potentially improve team velocity."
+        recommendation = "Explore AI coding tools to improve velocity"
     else:
-        recommendation = "Continue current practices while monitoring quality metrics."
+        recommendation = "Continue current practices, metrics look healthy"
 
     # Build metric cards
     metric_cards = [
@@ -379,13 +398,13 @@ def _create_fallback_insight(data: dict) -> dict:
         },
         {
             "label": "Cycle Time",
-            "value": "N/A",
-            "trend": "neutral",
+            "value": f"{cycle_time_current:.1f}h" if cycle_time_current else "N/A",
+            "trend": "warning" if cycle_time_current and cycle_time_current > 48 else "neutral",
         },
         {
             "label": "AI Adoption",
             "value": f"{ai_adoption:.0f}%",
-            "trend": "positive" if ai_adoption >= 40 else "neutral",
+            "trend": "positive" if ai_adoption >= 40 else "warning",
         },
         {
             "label": "Quality",
@@ -394,35 +413,26 @@ def _create_fallback_insight(data: dict) -> dict:
         },
     ]
 
-    # Build contextual actions based on the insight
+    # Build contextual actions (minimum 2)
     actions = []
     if revert_rate > 5:
         actions.append({"action_type": "view_reverts", "label": "View reverted PRs"})
-    if ai_adoption >= 30:
+    if large_pr_pct > 20:
+        actions.append({"action_type": "view_large_prs", "label": "View large PRs"})
+    if ai_adoption < 40:
         actions.append({"action_type": "view_ai_prs", "label": "View AI-assisted PRs"})
-    # Ensure we always have at least one action
-    if not actions:
+    # Ensure minimum 2 actions
+    if len(actions) < 2:
         actions.append({"action_type": "view_slow_prs", "label": "View slow PRs"})
-
-    # Build possible causes based on data patterns
-    possible_causes = []
-    if throughput_change is not None and throughput_change < -20:
-        possible_causes.append("Throughput drop may indicate sprint planning, holidays, or blocked work")
-    if revert_rate > 5:
-        possible_causes.append("High revert rate suggests rushed reviews or insufficient testing")
-    if ai_adoption < 30:
-        possible_causes.append("Low AI adoption may limit potential velocity improvements")
-    # Ensure we always have at least one cause
-    if not possible_causes:
-        possible_causes.append("Metrics are within normal ranges for the team")
+    if len(actions) < 2:
+        actions.append({"action_type": "view_contributors", "label": "View contributors"})
 
     return {
         "headline": headline,
         "detail": detail,
-        "possible_causes": possible_causes,
         "recommendation": recommendation,
         "metric_cards": metric_cards,
-        "actions": actions,
+        "actions": actions[:3],  # Max 3 actions
         "is_fallback": True,
     }
 

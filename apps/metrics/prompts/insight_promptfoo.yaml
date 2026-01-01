@@ -1,0 +1,596 @@
+# Promptfoo configuration for Dashboard Insight LLM Evaluation
+# Run with: npx promptfoo eval -c apps/metrics/prompts/insight_promptfoo.yaml
+
+description: Dashboard Insight Generation Evaluation (v1.0.3)
+
+providers:
+  - id: groq:openai/gpt-oss-20b
+    label: GPT-OSS-20B (Primary)
+    config:
+      temperature: 0.3
+      max_tokens: 2000
+
+  - id: groq:openai/gpt-oss-120b
+    label: GPT-OSS-120B (Larger)
+    config:
+      temperature: 0.3
+      max_tokens: 2000
+
+  - id: groq:llama-3.3-70b-versatile
+    label: Llama-3.3-70B (Fallback)
+    config:
+      temperature: 0.3
+      max_tokens: 2000
+
+prompts:
+  - id: v1.0.2
+    raw: |-
+      [
+        {"role": "system", "content": "{{system_prompt}}"},
+        {"role": "user", "content": "{{user_prompt}}"}
+      ]
+
+defaultTest:
+  vars:
+    system_prompt: |-
+      You are an engineering metrics analyst for CTOs.
+
+      Analyze the metrics and return a JSON object with these exact fields:
+
+      {
+        "headline": "Most significant finding in 1-2 sentences.",
+        "detail": "2-3 sentences explaining key numbers and implications.",
+        "recommendation": "One specific, actionable step.",
+        "metric_cards": [
+          {"label": "Throughput", "value": "+25%", "trend": "positive"},
+          {"label": "Cycle Time", "value": "-15%", "trend": "positive"},
+          {"label": "AI Adoption", "value": "45%", "trend": "neutral"},
+          {"label": "Quality", "value": "2% reverts", "trend": "warning"}
+        ]
+      }
+
+      PRIORITY ORDER for headline (pick the first that applies):
+      1. Quality crisis: revert_rate > 8% → Lead with "reverts" and quality concern
+      2. AI impact significant: AI adoption > 40% AND |cycle_time_difference| > 25% → Lead with AI impact on velocity
+      3. Severe slowdown: cycle_time pct_change > 50% → Lead with "cycle time" slowing down
+      4. Major throughput change: |throughput pct_change| > 30% → Lead with throughput change
+      5. Bottleneck: bottleneck detected → Lead with review bottleneck
+      6. Bus factor: top_contributor_pct > 50% → Lead with work concentration risk
+      7. Otherwise: Summarize the most notable change
+
+      AI IMPACT INTERPRETATION:
+      - cycle_time_difference_pct shows (AI_cycle - NonAI_cycle) / NonAI_cycle * 100
+      - NEGATIVE value = AI PRs are faster (good) → "AI-assisted PRs are X% faster"
+      - POSITIVE value = AI PRs are slower (bad) → "AI-assisted PRs take X% longer"
+      - Example: +100% means AI PRs take TWICE as long as non-AI PRs
+
+      GENERAL:
+      - Lower cycle time = BETTER (faster). Higher throughput = BETTER.
+      - trend: "positive"=good, "negative"=bad, "neutral"=stable, "warning"=needs attention
+
+      Return ONLY valid JSON. No markdown code fences, no explanation, no thinking - just the JSON object starting with {.
+  options:
+    # Transform: find JSON with headline field (handles spaces), strip trailing content
+    transform: "(() => { const m = output.match(/\\{\\s*\"headline\"/); return m ? output.slice(m.index).replace(/```[\\s\\S]*$/, '').trim() : output.slice(output.indexOf('{')).replace(/```[\\s\\S]*$/, '').trim(); })()"
+
+tests:
+  # ============================================================================
+  # TEST 1: Cycle Time Regression (Real Antiwork Data)
+  # ============================================================================
+  - description: "[velocity_bad] Cycle time regression - Real Antiwork data"
+    vars:
+      user_prompt: |-
+        # Engineering Metrics Analysis for Antiwork
+
+        ## Period: 2025-11-24 to 2025-12-24 (30 days)
+
+        ## Velocity Metrics
+
+        ### Throughput
+        - Current period: 123 PRs merged
+        - Previous period: 98 PRs merged
+        - Change: 25.5%
+
+        ### Cycle Time (hours from PR open to merge)
+        - Current period: 169.4 hours
+        - Previous period: 71.8 hours
+        - Change: 135.8% (negative = faster)
+
+        ### Review Time (hours to first review)
+        - Current period: 72.5 hours
+        - Previous period: 22.2 hours
+        - Change: 226.5% (negative = faster)
+
+        ## Quality Metrics
+
+        - Reverts: 1 (0.8% of merged PRs)
+        - Hotfixes: 0 (0.0% of merged PRs)
+        - Average review rounds: 0.8
+        - Large PRs (>500 lines): 17.9%
+
+        ## Team Health
+
+        - Active contributors: 25
+        - Top contributor share: 17.1% of PRs
+        - Work concentration: Healthy distribution
+        - Avg reviews per reviewer: 19.9
+        - Max reviews by single reviewer: 72
+        - No review bottleneck detected
+
+        ## AI Impact
+
+        - AI-assisted PRs: 42 (34.1% adoption)
+        - Non-AI PRs: 81
+        - AI PR avg cycle time: 214.6 hours
+        - Non-AI PR avg cycle time: 145.9 hours
+        - AI HURTS: AI PRs are 47.1% SLOWER than non-AI PRs
+
+        ---
+
+        Analyze these metrics and provide:
+        1. A 1-2 sentence headline insight (most important finding)
+        2. 2-3 sentences of context and detail
+        3. One actionable recommendation
+        4. Key metric cards for: throughput change, cycle time change, AI adoption rate, quality indicator
+    assert:
+      - type: is-json
+      - type: javascript
+        value: "(() => { const r = JSON.parse(output); return !!(r.headline && r.detail && r.recommendation && r.metric_cards); })()"
+        description: "Has all required fields"
+      - type: javascript
+        value: "(() => { const r = JSON.parse(output); const h = r.headline.toLowerCase(); return h.includes('cycle') || h.includes('slow') || h.includes('135') || h.includes('time') || h.includes('ai'); })()"
+        description: "Headline mentions cycle time, slowdown, or AI impact"
+
+  # ============================================================================
+  # TEST 2: High Revert Rate (Quality Crisis)
+  # ============================================================================
+  - description: "[quality_issue] High revert rate - Quality crisis priority #1"
+    vars:
+      user_prompt: |-
+        # Engineering Metrics Analysis for Engineering
+
+        ## Period: 2025-11-24 to 2025-12-24 (30 days)
+
+        ## Velocity Metrics
+
+        ### Throughput
+        - Current period: 100 PRs merged
+        - Previous period: 90 PRs merged
+        - Change: 11.1%
+
+        ### Cycle Time (hours from PR open to merge)
+        - Current period: 20.0 hours
+        - Previous period: 22.0 hours
+        - Change: -9.1% (negative = faster)
+
+        ### Review Time (hours to first review)
+        - Current period: 4.0 hours
+        - Previous period: 5.0 hours
+        - Change: -20.0% (negative = faster)
+
+        ## Quality Metrics
+
+        - Reverts: 12 (12.0% of merged PRs)
+        - Hotfixes: 5 (5.0% of merged PRs)
+        - Average review rounds: 1.8
+        - Large PRs (>500 lines): 30.0%
+
+        ## Team Health
+
+        - Active contributors: 15
+        - Top contributor share: 18.0% of PRs
+        - Work concentration: Healthy distribution
+        - Avg reviews per reviewer: 7.0
+        - Max reviews by single reviewer: 20
+        - No review bottleneck detected
+
+        ## AI Impact
+
+        - AI-assisted PRs: 40 (40.0% adoption)
+        - Non-AI PRs: 60
+        - AI PR avg cycle time: 19.0 hours
+        - Non-AI PR avg cycle time: 21.0 hours
+        - AI HELPS: AI PRs are 9.5% FASTER than non-AI PRs
+
+        ---
+
+        Analyze these metrics and provide:
+        1. A 1-2 sentence headline insight (most important finding)
+        2. 2-3 sentences of context and detail
+        3. One actionable recommendation
+        4. Key metric cards for: throughput change, cycle time change, AI adoption rate, quality indicator
+    assert:
+      - type: is-json
+      - type: javascript
+        value: "(() => { const r = JSON.parse(output); const h = r.headline.toLowerCase(); return h.includes('revert') || h.includes('quality') || h.includes('12') || h.includes('hotfix'); })()"
+        description: "Headline mentions reverts or quality (priority #1)"
+
+  # ============================================================================
+  # TEST 3: AI Helping (Positive AI Impact)
+  # ============================================================================
+  - description: "[ai_positive] AI-assisted PRs are faster - Lead with AI impact"
+    vars:
+      user_prompt: |-
+        # Engineering Metrics Analysis for Engineering
+
+        ## Period: 2025-11-24 to 2025-12-24 (30 days)
+
+        ## Velocity Metrics
+
+        ### Throughput
+        - Current period: 80 PRs merged
+        - Previous period: 70 PRs merged
+        - Change: 14.3%
+
+        ### Cycle Time (hours from PR open to merge)
+        - Current period: 18.0 hours
+        - Previous period: 28.0 hours
+        - Change: -35.7% (negative = faster)
+
+        ### Review Time (hours to first review)
+        - Current period: 3.0 hours
+        - Previous period: 6.0 hours
+        - Change: -50.0% (negative = faster)
+
+        ## Quality Metrics
+
+        - Reverts: 1 (1.3% of merged PRs)
+        - Hotfixes: 0 (0.0% of merged PRs)
+        - Average review rounds: 1.1
+        - Large PRs (>500 lines): 10.0%
+
+        ## Team Health
+
+        - Active contributors: 12
+        - Top contributor share: 20.0% of PRs
+        - Work concentration: Healthy distribution
+        - Avg reviews per reviewer: 8.0
+        - Max reviews by single reviewer: 15
+        - No review bottleneck detected
+
+        ## AI Impact
+
+        - AI-assisted PRs: 56 (70.0% adoption)
+        - Non-AI PRs: 24
+        - AI PR avg cycle time: 14.0 hours
+        - Non-AI PR avg cycle time: 26.0 hours
+        - AI HELPS: AI PRs are 46.2% FASTER than non-AI PRs
+
+        ---
+
+        Analyze these metrics and provide:
+        1. A 1-2 sentence headline insight (most important finding)
+        2. 2-3 sentences of context and detail
+        3. One actionable recommendation
+        4. Key metric cards for: throughput change, cycle time change, AI adoption rate, quality indicator
+    assert:
+      - type: is-json
+      - type: javascript
+        value: "(() => { const r = JSON.parse(output); const h = r.headline.toLowerCase(); return h.includes('ai') && (h.includes('fast') || h.includes('boost') || h.includes('improv') || h.includes('help') || h.includes('46') || h.includes('70') || h.includes('velocity')); })()"
+        description: "Headline mentions AI with positive impact"
+
+  # ============================================================================
+  # TEST 4: AI Not Helping (Negative AI Impact)
+  # ============================================================================
+  - description: "[ai_negative] AI-assisted PRs are slower - Flag concern"
+    vars:
+      user_prompt: |-
+        # Engineering Metrics Analysis for Engineering
+
+        ## Period: 2025-11-24 to 2025-12-24 (30 days)
+
+        ## Velocity Metrics
+
+        ### Throughput
+        - Current period: 60 PRs merged
+        - Previous period: 55 PRs merged
+        - Change: 9.1%
+
+        ### Cycle Time (hours from PR open to merge)
+        - Current period: 40.0 hours
+        - Previous period: 30.0 hours
+        - Change: 33.3% (negative = faster)
+
+        ### Review Time (hours to first review)
+        - Current period: 12.0 hours
+        - Previous period: 8.0 hours
+        - Change: 50.0% (negative = faster)
+
+        ## Quality Metrics
+
+        - Reverts: 3 (5.0% of merged PRs)
+        - Hotfixes: 1 (1.7% of merged PRs)
+        - Average review rounds: 2.5
+        - Large PRs (>500 lines): 25.0%
+
+        ## Team Health
+
+        - Active contributors: 10
+        - Top contributor share: 22.0% of PRs
+        - Work concentration: Healthy distribution
+        - Avg reviews per reviewer: 6.0
+        - Max reviews by single reviewer: 18
+        - No review bottleneck detected
+
+        ## AI Impact
+
+        - AI-assisted PRs: 42 (70.0% adoption)
+        - Non-AI PRs: 18
+        - AI PR avg cycle time: 48.0 hours
+        - Non-AI PR avg cycle time: 24.0 hours
+        - AI HURTS: AI PRs are 100.0% SLOWER than non-AI PRs
+
+        ---
+
+        Analyze these metrics and provide:
+        1. A 1-2 sentence headline insight (most important finding)
+        2. 2-3 sentences of context and detail
+        3. One actionable recommendation
+        4. Key metric cards for: throughput change, cycle time change, AI adoption rate, quality indicator
+    assert:
+      - type: is-json
+      - type: javascript
+        value: "(() => { const r = JSON.parse(output); const h = r.headline.toLowerCase(); return h.includes('ai') && (h.includes('slow') || h.includes('100') || h.includes('longer') || h.includes('hurt') || h.includes('twice') || h.includes('double') || h.includes('impact')); })()"
+        description: "Headline mentions AI with negative impact"
+
+  # ============================================================================
+  # TEST 5: Bus Factor Risk
+  # ============================================================================
+  - description: "[team_health] Bus factor risk - Work concentrated on one person"
+    vars:
+      user_prompt: |-
+        # Engineering Metrics Analysis for Engineering
+
+        ## Period: 2025-11-24 to 2025-12-24 (30 days)
+
+        ## Velocity Metrics
+
+        ### Throughput
+        - Current period: 40 PRs merged
+        - Previous period: 35 PRs merged
+        - Change: 14.3%
+
+        ### Cycle Time (hours from PR open to merge)
+        - Current period: 24.0 hours
+        - Previous period: 26.0 hours
+        - Change: -7.7% (negative = faster)
+
+        ### Review Time (hours to first review)
+        - Current period: 6.0 hours
+        - Previous period: 8.0 hours
+        - Change: -25.0% (negative = faster)
+
+        ## Quality Metrics
+
+        - Reverts: 0 (0.0% of merged PRs)
+        - Hotfixes: 0 (0.0% of merged PRs)
+        - Average review rounds: 1.0
+        - Large PRs (>500 lines): 12.0%
+
+        ## Team Health
+
+        - Active contributors: 5
+        - Top contributor share: 65.0% of PRs
+        - Work concentration: High risk
+        - Avg reviews per reviewer: 8.0
+        - Max reviews by single reviewer: 20
+        - No review bottleneck detected
+
+        ## AI Impact
+
+        - AI-assisted PRs: 10 (25.0% adoption)
+        - Non-AI PRs: 30
+        - AI PR avg cycle time: 22.0 hours
+        - Non-AI PR avg cycle time: 25.0 hours
+        - AI HELPS: AI PRs are 12.0% FASTER than non-AI PRs
+
+        ---
+
+        Analyze these metrics and provide:
+        1. A 1-2 sentence headline insight (most important finding)
+        2. 2-3 sentences of context and detail
+        3. One actionable recommendation
+        4. Key metric cards for: throughput change, cycle time change, AI adoption rate, quality indicator
+    assert:
+      - type: is-json
+      - type: javascript
+        value: "(() => { const r = JSON.parse(output); const h = r.headline.toLowerCase(); return h.includes('concentration') || h.includes('65') || h.includes('contributor') || h.includes('bus') || h.includes('risk') || h.includes('one person') || h.includes('single') || h.includes('depend'); })()"
+        description: "Headline mentions work concentration or risk"
+
+  # ============================================================================
+  # TEST 6: Weekly Time Range with Quality Crisis
+  # ============================================================================
+  - description: "[time_range] Weekly data with 8% reverts - Should flag quality"
+    vars:
+      user_prompt: |-
+        # Engineering Metrics Analysis for Engineering (Weekly)
+
+        ## Period: 2025-12-24 to 2025-12-31 (7 days)
+
+        ## Velocity Metrics
+
+        ### Throughput
+        - Current period: 12 PRs merged
+        - Previous period: 9 PRs merged
+        - Change: 33.3%
+
+        ### Cycle Time (hours from PR open to merge)
+        - Current period: 30.0 hours
+        - Previous period: 26.0 hours
+        - Change: 15.4% (negative = faster)
+
+        ### Review Time (hours to first review)
+        - Current period: 7.0 hours
+        - Previous period: 5.5 hours
+        - Change: 27.3% (negative = faster)
+
+        ## Quality Metrics
+
+        - Reverts: 1 (8.3% of merged PRs)
+        - Hotfixes: 0 (0.0% of merged PRs)
+        - Average review rounds: 1.6
+        - Large PRs (>500 lines): 25.0%
+
+        ## Team Health
+
+        - Active contributors: 8
+        - Top contributor share: 30.0% of PRs
+        - Work concentration: Healthy distribution
+        - Avg reviews per reviewer: 3.0
+        - Max reviews by single reviewer: 6
+        - No review bottleneck detected
+
+        ## AI Impact
+
+        - AI-assisted PRs: 5 (41.7% adoption)
+        - Non-AI PRs: 7
+        - AI PR avg cycle time: 26.0 hours
+        - Non-AI PR avg cycle time: 33.0 hours
+        - AI HELPS: AI PRs are 21.2% FASTER than non-AI PRs
+
+        ---
+
+        Analyze these metrics and provide:
+        1. A 1-2 sentence headline insight (most important finding)
+        2. 2-3 sentences of context and detail
+        3. One actionable recommendation
+        4. Key metric cards for: throughput change, cycle time change, AI adoption rate, quality indicator
+    assert:
+      - type: is-json
+      - type: javascript
+        value: "(() => { const r = JSON.parse(output); const h = r.headline.toLowerCase(); return h.includes('revert') || h.includes('quality') || h.includes('8') || h.includes('throughput') || h.includes('33') || h.includes('ai'); })()"
+        description: "Headline mentions revert rate, throughput, or AI impact"
+
+  # ============================================================================
+  # TEST 7: Recovery Period (All Improving)
+  # ============================================================================
+  - description: "[velocity_good] Recovery period - Major improvements"
+    vars:
+      user_prompt: |-
+        # Engineering Metrics Analysis for Engineering
+
+        ## Period: 2025-11-24 to 2025-12-24 (30 days)
+
+        ## Velocity Metrics
+
+        ### Throughput
+        - Current period: 72 PRs merged
+        - Previous period: 45 PRs merged
+        - Change: 60.0%
+
+        ### Cycle Time (hours from PR open to merge)
+        - Current period: 28.0 hours
+        - Previous period: 65.0 hours
+        - Change: -56.9% (negative = faster)
+
+        ### Review Time (hours to first review)
+        - Current period: 6.0 hours
+        - Previous period: 20.0 hours
+        - Change: -70.0% (negative = faster)
+
+        ## Quality Metrics
+
+        - Reverts: 2 (2.8% of merged PRs)
+        - Hotfixes: 1 (1.4% of merged PRs)
+        - Average review rounds: 1.3
+        - Large PRs (>500 lines): 15.0%
+
+        ## Team Health
+
+        - Active contributors: 11
+        - Top contributor share: 20.0% of PRs
+        - Work concentration: Healthy distribution
+        - Avg reviews per reviewer: 6.5
+        - Max reviews by single reviewer: 12
+        - No review bottleneck detected
+
+        ## AI Impact
+
+        - AI-assisted PRs: 30 (41.7% adoption)
+        - Non-AI PRs: 42
+        - AI PR avg cycle time: 24.0 hours
+        - Non-AI PR avg cycle time: 31.0 hours
+        - AI HELPS: AI PRs are 22.6% FASTER than non-AI PRs
+
+        ---
+
+        Analyze these metrics and provide:
+        1. A 1-2 sentence headline insight (most important finding)
+        2. 2-3 sentences of context and detail
+        3. One actionable recommendation
+        4. Key metric cards for: throughput change, cycle time change, AI adoption rate, quality indicator
+    assert:
+      - type: is-json
+      - type: javascript
+        value: "(() => { const r = JSON.parse(output); const h = r.headline.toLowerCase(); return h.includes('60') || h.includes('throughput') || h.includes('surge') || h.includes('jump') || h.includes('increase') || h.includes('grew') || h.includes('improv') || h.includes('ai'); })()"
+        description: "Headline mentions throughput surge or AI impact"
+
+  # ============================================================================
+  # TEST 8: Low Activity (Throughput Drop)
+  # ============================================================================
+  - description: "[velocity_bad] Low activity - Major throughput drop"
+    vars:
+      user_prompt: |-
+        # Engineering Metrics Analysis for Engineering
+
+        ## Period: 2025-11-24 to 2025-12-24 (30 days)
+
+        ## Velocity Metrics
+
+        ### Throughput
+        - Current period: 8 PRs merged
+        - Previous period: 22 PRs merged
+        - Change: -63.6%
+
+        ### Cycle Time (hours from PR open to merge)
+        - Current period: 18.0 hours
+        - Previous period: 24.0 hours
+        - Change: -25.0% (negative = faster)
+
+        ### Review Time (hours to first review)
+        - Current period: 4.0 hours
+        - Previous period: 6.0 hours
+        - Change: -33.3% (negative = faster)
+
+        ## Quality Metrics
+
+        - Reverts: 0 (0.0% of merged PRs)
+        - Hotfixes: 0 (0.0% of merged PRs)
+        - Average review rounds: 1.0
+        - Large PRs (>500 lines): 12.5%
+
+        ## Team Health
+
+        - Active contributors: 3
+        - Top contributor share: 50.0% of PRs
+        - Work concentration: Healthy distribution
+        - Avg reviews per reviewer: 2.7
+        - Max reviews by single reviewer: 5
+        - No review bottleneck detected
+
+        ## AI Impact
+
+        - AI-assisted PRs: 3 (37.5% adoption)
+        - Non-AI PRs: 5
+        - AI PR avg cycle time: 16.0 hours
+        - Non-AI PR avg cycle time: 19.0 hours
+        - AI HELPS: AI PRs are 15.8% FASTER than non-AI PRs
+
+        ---
+
+        Analyze these metrics and provide:
+        1. A 1-2 sentence headline insight (most important finding)
+        2. 2-3 sentences of context and detail
+        3. One actionable recommendation
+        4. Key metric cards for: throughput change, cycle time change, AI adoption rate, quality indicator
+    assert:
+      - type: is-json
+      - type: javascript
+        value: "(() => { const r = JSON.parse(output); const h = r.headline.toLowerCase(); return h.includes('throughput') || h.includes('63') || h.includes('64') || h.includes('drop') || h.includes('fell') || h.includes('decreas') || h.includes('decline') || h.includes('ai'); })()"
+        description: "Headline mentions throughput drop or AI impact"
+
+outputPath: ./results/insight-promptfoo-results.json
+
+evaluateOptions:
+  maxConcurrency: 3
+  showProgressBar: true

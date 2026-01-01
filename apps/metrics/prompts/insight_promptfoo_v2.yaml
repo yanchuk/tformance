@@ -1,0 +1,487 @@
+# Promptfoo configuration for Dashboard Insight LLM Evaluation v2.0
+# Applies Anthropic Claude 4.x best practices
+# Run with: npx promptfoo eval -c apps/metrics/prompts/insight_promptfoo_v2.yaml
+
+description: Dashboard Insight Evaluation v2.0 (Anthropic Best Practices)
+
+providers:
+  - id: groq:openai/gpt-oss-20b
+    label: GPT-OSS-20B
+    config:
+      temperature: 0.3
+      max_tokens: 2000
+
+  - id: groq:openai/gpt-oss-120b
+    label: GPT-OSS-120B
+    config:
+      temperature: 0.3
+      max_tokens: 2000
+
+  - id: groq:llama-3.3-70b-versatile
+    label: Llama-3.3-70B
+    config:
+      temperature: 0.3
+      max_tokens: 2000
+
+prompts:
+  - id: v2.0-anthropic-style
+    raw: |-
+      [
+        {"role": "system", "content": "{{system_prompt}}"},
+        {"role": "user", "content": "{{user_prompt}}"}
+      ]
+
+defaultTest:
+  vars:
+    system_prompt: |-
+      <role>
+      You are an engineering metrics analyst helping CTOs understand their team's performance and make data-driven decisions.
+      </role>
+
+      <task>
+      Analyze the provided engineering metrics and generate an executive insight with:
+      1. A headline that addresses the most critical finding (based on priority rules below)
+      2. Context explaining the key numbers and implications
+      3. One specific, actionable recommendation
+      4. Four metric cards summarizing key indicators
+      </task>
+
+      <priority_rules>
+      Check these conditions IN ORDER. Use the FIRST condition that matches, then stop.
+
+      PRIORITY 1: Quality Crisis
+      - Condition: revert_rate > 8%
+      - Headline must address: Reverts, quality concerns, stability
+      - Why first: Quality problems affect customers directly and indicate process failures
+
+      PRIORITY 2: AI Impact (significant)
+      - Conditions: ai_adoption >= 40% AND |cycle_time_difference| >= 25%
+      - Headline must address: AI tool impact on velocity (positive or negative)
+      - Why: At meaningful adoption with clear impact, CTOs need visibility into AI ROI
+
+      PRIORITY 3: Severe Slowdown
+      - Condition: cycle_time pct_change > 50%
+      - Headline must address: Cycle time increase, delivery delays
+      - Why: Major slowdowns indicate systemic delivery issues
+
+      PRIORITY 4: Major Throughput Change
+      - Condition: |throughput pct_change| > 30%
+      - Headline must address: Throughput increase or decrease
+      - Why: Significant output changes require investigation
+
+      PRIORITY 5: Review Bottleneck
+      - Condition: bottleneck_detected = true
+      - Headline must address: Review delays, blocked work
+      - Why: Bottlenecks slow the entire team
+
+      PRIORITY 6: Bus Factor Risk
+      - Conditions: team_size > 3 AND top_contributor_pct > 50%
+      - Headline must address: Work concentration, dependency risk
+      - Why: Heavy reliance on one person creates continuity risk (only relevant for larger teams)
+
+      PRIORITY 7: General Summary
+      - Condition: None of the above apply
+      - Headline must address: Most notable positive or negative trend
+      </priority_rules>
+
+      <examples>
+
+      <example name="quality_crisis_priority">
+      Input metrics:
+      - revert_rate: 12%
+      - ai_adoption: 45%
+      - ai_cycle_diff: -10% (AI PRs are faster)
+      - throughput_change: +20%
+
+      Output:
+      {
+        "headline": "Quality alert: 12% of PRs were reverted this period, exceeding the 8% threshold.",
+        "detail": "Despite 20% throughput growth and 45% AI adoption showing 10% faster cycle times, the 12% revert rate indicates quality issues requiring immediate attention.",
+        "recommendation": "Investigate reverted PRs for root causes and consider adding pre-merge testing requirements.",
+        "metric_cards": [
+          {"label": "Throughput", "value": "+20%", "trend": "positive"},
+          {"label": "Cycle Time", "value": "stable", "trend": "neutral"},
+          {"label": "AI Adoption", "value": "45%", "trend": "positive"},
+          {"label": "Quality", "value": "12% reverts", "trend": "warning"}
+        ]
+      }
+
+      Reasoning: Quality crisis (12% > 8%) takes priority over positive AI impact and throughput growth.
+      </example>
+
+      <example name="bus_factor_priority">
+      Input metrics:
+      - team_size: 5 contributors
+      - top_contributor_pct: 65%
+      - revert_rate: 2%
+      - ai_adoption: 25%
+      - cycle_time_change: -5%
+
+      Output:
+      {
+        "headline": "Team dependency risk: One contributor owns 65% of merged PRs across 5 team members.",
+        "detail": "Work concentration at 65% creates continuity risk if this person is unavailable. Quality remains healthy at 2% reverts. Cycle time improved 5%.",
+        "recommendation": "Distribute ownership through pair programming or knowledge transfer sessions on key components.",
+        "metric_cards": [
+          {"label": "Throughput", "value": "stable", "trend": "neutral"},
+          {"label": "Cycle Time", "value": "-5%", "trend": "positive"},
+          {"label": "AI Adoption", "value": "25%", "trend": "neutral"},
+          {"label": "Team Health", "value": "65% concentration", "trend": "warning"}
+        ]
+      }
+
+      Reasoning: Bus factor (65% > 50% with team_size=5 > 3) applies. AI adoption (25%) is below the 40% threshold for AI impact priority.
+      </example>
+
+      <example name="ai_negative_impact">
+      Input metrics:
+      - revert_rate: 3%
+      - ai_adoption: 55%
+      - ai_cycle_time: 48 hours
+      - non_ai_cycle_time: 24 hours
+      - ai_cycle_diff: +100% (AI PRs take twice as long)
+
+      Output:
+      {
+        "headline": "AI adoption concern: AI-assisted PRs are taking 100% longer than non-AI PRs despite 55% adoption.",
+        "detail": "At 55% AI adoption, AI-assisted PRs average 48 hours cycle time versus 24 hours for non-AI PRs. This suggests AI tools may be used for more complex work or require process adjustment.",
+        "recommendation": "Analyze AI-assisted PRs to understand if complexity differs, and consider training on effective AI tool usage.",
+        "metric_cards": [
+          {"label": "Throughput", "value": "stable", "trend": "neutral"},
+          {"label": "Cycle Time", "value": "+100% AI", "trend": "warning"},
+          {"label": "AI Adoption", "value": "55%", "trend": "neutral"},
+          {"label": "Quality", "value": "3% reverts", "trend": "positive"}
+        ]
+      }
+
+      Reasoning: AI impact is significant (55% > 40% adoption AND 100% > 25% diff). Quality is fine (3% < 8%), so AI impact takes priority.
+      </example>
+
+      </examples>
+
+      <output_format>
+      Return a JSON object with exactly these fields:
+
+      {
+        "headline": "1-2 sentence executive summary based on the highest applicable priority",
+        "detail": "2-3 sentences with key numbers and context",
+        "recommendation": "One specific, actionable next step",
+        "metric_cards": [
+          {"label": "Throughput", "value": "% change or count", "trend": "positive|negative|neutral|warning"},
+          {"label": "Cycle Time", "value": "hours or % change", "trend": "positive|negative|neutral|warning"},
+          {"label": "AI Adoption", "value": "%", "trend": "positive|negative|neutral|warning"},
+          {"label": "Quality", "value": "revert rate or status", "trend": "positive|negative|neutral|warning"}
+        ]
+      }
+
+      Trend meanings:
+      - positive: Good news, improvement, healthy
+      - negative: Bad news, decline, concerning
+      - neutral: Stable, no significant change
+      - warning: Needs attention, approaching threshold
+
+      Return ONLY the JSON object. Start with { and end with }. No markdown code fences, no explanation before or after.
+      </output_format>
+  options:
+    # Transform: extract JSON starting with {"headline"
+    transform: "(() => { const m = output.match(/\\{\\s*\"headline\"/); return m ? output.slice(m.index).replace(/```[\\s\\S]*$/, '').trim() : output.slice(output.indexOf('{')).replace(/```[\\s\\S]*$/, '').trim(); })()"
+
+tests:
+  # ==========================================================================
+  # PRIORITY 1: Quality Crisis Tests
+  # ==========================================================================
+  - description: "[P1-quality] 12% reverts should trigger quality crisis (ignore AI benefits)"
+    vars:
+      user_prompt: |-
+        # Engineering Metrics for Team Alpha
+        ## Period: 30 days
+
+        ## Quality Metrics
+        - Reverts: 12 (12.0% of merged PRs) [CRITICAL: Above 8% threshold]
+        - Hotfixes: 5 (5.0%)
+
+        ## Velocity
+        - Throughput: +20% (100 PRs merged)
+        - Cycle Time: stable
+
+        ## Team Health
+        - Active contributors: 8
+        - Top contributor: 18% of PRs
+
+        ## AI Impact
+        - AI adoption: 45%
+        - AI PRs: 10% faster than non-AI
+    assert:
+      - type: is-json
+      - type: javascript
+        value: "(() => { const r = JSON.parse(output); return r.headline && r.detail && r.recommendation && r.metric_cards; })()"
+        description: "Has all required fields"
+      - type: javascript
+        value: "(() => { const h = JSON.parse(output).headline.toLowerCase(); return h.includes('revert') || h.includes('quality') || h.includes('12%'); })()"
+        description: "Headline addresses quality crisis (P1)"
+
+  - description: "[P1-quality] 9% reverts should trigger quality crisis"
+    vars:
+      user_prompt: |-
+        # Engineering Metrics
+        ## Period: 30 days
+
+        ## Quality Metrics
+        - Reverts: 9 (9.0% of merged PRs) [CRITICAL: Above 8% threshold]
+
+        ## Velocity
+        - Throughput: stable
+        - Cycle Time: -15% (faster)
+
+        ## Team Health
+        - Active contributors: 6
+        - Top contributor: 25%
+
+        ## AI Impact
+        - AI adoption: 30%
+    assert:
+      - type: is-json
+      - type: javascript
+        value: "(() => { const h = JSON.parse(output).headline.toLowerCase(); return h.includes('revert') || h.includes('quality') || h.includes('9%'); })()"
+        description: "Headline addresses quality (9% > 8%)"
+
+  # ==========================================================================
+  # PRIORITY 2: AI Impact Tests
+  # ==========================================================================
+  - description: "[P2-ai-positive] High AI adoption (70%) with 46% faster cycle time"
+    vars:
+      user_prompt: |-
+        # Engineering Metrics
+        ## Period: 30 days
+
+        ## Quality Metrics
+        - Reverts: 1 (1.3% of merged PRs)
+
+        ## Velocity
+        - Throughput: +14% (80 PRs)
+        - Cycle Time: -36% (18 hours, was 28)
+
+        ## Team Health
+        - Active contributors: 12
+        - Top contributor: 20%
+
+        ## AI Impact
+        - AI adoption: 70%
+        - AI PRs: 46% FASTER than non-AI (14h vs 26h)
+    assert:
+      - type: is-json
+      - type: javascript
+        value: "(() => { const h = JSON.parse(output).headline.toLowerCase(); return h.includes('ai') && (h.includes('fast') || h.includes('46') || h.includes('70') || h.includes('velocity') || h.includes('boost')); })()"
+        description: "Headline highlights positive AI impact"
+
+  - description: "[P2-ai-negative] High AI adoption (70%) but AI PRs 100% slower"
+    vars:
+      user_prompt: |-
+        # Engineering Metrics
+        ## Period: 30 days
+
+        ## Quality Metrics
+        - Reverts: 3 (5.0% of merged PRs)
+
+        ## Velocity
+        - Throughput: +9% (60 PRs)
+        - Cycle Time: +33% (40 hours, was 30)
+
+        ## Team Health
+        - Active contributors: 10
+        - Top contributor: 22%
+
+        ## AI Impact
+        - AI adoption: 70%
+        - AI PRs: 100% SLOWER than non-AI (48h vs 24h)
+        - AI HURTS: AI PRs take TWICE as long
+    assert:
+      - type: is-json
+      - type: javascript
+        value: "(() => { const h = JSON.parse(output).headline.toLowerCase(); return h.includes('ai') && (h.includes('slow') || h.includes('100') || h.includes('twice') || h.includes('longer') || h.includes('concern')); })()"
+        description: "Headline flags AI negative impact"
+
+  # ==========================================================================
+  # PRIORITY 3: Severe Slowdown Tests
+  # ==========================================================================
+  - description: "[P3-slowdown] 136% cycle time increase (no quality issues)"
+    vars:
+      user_prompt: |-
+        # Engineering Metrics
+        ## Period: 30 days
+
+        ## Quality Metrics
+        - Reverts: 1 (0.8% of merged PRs)
+
+        ## Velocity
+        - Throughput: +25% (123 PRs)
+        - Cycle Time: +136% (169h, was 72h) [SEVERE SLOWDOWN]
+        - Review Time: +227% (72h, was 22h)
+
+        ## Team Health
+        - Active contributors: 25
+        - Top contributor: 17%
+
+        ## AI Impact
+        - AI adoption: 34%
+        - AI PRs: 47% SLOWER than non-AI
+    assert:
+      - type: is-json
+      - type: javascript
+        value: "(() => { const h = JSON.parse(output).headline.toLowerCase(); return h.includes('cycle') || h.includes('slow') || h.includes('136') || h.includes('169') || h.includes('delay'); })()"
+        description: "Headline addresses severe slowdown"
+
+  # ==========================================================================
+  # PRIORITY 4: Throughput Change Tests
+  # ==========================================================================
+  - description: "[P4-throughput-up] 60% throughput increase"
+    vars:
+      user_prompt: |-
+        # Engineering Metrics
+        ## Period: 30 days
+
+        ## Quality Metrics
+        - Reverts: 2 (2.8% of merged PRs)
+
+        ## Velocity
+        - Throughput: +60% (72 PRs, was 45)
+        - Cycle Time: -57% (28h, was 65h)
+
+        ## Team Health
+        - Active contributors: 11
+        - Top contributor: 20%
+
+        ## AI Impact
+        - AI adoption: 42%
+        - AI PRs: 23% faster
+    assert:
+      - type: is-json
+      - type: javascript
+        value: "(() => { const h = JSON.parse(output).headline.toLowerCase(); return h.includes('throughput') || h.includes('60') || h.includes('surge') || h.includes('increase') || h.includes('growth') || h.includes('ai'); })()"
+        description: "Headline addresses throughput or AI impact"
+
+  - description: "[P4-throughput-down] 64% throughput drop"
+    vars:
+      user_prompt: |-
+        # Engineering Metrics
+        ## Period: 30 days
+
+        ## Quality Metrics
+        - Reverts: 0 (0% of merged PRs)
+
+        ## Velocity
+        - Throughput: -64% (8 PRs, was 22)
+        - Cycle Time: -25% (18h, was 24h)
+
+        ## Team Health
+        - Active contributors: 3
+        - Top contributor: 50%
+
+        ## AI Impact
+        - AI adoption: 38%
+        - AI PRs: 16% faster
+    assert:
+      - type: is-json
+      - type: javascript
+        value: "(() => { const h = JSON.parse(output).headline.toLowerCase(); return h.includes('throughput') || h.includes('64') || h.includes('drop') || h.includes('decrease') || h.includes('decline') || h.includes('fell'); })()"
+        description: "Headline addresses throughput drop"
+
+  # ==========================================================================
+  # PRIORITY 6: Bus Factor Tests
+  # ==========================================================================
+  - description: "[P6-busfactor] 65% work concentration on team of 5"
+    vars:
+      user_prompt: |-
+        # Engineering Metrics
+        ## Period: 30 days
+
+        ## Quality Metrics
+        - Reverts: 0 (0% of merged PRs)
+
+        ## Velocity
+        - Throughput: +14% (40 PRs)
+        - Cycle Time: -8% (24h, was 26h)
+
+        ## Team Health
+        - Active contributors: 5
+        - Top contributor: 65% of PRs [BUS FACTOR RISK]
+        - Work concentration: High risk
+
+        ## AI Impact
+        - AI adoption: 25%
+        - AI PRs: 12% faster
+    assert:
+      - type: is-json
+      - type: javascript
+        value: "(() => { const h = JSON.parse(output).headline.toLowerCase(); return h.includes('65') || h.includes('concentration') || h.includes('contributor') || h.includes('dependency') || h.includes('risk') || h.includes('bus'); })()"
+        description: "Headline addresses bus factor risk"
+
+  # ==========================================================================
+  # PRIORITY CONFLICT: Quality vs AI (Quality should win)
+  # ==========================================================================
+  - description: "[CONFLICT] 12% reverts AND 45% AI adoption - quality must win"
+    vars:
+      user_prompt: |-
+        # Engineering Metrics
+        ## Period: 30 days
+
+        ## Quality Metrics
+        - Reverts: 12 (12.0% of merged PRs) [CRITICAL: Above 8% threshold]
+        - Hotfixes: 5 (5.0%)
+
+        ## Velocity
+        - Throughput: +11%
+        - Cycle Time: -9%
+
+        ## Team Health
+        - Active contributors: 15
+        - Top contributor: 18%
+
+        ## AI Impact
+        - AI adoption: 45%
+        - AI PRs: 10% FASTER than non-AI
+        - AI HELPS velocity
+    assert:
+      - type: is-json
+      - type: javascript
+        value: "(() => { const h = JSON.parse(output).headline.toLowerCase(); return h.includes('revert') || h.includes('quality') || h.includes('12'); })()"
+        description: "Quality crisis (P1) beats AI impact (P2)"
+      - type: javascript
+        value: "(() => { const h = JSON.parse(output).headline.toLowerCase(); return !(h.includes('ai') && h.includes('fast')); })()"
+        description: "Should NOT lead with AI benefits when quality is crisis"
+
+  # ==========================================================================
+  # EDGE CASE: All metrics healthy
+  # ==========================================================================
+  - description: "[EDGE] All healthy metrics - general positive summary"
+    vars:
+      user_prompt: |-
+        # Engineering Metrics
+        ## Period: 30 days
+
+        ## Quality Metrics
+        - Reverts: 1 (1.0% of merged PRs)
+        - Hotfixes: 0
+
+        ## Velocity
+        - Throughput: +8% (54 PRs)
+        - Cycle Time: -5% (22h)
+
+        ## Team Health
+        - Active contributors: 10
+        - Top contributor: 18%
+
+        ## AI Impact
+        - AI adoption: 30%
+        - AI PRs: 8% faster
+    assert:
+      - type: is-json
+      - type: javascript
+        value: "(() => { const r = JSON.parse(output); return r.headline && r.detail && r.recommendation && Array.isArray(r.metric_cards) && r.metric_cards.length === 4; })()"
+        description: "Complete valid response with 4 metric cards"
+
+outputPath: ./results/insight-promptfoo-v2-results.json
+
+evaluateOptions:
+  maxConcurrency: 3
+  showProgressBar: true

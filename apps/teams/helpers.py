@@ -31,8 +31,9 @@ def get_team_for_request(request, view_kwargs):
 
     Team resolution order:
     1. team_slug in view_kwargs (legacy URL support / redirects)
-    2. team ID in session (from previous requests)
-    3. User's default (first) team
+    2. ?team= query parameter (for direct team switching via URL)
+    3. team ID in session (from previous requests)
+    4. User's default (first) team
 
     Returns None if user is not authenticated or has no teams.
     """
@@ -44,6 +45,18 @@ def get_team_for_request(request, view_kwargs):
     # For non-authenticated users, no team
     if not request.user.is_authenticated:
         return None
+
+    # Check for ?team= query parameter (allows direct team switching via URL)
+    team_id_param = request.GET.get("team")
+    if team_id_param:
+        try:
+            team = request.user.teams.get(id=int(team_id_param))
+            # Store in session so subsequent requests use this team
+            request.session["team"] = team.id
+            return team
+        except (Team.DoesNotExist, ValueError):
+            # Invalid team ID or user isn't a member - fall through to other methods
+            pass
 
     # Check session for team ID
     if "team" in request.session:

@@ -148,6 +148,55 @@
                     "skill.*?(work|trigger|activate|system)"
                 ]
             }
+        },
+        "prompt-engineer": {
+            "type": "domain",
+            "enforcement": "suggest",
+            "priority": "high",
+            "description": "Prompt engineering best practices for LLM prompts (GPT, reasoning models, Groq)",
+            "promptTriggers": {
+                "keywords": [
+                    "prompt engineering",
+                    "LLM prompt",
+                    "system prompt",
+                    "user prompt",
+                    "prompt optimization",
+                    "prompt template",
+                    "few-shot",
+                    "prompt design",
+                    "prompt iteration",
+                    "prompt testing",
+                    "promptfoo",
+                    "eval prompts",
+                    "Groq",
+                    "LiteLLM",
+                    "assistant response",
+                    "chain of thought",
+                    "reasoning model",
+                    "prompt tuning"
+                ],
+                "intentPatterns": [
+                    "(create|write|improve|optimize|design).*?prompt",
+                    "(how to|best practice).*?prompt",
+                    "(improve|fix|debug).*?(LLM|prompt|response)",
+                    "prompt.*?(engineering|optimization|design|template)",
+                    "(few-shot|zero-shot).*?(learning|example)"
+                ]
+            },
+            "fileTriggers": {
+                "pathPatterns": [
+                    "apps/**/prompts/**",
+                    "apps/**/services/*llm*.py",
+                    "apps/**/services/*prompt*.py"
+                ],
+                "contentPatterns": [
+                    "system_prompt",
+                    "user_prompt",
+                    "few.?shot",
+                    "PROMPT_VERSION",
+                    "build_.*_prompt"
+                ]
+            }
         }
     },
     "notes": {

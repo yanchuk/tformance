@@ -313,7 +313,7 @@ class TestGenerateInsight(TestCase):
 
         # Verify call parameters
         call_kwargs = mock_client.chat.completions.create.call_args.kwargs
-        self.assertEqual(call_kwargs["model"], "openai/gpt-oss-20b")
+        self.assertEqual(call_kwargs["model"], "openai/gpt-oss-120b")
         self.assertEqual(len(call_kwargs["messages"]), 2)  # system + user
         self.assertIn("json", call_kwargs["response_format"]["type"].lower())
 
@@ -635,36 +635,9 @@ class TestInsightJsonSchemaActions(TestCase):
         self.assertEqual(set(action_type_schema["enum"]), expected_types)
 
     def test_actions_min_max_items(self):
-        """Test that actions array has 1-3 items constraint."""
+        """Test that actions array has 2-3 items constraint."""
         from apps.metrics.services.insight_llm import INSIGHT_JSON_SCHEMA
 
         actions_schema = INSIGHT_JSON_SCHEMA["properties"]["actions"]
-        self.assertEqual(actions_schema["minItems"], 1)
+        self.assertEqual(actions_schema["minItems"], 2)
         self.assertEqual(actions_schema["maxItems"], 3)
-
-
-class TestInsightJsonSchemaPossibleCauses(TestCase):
-    """Test cases for possible_causes field in INSIGHT_JSON_SCHEMA."""
-
-    def test_schema_includes_possible_causes_field(self):
-        """Test that schema has possible_causes field."""
-        from apps.metrics.services.insight_llm import INSIGHT_JSON_SCHEMA
-
-        self.assertIn("possible_causes", INSIGHT_JSON_SCHEMA["properties"])
-        self.assertIn("possible_causes", INSIGHT_JSON_SCHEMA["required"])
-
-    def test_possible_causes_is_array_of_strings(self):
-        """Test that possible_causes is an array of strings."""
-        from apps.metrics.services.insight_llm import INSIGHT_JSON_SCHEMA
-
-        causes_schema = INSIGHT_JSON_SCHEMA["properties"]["possible_causes"]
-        self.assertEqual(causes_schema["type"], "array")
-        self.assertEqual(causes_schema["items"]["type"], "string")
-
-    def test_possible_causes_min_max_items(self):
-        """Test that possible_causes has 1-2 items constraint."""
-        from apps.metrics.services.insight_llm import INSIGHT_JSON_SCHEMA
-
-        causes_schema = INSIGHT_JSON_SCHEMA["properties"]["possible_causes"]
-        self.assertEqual(causes_schema["minItems"], 1)
-        self.assertEqual(causes_schema["maxItems"], 2)

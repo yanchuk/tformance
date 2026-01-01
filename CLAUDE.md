@@ -15,6 +15,7 @@ All product requirements are in `/prd/`:
 - [DASHBOARDS.md](prd/DASHBOARDS.md) - Dashboard views
 - [ONBOARDING.md](prd/ONBOARDING.md) - User flow
 - [AI-DETECTION-TESTING.md](prd/AI-DETECTION-TESTING.md) - AI detection testing tools & workflow
+- [PROMPT-ENGINEERING.md](prd/PROMPT-ENGINEERING.md) - LLM prompt best practices (Anthropic guidelines)
 
 Development guides in `/dev/guides/`:
 - [HEROKU-DEPLOYMENT.md](dev/guides/HEROKU-DEPLOYMENT.md) - Heroku Docker deployment (staging & production)

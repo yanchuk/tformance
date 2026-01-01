@@ -3,7 +3,7 @@
   {% if insight %}
   <!-- Insight Content -->
   <div class="space-y-4">
-    <!-- Headline -->
+    <!-- Headline + Detail (grouped tight) -->
     <div>
       <h3 class="text-lg font-semibold text-base-content leading-tight">
         {{ insight.headline }}
@@ -11,12 +11,10 @@
       {% if insight.is_fallback %}
       <span class="badge badge-ghost badge-sm mt-1">{% trans "Auto-generated" %}</span>
       {% endif %}
+      <p class="text-sm text-base-content/80 whitespace-pre-line mt-1">
+        {{ insight.detail }}
+      </p>
     </div>
-
-    <!-- Detail -->
-    <p class="text-sm text-base-content/80">
-      {{ insight.detail }}
-    </p>
 
     <!-- Possible Causes -->
     {% if insight.possible_causes %}
