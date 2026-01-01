@@ -18,6 +18,7 @@
 | [DASHBOARDS.md](DASHBOARDS.md) | Dashboard views (Chart.js) |
 | [ONBOARDING.md](ONBOARDING.md) | User onboarding flow |
 | [COMPETITOR-RESEARCH.md](COMPETITOR-RESEARCH.md) | Market intelligence, competitor analysis (Dec 2025) |
+| [JIRA-ENRICHMENT.md](JIRA-ENRICHMENT.md) | Rich Jira data for LLM correlation (Premium feature spec) |
 
 ---
 
