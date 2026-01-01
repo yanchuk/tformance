@@ -125,7 +125,7 @@ Time: <12h → "half a day" | 12-48h → "1-2 days" | 48-168h → "a few days" |
 Changes: ±5-20% → "slightly" | ±20-50% → "noticeably" | +50-100% → "nearly doubled" | +100%+ → "doubled+"
 
 ## Action Types
-view_slow_prs, view_large_prs, view_ai_prs, view_contributors, view_review_bottlenecks, view_reverts
+view_ai_prs, view_non_ai_prs, view_slow_prs, view_reverts, view_large_prs, view_contributors, view_review_bottlenecks
 
 # Examples
 
@@ -144,24 +144,27 @@ Output detail: "The AI adoption rate is 4.5%, below the 40% benchmark..." ← Us
 
 Return ONLY valid JSON."""
 
-# Action type to URL filter mapping
-# Maps LLM-generated action_type to PR list query parameters
-ACTION_URL_MAP: dict[str, dict[str, str]] = {
-    "view_ai_prs": {"ai": "yes"},
-    "view_non_ai_prs": {"ai": "no"},
-    "view_slow_prs": {"issue_type": "long_cycle"},
-    "view_reverts": {"issue_type": "revert"},
-    "view_large_prs": {"issue_type": "large_pr"},
-    "view_contributors": {"view": "contributors"},
-    "view_review_bottlenecks": {"view": "reviews", "sort": "pending"},
+# Action type to URL mapping
+# Maps LLM-generated action_type to URL configuration
+# - "params": query parameters for PR list page
+# - "base": alternative base URL (defaults to /app/pull-requests/)
+ACTION_URL_MAP: dict[str, dict] = {
+    "view_ai_prs": {"params": {"ai": "yes"}},
+    "view_non_ai_prs": {"params": {"ai": "no"}},
+    "view_slow_prs": {"params": {"issue_type": "long_cycle"}},
+    "view_reverts": {"params": {"issue_type": "revert"}},
+    "view_large_prs": {"params": {"issue_type": "large_pr"}},
+    "view_contributors": {"base": "/app/metrics/analytics/team/"},
+    "view_review_bottlenecks": {"params": {"state": "open", "sort": "review_time", "order": "desc"}},
 }
 
 
 def resolve_action_url(action: dict, days: int) -> str:
-    """Convert action_type to PR list URL with filters.
+    """Convert action_type to URL with filters.
 
     Takes an action dict from LLM output and converts it to a valid
-    URL for the PR list page with appropriate filters.
+    URL. Most actions go to the PR list page with filters, but some
+    (like view_contributors) go to different pages entirely.
 
     Args:
         action: Dict with action_type and label from LLM response
@@ -169,10 +172,19 @@ def resolve_action_url(action: dict, days: int) -> str:
 
     Returns:
         URL string like "/app/pull-requests/?days=30&ai=yes"
+        or "/app/analytics/team/?days=30" for non-PR-list actions
     """
-    base = "/app/pull-requests/"
+    action_type = action.get("action_type", "")
+    config = ACTION_URL_MAP.get(action_type, {})
+
+    # Use custom base URL if specified, otherwise default to PR list
+    base = config.get("base", "/app/pull-requests/")
     params = {"days": days}
-    params.update(ACTION_URL_MAP.get(action.get("action_type", ""), {}))
+
+    # Add any additional params from config
+    if "params" in config:
+        params.update(config["params"])
+
     return f"{base}?{urlencode(params)}"
 
 

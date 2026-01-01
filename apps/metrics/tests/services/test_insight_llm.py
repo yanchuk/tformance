@@ -566,6 +566,29 @@ class TestResolveActionUrl(TestCase):
 
         self.assertEqual(result, "/app/pull-requests/?days=30&issue_type=large_pr")
 
+    def test_view_contributors_action(self):
+        """Test that view_contributors action goes to analytics team page."""
+        from apps.metrics.services.insight_llm import resolve_action_url
+
+        action = {"action_type": "view_contributors", "label": "View Contributors"}
+        result = resolve_action_url(action, days=30)
+
+        # Should go to analytics team page, not PR list
+        self.assertEqual(result, "/app/metrics/analytics/team/?days=30")
+
+    def test_view_review_bottlenecks_action(self):
+        """Test that view_review_bottlenecks action filters open PRs by review time."""
+        from apps.metrics.services.insight_llm import resolve_action_url
+
+        action = {"action_type": "view_review_bottlenecks", "label": "View Bottlenecks"}
+        result = resolve_action_url(action, days=30)
+
+        # Should go to PR list filtered by open state, sorted by review time
+        self.assertIn("/app/pull-requests/", result)
+        self.assertIn("state=open", result)
+        self.assertIn("sort=review_time", result)
+        self.assertIn("order=desc", result)
+
     def test_unknown_action_type_returns_base_url(self):
         """Test that unknown action_type returns base PR list URL."""
         from apps.metrics.services.insight_llm import resolve_action_url
