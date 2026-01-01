@@ -608,7 +608,7 @@ class TestSyncHistoricalDataTaskIntegration(TestCase):
         )
 
         # Mock the service to create real PR records
-        def mock_sync_side_effect(repo, progress_callback=None):
+        def mock_sync_side_effect(repo, progress_callback=None, days_back=90, skip_recent=0):
             """Side effect that creates PR records like the real sync would."""
             base_time = timezone.now() - timedelta(days=5)
             for pr_num in [101, 102, 103]:
@@ -665,7 +665,7 @@ class TestSyncHistoricalDataTaskIntegration(TestCase):
             full_name="test-org/test-repo",
         )
 
-        def mock_sync_side_effect(repo, progress_callback=None):
+        def mock_sync_side_effect(repo, progress_callback=None, days_back=90, skip_recent=0):
             """Side effect that creates PR and review records."""
             base_time = timezone.now() - timedelta(days=5)
             pr = PullRequest.objects.create(
@@ -715,7 +715,7 @@ class TestSyncHistoricalDataTaskIntegration(TestCase):
             full_name="test-org/test-repo",
         )
 
-        def mock_sync_side_effect(repo, progress_callback=None):
+        def mock_sync_side_effect(repo, progress_callback=None, days_back=90, skip_recent=0):
             """Side effect that creates PR and commit records."""
             base_time = timezone.now() - timedelta(days=5)
             pr = PullRequest.objects.create(

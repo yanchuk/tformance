@@ -57,23 +57,33 @@ class OnboardingSyncService:
         self,
         repo: TrackedRepository,
         progress_callback: Callable[[int, int, str], None] | None = None,
+        days_back: int | None = None,
+        skip_recent: int = 0,
     ) -> dict:
         """
         Sync a single repository with progress reporting.
 
         Uses GraphQL API for fast bulk fetching of PRs.
 
+        Supports two-phase onboarding:
+        - Phase 1: days_back=30, skip_recent=0 (sync recent 30 days)
+        - Phase 2: days_back=90, skip_recent=30 (sync days 31-90)
+
         Args:
             repo: TrackedRepository to sync
             progress_callback: Optional callback for progress updates
                                (prs_completed, prs_total, message)
+            days_back: How many days of history to sync (default: from config)
+            skip_recent: Skip PRs from the most recent N days (default: 0)
 
         Returns:
             Dict with sync results (prs_synced, errors, etc.)
         """
         logger.info(f"Syncing repository {repo.full_name} for team {self.team.name}")
 
-        days_back = self._calculate_days_back()
+        # Use provided days_back or calculate from config
+        if days_back is None:
+            days_back = self._calculate_days_back()
 
         # Report start of sync
         if progress_callback:
@@ -81,7 +91,13 @@ class OnboardingSyncService:
 
         try:
             # Run async GraphQL sync in sync context
-            result = asyncio.run(sync_repository_history_graphql(repo, days_back=days_back))
+            result = asyncio.run(
+                sync_repository_history_graphql(
+                    repo,
+                    days_back=days_back,
+                    skip_recent=skip_recent,
+                )
+            )
 
             prs_synced = result.get("prs_synced", 0)
 

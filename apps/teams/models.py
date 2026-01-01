@@ -31,13 +31,18 @@ class Team(SubscriptionModelBase, BaseModel):
         "Default True for existing teams; set False during onboarding creation.",
     )
 
-    # Onboarding pipeline tracking
+    # Onboarding pipeline tracking (Two-Phase)
+    # Phase 1: Quick Start (30 days) → syncing → llm_processing → metrics → insights → phase1_complete
+    # Phase 2: Background (31-90 days) → background_syncing → background_llm → complete
     PIPELINE_STATUS_CHOICES = [
         ("not_started", "Not Started"),
         ("syncing", "Syncing PRs"),
         ("llm_processing", "Analyzing with AI"),
         ("computing_metrics", "Computing Metrics"),
         ("computing_insights", "Computing Insights"),
+        ("phase1_complete", "Dashboard Ready"),  # Phase 1 done, user can access dashboard
+        ("background_syncing", "Background: Syncing"),  # Phase 2: syncing older data
+        ("background_llm", "Background: Analyzing"),  # Phase 2: LLM on older data
         ("complete", "Complete"),
         ("failed", "Failed"),
     ]
@@ -62,6 +67,16 @@ class Team(SubscriptionModelBase, BaseModel):
         null=True,
         blank=True,
         help_text="When the pipeline completed (success or failure).",
+    )
+
+    # Phase 2 background progress tracking (0-100%)
+    background_sync_progress = models.IntegerField(
+        default=0,
+        help_text="Progress of Phase 2 background sync (0-100%).",
+    )
+    background_llm_progress = models.IntegerField(
+        default=0,
+        help_text="Progress of Phase 2 background LLM analysis (0-100%).",
     )
 
     # your team customizations go here.
@@ -90,13 +105,69 @@ class Team(SubscriptionModelBase, BaseModel):
 
     @property
     def pipeline_in_progress(self) -> bool:
-        """Return True if the onboarding pipeline is currently running."""
+        """Return True if any onboarding pipeline phase is currently running.
+
+        Includes both Phase 1 (quick start) and Phase 2 (background) statuses.
+        """
         return self.onboarding_pipeline_status in [
             "syncing",
             "llm_processing",
             "computing_metrics",
             "computing_insights",
+            "background_syncing",
+            "background_llm",
         ]
+
+    @property
+    def dashboard_accessible(self) -> bool:
+        """Return True if dashboard should be accessible to the user.
+
+        Dashboard is accessible after Phase 1 completes (phase1_complete)
+        and remains accessible during Phase 2 background processing.
+        """
+        return self.onboarding_pipeline_status in [
+            "phase1_complete",
+            "background_syncing",
+            "background_llm",
+            "complete",
+        ]
+
+    @property
+    def background_in_progress(self) -> bool:
+        """Return True if Phase 2 background processing is running.
+
+        Used to show progress banner in dashboard.
+        """
+        return self.onboarding_pipeline_status in [
+            "background_syncing",
+            "background_llm",
+        ]
+
+    def update_background_progress(
+        self,
+        sync_progress: int | None = None,
+        llm_progress: int | None = None,
+    ) -> None:
+        """Update Phase 2 background progress percentages.
+
+        Args:
+            sync_progress: Progress of background sync (0-100), or None to leave unchanged
+            llm_progress: Progress of background LLM (0-100), or None to leave unchanged
+        """
+        update_fields = []
+
+        if sync_progress is not None:
+            # Clamp to 0-100
+            self.background_sync_progress = max(0, min(100, sync_progress))
+            update_fields.append("background_sync_progress")
+
+        if llm_progress is not None:
+            # Clamp to 0-100
+            self.background_llm_progress = max(0, min(100, llm_progress))
+            update_fields.append("background_llm_progress")
+
+        if update_fields:
+            self.save(update_fields=update_fields)
 
     def update_pipeline_status(self, status: str, error: str | None = None) -> None:
         """

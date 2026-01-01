@@ -98,17 +98,21 @@ def Groq(*args, **kwargs):
 
 
 @shared_task(bind=True, max_retries=2, default_retry_delay=300)
-def run_llm_analysis_batch(self, team_id: int, limit: int = 50, rate_limit_delay: float = 2.1) -> dict:
+def run_llm_analysis_batch(self, team_id: int, limit: int | None = 50, rate_limit_delay: float = 2.1) -> dict:
     """Run LLM analysis on PRs for a team to populate llm_summary.
 
     Processes PRs that either:
     - Don't have llm_summary yet
     - Have an older llm_summary_version than current PROMPT_VERSION
 
+    Two-Phase Onboarding Support:
+        - Phase 1: limit=None processes ALL synced PRs (~150 in 30 days)
+        - Nightly batch: limit=50 (default) for incremental processing
+
     Args:
         self: Celery task instance (bound task)
         team_id: ID of the team to process PRs for
-        limit: Maximum number of PRs to process per run (default: 50)
+        limit: Maximum PRs to process. None = process all. Default: 50
         rate_limit_delay: Seconds between API calls (default: 2.1 for 30 req/min)
 
     Returns:

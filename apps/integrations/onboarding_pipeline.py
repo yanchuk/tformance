@@ -142,21 +142,62 @@ def send_onboarding_complete_email(self, team_id: int) -> dict:
         return {"status": "failed", "error": str(e)}
 
 
-def start_onboarding_pipeline(team_id: int, repo_ids: list[int]) -> AsyncResult:
+@shared_task(bind=True)
+def dispatch_phase2_pipeline(self, team_id: int, repo_ids: list[int]) -> dict:
     """
-    Start the complete onboarding pipeline using a Celery chain.
+    Dispatch Phase 2 background processing after Phase 1 completes.
 
-    This orchestrates the entire onboarding data processing flow:
-    1. Update status to 'syncing'
-    2. Sync historical PR data
-    3. Update status to 'llm_processing'
-    4. Run LLM analysis
-    5. Update status to 'computing_metrics'
-    6. Aggregate weekly metrics
-    7. Update status to 'computing_insights'
-    8. Compute insights
-    9. Update status to 'complete'
-    10. Send completion email
+    This is a separate task that starts Phase 2 asynchronously,
+    allowing Phase 1 to complete and the user to access the dashboard.
+
+    Args:
+        team_id: The team's ID
+        repo_ids: List of TrackedRepository IDs to sync
+
+    Returns:
+        dict with dispatch status
+    """
+    logger.info(f"Dispatching Phase 2 pipeline: team={team_id}, repos={repo_ids}")
+
+    # Import here to avoid circular imports
+    from apps.integrations.tasks import (
+        aggregate_team_weekly_metrics_task,
+        sync_historical_data_task,
+    )
+    from apps.metrics.tasks import compute_team_insights, run_llm_analysis_batch
+
+    # Build Phase 2 pipeline
+    pipeline = chain(
+        # Stage 1: Sync historical data (days 31-90)
+        update_pipeline_status.si(team_id, "background_syncing"),
+        sync_historical_data_task.si(team_id, repo_ids, days_back=90, skip_recent=30),
+        # Stage 2: LLM analysis for remaining PRs
+        update_pipeline_status.si(team_id, "background_llm"),
+        run_llm_analysis_batch.si(team_id, limit=None),  # Process all remaining
+        # Stage 3: Re-aggregate metrics with full data
+        aggregate_team_weekly_metrics_task.si(team_id),
+        # Stage 4: Re-compute insights with full data
+        compute_team_insights.si(team_id),
+        # Stage 5: Final completion
+        update_pipeline_status.si(team_id, "complete"),
+        send_onboarding_complete_email.si(team_id),
+    )
+
+    # Phase 2 failures don't block dashboard - silent error handling
+    pipeline = pipeline.on_error(handle_pipeline_failure.s(team_id=team_id))
+
+    # Execute asynchronously
+    result = pipeline.apply_async()
+
+    return {"status": "dispatched", "team_id": team_id, "task_id": result.id}
+
+
+def run_phase2_pipeline(team_id: int, repo_ids: list[int]) -> AsyncResult:
+    """
+    Run Phase 2 background pipeline directly (for testing).
+
+    This is a synchronous entry point for Phase 2, mainly used in tests.
+    In production, use dispatch_phase2_pipeline which runs async.
 
     Args:
         team_id: The team's ID
@@ -165,33 +206,79 @@ def start_onboarding_pipeline(team_id: int, repo_ids: list[int]) -> AsyncResult:
     Returns:
         AsyncResult from the chain execution
     """
-    # Import tasks from their modules
     from apps.integrations.tasks import (
         aggregate_team_weekly_metrics_task,
         sync_historical_data_task,
     )
     from apps.metrics.tasks import compute_team_insights, run_llm_analysis_batch
 
-    logger.info(f"Starting onboarding pipeline: team={team_id}, repos={repo_ids}")
+    logger.info(f"Running Phase 2 pipeline: team={team_id}, repos={repo_ids}")
 
-    # Build the pipeline chain
-    # Using .si() for immutable signatures (ignores previous task's return value)
     pipeline = chain(
-        # Stage 1: Sync historical data
+        # Stage 1: Sync historical data (days 31-90)
+        update_pipeline_status.si(team_id, "background_syncing"),
+        sync_historical_data_task.si(team_id, repo_ids, days_back=90, skip_recent=30),
+        # Stage 2: LLM analysis for remaining PRs
+        update_pipeline_status.si(team_id, "background_llm"),
+        run_llm_analysis_batch.si(team_id, limit=None),
+        # Stage 3: Re-aggregate metrics
+        aggregate_team_weekly_metrics_task.si(team_id),
+        # Stage 4: Re-compute insights
+        compute_team_insights.si(team_id),
+        # Stage 5: Final completion
+        update_pipeline_status.si(team_id, "complete"),
+    )
+
+    pipeline = pipeline.on_error(handle_pipeline_failure.s(team_id=team_id))
+
+    return pipeline.apply_async()
+
+
+def start_phase1_pipeline(team_id: int, repo_ids: list[int]) -> AsyncResult:
+    """
+    Start Phase 1 (Quick Start) of the two-phase onboarding pipeline.
+
+    Phase 1 provides fast time-to-dashboard (~5 minutes):
+    1. Sync last 30 days of PR data (quick)
+    2. LLM analyze ALL synced PRs (~150 PRs = ~5 min)
+    3. Aggregate metrics
+    4. Compute insights
+    5. Set status to 'phase1_complete' (dashboard accessible)
+    6. Dispatch Phase 2 for background processing
+
+    Args:
+        team_id: The team's ID
+        repo_ids: List of TrackedRepository IDs to sync
+
+    Returns:
+        AsyncResult from the chain execution
+    """
+    from apps.integrations.tasks import (
+        aggregate_team_weekly_metrics_task,
+        sync_historical_data_task,
+    )
+    from apps.metrics.tasks import compute_team_insights, run_llm_analysis_batch
+
+    logger.info(f"Starting Phase 1 pipeline: team={team_id}, repos={repo_ids}")
+
+    # Build Phase 1 pipeline (Quick Start)
+    pipeline = chain(
+        # Stage 1: Sync last 30 days only (fast)
         update_pipeline_status.si(team_id, "syncing"),
-        sync_historical_data_task.si(team_id, repo_ids),
-        # Stage 2: LLM analysis
+        sync_historical_data_task.si(team_id, repo_ids, days_back=30),
+        # Stage 2: LLM analysis for ALL synced PRs
         update_pipeline_status.si(team_id, "llm_processing"),
-        run_llm_analysis_batch.si(team_id, limit=100),  # Process more for onboarding
+        run_llm_analysis_batch.si(team_id, limit=None),  # Process ALL for Phase 1
         # Stage 3: Metrics aggregation
         update_pipeline_status.si(team_id, "computing_metrics"),
         aggregate_team_weekly_metrics_task.si(team_id),
         # Stage 4: Insights computation
         update_pipeline_status.si(team_id, "computing_insights"),
         compute_team_insights.si(team_id),
-        # Stage 5: Completion
-        update_pipeline_status.si(team_id, "complete"),
-        send_onboarding_complete_email.si(team_id),
+        # Stage 5: Phase 1 Complete (dashboard accessible!)
+        update_pipeline_status.si(team_id, "phase1_complete"),
+        # Stage 6: Dispatch Phase 2 in background
+        dispatch_phase2_pipeline.si(team_id, repo_ids),
     )
 
     # Attach error handler
@@ -199,3 +286,24 @@ def start_onboarding_pipeline(team_id: int, repo_ids: list[int]) -> AsyncResult:
 
     # Execute the pipeline
     return pipeline.apply_async()
+
+
+def start_onboarding_pipeline(team_id: int, repo_ids: list[int]) -> AsyncResult:
+    """
+    Start the onboarding pipeline using Two-Phase Quick Start.
+
+    Delegates to start_phase1_pipeline for faster time-to-dashboard.
+    Phase 2 runs automatically in the background after Phase 1.
+
+    Two-Phase Onboarding:
+    - Phase 1: 30 days sync → ALL PRs LLM → dashboard ready (~5 min)
+    - Phase 2: 31-90 days sync → remaining LLM → complete (background)
+
+    Args:
+        team_id: The team's ID
+        repo_ids: List of TrackedRepository IDs to sync
+
+    Returns:
+        AsyncResult from the Phase 1 chain execution
+    """
+    return start_phase1_pipeline(team_id, repo_ids)

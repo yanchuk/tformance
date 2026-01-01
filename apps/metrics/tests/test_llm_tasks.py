@@ -346,3 +346,72 @@ class TestLLMTaskDataExtraction(TestCase):
         self.assertEqual(call_kwargs.get("commit_messages"), [])
         self.assertEqual(call_kwargs.get("reviewers"), [])
         self.assertIsNone(call_kwargs.get("author_name"))
+
+
+@patch("apps.metrics.tasks.time.sleep")  # Mock rate limit delays
+class TestLLMBatchLimitNone(TestCase):
+    """Tests for limit=None support in run_llm_analysis_batch.
+
+    Two-Phase Onboarding requires processing ALL PRs in Phase 1.
+    """
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.team = TeamFactory()
+
+    def _mock_response(self):
+        """Create mock Groq response."""
+        mock = MagicMock()
+        mock.choices = [
+            MagicMock(message=MagicMock(content='{"ai": {"is_assisted": false}, "health": {"scope": "small"}}'))
+        ]
+        return mock
+
+    def test_limit_none_processes_all_prs(self, mock_sleep):
+        """When limit=None, all PRs should be processed (Two-Phase Onboarding)."""
+        # Create 10 PRs
+        for _ in range(10):
+            PullRequestFactory(team=self.team, body="Test description")
+
+        with (
+            patch.dict("os.environ", {"GROQ_API_KEY": "test-key"}),
+            patch("apps.metrics.tasks.Groq") as mock_groq,
+        ):
+            mock_groq.return_value.chat.completions.create.return_value = self._mock_response()
+            result = run_llm_analysis_batch(team_id=self.team.id, limit=None)
+
+        # Should process ALL 10 PRs
+        self.assertEqual(result["processed"], 10)
+        self.assertEqual(mock_groq.return_value.chat.completions.create.call_count, 10)
+
+    def test_limit_none_works_with_many_prs(self, mock_sleep):
+        """limit=None should handle more PRs than default limit of 50."""
+        # Create 60 PRs (more than default limit of 50)
+        for _ in range(60):
+            PullRequestFactory(team=self.team, body="Test description")
+
+        with (
+            patch.dict("os.environ", {"GROQ_API_KEY": "test-key"}),
+            patch("apps.metrics.tasks.Groq") as mock_groq,
+        ):
+            mock_groq.return_value.chat.completions.create.return_value = self._mock_response()
+            result = run_llm_analysis_batch(team_id=self.team.id, limit=None)
+
+        # Should process ALL 60 PRs
+        self.assertEqual(result["processed"], 60)
+
+    def test_default_limit_is_50(self, mock_sleep):
+        """Default limit should be 50 for backward compatibility."""
+        # Create 60 PRs
+        for _ in range(60):
+            PullRequestFactory(team=self.team, body="Test description")
+
+        with (
+            patch.dict("os.environ", {"GROQ_API_KEY": "test-key"}),
+            patch("apps.metrics.tasks.Groq") as mock_groq,
+        ):
+            mock_groq.return_value.chat.completions.create.return_value = self._mock_response()
+            result = run_llm_analysis_batch(team_id=self.team.id)  # No limit specified
+
+        # Should only process 50 (default limit)
+        self.assertEqual(result["processed"], 50)

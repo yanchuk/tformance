@@ -2041,16 +2041,28 @@ def queue_llm_analysis_batch_task(self, team_id: int, batch_size: int = 50) -> d
 
 
 @shared_task(bind=True)
-def sync_historical_data_task(self, team_id: int, repo_ids: list[int]) -> dict:
+def sync_historical_data_task(
+    self,
+    team_id: int,
+    repo_ids: list[int],
+    days_back: int = 90,
+    skip_recent: int = 0,
+) -> dict:
     """
     Sync historical PR data for selected repositories during onboarding.
 
     This task fetches historical data for newly connected repositories,
     processes PRs through LLM for AI detection, and reports real-time progress.
 
+    Supports two-phase onboarding:
+    - Phase 1: days_back=30, skip_recent=0 (sync recent 30 days)
+    - Phase 2: days_back=90, skip_recent=30 (sync days 31-90, older data)
+
     Args:
         team_id: ID of the team
         repo_ids: List of TrackedRepository IDs to sync
+        days_back: How many days of history to sync (default: 90)
+        skip_recent: Skip PRs from the most recent N days (default: 0)
 
     Returns:
         Dict with sync results (status, repos_synced, total_prs)
@@ -2145,8 +2157,13 @@ def sync_historical_data_task(self, team_id: int, repo_ids: list[int]) -> dict:
                     current_repo.sync_prs_total = prs_total
                     current_repo.save(update_fields=["sync_progress", "sync_prs_completed", "sync_prs_total"])
 
-            # Sync the repository
-            result = service.sync_repository(repo=repo, progress_callback=progress_callback)
+            # Sync the repository with date range parameters
+            result = service.sync_repository(
+                repo=repo,
+                progress_callback=progress_callback,
+                days_back=days_back,
+                skip_recent=skip_recent,
+            )
             prs_synced = result.get("prs_synced", 0)
             total_prs += prs_synced
 

@@ -112,15 +112,21 @@ def _get_team_member(team, github_login: str | None) -> TeamMember | None:
 async def sync_repository_history_graphql(
     tracked_repo,
     days_back: int = 90,
+    skip_recent: int = 0,
 ) -> dict[str, Any]:
     """Sync repository PR history using GraphQL API.
 
     Fetches all PRs (with reviews, commits, files) in bulk using GraphQL pagination.
     Much faster than REST API for historical sync.
 
+    Supports two-phase onboarding:
+    - Phase 1: days_back=30, skip_recent=0 (sync recent 30 days)
+    - Phase 2: days_back=90, skip_recent=30 (sync days 31-90, older data)
+
     Args:
         tracked_repo: TrackedRepository instance to sync
         days_back: Only sync PRs created within this many days (default 90)
+        skip_recent: Skip PRs from the most recent N days (default 0)
 
     Returns:
         Dict with sync results:
@@ -154,8 +160,12 @@ async def sync_repository_history_graphql(
         await _update_sync_status(tracked_repo_id, "error")
         return result.to_dict()
 
-    # Calculate cutoff date for filtering
-    cutoff_date = timezone.now() - timedelta(days=days_back)
+    # Calculate date filters for two-phase support
+    # cutoff_date: PRs older than this are skipped (e.g., 90 days ago)
+    # skip_before_date: PRs newer than this are skipped (e.g., 30 days ago for Phase 2)
+    now = timezone.now()
+    cutoff_date = now - timedelta(days=days_back)
+    skip_before_date = now - timedelta(days=skip_recent) if skip_recent > 0 else None
 
     # Create GraphQL client
     client = GitHubGraphQLClient(access_token)
@@ -189,7 +199,7 @@ async def sync_repository_history_graphql(
             # Process each PR
             for pr_data in pr_nodes:
                 try:
-                    await _process_pr_async(team_id, full_name, pr_data, cutoff_date, result)
+                    await _process_pr_async(team_id, full_name, pr_data, cutoff_date, skip_before_date, result)
                 except Exception as e:
                     pr_number = pr_data.get("number", "unknown")
                     error_msg = f"Error processing PR #{pr_number}: {type(e).__name__}: {e}"
@@ -228,12 +238,19 @@ def _update_sync_complete(tracked_repo_id: int) -> None:
 
 
 @sync_to_async
-def _process_pr_async(team_id: int, github_repo: str, pr_data: dict, cutoff_date, result: SyncResult) -> None:
+def _process_pr_async(
+    team_id: int,
+    github_repo: str,
+    pr_data: dict,
+    cutoff_date,
+    skip_before_date,
+    result: SyncResult,
+) -> None:
     """Process a single PR from GraphQL response (async wrapper)."""
     from apps.teams.models import Team
 
     team = Team.objects.get(id=team_id)
-    _process_pr(team, github_repo, pr_data, cutoff_date, result)
+    _process_pr(team, github_repo, pr_data, cutoff_date, skip_before_date, result)
 
 
 def _detect_pr_ai_involvement(author_login: str | None, title: str, body: str) -> tuple[bool, list[str]]:
@@ -275,16 +292,24 @@ def _process_pr(
     github_repo: str,
     pr_data: dict,
     cutoff_date,
+    skip_before_date,
     result: SyncResult,
 ) -> None:
     """Process a single PR from GraphQL response.
 
     Creates or updates PullRequest and related records (reviews, commits, files).
+
+    Supports two-phase onboarding date filtering:
+    - cutoff_date: Skip PRs older than this (e.g., 90 days ago)
+    - skip_before_date: Skip PRs newer than this (e.g., 30 days ago for Phase 2)
     """
-    # Parse PR created date and check cutoff
+    # Parse PR created date and check date range
     created_at = _parse_datetime(pr_data.get("createdAt"))
     if created_at and created_at < cutoff_date:
         logger.debug(f"Skipping PR #{pr_data.get('number')} - older than cutoff")
+        return
+    if skip_before_date and created_at and created_at > skip_before_date:
+        logger.debug(f"Skipping PR #{pr_data.get('number')} - too recent (Phase 2 skip)")
         return
 
     # Get author
