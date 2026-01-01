@@ -1,9 +1,7 @@
-# Engineering Metrics Analysis for {{ metadata.team_name }}
-# Period: {{ metadata.start_date }} to {{ metadata.end_date }} ({{ metadata.days }} days)
+<metrics_context team="{{ metadata.team_name }}" period="{{ metadata.days }} days">
+# Period: {{ metadata.start_date }} to {{ metadata.end_date }}
 
----
-
-## PRE-COMPUTED METRIC CARDS (USE THESE EXACT VALUES)
+## PRE-COMPUTED METRIC CARDS (COPY EXACTLY)
 
 You MUST use these exact values for metric_cards. Do NOT recalculate.
 
@@ -99,14 +97,13 @@ You MUST use these exact values for metric_cards. Do NOT recalculate.
 | AI Adoption | {{ "%.0f"|format(ai_impact.ai_adoption_pct) }}% | >40% healthy, <20% low | {% if ai_impact.ai_adoption_pct >= 40 %}✅ Healthy{% elif ai_impact.ai_adoption_pct >= 20 %}⚠️ Moderate{% else %}📊 Low{% endif %} |
 | Top Contributor | {{ "%.0f"|format(team_health.pr_distribution.top_contributor_pct) }}% | <30% healthy, >50% risk | {% if team_health.pr_distribution.top_contributor_pct < 30 %}✅ Healthy{% elif team_health.pr_distribution.top_contributor_pct < 50 %}⚠️ Warning{% else %}🔴 Bus Factor{% endif %} |
 
----
+</metrics_context>
 
-## YOUR TASK
-
-Based on this data:
-1. Write a headline identifying the MOST SIGNIFICANT issue (use priority order from system prompt)
-2. Provide 2-3 sentences of detail with SPECIFIC numbers from the data
-3. List 1-2 possible causes (hypothesize WHY based on data patterns)
-4. Give ONE actionable recommendation that addresses an issue from your detail
-5. Use the PRE-COMPUTED METRIC CARDS exactly as shown above
-6. Select 1-3 actions that match the issues you discussed
+<task>
+Analyze this data and return JSON with:
+1. headline: The ROOT CAUSE (not symptom) in 8-12 words, NO numbers
+2. detail: 2-3 sentences using QUALITATIVE language (see system prompt conversions)
+3. recommendation: ONE specific action addressing an issue from your detail
+4. metric_cards: Copy EXACTLY from PRE-COMPUTED METRIC CARDS above
+5. actions: 2-3 buttons matching the issues you discussed
+</task>
