@@ -46,3 +46,4 @@ seeding*.log
 # Model comparison evaluation files
 dev/active/model-comparison/
 real-prs-feedback.json
+results/

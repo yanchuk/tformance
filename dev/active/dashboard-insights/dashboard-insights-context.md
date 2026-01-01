@@ -1,14 +1,56 @@
 # Dashboard Insights Feature - Context
 
-**Last Updated**: 2026-01-01 (Session 4 - Version I Qualitative Language)
+**Last Updated**: 2026-01-01 (Session 5 - Metric Cards Optimization)
 **Branch**: `main` (was `feature/dashboard-insights`, now merged)
-**Status**: Implementation Complete + Version I Qualitative Language + OSS-120B Model
+**Status**: Implementation Complete + Qualitative Language + Pre-computed Metric Cards
 
 ## Overview
 
-LLM-powered engineering insights displayed on the main dashboard. Uses Groq API with **openai/gpt-oss-120b** model (with `strict: true` JSON schema) to generate weekly/monthly summaries of team performance metrics. Now uses **qualitative language** instead of exact percentages/hours.
+LLM-powered engineering insights displayed on the main dashboard. Uses Groq API with **openai/gpt-oss-120b** model (with `strict: true` JSON schema) to generate weekly/monthly summaries of team performance metrics. Uses **qualitative language** and **pre-computed metric cards**.
 
-## Latest Session: Version I Qualitative Language (2026-01-01)
+## Latest Session: Metric Cards Optimization (2026-01-01)
+
+### Problem
+The LLM was echoing back ~150 tokens of metric_cards that we provided in the input. This wastes tokens and can cause format inconsistencies.
+
+### Solution
+Pre-compute metric_cards in Python, merge with LLM response after generation.
+
+### Key Changes (Session 5)
+
+**`apps/metrics/services/insight_llm.py`**:
+- Added `build_metric_cards(data)` function to pre-compute cards:
+  ```python
+  def build_metric_cards(data: dict) -> list[dict]:
+      """Pre-compute metric cards from gathered data."""
+      # Returns 4 cards: Throughput, Cycle Time, AI Adoption, Quality
+      # Each with label, value, trend
+  ```
+- Removed `metric_cards` from `INSIGHT_JSON_SCHEMA` (LLM no longer returns them)
+- Updated system prompt (Version K) - removed metric_cards instructions
+- Updated `generate_insight()` to merge pre-computed cards with LLM response
+- Increased `max_tokens` to 1000 (some teams need more headroom)
+- Added explicit action format example in prompt for better Llama fallback
+
+**`apps/metrics/prompts/templates/insight/user.jinja2`**:
+- Removed PRE-COMPUTED METRIC CARDS section (~30 lines)
+- Simplified task section to just prose fields
+
+### Benefits
+- ~150 tokens saved per request
+- Eliminates format inconsistencies in metric_cards
+- Removes redundant data echoing (input → output)
+- Metric cards always consistent (computed once, not by LLM)
+
+### API Parameters
+- **Model**: `openai/gpt-oss-120b` (primary), `llama-3.3-70b-versatile` (fallback)
+- **Temperature**: 0.2 (low variance for consistent output)
+- **max_tokens**: 1000 (increased for teams with larger data)
+- **strict**: true (constrained JSON decoding)
+
+---
+
+## Session 4: Version I Qualitative Language (2026-01-01)
 
 ### Problem
 User feedback: insights had "too many exact numbers":
