@@ -275,3 +275,96 @@ class TestTeamDashboard(TestCase):
 
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response.url, "/app/?days=90")
+
+
+class TestBackgroundProgress(TestCase):
+    """Tests for background_progress view (Two-Phase Onboarding banner)."""
+
+    def setUp(self):
+        """Set up test fixtures using factories."""
+        self.team = TeamFactory()
+        self.admin_user = UserFactory()
+        self.team.members.add(self.admin_user, through_defaults={"role": ROLE_ADMIN})
+        self.client = Client()
+
+    def test_background_progress_requires_login(self):
+        """Test that background_progress requires login."""
+        response = self.client.get(reverse("metrics:background_progress"))
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/accounts/login/", response.url)
+
+    def test_background_progress_returns_200(self):
+        """Test that background_progress returns 200 for authenticated user."""
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(reverse("metrics:background_progress"))
+
+        self.assertEqual(response.status_code, 200)
+
+    def test_background_progress_renders_banner_template(self):
+        """Test that background_progress renders the banner partial."""
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(reverse("metrics:background_progress"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "metrics/partials/background_progress_banner.html")
+
+    def test_background_progress_context_has_team(self):
+        """Test that background_progress context includes team object."""
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(reverse("metrics:background_progress"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("team", response.context)
+        self.assertEqual(response.context["team"].id, self.team.id)
+
+    def test_background_progress_when_syncing(self):
+        """Test that banner shows during background_syncing status."""
+        self.team.onboarding_pipeline_status = "background_syncing"
+        self.team.background_sync_progress = 50
+        self.team.save()
+
+        self.client.force_login(self.admin_user)
+        response = self.client.get(reverse("metrics:background_progress"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Syncing historical data")
+
+    def test_background_progress_when_llm_processing(self):
+        """Test that banner shows during background_llm status."""
+        self.team.onboarding_pipeline_status = "background_llm"
+        self.team.background_llm_progress = 75
+        self.team.save()
+
+        self.client.force_login(self.admin_user)
+        response = self.client.get(reverse("metrics:background_progress"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Analyzing PRs with AI")
+
+    def test_background_progress_hidden_when_complete(self):
+        """Test that banner is hidden when processing is complete."""
+        self.team.onboarding_pipeline_status = "complete"
+        self.team.save()
+
+        self.client.force_login(self.admin_user)
+        response = self.client.get(reverse("metrics:background_progress"))
+
+        self.assertEqual(response.status_code, 200)
+        # Banner should not show progress bar when not in background states
+        self.assertNotContains(response, "progress-info")
+
+    def test_background_progress_hidden_during_phase1(self):
+        """Test that banner is hidden during Phase 1 processing."""
+        self.team.onboarding_pipeline_status = "llm_processing"
+        self.team.save()
+
+        self.client.force_login(self.admin_user)
+        response = self.client.get(reverse("metrics:background_progress"))
+
+        self.assertEqual(response.status_code, 200)
+        # Not in background state, so banner should not show
+        self.assertNotContains(response, "progress-info")

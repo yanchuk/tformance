@@ -72,6 +72,7 @@ team_urlpatterns = (
         path("partials/team-velocity/", views.team_velocity_view, name="team_velocity"),
         path("partials/engineering-insights/", views.engineering_insights, name="engineering_insights"),
         path("partials/engineering-insights/refresh/", views.refresh_insight, name="refresh_insight"),
+        path("partials/background-progress/", views.background_progress, name="background_progress"),
     ],
     "metrics",
 )

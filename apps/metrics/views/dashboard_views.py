@@ -145,6 +145,35 @@ def engineering_insights(request: HttpRequest) -> HttpResponse:
     )
 
 
+@login_and_team_required
+def background_progress(request: HttpRequest) -> HttpResponse:
+    """Return the background progress banner for HTMX polling.
+
+    Used during Two-Phase Onboarding when Phase 2 is processing
+    historical data in the background.
+    """
+    context = {
+        "team": request.team,
+        "show_complete_message": False,
+    }
+
+    # If background processing just completed, show success message briefly
+    # Check if status transitioned from background to complete
+    if request.team.onboarding_pipeline_status == "complete":
+        # Check if we should show the completion message
+        # (only once per session, using a simple session flag)
+        session_key = f"bg_complete_shown_{request.team.id}"
+        if not request.session.get(session_key):
+            context["show_complete_message"] = True
+            request.session[session_key] = True
+
+    return TemplateResponse(
+        request,
+        "metrics/partials/background_progress_banner.html",
+        context,
+    )
+
+
 @require_POST
 @login_and_team_required
 def refresh_insight(request: HttpRequest) -> HttpResponse:

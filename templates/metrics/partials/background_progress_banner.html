@@ -1,0 +1,78 @@
+{% comment %}
+Background Progress Banner for Two-Phase Onboarding
+
+Shows when Phase 2 is processing historical data in the background.
+Uses HTMX polling to update progress and auto-dismiss when complete.
+
+Context variables:
+  - team: The team object with background_in_progress property
+  - background_status: Current status (background_syncing, background_llm)
+  - sync_progress: 0-100 progress for sync
+  - llm_progress: 0-100 progress for LLM analysis
+{% endcomment %}
+
+{% load i18n %}
+
+{% if team.background_in_progress %}
+<div id="background-progress-banner"
+     class="alert alert-info mb-4 shadow-lg"
+     hx-get="{% url 'metrics:background_progress' %}"
+     hx-trigger="every 10s"
+     hx-swap="outerHTML"
+     role="status"
+     aria-live="polite">
+  <div class="flex items-center gap-3 w-full">
+    <!-- Animated sync icon -->
+    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+    </svg>
+
+    <div class="flex-1">
+      <div class="flex justify-between items-center mb-1">
+        <span class="font-medium">
+          {% if team.onboarding_pipeline_status == 'background_syncing' %}
+            {% trans "Syncing historical data..." %}
+          {% elif team.onboarding_pipeline_status == 'background_llm' %}
+            {% trans "Analyzing PRs with AI..." %}
+          {% else %}
+            {% trans "Processing historical data..." %}
+          {% endif %}
+        </span>
+        <span class="text-sm opacity-70">
+          {% if team.onboarding_pipeline_status == 'background_syncing' %}
+            {{ team.background_sync_progress }}%
+          {% elif team.onboarding_pipeline_status == 'background_llm' %}
+            {{ team.background_llm_progress }}%
+          {% endif %}
+        </span>
+      </div>
+
+      <!-- Progress bar -->
+      <progress
+        class="progress progress-info w-full"
+        value="{% if team.onboarding_pipeline_status == 'background_syncing' %}{{ team.background_sync_progress }}{% elif team.onboarding_pipeline_status == 'background_llm' %}{{ team.background_llm_progress }}{% else %}0{% endif %}"
+        max="100">
+      </progress>
+
+      <p class="text-sm opacity-70 mt-1">
+        {% trans "Your dashboard shows the last 30 days. Older data is being processed in the background." %}
+      </p>
+    </div>
+  </div>
+</div>
+{% elif show_complete_message %}
+<!-- Temporary success message after background processing completes -->
+<div id="background-progress-banner"
+     class="alert alert-success mb-4 shadow-lg"
+     x-data="{ show: true }"
+     x-show="show"
+     x-init="setTimeout(() => show = false, 5000)"
+     x-transition:leave="transition ease-in duration-300"
+     x-transition:leave-start="opacity-100"
+     x-transition:leave-end="opacity-0">
+  <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+  </svg>
+  <span>{% trans "All historical data has been processed! Your dashboard now shows complete metrics." %}</span>
+</div>
+{% endif %}

@@ -42,6 +42,7 @@ from apps.metrics.views.chart_views import (
     unlinked_prs_table,
 )
 from apps.metrics.views.dashboard_views import (
+    background_progress,
     cto_overview,
     dashboard_redirect,
     dismiss_insight,
@@ -112,4 +113,5 @@ __all__ = [
     "needs_attention_view",
     "ai_impact_view",
     "team_velocity_view",
+    "background_progress",
 ]

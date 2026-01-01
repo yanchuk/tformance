@@ -43,11 +43,22 @@ Implementing Option C (Two-Phase Quick Start) for onboarding pipeline to reduce 
 - Added `run_phase2_pipeline()` - syncs 31-90 days, ends with `complete`
 - Updated `start_onboarding_pipeline()` to delegate to `start_phase1_pipeline()`
 
+**UI Progress Banner** (`templates/metrics/partials/background_progress_banner.html`):
+- Shows during `background_syncing` and `background_llm` statuses
+- Displays progress percentage with animated progress bar
+- Uses HTMX polling (every 10s) for live updates
+- Auto-dismisses with success message when complete
+- Included in cto_overview.html and analytics/overview.html
+
+**Background Progress View** (`apps/metrics/views/dashboard_views.py`):
+- Added `background_progress()` endpoint for HTMX polling
+- URL: `/app/metrics/partials/background-progress/`
+- Tests: 8 new tests in test_dashboard_views.py
+
 ### 📋 Pending
 
-- Add UI progress banner for background processing
-- Add progress tracking to sync and LLM tasks
-- Implement error handling tests
+- Add progress tracking to sync and LLM tasks (optional enhancement)
+- Implement error handling tests (optional)
 
 ## Current Architecture
 
