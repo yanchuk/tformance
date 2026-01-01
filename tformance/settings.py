@@ -412,6 +412,14 @@ HISTORICAL_SYNC_CONFIG = {
     "GROQ_POLL_INTERVAL": env.int("SYNC_GROQ_POLL_INTERVAL", default=5),
 }
 
+# GitHub App (for installation-based auth, replacing OAuth for repos/PRs)
+# Keep OAuth above for Copilot metrics which require user-level access
+GITHUB_APP_ID = env("GITHUB_APP_ID", default="")
+GITHUB_APP_PRIVATE_KEY = env("GITHUB_APP_PRIVATE_KEY", default="")
+GITHUB_APP_WEBHOOK_SECRET = env("GITHUB_APP_WEBHOOK_SECRET", default="")
+GITHUB_APP_CLIENT_ID = env("GITHUB_APP_CLIENT_ID", default="")  # For user OAuth via App
+GITHUB_APP_CLIENT_SECRET = env("GITHUB_APP_CLIENT_SECRET", default="")
+
 # Jira OAuth (Atlassian)
 JIRA_CLIENT_ID = env("JIRA_CLIENT_ID", default="")
 JIRA_CLIENT_SECRET = env("JIRA_CLIENT_SECRET", default="")
@@ -765,7 +773,16 @@ if SENTRY_DSN:
     import sentry_sdk
     from sentry_sdk.integrations.django import DjangoIntegration
 
-    sentry_sdk.init(dsn=SENTRY_DSN, integrations=[DjangoIntegration()])
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        integrations=[DjangoIntegration()],
+        # Performance monitoring
+        traces_sample_rate=1.0 if DEBUG else 0.1,  # 100% in dev, 10% in prod
+        profiles_sample_rate=1.0 if DEBUG else 0.1,
+        # Track HTTP requests to external services (GitHub API)
+        send_default_pii=False,
+        environment=env("SENTRY_ENVIRONMENT", default="development" if DEBUG else "production"),
+    )
 
 
 # PostHog Analytics
