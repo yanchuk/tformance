@@ -40,6 +40,7 @@ INSIGHT_FALLBACK_MODEL = "llama-3.3-70b-versatile"
 
 # JSON Schema for structured output validation
 # Note: additionalProperties must be false on all objects for Groq strict mode
+# Note: metric_cards are pre-computed in Python, not returned by LLM (saves ~150 tokens)
 INSIGHT_JSON_SCHEMA = {
     "type": "object",
     "properties": {
@@ -49,30 +50,11 @@ INSIGHT_JSON_SCHEMA = {
         },
         "detail": {
             "type": "string",
-            "description": "Bullet points as string with newlines: • fact — cause/action",
+            "description": "2-3 natural sentences explaining what's happening",
         },
         "recommendation": {
             "type": "string",
             "description": "ONE actionable sentence with specific target",
-        },
-        "metric_cards": {
-            "type": "array",
-            "description": "COPY EXACTLY from PRE-COMPUTED METRIC CARDS section",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "label": {"type": "string"},
-                    "value": {"type": "string"},
-                    "trend": {
-                        "type": "string",
-                        "enum": ["positive", "negative", "neutral", "warning"],
-                    },
-                },
-                "required": ["label", "value", "trend"],
-                "additionalProperties": False,
-            },
-            "minItems": 4,
-            "maxItems": 4,
         },
         "actions": {
             "type": "array",
@@ -101,14 +83,14 @@ INSIGHT_JSON_SCHEMA = {
             "maxItems": 3,
         },
     },
-    "required": ["headline", "detail", "recommendation", "metric_cards", "actions"],
+    "required": ["headline", "detail", "recommendation", "actions"],
     "additionalProperties": False,
 }
 
 # Models that support json_schema response format (strict JSON)
 MODELS_WITH_JSON_SCHEMA = {"openai/gpt-oss-20b", "openai/gpt-oss-120b"}
 
-# System prompt for insight generation (Version J - restructured per best practices)
+# System prompt for insight generation (Version K - no metric_cards in output)
 # Structure: Identity → Instructions → Examples (optimized for prompt caching)
 INSIGHT_SYSTEM_PROMPT = """# Identity
 
@@ -119,17 +101,15 @@ You speak naturally, like talking to a colleague, not writing a report.
 # Instructions
 
 ## Output Format
-Return a JSON object with these fields:
+Return a JSON object with exactly these fields:
 - headline: Root cause → impact (8-12 words, NO numbers)
 - detail: 2-3 natural sentences explaining what's happening (NO raw numbers)
 - recommendation: ONE specific action to take
-- metric_cards: Copy EXACTLY from PRE-COMPUTED METRIC CARDS in the data
-- actions: 2-3 buttons matching issues discussed
+- actions: 2-3 objects with action_type and label, e.g. [{"action_type": "view_slow_prs", "label": "View slow PRs"}]
 
 ## What to Do
 - Identify the ROOT CAUSE, not the symptom
 - Use qualitative language: "nearly doubled", "about a week", "most of the work"
-- Copy metric_cards EXACTLY as provided - do not recalculate
 - Connect insights with cause → effect arrows or natural sentences
 
 ## What NOT to Do
@@ -138,7 +118,6 @@ Return a JSON object with these fields:
 - Do not use hour values: "40 hours", "142.6 hours"
 - Do not use benchmark comparisons: "less than 48 hours", "over 40%"
 - Do not use exact PR counts over 20: "111 PRs", "150 PRs"
-- Do not repeat numbers that are already in metric_cards
 
 ## Number Conversions
 Percentages: 1-10% → "very few" | 10-25% → "a fifth" | 25-50% → "a third" | 50-75% → "most" | 75%+ → "nearly all"
@@ -195,6 +174,94 @@ def resolve_action_url(action: dict, days: int) -> str:
     params = {"days": days}
     params.update(ACTION_URL_MAP.get(action.get("action_type", ""), {}))
     return f"{base}?{urlencode(params)}"
+
+
+def build_metric_cards(data: dict) -> list[dict]:
+    """Pre-compute metric cards from gathered data.
+
+    Computes the 4 standard metric cards (Throughput, Cycle Time, AI Adoption, Quality)
+    with proper trend indicators. This is computed in Python instead of asking the LLM
+    to return them, saving ~150 tokens per request and eliminating format errors.
+
+    Args:
+        data: Dict from gather_insight_data with velocity, quality, ai_impact
+
+    Returns:
+        List of 4 metric card dicts with label, value, trend
+    """
+    velocity = data.get("velocity", {})
+    quality = data.get("quality", {})
+    ai_impact = data.get("ai_impact", {})
+
+    # Extract values
+    throughput = velocity.get("throughput", {})
+    throughput_change = throughput.get("pct_change")
+    throughput_current = throughput.get("current", 0)
+
+    cycle_time = velocity.get("cycle_time", {})
+    cycle_time_change = cycle_time.get("pct_change")
+    cycle_time_current = cycle_time.get("current")
+
+    ai_adoption = ai_impact.get("ai_adoption_pct", 0)
+    revert_rate = quality.get("revert_rate", 0)
+
+    # Build cards matching the Jinja2 template logic
+    cards = []
+
+    # 1. Throughput card
+    if throughput_change is not None:
+        throughput_value = f"{throughput_change:+.1f}%"
+        if throughput_change > 10:
+            throughput_trend = "positive"
+        elif throughput_change < -10:
+            throughput_trend = "negative"
+        else:
+            throughput_trend = "neutral"
+    else:
+        throughput_value = f"{throughput_current} PRs"
+        throughput_trend = "neutral"
+    cards.append({"label": "Throughput", "value": throughput_value, "trend": throughput_trend})
+
+    # 2. Cycle Time card
+    if cycle_time_change is not None:
+        cycle_value = f"{cycle_time_change:+.1f}%"
+        if cycle_time_change < -10:
+            cycle_trend = "positive"  # Faster is good
+        elif cycle_time_change > 20:
+            cycle_trend = "negative"
+        elif cycle_time_change > 10:
+            cycle_trend = "warning"
+        else:
+            cycle_trend = "neutral"
+    elif cycle_time_current is not None:
+        cycle_value = f"{cycle_time_current:.1f}h"
+        cycle_trend = "neutral"
+    else:
+        cycle_value = "N/A"
+        cycle_trend = "neutral"
+    cards.append({"label": "Cycle Time", "value": cycle_value, "trend": cycle_trend})
+
+    # 3. AI Adoption card
+    ai_value = f"{ai_adoption:.1f}%"
+    if ai_adoption >= 40:
+        ai_trend = "positive"
+    elif ai_adoption >= 20:
+        ai_trend = "neutral"
+    else:
+        ai_trend = "warning"
+    cards.append({"label": "AI Adoption", "value": ai_value, "trend": ai_trend})
+
+    # 4. Quality card
+    quality_value = f"{revert_rate:.1f}% reverts"
+    if revert_rate <= 2:
+        quality_trend = "positive"
+    elif revert_rate <= 5:
+        quality_trend = "warning"
+    else:
+        quality_trend = "negative"
+    cards.append({"label": "Quality", "value": quality_value, "trend": quality_trend})
+
+    return cards
 
 
 def gather_insight_data(
@@ -405,6 +472,8 @@ def generate_insight(
     Uses two-pass approach: primary model first, fallback model on error.
     Falls back to rule-based insight only if both LLM calls fail.
 
+    Metric cards are pre-computed in Python (not by LLM) for reliability.
+
     Args:
         data: Dict from gather_insight_data with all metrics
         api_key: Optional GROQ API key (defaults to GROQ_API_KEY env var)
@@ -415,9 +484,13 @@ def generate_insight(
             - headline: 1-2 sentence headline
             - detail: 2-3 sentences of context
             - recommendation: Actionable advice
-            - metric_cards: List of 4 metric card dicts
+            - metric_cards: List of 4 metric card dicts (pre-computed)
+            - actions: List of action buttons
             - is_fallback: True if fallback was used
     """
+    # Pre-compute metric cards (not from LLM - saves ~150 tokens)
+    metric_cards = build_metric_cards(data)
+
     # Initialize GROQ client
     client = Groq(api_key=api_key or os.environ.get("GROQ_API_KEY"))
 
@@ -431,7 +504,7 @@ def generate_insight(
         try:
             # Build API call parameters
             # - temperature 0.2: Low variance for consistent structured output
-            # - max_tokens 1200: metric_cards array needs ~400 tokens, plus prose
+            # - max_tokens 1000: Prose only, some teams need more headroom
             api_params = {
                 "model": current_model,
                 "messages": [
@@ -439,7 +512,7 @@ def generate_insight(
                     {"role": "user", "content": user_prompt},
                 ],
                 "temperature": 0.2,
-                "max_tokens": 1200,
+                "max_tokens": 1000,
             }
 
             # Use json_schema for models that support it, json_object for others
@@ -465,7 +538,8 @@ def generate_insight(
             content = response.choices[0].message.content
             result = json.loads(content)
 
-            # Add is_fallback=False to indicate successful LLM response
+            # Merge pre-computed metric_cards into result
+            result["metric_cards"] = metric_cards
             result["is_fallback"] = False
 
             logger.info(f"Insight generated successfully with {current_model}")

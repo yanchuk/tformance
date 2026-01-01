@@ -1,34 +1,7 @@
 <metrics_context team="{{ metadata.team_name }}" period="{{ metadata.days }} days">
 # Period: {{ metadata.start_date }} to {{ metadata.end_date }}
 
-## PRE-COMPUTED METRIC CARDS (COPY EXACTLY)
-
-You MUST use these exact values for metric_cards. Do NOT recalculate.
-
-{% set throughput_change = velocity.throughput.pct_change %}
-{% set cycle_time_change = velocity.cycle_time.pct_change %}
-{% set ai_adoption = ai_impact.ai_adoption_pct %}
-{% set revert_rate = quality.revert_rate %}
-
-1. **Throughput**
-   - value: "{% if throughput_change is not none %}{{ "%+.1f"|format(throughput_change) }}%{% else %}{{ velocity.throughput.current }} PRs{% endif %}"
-   - trend: {% if throughput_change is not none %}{% if throughput_change > 10 %}"positive"{% elif throughput_change < -10 %}"negative"{% else %}"neutral"{% endif %}{% else %}"neutral"{% endif %}
-
-2. **Cycle Time**
-   - value: "{% if cycle_time_change is not none %}{{ "%+.1f"|format(cycle_time_change) }}%{% elif velocity.cycle_time.current is not none %}{{ "%.1f"|format(velocity.cycle_time.current) }}h{% else %}N/A{% endif %}"
-   - trend: {% if cycle_time_change is not none %}{% if cycle_time_change < -10 %}"positive"{% elif cycle_time_change > 20 %}"negative"{% elif cycle_time_change > 10 %}"warning"{% else %}"neutral"{% endif %}{% else %}"neutral"{% endif %}
-
-3. **AI Adoption**
-   - value: "{{ "%.1f"|format(ai_adoption) }}%"
-   - trend: {% if ai_adoption >= 40 %}"positive"{% elif ai_adoption >= 20 %}"neutral"{% else %}"warning"{% endif %}
-
-4. **Quality**
-   - value: "{{ "%.1f"|format(revert_rate) }}% reverts"
-   - trend: {% if revert_rate <= 2 %}"positive"{% elif revert_rate <= 5 %}"warning"{% else %}"negative"{% endif %}
-
----
-
-## RAW METRICS DATA
+## METRICS DATA
 
 ### Velocity
 
@@ -49,7 +22,7 @@ You MUST use these exact values for metric_cards. Do NOT recalculate.
 
 ### Quality
 
-- Reverts: {{ quality.revert_count }} ({{ "%.1f"|format(quality.revert_rate) }}% rate) {% if quality.revert_rate > 5 %}⚠️ ABOVE THRESHOLD{% endif %}
+- Reverts: {{ quality.revert_count }} ({{ "%.1f"|format(quality.revert_rate) }}% rate) {% if quality.revert_rate > 5 %}⚠️ HIGH{% endif %}
 - Hotfixes: {{ quality.hotfix_count }} ({{ "%.1f"|format(quality.hotfix_rate) }}% rate)
 - Avg review rounds: {% if quality.avg_review_rounds is not none %}{{ "%.1f"|format(quality.avg_review_rounds) }}{% else %}N/A{% endif %}
 - Large PRs (>500 lines): {{ "%.1f"|format(quality.large_pr_pct) }}% {% if quality.large_pr_pct > 30 %}⚠️ HIGH{% endif %}
@@ -64,9 +37,7 @@ You MUST use these exact values for metric_cards. Do NOT recalculate.
 {% endif %}
 - Max reviews (single person): {{ team_health.review_distribution.max_reviews }}
 {% if team_health.bottleneck %}
-- ⚠️ BOTTLENECK: {{ team_health.bottleneck.reviewer_name }} has {{ team_health.bottleneck.pending_count }} pending reviews (team avg: {{ team_health.bottleneck.team_avg }})
-{% else %}
-- No review bottleneck detected
+- ⚠️ BOTTLENECK: {{ team_health.bottleneck.reviewer_name }} has {{ team_health.bottleneck.pending_count }} pending reviews
 {% endif %}
 
 ### AI Impact
@@ -78,32 +49,20 @@ You MUST use these exact values for metric_cards. Do NOT recalculate.
 - Non-AI PR cycle time: {{ "%.1f"|format(ai_impact.non_ai_avg_cycle_time) }}h
 {% set ai_diff_pct = ((ai_impact.ai_avg_cycle_time - ai_impact.non_ai_avg_cycle_time) / ai_impact.non_ai_avg_cycle_time * 100) if ai_impact.non_ai_avg_cycle_time > 0 else 0 %}
 {% if ai_diff_pct < -10 %}
-- ✅ AI HELPS: AI PRs are {{ "%.1f"|format(ai_diff_pct|abs) }}% FASTER
+- ✅ AI PRs are {{ "%.0f"|format(ai_diff_pct|abs) }}% FASTER
 {% elif ai_diff_pct > 10 %}
-- ⚠️ AI HURTS: AI PRs are {{ "%.1f"|format(ai_diff_pct) }}% SLOWER
+- ⚠️ AI PRs are {{ "%.0f"|format(ai_diff_pct) }}% SLOWER
 {% else %}
 - AI PRs have similar cycle time to non-AI PRs
 {% endif %}
 {% endif %}
-
----
-
-## BENCHMARK CONTEXT
-
-| Metric | Current | Benchmark | Status |
-|--------|---------|-----------|--------|
-| Cycle Time | {% if velocity.cycle_time.current is not none %}{{ "%.0f"|format(velocity.cycle_time.current) }}h{% else %}N/A{% endif %} | <48h healthy, >120h critical | {% if velocity.cycle_time.current is not none %}{% if velocity.cycle_time.current < 48 %}✅ Healthy{% elif velocity.cycle_time.current < 120 %}⚠️ Warning{% else %}🔴 Critical{% endif %}{% else %}N/A{% endif %} |
-| Revert Rate | {{ "%.1f"|format(quality.revert_rate) }}% | <2% healthy, >5% critical | {% if quality.revert_rate < 2 %}✅ Healthy{% elif quality.revert_rate < 5 %}⚠️ Warning{% else %}🔴 Critical{% endif %} |
-| AI Adoption | {{ "%.0f"|format(ai_impact.ai_adoption_pct) }}% | >40% healthy, <20% low | {% if ai_impact.ai_adoption_pct >= 40 %}✅ Healthy{% elif ai_impact.ai_adoption_pct >= 20 %}⚠️ Moderate{% else %}📊 Low{% endif %} |
-| Top Contributor | {{ "%.0f"|format(team_health.pr_distribution.top_contributor_pct) }}% | <30% healthy, >50% risk | {% if team_health.pr_distribution.top_contributor_pct < 30 %}✅ Healthy{% elif team_health.pr_distribution.top_contributor_pct < 50 %}⚠️ Warning{% else %}🔴 Bus Factor{% endif %} |
 
 </metrics_context>
 
 <task>
 Analyze this data and return JSON with:
 1. headline: The ROOT CAUSE (not symptom) in 8-12 words, NO numbers
-2. detail: 2-3 sentences using QUALITATIVE language (see system prompt conversions)
+2. detail: 2-3 sentences using QUALITATIVE language (see system prompt)
 3. recommendation: ONE specific action addressing an issue from your detail
-4. metric_cards: Copy EXACTLY from PRE-COMPUTED METRIC CARDS above
-5. actions: 2-3 buttons matching the issues you discussed
+4. actions: 2-3 buttons matching the issues you discussed
 </task>
