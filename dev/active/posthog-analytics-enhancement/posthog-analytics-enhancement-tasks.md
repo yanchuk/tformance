@@ -139,41 +139,42 @@
 
 ---
 
-## Phase 5: Frontend Events [M] - Est. 2-3 hours
+## Phase 5: Frontend Events [M] ✅ COMPLETE
 
 ### 5.1 Analytics Module
 
-- [ ] **Create `assets/javascript/analytics.js`** [M]
-  - Purpose: Centralized frontend tracking
-  - Functions: `trackChartInteraction`, `trackNavigation`, etc.
-  - Acceptance: Module loads without errors
+- [x] **Create `assets/javascript/analytics.js`** [M]
+  - File: `assets/javascript/analytics.js` (new, 145 lines)
+  - Functions: `trackEvent`, `trackChartInteraction`, `trackNavigation`, `trackThemeSwitch`
+  - Exposed globally as `window.TformanceAnalytics`
+  - Commit: 2ba0d56
 
-- [ ] **Add to Vite build** [S]
-  - File: `vite.config.js` or entry point
-  - Ensure: Module is bundled and available
-  - Acceptance: Module accessible in browser
+- [x] **Add to Vite build** [S]
+  - File: `assets/javascript/app.js` - imports analytics module
+  - Module bundled into app-bundle.js (68.84 kB)
+  - Commit: 2ba0d56
 
 ### 5.2 Chart Interactions
 
-- [ ] **Track chart clicks/hovers** [M]
-  - File: `assets/javascript/analytics.js`
-  - Trigger: Chart.js event handlers
-  - Properties: `chart_type`, `action`, `data_point`
-  - Acceptance: Chart interactions appear in PostHog
+- [x] **Track chart clicks** [M]
+  - File: `assets/javascript/analytics.js:addChartTracking()`
+  - Integrated via `addChartTrackingToAll()` after HTMX swaps
+  - Properties: `chart_type`, `action`, `data_label`, `data_value`
+  - Commit: 2ba0d56
 
 ### 5.3 Navigation & UI
 
-- [ ] **Track sidebar navigation** [S]
-  - File: `assets/javascript/analytics.js`
-  - Trigger: Sidebar link clicks
+- [x] **Track sidebar navigation** [S]
+  - File: `assets/javascript/analytics.js:initNavigationTracking()`
+  - Auto-attaches to sidebar links, tracks navigation event
   - Properties: `from_page`, `to_page`
-  - Acceptance: Navigation patterns visible
+  - Commit: 2ba0d56
 
-- [ ] **Track theme switching** [S]
-  - File: `assets/javascript/analytics.js`
-  - Trigger: Theme toggle clicks
+- [x] **Track theme switching** [S]
+  - File: `assets/javascript/theme.js` - integrated with syncDarkMode()
+  - Only tracks after initial page load (not on first load)
   - Properties: `new_theme`, `previous_theme`
-  - Acceptance: Theme preferences tracked
+  - Commit: 2ba0d56
 
 ---
 
@@ -205,6 +206,6 @@
 | Phase 2 | 5 | 5 | ✅ Complete |
 | Phase 3 | 3 | 3 | ✅ Complete |
 | Phase 4 | 5 | 4 | ✅ Complete (1 deferred) |
-| Phase 5 | 5 | 0 | Not Started |
-| Verification | 4 | 0 | Not Started |
-| **Total** | **28** | **18** | **64%** |
+| Phase 5 | 5 | 5 | ✅ Complete |
+| Verification | 4 | 0 | Pending |
+| **Total** | **28** | **23** | **82%** |
