@@ -12,8 +12,12 @@
 const THEME_DARK = 'tformance';
 const THEME_LIGHT = 'tformance-light';
 
+// Track if this is the initial page load (don't track on load, only on user action)
+let _themeInitialized = false;
+
 function syncDarkMode() {
-  let stored = localStorage.getItem('theme') || 'system';
+  const previousTheme = localStorage.getItem('theme') || 'system';
+  let stored = previousTheme;
   const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
 
   // Migrate legacy values (in case old 'light'/'dark' values are stored)
@@ -38,6 +42,16 @@ function syncDarkMode() {
   document.documentElement.setAttribute('data-theme', themeName);
   document.documentElement.classList.toggle('dark', isDark);
   document.documentElement.classList.toggle('light', !isDark);
+
+  // Track theme switch (only after initial load and if theme actually changed)
+  const newTheme = localStorage.getItem('theme') || 'system';
+  if (_themeInitialized && previousTheme !== newTheme) {
+    // Use global analytics if available
+    if (window.TformanceAnalytics && window.TformanceAnalytics.trackThemeSwitch) {
+      window.TformanceAnalytics.trackThemeSwitch(newTheme, previousTheme);
+    }
+  }
+  _themeInitialized = true;
 }
 
 // Apply on page load

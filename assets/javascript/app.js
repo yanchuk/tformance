@@ -4,6 +4,7 @@ import { DashboardCharts as AppDashboardCharts } from './dashboard/dashboard-cha
 import { createWideTrendChart, resetChartZoom, initTrendCharts } from './dashboard/trend-charts';
 import { createSparkline, initSparklines, reinitSparklines } from './dashboard/sparkline';
 import { chartManager } from './dashboard/chart-manager';
+import { addChartTracking, trackChartInteraction } from './analytics';
 
 export { AppDashboardCharts as DashboardCharts };
 export { createWideTrendChart, resetChartZoom, initTrendCharts };
@@ -314,8 +315,28 @@ document.addEventListener('htmx:afterSwap', function(event) {
 
     // Also check for charts with data attributes (declarative approach)
     chartManager.initFromDataAttributes();
+
+    // Add analytics tracking to all initialized charts
+    addChartTrackingToAll();
   });
 });
+
+/**
+ * Add analytics tracking to all Chart.js instances on the page
+ */
+function addChartTrackingToAll() {
+  // Find all canvas elements that might have charts
+  const chartCanvases = document.querySelectorAll('canvas[id$="-chart"]');
+
+  chartCanvases.forEach((canvas) => {
+    const chartId = canvas.id;
+    const chartInstance = Chart.getChart(canvas);
+
+    if (chartInstance) {
+      addChartTracking(chartInstance, chartId);
+    }
+  });
+}
 
 // Legacy function exports for backward compatibility
 function initWideTrendChart() {
