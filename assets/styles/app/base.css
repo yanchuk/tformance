@@ -4,3 +4,37 @@
 @import url('./progress.css');
 @import url('./subscriptions.css');
 @import url('./utilities.css');
+
+/* PostHog Survey Styling - Preserve native PostHog styles */
+/* PostHog injects surveys with classes starting with "PostHog" */
+[class*="PostHogSurvey"] button,
+[class*="PostHog__survey"] button {
+  /* Reset DaisyUI/Tailwind button overrides for PostHog surveys */
+  all: revert;
+  font-family: inherit;
+}
+
+[class*="PostHogSurvey"] button[type="submit"],
+[class*="PostHog__survey"] button[type="submit"] {
+  background-color: #1d1f27 !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 4px !important;
+  padding: 10px 16px !important;
+  font-weight: 500 !important;
+  cursor: pointer !important;
+  width: 100% !important;
+  font-size: 14px !important;
+  line-height: 1.4 !important;
+}
+
+[class*="PostHogSurvey"] button[type="submit"]:disabled,
+[class*="PostHog__survey"] button[type="submit"]:disabled {
+  opacity: 0.5 !important;
+  cursor: not-allowed !important;
+}
+
+[class*="PostHogSurvey"] button[type="submit"]:hover:not(:disabled),
+[class*="PostHog__survey"] button[type="submit"]:hover:not(:disabled) {
+  background-color: #2d2f37 !important;
+}
