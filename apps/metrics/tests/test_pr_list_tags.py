@@ -696,3 +696,79 @@ class TestLinkifyMentionsFilter(TestCase):
         # The @ in email should not create a mention link
         # (because our pattern requires @ at word boundary)
         self.assertNotIn("github_name=@example", result)
+
+
+class TestLinkifyReviewerMentions(TestCase):
+    """Tests for @@ reviewer mention syntax in linkify_mentions filter."""
+
+    def test_converts_reviewer_mention_to_link(self):
+        """Test that @@username is converted to a reviewer link."""
+        from apps.metrics.templatetags.pr_list_tags import linkify_mentions
+
+        result = linkify_mentions("See @@alice for pending reviews", 30)
+
+        self.assertIn("href=", result)
+        self.assertIn("reviewer_name=@alice", result)
+        self.assertIn("days=30", result)
+        self.assertIn('target="_blank"', result)
+
+    def test_reviewer_mention_displays_single_at(self):
+        """Test that @@username displays as @username (single @) in the link text."""
+        from apps.metrics.templatetags.pr_list_tags import linkify_mentions
+
+        result = linkify_mentions("Contact @@alice for reviews", 30)
+
+        # Should display as @alice, not @@alice
+        self.assertIn(">@alice</a>", result)
+        self.assertNotIn(">@@alice</a>", result)
+
+    def test_reviewer_mention_uses_reviewer_name_param(self):
+        """Test that @@username uses reviewer_name param, not github_name."""
+        from apps.metrics.templatetags.pr_list_tags import linkify_mentions
+
+        result = linkify_mentions("Bottleneck: @@bob has pending reviews", 30)
+
+        self.assertIn("reviewer_name=@bob", result)
+        self.assertNotIn("github_name=@bob", result)
+
+    def test_mixed_author_and_reviewer_mentions(self):
+        """Test that both @ and @@ mentions work in the same text."""
+        from apps.metrics.templatetags.pr_list_tags import linkify_mentions
+
+        result = linkify_mentions("@alice authored, @@bob reviewing", 30)
+
+        # Author mention should use github_name
+        self.assertIn("github_name=@alice", result)
+        # Reviewer mention should use reviewer_name
+        self.assertIn("reviewer_name=@bob", result)
+
+    def test_reviewer_mention_hyphenated_username(self):
+        """Test that hyphenated usernames work with @@ syntax."""
+        from apps.metrics.templatetags.pr_list_tags import linkify_mentions
+
+        result = linkify_mentions("Contact @@alice-dev-user for reviews", 30)
+
+        self.assertIn("reviewer_name=@alice-dev-user", result)
+
+    def test_triple_at_not_matched(self):
+        """Test that @@@alice is not matched (edge case - no link created)."""
+        from apps.metrics.templatetags.pr_list_tags import linkify_mentions
+
+        result = linkify_mentions("See @@@alice", 30)
+
+        # @@@alice doesn't match either pattern due to lookbehind rules:
+        # - @@alice is preceded by @, so reviewer pattern doesn't match
+        # - @alice is preceded by @@, so author pattern doesn't match
+        # This is acceptable behavior - no crash, text preserved
+        self.assertIn("@@@alice", result)
+        # No link should be created (this is edge case, not typical usage)
+        self.assertNotIn("href=", result)
+
+    def test_reviewer_mention_uses_days_parameter(self):
+        """Test that days parameter is included in reviewer URL."""
+        from apps.metrics.templatetags.pr_list_tags import linkify_mentions
+
+        result = linkify_mentions("@@alice has reviews", 7)
+
+        self.assertIn("reviewer_name=@alice", result)
+        self.assertIn("days=7", result)

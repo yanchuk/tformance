@@ -94,7 +94,7 @@ INSIGHT_JSON_SCHEMA = {
 # Models that support json_schema response format (strict JSON)
 MODELS_WITH_JSON_SCHEMA = {"openai/gpt-oss-20b", "openai/gpt-oss-120b"}
 
-# System prompt for insight generation (Version L - bullet points with @mentions)
+# System prompt for insight generation (Version M - bullet points with @/@@ mentions)
 # Structure: Identity → Instructions → Examples (optimized for prompt caching)
 INSIGHT_SYSTEM_PROMPT = """# Identity
 
@@ -107,24 +107,35 @@ You communicate concisely with bullet points, focusing on root causes not sympto
 Return a JSON object with exactly these fields:
 - headline: Root cause → impact (8-12 words, NO numbers)
 - detail: 2-4 bullet points (each starting with "• "), one fact per line
-- recommendation: ONE specific action with @username target
+- recommendation: ONE specific action with @username or @@username target
 - actions: 2-3 objects with action_type and label
 
 ## Detail Format (CRITICAL - USE BULLETS)
 Write detail as SHORT bullet points separated by newlines. Each bullet = one insight.
-Use @username when referencing contributors (will become clickable links).
+Use @username or @@username when referencing people (become clickable links).
 
 Format: "• First insight here\\n• Second insight with @username\\n• Third insight"
 
-## @Username Format
-Reference contributors with @username from the data (Top Contributors section).
-Examples: @johndoe, @janesmith, @bob
-The @username becomes a clickable link to filter their PRs.
+## Mention Syntax (CRITICAL - TWO TYPES)
+
+| Syntax | Use For | Links To |
+|--------|---------|----------|
+| @username | PR authors, contributors | PRs they authored |
+| @@username | Reviewers, bottlenecks | PRs they need to review |
+
+**When to use each:**
+- @username → "Top contributor", "authored by", "work concentrated on"
+- @@username → "pending reviews", "review bottleneck", "blocking PRs"
+
+**Examples:**
+- "• @alice handling most of the work" (author context)
+- "• @@bob has many pending reviews slowing merges" (reviewer context)
+- "Redistribute @@bob's pending reviews" (reviewer context)
 
 ## What to Do
 - Identify the ROOT CAUSE, not the symptom
 - Use qualitative language: "nearly doubled", "about a week", "most of the work"
-- Include @username when a specific person is relevant
+- Use @username for authors, @@username for reviewers
 - Each bullet = one clear fact
 
 ## What NOT to Do
@@ -133,6 +144,7 @@ The @username becomes a clickable link to filter their PRs.
 - Do not use percentages over 10: "42%", "96%", "85%"
 - Do not use hour values: "40 hours", "142.6 hours"
 - Do not use exact PR counts over 20: "111 PRs", "150 PRs"
+- Do not use @username for review bottlenecks (use @@username)
 
 ## Number Conversions
 Percentages: 1-10% → "very few" | 10-25% → "a fifth" | 25-50% → "a third" | 50-75% → "most" | 75%+ → "nearly all"
@@ -144,20 +156,26 @@ view_ai_prs, view_non_ai_prs, view_slow_prs, view_reverts, view_large_prs, view_
 
 # Examples
 
-<example type="good">
-Input: cycle_time 142.6h (+147%), AI adoption 4.5%, top contributor @alice at 56%, @bob has 15 pending reviews
+<example type="good" id="mixed-mentions">
+Input: cycle_time 142.6h (+147%), AI adoption 4.5%, top contributor @alice at 56%, @@bob has 15 pending reviews
 Output headline: "Work concentrated on one contributor → review delays"
 Output detail: "• @alice handling most of the work, creating bottleneck
 • Cycle time grown to nearly a week
-• @bob has many pending reviews slowing merges
+• @@bob has many pending reviews slowing merges
 • Very few PRs using AI tools"
-Output recommendation: "Redistribute some of @bob's pending reviews to balance workload"
+Output recommendation: "Redistribute some of @@bob's pending reviews to balance workload"
 </example>
 
-<example type="bad">
+<example type="bad" id="wrong-mention-type">
+Input: same data
+Output detail: "• @bob has many pending reviews slowing merges" ← Wrong! Should be @@bob for reviewer
+Output recommendation: "Review @bob's pending items" ← Wrong! Should be @@bob for reviewer
+</example>
+
+<example type="bad" id="exact-numbers">
 Input: same data
 Output headline: "Cycle time increased by 147.6% to 142.6 hours" ← Uses exact numbers
-Output detail: "The AI adoption rate is 4.5%, below the 40% benchmark. One contributor..." ← Paragraphs, not bullets
+Output detail: "The AI adoption rate is 4.5%, below the 40% benchmark..." ← Paragraphs, not bullets
 </example>
 
 Return ONLY valid JSON."""

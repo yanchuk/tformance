@@ -153,6 +153,25 @@ def get_prs_queryset(team: Team, filters: dict[str, Any]) -> QuerySet[PullReques
             # No matching team member - return empty queryset
             qs = qs.none()
 
+    # Filter by reviewer GitHub username (e.g., "@johndoe" or "johndoe")
+    # Used for bottleneck @@ mentions - shows PRs where user is a reviewer
+    # Security: Only matches team members within the specified team
+    reviewer_name = filters.get("reviewer_name")
+    if reviewer_name:
+        # Strip @ prefix if present
+        username = reviewer_name.lstrip("@")
+        # Look up team member by github_username within team (team-scoped = secure)
+        try:
+            member = TeamMember.objects.get(team=team, github_username__iexact=username)
+            # Filter PRs where this member has submitted a review
+            reviewer_pr_ids = PRReview.objects.filter(  # noqa: TEAM001
+                team=team, reviewer=member
+            ).values_list("pull_request_id", flat=True)
+            qs = qs.filter(id__in=reviewer_pr_ids)
+        except TeamMember.DoesNotExist:
+            # No matching team member - return empty queryset
+            qs = qs.none()
+
     # Filter by reviewer
     # When filtering by reviewer, also filter by review submitted_at date range
     # to match dashboard semantics (reviews submitted in the date range)

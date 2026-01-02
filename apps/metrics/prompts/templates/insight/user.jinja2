@@ -37,10 +37,10 @@
 {% endif %}
 - Max reviews (single person): {{ team_health.review_distribution.max_reviews }}
 {% if team_health.bottleneck %}
-- ⚠️ BOTTLENECK: @{{ team_health.bottleneck.github_username }} ({{ team_health.bottleneck.reviewer_name }}) has {{ team_health.bottleneck.pending_count }} pending reviews
+- ⚠️ BOTTLENECK: @@{{ team_health.bottleneck.github_username }} ({{ team_health.bottleneck.reviewer_name }}) has {{ team_health.bottleneck.pending_count }} pending reviews
 {% endif %}
 
-**Top Contributors (use @username for mentions):**
+**Top Contributors (use @username for author mentions, @@username for reviewer mentions):**
 {% for c in team_health.top_contributors %}
 - @{{ c.github_username }}: {{ c.pr_count }} PRs ({{ c.pct_share }}%)
 {% endfor %}
@@ -82,7 +82,9 @@
 <task>
 Analyze this data and return JSON with:
 1. headline: The ROOT CAUSE (not symptom) in 8-12 words, NO numbers
-2. detail: 2-4 bullet points (• ) using QUALITATIVE language, include @username where relevant
-3. recommendation: ONE specific action with @username target from Top Contributors list
+2. detail: 2-4 bullet points (• ) using QUALITATIVE language, include mentions where relevant:
+   - Use @username for authors/contributors (links to their PRs)
+   - Use @@username for reviewers/bottlenecks (links to PRs they review)
+3. recommendation: ONE specific action with @username or @@username target
 4. actions: 2-3 buttons matching the issues you discussed
 </task>

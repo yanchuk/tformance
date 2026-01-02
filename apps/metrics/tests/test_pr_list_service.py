@@ -113,6 +113,83 @@ class TestGetPrsQueryset(TestCase):
         self.assertEqual(result.count(), 1)
         self.assertEqual(result.first(), pr1)
 
+    # =========================================================================
+    # reviewer_name filter tests (filter PRs by reviewer's GitHub username)
+    # =========================================================================
+
+    def test_filter_by_reviewer_name(self):
+        """Test filtering by reviewer GitHub username (e.g., @alice)."""
+        # Create member with known github_username who will be a reviewer
+        reviewer = TeamMemberFactory(team=self.team, github_username="alice-reviewer")
+        # Create PR authored by someone else, reviewed by alice-reviewer
+        pr1 = PullRequestFactory(team=self.team, author=self.member1)
+        PRReviewFactory(team=self.team, pull_request=pr1, reviewer=reviewer)
+        # Create another PR without review from alice-reviewer
+        PullRequestFactory(team=self.team, author=self.member1)
+
+        # Test with @ prefix
+        result = get_prs_queryset(self.team, {"reviewer_name": "@alice-reviewer"})
+        self.assertEqual(result.count(), 1)
+        self.assertEqual(result.first(), pr1)
+
+        # Test without @ prefix
+        result = get_prs_queryset(self.team, {"reviewer_name": "alice-reviewer"})
+        self.assertEqual(result.count(), 1)
+        self.assertEqual(result.first(), pr1)
+
+    def test_filter_by_reviewer_name_case_insensitive(self):
+        """Test that reviewer_name filter is case-insensitive."""
+        reviewer = TeamMemberFactory(team=self.team, github_username="Alice-Reviewer")
+        pr1 = PullRequestFactory(team=self.team, author=self.member1)
+        PRReviewFactory(team=self.team, pull_request=pr1, reviewer=reviewer)
+
+        result = get_prs_queryset(self.team, {"reviewer_name": "@alice-reviewer"})
+
+        self.assertEqual(result.count(), 1)
+        self.assertEqual(result.first(), pr1)
+
+    def test_filter_by_reviewer_name_not_found_returns_empty(self):
+        """Test that non-existent reviewer_name returns empty queryset."""
+        pr1 = PullRequestFactory(team=self.team, author=self.member1)
+        PRReviewFactory(team=self.team, pull_request=pr1, reviewer=self.member2)
+
+        result = get_prs_queryset(self.team, {"reviewer_name": "@nonexistent"})
+
+        self.assertEqual(result.count(), 0)
+
+    def test_filter_by_reviewer_name_team_scoped(self):
+        """Test that reviewer_name filter is scoped to the current team only (security)."""
+        # Create same username in different team
+        other_team = TeamFactory()
+        other_reviewer = TeamMemberFactory(team=other_team, github_username="shared-reviewer")
+        other_pr = PullRequestFactory(team=other_team)
+        PRReviewFactory(team=other_team, pull_request=other_pr, reviewer=other_reviewer)
+
+        # Create in our team with same github_username
+        our_reviewer = TeamMemberFactory(team=self.team, github_username="shared-reviewer")
+        pr1 = PullRequestFactory(team=self.team, author=self.member1)
+        PRReviewFactory(team=self.team, pull_request=pr1, reviewer=our_reviewer)
+
+        result = get_prs_queryset(self.team, {"reviewer_name": "@shared-reviewer"})
+
+        # Should only find PR from our team
+        self.assertEqual(result.count(), 1)
+        self.assertEqual(result.first(), pr1)
+
+    def test_filter_by_reviewer_name_multiple_reviews(self):
+        """Test that reviewer_name returns PR only once even with multiple reviews."""
+        reviewer = TeamMemberFactory(team=self.team, github_username="multi-reviewer")
+        pr1 = PullRequestFactory(team=self.team, author=self.member1)
+        # Same reviewer submits multiple reviews on same PR
+        PRReviewFactory(team=self.team, pull_request=pr1, reviewer=reviewer)
+        PRReviewFactory(team=self.team, pull_request=pr1, reviewer=reviewer)
+
+        result = get_prs_queryset(self.team, {"reviewer_name": "@multi-reviewer"})
+
+        # Should return PR only once (distinct)
+        self.assertEqual(result.count(), 1)
+        self.assertEqual(result.first(), pr1)
+
     def test_filter_by_reviewer(self):
         """Test filtering by reviewer (team member ID)."""
         pr1 = PullRequestFactory(team=self.team, author=self.member1)

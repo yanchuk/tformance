@@ -899,21 +899,33 @@ def user_note_for_pr(context, pr):
 # Insight @Mention and Link Filters
 # =============================================================================
 
-# Pattern to match @username mentions (alphanumeric and hyphens, like GitHub usernames)
+# Pattern to match @@username (reviewer) mentions - must be processed FIRST
+# Uses negative lookbehind to avoid matching emails
+REVIEWER_MENTION_PATTERN = re.compile(r"(?<![a-zA-Z0-9@])@@([a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?)")
+
+# Pattern to match @username (author) mentions - processed AFTER reviewer pattern
 # Uses negative lookbehind to avoid matching emails like user@example.com
-MENTION_PATTERN = re.compile(r"(?<![a-zA-Z0-9])@([a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?)")
+AUTHOR_MENTION_PATTERN = re.compile(r"(?<![a-zA-Z0-9@])@([a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?)")
+
+# Placeholder that won't match author pattern (used during two-pass processing)
+_REVIEWER_LINK_PLACEHOLDER = "\x00REVIEWER_LINK_{idx}\x00"
 
 
 @register.filter
 def linkify_mentions(text: str | None, days: int = 30) -> str:
-    """Convert @username mentions to clickable links to PR list filtered by that user.
+    """Convert @username and @@username mentions to clickable links.
+
+    Supports two mention types:
+    - @username  → Links to PRs authored by user (github_name filter)
+    - @@username → Links to PRs reviewed by user (reviewer_name filter)
+                   Displays as @username (single @) in the rendered output
 
     Args:
-        text: Text that may contain @username mentions
+        text: Text that may contain @ or @@ mentions
         days: Number of days for the date filter (default: 30)
 
     Returns:
-        HTML with @mentions converted to links (marked safe)
+        HTML with mentions converted to links (marked safe)
 
     Usage:
         {{ insight.detail|linkify_mentions:30 }}
@@ -924,7 +936,23 @@ def linkify_mentions(text: str | None, days: int = 30) -> str:
     # Escape the text first to prevent XSS
     escaped_text = escape(text)
 
-    def replace_mention(match):
+    # Store reviewer links to restore after author processing
+    reviewer_links: list[str] = []
+
+    def replace_reviewer_mention(match):
+        """Replace @@username with placeholder (to avoid double-processing)."""
+        username = match.group(1)
+        url = f"/app/pull-requests/?reviewer_name=@{username}&days={days}"
+        link = (
+            f'<a href="{url}" target="_blank" rel="noopener" '
+            f'class="text-primary hover:underline font-medium">@{username}</a>'
+        )
+        idx = len(reviewer_links)
+        reviewer_links.append(link)
+        return _REVIEWER_LINK_PLACEHOLDER.format(idx=idx)
+
+    def replace_author_mention(match):
+        """Replace @username with author link."""
         username = match.group(1)
         url = f"/app/pull-requests/?github_name=@{username}&days={days}"
         return (
@@ -932,5 +960,14 @@ def linkify_mentions(text: str | None, days: int = 30) -> str:
             f'class="text-primary hover:underline font-medium">@{username}</a>'
         )
 
-    result = MENTION_PATTERN.sub(replace_mention, escaped_text)
+    # Pass 1: Replace @@ mentions with placeholders
+    result = REVIEWER_MENTION_PATTERN.sub(replace_reviewer_mention, escaped_text)
+
+    # Pass 2: Replace @ mentions with author links
+    result = AUTHOR_MENTION_PATTERN.sub(replace_author_mention, result)
+
+    # Pass 3: Restore reviewer links from placeholders
+    for idx, link in enumerate(reviewer_links):
+        result = result.replace(_REVIEWER_LINK_PLACEHOLDER.format(idx=idx), link)
+
     return mark_safe(result)
