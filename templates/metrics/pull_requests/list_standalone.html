@@ -32,6 +32,7 @@
              ai_tool: '{{ filters.ai_tool|default:"" }}',
              ai_category: '{{ filters.ai_category|default:"" }}',
              state: '{{ filters.state|default:"" }}',
+             is_draft: '{{ filters.is_draft|default:"" }}',
              size: '{{ filters.size|default:"" }}',
              has_jira: '{{ filters.has_jira|default:"" }}',
              pr_type: '{{ filters.pr_type|default:"" }}',
@@ -48,6 +49,7 @@
              ai_tool: '{{ filters.ai_tool|default:"" }}',
              ai_category: '{{ filters.ai_category|default:"" }}',
              state: '{{ filters.state|default:"" }}',
+             is_draft: '{{ filters.is_draft|default:"" }}',
              size: '{{ filters.size|default:"" }}',
              has_jira: '{{ filters.has_jira|default:"" }}',
              pr_type: '{{ filters.pr_type|default:"" }}',
@@ -65,6 +67,7 @@
                     this.current.ai_tool !== this.initial.ai_tool ||
                     this.current.ai_category !== this.initial.ai_category ||
                     this.current.state !== this.initial.state ||
+                    this.current.is_draft !== this.initial.is_draft ||
                     this.current.size !== this.initial.size ||
                     this.current.has_jira !== this.initial.has_jira ||
                     this.current.pr_type !== this.initial.pr_type ||
@@ -79,7 +82,17 @@
              this.techChanged = false;
            }
          }"
-         @htmx:after-request.window="resetDirty()">
+         @htmx:after-request.window="resetDirty()"
+         @htmx:config-request.window="
+           // Remove empty params from URL to keep it clean
+           if ($event.detail.elt && $event.detail.elt.closest && $event.detail.elt.closest('[x-data]') === $el) {
+             Object.keys($event.detail.parameters).forEach(key => {
+               if ($event.detail.parameters[key] === '' || $event.detail.parameters[key] === null) {
+                 delete $event.detail.parameters[key];
+               }
+             });
+           }
+         ">
       <form hx-get="{% url 'pullrequests:pr_list' %}"
             hx-target="#page-content"
             hx-swap="outerHTML"
@@ -184,6 +197,19 @@
             {% for state in filter_options.states %}
             <option value="{{ state }}" {% if filters.state == state %}selected{% endif %}>{{ state|title }}</option>
             {% endfor %}
+          </select>
+        </div>
+
+        <!-- Draft Filter -->
+        <div class="form-control">
+          <label class="label">
+            <span class="label-text text-base-content/80">{% trans "Draft Status" %}</span>
+          </label>
+          <select name="is_draft" class="select select-bordered select-sm w-full"
+                  x-model="current.is_draft">
+            <option value="">{% trans "All" %}</option>
+            <option value="false" {% if filters.is_draft == 'false' %}selected{% endif %}>{% trans "Ready for Review" %}</option>
+            <option value="true" {% if filters.is_draft == 'true' %}selected{% endif %}>{% trans "Draft" %}</option>
           </select>
         </div>
 
