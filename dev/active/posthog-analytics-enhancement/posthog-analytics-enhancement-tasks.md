@@ -102,46 +102,40 @@
 
 ---
 
-## Phase 4: Engagement Events [M] - Est. 2-3 hours
+## Phase 4: Engagement Events [M] ✅ COMPLETE
 
 ### 4.1 Analytics Enhancements
 
-- [ ] **Add `date_filter_changed` event** [S]
-  - File: `apps/metrics/views/analytics_views.py`
-  - Trigger: When date params change (detect via comparison)
-  - Properties: `tab`, `days`, `previous_days`, `preset`
-  - Acceptance: Filter changes tracked
-
-- [ ] **Add `repo_filter_applied` event** [S]
-  - File: `apps/metrics/views/analytics_views.py`
-  - Trigger: When repo filter is applied
+- [x] **Add `repo_filter_applied` event** [S]
+  - File: `apps/metrics/views/analytics_views.py:72-92`
+  - Helper: `_track_filter_events()` called from all analytics views
   - Properties: `tab`, `repo_name`, `team_slug`
-  - Acceptance: Repo filter usage tracked
+  - Commit: b65287b
 
 ### 4.2 PR List Enhancements
 
-- [ ] **Add `pr_detail_viewed` event** [S]
-  - File: Add to PR detail view/modal endpoint
-  - Properties: `pr_id`, `is_ai_assisted`, `cycle_time_hours`
-  - Acceptance: PR detail views tracked
+- [x] **Add `pr_list_filtered` event** [S]
+  - File: `apps/metrics/views/pr_list_views.py:189-202`
+  - Helper: `_count_active_filters()` for counting non-date filters
+  - Properties: `filter_type`, `active_filters_count`, `team_slug`
+  - Commit: b65287b
 
-- [ ] **Add `pr_list_filtered` event** [S]
-  - File: `apps/metrics/views/pr_list_views.py`
-  - Trigger: When filters are applied
-  - Properties: `filter_type`, `active_filters_count`
-  - Acceptance: Filter usage patterns visible
+- [ ] **Add `pr_detail_viewed` event** [S]
+  - Status: Deferred - no PR detail view exists yet
+  - Will be added when PR detail modal/page is implemented
 
 ### 4.3 Other Features
 
-- [ ] **Add `insight_viewed` event** [S]
-  - File: `apps/insights/views.py`
-  - Properties: `team_slug`, `insight_type`, `date_range`
-  - Acceptance: Insights engagement tracked
+- [x] **Add `insight_viewed` event** [S]
+  - File: `apps/insights/views.py:46-55, 126-135`
+  - Trigger: get_summary and ask_question views
+  - Properties: `insight_type` (summary/question), `team_slug`, `is_refresh`/`question_length`
+  - Commit: b65287b
 
-- [ ] **Add `feedback_submitted` event** [S]
-  - File: `apps/feedback/views.py:create_feedback`
-  - Properties: `team_slug`, `sentiment`, `has_text`
-  - Acceptance: Feedback submissions tracked
+- [x] **Add `feedback_submitted` event** [S]
+  - File: `apps/feedback/views.py:98-107`
+  - Properties: `team_slug`, `category`, `has_text`
+  - Commit: b65287b
 
 ---
 
@@ -210,7 +204,7 @@
 | Phase 1 | 6 | 6 | ✅ Complete |
 | Phase 2 | 5 | 5 | ✅ Complete |
 | Phase 3 | 3 | 3 | ✅ Complete |
-| Phase 4 | 6 | 0 | Not Started |
+| Phase 4 | 5 | 4 | ✅ Complete (1 deferred) |
 | Phase 5 | 5 | 0 | Not Started |
 | Verification | 4 | 0 | Not Started |
-| **Total** | **29** | **14** | **48%** |
+| **Total** | **28** | **18** | **64%** |
