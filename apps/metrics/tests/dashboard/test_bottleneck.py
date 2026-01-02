@@ -408,7 +408,7 @@ class TestDetectReviewBottleneck(TestCase):
         # Heavy reviewer with 7 open PRs but multiple reviews per PR
         # First commented, then changes_requested (latest is changes_requested = pending)
         heavy_reviewer = TeamMemberFactory(team=self.team, display_name="Heavy")
-        for _i in range(7):
+        for _ in range(7):
             pr = PullRequestFactory(
                 team=self.team,
                 author=author,
