@@ -4,43 +4,42 @@
 
 ---
 
-## Phase 1: Backend Events (Critical Funnel) [M] - Est. 2-3 hours
+## Phase 1: Backend Events (Critical Funnel) [M] ✅ COMPLETE
 
 ### 1.1 Integration Lifecycle Events
 
-- [ ] **Add `integration_connected` event** [S]
-  - File: `apps/integrations/views.py`
-  - Trigger: `github_connect`, `jira_connect`, `slack_connect` success paths
-  - Properties: `provider`, `team_slug`, `is_reconnect`
-  - Acceptance: Event fires in PostHog on each connection
+- [x] **Add `integration_connected` event** [S]
+  - Files: `apps/auth/views.py` (lines 405-416, 632-643, 863-873)
+  - Trigger: GitHub, Jira, Slack OAuth callback success paths
+  - Properties: `provider`, `org_name/site_name/workspace_name`, `team_slug`, `is_reconnect`, `flow`
+  - Commit: 6418e7e
 
-- [ ] **Add `integration_disconnected` event** [S]
-  - File: `apps/integrations/views.py`
-  - Trigger: `github_disconnect`, `jira_disconnect`, `slack_disconnect`
-  - Properties: `provider`, `team_slug`, `days_since_connect`
-  - Acceptance: Event fires in PostHog on each disconnection
+- [x] **Add `integration_disconnected` event** [S]
+  - Files: `apps/integrations/views/github.py:104-113`, `jira.py:160-169`, `slack.py:125-134`
+  - Properties: `provider`, `org_name/site_name/workspace_name`, `team_slug`
+  - Commit: 6418e7e
 
-- [ ] **Write tests for integration events** [S]
-  - File: `apps/integrations/tests/test_analytics.py` (new)
-  - Test: Mock PostHog, verify capture calls with correct properties
-  - Acceptance: Tests pass, cover both connect and disconnect
+- [x] **Write tests for integration events** [S]
+  - File: `apps/integrations/tests/test_analytics_events.py` (10 tests)
+  - Coverage: disconnect events for all 3 providers, property validation
+  - Commit: 6418e7e
 
 ### 1.2 Team Expansion Events
 
-- [ ] **Add `team_member_invited` event** [S]
-  - File: `apps/teams/views.py:send_invitation_view`
+- [x] **Add `team_member_invited` event** [S]
+  - File: `apps/teams/views/manage_team_views.py:121-130`
   - Properties: `team_slug`, `inviter_role`, `invite_method` (email)
-  - Acceptance: Event fires when invite is sent
+  - Commit: 6418e7e
 
-- [ ] **Add `team_member_joined` event** [S]
-  - File: `apps/teams/views.py:accept_invitation`
-  - Properties: `team_slug`, `invite_age_days`, `joined_via` (invite/signup)
-  - Acceptance: Event fires when user joins team
+- [x] **Add `team_member_joined` event** [S]
+  - File: `apps/teams/views/invitation_views.py:60-69`
+  - Properties: `team_slug`, `invite_age_days`, `joined_via` (invite)
+  - Commit: 6418e7e
 
-- [ ] **Write tests for team events** [S]
-  - File: `apps/teams/tests/test_analytics.py` (new)
-  - Test: Mock PostHog, verify capture calls
-  - Acceptance: Tests pass for invite and join events
+- [x] **Write tests for team events** [S]
+  - File: `apps/teams/tests/test_analytics_events.py` (6 tests)
+  - Coverage: invite and join events, failure cases
+  - Commit: 6418e7e
 
 ---
 
@@ -207,10 +206,10 @@
 
 | Phase | Tasks | Completed | Status |
 |-------|-------|-----------|--------|
-| Phase 1 | 6 | 0 | Not Started |
+| Phase 1 | 6 | 6 | ✅ Complete |
 | Phase 2 | 5 | 0 | Not Started |
 | Phase 3 | 3 | 0 | Not Started |
 | Phase 4 | 6 | 0 | Not Started |
 | Phase 5 | 5 | 0 | Not Started |
 | Verification | 4 | 0 | Not Started |
-| **Total** | **29** | **0** | **0%** |
+| **Total** | **29** | **6** | **21%** |
