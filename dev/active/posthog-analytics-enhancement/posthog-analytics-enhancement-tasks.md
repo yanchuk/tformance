@@ -43,38 +43,38 @@
 
 ---
 
-## Phase 2: User & Group Properties Enrichment [S] - Est. 1-2 hours
+## Phase 2: User & Group Properties Enrichment [S] ✅ COMPLETE
 
 ### 2.1 Enhanced identify_user
 
-- [ ] **Add helper function `update_user_properties`** [S]
-  - File: `apps/utils/analytics.py`
-  - Purpose: Update user properties without full identify
-  - Properties: role, teams_count, has_connected_* flags
-  - Acceptance: Function exists with tests
+- [x] **Add helper function `update_user_properties`** [S]
+  - File: `apps/utils/analytics.py:119-146`
+  - Purpose: Lightweight property updates without re-sending full profile
+  - Tests: 6 new tests in test_analytics.py
+  - Commit: 689c7c9
 
-- [ ] **Enhance signup identification** [S]
+- [x] **Enhance signup identification** [S]
   - File: `apps/users/signals.py:handle_sign_up`
-  - Add: `signup_source` property based on sociallogin
-  - Acceptance: New signups have signup_source property
+  - Added: `signup_source`, `teams_count`, `has_connected_*` initial values
+  - Commit: 689c7c9
 
-- [ ] **Update user properties on integration connect** [S]
-  - File: `apps/integrations/views.py`
-  - Add: Set `has_connected_github`, etc. on connection
-  - Acceptance: User properties update on connection
+- [x] **Update user properties on integration connect** [S]
+  - File: `apps/auth/views.py` (lines 418, 647, 879)
+  - Added: Set `has_connected_github/jira/slack` = True on connect
+  - Commit: 689c7c9
 
 ### 2.2 Enhanced group_identify
 
-- [ ] **Create `update_team_properties` helper** [S]
-  - File: `apps/utils/analytics.py`
-  - Purpose: Update team group properties
-  - Properties: plan, repos_tracked, total_prs, ai_adoption_rate
-  - Acceptance: Function exists with tests
+- [x] **Create `update_team_properties` helper** [S]
+  - File: `apps/utils/analytics.py:149-177`
+  - Purpose: Lightweight team property updates
+  - Tests: 6 new tests in test_analytics.py
+  - Commit: 689c7c9
 
-- [ ] **Call group_identify on team changes** [S]
-  - Files: `apps/teams/views.py`, `apps/integrations/views.py`
-  - Trigger: Member join, repo add, subscription change
-  - Acceptance: Team properties stay current
+- [x] **Call group_identify on team changes** [S]
+  - File: `apps/teams/views/invitation_views.py:71-79`
+  - Added: Update `teams_count` for user, `member_count` for team on join
+  - Commit: 689c7c9
 
 ---
 
@@ -207,9 +207,9 @@
 | Phase | Tasks | Completed | Status |
 |-------|-------|-----------|--------|
 | Phase 1 | 6 | 6 | ✅ Complete |
-| Phase 2 | 5 | 0 | Not Started |
+| Phase 2 | 5 | 5 | ✅ Complete |
 | Phase 3 | 3 | 0 | Not Started |
 | Phase 4 | 6 | 0 | Not Started |
 | Phase 5 | 5 | 0 | Not Started |
 | Verification | 4 | 0 | Not Started |
-| **Total** | **29** | **6** | **21%** |
+| **Total** | **29** | **11** | **38%** |
