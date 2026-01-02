@@ -942,8 +942,9 @@ def linkify_mentions(text: str | None, days: int = 30) -> str:
     def replace_reviewer_mention(match):
         """Replace @@username with placeholder (to avoid double-processing)."""
         username = match.group(1)
-        # Include state=open for reviewer links - "pending reviews" means open PRs awaiting review
-        url = f"/app/pull-requests/?reviewer_name=@{username}&days={days}&state=open"
+        # Include state=open and is_draft=false for reviewer links
+        # "Pending reviews" means non-draft open PRs awaiting review
+        url = f"/app/pull-requests/?reviewer_name=@{username}&days={days}&state=open&is_draft=false"
         link = (
             f'<a href="{url}" target="_blank" rel="noopener" '
             f'class="text-primary hover:underline font-medium">@{username}</a>'

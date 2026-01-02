@@ -304,6 +304,40 @@ class TestGetPrsQueryset(TestCase):
         self.assertEqual(result.count(), 1)
         self.assertEqual(result.first(), pr1)
 
+    def test_filter_by_is_draft_true(self):
+        """Test filtering for draft PRs."""
+        pr_draft = PullRequestFactory(team=self.team, state="open", is_draft=True)
+        PullRequestFactory(team=self.team, state="open", is_draft=False)
+
+        result = get_prs_queryset(self.team, {"is_draft": "true"})
+
+        self.assertEqual(result.count(), 1)
+        self.assertEqual(result.first(), pr_draft)
+
+    def test_filter_by_is_draft_false(self):
+        """Test filtering for non-draft PRs."""
+        PullRequestFactory(team=self.team, state="open", is_draft=True)
+        pr_not_draft = PullRequestFactory(team=self.team, state="open", is_draft=False)
+
+        result = get_prs_queryset(self.team, {"is_draft": "false"})
+
+        self.assertEqual(result.count(), 1)
+        self.assertEqual(result.first(), pr_not_draft)
+
+    def test_filter_by_state_and_is_draft_combined(self):
+        """Test filtering open non-draft PRs (reviewer pending reviews use case)."""
+        # Draft open PR - should NOT be found
+        PullRequestFactory(team=self.team, state="open", is_draft=True)
+        # Non-draft open PR - should be found
+        pr_ready = PullRequestFactory(team=self.team, state="open", is_draft=False)
+        # Merged PR - should NOT be found
+        PullRequestFactory(team=self.team, state="merged", is_draft=False)
+
+        result = get_prs_queryset(self.team, {"state": "open", "is_draft": "false"})
+
+        self.assertEqual(result.count(), 1)
+        self.assertEqual(result.first(), pr_ready)
+
     def test_filter_by_has_jira_yes(self):
         """Test filtering for PRs with Jira links."""
         pr1 = PullRequestFactory(team=self.team, jira_key="PROJ-123")
@@ -339,6 +373,83 @@ class TestGetPrsQueryset(TestCase):
 
         self.assertEqual(result.count(), 1)
         self.assertEqual(result.first(), pr1)
+
+    def test_filter_by_date_range_for_open_prs_uses_created_at(self):
+        """Test that open PRs are filtered by pr_created_at, not merged_at.
+
+        Open PRs don't have merged_at (it's null), so filtering by merged_at
+        would exclude all open PRs. This test ensures state=open uses pr_created_at.
+        """
+        today = timezone.now()
+        week_ago = today - timedelta(days=7)
+
+        # Open PR created 3 days ago (should be found)
+        pr_open_recent = PullRequestFactory(
+            team=self.team,
+            state="open",
+            pr_created_at=today - timedelta(days=3),
+            merged_at=None,  # Open PRs have no merged_at
+        )
+        # Open PR created 20 days ago (should be excluded)
+        PullRequestFactory(
+            team=self.team,
+            state="open",
+            pr_created_at=today - timedelta(days=20),
+            merged_at=None,
+        )
+        # Merged PR from same period (should be excluded by state filter)
+        PullRequestFactory(
+            team=self.team,
+            state="merged",
+            pr_created_at=today - timedelta(days=3),
+            merged_at=today - timedelta(days=1),
+        )
+
+        result = get_prs_queryset(
+            self.team,
+            {
+                "state": "open",
+                "date_from": week_ago.date().isoformat(),
+                "date_to": today.date().isoformat(),
+            },
+        )
+
+        # Should find only the recent open PR
+        self.assertEqual(result.count(), 1)
+        self.assertEqual(result.first(), pr_open_recent)
+
+    def test_filter_by_date_range_for_merged_prs_uses_merged_at(self):
+        """Test that merged PRs are filtered by merged_at for consistency."""
+        today = timezone.now()
+        week_ago = today - timedelta(days=7)
+
+        # Merged PR merged 3 days ago (should be found)
+        pr_merged_recent = PullRequestFactory(
+            team=self.team,
+            state="merged",
+            pr_created_at=today - timedelta(days=30),  # Created long ago
+            merged_at=today - timedelta(days=3),  # But merged recently
+        )
+        # Merged PR merged 20 days ago (should be excluded)
+        PullRequestFactory(
+            team=self.team,
+            state="merged",
+            pr_created_at=today - timedelta(days=25),
+            merged_at=today - timedelta(days=20),
+        )
+
+        result = get_prs_queryset(
+            self.team,
+            {
+                "state": "merged",
+                "date_from": week_ago.date().isoformat(),
+                "date_to": today.date().isoformat(),
+            },
+        )
+
+        # Should find only the recently merged PR
+        self.assertEqual(result.count(), 1)
+        self.assertEqual(result.first(), pr_merged_recent)
 
     def test_multiple_filters_combined(self):
         """Test that multiple filters can be combined."""

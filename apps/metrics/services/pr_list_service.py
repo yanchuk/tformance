@@ -219,6 +219,13 @@ def get_prs_queryset(team: Team, filters: dict[str, Any]) -> QuerySet[PullReques
     if filters.get("state"):
         qs = qs.filter(state=filters["state"])
 
+    # Filter by draft status (is_draft: 'true', 'false')
+    is_draft = filters.get("is_draft")
+    if is_draft == "true":
+        qs = qs.filter(is_draft=True)
+    elif is_draft == "false":
+        qs = qs.filter(is_draft=False)
+
     # Filter by Jira link presence
     has_jira = filters.get("has_jira")
     if has_jira == "yes":
@@ -252,16 +259,21 @@ def get_prs_queryset(team: Team, filters: dict[str, Any]) -> QuerySet[PullReques
     if filters.get("review_friction"):
         qs = qs.filter(llm_summary__health__review_friction=filters["review_friction"])
 
-    # Filter by date range (on merged_at)
+    # Filter by date range
+    # For open PRs (no merged_at), filter by pr_created_at instead
+    # For merged/closed PRs, filter by merged_at for consistency with dashboard
+    state_filter = filters.get("state")
+    date_field = "pr_created_at" if state_filter == "open" else "merged_at"
+
     if filters.get("date_from"):
         date_from = _parse_date(filters["date_from"])
         if date_from:
-            qs = qs.filter(merged_at__date__gte=date_from)
+            qs = qs.filter(**{f"{date_field}__date__gte": date_from})
 
     if filters.get("date_to"):
         date_to = _parse_date(filters["date_to"])
         if date_to:
-            qs = qs.filter(merged_at__date__lte=date_to)
+            qs = qs.filter(**{f"{date_field}__date__lte": date_to})
 
     # Filter by issue type (for "needs attention" filters)
     # Uses priority-based exclusion to match dashboard counts:

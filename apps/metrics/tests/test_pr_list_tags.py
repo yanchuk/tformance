@@ -711,6 +711,7 @@ class TestLinkifyReviewerMentions(TestCase):
         self.assertIn("reviewer_name=@alice", result)
         self.assertIn("days=30", result)
         self.assertIn("state=open", result)  # Pending reviews = open PRs
+        self.assertIn("is_draft=false", result)  # Exclude drafts from pending reviews
         self.assertIn('target="_blank"', result)
 
     def test_reviewer_mention_displays_single_at(self):

@@ -2815,8 +2815,9 @@ def detect_review_bottleneck(
 ) -> dict | None:
     """Detect if any reviewer has > 3x average pending reviews.
 
-    "Pending reviews" are defined as open PRs that a reviewer has reviewed.
-    This represents ongoing review work where PRs haven't been merged yet.
+    "Pending reviews" are defined as open, non-draft PRs that a reviewer has reviewed.
+    Draft PRs are excluded since they're work-in-progress and not ready for review.
+    This represents actionable review work where PRs are ready but haven't been merged.
 
     Note: Date parameters are accepted for API consistency but not used.
     We look at ALL currently open PRs since pending work is independent of
@@ -2831,15 +2832,17 @@ def detect_review_bottleneck(
     Returns:
         dict with bottleneck info if detected:
             - reviewer_name: str display name of bottleneck reviewer
-            - pending_count: int number of open PRs they've reviewed
+            - pending_count: int number of open non-draft PRs they've reviewed
             - team_avg: float average pending reviews across all reviewers
         None if no bottleneck detected (no one exceeds 3x threshold)
     """
     # Get distinct open PRs per reviewer
     # Count distinct PRs (not reviews) - a reviewer might review same PR multiple times
+    # Exclude draft PRs - they're WIP and not ready for review
     filters = {
         "team": team,
         "pull_request__state": "open",
+        "pull_request__is_draft": False,  # Only count non-draft PRs
     }
     if repo:
         filters["pull_request__github_repo"] = repo
@@ -3035,6 +3038,44 @@ def get_quality_metrics(team: Team, start_date: date, end_date: date, repo: str 
     }
 
 
+def get_open_prs_stats(team: Team, repo: str | None = None) -> dict:
+    """Get statistics about open PRs, distinguishing draft from ready-to-review.
+
+    Args:
+        team: Team instance
+        repo: Optional repository to filter by (owner/repo format)
+
+    Returns:
+        dict with:
+            - total_open: int - Total open PRs
+            - draft_count: int - Open PRs in draft state (WIP)
+            - ready_for_review: int - Open non-draft PRs (actionable)
+            - draft_pct: float - Percentage of open PRs that are drafts
+    """
+    filters = {
+        "team": team,
+        "state": "open",
+    }
+    if repo:
+        filters["github_repo"] = repo
+
+    # Count all open PRs
+    total_open = PullRequest.objects.filter(**filters).count()  # noqa: TEAM001 - team in filters
+
+    # Count drafts
+    draft_count = PullRequest.objects.filter(**filters, is_draft=True).count()  # noqa: TEAM001 - team in filters
+
+    ready_for_review = total_open - draft_count
+    draft_pct = (draft_count * 100.0 / total_open) if total_open > 0 else 0.0
+
+    return {
+        "total_open": total_open,
+        "draft_count": draft_count,
+        "ready_for_review": ready_for_review,
+        "draft_pct": round(draft_pct, 1),
+    }
+
+
 def get_team_health_metrics(team: Team, start_date: date, end_date: date, repo: str | None = None) -> dict:
     """Get team health metrics for a period.
 
@@ -3050,6 +3091,7 @@ def get_team_health_metrics(team: Team, start_date: date, end_date: date, repo: 
         - pr_distribution: dict - { "top_contributor_pct": float, "is_concentrated": bool }
         - review_distribution: dict - { "avg_reviews_per_reviewer": float|None, "max_reviews": int }
         - bottleneck: dict|None - Result from detect_review_bottleneck() or None
+        - open_prs: dict - Open PR stats (total_open, draft_count, ready_for_review, draft_pct)
     """
     # Get merged PRs for the period
     prs = _apply_repo_filter(_get_merged_prs_in_range(team, start_date, end_date), repo)
@@ -3096,6 +3138,9 @@ def get_team_health_metrics(team: Team, start_date: date, end_date: date, repo: 
     # Get bottleneck info
     bottleneck = detect_review_bottleneck(team, start_date, end_date, repo)
 
+    # Get open PR stats (draft vs ready for review)
+    open_prs = get_open_prs_stats(team, repo)
+
     return {
         "active_contributors": active_contributors,
         "pr_distribution": {
@@ -3107,6 +3152,7 @@ def get_team_health_metrics(team: Team, start_date: date, end_date: date, repo: 
             "max_reviews": max_reviews,
         },
         "bottleneck": bottleneck,
+        "open_prs": open_prs,
     }
 
 

@@ -36,8 +36,17 @@
 - Avg reviews per reviewer: {{ "%.1f"|format(team_health.review_distribution.avg_reviews_per_reviewer) }}
 {% endif %}
 - Max reviews (single person): {{ team_health.review_distribution.max_reviews }}
+
+**Open PRs Status:**
+{% if team_health.open_prs %}
+- Total open: {{ team_health.open_prs.total_open }} PRs
+- Ready for review: {{ team_health.open_prs.ready_for_review }} (non-draft, actionable)
+- Work in progress: {{ team_health.open_prs.draft_count }} drafts ({{ "%.0f"|format(team_health.open_prs.draft_pct) }}%)
+{% else %}
+- No open PR data available
+{% endif %}
 {% if team_health.bottleneck %}
-- ⚠️ BOTTLENECK: @@{{ team_health.bottleneck.github_username }} ({{ team_health.bottleneck.reviewer_name }}) has {{ team_health.bottleneck.pending_count }} pending reviews
+- ⚠️ BOTTLENECK: @@{{ team_health.bottleneck.github_username }} ({{ team_health.bottleneck.reviewer_name }}) has {{ team_health.bottleneck.pending_count }} pending reviews (non-draft PRs only)
 {% endif %}
 
 **Top Contributors (use @username for author mentions, @@username for reviewer mentions):**

@@ -51,6 +51,7 @@ def _get_filters_from_request(request: HttpRequest, default_days: int = 30) -> d
         "ai_category",
         "size",
         "state",
+        "is_draft",  # Filter by draft status ('true', 'false')
         "has_jira",
         "pr_type",
         "risk_level",
