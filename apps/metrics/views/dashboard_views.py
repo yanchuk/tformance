@@ -1,3 +1,4 @@
+import json
 from datetime import date
 
 from django.http import HttpRequest, HttpResponse
@@ -137,6 +138,7 @@ def engineering_insights(request: HttpRequest) -> HttpResponse:
         possible_causes = ([raw_causes] if raw_causes else []) if isinstance(raw_causes, str) else raw_causes
 
         context["insight"] = {
+            "id": insight_record.id,
             "headline": insight_data.get("headline", ""),
             "detail": insight_data.get("detail", ""),
             "possible_causes": possible_causes,
@@ -146,6 +148,8 @@ def engineering_insights(request: HttpRequest) -> HttpResponse:
             "is_fallback": insight_data.get("is_fallback", False),
             "generated_at": insight_record.updated_at,
         }
+        # Include snapshot for feedback system
+        context["insight_snapshot"] = json.dumps(insight_data)
 
     return TemplateResponse(
         request,
@@ -189,7 +193,7 @@ def refresh_insight(request: HttpRequest) -> HttpResponse:
     """Regenerate an insight on demand (HTMX endpoint).
 
     Query params:
-        cadence: "weekly" or "monthly" (default: weekly)
+        days: Number of days for the insight period (7, 30, or 90)
     """
     from datetime import timedelta
 
@@ -199,16 +203,11 @@ def refresh_insight(request: HttpRequest) -> HttpResponse:
         generate_insight,
     )
 
-    cadence = request.GET.get("cadence", "weekly")
     days = int(request.GET.get("days", 30))
     today = date.today()
-
-    # Determine period based on cadence
-    period_days = 30 if cadence == "monthly" else 7
-    start_date = today - timedelta(days=period_days)
+    start_date = today - timedelta(days=days)
 
     context = {
-        "cadence": cadence,
         "days": days,
         "insight": None,
         "error": None,
@@ -223,12 +222,12 @@ def refresh_insight(request: HttpRequest) -> HttpResponse:
         )
         insight = generate_insight(data)
 
-        # Cache it
+        # Cache it with days as comparison_period
         cache_insight(
             team=request.team,
             insight=insight,
             target_date=today,
-            cadence=cadence,
+            days=days,
         )
 
         context["insight"] = {

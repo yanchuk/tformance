@@ -409,7 +409,7 @@ class TestCacheInsight(TestCase):
             team=self.team,
             insight=self.insight_data,
             target_date=self.target_date,
-            cadence="weekly",
+            days=7,
         )
 
         # Verify a DailyInsight was created
@@ -417,7 +417,7 @@ class TestCacheInsight(TestCase):
         self.assertEqual(result.team, self.team)
         self.assertEqual(result.date, self.target_date)
         self.assertEqual(result.category, "llm_insight")
-        self.assertEqual(result.comparison_period, "weekly")
+        self.assertEqual(result.comparison_period, "7")  # days as string
         self.assertEqual(result.title, self.insight_data["headline"])
 
     def test_stores_full_response_in_metric_value(self):
@@ -428,7 +428,7 @@ class TestCacheInsight(TestCase):
             team=self.team,
             insight=self.insight_data,
             target_date=self.target_date,
-            cadence="weekly",
+            days=30,
         )
 
         # Verify metric_value contains the full response
@@ -440,7 +440,7 @@ class TestCacheInsight(TestCase):
         self.assertEqual(result.metric_value["headline"], self.insight_data["headline"])
 
     def test_updates_existing_insight(self):
-        """Test that cache_insight updates existing record for same team/date/cadence."""
+        """Test that cache_insight updates existing record for same team/date/days."""
         from apps.metrics.models import DailyInsight
         from apps.metrics.services.insight_llm import cache_insight
 
@@ -449,7 +449,7 @@ class TestCacheInsight(TestCase):
             team=self.team,
             insight=self.insight_data,
             target_date=self.target_date,
-            cadence="weekly",
+            days=7,
         )
 
         # Create updated insight data
@@ -463,7 +463,7 @@ class TestCacheInsight(TestCase):
             team=self.team,
             insight=updated_data,
             target_date=self.target_date,
-            cadence="weekly",
+            days=7,
         )
 
         # Should update existing, not create new
@@ -475,36 +475,36 @@ class TestCacheInsight(TestCase):
             team=self.team,
             date=self.target_date,
             category="llm_insight",
-            comparison_period="weekly",
+            comparison_period="7",
         ).count()
         self.assertEqual(count, 1)
 
-    def test_different_cadences_are_separate(self):
-        """Test that weekly and monthly insights are stored separately."""
+    def test_different_days_are_separate(self):
+        """Test that 7-day and 30-day insights are stored separately."""
         from apps.metrics.models import DailyInsight
         from apps.metrics.services.insight_llm import cache_insight
 
-        # Create weekly insight
-        weekly = cache_insight(
+        # Create 7-day insight
+        seven_day = cache_insight(
             team=self.team,
             insight=self.insight_data,
             target_date=self.target_date,
-            cadence="weekly",
+            days=7,
         )
 
-        # Create monthly insight
-        monthly_data = {**self.insight_data, "headline": "Monthly headline"}
-        monthly = cache_insight(
+        # Create 30-day insight
+        thirty_day_data = {**self.insight_data, "headline": "30-day headline"}
+        thirty_day = cache_insight(
             team=self.team,
-            insight=monthly_data,
+            insight=thirty_day_data,
             target_date=self.target_date,
-            cadence="monthly",
+            days=30,
         )
 
         # Should be different records
-        self.assertNotEqual(weekly.id, monthly.id)
-        self.assertEqual(weekly.comparison_period, "weekly")
-        self.assertEqual(monthly.comparison_period, "monthly")
+        self.assertNotEqual(seven_day.id, thirty_day.id)
+        self.assertEqual(seven_day.comparison_period, "7")
+        self.assertEqual(thirty_day.comparison_period, "30")
 
         # Verify both exist
         count = DailyInsight.objects.filter(

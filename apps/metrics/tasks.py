@@ -323,12 +323,12 @@ def generate_weekly_insights() -> dict:
             # Generate insight using LLM
             insight = generate_insight(data)
 
-            # Cache the result
+            # Cache the result with days=7 for weekly insights
             cache_insight(
                 team=team,
                 insight=insight,
                 target_date=today,
-                cadence="weekly",
+                days=7,
             )
 
             teams_processed += 1
@@ -372,12 +372,12 @@ def generate_monthly_insights() -> dict:
             # Generate insight using LLM
             insight = generate_insight(data)
 
-            # Cache the result
+            # Cache the result with days=30 for monthly insights
             cache_insight(
                 team=team,
                 insight=insight,
                 target_date=today,
-                cadence="monthly",
+                days=30,
             )
 
             teams_processed += 1

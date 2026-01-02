@@ -669,25 +669,26 @@ def cache_insight(
     team: Team,
     insight: dict,
     target_date: date,
-    cadence: str = "weekly",
+    days: int = 30,
 ) -> DailyInsight:
     """Cache an LLM-generated insight to the database.
 
     Uses upsert logic to update existing insights for the same
-    team/date/cadence combination.
+    team/date/days combination.
 
     Args:
         team: Team instance
         insight: Dict from generate_insight with headline, detail, etc.
         target_date: Date this insight is for
-        cadence: "weekly" or "monthly"
+        days: Number of days for the insight period (7, 30, or 90)
 
     Returns:
         DailyInsight instance (created or updated)
     """
     from apps.metrics.models import DailyInsight
 
-    # Upsert based on team + date + cadence
+    # Upsert based on team + date + days
+    # comparison_period must be string of days ("7", "30", "90") to match dashboard query
     defaults = {
         "title": insight.get("headline", "")[:255],  # Truncate to field max
         "description": insight.get("detail", ""),
@@ -700,7 +701,7 @@ def cache_insight(
         team=team,
         date=target_date,
         category="llm_insight",
-        comparison_period=cadence,
+        comparison_period=str(days),  # Must be "7", "30", or "90"
         defaults=defaults,
     )
 
