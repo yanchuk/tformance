@@ -15,7 +15,7 @@ class TestTrendsOverviewView(TestCase):
 
     def setUp(self):
         """Set up test fixtures."""
-        self.team = TeamFactory()
+        self.team = TeamFactory(onboarding_pipeline_status="complete")
         self.admin_user = UserFactory()
         self.member_user = UserFactory()
         self.team.members.add(self.admin_user, through_defaults={"role": ROLE_ADMIN})
@@ -97,7 +97,7 @@ class TestTrendChartDataView(TestCase):
 
     def setUp(self):
         """Set up test fixtures."""
-        self.team = TeamFactory()
+        self.team = TeamFactory(onboarding_pipeline_status="complete")
         self.admin_user = UserFactory()
         self.team.members.add(self.admin_user, through_defaults={"role": ROLE_ADMIN})
         self.member = TeamMemberFactory(team=self.team)
@@ -169,7 +169,7 @@ class TestWideTrendChartView(TestCase):
 
     def setUp(self):
         """Set up test fixtures."""
-        self.team = TeamFactory()
+        self.team = TeamFactory(onboarding_pipeline_status="complete")
         self.admin_user = UserFactory()
         self.team.members.add(self.admin_user, through_defaults={"role": ROLE_ADMIN})
         self.member = TeamMemberFactory(team=self.team)
@@ -214,7 +214,7 @@ class TestTrendsTabNavigation(TestCase):
 
     def setUp(self):
         """Set up test fixtures."""
-        self.team = TeamFactory()
+        self.team = TeamFactory(onboarding_pipeline_status="complete")
         self.admin_user = UserFactory()
         self.team.members.add(self.admin_user, through_defaults={"role": ROLE_ADMIN})
         self.client = Client()
@@ -244,7 +244,7 @@ class TestTrendsURLParameters(TestCase):
 
     def setUp(self):
         """Set up test fixtures."""
-        self.team = TeamFactory()
+        self.team = TeamFactory(onboarding_pipeline_status="complete")
         self.admin_user = UserFactory()
         self.team.members.add(self.admin_user, through_defaults={"role": ROLE_ADMIN})
         self.client = Client()
@@ -334,7 +334,7 @@ class TestTrendsDefaultBehavior(TestCase):
 
     def setUp(self):
         """Set up test fixtures."""
-        self.team = TeamFactory()
+        self.team = TeamFactory(onboarding_pipeline_status="complete")
         self.admin_user = UserFactory()
         self.team.members.add(self.admin_user, through_defaults={"role": ROLE_ADMIN})
         self.client = Client()
@@ -417,7 +417,7 @@ class TestTechBreakdownChartAIFilter(TestCase):
 
     def setUp(self):
         """Set up test fixtures."""
-        self.team = TeamFactory()
+        self.team = TeamFactory(onboarding_pipeline_status="complete")
         self.admin_user = UserFactory()
         self.team.members.add(self.admin_user, through_defaults={"role": ROLE_ADMIN})
         self.client = Client()
@@ -460,7 +460,7 @@ class TestTechBreakdownChartGranularity(TestCase):
 
     def setUp(self):
         """Set up test fixtures using factories."""
-        self.team = TeamFactory()
+        self.team = TeamFactory(onboarding_pipeline_status="complete")
         self.admin_user = UserFactory()
         self.team.members.add(self.admin_user, through_defaults={"role": ROLE_ADMIN})
         self.member = TeamMemberFactory(team=self.team)
@@ -562,7 +562,7 @@ class TestPRTypeBreakdownChartGranularity(TestCase):
 
     def setUp(self):
         """Set up test fixtures using factories."""
-        self.team = TeamFactory()
+        self.team = TeamFactory(onboarding_pipeline_status="complete")
         self.admin_user = UserFactory()
         self.team.members.add(self.admin_user, through_defaults={"role": ROLE_ADMIN})
         self.member = TeamMemberFactory(team=self.team)
@@ -668,7 +668,7 @@ class TestGranularityToggleIntegration(TestCase):
 
     def setUp(self):
         """Set up test fixtures using factories."""
-        self.team = TeamFactory()
+        self.team = TeamFactory(onboarding_pipeline_status="complete")
         self.admin_user = UserFactory()
         self.team.members.add(self.admin_user, through_defaults={"role": ROLE_ADMIN})
         self.member = TeamMemberFactory(team=self.team)

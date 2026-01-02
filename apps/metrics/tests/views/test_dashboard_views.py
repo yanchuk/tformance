@@ -19,7 +19,7 @@ class TestNeedsAttentionView(TestCase):
 
     def setUp(self):
         """Set up test fixtures using factories."""
-        self.team = TeamFactory()
+        self.team = TeamFactory(onboarding_pipeline_status="complete")
         self.admin_user = UserFactory()
         self.member_user = UserFactory()
         self.team.members.add(self.admin_user, through_defaults={"role": ROLE_ADMIN})
@@ -112,7 +112,7 @@ class TestAiImpactView(TestCase):
 
     def setUp(self):
         """Set up test fixtures using factories."""
-        self.team = TeamFactory()
+        self.team = TeamFactory(onboarding_pipeline_status="complete")
         self.admin_user = UserFactory()
         self.member_user = UserFactory()
         self.team.members.add(self.admin_user, through_defaults={"role": ROLE_ADMIN})
@@ -188,7 +188,7 @@ class TestTeamVelocityView(TestCase):
 
     def setUp(self):
         """Set up test fixtures using factories."""
-        self.team = TeamFactory()
+        self.team = TeamFactory(onboarding_pipeline_status="complete")
         self.admin_user = UserFactory()
         self.member_user = UserFactory()
         self.team.members.add(self.admin_user, through_defaults={"role": ROLE_ADMIN})
@@ -277,7 +277,7 @@ class TestReviewDistributionBottleneck(TestCase):
 
     def setUp(self):
         """Set up test fixtures using factories."""
-        self.team = TeamFactory()
+        self.team = TeamFactory(onboarding_pipeline_status="complete")
         self.admin_user = UserFactory()
         self.member_user = UserFactory()
         self.team.members.add(self.admin_user, through_defaults={"role": ROLE_ADMIN})
@@ -320,7 +320,7 @@ class TestEngineeringInsightsView(TestCase):
 
     def setUp(self):
         """Set up test fixtures using factories."""
-        self.team = TeamFactory()
+        self.team = TeamFactory(onboarding_pipeline_status="complete")
         self.admin_user = UserFactory()
         self.member_user = UserFactory()
         self.team.members.add(self.admin_user, through_defaults={"role": ROLE_ADMIN})
@@ -526,7 +526,7 @@ class TestRefreshInsightView(TestCase):
 
     def setUp(self):
         """Set up test fixtures using factories."""
-        self.team = TeamFactory()
+        self.team = TeamFactory(onboarding_pipeline_status="complete")
         self.admin_user = UserFactory()
         self.member_user = UserFactory()
         self.team.members.add(self.admin_user, through_defaults={"role": ROLE_ADMIN})

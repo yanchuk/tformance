@@ -17,7 +17,7 @@ class TestPrListUrlChanges(TestCase):
 
     def setUp(self):
         """Set up test fixtures."""
-        self.team = TeamFactory()
+        self.team = TeamFactory(onboarding_pipeline_status="complete")
         self.user = UserFactory()
         self.team.members.add(self.user, through_defaults={"role": ROLE_ADMIN})
         self.client = Client()
@@ -62,7 +62,7 @@ class TestSidebarNavigation(TestCase):
 
     def setUp(self):
         """Set up test fixtures."""
-        self.team = TeamFactory()
+        self.team = TeamFactory(onboarding_pipeline_status="complete")
         self.user = UserFactory()
         self.team.members.add(self.user, through_defaults={"role": ROLE_ADMIN})
         self.client = Client()
@@ -109,7 +109,7 @@ class TestAnalyticsHubTabs(TestCase):
 
     def setUp(self):
         """Set up test fixtures."""
-        self.team = TeamFactory()
+        self.team = TeamFactory(onboarding_pipeline_status="complete")
         self.user = UserFactory()
         self.team.members.add(self.user, through_defaults={"role": ROLE_ADMIN})
         self.client = Client()
@@ -148,7 +148,7 @@ class TestCrosslinks(TestCase):
 
     def setUp(self):
         """Set up test fixtures."""
-        self.team = TeamFactory()
+        self.team = TeamFactory(onboarding_pipeline_status="complete")
         self.user = UserFactory()
         self.team.members.add(self.user, through_defaults={"role": ROLE_ADMIN})
         self.member = TeamMemberFactory(team=self.team)
@@ -229,7 +229,7 @@ class TestStandalonePrPage(TestCase):
 
     def setUp(self):
         """Set up test fixtures."""
-        self.team = TeamFactory()
+        self.team = TeamFactory(onboarding_pipeline_status="complete")
         self.user = UserFactory()
         self.team.members.add(self.user, through_defaults={"role": ROLE_ADMIN})
         self.client = Client()
@@ -328,7 +328,7 @@ class TestHtmxPartials(TestCase):
 
     def setUp(self):
         """Set up test fixtures."""
-        self.team = TeamFactory()
+        self.team = TeamFactory(onboarding_pipeline_status="complete")
         self.user = UserFactory()
         self.team.members.add(self.user, through_defaults={"role": ROLE_ADMIN})
         self.client = Client()

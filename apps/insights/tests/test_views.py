@@ -18,7 +18,7 @@ class InsightsViewTestCase(TestCase):
 
     def setUp(self):
         """Set up test user and team."""
-        self.team = TeamFactory()
+        self.team = TeamFactory(onboarding_pipeline_status="complete")
         self.user = CustomUser.objects.create_user(
             username="testuser",
             email="test@example.com",
