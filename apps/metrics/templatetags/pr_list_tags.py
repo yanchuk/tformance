@@ -1,6 +1,10 @@
 """Template tags for PR list views."""
 
+import re
+
 from django import template
+from django.utils.html import escape
+from django.utils.safestring import mark_safe
 
 from apps.metrics.services.ai_categories import (
     CATEGORY_BOTH,
@@ -889,3 +893,44 @@ def user_note_for_pr(context, pr):
         return PRNote.objects.get(user=request.user, pull_request=pr)
     except PRNote.DoesNotExist:
         return None
+
+
+# =============================================================================
+# Insight @Mention and Link Filters
+# =============================================================================
+
+# Pattern to match @username mentions (alphanumeric and hyphens, like GitHub usernames)
+# Uses negative lookbehind to avoid matching emails like user@example.com
+MENTION_PATTERN = re.compile(r"(?<![a-zA-Z0-9])@([a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?)")
+
+
+@register.filter
+def linkify_mentions(text: str | None, days: int = 30) -> str:
+    """Convert @username mentions to clickable links to PR list filtered by that user.
+
+    Args:
+        text: Text that may contain @username mentions
+        days: Number of days for the date filter (default: 30)
+
+    Returns:
+        HTML with @mentions converted to links (marked safe)
+
+    Usage:
+        {{ insight.detail|linkify_mentions:30 }}
+    """
+    if not text:
+        return ""
+
+    # Escape the text first to prevent XSS
+    escaped_text = escape(text)
+
+    def replace_mention(match):
+        username = match.group(1)
+        url = f"/app/pull-requests/?github_name=@{username}&days={days}"
+        return (
+            f'<a href="{url}" target="_blank" rel="noopener" '
+            f'class="text-primary hover:underline font-medium">@{username}</a>'
+        )
+
+    result = MENTION_PATTERN.sub(replace_mention, escaped_text)
+    return mark_safe(result)

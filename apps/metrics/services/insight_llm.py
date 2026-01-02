@@ -94,33 +94,44 @@ INSIGHT_JSON_SCHEMA = {
 # Models that support json_schema response format (strict JSON)
 MODELS_WITH_JSON_SCHEMA = {"openai/gpt-oss-20b", "openai/gpt-oss-120b"}
 
-# System prompt for insight generation (Version K - no metric_cards in output)
+# System prompt for insight generation (Version L - bullet points with @mentions)
 # Structure: Identity → Instructions → Examples (optimized for prompt caching)
 INSIGHT_SYSTEM_PROMPT = """# Identity
 
 You are a senior engineering manager briefing your CTO on weekly team metrics.
-You communicate concisely, focusing on root causes rather than symptoms.
-You speak naturally, like talking to a colleague, not writing a report.
+You communicate concisely with bullet points, focusing on root causes not symptoms.
 
 # Instructions
 
 ## Output Format
 Return a JSON object with exactly these fields:
 - headline: Root cause → impact (8-12 words, NO numbers)
-- detail: 2-3 natural sentences explaining what's happening (NO raw numbers)
-- recommendation: ONE specific action to take
-- actions: 2-3 objects with action_type and label, e.g. [{"action_type": "view_slow_prs", "label": "View slow PRs"}]
+- detail: 2-4 bullet points (each starting with "• "), one fact per line
+- recommendation: ONE specific action with @username target
+- actions: 2-3 objects with action_type and label
+
+## Detail Format (CRITICAL - USE BULLETS)
+Write detail as SHORT bullet points separated by newlines. Each bullet = one insight.
+Use @username when referencing contributors (will become clickable links).
+
+Format: "• First insight here\\n• Second insight with @username\\n• Third insight"
+
+## @Username Format
+Reference contributors with @username from the data (Top Contributors section).
+Examples: @johndoe, @janesmith, @bob
+The @username becomes a clickable link to filter their PRs.
 
 ## What to Do
 - Identify the ROOT CAUSE, not the symptom
 - Use qualitative language: "nearly doubled", "about a week", "most of the work"
-- Connect insights with cause → effect arrows or natural sentences
+- Include @username when a specific person is relevant
+- Each bullet = one clear fact
 
 ## What NOT to Do
+- Do not write paragraphs - use bullet points only
 - Do not use percentages with decimals: "5.4%", "56.2%"
 - Do not use percentages over 10: "42%", "96%", "85%"
 - Do not use hour values: "40 hours", "142.6 hours"
-- Do not use benchmark comparisons: "less than 48 hours", "over 40%"
 - Do not use exact PR counts over 20: "111 PRs", "150 PRs"
 
 ## Number Conversions
@@ -134,16 +145,19 @@ view_ai_prs, view_non_ai_prs, view_slow_prs, view_reverts, view_large_prs, view_
 # Examples
 
 <example type="good">
-Input: cycle_time 142.6h (+147%), AI adoption 4.5%, one contributor at 56%
+Input: cycle_time 142.6h (+147%), AI adoption 4.5%, top contributor @alice at 56%, @bob has 15 pending reviews
 Output headline: "Work concentrated on one contributor → review delays"
-Output detail: "One person is handling most of the work, creating a bottleneck. \
-Cycle time has grown to nearly a week. Very few PRs use AI tools."
+Output detail: "• @alice handling most of the work, creating bottleneck
+• Cycle time grown to nearly a week
+• @bob has many pending reviews slowing merges
+• Very few PRs using AI tools"
+Output recommendation: "Redistribute some of @bob's pending reviews to balance workload"
 </example>
 
 <example type="bad">
 Input: same data
 Output headline: "Cycle time increased by 147.6% to 142.6 hours" ← Uses exact numbers
-Output detail: "The AI adoption rate is 4.5%, below the 40% benchmark..." ← Uses percentages
+Output detail: "The AI adoption rate is 4.5%, below the 40% benchmark. One contributor..." ← Paragraphs, not bullets
 </example>
 
 Return ONLY valid JSON."""
@@ -280,6 +294,48 @@ def build_metric_cards(data: dict) -> list[dict]:
     return cards
 
 
+def _get_top_contributors(team: Team, start_date: date, end_date: date, limit: int = 5) -> list[dict]:
+    """Get top PR authors with their GitHub usernames for @mentions.
+
+    Args:
+        team: Team instance
+        start_date: Start of period
+        end_date: End of period
+        limit: Max contributors to return
+
+    Returns:
+        List of dicts with github_username, display_name, pr_count, pct_share
+    """
+    from django.db.models import Count
+
+    from apps.metrics.models import PullRequest
+
+    # Get merged PRs grouped by author
+    author_stats = list(
+        PullRequest.objects.filter(  # noqa: TEAM001 - team filter present
+            team=team,
+            state="merged",
+            merged_at__date__gte=start_date,
+            merged_at__date__lte=end_date,
+        )
+        .values("author__github_username", "author__display_name")
+        .annotate(pr_count=Count("id"))
+        .order_by("-pr_count")[:limit]
+    )
+
+    total_prs = sum(a["pr_count"] for a in author_stats) if author_stats else 0
+
+    return [
+        {
+            "github_username": stat["author__github_username"] or "unknown",
+            "display_name": stat["author__display_name"] or "Unknown",
+            "pr_count": stat["pr_count"],
+            "pct_share": round(stat["pr_count"] * 100.0 / total_prs, 1) if total_prs > 0 else 0,
+        }
+        for stat in author_stats
+    ]
+
+
 def gather_insight_data(
     team: Team,
     start_date: date,
@@ -293,6 +349,7 @@ def gather_insight_data(
     - get_quality_metrics: reverts, hotfixes, review rounds, large PR percentage
     - get_team_health_metrics: contributors, distribution, bottlenecks
     - get_ai_impact_stats: AI adoption rate, cycle time comparison
+    - _get_top_contributors: Top PR authors with GitHub usernames for @mentions
 
     Args:
         team: Team instance
@@ -304,7 +361,7 @@ def gather_insight_data(
         dict with keys:
             - velocity: throughput, cycle_time, review_time comparisons
             - quality: revert/hotfix counts and rates, review rounds, large PR pct
-            - team_health: contributors, distributions, bottleneck info
+            - team_health: contributors, distributions, bottleneck info, top_contributors
             - ai_impact: AI adoption rate and cycle time comparison
             - metadata: period info, team name
     """
@@ -316,6 +373,9 @@ def gather_insight_data(
     quality = get_quality_metrics(team, start_date, end_date, repo)
     team_health = get_team_health_metrics(team, start_date, end_date, repo)
     ai_impact_raw = get_ai_impact_stats(team, start_date, end_date)
+
+    # Add top contributors with GitHub usernames for @mentions
+    team_health["top_contributors"] = _get_top_contributors(team, start_date, end_date)
 
     # Transform ai_impact to expected format
     ai_impact = {

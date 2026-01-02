@@ -2846,7 +2846,7 @@ def detect_review_bottleneck(
 
     reviewer_stats = list(
         PRReview.objects.filter(**filters)  # noqa: TEAM001 - team in filters
-        .values("reviewer__id", "reviewer__display_name")
+        .values("reviewer__id", "reviewer__display_name", "reviewer__github_username")
         .annotate(pending_count=Count("pull_request", distinct=True))
     )
 
@@ -2857,6 +2857,7 @@ def detect_review_bottleneck(
     reviewer_counts = [
         {
             "reviewer_name": stat["reviewer__display_name"] or "Unknown",
+            "github_username": stat["reviewer__github_username"] or "unknown",
             "pending_count": stat["pending_count"],
         }
         for stat in reviewer_stats
@@ -2882,6 +2883,7 @@ def detect_review_bottleneck(
 
     return {
         "reviewer_name": worst["reviewer_name"],
+        "github_username": worst["github_username"],
         "pending_count": worst["pending_count"],
         "team_avg": round(team_avg, 1),
     }

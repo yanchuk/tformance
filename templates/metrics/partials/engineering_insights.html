@@ -1,4 +1,4 @@
-{% load i18n %}
+{% load i18n pr_list_tags %}
 <div class="engineering-insights-container">
   {% if insight %}
   <!-- Insight Content -->
@@ -12,7 +12,7 @@
       <span class="badge badge-ghost badge-sm mt-1">{% trans "Auto-generated" %}</span>
       {% endif %}
       <p class="text-sm text-base-content/80 whitespace-pre-line mt-1">
-        {{ insight.detail }}
+        {{ insight.detail|linkify_mentions:days }}
       </p>
     </div>
 
@@ -24,7 +24,7 @@
         {% for cause in insight.possible_causes %}
         <li class="flex items-start gap-2">
           <span class="text-primary mt-0.5">•</span>
-          <span>{{ cause }}</span>
+          <span>{{ cause|linkify_mentions:days }}</span>
         </li>
         {% endfor %}
       </ul>
@@ -40,7 +40,7 @@
         </svg>
         <div>
           <div class="text-xs font-medium text-primary uppercase tracking-wide mb-1">{% trans "Recommendation" %}</div>
-          <p class="text-sm text-base-content">{{ insight.recommendation }}</p>
+          <p class="text-sm text-base-content">{{ insight.recommendation|linkify_mentions:days }}</p>
         </div>
       </div>
     </div>
@@ -79,12 +79,14 @@
     {% endif %}
   </div>
 
-  <!-- Footer: Timestamp -->
+  <!-- Footer: Timestamp + Feedback -->
   {% if insight.generated_at %}
-  <div class="pt-4 mt-4 border-t border-base-300">
+  <div class="pt-4 mt-4 border-t border-base-300 flex items-center justify-between">
     <span class="text-xs text-base-content/50">
       {% trans "Updated" %} {{ insight.generated_at|timesince }} {% trans "ago" %}
     </span>
+    <!-- Thumbs Rating -->
+    {% include "feedback/partials/thumbs_rating.html" with content_type="engineering_insight" content_id=insight.id|default:"latest" snapshot=insight_snapshot|default:"{}" testid_suffix="engineering-insight" %}
   </div>
   {% endif %}
 
