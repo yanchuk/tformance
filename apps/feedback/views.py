@@ -209,7 +209,7 @@ def submit_llm_feedback(request):
         return JsonResponse({"error": "Invalid content_type"}, status=400)
 
     # Create or update feedback (unique on: team, user, content_type, content_id)
-    feedback, _ = LLMFeedback.objects.update_or_create(
+    feedback, created = LLMFeedback.objects.update_or_create(
         team=request.team,
         user=request.user,
         content_type=content_type,
@@ -219,6 +219,19 @@ def submit_llm_feedback(request):
             "content_snapshot": content_snapshot,
             "input_context": input_context,
             "prompt_version": prompt_version,
+        },
+    )
+
+    # Track analytics event
+    track_event(
+        request.user,
+        "llm_feedback_submitted",
+        {
+            "content_type": content_type,
+            "rating": "positive" if rating else "negative",
+            "is_new": created,
+            "has_snapshot": bool(content_snapshot),
+            "prompt_version": prompt_version or None,
         },
     )
 
@@ -236,7 +249,13 @@ def get_llm_feedback(request, content_type, content_id):
             content_type=content_type,
             content_id=content_id,
         )
-        return JsonResponse({"id": feedback.id, "rating": feedback.rating})
+        return JsonResponse(
+            {
+                "id": feedback.id,
+                "rating": feedback.rating,
+                "comment": feedback.comment or "",
+            }
+        )
     except LLMFeedback.DoesNotExist:
         return JsonResponse({"rating": None})
 
@@ -262,5 +281,16 @@ def add_llm_feedback_comment(request, pk):
     comment = data.get("comment", "")
     feedback.comment = comment
     feedback.save()
+
+    # Track analytics event
+    track_event(
+        request.user,
+        "llm_feedback_comment_added",
+        {
+            "content_type": feedback.content_type,
+            "rating": "positive" if feedback.rating else "negative",
+            "comment_length": len(comment),
+        },
+    )
 
     return JsonResponse({"success": True})
