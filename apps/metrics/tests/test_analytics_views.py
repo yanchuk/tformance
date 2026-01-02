@@ -13,7 +13,8 @@ class TestAnalyticsOverviewView(TestCase):
 
     def setUp(self):
         """Set up test fixtures."""
-        self.team = TeamFactory()
+        # Use status="complete" to ensure dashboard is accessible
+        self.team = TeamFactory(onboarding_pipeline_status="complete")
         self.admin_user = UserFactory()
         self.member_user = UserFactory()
         self.team.members.add(self.admin_user, through_defaults={"role": ROLE_ADMIN})
@@ -105,7 +106,7 @@ class TestAnalyticsBaseTemplate(TestCase):
 
     def setUp(self):
         """Set up test fixtures."""
-        self.team = TeamFactory()
+        self.team = TeamFactory(onboarding_pipeline_status="complete")
         self.admin_user = UserFactory()
         self.team.members.add(self.admin_user, through_defaults={"role": ROLE_ADMIN})
         self.client = Client()
@@ -162,7 +163,7 @@ class TestAnalyticsAIAdoptionView(TestCase):
 
     def setUp(self):
         """Set up test fixtures."""
-        self.team = TeamFactory()
+        self.team = TeamFactory(onboarding_pipeline_status="complete")
         self.admin_user = UserFactory()
         self.member_user = UserFactory()
         self.team.members.add(self.admin_user, through_defaults={"role": ROLE_ADMIN})
@@ -278,7 +279,7 @@ class TestAnalyticsDeliveryView(TestCase):
 
     def setUp(self):
         """Set up test fixtures."""
-        self.team = TeamFactory()
+        self.team = TeamFactory(onboarding_pipeline_status="complete")
         self.admin_user = UserFactory()
         self.member_user = UserFactory()
         self.team.members.add(self.admin_user, through_defaults={"role": ROLE_ADMIN})
@@ -373,7 +374,7 @@ class TestAnalyticsQualityView(TestCase):
 
     def setUp(self):
         """Set up test fixtures."""
-        self.team = TeamFactory()
+        self.team = TeamFactory(onboarding_pipeline_status="complete")
         self.admin_user = UserFactory()
         self.member_user = UserFactory()
         self.team.members.add(self.admin_user, through_defaults={"role": ROLE_ADMIN})
@@ -468,7 +469,7 @@ class TestAnalyticsTeamView(TestCase):
 
     def setUp(self):
         """Set up test fixtures."""
-        self.team = TeamFactory()
+        self.team = TeamFactory(onboarding_pipeline_status="complete")
         self.admin_user = UserFactory()
         self.member_user = UserFactory()
         self.team.members.add(self.admin_user, through_defaults={"role": ROLE_ADMIN})

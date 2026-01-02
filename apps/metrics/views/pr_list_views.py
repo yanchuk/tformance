@@ -154,6 +154,13 @@ def _get_pr_list_context(team, filters: dict, page_number: int = 1, sort: str = 
     }
 
 
+def _count_active_filters(filters: dict) -> int:
+    """Count the number of active filters (excluding date range)."""
+    # Exclude date_from and date_to as they're always present
+    excluded = {"date_from", "date_to"}
+    return len([k for k in filters if k not in excluded])
+
+
 @login_and_team_required
 def pr_list(request: HttpRequest) -> HttpResponse:
     """Main PR list page with filters and pagination."""
@@ -178,6 +185,21 @@ def pr_list(request: HttpRequest) -> HttpResponse:
             context["days"] = 30
     else:
         context["days"] = 30  # Default
+
+    # Track filter usage when filters are applied
+    active_filter_count = _count_active_filters(filters)
+    if active_filter_count > 0:
+        # Get first filter type for tracking (most relevant)
+        filter_types = [k for k in filters if k not in {"date_from", "date_to"}]
+        track_event(
+            request.user,
+            "pr_list_filtered",
+            {
+                "filter_type": filter_types[0] if filter_types else "unknown",
+                "active_filters_count": active_filter_count,
+                "team_slug": team.slug,
+            },
+        )
 
     # Return partial for HTMX requests
     if request.headers.get("HX-Request"):

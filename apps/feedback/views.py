@@ -2,15 +2,18 @@
 Views for the AI feedback app.
 """
 
-from django.http import Http404
+import json
+
+from django.http import Http404, JsonResponse
 from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
 from apps.feedback.forms import FeedbackForm
-from apps.feedback.models import AIFeedback
+from apps.feedback.models import CONTENT_TYPE_CHOICES, AIFeedback, LLMFeedback
 from apps.metrics.models import TeamMember
 from apps.teams.decorators import login_and_team_required
+from apps.utils.analytics import track_event
 
 
 def _is_htmx(request):
@@ -92,6 +95,17 @@ def create_feedback(request):
         feedback.reported_by = _get_current_member(request)
         feedback.save()
 
+        # Track feedback submission
+        track_event(
+            request.user,
+            "feedback_submitted",
+            {
+                "team_slug": request.team.slug,
+                "category": feedback.category,
+                "has_text": bool(feedback.description),
+            },
+        )
+
         if _is_htmx(request):
             return render(
                 request,
@@ -162,3 +176,91 @@ def cto_summary(request):
             "recent_feedback": recent_feedback,
         },
     )
+
+
+# =============================================================================
+# LLM Feedback Views
+# =============================================================================
+
+
+def _get_valid_content_types():
+    """Return a set of valid content type choices."""
+    return {choice[0] for choice in CONTENT_TYPE_CHOICES}
+
+
+@login_and_team_required
+@require_POST
+def submit_llm_feedback(request):
+    """Submit feedback for LLM-generated content."""
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
+
+    content_type = data.get("content_type")
+    content_id = data.get("content_id")
+    rating = data.get("rating")
+    content_snapshot = data.get("content_snapshot", {})
+    input_context = data.get("input_context")
+    prompt_version = data.get("prompt_version", "")
+
+    # Validate content_type
+    if content_type not in _get_valid_content_types():
+        return JsonResponse({"error": "Invalid content_type"}, status=400)
+
+    # Create or update feedback (unique on: team, user, content_type, content_id)
+    feedback, _ = LLMFeedback.objects.update_or_create(
+        team=request.team,
+        user=request.user,
+        content_type=content_type,
+        content_id=content_id,
+        defaults={
+            "rating": rating,
+            "content_snapshot": content_snapshot,
+            "input_context": input_context,
+            "prompt_version": prompt_version,
+        },
+    )
+
+    return JsonResponse({"id": feedback.id})
+
+
+@login_and_team_required
+@require_GET
+def get_llm_feedback(request, content_type, content_id):
+    """Get existing LLM feedback for specific content."""
+    try:
+        feedback = LLMFeedback.objects.get(
+            team=request.team,
+            user=request.user,
+            content_type=content_type,
+            content_id=content_id,
+        )
+        return JsonResponse({"id": feedback.id, "rating": feedback.rating})
+    except LLMFeedback.DoesNotExist:
+        return JsonResponse({"rating": None})
+
+
+@login_and_team_required
+@require_POST
+def add_llm_feedback_comment(request, pk):
+    """Add a comment to existing LLM feedback."""
+    try:
+        feedback = LLMFeedback.objects.get(
+            pk=pk,
+            team=request.team,
+            user=request.user,
+        )
+    except LLMFeedback.DoesNotExist as err:
+        raise Http404("Feedback not found") from err
+
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
+
+    comment = data.get("comment", "")
+    feedback.comment = comment
+    feedback.save()
+
+    return JsonResponse({"success": True})

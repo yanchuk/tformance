@@ -16,6 +16,7 @@ from django_ratelimit.decorators import ratelimit
 from apps.insights.services.qa import answer_question, get_suggested_questions
 from apps.insights.services.summarizer import summarize_daily_insights
 from apps.teams.decorators import login_and_team_required
+from apps.utils.analytics import track_event
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +42,17 @@ def get_summary(request):
         HTML partial for HTMX or JsonResponse for API.
     """
     skip_cache = request.GET.get("refresh") == "true"
+
+    # Track insight summary view
+    track_event(
+        request.user,
+        "insight_viewed",
+        {
+            "insight_type": "summary",
+            "team_slug": request.team.slug,
+            "is_refresh": skip_cache,
+        },
+    )
 
     try:
         summary = summarize_daily_insights(
@@ -110,6 +122,17 @@ def ask_question(request):
                 {"error": error},
             )
         return JsonResponse({"error": error}, status=400)
+
+    # Track insight question asked
+    track_event(
+        request.user,
+        "insight_viewed",
+        {
+            "insight_type": "question",
+            "team_slug": request.team.slug,
+            "question_length": len(question),
+        },
+    )
 
     try:
         answer = answer_question(

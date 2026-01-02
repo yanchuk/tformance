@@ -69,6 +69,29 @@ def _get_analytics_context(request: HttpRequest, active_page: str) -> dict:
     }
 
 
+def _track_filter_events(request: HttpRequest, context: dict, tab: str) -> None:
+    """Track filter change events for analytics.
+
+    Args:
+        request: The HTTP request object
+        context: The analytics context dictionary
+        tab: The current analytics tab name
+    """
+    team_slug = request.team.slug
+
+    # Track repo filter if applied
+    if context.get("selected_repo"):
+        track_event(
+            request.user,
+            "repo_filter_applied",
+            {
+                "tab": tab,
+                "repo_name": context["selected_repo"],
+                "team_slug": team_slug,
+            },
+        )
+
+
 @team_admin_required
 def analytics_overview(request: HttpRequest) -> HttpResponse:
     """Analytics Overview - Team health dashboard.
@@ -102,6 +125,9 @@ def analytics_overview(request: HttpRequest) -> HttpResponse:
         {"tab": "overview", "date_range": context["days"], "team_slug": request.team.slug},
     )
 
+    # Track filter events
+    _track_filter_events(request, context, "overview")
+
     # Return partial for HTMX requests
     template = "metrics/analytics/overview.html#page-content" if request.htmx else "metrics/analytics/overview.html"
     return TemplateResponse(request, template, context)
@@ -130,6 +156,9 @@ def analytics_ai_adoption(request: HttpRequest) -> HttpResponse:
         {"tab": "ai_adoption", "date_range": context["days"], "team_slug": request.team.slug},
     )
 
+    # Track filter events
+    _track_filter_events(request, context, "ai_adoption")
+
     # Return partial for HTMX requests
     template = (
         "metrics/analytics/ai_adoption.html#page-content" if request.htmx else "metrics/analytics/ai_adoption.html"
@@ -153,6 +182,9 @@ def analytics_delivery(request: HttpRequest) -> HttpResponse:
         {"tab": "delivery", "date_range": context["days"], "team_slug": request.team.slug},
     )
 
+    # Track filter events
+    _track_filter_events(request, context, "delivery")
+
     # Return partial for HTMX requests
     template = "metrics/analytics/delivery.html#page-content" if request.htmx else "metrics/analytics/delivery.html"
     return TemplateResponse(request, template, context)
@@ -174,6 +206,9 @@ def analytics_quality(request: HttpRequest) -> HttpResponse:
         {"tab": "quality", "date_range": context["days"], "team_slug": request.team.slug},
     )
 
+    # Track filter events
+    _track_filter_events(request, context, "quality")
+
     # Return partial for HTMX requests
     template = "metrics/analytics/quality.html#page-content" if request.htmx else "metrics/analytics/quality.html"
     return TemplateResponse(request, template, context)
@@ -194,6 +229,9 @@ def analytics_team(request: HttpRequest) -> HttpResponse:
         "analytics_viewed",
         {"tab": "team", "date_range": context["days"], "team_slug": request.team.slug},
     )
+
+    # Track filter events
+    _track_filter_events(request, context, "team")
 
     # Return partial for HTMX requests
     template = "metrics/analytics/team.html#page-content" if request.htmx else "metrics/analytics/team.html"
