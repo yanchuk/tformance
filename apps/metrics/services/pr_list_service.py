@@ -154,8 +154,10 @@ def get_prs_queryset(team: Team, filters: dict[str, Any]) -> QuerySet[PullReques
             qs = qs.none()
 
     # Filter by reviewer GitHub username (e.g., "@johndoe" or "johndoe")
-    # Used for bottleneck @@ mentions - shows PRs where user is a reviewer
+    # Used for bottleneck @@ mentions - shows PRs where reviewer needs to take action
     # Security: Only matches team members within the specified team
+    # Logic: Exclude PRs where reviewer's LATEST review is approved/commented/changes_requested
+    #        Include only PRs where reviewer's latest review is dismissed (needs re-review)
     reviewer_name = filters.get("reviewer_name")
     if reviewer_name:
         # Strip @ prefix if present
@@ -163,11 +165,19 @@ def get_prs_queryset(team: Team, filters: dict[str, Any]) -> QuerySet[PullReques
         # Look up team member by github_username within team (team-scoped = secure)
         try:
             member = TeamMember.objects.get(team=team, github_username__iexact=username)
-            # Filter PRs where this member has submitted a review
-            reviewer_pr_ids = PRReview.objects.filter(  # noqa: TEAM001
-                team=team, reviewer=member
-            ).values_list("pull_request_id", flat=True)
-            qs = qs.filter(id__in=reviewer_pr_ids)
+            # Subquery to get the latest review state for this reviewer on each PR
+            latest_review_state = (
+                PRReview.objects.filter(  # noqa: TEAM001
+                    pull_request=OuterRef("pk"),
+                    reviewer=member,
+                )
+                .order_by("-submitted_at")
+                .values("state")[:1]
+            )
+            # Annotate with the reviewer's latest review state and exclude "done" states
+            qs = qs.annotate(reviewer_latest_state=Subquery(latest_review_state)).exclude(
+                reviewer_latest_state__in=["approved", "commented", "changes_requested"]
+            )
         except TeamMember.DoesNotExist:
             # No matching team member - return empty queryset
             qs = qs.none()

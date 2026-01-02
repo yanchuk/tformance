@@ -754,13 +754,14 @@ class TestGetTeamHealthMetrics(TestCase):
         ]
 
         # member2 reviews all 10 open PRs (bottleneck candidate)
+        # Use explicit state="commented" to ensure these count as pending reviews
         for pr in prs:
-            PRReviewFactory(team=self.team, pull_request=pr, reviewer=self.member2)
+            PRReviewFactory(team=self.team, pull_request=pr, reviewer=self.member2, state="commented")
 
         # member3, member4 and member1 each review only 1 PR
-        PRReviewFactory(team=self.team, pull_request=prs[0], reviewer=self.member3)
-        PRReviewFactory(team=self.team, pull_request=prs[1], reviewer=member4)
-        PRReviewFactory(team=self.team, pull_request=prs[2], reviewer=self.member1)
+        PRReviewFactory(team=self.team, pull_request=prs[0], reviewer=self.member3, state="commented")
+        PRReviewFactory(team=self.team, pull_request=prs[1], reviewer=member4, state="commented")
+        PRReviewFactory(team=self.team, pull_request=prs[2], reviewer=self.member1, state="commented")
 
         # Now: member2=10, member3=1, member4=1, member1=1
         # avg = 13/4 = 3.25, threshold = 9.75
