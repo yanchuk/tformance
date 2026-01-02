@@ -11,6 +11,7 @@ from apps.integrations.models import GitHubIntegration, IntegrationCredential
 from apps.integrations.services import github_oauth
 from apps.integrations.services.github_oauth import GitHubOAuthError
 from apps.teams.decorators import login_and_team_required, team_admin_required
+from apps.utils.analytics import track_event
 
 from .helpers import (
     _create_github_integration,
@@ -90,11 +91,26 @@ def github_disconnect(request):
 
     team = request.team
 
+    # Get integration info before deleting for tracking
+    integration = GitHubIntegration.objects.filter(team=team).first()
+    org_name = integration.organization_slug if integration else None
+
     # Delete GitHubIntegration (this will cascade delete the credential)
     GitHubIntegration.objects.filter(team=team).delete()
 
     # Also delete any orphaned credentials
     IntegrationCredential.objects.filter(team=team, provider=IntegrationCredential.PROVIDER_GITHUB).delete()
+
+    # Track disconnection event
+    track_event(
+        request.user,
+        "integration_disconnected",
+        {
+            "provider": "github",
+            "org_name": org_name,
+            "team_slug": team.slug,
+        },
+    )
 
     messages.success(request, "GitHub integration disconnected successfully.")
     return redirect("integrations:integrations_home")

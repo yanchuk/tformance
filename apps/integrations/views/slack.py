@@ -10,6 +10,7 @@ from django_ratelimit.decorators import ratelimit
 
 from apps.integrations.models import IntegrationCredential, SlackIntegration
 from apps.teams.decorators import login_and_team_required, team_admin_required
+from apps.utils.analytics import track_event
 
 logger = logging.getLogger(__name__)
 
@@ -111,11 +112,26 @@ def slack_disconnect(request):
 
     team = request.team
 
+    # Get integration info before deleting for tracking
+    integration = SlackIntegration.objects.filter(team=team).first()
+    workspace_name = integration.workspace_name if integration else None
+
     # Delete SlackIntegration (this will cascade delete the credential)
     SlackIntegration.objects.filter(team=team).delete()
 
     # Also delete any orphaned credentials
     IntegrationCredential.objects.filter(team=team, provider=IntegrationCredential.PROVIDER_SLACK).delete()
+
+    # Track disconnection event
+    track_event(
+        request.user,
+        "integration_disconnected",
+        {
+            "provider": "slack",
+            "workspace_name": workspace_name,
+            "team_slug": team.slug,
+        },
+    )
 
     messages.success(request, "Slack integration disconnected successfully.")
     return redirect("integrations:integrations_home")

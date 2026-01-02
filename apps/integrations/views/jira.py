@@ -13,6 +13,7 @@ from apps.integrations.services import jira_client, jira_oauth
 from apps.integrations.services.jira_client import JiraClientError
 from apps.integrations.services.jira_oauth import JiraOAuthError
 from apps.teams.decorators import login_and_team_required, team_admin_required
+from apps.utils.analytics import track_event
 
 from .helpers import _create_integration_credential, _validate_oauth_callback
 
@@ -146,11 +147,26 @@ def jira_disconnect(request):
 
     team = request.team
 
+    # Get integration info before deleting for tracking
+    integration = JiraIntegration.objects.filter(team=team).first()
+    site_name = integration.site_name if integration else None
+
     # Delete JiraIntegration (this will cascade delete the credential)
     JiraIntegration.objects.filter(team=team).delete()
 
     # Also delete any orphaned credentials
     IntegrationCredential.objects.filter(team=team, provider=IntegrationCredential.PROVIDER_JIRA).delete()
+
+    # Track disconnection event
+    track_event(
+        request.user,
+        "integration_disconnected",
+        {
+            "provider": "jira",
+            "site_name": site_name,
+            "team_slug": team.slug,
+        },
+    )
 
     messages.success(request, "Jira integration disconnected successfully.")
     return redirect("integrations:integrations_home")

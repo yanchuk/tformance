@@ -402,6 +402,19 @@ def _handle_integration_callback(request, code: str, team_id: int):
             logger.warning(f"Failed to queue GitHub member sync task: {e}")
             # Don't block callback if task dispatch fails
 
+        # Track event
+        track_event(
+            request.user,
+            "integration_connected",
+            {
+                "provider": "github",
+                "org_name": org_slug,
+                "team_slug": team.slug,
+                "is_reconnect": False,
+                "flow": "integration",
+            },
+        )
+
         messages.success(request, _("Connected to {}.").format(org_slug))
         return redirect("integrations:integrations_home")
 
@@ -615,6 +628,20 @@ def _handle_jira_integration_callback(request, code: str, team_id: int):
             site_name=site["name"],
             site_url=site["url"],
         )
+
+        # Track event
+        track_event(
+            request.user,
+            "integration_connected",
+            {
+                "provider": "jira",
+                "site_name": site["name"],
+                "team_slug": team.slug,
+                "is_reconnect": False,
+                "flow": "integration",
+            },
+        )
+
         messages.success(request, _("Connected to Jira: {}").format(site["name"]))
         return redirect("integrations:jira_projects_list")
 
@@ -823,13 +850,24 @@ def _handle_slack_integration_callback(request, code: str, team_id: int):
         },
     )
 
-    # Track event
+    # Track events
     track_event(
         request.user,
         "slack_connected",
         {
             "workspace_name": slack_team.get("name", ""),
             "team_slug": team.slug,
+            "flow": "integration",
+        },
+    )
+    track_event(
+        request.user,
+        "integration_connected",
+        {
+            "provider": "slack",
+            "workspace_name": slack_team.get("name", ""),
+            "team_slug": team.slug,
+            "is_reconnect": False,
             "flow": "integration",
         },
     )

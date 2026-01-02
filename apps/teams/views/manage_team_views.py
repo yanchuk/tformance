@@ -13,6 +13,7 @@ from apps.teams.helpers import get_next_unique_team_slug, get_open_invitations_f
 from apps.teams.invitations import send_invitation
 from apps.teams.models import Invitation
 from apps.teams.roles import is_admin
+from apps.utils.analytics import track_event
 from apps.web.forms import set_form_fields_disabled
 
 
@@ -116,6 +117,18 @@ def send_invitation_view(request):
         else:
             invitation.save()
             send_invitation(invitation)
+
+            # Track team member invited event
+            track_event(
+                request.user,
+                "team_member_invited",
+                {
+                    "team_slug": request.team.slug,
+                    "inviter_role": request.team_membership.role,
+                    "invite_method": "email",
+                },
+            )
+
             form = InvitationForm(request.team)  # clear saved data from the form
     else:
         pass

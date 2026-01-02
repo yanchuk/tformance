@@ -7,10 +7,12 @@ from django.contrib import messages
 from django.http import Http404, HttpResponseRedirect
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
+from django.utils import timezone
 from django.utils.functional import cached_property
 from django.utils.translation import gettext_lazy as _
 
 from apps.users.models import CustomUser
+from apps.utils.analytics import track_event
 
 from ..invitations import clear_invite_from_session, process_invitation
 from ..models import Invitation
@@ -49,8 +51,23 @@ def accept_invitation(request, invitation_id):
                 messages.error(request, _("Sorry, it looks like that invitation link has expired."))
                 return HttpResponseRedirect(reverse("web:home"))
             else:
+                # Calculate invite age before accepting (invitation.created_at is available)
+                invite_age_days = (timezone.now() - invitation.created_at).days
+
                 process_invitation(invitation, request.user)
                 clear_invite_from_session(request)
+
+                # Track team member joined event
+                track_event(
+                    request.user,
+                    "team_member_joined",
+                    {
+                        "team_slug": invitation.team.slug,
+                        "invite_age_days": invite_age_days,
+                        "joined_via": "invite",
+                    },
+                )
+
                 messages.success(request, _("You successfully joined {}").format(invitation.team.name))
                 return HttpResponseRedirect(reverse("web:home"))
 
