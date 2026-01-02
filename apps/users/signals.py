@@ -36,10 +36,20 @@ def handle_sign_up(request, user, **kwargs):
     # Track signup in PostHog
     # Determine signup method from sociallogin if available
     sociallogin = kwargs.get("sociallogin")
-    method = sociallogin.account.provider if sociallogin else "email"
+    signup_source = sociallogin.account.provider if sociallogin else "email"
 
-    identify_user(user)
-    track_event(user, "user_signed_up", {"method": method})
+    # Identify user with initial properties including signup source
+    identify_user(
+        user,
+        {
+            "signup_source": signup_source,
+            "teams_count": 0,
+            "has_connected_github": False,
+            "has_connected_jira": False,
+            "has_connected_slack": False,
+        },
+    )
+    track_event(user, "user_signed_up", {"method": signup_source})
 
 
 @receiver(email_confirmed)

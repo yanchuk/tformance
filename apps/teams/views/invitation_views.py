@@ -12,7 +12,7 @@ from django.utils.functional import cached_property
 from django.utils.translation import gettext_lazy as _
 
 from apps.users.models import CustomUser
-from apps.utils.analytics import track_event
+from apps.utils.analytics import track_event, update_team_properties, update_user_properties
 
 from ..invitations import clear_invite_from_session, process_invitation
 from ..models import Invitation
@@ -66,6 +66,16 @@ def accept_invitation(request, invitation_id):
                         "invite_age_days": invite_age_days,
                         "joined_via": "invite",
                     },
+                )
+
+                # Update user and team properties after join
+                update_user_properties(
+                    request.user,
+                    {"teams_count": request.user.teams.count()},
+                )
+                update_team_properties(
+                    invitation.team,
+                    {"member_count": invitation.team.members.count()},
                 )
 
                 messages.success(request, _("You successfully joined {}").format(invitation.team.name))

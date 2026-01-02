@@ -47,7 +47,7 @@ from apps.teams.helpers import get_next_unique_team_slug
 from apps.teams.models import Membership, Team
 from apps.teams.roles import ROLE_ADMIN
 from apps.users.models import CustomUser
-from apps.utils.analytics import group_identify, track_event
+from apps.utils.analytics import group_identify, track_event, update_user_properties
 
 logger = logging.getLogger(__name__)
 
@@ -414,6 +414,8 @@ def _handle_integration_callback(request, code: str, team_id: int):
                 "flow": "integration",
             },
         )
+        # Update user properties
+        update_user_properties(request.user, {"has_connected_github": True})
 
         messages.success(request, _("Connected to {}.").format(org_slug))
         return redirect("integrations:integrations_home")
@@ -641,6 +643,8 @@ def _handle_jira_integration_callback(request, code: str, team_id: int):
                 "flow": "integration",
             },
         )
+        # Update user properties
+        update_user_properties(request.user, {"has_connected_jira": True})
 
         messages.success(request, _("Connected to Jira: {}").format(site["name"]))
         return redirect("integrations:jira_projects_list")
@@ -871,6 +875,8 @@ def _handle_slack_integration_callback(request, code: str, team_id: int):
             "flow": "integration",
         },
     )
+    # Update user properties
+    update_user_properties(request.user, {"has_connected_slack": True})
 
     messages.success(request, _("Connected to Slack: {}").format(slack_team.get("name", "Workspace")))
     return redirect("integrations:slack_settings")

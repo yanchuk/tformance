@@ -116,6 +116,67 @@ def group_identify(team, properties: dict | None = None) -> None:
         logger.exception("Failed to identify team: %s", team.id)
 
 
+def update_user_properties(user, properties: dict) -> None:
+    """Update specific user properties without full identify.
+
+    Unlike identify_user(), this function does NOT auto-add default properties
+    like email, first_name, last_name. Use this for incremental property updates.
+
+    Common use cases:
+    - Setting has_connected_github, has_connected_jira, etc.
+    - Updating role, teams_count after changes
+    - Tracking feature usage milestones
+
+    Args:
+        user: The user to update properties for (can be None).
+        properties: Dictionary of properties to set.
+    """
+    if user is None:
+        return
+
+    if not _is_posthog_configured():
+        return
+
+    try:
+        posthog.identify(
+            distinct_id=str(user.id),
+            properties=properties,
+        )
+    except Exception:
+        logger.exception("Failed to update user properties: %s", user.id)
+
+
+def update_team_properties(team, properties: dict) -> None:
+    """Update specific team properties without full group_identify.
+
+    Unlike group_identify(), this function does NOT auto-add default properties
+    like name, slug. Use this for incremental property updates.
+
+    Common use cases:
+    - Updating repos_tracked after repo changes
+    - Setting total_prs, ai_adoption_rate from metrics
+    - Tracking plan changes, member_count updates
+
+    Args:
+        team: The team to update properties for (can be None).
+        properties: Dictionary of properties to set.
+    """
+    if team is None:
+        return
+
+    if not _is_posthog_configured():
+        return
+
+    try:
+        posthog.group_identify(
+            group_type="team",
+            group_key=str(team.id),
+            properties=properties,
+        )
+    except Exception:
+        logger.exception("Failed to update team properties: %s", team.id)
+
+
 def is_feature_enabled(feature_key: str, user=None, team=None) -> bool:
     """Check if a feature flag is enabled via posthog.feature_enabled.
 

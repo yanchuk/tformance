@@ -12,7 +12,14 @@ from django.test import TestCase, override_settings
 from apps.integrations.factories import UserFactory
 from apps.metrics.factories import TeamFactory
 
-from ..analytics import group_identify, identify_user, is_feature_enabled, track_event
+from ..analytics import (
+    group_identify,
+    identify_user,
+    is_feature_enabled,
+    track_event,
+    update_team_properties,
+    update_user_properties,
+)
 
 
 class TestTrackEvent(TestCase):
@@ -227,3 +234,157 @@ class TestIsFeatureEnabled(TestCase):
 
         # Should work with team-based identification
         self.assertTrue(result)
+
+
+class TestUpdateUserProperties(TestCase):
+    """Tests for update_user_properties helper function.
+
+    update_user_properties is a lightweight alternative to identify_user that
+    only updates specific properties without re-sending the full user profile.
+    """
+
+    def setUp(self):
+        self.user = UserFactory()
+
+    @patch("apps.utils.analytics.posthog")
+    def test_update_user_properties_calls_identify(self, mock_posthog):
+        """update_user_properties should call posthog.identify with only the given properties."""
+        update_user_properties(
+            self.user,
+            {"role": "admin", "teams_count": 3},
+        )
+
+        mock_posthog.identify.assert_called_once()
+        call_args = mock_posthog.identify.call_args
+        self.assertEqual(call_args[1]["distinct_id"], str(self.user.id))
+        self.assertEqual(call_args[1]["properties"]["role"], "admin")
+        self.assertEqual(call_args[1]["properties"]["teams_count"], 3)
+
+    @patch("apps.utils.analytics.posthog")
+    def test_update_user_properties_with_integration_flags(self, mock_posthog):
+        """update_user_properties should handle has_connected_* flags."""
+        update_user_properties(
+            self.user,
+            {
+                "has_connected_github": True,
+                "has_connected_jira": False,
+                "has_connected_slack": True,
+            },
+        )
+
+        mock_posthog.identify.assert_called_once()
+        props = mock_posthog.identify.call_args[1]["properties"]
+        self.assertTrue(props["has_connected_github"])
+        self.assertFalse(props["has_connected_jira"])
+        self.assertTrue(props["has_connected_slack"])
+
+    @patch("apps.utils.analytics.posthog")
+    def test_update_user_properties_does_not_auto_add_defaults(self, mock_posthog):
+        """update_user_properties should NOT auto-add email/name like identify_user does."""
+        update_user_properties(self.user, {"custom_prop": "value"})
+
+        props = mock_posthog.identify.call_args[1]["properties"]
+        # Should only have the custom prop, not auto-added email
+        self.assertEqual(props, {"custom_prop": "value"})
+        self.assertNotIn("email", props)
+
+    @override_settings(POSTHOG_API_KEY=None)
+    @patch("apps.utils.analytics.posthog")
+    def test_update_user_properties_noop_when_not_configured(self, mock_posthog):
+        """update_user_properties should not call PostHog when not configured."""
+        update_user_properties(self.user, {"prop": "value"})
+
+        mock_posthog.identify.assert_not_called()
+
+    @patch("apps.utils.analytics.posthog")
+    def test_update_user_properties_handles_none_user(self, mock_posthog):
+        """update_user_properties should handle None user gracefully."""
+        update_user_properties(None, {"prop": "value"})
+
+        mock_posthog.identify.assert_not_called()
+
+    @patch("apps.utils.analytics.posthog")
+    def test_update_user_properties_handles_exception(self, mock_posthog):
+        """update_user_properties should handle PostHog exceptions gracefully."""
+        mock_posthog.identify.side_effect = Exception("PostHog error")
+
+        # Should not raise
+        update_user_properties(self.user, {"prop": "value"})
+
+
+class TestUpdateTeamProperties(TestCase):
+    """Tests for update_team_properties helper function.
+
+    update_team_properties is a lightweight alternative to group_identify that
+    only updates specific properties without re-sending the full team profile.
+    """
+
+    def setUp(self):
+        self.team = TeamFactory()
+
+    @patch("apps.utils.analytics.posthog")
+    def test_update_team_properties_calls_group_identify(self, mock_posthog):
+        """update_team_properties should call posthog.group_identify."""
+        update_team_properties(
+            self.team,
+            {"plan": "pro", "repos_tracked": 5},
+        )
+
+        mock_posthog.group_identify.assert_called_once()
+        call_args = mock_posthog.group_identify.call_args
+        self.assertEqual(call_args[1]["group_type"], "team")
+        self.assertEqual(call_args[1]["group_key"], str(self.team.id))
+        self.assertEqual(call_args[1]["properties"]["plan"], "pro")
+        self.assertEqual(call_args[1]["properties"]["repos_tracked"], 5)
+
+    @patch("apps.utils.analytics.posthog")
+    def test_update_team_properties_with_metrics(self, mock_posthog):
+        """update_team_properties should handle metric properties."""
+        update_team_properties(
+            self.team,
+            {
+                "total_prs": 150,
+                "ai_adoption_rate": 0.42,
+                "member_count": 8,
+            },
+        )
+
+        mock_posthog.group_identify.assert_called_once()
+        props = mock_posthog.group_identify.call_args[1]["properties"]
+        self.assertEqual(props["total_prs"], 150)
+        self.assertEqual(props["ai_adoption_rate"], 0.42)
+        self.assertEqual(props["member_count"], 8)
+
+    @patch("apps.utils.analytics.posthog")
+    def test_update_team_properties_does_not_auto_add_defaults(self, mock_posthog):
+        """update_team_properties should NOT auto-add name/slug like group_identify does."""
+        update_team_properties(self.team, {"custom_prop": "value"})
+
+        props = mock_posthog.group_identify.call_args[1]["properties"]
+        # Should only have the custom prop, not auto-added name/slug
+        self.assertEqual(props, {"custom_prop": "value"})
+        self.assertNotIn("name", props)
+        self.assertNotIn("slug", props)
+
+    @override_settings(POSTHOG_API_KEY=None)
+    @patch("apps.utils.analytics.posthog")
+    def test_update_team_properties_noop_when_not_configured(self, mock_posthog):
+        """update_team_properties should not call PostHog when not configured."""
+        update_team_properties(self.team, {"prop": "value"})
+
+        mock_posthog.group_identify.assert_not_called()
+
+    @patch("apps.utils.analytics.posthog")
+    def test_update_team_properties_handles_none_team(self, mock_posthog):
+        """update_team_properties should handle None team gracefully."""
+        update_team_properties(None, {"prop": "value"})
+
+        mock_posthog.group_identify.assert_not_called()
+
+    @patch("apps.utils.analytics.posthog")
+    def test_update_team_properties_handles_exception(self, mock_posthog):
+        """update_team_properties should handle PostHog exceptions gracefully."""
+        mock_posthog.group_identify.side_effect = Exception("PostHog error")
+
+        # Should not raise
+        update_team_properties(self.team, {"prop": "value"})
