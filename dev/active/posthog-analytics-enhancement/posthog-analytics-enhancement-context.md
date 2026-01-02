@@ -22,14 +22,27 @@
 | `apps/metrics/views/analytics_views.py` | `dashboard_first_view`, `analytics_viewed` |
 | `apps/metrics/views/pr_list_views.py` | `pr_list_exported` |
 
-### Files to Modify
+### Files Modified (Completed)
+| File | Changes Made |
+|------|--------------|
+| `apps/auth/views.py` | Added `integration_connected` events, `update_user_properties` calls |
+| `apps/integrations/views/github.py` | Added `integration_disconnected` event |
+| `apps/integrations/views/jira.py` | Added `integration_disconnected` event |
+| `apps/integrations/views/slack.py` | Added `integration_disconnected` event |
+| `apps/teams/views/manage_team_views.py` | Added `team_member_invited` event |
+| `apps/teams/views/invitation_views.py` | Added `team_member_joined` event, property updates |
+| `apps/users/signals.py` | Enhanced signup with initial user properties |
+| `apps/utils/analytics.py` | Added `update_user_properties`, `update_team_properties`, `track_error` |
+| `apps/utils/middleware.py` | Added `ErrorTrackingMiddleware` for 500 errors |
+| `tformance/settings.py` | Registered `ErrorTrackingMiddleware` |
+
+### Files to Modify (Pending)
 | File | Changes Needed |
 |------|----------------|
-| `apps/integrations/views.py` | Add `integration_connected`, `integration_disconnected` |
-| `apps/teams/views.py` | Add `team_member_invited`, `team_member_joined` |
-| `apps/feedback/views.py` | Add `feedback_submitted` |
-| `apps/insights/views.py` | Add `insight_viewed` |
-| `tformance/middleware.py` | Add error tracking middleware |
+| `apps/feedback/views.py` | Add `feedback_submitted` event |
+| `apps/insights/views.py` | Add `insight_viewed` event |
+| `apps/metrics/views/analytics_views.py` | Add filter change events |
+| `apps/metrics/views/pr_list_views.py` | Add `pr_list_filtered` event |
 | `assets/javascript/analytics.js` | New file for frontend events |
 
 ---
