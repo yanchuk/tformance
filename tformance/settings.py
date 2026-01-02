@@ -414,6 +414,8 @@ HISTORICAL_SYNC_CONFIG = {
 
 # GitHub App (for installation-based auth, replacing OAuth for repos/PRs)
 # Keep OAuth above for Copilot metrics which require user-level access
+# Set GITHUB_APP_ENABLED=True to use GitHub App instead of OAuth for repo/PR access
+GITHUB_APP_ENABLED = env.bool("GITHUB_APP_ENABLED", default=False)
 GITHUB_APP_ID = env("GITHUB_APP_ID", default="")
 GITHUB_APP_NAME = env("GITHUB_APP_NAME", default="tformance")
 GITHUB_APP_PRIVATE_KEY = env("GITHUB_APP_PRIVATE_KEY", default="")
