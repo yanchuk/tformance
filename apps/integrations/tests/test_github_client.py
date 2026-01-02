@@ -77,10 +77,12 @@ class TestGetGitHubClientForTeam(TestCase):
         """Set up test fixtures."""
         self.team = TeamFactory()
 
+    @patch("apps.integrations.services.github_client.settings")
     @patch("apps.integrations.services.github_client.get_installation_client")
-    def test_get_github_client_prefers_app_installation(self, mock_get_installation_client):
-        """Test that GitHub App installation is preferred when available."""
+    def test_get_github_client_prefers_app_installation(self, mock_get_installation_client, mock_settings):
+        """Test that GitHub App installation is preferred when available and enabled."""
         # Arrange
+        mock_settings.GITHUB_APP_ENABLED = True
         installation = GitHubAppInstallationFactory(
             team=self.team,
             is_active=True,
@@ -126,11 +128,15 @@ class TestGetGitHubClientForTeam(TestCase):
 
         self.assertIn("no github connection", str(context.exception).lower())
 
+    @patch("apps.integrations.services.github_client.settings")
     @patch("apps.integrations.services.github_client.get_installation_client")
     @patch("apps.integrations.services.github_client.Github")
-    def test_get_github_client_prefers_app_over_oauth(self, mock_github_class, mock_get_installation_client):
-        """Test that app installation is preferred over OAuth when both exist."""
+    def test_get_github_client_prefers_app_over_oauth(
+        self, mock_github_class, mock_get_installation_client, mock_settings
+    ):
+        """Test that app installation is preferred over OAuth when both exist and enabled."""
         # Arrange - both app installation and OAuth credential exist
+        mock_settings.GITHUB_APP_ENABLED = True
         installation = GitHubAppInstallationFactory(
             team=self.team,
             is_active=True,
@@ -152,10 +158,12 @@ class TestGetGitHubClientForTeam(TestCase):
         mock_get_installation_client.assert_called_once_with(installation.installation_id)
         mock_github_class.assert_not_called()
 
+    @patch("apps.integrations.services.github_client.settings")
     @patch("apps.integrations.services.github_client.Github")
-    def test_get_github_client_uses_oauth_for_inactive_app(self, mock_github_class):
+    def test_get_github_client_uses_oauth_for_inactive_app(self, mock_github_class, mock_settings):
         """Test that OAuth is used when app installation is inactive."""
         # Arrange - inactive app installation, active OAuth credential
+        mock_settings.GITHUB_APP_ENABLED = True
         GitHubAppInstallationFactory(
             team=self.team,
             is_active=False,  # Inactive app
@@ -175,6 +183,36 @@ class TestGetGitHubClientForTeam(TestCase):
         # Assert - should use OAuth since app is inactive
         self.assertEqual(result, mock_github_instance)
         mock_github_class.assert_called_once_with(credential.access_token)
+
+    @patch("apps.integrations.services.github_client.settings")
+    @patch("apps.integrations.services.github_client.get_installation_client")
+    @patch("apps.integrations.services.github_client.Github")
+    def test_get_github_client_skips_app_when_disabled(
+        self, mock_github_class, mock_get_installation_client, mock_settings
+    ):
+        """Test that OAuth is used even when app installation exists if GITHUB_APP_ENABLED=False."""
+        # Arrange - app installation exists but feature flag is disabled
+        mock_settings.GITHUB_APP_ENABLED = False
+        GitHubAppInstallationFactory(
+            team=self.team,
+            is_active=True,
+            installation_id=77777777,
+        )
+        credential = IntegrationCredentialFactory(
+            team=self.team,
+            provider=IntegrationCredential.PROVIDER_GITHUB,
+            access_token="gho_oauth_token",
+        )
+        mock_github_instance = MagicMock()
+        mock_github_class.return_value = mock_github_instance
+
+        # Act
+        result = get_github_client_for_team(self.team)
+
+        # Assert - should use OAuth, app should be skipped
+        self.assertEqual(result, mock_github_instance)
+        mock_github_class.assert_called_once_with(credential.access_token)
+        mock_get_installation_client.assert_not_called()
 
 
 class TestNoGitHubConnectionError(TestCase):
