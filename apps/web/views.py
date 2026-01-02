@@ -20,6 +20,10 @@ from health_check.views import MainView
 from apps.integrations.models import TrackedRepository
 from apps.integrations.services.github_webhooks import validate_webhook_signature
 from apps.integrations.services.status import get_team_integration_status, get_team_sync_status
+from apps.integrations.webhooks.github_app import (
+    handle_installation_event,
+    handle_installation_repositories_event,
+)
 from apps.metrics import processors
 from apps.metrics.models import PRSurveyReview, TeamMember
 from apps.metrics.services.quick_stats import get_team_quick_stats
@@ -444,3 +448,84 @@ def survey_complete(request, token):
             "is_reviewer_submission": is_reviewer_submission,
         },
     )
+
+
+# SECURITY: @csrf_exempt justified - External webhook endpoint receiving requests from GitHub servers.
+# Cannot use CSRF tokens. Alternative authentication: HMAC-SHA256 signature validation using
+# X-Hub-Signature-256 header with shared webhook secret. Additional protections:
+# - Rate limiting: 100 requests/min per IP (django-ratelimit)
+# - Replay protection: Delivery ID caching with 5-minute TTL
+# - Payload size limit: 5 MB max
+@csrf_exempt
+@ratelimit(key="ip", rate=WEBHOOK_RATE_LIMIT, method="POST", block=True)
+def github_app_webhook(request):
+    """Handle GitHub App webhook events.
+
+    Validates the webhook signature and routes to appropriate handlers.
+    Handles installation and installation_repositories events.
+
+    Security Controls:
+        - HMAC-SHA256 signature validation (X-Hub-Signature-256)
+        - Rate limiting: 100/min per IP
+        - Replay protection via X-GitHub-Delivery header caching
+        - POST-only method enforcement
+        - Payload size limit: 5 MB max
+    """
+    import os
+
+    # Only accept POST requests
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+
+    # Check payload size to prevent DoS via large payloads
+    content_length = request.META.get("CONTENT_LENGTH")
+    if content_length:
+        try:
+            if int(content_length) > MAX_WEBHOOK_PAYLOAD_SIZE:
+                logger.warning(f"GitHub App webhook payload too large: {content_length} bytes")
+                return JsonResponse({"error": "Payload too large"}, status=413)
+        except (ValueError, TypeError):
+            pass  # Invalid content-length header, let Django handle it
+
+    # Get webhook secret from environment
+    webhook_secret = os.environ.get("GITHUB_APP_WEBHOOK_SECRET", "")
+
+    # Check for signature header
+    signature_header = request.META.get("HTTP_X_HUB_SIGNATURE_256")
+    if not signature_header:
+        return JsonResponse({"error": "Missing signature header"}, status=403)
+
+    # Check for delivery ID (replay protection)
+    delivery_id = request.META.get("HTTP_X_GITHUB_DELIVERY")
+    if delivery_id:
+        cache_key = f"webhook:github_app:{delivery_id}"
+        if cache.get(cache_key):
+            logger.warning(f"Duplicate GitHub App webhook delivery detected: {delivery_id}")
+            return JsonResponse({"error": "Duplicate delivery"}, status=409)
+
+    # Validate signature
+    if not validate_webhook_signature(request.body, signature_header, webhook_secret):
+        return JsonResponse({"error": "Invalid signature"}, status=403)
+
+    # Parse the payload
+    try:
+        payload = json.loads(request.body.decode("utf-8"))
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return JsonResponse({"error": "Invalid JSON payload"}, status=400)
+
+    # Extract event type from header
+    event_type = request.META.get("HTTP_X_GITHUB_EVENT", "unknown")
+
+    # Route to appropriate handler based on event type
+    if event_type == "installation":
+        handle_installation_event(payload)
+    elif event_type == "installation_repositories":
+        handle_installation_repositories_event(payload)
+    else:
+        logger.debug(f"Ignoring unhandled GitHub App event type: {event_type}")
+
+    # Mark webhook as processed (replay protection)
+    if delivery_id:
+        cache.set(cache_key, True, WEBHOOK_REPLAY_CACHE_TIMEOUT)
+
+    return JsonResponse({"status": "processed", "event": event_type}, status=200)

@@ -561,3 +561,89 @@ class SlackIntegration(BaseTeamModel):
 
     def __str__(self):
         return f"Slack: {self.workspace_name}"
+
+
+class GitHubAppInstallation(BaseTeamModel):
+    """
+    GitHub App installation for a team.
+    Stores installation metadata and cached access tokens.
+
+    Note: team is nullable because the installation is created before the team
+    is linked during the onboarding callback.
+    """
+
+    # Override team to allow null - installation created before team linkage
+    team = models.ForeignKey(
+        "teams.Team",
+        verbose_name="Team",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+    )
+
+    installation_id = models.BigIntegerField(
+        unique=True,
+        verbose_name="Installation ID",
+        help_text="GitHub App installation ID",
+    )
+    account_type = models.CharField(
+        max_length=20,
+        verbose_name="Account type",
+        help_text="Type of GitHub account (Organization or User)",
+    )
+    account_login = models.CharField(
+        max_length=100,
+        db_index=True,
+        verbose_name="Account login",
+        help_text="GitHub account login/username",
+    )
+    account_id = models.BigIntegerField(
+        verbose_name="Account ID",
+        help_text="GitHub account ID",
+    )
+    is_active = models.BooleanField(
+        default=True,
+        verbose_name="Is active",
+        help_text="Whether this installation is active",
+    )
+    suspended_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Suspended at",
+        help_text="When the installation was suspended",
+    )
+    permissions = models.JSONField(
+        default=dict,
+        verbose_name="Permissions",
+        help_text="Permissions granted to the GitHub App",
+    )
+    events = models.JSONField(
+        default=list,
+        verbose_name="Events",
+        help_text="Events the GitHub App is subscribed to",
+    )
+    repository_selection = models.CharField(
+        max_length=20,
+        default="selected",
+        verbose_name="Repository selection",
+        help_text="Repository access selection (all or selected)",
+    )
+    cached_token = EncryptedTextField(
+        blank=True,
+        verbose_name="Cached token",
+        help_text="Cached installation access token (encrypted at rest)",
+    )
+    token_expires_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Token expires at",
+        help_text="When the cached token expires",
+    )
+
+    class Meta:
+        db_table = "integrations_github_app_installation"
+        verbose_name = "GitHub App Installation"
+        verbose_name_plural = "GitHub App Installations"
+
+    def __str__(self):
+        return f"GitHub App: {self.account_login} ({self.installation_id})"

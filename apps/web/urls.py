@@ -19,6 +19,7 @@ urlpatterns = [
     path("simulate_error/", views.simulate_error),
     path("health/", views.HealthCheck.as_view(), name="health_check"),
     path("webhooks/github/", views.github_webhook, name="github_webhook"),
+    path("webhooks/github-app/", views.github_app_webhook, name="github_app_webhook"),
     # Survey views (public, token-based access)
     path("survey/<str:token>/", views.survey_landing, name="survey_landing"),
     path("survey/<str:token>/author/", views.survey_author, name="survey_author"),

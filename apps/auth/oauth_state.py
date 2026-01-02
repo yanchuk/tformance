@@ -30,6 +30,9 @@ FLOW_TYPE_JIRA_INTEGRATION = "jira_integration"
 FLOW_TYPE_SLACK_ONBOARDING = "slack_onboarding"
 FLOW_TYPE_SLACK_INTEGRATION = "slack_integration"
 
+# Flow types - GitHub App
+FLOW_TYPE_GITHUB_APP_INSTALL = "github_app_install"
+
 # All valid flow types
 VALID_FLOW_TYPES = (
     FLOW_TYPE_ONBOARDING,
@@ -39,6 +42,7 @@ VALID_FLOW_TYPES = (
     FLOW_TYPE_JIRA_INTEGRATION,
     FLOW_TYPE_SLACK_ONBOARDING,
     FLOW_TYPE_SLACK_INTEGRATION,
+    FLOW_TYPE_GITHUB_APP_INSTALL,
 )
 
 
@@ -48,12 +52,13 @@ class OAuthStateError(Exception):
     pass
 
 
-def create_oauth_state(flow_type: str, team_id: int | None = None) -> str:
+def create_oauth_state(flow_type: str, team_id: int | None = None, user_id: int | None = None) -> str:
     """Create a signed OAuth state parameter.
 
     Args:
         flow_type: One of the FLOW_TYPE_* constants
         team_id: Required for integration flows, must be None for onboarding flows
+        user_id: Required for github_app_install flow
 
     Returns:
         Signed state string for CSRF protection
@@ -84,6 +89,9 @@ def create_oauth_state(flow_type: str, team_id: int | None = None) -> str:
 
     if team_id is not None:
         payload["team_id"] = team_id
+
+    if user_id is not None:
+        payload["user_id"] = user_id
 
     # Encode and sign
     encoded = base64.b64encode(json.dumps(payload).encode()).decode()

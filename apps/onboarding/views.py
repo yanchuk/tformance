@@ -90,6 +90,133 @@ def github_connect(request):
 
 
 @login_required
+def github_app_install(request):
+    """Initiate GitHub App installation flow.
+
+    Redirects to GitHub's App installation page with a signed state parameter
+    containing the user_id for callback validation.
+
+    If the user already has a team, redirects to the home page instead.
+    """
+    from apps.auth.oauth_state import FLOW_TYPE_GITHUB_APP_INSTALL, create_oauth_state
+
+    # If user already has a team, redirect to dashboard
+    if request.user.teams.exists():
+        return redirect("web:home")
+
+    # Create state with user_id for CSRF protection and callback validation
+    state = create_oauth_state(FLOW_TYPE_GITHUB_APP_INSTALL, user_id=request.user.id)
+
+    # Redirect to GitHub App install
+    install_url = f"https://github.com/apps/{settings.GITHUB_APP_NAME}/installations/new?state={state}"
+    return redirect(install_url)
+
+
+@login_required
+def github_app_callback(request):
+    """Handle GitHub App installation callback.
+
+    This view processes the callback from GitHub after a user installs the App:
+    1. Validates the state parameter (signature, flow type, user_id match)
+    2. Fetches installation details from GitHub API
+    3. Creates or updates GitHubAppInstallation record
+    4. Creates team if needed, or links to existing team
+    5. Adds user as team admin if not already a member
+    6. Syncs organization members
+    7. Redirects to repository selection
+
+    Query Parameters:
+        installation_id: GitHub App installation ID (required)
+        setup_action: "install" or "update" (optional)
+        state: Signed OAuth state parameter (required)
+    """
+    from django.utils.text import slugify
+
+    from apps.auth.oauth_state import FLOW_TYPE_GITHUB_APP_INSTALL, OAuthStateError, verify_oauth_state
+    from apps.integrations.models import GitHubAppInstallation
+    from apps.integrations.services.github_app import GitHubAppError, get_installation
+
+    installation_id = request.GET.get("installation_id")
+
+    # Validate installation_id
+    if not installation_id:
+        messages.error(request, _("Installation failed - no installation ID received from GitHub."))
+        return redirect("onboarding:start")
+
+    # Validate state parameter - check signature, expiry, flow type, and user match
+    state = request.GET.get("state")
+    try:
+        state_data = verify_oauth_state(state)
+    except OAuthStateError as e:
+        logger.warning(f"Invalid OAuth state in GitHub App callback: {e}")
+        messages.error(request, _("Invalid or expired state. Please try again."))
+        return redirect("onboarding:start")
+
+    # Verify flow type and user match
+    if state_data.get("type") != FLOW_TYPE_GITHUB_APP_INSTALL or state_data.get("user_id") != request.user.id:
+        logger.warning(
+            f"State mismatch in GitHub App callback: type={state_data.get('type')}, "
+            f"state_user={state_data.get('user_id')}, request_user={request.user.id}"
+        )
+        messages.error(request, _("Invalid state. Please try again."))
+        return redirect("onboarding:start")
+
+    # Fetch installation details from GitHub API
+    try:
+        installation_data = get_installation(int(installation_id))
+    except GitHubAppError as e:
+        logger.error(f"Failed to fetch GitHub App installation {installation_id}: {e}")
+        messages.error(request, _("Failed to fetch installation details from GitHub. Please try again."))
+        return redirect("onboarding:start")
+
+    # Check if installation already exists (update scenario)
+    existing_installation = GitHubAppInstallation.objects.filter(installation_id=int(installation_id)).first()
+
+    account_login = installation_data["account"]["login"]
+
+    if existing_installation:
+        # Update existing installation - use its existing team
+        team = existing_installation.team
+        existing_installation.account_type = installation_data["account"]["type"]
+        existing_installation.account_login = account_login
+        existing_installation.account_id = installation_data["account"]["id"]
+        existing_installation.permissions = installation_data.get("permissions", {})
+        existing_installation.events = installation_data.get("events", [])
+        existing_installation.repository_selection = installation_data.get("repository_selection", "selected")
+        existing_installation.is_active = True
+        existing_installation.save()
+    else:
+        # Find or create team for new installation
+        team_slug = slugify(account_login)
+        team, created = Team.objects.get_or_create(slug=team_slug, defaults={"name": account_login})
+
+        # Create GitHubAppInstallation
+        GitHubAppInstallation.objects.create(
+            installation_id=int(installation_id),
+            team=team,
+            account_type=installation_data["account"]["type"],
+            account_login=account_login,
+            account_id=installation_data["account"]["id"],
+            permissions=installation_data.get("permissions", {}),
+            events=installation_data.get("events", []),
+            repository_selection=installation_data.get("repository_selection", "selected"),
+            is_active=True,
+        )
+
+    # Add user to team if not already
+    if not team.members.filter(id=request.user.id).exists():
+        Membership.objects.create(team=team, user=request.user, role=ROLE_ADMIN)
+
+    # Sync GitHub members (fail silently to not block onboarding)
+    try:
+        member_sync.sync_github_members(team)
+    except Exception as e:
+        logger.warning(f"Failed to sync GitHub members during onboarding: {e}")
+
+    return redirect("onboarding:select_repos")
+
+
+@login_required
 def select_organization(request):
     """Select which GitHub organization to use for the team."""
     # If user has a team that completed onboarding, redirect to dashboard
@@ -222,18 +349,25 @@ def _create_team_from_org(request, org: dict):
 @login_required
 def select_repositories(request):
     """Select which repositories to track."""
+    from apps.integrations.models import GitHubAppInstallation
+
     # Get user's team
     if not request.user.teams.exists():
         return redirect("onboarding:start")
 
     team = request.user.teams.first()
 
-    # Check if GitHub is connected
+    # Check if GitHub is connected (OAuth or App)
+    integration = None
+    app_installation = None
     try:
         integration = GitHubIntegration.objects.get(team=team)
     except GitHubIntegration.DoesNotExist:
-        messages.error(request, _("GitHub not connected."))
-        return redirect("onboarding:start")
+        # Check for GitHub App installation
+        app_installation = GitHubAppInstallation.objects.filter(team=team, is_active=True).first()
+        if not app_installation:
+            messages.error(request, _("GitHub not connected."))
+            return redirect("onboarding:start")
 
     if request.method == "POST":
         # Get selected repository IDs from form
@@ -291,6 +425,7 @@ def select_repositories(request):
         {
             "team": team,
             "integration": integration,
+            "app_installation": app_installation,
             "page_title": _("Select Repositories"),
             "step": 2,
         },

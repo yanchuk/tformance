@@ -27,7 +27,14 @@ from apps.metrics.factories import TeamFactory
 from apps.metrics.models import PRFile
 from apps.users.models import CustomUser
 
-from .models import GitHubIntegration, IntegrationCredential, JiraIntegration, SlackIntegration, TrackedJiraProject
+from .models import (
+    GitHubAppInstallation,
+    GitHubIntegration,
+    IntegrationCredential,
+    JiraIntegration,
+    SlackIntegration,
+    TrackedJiraProject,
+)
 
 # Note: encrypt no longer needed - EncryptedTextField handles this automatically
 
@@ -84,6 +91,37 @@ class GitHubIntegrationFactory(DjangoModelFactory):
     member_sync_completed_at = None
     member_sync_error = ""
     member_sync_result = None
+
+
+class GitHubAppInstallationFactory(DjangoModelFactory):
+    """Factory for GitHubAppInstallation model.
+
+    Usage:
+        # Create with defaults
+        installation = GitHubAppInstallationFactory()
+
+        # Create for specific team
+        installation = GitHubAppInstallationFactory(team=my_team)
+
+        # Create with specific installation ID
+        installation = GitHubAppInstallationFactory(installation_id=12345678)
+    """
+
+    class Meta:
+        model = GitHubAppInstallation
+
+    team = factory.SubFactory(TeamFactory)
+    installation_id = factory.Sequence(lambda n: 30000000 + n)
+    account_type = "Organization"
+    account_login = factory.Sequence(lambda n: f"org-{n}")
+    account_id = factory.Sequence(lambda n: 40000000 + n)
+    is_active = True
+    suspended_at = None
+    permissions = factory.LazyFunction(lambda: {"contents": "read", "pull_requests": "write", "metadata": "read"})
+    events = factory.LazyFunction(lambda: ["pull_request", "push", "installation"])
+    repository_selection = "selected"
+    cached_token = ""
+    token_expires_at = None
 
 
 class TrackedRepositoryFactory(DjangoModelFactory):
