@@ -156,8 +156,8 @@ def get_prs_queryset(team: Team, filters: dict[str, Any]) -> QuerySet[PullReques
     # Filter by reviewer GitHub username (e.g., "@johndoe" or "johndoe")
     # Used for bottleneck @@ mentions - shows PRs where reviewer needs to take action
     # Security: Only matches team members within the specified team
-    # Logic: Exclude PRs where reviewer's LATEST review is approved/commented/changes_requested
-    #        Include only PRs where reviewer's latest review is dismissed (needs re-review)
+    # Logic: Exclude only PRs where reviewer's LATEST review is "approved" (they're done)
+    #        Include PRs with commented/changes_requested/dismissed (still in review process)
     reviewer_name = filters.get("reviewer_name")
     if reviewer_name:
         # Strip @ prefix if present
@@ -174,9 +174,11 @@ def get_prs_queryset(team: Team, filters: dict[str, Any]) -> QuerySet[PullReques
                 .order_by("-submitted_at")
                 .values("state")[:1]
             )
-            # Annotate with the reviewer's latest review state and exclude "done" states
+            # Annotate with the reviewer's latest review state and exclude only "approved"
+            # - approved: reviewer is done (exclude)
+            # - commented/changes_requested/dismissed: still in review process (include)
             qs = qs.annotate(reviewer_latest_state=Subquery(latest_review_state)).exclude(
-                reviewer_latest_state__in=["approved", "commented", "changes_requested"]
+                reviewer_latest_state="approved"
             )
         except TeamMember.DoesNotExist:
             # No matching team member - return empty queryset

@@ -122,9 +122,9 @@ class TestGetPrsQueryset(TestCase):
         # Create member with known github_username who will be a reviewer
         reviewer = TeamMemberFactory(team=self.team, github_username="alice-reviewer")
         # Create PR authored by someone else, reviewed by alice-reviewer
-        # Note: state="dismissed" required since reviewer_name filter only shows pending reviews
+        # Note: state="commented" used since reviewer_name filter excludes approved reviews
         pr1 = PullRequestFactory(team=self.team, author=self.member1)
-        PRReviewFactory(team=self.team, pull_request=pr1, reviewer=reviewer, state="dismissed")
+        PRReviewFactory(team=self.team, pull_request=pr1, reviewer=reviewer, state="commented")
         # Create another PR without review from alice-reviewer
         PullRequestFactory(team=self.team, author=self.member1)
 
@@ -142,7 +142,7 @@ class TestGetPrsQueryset(TestCase):
         """Test that reviewer_name filter is case-insensitive."""
         reviewer = TeamMemberFactory(team=self.team, github_username="Alice-Reviewer")
         pr1 = PullRequestFactory(team=self.team, author=self.member1)
-        PRReviewFactory(team=self.team, pull_request=pr1, reviewer=reviewer, state="dismissed")
+        PRReviewFactory(team=self.team, pull_request=pr1, reviewer=reviewer, state="commented")
 
         result = get_prs_queryset(self.team, {"reviewer_name": "@alice-reviewer"})
 
@@ -164,12 +164,12 @@ class TestGetPrsQueryset(TestCase):
         other_team = TeamFactory()
         other_reviewer = TeamMemberFactory(team=other_team, github_username="shared-reviewer")
         other_pr = PullRequestFactory(team=other_team)
-        PRReviewFactory(team=other_team, pull_request=other_pr, reviewer=other_reviewer, state="dismissed")
+        PRReviewFactory(team=other_team, pull_request=other_pr, reviewer=other_reviewer, state="commented")
 
         # Create in our team with same github_username
         our_reviewer = TeamMemberFactory(team=self.team, github_username="shared-reviewer")
         pr1 = PullRequestFactory(team=self.team, author=self.member1)
-        PRReviewFactory(team=self.team, pull_request=pr1, reviewer=our_reviewer, state="dismissed")
+        PRReviewFactory(team=self.team, pull_request=pr1, reviewer=our_reviewer, state="commented")
 
         result = get_prs_queryset(self.team, {"reviewer_name": "@shared-reviewer"})
 
@@ -187,7 +187,8 @@ class TestGetPrsQueryset(TestCase):
         pr1 = PullRequestFactory(team=self.team, author=self.member1)
         now = timezone.now()
         # Same reviewer submits multiple reviews on same PR
-        # First review approved (older), latest review dismissed (newer) - should show
+        # First review approved (older), latest review commented (newer) - should show
+        # because latest review is not approved
         PRReviewFactory(
             team=self.team,
             pull_request=pr1,
@@ -199,7 +200,7 @@ class TestGetPrsQueryset(TestCase):
             team=self.team,
             pull_request=pr1,
             reviewer=reviewer,
-            state="dismissed",
+            state="commented",
             submitted_at=now - timedelta(hours=1),
         )
 
@@ -1273,13 +1274,12 @@ class TestAICategoryFilterOptions(TestCase):
 class TestReviewerNameFilterPendingState(TestCase):
     """Tests for reviewer_name filter showing only PRs where reviewer needs to take action.
 
-    The reviewer_name filter should only show PRs where the reviewer genuinely
-    needs to take action - not PRs where they've already approved or commented.
+    The reviewer_name filter shows PRs where the reviewer is still in the review process.
 
     Expected behavior:
     - EXCLUDE PRs where reviewer's latest review is 'approved' (done reviewing)
-    - EXCLUDE PRs where reviewer's latest review is 'commented' (ball with author)
-    - EXCLUDE PRs where reviewer's latest review is 'changes_requested' (ball with author)
+    - INCLUDE PRs where reviewer's latest review is 'commented' (still in review process)
+    - INCLUDE PRs where reviewer's latest review is 'changes_requested' (still in review process)
     - INCLUDE PRs where reviewer's latest review is 'dismissed' (needs re-review)
     - When multiple reviews exist, only the LATEST review state matters
     """
@@ -1302,29 +1302,31 @@ class TestReviewerNameFilterPendingState(TestCase):
         # Should NOT find this PR since reviewer already approved
         self.assertEqual(result.count(), 0)
 
-    def test_excludes_prs_with_commented_latest_review(self):
-        """Test that PRs with a commented review should NOT appear in pending reviews."""
+    def test_includes_prs_with_commented_latest_review(self):
+        """Test that PRs with a commented review SHOULD appear (still in review process)."""
         # Create open PR
         pr = PullRequestFactory(team=self.team, author=self.author, state="open")
-        # Reviewer left a comment (ball is now with author)
+        # Reviewer left a comment (still in review process)
         PRReviewFactory(team=self.team, pull_request=pr, reviewer=self.reviewer, state="commented")
 
         result = get_prs_queryset(self.team, {"reviewer_name": "@alice-reviewer"})
 
-        # Should NOT find this PR since reviewer already commented (waiting on author)
-        self.assertEqual(result.count(), 0)
+        # SHOULD find this PR since reviewer hasn't approved yet
+        self.assertEqual(result.count(), 1)
+        self.assertEqual(result.first(), pr)
 
-    def test_excludes_prs_with_changes_requested_latest_review(self):
-        """Test that PRs with changes_requested review should NOT appear in pending reviews."""
+    def test_includes_prs_with_changes_requested_latest_review(self):
+        """Test that PRs with changes_requested review SHOULD appear (still in review process)."""
         # Create open PR
         pr = PullRequestFactory(team=self.team, author=self.author, state="open")
-        # Reviewer requested changes (ball is now with author)
+        # Reviewer requested changes (still in review process, will need to re-review)
         PRReviewFactory(team=self.team, pull_request=pr, reviewer=self.reviewer, state="changes_requested")
 
         result = get_prs_queryset(self.team, {"reviewer_name": "@alice-reviewer"})
 
-        # Should NOT find this PR since reviewer requested changes (waiting on author)
-        self.assertEqual(result.count(), 0)
+        # SHOULD find this PR since reviewer hasn't approved yet
+        self.assertEqual(result.count(), 1)
+        self.assertEqual(result.first(), pr)
 
     def test_includes_prs_with_dismissed_latest_review(self):
         """Test that PRs with a dismissed review SHOULD appear in pending reviews."""
@@ -1402,17 +1404,17 @@ class TestReviewerNameFilterPendingState(TestCase):
         self.assertEqual(result.count(), 1)
         self.assertEqual(result.first(), pr)
 
-    def test_mixed_approved_and_pending_prs(self):
-        """Test that reviewer with 3 approved and 2 dismissed PRs should show only the 2 dismissed."""
+    def test_mixed_approved_and_non_approved_prs(self):
+        """Test that reviewer with 2 approved and 3 non-approved PRs shows only the 3 non-approved."""
         from datetime import timedelta
 
         from django.utils import timezone
 
         now = timezone.now()
 
-        # Create 3 PRs where reviewer approved
+        # Create 2 PRs where reviewer approved (should be excluded)
         approved_prs = []
-        for i in range(3):
+        for i in range(2):
             pr = PullRequestFactory(team=self.team, author=self.author, state="open")
             PRReviewFactory(
                 team=self.team,
@@ -1423,25 +1425,27 @@ class TestReviewerNameFilterPendingState(TestCase):
             )
             approved_prs.append(pr)
 
-        # Create 2 PRs where reviewer's review was dismissed (needs re-review)
-        dismissed_prs = []
-        for i in range(2):
+        # Create 3 PRs with non-approved states (should be included)
+        non_approved_prs = []
+        states = ["commented", "changes_requested", "dismissed"]
+        for i, state in enumerate(states):
             pr = PullRequestFactory(team=self.team, author=self.author, state="open")
             PRReviewFactory(
                 team=self.team,
                 pull_request=pr,
                 reviewer=self.reviewer,
-                state="dismissed",
+                state=state,
                 submitted_at=now - timedelta(hours=i),
             )
-            dismissed_prs.append(pr)
+            non_approved_prs.append(pr)
 
         result = get_prs_queryset(self.team, {"reviewer_name": "@alice-reviewer"})
 
-        # Should only find the 2 dismissed PRs, not the 3 approved ones
-        self.assertEqual(result.count(), 2)
+        # Should find the 3 non-approved PRs (commented, changes_requested, dismissed)
+        self.assertEqual(result.count(), 3)
         result_ids = set(result.values_list("id", flat=True))
-        self.assertEqual(result_ids, {dismissed_prs[0].id, dismissed_prs[1].id})
+        expected_ids = {pr.id for pr in non_approved_prs}
+        self.assertEqual(result_ids, expected_ids)
 
 
 class TestAICategoryStats(TestCase):
