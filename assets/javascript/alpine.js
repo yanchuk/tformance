@@ -1,6 +1,7 @@
 import Alpine from 'alpinejs';
 import { registerDateRangePicker } from './components/date-range-picker.js';
 import { registerRepoSelector } from './components/repo-selector.js';
+import { registerThumbsRating } from './components/thumbs-rating.js';
 
 /**
  * Alpine.js Stores
@@ -244,6 +245,7 @@ document.addEventListener('alpine:init', () => {
   // Register reusable Alpine components
   registerDateRangePicker();
   registerRepoSelector();
+  registerThumbsRating();
 });
 
 // Expose Alpine globally

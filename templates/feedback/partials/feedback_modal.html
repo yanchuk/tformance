@@ -1,0 +1,120 @@
+{% comment %}
+Feedback Comment Modal - Global modal for adding comments to LLM feedback.
+
+Include this once in the base template. It listens for 'open-feedback-modal' events.
+
+Usage:
+  {% include "feedback/partials/feedback_modal.html" %}
+{% endcomment %}
+{% load i18n %}
+
+<div x-data="{
+       open: false,
+       contentType: '',
+       contentId: '',
+       comment: '',
+       loading: false,
+       feedbackId: null,
+       async loadFeedback() {
+         try {
+           const response = await fetch(`/app/feedback/llm/${this.contentType}/${this.contentId}/`);
+           if (response.ok) {
+             const data = await response.json();
+             this.feedbackId = data.id;
+             this.comment = data.comment || '';
+           }
+         } catch (e) {
+           console.error('Failed to load feedback:', e);
+         }
+       },
+       async submitComment() {
+         if (!this.feedbackId || !this.comment.trim()) return;
+         this.loading = true;
+         try {
+           const response = await fetch(`/app/feedback/llm/${this.feedbackId}/comment/`, {
+             method: 'POST',
+             headers: {
+               'Content-Type': 'application/json',
+               'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value
+             },
+             body: JSON.stringify({ comment: this.comment })
+           });
+           if (response.ok) {
+             this.open = false;
+             // Dispatch event so thumbs rating can update
+             window.dispatchEvent(new CustomEvent('feedback-comment-saved', {
+               detail: { contentType: this.contentType, contentId: this.contentId }
+             }));
+           }
+         } finally {
+           this.loading = false;
+         }
+       }
+     }"
+     @open-feedback-modal.window="
+       contentType = $event.detail.contentType;
+       contentId = $event.detail.contentId;
+       comment = '';
+       feedbackId = null;
+       open = true;
+       $nextTick(() => loadFeedback());
+     "
+     @keydown.escape.window="open = false">
+
+  <!-- Modal Backdrop -->
+  <div x-show="open"
+       x-cloak
+       x-transition:enter="transition ease-out duration-200"
+       x-transition:enter-start="opacity-0"
+       x-transition:enter-end="opacity-100"
+       x-transition:leave="transition ease-in duration-150"
+       x-transition:leave-start="opacity-100"
+       x-transition:leave-end="opacity-0"
+       class="fixed inset-0 bg-black/50 z-40"
+       @click="open = false">
+  </div>
+
+  <!-- Modal Content -->
+  <div x-show="open"
+       x-cloak
+       data-testid="feedback-comment-modal"
+       x-transition:enter="transition ease-out duration-200"
+       x-transition:enter-start="opacity-0 scale-95"
+       x-transition:enter-end="opacity-100 scale-100"
+       x-transition:leave="transition ease-in duration-150"
+       x-transition:leave-start="opacity-100 scale-100"
+       x-transition:leave-end="opacity-0 scale-95"
+       class="fixed inset-0 z-50 flex items-center justify-center p-4"
+       @click.self="open = false">
+    <div class="bg-base-100 rounded-lg shadow-xl max-w-md w-full p-6">
+      <h3 class="text-lg font-semibold mb-4">{% trans "Add Feedback Comment" %}</h3>
+
+      <p class="text-sm text-base-content/70 mb-4">
+        {% trans "Help us improve! What made this response helpful or unhelpful?" %}
+      </p>
+
+      <textarea x-model="comment"
+                data-testid="feedback-comment-input"
+                class="textarea textarea-bordered w-full h-24 mb-4"
+                placeholder="{% trans 'Your feedback helps us improve the quality of insights...' %}"
+                maxlength="1000"></textarea>
+
+      <div class="flex justify-end gap-2">
+        <button type="button"
+                class="btn btn-ghost"
+                @click="open = false"
+                :disabled="loading">
+          {% trans "Cancel" %}
+        </button>
+        <button type="button"
+                data-testid="feedback-comment-submit"
+                class="btn btn-primary"
+                @click="submitComment()"
+                :disabled="loading || !comment.trim()">
+          <span x-show="loading" class="loading loading-spinner loading-xs mr-2"></span>
+          {% trans "Submit" %}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

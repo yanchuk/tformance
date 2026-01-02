@@ -49,7 +49,7 @@ class TestDetectReviewBottleneck(TestCase):
             team=self.team,
             pull_request=pr,
             reviewer=reviewer,
-            state="approved",
+            state="commented",  # Explicit state to test pending behavior
         )
 
         result = dashboard_service.detect_review_bottleneck(self.team, self.start_date, self.end_date)
@@ -70,7 +70,7 @@ class TestDetectReviewBottleneck(TestCase):
                 state="open",
                 created_at=timezone.make_aware(timezone.datetime(2024, 1, 15, 12, 0)),
             )
-            PRReviewFactory(team=self.team, pull_request=pr, reviewer=reviewer1)
+            PRReviewFactory(team=self.team, pull_request=pr, reviewer=reviewer1, state="commented")
 
         for _i in range(2):
             pr = PullRequestFactory(
@@ -79,7 +79,7 @@ class TestDetectReviewBottleneck(TestCase):
                 state="open",
                 created_at=timezone.make_aware(timezone.datetime(2024, 1, 15, 12, 0)),
             )
-            PRReviewFactory(team=self.team, pull_request=pr, reviewer=reviewer2)
+            PRReviewFactory(team=self.team, pull_request=pr, reviewer=reviewer2, state="commented")
 
         result = dashboard_service.detect_review_bottleneck(self.team, self.start_date, self.end_date)
 
@@ -100,7 +100,7 @@ class TestDetectReviewBottleneck(TestCase):
                 state="open",
                 created_at=timezone.make_aware(timezone.datetime(2024, 1, 15, 12, 0)),
             )
-            PRReviewFactory(team=self.team, pull_request=pr, reviewer=reviewer)
+            PRReviewFactory(team=self.team, pull_request=pr, reviewer=reviewer, state="commented")
 
         heavy_reviewer = TeamMemberFactory(team=self.team, display_name="Bob Overloaded")
         for _ in range(20):
@@ -110,7 +110,7 @@ class TestDetectReviewBottleneck(TestCase):
                 state="open",
                 created_at=timezone.make_aware(timezone.datetime(2024, 1, 15, 12, 0)),
             )
-            PRReviewFactory(team=self.team, pull_request=pr, reviewer=heavy_reviewer)
+            PRReviewFactory(team=self.team, pull_request=pr, reviewer=heavy_reviewer, state="commented")
 
         result = dashboard_service.detect_review_bottleneck(self.team, self.start_date, self.end_date)
 
@@ -133,7 +133,7 @@ class TestDetectReviewBottleneck(TestCase):
                 state="open",
                 created_at=timezone.make_aware(timezone.datetime(2024, 1, 15, 12, 0)),
             )
-            PRReviewFactory(team=self.team, pull_request=pr, reviewer=reviewer)
+            PRReviewFactory(team=self.team, pull_request=pr, reviewer=reviewer, state="commented")
 
         # 1 heavy reviewer with 20 open PRs
         heavy_reviewer = TeamMemberFactory(team=self.team, display_name="Heavy Reviewer")
@@ -144,7 +144,7 @@ class TestDetectReviewBottleneck(TestCase):
                 state="open",
                 created_at=timezone.make_aware(timezone.datetime(2024, 1, 15, 12, 0)),
             )
-            PRReviewFactory(team=self.team, pull_request=pr, reviewer=heavy_reviewer)
+            PRReviewFactory(team=self.team, pull_request=pr, reviewer=heavy_reviewer, state="commented")
 
         result = dashboard_service.detect_review_bottleneck(self.team, self.start_date, self.end_date)
 
@@ -169,7 +169,7 @@ class TestDetectReviewBottleneck(TestCase):
                 state="open",
                 created_at=timezone.make_aware(timezone.datetime(2024, 1, 15, 12, 0)),
             )
-            PRReviewFactory(team=self.team, pull_request=pr, reviewer=reviewer)
+            PRReviewFactory(team=self.team, pull_request=pr, reviewer=reviewer, state="commented")
 
         # Heavy reviewer
         heavy_reviewer = TeamMemberFactory(team=self.team, display_name="Bob Bottleneck")
@@ -180,7 +180,7 @@ class TestDetectReviewBottleneck(TestCase):
                 state="open",
                 created_at=timezone.make_aware(timezone.datetime(2024, 1, 15, 12, 0)),
             )
-            PRReviewFactory(team=self.team, pull_request=pr, reviewer=heavy_reviewer)
+            PRReviewFactory(team=self.team, pull_request=pr, reviewer=heavy_reviewer, state="commented")
 
         result = dashboard_service.detect_review_bottleneck(self.team, self.start_date, self.end_date)
 
@@ -199,7 +199,7 @@ class TestDetectReviewBottleneck(TestCase):
                 state="open",
                 created_at=timezone.make_aware(timezone.datetime(2024, 1, 15, 12, 0)),
             )
-            PRReviewFactory(team=self.team, pull_request=pr, reviewer=reviewer)
+            PRReviewFactory(team=self.team, pull_request=pr, reviewer=reviewer, state="commented")
 
         # Heavy reviewer with exactly 25 reviews
         heavy_reviewer = TeamMemberFactory(team=self.team, display_name="Heavy")
@@ -210,7 +210,7 @@ class TestDetectReviewBottleneck(TestCase):
                 state="open",
                 created_at=timezone.make_aware(timezone.datetime(2024, 1, 15, 12, 0)),
             )
-            PRReviewFactory(team=self.team, pull_request=pr, reviewer=heavy_reviewer)
+            PRReviewFactory(team=self.team, pull_request=pr, reviewer=heavy_reviewer, state="commented")
 
         result = dashboard_service.detect_review_bottleneck(self.team, self.start_date, self.end_date)
 
@@ -230,7 +230,7 @@ class TestDetectReviewBottleneck(TestCase):
                 state="open",
                 created_at=timezone.make_aware(timezone.datetime(2024, 1, 15, 12, 0)),
             )
-            PRReviewFactory(team=self.team, pull_request=pr, reviewer=reviewer)
+            PRReviewFactory(team=self.team, pull_request=pr, reviewer=reviewer, state="commented")
 
         heavy_reviewer = TeamMemberFactory(team=self.team, display_name="Heavy")
         for _ in range(20):
@@ -240,7 +240,7 @@ class TestDetectReviewBottleneck(TestCase):
                 state="open",
                 created_at=timezone.make_aware(timezone.datetime(2024, 1, 15, 12, 0)),
             )
-            PRReviewFactory(team=self.team, pull_request=pr, reviewer=heavy_reviewer)
+            PRReviewFactory(team=self.team, pull_request=pr, reviewer=heavy_reviewer, state="commented")
 
         result = dashboard_service.detect_review_bottleneck(self.team, self.start_date, self.end_date)
 
@@ -260,7 +260,7 @@ class TestDetectReviewBottleneck(TestCase):
                 state="open",
                 created_at=timezone.make_aware(timezone.datetime(2024, 1, 15, 12, 0)),
             )
-            PRReviewFactory(team=self.team, pull_request=pr, reviewer=reviewer)
+            PRReviewFactory(team=self.team, pull_request=pr, reviewer=reviewer, state="commented")
 
         result = dashboard_service.detect_review_bottleneck(self.team, self.start_date, self.end_date)
 
@@ -305,7 +305,7 @@ class TestDetectReviewBottleneck(TestCase):
                 state="open",
                 created_at=timezone.make_aware(timezone.datetime(2024, 1, 15, 12, 0)),
             )
-            PRReviewFactory(team=self.team, pull_request=pr, reviewer=reviewer)
+            PRReviewFactory(team=self.team, pull_request=pr, reviewer=reviewer, state="commented")
 
         heavy_reviewer = TeamMemberFactory(team=self.team, display_name="Heavy")
         for _ in range(6):
@@ -315,7 +315,7 @@ class TestDetectReviewBottleneck(TestCase):
                 state="open",
                 created_at=timezone.make_aware(timezone.datetime(2024, 1, 15, 12, 0)),
             )
-            PRReviewFactory(team=self.team, pull_request=pr, reviewer=heavy_reviewer)
+            PRReviewFactory(team=self.team, pull_request=pr, reviewer=heavy_reviewer, state="commented")
 
         result = dashboard_service.detect_review_bottleneck(self.team, self.start_date, self.end_date)
 
@@ -338,7 +338,7 @@ class TestDetectReviewBottleneck(TestCase):
                 state="open",
                 created_at=timezone.make_aware(timezone.datetime(2024, 1, 15, 12, 0)),
             )
-            PRReviewFactory(team=self.team, pull_request=pr, reviewer=reviewer)
+            PRReviewFactory(team=self.team, pull_request=pr, reviewer=reviewer, state="commented")
 
         heavy_reviewer = TeamMemberFactory(team=self.team, display_name="Heavy")
         for _ in range(7):
@@ -348,7 +348,7 @@ class TestDetectReviewBottleneck(TestCase):
                 state="open",
                 created_at=timezone.make_aware(timezone.datetime(2024, 1, 15, 12, 0)),
             )
-            PRReviewFactory(team=self.team, pull_request=pr, reviewer=heavy_reviewer)
+            PRReviewFactory(team=self.team, pull_request=pr, reviewer=heavy_reviewer, state="commented")
 
         result = dashboard_service.detect_review_bottleneck(self.team, self.start_date, self.end_date)
 
@@ -371,7 +371,7 @@ class TestDetectReviewBottleneck(TestCase):
                 state="open",
                 created_at=timezone.make_aware(timezone.datetime(2024, 1, 15, 12, 0)),
             )
-            PRReviewFactory(team=self.team, pull_request=pr, reviewer=reviewer)
+            PRReviewFactory(team=self.team, pull_request=pr, reviewer=reviewer, state="commented")
 
         # Heavy reviewer in OTHER team (should be excluded)
         heavy_reviewer = TeamMemberFactory(team=other_team, display_name="Heavy")
@@ -382,7 +382,7 @@ class TestDetectReviewBottleneck(TestCase):
                 state="open",
                 created_at=timezone.make_aware(timezone.datetime(2024, 1, 15, 12, 0)),
             )
-            PRReviewFactory(team=other_team, pull_request=pr, reviewer=heavy_reviewer)
+            PRReviewFactory(team=other_team, pull_request=pr, reviewer=heavy_reviewer, state="commented")
 
         result = dashboard_service.detect_review_bottleneck(self.team, self.start_date, self.end_date)
 
@@ -403,24 +403,32 @@ class TestDetectReviewBottleneck(TestCase):
                 state="open",
                 created_at=timezone.make_aware(timezone.datetime(2024, 1, 15, 12, 0)),
             )
-            PRReviewFactory(team=self.team, pull_request=pr, reviewer=reviewer)
+            PRReviewFactory(team=self.team, pull_request=pr, reviewer=reviewer, state="commented")
 
         # Heavy reviewer with 7 open PRs but multiple reviews per PR
+        # First commented, then changes_requested (latest is changes_requested = pending)
         heavy_reviewer = TeamMemberFactory(team=self.team, display_name="Heavy")
-        for _ in range(7):
+        for _i in range(7):
             pr = PullRequestFactory(
                 team=self.team,
                 author=author,
                 state="open",
                 created_at=timezone.make_aware(timezone.datetime(2024, 1, 15, 12, 0)),
             )
-            # Multiple reviews on same PR
-            PRReviewFactory(team=self.team, pull_request=pr, reviewer=heavy_reviewer)
+            # Multiple reviews on same PR - first commented, then changes_requested
+            PRReviewFactory(
+                team=self.team,
+                pull_request=pr,
+                reviewer=heavy_reviewer,
+                state="commented",
+                submitted_at=timezone.make_aware(timezone.datetime(2024, 1, 10, 12, 0)),
+            )
             PRReviewFactory(
                 team=self.team,
                 pull_request=pr,
                 reviewer=heavy_reviewer,
                 state="changes_requested",
+                submitted_at=timezone.make_aware(timezone.datetime(2024, 1, 15, 12, 0)),
             )
 
         result = dashboard_service.detect_review_bottleneck(self.team, self.start_date, self.end_date)
@@ -443,7 +451,7 @@ class TestDetectReviewBottleneck(TestCase):
                 state="open",
                 created_at=timezone.make_aware(timezone.datetime(2024, 1, 15, 12, 0)),
             )
-            PRReviewFactory(team=self.team, pull_request=pr, reviewer=reviewer)
+            PRReviewFactory(team=self.team, pull_request=pr, reviewer=reviewer, state="commented")
 
         # heavy1 with 15 PRs
         heavy1 = TeamMemberFactory(team=self.team, display_name="Heavy 1")
@@ -454,7 +462,7 @@ class TestDetectReviewBottleneck(TestCase):
                 state="open",
                 created_at=timezone.make_aware(timezone.datetime(2024, 1, 15, 12, 0)),
             )
-            PRReviewFactory(team=self.team, pull_request=pr, reviewer=heavy1)
+            PRReviewFactory(team=self.team, pull_request=pr, reviewer=heavy1, state="commented")
 
         # heavy2 with 20 PRs (worst bottleneck)
         heavy2 = TeamMemberFactory(team=self.team, display_name="Heavy 2")
@@ -465,7 +473,7 @@ class TestDetectReviewBottleneck(TestCase):
                 state="open",
                 created_at=timezone.make_aware(timezone.datetime(2024, 1, 15, 12, 0)),
             )
-            PRReviewFactory(team=self.team, pull_request=pr, reviewer=heavy2)
+            PRReviewFactory(team=self.team, pull_request=pr, reviewer=heavy2, state="commented")
 
         result = dashboard_service.detect_review_bottleneck(self.team, self.start_date, self.end_date)
 
@@ -493,7 +501,7 @@ class TestDetectReviewBottleneck(TestCase):
                 author=author,
                 state="open",
             )
-            PRReviewFactory(team=self.team, pull_request=pr, reviewer=reviewer)
+            PRReviewFactory(team=self.team, pull_request=pr, reviewer=reviewer, state="commented")
 
         # Heavy reviewer with PRs (date doesn't matter, all open PRs count)
         heavy_reviewer = TeamMemberFactory(team=self.team, display_name="Heavy")
@@ -503,7 +511,7 @@ class TestDetectReviewBottleneck(TestCase):
                 author=author,
                 state="open",
             )
-            PRReviewFactory(team=self.team, pull_request=pr, reviewer=heavy_reviewer)
+            PRReviewFactory(team=self.team, pull_request=pr, reviewer=heavy_reviewer, state="commented")
 
         result = dashboard_service.detect_review_bottleneck(self.team, self.start_date, self.end_date)
 
@@ -511,3 +519,204 @@ class TestDetectReviewBottleneck(TestCase):
         # heavy has 20 > 14.4 = bottleneck
         self.assertIsNotNone(result)
         self.assertEqual(result["pending_count"], 20)
+
+
+class TestDetectReviewBottleneckApprovedReviewExclusion(TestCase):
+    """Tests for excluding PRs where reviewer's latest review is 'approved'.
+
+    When a reviewer has already approved a PR, that PR should NOT count as
+    "pending" for them. Only the LATEST review state matters.
+    """
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.team = TeamFactory()
+        self.start_date = date(2024, 1, 1)
+        self.end_date = date(2024, 1, 31)
+
+    def test_approved_prs_are_excluded_from_pending_count(self):
+        """Test that PRs with 'approved' latest review don't count as pending."""
+        author = TeamMemberFactory(team=self.team, display_name="Author")
+
+        # Light reviewers with 1 pending PR each
+        for i in range(4):
+            reviewer = TeamMemberFactory(team=self.team, display_name=f"Light {i}")
+            pr = PullRequestFactory(team=self.team, author=author, state="open")
+            PRReviewFactory(
+                team=self.team,
+                pull_request=pr,
+                reviewer=reviewer,
+                state="commented",  # Still pending
+            )
+
+        # Heavy reviewer with 20 PRs, but all APPROVED
+        heavy_reviewer = TeamMemberFactory(team=self.team, display_name="Heavy Reviewer")
+        for _ in range(20):
+            pr = PullRequestFactory(team=self.team, author=author, state="open")
+            PRReviewFactory(
+                team=self.team,
+                pull_request=pr,
+                reviewer=heavy_reviewer,
+                state="approved",  # Should NOT count as pending
+            )
+
+        result = dashboard_service.detect_review_bottleneck(self.team, self.start_date, self.end_date)
+
+        # Heavy reviewer approved all, so 0 pending
+        # Light reviewers have 4 total, avg = 1, no bottleneck
+        self.assertIsNone(result)
+
+    def test_latest_review_state_wins_over_earlier_reviews(self):
+        """Test that multiple review rounds - only latest state matters.
+
+        If reviewer commented first, then approved, the PR is NOT pending.
+        """
+        author = TeamMemberFactory(team=self.team, display_name="Author")
+
+        # Light reviewers with 1 pending PR each
+        for i in range(4):
+            reviewer = TeamMemberFactory(team=self.team, display_name=f"Light {i}")
+            pr = PullRequestFactory(team=self.team, author=author, state="open")
+            PRReviewFactory(
+                team=self.team,
+                pull_request=pr,
+                reviewer=reviewer,
+                state="commented",
+            )
+
+        # Heavy reviewer with 20 PRs - commented first, then approved
+        heavy_reviewer = TeamMemberFactory(team=self.team, display_name="Heavy Reviewer")
+        for _ in range(20):
+            pr = PullRequestFactory(team=self.team, author=author, state="open")
+            # First review: commented (would count as pending if only review)
+            PRReviewFactory(
+                team=self.team,
+                pull_request=pr,
+                reviewer=heavy_reviewer,
+                state="commented",
+                submitted_at=timezone.make_aware(timezone.datetime(2024, 1, 10, 12, 0)),
+            )
+            # Second review: approved (should clear pending status)
+            PRReviewFactory(
+                team=self.team,
+                pull_request=pr,
+                reviewer=heavy_reviewer,
+                state="approved",
+                submitted_at=timezone.make_aware(timezone.datetime(2024, 1, 15, 12, 0)),
+            )
+
+        result = dashboard_service.detect_review_bottleneck(self.team, self.start_date, self.end_date)
+
+        # Heavy reviewer's latest review is approved → 0 pending
+        # 4 light reviewers with 1 each, avg = 1, no bottleneck
+        self.assertIsNone(result)
+
+    def test_changes_requested_after_approval_counts_as_pending(self):
+        """Test that changes_requested AFTER approval makes PR pending again.
+
+        If reviewer approved, then requested changes, it's pending.
+        """
+        author = TeamMemberFactory(team=self.team, display_name="Author")
+
+        # Light reviewers with 1 pending each
+        for i in range(4):
+            reviewer = TeamMemberFactory(team=self.team, display_name=f"Light {i}")
+            pr = PullRequestFactory(team=self.team, author=author, state="open")
+            PRReviewFactory(team=self.team, pull_request=pr, reviewer=reviewer, state="commented")
+
+        # Heavy reviewer with 20 PRs - approved then changes_requested
+        heavy_reviewer = TeamMemberFactory(team=self.team, display_name="Heavy Reviewer")
+        for _ in range(20):
+            pr = PullRequestFactory(team=self.team, author=author, state="open")
+            # First: approved
+            PRReviewFactory(
+                team=self.team,
+                pull_request=pr,
+                reviewer=heavy_reviewer,
+                state="approved",
+                submitted_at=timezone.make_aware(timezone.datetime(2024, 1, 10, 12, 0)),
+            )
+            # Later: changes requested (author pushed new code that reviewer didn't like)
+            PRReviewFactory(
+                team=self.team,
+                pull_request=pr,
+                reviewer=heavy_reviewer,
+                state="changes_requested",
+                submitted_at=timezone.make_aware(timezone.datetime(2024, 1, 15, 12, 0)),
+            )
+
+        result = dashboard_service.detect_review_bottleneck(self.team, self.start_date, self.end_date)
+
+        # Heavy reviewer's latest is changes_requested → 20 pending PRs
+        # 4 + 20 = 24 total, 5 reviewers, avg = 4.8, threshold = 14.4
+        # 20 > 14.4 = bottleneck
+        self.assertIsNotNone(result)
+        self.assertEqual(result["reviewer_name"], "Heavy Reviewer")
+        self.assertEqual(result["pending_count"], 20)
+
+    def test_mixed_approved_and_pending_reviews(self):
+        """Test a reviewer with some approved and some pending PRs."""
+        author = TeamMemberFactory(team=self.team, display_name="Author")
+
+        # Light reviewers with 1 pending each
+        for i in range(4):
+            reviewer = TeamMemberFactory(team=self.team, display_name=f"Light {i}")
+            pr = PullRequestFactory(team=self.team, author=author, state="open")
+            PRReviewFactory(team=self.team, pull_request=pr, reviewer=reviewer, state="commented")
+
+        # Heavy reviewer: 15 approved (not pending) + 7 commented (pending) = 7 pending
+        heavy_reviewer = TeamMemberFactory(team=self.team, display_name="Heavy Reviewer")
+
+        # 15 approved PRs (not counted)
+        for _ in range(15):
+            pr = PullRequestFactory(team=self.team, author=author, state="open")
+            PRReviewFactory(
+                team=self.team,
+                pull_request=pr,
+                reviewer=heavy_reviewer,
+                state="approved",
+            )
+
+        # 7 commented PRs (counted as pending)
+        for _ in range(7):
+            pr = PullRequestFactory(team=self.team, author=author, state="open")
+            PRReviewFactory(
+                team=self.team,
+                pull_request=pr,
+                reviewer=heavy_reviewer,
+                state="commented",
+            )
+
+        result = dashboard_service.detect_review_bottleneck(self.team, self.start_date, self.end_date)
+
+        # Heavy reviewer: 7 pending (15 approved don't count)
+        # Total pending: 4 + 7 = 11, avg = 11/5 = 2.2, threshold = 6.6
+        # 7 > 6.6 = bottleneck
+        self.assertIsNotNone(result)
+        self.assertEqual(result["pending_count"], 7)
+
+    def test_all_approved_excludes_reviewer_from_calculation(self):
+        """Test that a reviewer with only approved reviews has 0 pending count."""
+        author = TeamMemberFactory(team=self.team, display_name="Author")
+
+        # Two light reviewers with pending reviews
+        light1 = TeamMemberFactory(team=self.team, display_name="Light 1")
+        light2 = TeamMemberFactory(team=self.team, display_name="Light 2")
+
+        for reviewer in [light1, light2]:
+            for _ in range(2):
+                pr = PullRequestFactory(team=self.team, author=author, state="open")
+                PRReviewFactory(team=self.team, pull_request=pr, reviewer=reviewer, state="commented")
+
+        # Approver reviewer with many approved PRs (should not be a bottleneck)
+        approver = TeamMemberFactory(team=self.team, display_name="Speedy Approver")
+        for _ in range(50):
+            pr = PullRequestFactory(team=self.team, author=author, state="open")
+            PRReviewFactory(team=self.team, pull_request=pr, reviewer=approver, state="approved")
+
+        result = dashboard_service.detect_review_bottleneck(self.team, self.start_date, self.end_date)
+
+        # Approver has 0 pending (all approved)
+        # Light1: 2, Light2: 2 → avg = 2, threshold = 6
+        # Neither > 6, so no bottleneck
+        self.assertIsNone(result)

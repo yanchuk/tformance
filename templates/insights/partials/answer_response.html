@@ -12,6 +12,7 @@ Context: answer (string) or error (string)
   <span>{{ error }}</span>
 </div>
 {% else %}
+{% load tz %}
 <div class="bg-base-200 rounded-lg p-4">
   <div class="flex items-start gap-3">
     <div class="avatar placeholder">
@@ -23,6 +24,10 @@ Context: answer (string) or error (string)
     </div>
     <div class="flex-1">
       <p class="text-base-content">{{ answer }}</p>
+      {# Thumbs Rating for Q&A Answer #}
+      <div class="flex justify-end mt-3">
+        {% include "feedback/partials/thumbs_rating.html" with content_type="qa_answer" content_id=answer_id|default:"qa_latest" snapshot=answer_snapshot|default:"{}" testid_suffix="qa-answer" %}
+      </div>
     </div>
   </div>
 </div>

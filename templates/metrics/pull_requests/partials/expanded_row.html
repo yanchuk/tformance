@@ -178,6 +178,11 @@
         </div>
       </div>
     </div>
+
+    {# Thumbs Rating for LLM Summary #}
+    <div class="flex justify-end mt-3">
+      {% include "feedback/partials/thumbs_rating.html" with content_type="pr_summary" content_id=pr.id snapshot=pr.llm_summary|default:"{}" testid_suffix="pr-summary" %}
+    </div>
   {% else %}
     {# Fallback for PRs without LLM data #}
     <div class="text-center py-4 text-base-content/50">

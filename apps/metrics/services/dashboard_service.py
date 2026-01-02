@@ -2815,9 +2815,9 @@ def detect_review_bottleneck(
 ) -> dict | None:
     """Detect if any reviewer has > 3x average pending reviews.
 
-    "Pending reviews" are defined as open, non-draft PRs that a reviewer has reviewed.
-    Draft PRs are excluded since they're work-in-progress and not ready for review.
-    This represents actionable review work where PRs are ready but haven't been merged.
+    "Pending reviews" are defined as open, non-draft PRs where the reviewer's
+    LATEST review is NOT "approved". If a reviewer has already approved a PR,
+    that PR is not pending for them anymore.
 
     Note: Date parameters are accepted for API consistency but not used.
     We look at ALL currently open PRs since pending work is independent of
@@ -2832,39 +2832,60 @@ def detect_review_bottleneck(
     Returns:
         dict with bottleneck info if detected:
             - reviewer_name: str display name of bottleneck reviewer
-            - pending_count: int number of open non-draft PRs they've reviewed
+            - pending_count: int number of PRs awaiting their review
             - team_avg: float average pending reviews across all reviewers
         None if no bottleneck detected (no one exceeds 3x threshold)
     """
-    # Get distinct open PRs per reviewer
-    # Count distinct PRs (not reviews) - a reviewer might review same PR multiple times
-    # Exclude draft PRs - they're WIP and not ready for review
+    from collections import defaultdict
+
+    # Get all reviews on open, non-draft PRs
     filters = {
         "team": team,
         "pull_request__state": "open",
-        "pull_request__is_draft": False,  # Only count non-draft PRs
+        "pull_request__is_draft": False,
     }
     if repo:
         filters["pull_request__github_repo"] = repo
 
-    reviewer_stats = list(
+    reviews = list(
         PRReview.objects.filter(**filters)  # noqa: TEAM001 - team in filters
-        .values("reviewer__id", "reviewer__display_name", "reviewer__github_username")
-        .annotate(pending_count=Count("pull_request", distinct=True))
+        .select_related("reviewer")
+        .order_by("submitted_at")  # Oldest first, we'll take the last one per (reviewer, PR)
+        .values(
+            "reviewer_id",
+            "reviewer__display_name",
+            "reviewer__github_username",
+            "pull_request_id",
+            "state",
+            "submitted_at",
+        )
     )
 
-    if not reviewer_stats:
+    if not reviews:
         return None
 
-    # Build list of reviewer counts
-    reviewer_counts = [
-        {
-            "reviewer_name": stat["reviewer__display_name"] or "Unknown",
-            "github_username": stat["reviewer__github_username"] or "unknown",
-            "pending_count": stat["pending_count"],
-        }
-        for stat in reviewer_stats
-    ]
+    # Group reviews by (reviewer_id, pull_request_id) and find the latest review state
+    # A PR is "pending" for a reviewer only if their latest review is NOT "approved"
+    latest_reviews: dict[tuple[int, int], dict] = {}
+    for review in reviews:
+        key = (review["reviewer_id"], review["pull_request_id"])
+        # Keep updating - last one wins (since ordered by submitted_at asc)
+        latest_reviews[key] = review
+
+    # Count pending PRs per reviewer (where latest review state != "approved")
+    pending_counts: dict[int, dict] = defaultdict(
+        lambda: {"reviewer_name": "", "github_username": "", "pending_count": 0}
+    )
+
+    for (reviewer_id, _pr_id), review in latest_reviews.items():
+        # Only count if latest review is NOT "approved"
+        if review["state"] != "approved":
+            pending_counts[reviewer_id]["reviewer_name"] = review["reviewer__display_name"] or "Unknown"
+            pending_counts[reviewer_id]["github_username"] = review["reviewer__github_username"] or "unknown"
+            pending_counts[reviewer_id]["pending_count"] += 1
+
+    # Filter out reviewers with 0 pending (all their reviews were approved)
+    reviewer_counts = [r for r in pending_counts.values() if r["pending_count"] > 0]
 
     if len(reviewer_counts) < 2:
         # Can't have a bottleneck with only 1 reviewer (no comparison)
