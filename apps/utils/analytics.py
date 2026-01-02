@@ -177,6 +177,51 @@ def update_team_properties(team, properties: dict) -> None:
         logger.exception("Failed to update team properties: %s", team.id)
 
 
+def track_error(
+    user,
+    error_type: str,
+    properties: dict | None = None,
+) -> None:
+    """Track an error event via posthog.capture.
+
+    Use this for tracking application errors that should be monitored but don't
+    require full exception tracking (use Sentry for that). Good for:
+    - 500 errors from the error middleware
+    - API validation failures
+    - Integration sync failures
+
+    Args:
+        user: The user who encountered the error (can be None for anonymous).
+        error_type: Type/category of the error (e.g., 'server_error', 'validation_error').
+        properties: Additional error context. Avoid including PII or sensitive data.
+            Common properties: view_name, path, status_code, error_message (sanitized)
+    """
+    if not _is_posthog_configured():
+        return
+
+    try:
+        props = dict(properties) if properties else {}
+        props["error_type"] = error_type
+
+        # Use anonymous ID if no user
+        distinct_id = str(user.id) if user and hasattr(user, "id") else "anonymous"
+
+        # Auto-add team context if user has a team membership
+        if user and hasattr(user, "membership_set"):
+            membership = user.membership_set.first()
+            if membership and membership.team:
+                props["team_id"] = str(membership.team.id)
+
+        posthog.capture(
+            distinct_id=distinct_id,
+            event="error_occurred",
+            properties=props,
+        )
+    except Exception:
+        # Don't let error tracking cause more errors
+        logger.exception("Failed to track error: %s", error_type)
+
+
 def is_feature_enabled(feature_key: str, user=None, team=None) -> bool:
     """Check if a feature flag is enabled via posthog.feature_enabled.
 

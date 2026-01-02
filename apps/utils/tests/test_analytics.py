@@ -16,6 +16,7 @@ from ..analytics import (
     group_identify,
     identify_user,
     is_feature_enabled,
+    track_error,
     track_event,
     update_team_properties,
     update_user_properties,
@@ -388,3 +389,70 @@ class TestUpdateTeamProperties(TestCase):
 
         # Should not raise
         update_team_properties(self.team, {"prop": "value"})
+
+
+class TestTrackError(TestCase):
+    """Tests for track_error helper function.
+
+    track_error is used to track application errors in PostHog for monitoring,
+    complementing Sentry's exception tracking.
+    """
+
+    def setUp(self):
+        self.user = UserFactory()
+        self.team = TeamFactory()
+
+    @patch("apps.utils.analytics.posthog")
+    def test_track_error_calls_capture(self, mock_posthog):
+        """track_error should call posthog.capture with error_occurred event."""
+        track_error(
+            self.user,
+            "server_error",
+            {"view_name": "home", "status_code": 500},
+        )
+
+        mock_posthog.capture.assert_called_once()
+        call_args = mock_posthog.capture.call_args
+        self.assertEqual(call_args[1]["distinct_id"], str(self.user.id))
+        self.assertEqual(call_args[1]["event"], "error_occurred")
+        self.assertEqual(call_args[1]["properties"]["error_type"], "server_error")
+        self.assertEqual(call_args[1]["properties"]["view_name"], "home")
+        self.assertEqual(call_args[1]["properties"]["status_code"], 500)
+
+    @patch("apps.utils.analytics.posthog")
+    def test_track_error_handles_none_user(self, mock_posthog):
+        """track_error should use 'anonymous' for None user."""
+        track_error(None, "validation_error", {"path": "/api/test"})
+
+        mock_posthog.capture.assert_called_once()
+        call_args = mock_posthog.capture.call_args
+        self.assertEqual(call_args[1]["distinct_id"], "anonymous")
+
+    @patch("apps.utils.analytics.posthog")
+    def test_track_error_adds_team_context(self, mock_posthog):
+        """track_error should auto-add team context if user has a team."""
+        from apps.teams.models import Membership
+
+        Membership.objects.create(team=self.team, user=self.user, role="member")
+
+        track_error(self.user, "sync_error")
+
+        call_args = mock_posthog.capture.call_args
+        self.assertIn("team_id", call_args[1]["properties"])
+        self.assertEqual(call_args[1]["properties"]["team_id"], str(self.team.id))
+
+    @override_settings(POSTHOG_API_KEY=None)
+    @patch("apps.utils.analytics.posthog")
+    def test_track_error_noop_when_not_configured(self, mock_posthog):
+        """track_error should not call PostHog when not configured."""
+        track_error(self.user, "error")
+
+        mock_posthog.capture.assert_not_called()
+
+    @patch("apps.utils.analytics.posthog")
+    def test_track_error_handles_exception(self, mock_posthog):
+        """track_error should handle PostHog exceptions gracefully."""
+        mock_posthog.capture.side_effect = Exception("PostHog error")
+
+        # Should not raise
+        track_error(self.user, "error")

@@ -1,6 +1,10 @@
 """Custom middleware for security and utility functions."""
 
+import logging
+
 from django.conf import settings
+
+logger = logging.getLogger(__name__)
 
 
 class SecurityHeadersMiddleware:
@@ -74,3 +78,54 @@ class SecurityHeadersMiddleware:
         response["Content-Security-Policy"] = "; ".join(csp_directives)
 
         return response
+
+
+class ErrorTrackingMiddleware:
+    """Middleware to track server errors in PostHog.
+
+    Tracks 500 errors (server errors) in PostHog for monitoring and analytics.
+    This complements Sentry's exception tracking by providing error data
+    within PostHog for correlation with other user behavior.
+
+    Only tracks 500 errors, not 4xx client errors which are expected behavior.
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        response = self.get_response(request)
+
+        # Only track 500 errors (server errors)
+        if response.status_code >= 500:
+            self._track_error(request, response)
+
+        return response
+
+    def _track_error(self, request, response):
+        """Track the error in PostHog."""
+        from apps.utils.analytics import track_error
+
+        # Get user if authenticated
+        user = request.user if hasattr(request, "user") and request.user.is_authenticated else None
+
+        # Get view name from resolver match
+        view_name = None
+        if hasattr(request, "resolver_match") and request.resolver_match:
+            view_name = request.resolver_match.view_name
+
+        # Build properties (avoid PII)
+        properties = {
+            "path": request.path,
+            "method": request.method,
+            "status_code": response.status_code,
+        }
+        if view_name:
+            properties["view_name"] = view_name
+
+        # Track the error
+        try:
+            track_error(user, "server_error", properties)
+        except Exception:
+            # Don't let error tracking cause more errors
+            logger.exception("Failed to track error in PostHog")
