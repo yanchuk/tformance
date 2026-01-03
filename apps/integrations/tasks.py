@@ -2252,14 +2252,33 @@ def sync_historical_data_task(
         repo.sync_started_at = timezone.now()
         repo.save(update_fields=["sync_status", "sync_started_at"])
 
+        # Report overall progress to celery-progress endpoint (A-020 fix)
+        # Guard: only update if we have a task ID (not when called directly in tests)
+        if self.request.id:
+            self.update_state(
+                state="PROGRESS",
+                meta={
+                    "current": idx,
+                    "total": total_repos,
+                    "description": f"Syncing {repo.full_name}...",
+                },
+            )
+
         repo_sync_start_time = time.time()
 
         try:
             # Define progress callback for celery_progress
             # Use default argument to capture current repo value (avoids B023 closure issue)
-            # Also capture sync_logger to avoid closure issue
+            # Also capture sync_logger, self, idx, total_repos to avoid closure issues
             def progress_callback(
-                prs_completed: int, prs_total: int, message: str, current_repo=repo, _sync_logger=sync_logger
+                prs_completed: int,
+                prs_total: int,
+                message: str,
+                current_repo=repo,
+                _sync_logger=sync_logger,
+                _task=self,
+                _repo_idx=idx,
+                _total_repos=total_repos,
             ):
                 # Update repo progress
                 if prs_total > 0:
@@ -2268,8 +2287,20 @@ def sync_historical_data_task(
                     current_repo.sync_prs_total = prs_total
                     current_repo.save(update_fields=["sync_progress", "sync_prs_completed", "sync_prs_total"])
 
-                    # Log sync.repo.progress
+                    # Report to celery-progress for main progress bar (A-020 fix)
+                    # Guard: only update if we have a task ID (not when called directly in tests)
                     pct = int((prs_completed / prs_total) * 100)
+                    if _task.request.id:
+                        _task.update_state(
+                            state="PROGRESS",
+                            meta={
+                                "current": prs_completed,
+                                "total": prs_total,
+                                "description": f"Syncing {current_repo.full_name}: {pct}%",
+                            },
+                        )
+
+                    # Log sync.repo.progress
                     _sync_logger.info(
                         "sync.repo.progress",
                         extra={
