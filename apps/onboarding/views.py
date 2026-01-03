@@ -472,11 +472,17 @@ def fetch_repos(request):
 
 @login_required
 def sync_progress(request):
-    """Show sync progress page with Celery progress tracking."""
+    """Show sync progress page with Celery progress tracking.
+
+    Uses request.default_team which respects:
+    1. Session team (if user navigated from a specific team's dashboard)
+    2. User's first team (fallback)
+    """
     if not request.user.teams.exists():
         return redirect("onboarding:start")
 
-    team = request.user.teams.first()
+    # Use default_team to respect session team context (ISS-005 fix)
+    team = request.default_team
 
     # Get tracked repositories for this team
     repos = TrackedRepository.objects.filter(team=team).select_related("integration")
@@ -502,13 +508,18 @@ def sync_progress(request):
 def start_sync(request):
     """Start the historical sync task and return task ID.
 
+    Uses request.default_team which respects:
+    1. Session team (if user navigated from a specific team's dashboard)
+    2. User's first team (fallback)
+
     Returns:
         JSON response with task_id for progress polling
     """
     if not request.user.teams.exists():
         return JsonResponse({"error": "No team found"}, status=400)
 
-    team = request.user.teams.first()
+    # Use default_team to respect session team context (ISS-005 fix)
+    team = request.default_team
 
     # Get all tracked repo IDs for this team
     repo_ids = list(TrackedRepository.objects.filter(team=team).values_list("id", flat=True))
