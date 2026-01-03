@@ -118,18 +118,18 @@ def run_llm_analysis_batch(self, team_id: int, limit: int | None = 50, rate_limi
     Returns:
         Dict with processed count, error count, and skipped count
     """
-    # Check for API key
+    # Check for API key - raise exception to properly fail the pipeline chain
     api_key = os.environ.get("GROQ_API_KEY")
     if not api_key:
         logger.error("GROQ_API_KEY environment variable not set")
-        return {"error": "GROQ_API_KEY not set"}
+        raise ValueError("GROQ_API_KEY environment variable not set")
 
     # Get team
     try:
         team = Team.objects.get(id=team_id)
-    except Team.DoesNotExist:
+    except Team.DoesNotExist as err:
         logger.warning(f"Team with id {team_id} not found")
-        return {"error": f"Team with id {team_id} not found"}
+        raise ValueError(f"Team with id {team_id} not found") from err
 
     # Find PRs that need processing
     qs = PullRequest.objects.filter(  # noqa: TEAM001 - team filter applied below

@@ -4,13 +4,21 @@ Shows a banner for users with GitHub connected but missing optional integrations
 
 Required context:
 - integration_status: dict with github, jira, slack status
+- enable_jira_integration: bool (feature flag)
+- enable_slack_integration: bool (feature flag)
 
 Usage:
   {% include "web/components/setup_prompt.html" %}
 {% endcomment %}
 {% load i18n %}
 
-{% if integration_status.github.connected and not integration_status.jira.connected or not integration_status.slack.connected %}
+{# Calculate which integrations are both enabled AND not connected #}
+{% with show_jira=enable_jira_integration|default:False show_slack=enable_slack_integration|default:False %}
+{% with jira_missing=show_jira|yesno:"True,False" slack_missing=show_slack|yesno:"True,False" %}
+
+{# Only show banner if GitHub connected and at least one enabled integration is missing #}
+{% if integration_status.github.connected %}
+  {% if show_jira and not integration_status.jira.connected or show_slack and not integration_status.slack.connected %}
 <div class="alert shadow-sm mb-6" x-data="{ show: true }" x-show="show" x-transition>
   <svg xmlns="http://www.w3.org/2000/svg" class="stroke-info shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -18,20 +26,20 @@ Usage:
   <div>
     <h3 class="font-medium">{% trans "Enhance your insights" %}</h3>
     <p class="text-sm text-base-content/70">
-      {% if not integration_status.jira.connected and not integration_status.slack.connected %}
+      {% if show_jira and not integration_status.jira.connected and show_slack and not integration_status.slack.connected %}
         {% trans "Connect Jira to link PRs with issues, and Slack to collect AI usage surveys." %}
-      {% elif not integration_status.jira.connected %}
+      {% elif show_jira and not integration_status.jira.connected %}
         {% trans "Connect Jira to automatically link pull requests with issues." %}
-      {% elif not integration_status.slack.connected %}
+      {% elif show_slack and not integration_status.slack.connected %}
         {% trans "Connect Slack to send AI usage surveys to your team." %}
       {% endif %}
     </p>
   </div>
   <div class="flex-none flex gap-2">
-    {% if not integration_status.jira.connected %}
+    {% if show_jira and not integration_status.jira.connected %}
       <a href="{% url 'integrations:jira_connect' %}" class="btn btn-sm btn-ghost">{% trans "Connect Jira" %}</a>
     {% endif %}
-    {% if not integration_status.slack.connected %}
+    {% if show_slack and not integration_status.slack.connected %}
       <a href="{% url 'integrations:slack_connect' %}" class="btn btn-sm btn-ghost">{% trans "Connect Slack" %}</a>
     {% endif %}
     <button class="btn btn-sm btn-ghost btn-square" @click="show = false" aria-label="Dismiss notification">
@@ -41,4 +49,8 @@ Usage:
     </button>
   </div>
 </div>
+  {% endif %}
 {% endif %}
+
+{% endwith %}
+{% endwith %}

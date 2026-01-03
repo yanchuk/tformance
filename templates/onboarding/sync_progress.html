@@ -72,9 +72,15 @@
     <p class="text-sm text-base-content/70 mb-4">
       {% translate "You can safely close this page. The sync will continue in the background." %}
     </p>
+    {% if enable_jira_integration %}
     <a href="{% url 'onboarding:connect_jira' %}" class="app-btn-secondary mt-4">
       {% translate "Continue to Jira" %}
     </a>
+    {% else %}
+    <a href="{% url 'onboarding:complete' %}" class="app-btn-secondary mt-4">
+      {% translate "Continue to Dashboard" %}
+    </a>
+    {% endif %}
   </div>
 
   {# Completion section (hidden by default) #}
@@ -86,10 +92,17 @@
     <p class="text-base-content/70 mb-6">
       {% translate "Your data is ready. Let's continue setting up your team." %}
     </p>
+    {% if enable_jira_integration %}
     <a href="{% url 'onboarding:connect_jira' %}" class="app-btn-primary">
-      {% translate "Continue" %}
+      {% translate "Continue to Jira" %}
       <i class="fa-solid fa-arrow-right ml-2"></i>
     </a>
+    {% else %}
+    <a href="{% url 'onboarding:complete' %}" class="app-btn-primary">
+      {% translate "Continue to Dashboard" %}
+      <i class="fa-solid fa-arrow-right ml-2"></i>
+    </a>
+    {% endif %}
   </div>
 
   {# Error/Stuck section (hidden by default) #}
@@ -106,10 +119,17 @@
         <i class="fa-solid fa-redo mr-2"></i>
         {% translate "Retry Sync" %}
       </button>
+      {% if enable_jira_integration %}
       <a href="{% url 'onboarding:connect_jira' %}" class="app-btn-secondary">
         {% translate "Skip for Now" %}
         <i class="fa-solid fa-arrow-right ml-2"></i>
       </a>
+      {% else %}
+      <a href="{% url 'onboarding:complete' %}" class="app-btn-secondary">
+        {% translate "Skip for Now" %}
+        <i class="fa-solid fa-arrow-right ml-2"></i>
+      </a>
+      {% endif %}
     </div>
     <p class="text-sm text-base-content/50 mt-4">
       {% translate "You can always re-sync from Settings > Integrations later." %}

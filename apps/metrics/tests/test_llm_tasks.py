@@ -168,13 +168,12 @@ class TestRunLLMAnalysisBatchTask(TestCase):
         self.assertEqual(result["processed"], 0)
         self.assertEqual(result["errors"], 1)
 
-    def test_returns_error_without_api_key(self, mock_sleep):
-        """Returns error dict when GROQ_API_KEY not set."""
-        with patch.dict("os.environ", {}, clear=True):
-            result = run_llm_analysis_batch(team_id=self.team.id, limit=10)
+    def test_raises_error_without_api_key(self, mock_sleep):
+        """Raises ValueError when GROQ_API_KEY not set to properly fail pipeline."""
+        with patch.dict("os.environ", {}, clear=True), self.assertRaises(ValueError) as ctx:
+            run_llm_analysis_batch(team_id=self.team.id, limit=10)
 
-        self.assertIn("error", result)
-        self.assertIn("GROQ_API_KEY", result["error"])
+        self.assertIn("GROQ_API_KEY", str(ctx.exception))
 
 
 class TestRunAllTeamsLLMAnalysisTask(TestCase):
