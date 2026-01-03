@@ -943,8 +943,10 @@ def linkify_mentions(text: str | None, days: int = 30) -> str:
         """Replace @@username with placeholder (to avoid double-processing)."""
         username = match.group(1)
         # Include state=open and is_draft=false for reviewer links
-        # "Pending reviews" means non-draft open PRs awaiting review
-        url = f"/app/pull-requests/?reviewer_name=@{username}&days={days}&state=open&is_draft=false"
+        # "Pending reviews" means ALL non-draft open PRs awaiting review (no date filter)
+        # The bottleneck detection counts ALL open PRs, so the link should match
+        # no_date_filter=1 disables the default 30-day date range
+        url = f"/app/pull-requests/?reviewer_name={username}&state=open&is_draft=false&no_date_filter=1"
         link = (
             f'<a href="{url}" target="_blank" rel="noopener" '
             f'class="text-primary hover:underline font-medium">@{username}</a>'
@@ -956,7 +958,7 @@ def linkify_mentions(text: str | None, days: int = 30) -> str:
     def replace_author_mention(match):
         """Replace @username with author link."""
         username = match.group(1)
-        url = f"/app/pull-requests/?github_name=@{username}&days={days}"
+        url = f"/app/pull-requests/?github_name={username}&days={days}"
         return (
             f'<a href="{url}" target="_blank" rel="noopener" '
             f'class="text-primary hover:underline font-medium">@{username}</a>'

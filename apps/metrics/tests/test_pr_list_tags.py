@@ -633,7 +633,7 @@ class TestLinkifyMentionsFilter(TestCase):
 
         self.assertIn("href=", result)
         self.assertIn("@alice", result)
-        self.assertIn("github_name=@alice", result)
+        self.assertIn("github_name=alice", result)
         self.assertIn("days=30", result)
         self.assertIn('target="_blank"', result)
 
@@ -643,8 +643,8 @@ class TestLinkifyMentionsFilter(TestCase):
 
         result = linkify_mentions("@alice and @bob worked on this", 30)
 
-        self.assertIn("github_name=@alice", result)
-        self.assertIn("github_name=@bob", result)
+        self.assertIn("github_name=alice", result)
+        self.assertIn("github_name=bob", result)
 
     def test_uses_days_parameter(self):
         """Test that days parameter is included in URL."""
@@ -660,7 +660,7 @@ class TestLinkifyMentionsFilter(TestCase):
 
         result = linkify_mentions("Contact @alice-dev-user", 30)
 
-        self.assertIn("github_name=@alice-dev-user", result)
+        self.assertIn("github_name=alice-dev-user", result)
 
     def test_escapes_html(self):
         """Test that HTML in text is escaped to prevent XSS."""
@@ -695,7 +695,7 @@ class TestLinkifyMentionsFilter(TestCase):
 
         # The @ in email should not create a mention link
         # (because our pattern requires @ at word boundary)
-        self.assertNotIn("github_name=@example", result)
+        self.assertNotIn("github_name=example", result)
 
 
 class TestLinkifyReviewerMentions(TestCase):
@@ -708,8 +708,10 @@ class TestLinkifyReviewerMentions(TestCase):
         result = linkify_mentions("See @@alice for pending reviews", 30)
 
         self.assertIn("href=", result)
-        self.assertIn("reviewer_name=@alice", result)
-        self.assertIn("days=30", result)
+        self.assertIn("reviewer_name=alice", result)
+        # Reviewer links don't include days - they show ALL pending reviews
+        self.assertNotIn("days=", result)
+        self.assertIn("no_date_filter=1", result)  # Disable default date filter
         self.assertIn("state=open", result)  # Pending reviews = open PRs
         self.assertIn("is_draft=false", result)  # Exclude drafts from pending reviews
         self.assertIn('target="_blank"', result)
@@ -730,8 +732,8 @@ class TestLinkifyReviewerMentions(TestCase):
 
         result = linkify_mentions("Bottleneck: @@bob has pending reviews", 30)
 
-        self.assertIn("reviewer_name=@bob", result)
-        self.assertNotIn("github_name=@bob", result)
+        self.assertIn("reviewer_name=bob", result)
+        self.assertNotIn("github_name=bob", result)
 
     def test_mixed_author_and_reviewer_mentions(self):
         """Test that both @ and @@ mentions work in the same text."""
@@ -740,9 +742,9 @@ class TestLinkifyReviewerMentions(TestCase):
         result = linkify_mentions("@alice authored, @@bob reviewing", 30)
 
         # Author mention should use github_name
-        self.assertIn("github_name=@alice", result)
+        self.assertIn("github_name=alice", result)
         # Reviewer mention should use reviewer_name
-        self.assertIn("reviewer_name=@bob", result)
+        self.assertIn("reviewer_name=bob", result)
 
     def test_reviewer_mention_hyphenated_username(self):
         """Test that hyphenated usernames work with @@ syntax."""
@@ -750,7 +752,7 @@ class TestLinkifyReviewerMentions(TestCase):
 
         result = linkify_mentions("Contact @@alice-dev-user for reviews", 30)
 
-        self.assertIn("reviewer_name=@alice-dev-user", result)
+        self.assertIn("reviewer_name=alice-dev-user", result)
 
     def test_triple_at_not_matched(self):
         """Test that @@@alice is not matched (edge case - no link created)."""
@@ -766,11 +768,16 @@ class TestLinkifyReviewerMentions(TestCase):
         # No link should be created (this is edge case, not typical usage)
         self.assertNotIn("href=", result)
 
-    def test_reviewer_mention_uses_days_parameter(self):
-        """Test that days parameter is included in reviewer URL."""
+    def test_reviewer_mention_excludes_days_parameter(self):
+        """Test that days parameter is NOT included in reviewer URL.
+
+        Reviewer bottleneck links should show ALL pending reviews regardless of
+        PR creation date, since the bottleneck is calculated across all open PRs.
+        """
         from apps.metrics.templatetags.pr_list_tags import linkify_mentions
 
         result = linkify_mentions("@@alice has reviews", 7)
 
-        self.assertIn("reviewer_name=@alice", result)
-        self.assertIn("days=7", result)
+        self.assertIn("reviewer_name=alice", result)
+        # Days should NOT be in reviewer links - show ALL pending reviews
+        self.assertNotIn("days=", result)

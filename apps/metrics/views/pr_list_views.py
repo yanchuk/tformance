@@ -70,9 +70,15 @@ def _get_filters_from_request(request: HttpRequest, default_days: int = 30) -> d
         filters["tech"] = tech_values
 
     # Handle date range: explicit dates > days param > default
+    # Special case: no_date_filter=1 skips all date filtering (used for bottleneck links)
     days_param = request.GET.get("days")
+    no_date_filter = request.GET.get("no_date_filter") == "1"
 
-    if filters.get("date_from") or filters.get("date_to"):
+    if no_date_filter:
+        # Skip date filtering entirely - used for reviewer bottleneck links
+        # that should show ALL open PRs regardless of when they were created
+        pass
+    elif filters.get("date_from") or filters.get("date_to"):
         # Use explicit dates as-is
         pass
     elif days_param:

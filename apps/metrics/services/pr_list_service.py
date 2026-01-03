@@ -154,10 +154,10 @@ def get_prs_queryset(team: Team, filters: dict[str, Any]) -> QuerySet[PullReques
             qs = qs.none()
 
     # Filter by reviewer GitHub username (e.g., "@johndoe" or "johndoe")
-    # Used for bottleneck @@ mentions - shows PRs where reviewer needs to take action
+    # Used for bottleneck @@ mentions - shows PRs awaiting approval from this reviewer
     # Security: Only matches team members within the specified team
-    # Logic: Exclude only PRs where reviewer's LATEST review is "approved" (they're done)
-    #        Include PRs with commented/changes_requested/dismissed (still in review process)
+    # Logic: Show PRs where this reviewer's LATEST review is NOT "approved"
+    #        Matches detect_review_bottleneck() semantics - "awaiting approval" not "never reviewed"
     reviewer_name = filters.get("reviewer_name")
     if reviewer_name:
         # Strip @ prefix if present
@@ -165,7 +165,9 @@ def get_prs_queryset(team: Team, filters: dict[str, Any]) -> QuerySet[PullReques
         # Look up team member by github_username within team (team-scoped = secure)
         try:
             member = TeamMember.objects.get(team=team, github_username__iexact=username)
-            # Subquery to get the latest review state for this reviewer on each PR
+            # Get PRs where this reviewer's LATEST review is NOT "approved"
+            # This matches bottleneck detection logic - "awaiting approval"
+            # Subquery to get the latest review state from this reviewer
             latest_review_state = (
                 PRReview.objects.filter(  # noqa: TEAM001
                     pull_request=OuterRef("pk"),
@@ -174,11 +176,17 @@ def get_prs_queryset(team: Team, filters: dict[str, Any]) -> QuerySet[PullReques
                 .order_by("-submitted_at")
                 .values("state")[:1]
             )
-            # Annotate with the reviewer's latest review state and exclude only "approved"
-            # - approved: reviewer is done (exclude)
-            # - commented/changes_requested/dismissed: still in review process (include)
-            qs = qs.annotate(reviewer_latest_state=Subquery(latest_review_state)).exclude(
-                reviewer_latest_state="approved"
+            # Filter for PRs where:
+            # 1. Reviewer has submitted at least one review (latest_review_state is not null)
+            # 2. The latest review is NOT "approved" (still needs their approval)
+            qs = (
+                qs.annotate(reviewer_latest_state=Subquery(latest_review_state))
+                .filter(
+                    reviewer_latest_state__isnull=False,  # Has reviewed
+                )
+                .exclude(
+                    reviewer_latest_state="approved",  # But not approved yet
+                )
             )
         except TeamMember.DoesNotExist:
             # No matching team member - return empty queryset
