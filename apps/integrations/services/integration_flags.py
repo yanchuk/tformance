@@ -25,6 +25,26 @@ INTEGRATION_FLAGS = {
 
 # Integration metadata for UI rendering
 INTEGRATION_METADATA = {
+    "github": {
+        "name": "GitHub",
+        "icon_color": "text-base-content",
+        "description": "Pull requests, commits, and reviews",
+        "benefits": [
+            {
+                "title": "Privacy first",
+                "description": "We never read or store your source code",
+            },
+            {
+                "title": "Metadata only",
+                "description": "We analyze PR metadata, not code content",
+            },
+            {
+                "title": "Read-only access",
+                "description": "We can't modify your repositories",
+            },
+        ],
+        "always_coming_soon": False,
+    },
     "jira": {
         "name": "Jira",
         "icon_color": "text-blue-500",
@@ -68,19 +88,19 @@ INTEGRATION_METADATA = {
     "slack": {
         "name": "Slack",
         "icon_color": "text-pink-500",
-        "description": "PR surveys and leaderboards",
+        "description": "Communication analytics and surveys",
         "benefits": [
             {
+                "title": "Communication insights",
+                "description": "Track time spent on chats and huddles",
+            },
+            {
+                "title": "Team effectiveness",
+                "description": "Correlate communication with delivery metrics",
+            },
+            {
                 "title": "PR surveys via DM",
-                "description": "Quick 1-click surveys to capture AI-assisted PRs",
-            },
-            {
-                "title": "Weekly leaderboards",
-                "description": "Gamified AI Detective rankings",
-            },
-            {
-                "title": "Higher response rates",
-                "description": "Meet developers where they work",
+                "description": "Quick 1-click surveys in Slack",
             },
         ],
         "always_coming_soon": False,
