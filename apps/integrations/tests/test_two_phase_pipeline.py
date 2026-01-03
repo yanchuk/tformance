@@ -244,7 +244,10 @@ class TestPhase1ErrorHandling(TestCase):
     """Tests for Phase 1 pipeline failure behavior."""
 
     def setUp(self):
-        self.team = TeamFactory(onboarding_pipeline_status="syncing")
+        self.team = TeamFactory(
+            onboarding_pipeline_status="syncing",
+            onboarding_complete=False,  # Teams in onboarding don't have this flag set
+        )
         self.repo = TrackedRepositoryFactory(team=self.team)
 
     def test_phase1_failure_sets_status_to_failed(self):

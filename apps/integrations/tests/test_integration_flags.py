@@ -92,7 +92,7 @@ class TestIntegrationStatus(TestCase):
         Flag.objects.get_or_create(name="integration_google_workspace_enabled")
 
     def test_get_all_integration_statuses_returns_all_integrations(self):
-        """Test that get_all_integration_statuses returns all 4 integrations."""
+        """Test that get_all_integration_statuses returns all 5 integrations."""
         from apps.integrations.services.integration_flags import get_all_integration_statuses
 
         request = self.factory.get("/")
@@ -101,10 +101,11 @@ class TestIntegrationStatus(TestCase):
 
         statuses = get_all_integration_statuses(request)
 
-        # Should have 4 integrations: jira, copilot, slack, google_workspace
-        self.assertEqual(len(statuses), 4)
+        # Should have 5 integrations: github, jira, copilot, slack, google_workspace
+        self.assertEqual(len(statuses), 5)
 
         slugs = [s.slug for s in statuses]
+        self.assertIn("github", slugs)
         self.assertIn("jira", slugs)
         self.assertIn("copilot", slugs)
         self.assertIn("slack", slugs)

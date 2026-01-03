@@ -19,8 +19,8 @@ class TestScenarioRegistry(TestCase):
     """Tests for the scenario registry system."""
 
     def test_all_scenarios_registered(self):
-        """All 4 scenarios should be registered."""
-        expected = {"ai-success", "review-bottleneck", "baseline", "detective-game"}
+        """All 5 scenarios should be registered."""
+        expected = {"ai-success", "review-bottleneck", "baseline", "detective-game", "test-minimal"}
         actual = set(SCENARIO_REGISTRY.keys())
         self.assertEqual(actual, expected)
 
@@ -37,7 +37,7 @@ class TestScenarioRegistry(TestCase):
     def test_list_scenarios_returns_info(self):
         """list_scenarios should return scenario info dicts."""
         scenarios = list_scenarios()
-        self.assertEqual(len(scenarios), 4)
+        self.assertEqual(len(scenarios), 5)
 
         # Check structure of returned info
         for info in scenarios:

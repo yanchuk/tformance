@@ -100,6 +100,8 @@ class TimeEstimateDisplayTests(TestCase):
         self.assertIn("5 min", content)
 
 
+@override_flag("integration_jira_enabled", active=True)
+@override_flag("integration_slack_enabled", active=True)
 class CompletePageMessagingTests(TestCase):
     """Tests for improved messaging on complete page."""
 

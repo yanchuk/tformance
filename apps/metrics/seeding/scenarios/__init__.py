@@ -15,6 +15,7 @@ from .baseline import BaselineScenario
 from .detective_game import DetectiveGameScenario
 from .registry import SCENARIO_REGISTRY, get_scenario, list_scenarios
 from .review_bottleneck import ReviewBottleneckScenario
+from .test_minimal import TestMinimalScenario
 
 __all__ = [
     "BaseScenario",
@@ -28,4 +29,5 @@ __all__ = [
     "BaselineScenario",
     "DetectiveGameScenario",
     "ReviewBottleneckScenario",
+    "TestMinimalScenario",
 ]

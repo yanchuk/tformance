@@ -121,12 +121,14 @@ class TestScenarioDataGeneratorReproducibility(TestCase):
 
     These tests CANNOT use setUpTestData() because they need to compare
     results from different generator runs with different seeds.
+
+    Uses test-minimal scenario for faster execution (~25x smaller than ai-success).
     """
 
     def setUp(self):
         """Set up test fixtures."""
         self.team = Team.objects.create(name="Test Team", slug="test-team")
-        self.scenario = get_scenario("ai-success")
+        self.scenario = get_scenario("test-minimal")
 
     def tearDown(self):
         """Clean up test data."""
@@ -158,7 +160,7 @@ class TestScenarioDataGeneratorReproducibility(TestCase):
 
         # Second run with same seed
         generator2 = ScenarioDataGenerator(
-            scenario=get_scenario("ai-success"),
+            scenario=get_scenario("test-minimal"),
             seed=42,
             fetch_github=False,
         )
@@ -188,7 +190,7 @@ class TestScenarioDataGeneratorReproducibility(TestCase):
 
         # Second run with different seed
         generator2 = ScenarioDataGenerator(
-            scenario=get_scenario("ai-success"),
+            scenario=get_scenario("test-minimal"),
             seed=999,
             fetch_github=False,
         )
@@ -208,12 +210,13 @@ class TestScenarioDataGeneratorGitHubIntegration(TestCase):
     """Tests for GitHub data fetching - requires specific mock setups.
 
     These tests need different mock configurations per test method.
+    Uses test-minimal scenario for faster execution.
     """
 
     def setUp(self):
         """Set up test fixtures."""
         self.team = Team.objects.create(name="Test Team", slug="test-team")
-        self.scenario = get_scenario("ai-success")
+        self.scenario = get_scenario("test-minimal")
 
     def tearDown(self):
         """Clean up test data."""
