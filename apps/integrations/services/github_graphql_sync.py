@@ -226,14 +226,17 @@ async def sync_repository_history_graphql(
             # Process each PR
             for pr_data in pr_nodes:
                 try:
-                    await _process_pr_async(team_id, full_name, pr_data, cutoff_date, skip_before_date, result)
-                    prs_processed += 1
+                    was_processed = await _process_pr_async(
+                        team_id, full_name, pr_data, cutoff_date, skip_before_date, result
+                    )
+                    if was_processed:
+                        prs_processed += 1
                 except Exception as e:
                     pr_number = pr_data.get("number", "unknown")
                     error_msg = f"Error processing PR #{pr_number}: {type(e).__name__}: {e}"
                     logger.warning(error_msg)
                     result.errors.append(error_msg)
-                    prs_processed += 1  # Count even on error for progress
+                    # Don't increment prs_processed on error - PR wasn't successfully synced
 
             # Update progress after each batch
             await _update_sync_progress(tracked_repo_id, prs_processed, total_prs)
@@ -309,12 +312,16 @@ def _process_pr_async(
     cutoff_date,
     skip_before_date,
     result: SyncResult,
-) -> None:
-    """Process a single PR from GraphQL response (async wrapper)."""
+) -> bool:
+    """Process a single PR from GraphQL response (async wrapper).
+
+    Returns:
+        True if PR was actually processed, False if skipped (outside date range).
+    """
     from apps.teams.models import Team
 
     team = Team.objects.get(id=team_id)
-    _process_pr(team, github_repo, pr_data, cutoff_date, skip_before_date, result)
+    return _process_pr(team, github_repo, pr_data, cutoff_date, skip_before_date, result)
 
 
 def _detect_pr_ai_involvement(author_login: str | None, title: str, body: str) -> tuple[bool, list[str]]:
@@ -358,7 +365,7 @@ def _process_pr(
     cutoff_date,
     skip_before_date,
     result: SyncResult,
-) -> None:
+) -> bool:
     """Process a single PR from GraphQL response.
 
     Creates or updates PullRequest and related records (reviews, commits, files).
@@ -366,15 +373,18 @@ def _process_pr(
     Supports two-phase onboarding date filtering:
     - cutoff_date: Skip PRs older than this (e.g., 90 days ago)
     - skip_before_date: Skip PRs newer than this (e.g., 30 days ago for Phase 2)
+
+    Returns:
+        True if PR was actually processed, False if skipped (outside date range).
     """
     # Parse PR created date and check date range
     created_at = _parse_datetime(pr_data.get("createdAt"))
     if created_at and created_at < cutoff_date:
         logger.debug(f"Skipping PR #{pr_data.get('number')} - older than cutoff")
-        return
+        return False
     if skip_before_date and created_at and created_at > skip_before_date:
         logger.debug(f"Skipping PR #{pr_data.get('number')} - too recent (Phase 2 skip)")
-        return
+        return False
 
     # Get author
     author_data = pr_data.get("author")
@@ -452,6 +462,8 @@ def _process_pr(
     _process_reviews(team, pr, reviews_nodes, result)
     _process_commits(team, pr, github_repo, commits_nodes, result)
     _process_files(team, pr, files_nodes, result)
+
+    return True
 
 
 def _process_reviews(
