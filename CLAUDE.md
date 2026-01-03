@@ -82,7 +82,7 @@ Use `effective_*` model properties that implement this priority:
 When adding new regex patterns:
 1. Update `AI_SIGNATURE_PATTERNS` in `apps/metrics/services/ai_patterns.py`
 2. Increment `PATTERNS_VERSION` (e.g., 1.5.0 → 1.6.0)
-3. Run `python manage.py backfill_ai_detection` to update historical PRs
+3. Run `.venv/bin/python manage.py backfill_ai_detection` to update historical PRs
 
 ### Prompt Template Changes (REQUIRE APPROVAL)
 
@@ -98,8 +98,10 @@ Before modifying any prompt template (`apps/metrics/prompts/templates/*`):
 |------|---------|
 | `apps/metrics/services/ai_patterns.py` | Regex patterns + `PATTERNS_VERSION` |
 | `apps/metrics/services/llm_prompts.py` | `PROMPT_VERSION` + user prompt builder |
-| `apps/metrics/prompts/templates/` | Jinja2 prompt templates (source of truth) |
-| `apps/metrics/prompts/golden_tests.py` | 29 test cases for LLM evaluation |
+| `apps/metrics/prompts/templates/` | Jinja2 prompt templates (system, user, sections/) |
+| `apps/metrics/prompts/render.py` | Template rendering logic |
+| `apps/metrics/prompts/schemas.py` | Response schema definitions |
+| `apps/metrics/prompts/golden_tests.py` | 57+ test cases for LLM evaluation |
 | `apps/integrations/services/groq_batch.py` | LLM batch processing via Groq |
 
 ## Data Flow
@@ -107,6 +109,27 @@ Before modifying any prompt template (`apps/metrics/prompts/templates/*`):
 GitHub/Jira APIs → Our Backend → PostgreSQL → Dashboard (Chart.js) → User ↓ Slack Bot (surveys)
 
 We store: OAuth tokens (encrypted), accounts, billing, all metrics/surveys (team-isolated)
+
+## Django Apps Overview
+
+| App | Purpose |
+|-----|---------|
+| `apps/byos` | Bring Your Own Storage |
+| `apps/content` | Static content pages |
+| `apps/dashboard` | Dashboard views |
+| `apps/feedback` | User feedback collection |
+| `apps/insights` | AI-powered insights |
+| `apps/integrations` | GitHub, Jira, Slack integrations |
+| `apps/metrics` | Core metrics models & services |
+| `apps/notes` | PR notes/annotations |
+| `apps/onboarding` | User onboarding flow |
+| `apps/pullrequests` | PR-specific features |
+| `apps/subscriptions` | Billing & plans |
+| `apps/support` | Support system |
+| `apps/teams` | Multi-tenancy |
+| `apps/users` | User management |
+| `apps/utils` | Shared utilities |
+| `apps/web` | Public-facing pages |
 
 ## PostHog Analytics
 
@@ -191,6 +214,40 @@ TformanceAnalytics.trackChartInteraction('cycle-time-chart', 'click', { label: '
 - The main database is Postgres.
 - Celery is used for background jobs and scheduled tasks.
 - Redis is used as the default cache, and the message broker for Celery (if enabled).
+
+## Python Virtual Environment
+
+**IMPORTANT: Always use the virtual environment for Python commands.**
+
+This project uses a `.venv` virtual environment managed by `uv`. All Python commands must use the venv:
+
+| Instead of | Use |
+|------------|-----|
+| `python` | `.venv/bin/python` |
+| `pytest` | `.venv/bin/pytest` |
+| `pip` | `.venv/bin/pip` or `uv pip` |
+| `celery` | `.venv/bin/celery` |
+| `ruff` | `.venv/bin/ruff` |
+
+**Quick patterns:**
+```bash
+# Django management commands
+.venv/bin/python manage.py <command>
+
+# Running tests
+.venv/bin/pytest apps/myapp/tests/
+
+# With environment variables
+DEBUG=True .venv/bin/python manage.py runserver
+DJANGO_SETTINGS_MODULE=tformance.settings .venv/bin/pytest
+
+# Installing packages (use uv, not pip directly)
+uv pip install <package>
+# or
+make uv add '<package>'
+```
+
+**Why:** The venv contains all project dependencies with correct versions. Using bare `python` or `pytest` may use system Python which lacks required packages.
 
 ## Design System
 
@@ -342,7 +399,7 @@ make migrate          # Apply migrations
 
 ### Testing
 
-Tests run with **pytest** and **pytest-django**. The test suite has ~2000 tests.
+Tests run with **pytest**. The test suite has ~4900 tests.
 
 ```bash
 # Basic commands
@@ -357,11 +414,11 @@ make test-coverage                            # Run with coverage report
 make test-fresh                               # Fresh database (when models change)
 make test-django                              # Fallback to Django test runner
 
-# pytest-specific options
-pytest apps/metrics -v                        # Verbose output
-pytest --lf                                   # Run last failed tests only
-pytest -x                                     # Stop on first failure
-pytest -p randomly --randomly-seed=12345      # Reproducible random order
+# pytest-specific options (always use venv)
+.venv/bin/pytest apps/metrics -v                        # Verbose output
+.venv/bin/pytest --lf                                   # Run last failed tests only
+.venv/bin/pytest -x                                     # Stop on first failure
+.venv/bin/pytest -p randomly --randomly-seed=12345      # Reproducible random order
 ```
 
 **Speed Tips:**
@@ -392,11 +449,20 @@ make e2e-ui             # Open Playwright UI for debugging
 make e2e-report
 ```
 
-**Test Files:** `tests/e2e/`
+**Test Files:** `tests/e2e/` (28 test files)
+
+Key test suites:
 - `smoke.spec.ts` - Basic page loads, health checks
 - `auth.spec.ts` - Login, logout, access control
 - `dashboard.spec.ts` - CTO dashboard, navigation
 - `integrations.spec.ts` - Integration status pages
+- `onboarding.spec.ts` - Onboarding flow
+- `pr-list.spec.ts` - PR list features
+- `insights.spec.ts` - AI insights
+- `htmx-*.spec.ts` - HTMX integration tests
+- `accessibility.spec.ts` - A11y checks
+
+See `tests/e2e/` for full list including: analytics, copilot, feedback, leaderboard, notes, profile, surveys, teams, trends-charts, and more.
 
 **When to Run E2E Tests:**
 - After changing views, templates, or URL patterns
@@ -405,6 +471,19 @@ make e2e-report
 - When debugging user-reported issues
 
 **Test Credentials:** `admin@example.com` / `admin123`
+
+### Visual Verification with Playwright MCP
+
+**IMPORTANT: Use Playwright MCP to confirm visual changes meet requirements before considering a task complete.**
+
+When implementing UI changes:
+1. Make the code changes
+2. Use `mcp__playwright__browser_navigate` to load the affected page
+3. Use `mcp__playwright__browser_snapshot` to capture accessibility state
+4. Use `mcp__playwright__browser_take_screenshot` for visual confirmation
+5. Verify the changes match requirements before marking the task done
+
+This ensures visual regressions are caught early and changes render correctly across themes.
 
 ### Python Code Quality
 
@@ -442,21 +521,21 @@ make uv run 'pegasus startapp <app_name> <Model1> <Model2Name>'  # Start a new D
 ### AI Detection Tools
 
 ```bash
-make export-prompts                         # Generate promptfoo.yaml from templates
-python manage.py run_llm_analysis --limit 50  # Analyze PRs with LLM
-python manage.py backfill_ai_detection      # Backfill regex detection
+make export-prompts                                        # Generate promptfoo.yaml from templates
+.venv/bin/python manage.py run_llm_analysis --limit 50    # Analyze PRs with LLM
+.venv/bin/python manage.py backfill_ai_detection          # Backfill regex detection
 ```
 
 ### Demo Data Seeding
 
 ```bash
-python manage.py seed_demo_data              # Seed default demo data
-python manage.py seed_demo_data --clear      # Clear and reseed
-python manage.py seed_demo_data --prs 100    # Custom amounts
+.venv/bin/python manage.py seed_demo_data              # Seed default demo data
+.venv/bin/python manage.py seed_demo_data --clear      # Clear and reseed
+.venv/bin/python manage.py seed_demo_data --prs 100    # Custom amounts
 
 # Scenario-based seeding (recommended for coherent demo data)
-python manage.py seed_demo_data --scenario ai-success --seed 42
-python manage.py seed_demo_data --list-scenarios  # Show all scenarios
+.venv/bin/python manage.py seed_demo_data --scenario ai-success --seed 42
+.venv/bin/python manage.py seed_demo_data --list-scenarios  # Show all scenarios
 ```
 
 See `dev/DEV-ENVIRONMENT.md` for full options including all 4 scenarios.
@@ -501,13 +580,13 @@ See `public_report/templates/README.md` for detailed documentation.
 
 ### Before Starting Any Implementation
 
-1. **Run existing tests first**: `make test` to ensure the codebase is in a passing state
+1. **Run existing tests first**: `make test` or `pytest` to ensure the codebase is in a passing state
 2. **Identify what tests exist**: Check `apps/<app>/tests/` for related test files
 3. **Never break existing tests**: If your changes cause test failures, fix them before proceeding
 
 ### TDD Workflow (Red-Green-Refactor)
 
-When implementing new features, follow this strict cycle:
+When implementing new features, use TDD agents and follow this strict cycle:
 
 #### 🔴 RED Phase - Write Failing Test First
 - Write a test that describes the expected behavior
@@ -526,16 +605,9 @@ When implementing new features, follow this strict cycle:
 
 ### Test File Conventions
 
-```bash
-# Test location pattern
-apps/<app_name>/tests/test_<feature>.py
+Test location pattern: `apps/<app_name>/tests/test_<feature>.py`
 
-# Running specific tests with pytest
-pytest apps/myapp/tests/test_feature.py                              # Run file
-pytest apps/myapp/tests/test_feature.py::TestClassName               # Run class
-pytest apps/myapp/tests/test_feature.py::TestClassName::test_method  # Run method
-pytest -k "test_feature and not slow"                                # Pattern match
-```
+See [Testing](#testing) section above for pytest command patterns.
 
 ### Test Structure (Django TestCase with Factories)
 
@@ -586,6 +658,11 @@ Available factories in `apps/metrics/factories.py`:
 - `JiraIssueFactory`, `AIUsageDailyFactory`
 - `PRSurveyFactory`, `PRSurveyReviewFactory`
 - `WeeklyMetricsFactory`
+
+Additional factories exist in:
+- `apps/feedback/factories.py`
+- `apps/integrations/factories.py`
+- `apps/notes/factories.py`
 
 ### TDD Skill Activation
 
@@ -685,8 +762,7 @@ This ensures you're using current API methods and best practices, not outdated p
 ### Preferred Practices
 
 - Use Django signals sparingly and document them well.
-- Always use the Django ORM if possible. Use best practices like lazily evaluating querysets
-  and selecting or prefetching related objects when necessary.
+- Always use the Django ORM if possible. Use best practices like lazily evaluating querysets and selecting or prefetching related objects when necessary.
 - Use function-based views by default, unless using a framework that relies on class-based views (e.g. Django Rest Framework).
 - Always validate user input server-side.
 - Handle errors explicitly, avoid silent failures.
@@ -696,8 +772,7 @@ This ensures you're using current API methods and best practices, not outdated p
 - All Django models should extend `apps.utils.models.BaseModel` (which adds `created_at` and `updated_at` fields) or `apps.teams.models.BaseTeamModel` (which also adds a `team`) if owned by a team.
 - Models that extend `BaseTeamModel` should use the `for_team` model manager for queries that require team filtering. This will apply the team filter automatically based on the global team context. See `apps.teams.context.get_current_team`.
 - The project's user model is `apps.users.models.CustomUser` and should be imported directly.
-- The `Team` model is like a virtual tenant and most data access / functionality happens within
-  the context of a `Team`.
+- The `Team` model is like a virtual tenant and most data access / functionality happens within the context of a `Team`.
 
 #### Team Isolation Linting (TEAM001)
 
@@ -744,7 +819,7 @@ Model.objects.get(id=id)  # noqa: TEAM001 - ID from Celery task queue
 - JavaScript and CSS files built with vite should be included with the `{% vite_asset %}` template tag provided by `django-vite` (must have `{% load django_vite %}` at the top of the template)
 - Any react components also need `{% vite_react_refresh %}` for Vite + React's HMR functionality, from the same `django_vite` template library)
 - Use the Django `{% static %}` tag for loading images and external JavaScript / CSS files not managed by vite.
-- Prefer using alpine.js for page-level JavaScript, and avoid inline `<script>` tags where possible.
+- Prefer using alpine.js for page-level JavaScript, and avoid inline `<script>` tags (see [HTMX + Alpine.js Integration Patterns](#htmx--alpinejs-integration-patterns) for details).
 - Break re-usable template components into separate templates with `{% include %}` statements.
   These normally go into a `components` folder.
 - Use DaisyUI styling markup for available components. When not available, fall back to standard TailwindCSS classes.
@@ -770,7 +845,7 @@ Model.objects.get(id=id)  # noqa: TEAM001 - ID from Celery task queue
 - Where possible, use TypeScript for React components to leverage type safety.
 - When using HTMX, follow progressive enhancement patterns.
 - Use Alpine.js for client-side interactivity that doesn't require server interaction.
-- Avoid inline `<script>` tags wherever posisble.
+- Avoid inline `<script>` tags wherever possible.
 - Use the generated OpenAPI client for API calls instead of raw fetch or axios calls.
 - Validate user input on both client and server side.
 - Handle errors explicitly in promise chains and async functions.
