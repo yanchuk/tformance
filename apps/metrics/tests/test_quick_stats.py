@@ -320,7 +320,7 @@ class TestGetTeamQuickStats(TestCase):
         self.assertIsNone(stats["avg_cycle_time"]["change_percent"])
 
     def test_ai_assisted_percent_is_calculated_from_pr_survey_data(self):
-        """Test that ai_assisted_percent is calculated from PRSurvey data."""
+        """Test that ai_assisted_percent is calculated from PRSurvey data when use_survey_data=True."""
         now = timezone.now()
 
         # Create 4 PRs with surveys in current period
@@ -376,13 +376,13 @@ class TestGetTeamQuickStats(TestCase):
             author_ai_assisted=False,
         )
 
-        stats = get_team_quick_stats(self.team, days=7)
+        stats = get_team_quick_stats(self.team, days=7, use_survey_data=True)
 
         # 2 out of 4 = 50%
         self.assertEqual(stats["ai_assisted"]["percent"], 50.0)
 
     def test_ai_assisted_percent_ignores_null_survey_responses(self):
-        """Test that ai_assisted_percent ignores surveys where author_ai_assisted is None."""
+        """Test that ai_assisted_percent ignores surveys where author_ai_assisted is None when use_survey_data=True."""
         now = timezone.now()
 
         # Create 2 PRs with answered surveys
@@ -426,13 +426,13 @@ class TestGetTeamQuickStats(TestCase):
             author_ai_assisted=None,  # Not yet answered
         )
 
-        stats = get_team_quick_stats(self.team, days=7)
+        stats = get_team_quick_stats(self.team, days=7, use_survey_data=True)
 
         # 1 out of 2 answered = 50%
         self.assertEqual(stats["ai_assisted"]["percent"], 50.0)
 
     def test_ai_assisted_percent_returns_zero_when_no_surveys(self):
-        """Test that ai_assisted_percent returns 0 when no survey data exists."""
+        """Test that ai_assisted_percent returns None when no survey data exists with use_survey_data=True."""
         now = timezone.now()
 
         # Create PRs without surveys
@@ -443,13 +443,13 @@ class TestGetTeamQuickStats(TestCase):
             merged_at=now - timedelta(days=1),
         )
 
-        stats = get_team_quick_stats(self.team, days=7)
+        stats = get_team_quick_stats(self.team, days=7, use_survey_data=True)
 
         # No surveys means percent is None (no data to calculate from)
         self.assertIsNone(stats["ai_assisted"]["percent"])
 
     def test_ai_percent_change_calculates_percentage_point_change(self):
-        """Test that ai_percent_change calculates percentage point change."""
+        """Test that ai_percent_change calculates percentage point change when use_survey_data=True."""
         now = timezone.now()
 
         # Current period: 75% AI-assisted (3 out of 4)
@@ -508,7 +508,7 @@ class TestGetTeamQuickStats(TestCase):
                 author_ai_assisted=False,
             )
 
-        stats = get_team_quick_stats(self.team, days=7)
+        stats = get_team_quick_stats(self.team, days=7, use_survey_data=True)
 
         # 75% current - 25% previous = +50 percentage points
         self.assertEqual(stats["ai_assisted"]["percent"], 75.0)
@@ -811,7 +811,7 @@ class TestGetTeamQuickStats(TestCase):
         self.assertEqual(len(stats["recent_activity"]), 5)
 
     def test_recent_activity_includes_pr_merged_type(self):
-        """Test that recent_activity includes pr_merged type items."""
+        """Test that recent_activity includes pr_merged type items with detection-based AI status."""
         now = timezone.now()
 
         pr = PullRequestFactory(
@@ -820,6 +820,7 @@ class TestGetTeamQuickStats(TestCase):
             state="merged",
             merged_at=now - timedelta(hours=1),
             title="Test PR",
+            is_ai_assisted=False,  # No AI detected
         )
 
         stats = get_team_quick_stats(self.team, days=7)
@@ -830,11 +831,11 @@ class TestGetTeamQuickStats(TestCase):
         self.assertEqual(activity["type"], "pr_merged")
         self.assertEqual(activity["title"], "Test PR")
         self.assertEqual(activity["author"], self.member1.display_name)
-        self.assertIsNone(activity["ai_assisted"])  # No survey
+        self.assertFalse(activity["ai_assisted"])  # Detection-based: False
         self.assertEqual(activity["timestamp"], pr.merged_at)
 
     def test_recent_activity_includes_pr_ai_assisted_from_survey(self):
-        """Test that recent_activity includes ai_assisted from survey data."""
+        """Test that recent_activity includes ai_assisted from survey data when use_survey_data=True."""
         now = timezone.now()
 
         pr = PullRequestFactory(
@@ -851,7 +852,7 @@ class TestGetTeamQuickStats(TestCase):
             author_ai_assisted=True,
         )
 
-        stats = get_team_quick_stats(self.team, days=7)
+        stats = get_team_quick_stats(self.team, days=7, use_survey_data=True)
 
         activity = stats["recent_activity"][0]
         self.assertEqual(activity["type"], "pr_merged")
@@ -1064,3 +1065,131 @@ class TestGetTeamQuickStats(TestCase):
 
         # Should only count our team's PR
         self.assertEqual(stats["prs_merged"]["count"], 1)
+
+
+class TestGetTeamQuickStatsFeatureFlag(TestCase):
+    """Tests for get_team_quick_stats with AI adoption feature flag.
+
+    When use_survey_data=False (default):
+        - ai_assisted_percent uses effective_is_ai_assisted (LLM + pattern detection)
+
+    When use_survey_data=True:
+        - ai_assisted_percent uses PRSurvey.author_ai_assisted (survey data)
+    """
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.team = TeamFactory()
+        self.member = TeamMemberFactory(team=self.team, display_name="Alice")
+
+    def test_uses_detection_by_default_when_use_survey_data_false(self):
+        """When use_survey_data=False, ai_assisted_percent should use detection data."""
+        now = timezone.now()
+
+        # Create 2 PRs - one with AI detection, one without
+        PullRequestFactory(
+            team=self.team,
+            author=self.member,
+            state="merged",
+            merged_at=now - timedelta(days=1),
+            is_ai_assisted=True,  # Detection says AI
+        )
+        PullRequestFactory(
+            team=self.team,
+            author=self.member,
+            state="merged",
+            merged_at=now - timedelta(days=2),
+            is_ai_assisted=False,  # Detection says no AI
+        )
+
+        stats = get_team_quick_stats(self.team, days=7, use_survey_data=False)
+
+        # Should show 50% AI-assisted from detection (1 out of 2)
+        self.assertEqual(stats["ai_assisted"]["percent"], 50.0)
+
+    def test_detection_ignores_survey_when_use_survey_data_false(self):
+        """When use_survey_data=False, should ignore survey data and use detection."""
+        now = timezone.now()
+
+        # Create PR with detection saying NO AI, but survey says YES
+        pr = PullRequestFactory(
+            team=self.team,
+            author=self.member,
+            state="merged",
+            merged_at=now - timedelta(days=1),
+            is_ai_assisted=False,  # Detection says no AI
+        )
+        PRSurveyFactory(
+            team=self.team,
+            pull_request=pr,
+            author=self.member,
+            author_ai_assisted=True,  # Survey says YES AI - should be ignored
+        )
+
+        stats = get_team_quick_stats(self.team, days=7, use_survey_data=False)
+
+        # Should show 0% AI-assisted from detection (ignoring survey)
+        self.assertEqual(stats["ai_assisted"]["percent"], 0.0)
+
+    def test_uses_survey_when_use_survey_data_true(self):
+        """When use_survey_data=True, ai_assisted_percent should use survey data."""
+        now = timezone.now()
+
+        # Create PR with detection saying NO AI, but survey says YES
+        pr = PullRequestFactory(
+            team=self.team,
+            author=self.member,
+            state="merged",
+            merged_at=now - timedelta(days=1),
+            is_ai_assisted=False,  # Detection says no AI
+        )
+        PRSurveyFactory(
+            team=self.team,
+            pull_request=pr,
+            author=self.member,
+            author_ai_assisted=True,  # Survey says YES AI
+        )
+
+        stats = get_team_quick_stats(self.team, days=7, use_survey_data=True)
+
+        # Should show 100% AI-assisted from survey
+        self.assertEqual(stats["ai_assisted"]["percent"], 100.0)
+
+    def test_detection_uses_effective_is_ai_assisted_with_llm_priority(self):
+        """Detection should use effective_is_ai_assisted which prioritizes LLM data."""
+        now = timezone.now()
+
+        # Create PR with pattern saying AI, but LLM says no
+        PullRequestFactory(
+            team=self.team,
+            author=self.member,
+            state="merged",
+            merged_at=now - timedelta(days=1),
+            is_ai_assisted=True,  # Pattern says AI
+            llm_summary={"ai": {"is_assisted": False, "confidence": 0.9}},  # LLM says no
+        )
+
+        stats = get_team_quick_stats(self.team, days=7, use_survey_data=False)
+
+        # LLM takes priority, should return 0%
+        self.assertEqual(stats["ai_assisted"]["percent"], 0.0)
+
+    def test_recent_activity_ai_assisted_uses_detection_when_flag_false(self):
+        """Recent activity should use detection for ai_assisted when use_survey_data=False."""
+        now = timezone.now()
+
+        # Create PR with detection saying AI, no survey
+        PullRequestFactory(
+            team=self.team,
+            author=self.member,
+            state="merged",
+            merged_at=now - timedelta(hours=1),
+            title="AI-assisted PR",
+            is_ai_assisted=True,  # Detection says AI
+        )
+
+        stats = get_team_quick_stats(self.team, days=7, use_survey_data=False)
+
+        # Recent activity should show ai_assisted=True from detection
+        self.assertEqual(len(stats["recent_activity"]), 1)
+        self.assertTrue(stats["recent_activity"][0]["ai_assisted"])

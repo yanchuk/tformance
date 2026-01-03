@@ -121,16 +121,19 @@ Format: "• First insight here\\n• Second insight with @username\\n• Third 
 | Syntax | Use For | Links To |
 |--------|---------|----------|
 | @username | PR authors, contributors | PRs they authored |
-| @@username | Reviewers, bottlenecks | PRs they need to review |
+| @@username | Reviewers, bottlenecks | PRs awaiting their approval |
 
 **When to use each:**
 - @username → "Top contributor", "authored by", "work concentrated on"
-- @@username → "pending reviews", "review bottleneck", "blocking PRs"
+- @@username → "PRs awaiting approval", "review bottleneck", "blocking PRs"
+
+**Important:** "@@username has X PRs awaiting approval" = PRs they've reviewed but NOT approved yet.
+This is NOT about PRs they haven't reviewed - it's about PRs stuck in their review queue.
 
 **Examples:**
 - "• @alice handling most of the work" (author context)
-- "• @@bob has many pending reviews slowing merges" (reviewer context)
-- "Redistribute @@bob's pending reviews" (reviewer context)
+- "• @@bob has many PRs awaiting approval, slowing merges" (reviewer context)
+- "Prioritize @@bob's awaiting approvals" (reviewer context)
 
 ## What to Do
 - Identify the ROOT CAUSE, not the symptom
@@ -145,6 +148,20 @@ Format: "• First insight here\\n• Second insight with @username\\n• Third 
 - Do not use hour values: "40 hours", "142.6 hours"
 - Do not use exact PR counts over 20: "111 PRs", "150 PRs"
 - Do not use @username for review bottlenecks (use @@username)
+- Do not suggest "redistributing PRs" from top contributor - they may be the project lead/maintainer
+- Do not frame high contribution from one person as negative unless it causes measurable bottlenecks
+- Do not repeat the same fact in different words (e.g., "most PRs are AI" AND "few PRs are not AI" = redundant)
+- Each bullet must add NEW information - no restating previous bullets
+- Do not suggest "more AI adoption needed" when AI adoption is already high (>50%) - that's backwards logic
+
+## Contributor Analysis Rules
+In OSS projects, having one person contribute 30-50% of PRs is often intentional and healthy (project lead pattern).
+Only flag contributor concentration if:
+1. It correlates with REVIEW delays (others waiting on them to review)
+2. It correlates with SLOW cycle times
+3. There's evidence of burnout (declining velocity)
+
+If top contributor is productive AND cycle times are healthy, mention their strong contribution positively.
 
 ## Number Conversions
 Percentages: 1-10% → "very few" | 10-25% → "a fifth" | 25-50% → "a third" | 50-75% → "most" | 75%+ → "nearly all"
@@ -157,25 +174,48 @@ view_ai_prs, view_non_ai_prs, view_slow_prs, view_reverts, view_large_prs, view_
 # Examples
 
 <example type="good" id="mixed-mentions">
-Input: cycle_time 142.6h (+147%), AI adoption 4.5%, top contributor @alice at 56%, @@bob has 15 pending reviews
+Input: cycle_time 142.6h (+147%), AI adoption 4.5%, top contributor @alice at 56%, @@bob has 15 PRs awaiting approval
 Output headline: "Work concentrated on one contributor → review delays"
 Output detail: "• @alice handling most of the work, creating bottleneck
 • Cycle time grown to nearly a week
-• @@bob has many pending reviews slowing merges
+• @@bob has many PRs awaiting approval, slowing merges
 • Very few PRs using AI tools"
-Output recommendation: "Redistribute some of @@bob's pending reviews to balance workload"
+Output recommendation: "Prioritize @@bob's awaiting approvals to unblock merges"
 </example>
 
 <example type="bad" id="wrong-mention-type">
 Input: same data
-Output detail: "• @bob has many pending reviews slowing merges" ← Wrong! Should be @@bob for reviewer
-Output recommendation: "Review @bob's pending items" ← Wrong! Should be @@bob for reviewer
+Output detail: "• @bob has many PRs awaiting approval, slowing merges" ← Wrong! Should be @@bob for reviewer
+Output recommendation: "Review @bob's awaiting approvals" ← Wrong! Should be @@bob for reviewer
 </example>
 
 <example type="bad" id="exact-numbers">
 Input: same data
 Output headline: "Cycle time increased by 147.6% to 142.6 hours" ← Uses exact numbers
 Output detail: "The AI adoption rate is 4.5%, below the 40% benchmark..." ← Paragraphs, not bullets
+</example>
+
+<example type="bad" id="redundant-bullets">
+Input: AI adoption 92%
+Output detail: "• Nearly all PRs use AI tools
+• Very few PRs are not using AI" ← REDUNDANT! Same fact twice
+</example>
+
+<example type="good" id="no-redundancy">
+Input: AI adoption 92%
+Output detail: "• Nearly all PRs use AI tools, cutting cycle time in half" ← One fact, adds impact
+</example>
+
+<example type="bad" id="backwards-ai-logic">
+Input: AI adoption 92% (very few PRs NOT using AI)
+Output detail: "• Very few PRs are not using AI, which may indicate a need for more AI adoption"
+↑ WRONG! High adoption = good, don't suggest more needed
+</example>
+
+<example type="good" id="correct-ai-logic">
+Input: AI adoption 92%
+Output detail: "• AI adoption is strong across the team, with nearly all PRs using AI tools"
+↑ Correct! High adoption = positive framing
 </example>
 
 Return ONLY valid JSON."""
@@ -312,8 +352,44 @@ def build_metric_cards(data: dict) -> list[dict]:
     return cards
 
 
+# Known bot username patterns to exclude from contributor insights
+# These create noise in insights as they're automated, not human contributors
+BOT_USERNAME_PATTERNS = (
+    "bot",
+    "dependabot",
+    "renovate",
+    "github-actions",
+    "codecov",
+    "snyk",
+    "greenkeeper",
+    "semantic-release",
+    "release-please",
+    "auto-merge",
+    "mergify",
+)
+
+
+def _is_bot_username(username: str | None) -> bool:
+    """Check if a username appears to be a bot.
+
+    Args:
+        username: GitHub username to check
+
+    Returns:
+        True if username matches bot patterns
+    """
+    if not username:
+        return False
+    username_lower = username.lower()
+    # Check if username contains any bot pattern
+    return any(pattern in username_lower for pattern in BOT_USERNAME_PATTERNS)
+
+
 def _get_top_contributors(team: Team, start_date: date, end_date: date, limit: int = 5) -> list[dict]:
     """Get top PR authors with their GitHub usernames for @mentions.
+
+    Excludes bot accounts (dependabot, renovate, etc.) from contributor analysis
+    as they create noise in insights and aren't human contributors.
 
     Args:
         team: Team instance
@@ -328,7 +404,7 @@ def _get_top_contributors(team: Team, start_date: date, end_date: date, limit: i
 
     from apps.metrics.models import PullRequest
 
-    # Get merged PRs grouped by author
+    # Get merged PRs grouped by author (fetch more than limit to account for bot filtering)
     author_stats = list(
         PullRequest.objects.filter(  # noqa: TEAM001 - team filter present
             team=team,
@@ -338,10 +414,14 @@ def _get_top_contributors(team: Team, start_date: date, end_date: date, limit: i
         )
         .values("author__github_username", "author__display_name")
         .annotate(pr_count=Count("id"))
-        .order_by("-pr_count")[:limit]
+        .order_by("-pr_count")[: limit * 3]  # Fetch extra to filter bots
     )
 
-    total_prs = sum(a["pr_count"] for a in author_stats) if author_stats else 0
+    # Filter out bots
+    human_stats = [stat for stat in author_stats if not _is_bot_username(stat["author__github_username"])][:limit]
+
+    # Calculate total from human contributors only
+    total_prs = sum(a["pr_count"] for a in human_stats) if human_stats else 0
 
     return [
         {
@@ -350,7 +430,7 @@ def _get_top_contributors(team: Team, start_date: date, end_date: date, limit: i
             "pr_count": stat["pr_count"],
             "pct_share": round(stat["pr_count"] * 100.0 / total_prs, 1) if total_prs > 0 else 0,
         }
-        for stat in author_stats
+        for stat in human_stats
     ]
 
 

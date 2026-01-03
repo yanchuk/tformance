@@ -146,7 +146,7 @@ class TestGetKeyMetrics(TestCase):
         self.assertEqual(result["avg_quality_rating"], Decimal("2.00"))
 
     def test_get_key_metrics_calculates_ai_assisted_percentage(self):
-        """Test that get_key_metrics calculates AI-assisted percentage correctly."""
+        """Test that get_key_metrics calculates AI-assisted percentage correctly from surveys."""
         # Create 3 merged PRs with surveys
         for i, ai_assisted in enumerate([True, True, False]):
             pr = PullRequestFactory(
@@ -156,7 +156,8 @@ class TestGetKeyMetrics(TestCase):
             )
             PRSurveyFactory(team=self.team, pull_request=pr, author_ai_assisted=ai_assisted)
 
-        result = dashboard_service.get_key_metrics(self.team, self.start_date, self.end_date)
+        # Use survey data for AI percentage calculation
+        result = dashboard_service.get_key_metrics(self.team, self.start_date, self.end_date, use_survey_data=True)
 
         # 2 out of 3 = 66.67%
         self.assertAlmostEqual(float(result["ai_assisted_pct"]), 66.67, places=2)
@@ -222,8 +223,11 @@ class TestGetKeyMetricsCache(TestCase):
         # First call - should compute and cache
         result1 = dashboard_service.get_key_metrics(self.team, self.start_date, self.end_date)
 
-        # Verify cache is populated (cache key includes repo suffix - 'all' when no repo specified)
-        cache_key = dashboard_service._get_key_metrics_cache_key(self.team.id, self.start_date, self.end_date) + ":all"
+        # Verify cache is populated (cache key includes repo and data source suffixes)
+        cache_key = (
+            dashboard_service._get_key_metrics_cache_key(self.team.id, self.start_date, self.end_date)
+            + ":all:detection"
+        )
         cached_value = cache.get(cache_key)
         self.assertIsNotNone(cached_value)
         self.assertEqual(cached_value["prs_merged"], 1)
@@ -300,3 +304,102 @@ class TestGetKeyMetricsCache(TestCase):
 
         self.assertEqual(result_jan["prs_merged"], 1)
         self.assertEqual(result_feb["prs_merged"], 2)
+
+
+class TestGetKeyMetricsFeatureFlag(TestCase):
+    """Tests for get_key_metrics AI adoption feature flag behavior.
+
+    When flag 'rely_on_surveys_for_ai_adoption' is False (default):
+        - AI adoption uses effective_is_ai_assisted (LLM + pattern detection)
+
+    When flag is True:
+        - AI adoption uses survey data (PRSurvey.author_ai_assisted)
+    """
+
+    def setUp(self):
+        """Set up test fixtures."""
+        from apps.teams.models import Flag
+
+        self.team = TeamFactory()
+        self.member = TeamMemberFactory(team=self.team)
+        self.start_date = date(2024, 1, 1)
+        self.end_date = date(2024, 1, 31)
+        # Ensure flag is in default state (inactive)
+        self.flag, _ = Flag.objects.get_or_create(
+            name="rely_on_surveys_for_ai_adoption",
+        )
+        self.flag.everyone = None
+        self.flag.teams.clear()
+        self.flag.save()
+        # Clear cache to ensure fresh results
+        cache.clear()
+
+    def tearDown(self):
+        """Clean up after tests."""
+        cache.clear()
+
+    def test_uses_detection_by_default_when_flag_inactive(self):
+        """When flag is inactive, AI adoption should use effective_is_ai_assisted."""
+        # Create PR with pattern detection showing AI, but no survey
+        PullRequestFactory(
+            team=self.team,
+            author=self.member,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 15, 12, 0)),
+            is_ai_assisted=True,  # Pattern detection says AI
+        )
+        # No survey created
+
+        result = dashboard_service.get_key_metrics(self.team, self.start_date, self.end_date, use_survey_data=False)
+
+        # Should show 100% AI adoption from detection
+        self.assertEqual(result["ai_assisted_pct"], Decimal("100.00"))
+
+    def test_uses_detection_ignoring_survey_when_flag_inactive(self):
+        """When flag is inactive, should ignore survey data and use detection."""
+        # Create PR with detection saying NO AI, but survey says YES
+        pr = PullRequestFactory(
+            team=self.team,
+            author=self.member,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 15, 12, 0)),
+            is_ai_assisted=False,  # Pattern detection says no AI
+        )
+        PRSurveyFactory(
+            team=self.team,
+            pull_request=pr,
+            author=self.member,
+            author_ai_assisted=True,  # Survey says YES AI
+        )
+
+        result = dashboard_service.get_key_metrics(self.team, self.start_date, self.end_date, use_survey_data=False)
+
+        # Should show 0% AI adoption from detection (ignoring survey)
+        self.assertEqual(result["ai_assisted_pct"], Decimal("0.00"))
+
+    def test_uses_survey_when_flag_active(self):
+        """When flag is active, AI adoption should use survey data."""
+
+        # Activate flag for all
+        self.flag.everyone = True
+        self.flag.save()
+
+        # Create PR with detection saying NO AI, but survey says YES
+        pr = PullRequestFactory(
+            team=self.team,
+            author=self.member,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 15, 12, 0)),
+            is_ai_assisted=False,  # Pattern detection says no AI
+        )
+        PRSurveyFactory(
+            team=self.team,
+            pull_request=pr,
+            author=self.member,
+            author_ai_assisted=True,  # Survey says YES AI
+        )
+
+        result = dashboard_service.get_key_metrics(self.team, self.start_date, self.end_date, use_survey_data=True)
+
+        # Should show 100% AI adoption from survey
+        self.assertEqual(result["ai_assisted_pct"], Decimal("100.00"))

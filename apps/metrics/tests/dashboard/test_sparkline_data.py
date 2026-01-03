@@ -122,31 +122,42 @@ class TestGetSparklineData(TestCase):
         self.assertIn(15.0, result["cycle_time"]["values"])
 
     def test_ai_adoption_calculates_weekly_percentage(self):
-        """ai_adoption values contain weekly AI adoption percentage."""
+        """ai_adoption values contain weekly AI adoption percentage from surveys when use_survey_data=True."""
+        from apps.metrics.factories import PRSurveyFactory
+
         merge_date = self.end_date - timedelta(days=3)
 
-        # Create 3 AI-assisted PRs and 1 non-AI PR
-        for _ in range(3):
-            PullRequestFactory(
+        # Create 4 PRs with surveys (3 AI-assisted, 1 not)
+        prs = []
+        for _ in range(4):
+            pr = PullRequestFactory(
                 team=self.team,
                 author=self.member,
                 state="merged",
                 merged_at=timezone.make_aware(timezone.datetime.combine(merge_date, timezone.datetime.min.time())),
-                is_ai_assisted=True,
             )
-        PullRequestFactory(
+            prs.append(pr)
+
+        # Create surveys: 3 say AI was used, 1 says not
+        for pr in prs[:3]:
+            PRSurveyFactory(
+                team=self.team,
+                pull_request=pr,
+                author=self.member,
+                author_ai_assisted=True,
+            )
+        PRSurveyFactory(
             team=self.team,
+            pull_request=prs[3],
             author=self.member,
-            state="merged",
-            merged_at=timezone.make_aware(timezone.datetime.combine(merge_date, timezone.datetime.min.time())),
-            is_ai_assisted=False,
+            author_ai_assisted=False,
         )
 
-        result = get_sparkline_data(self.team, self.start_date, self.end_date)
+        result = get_sparkline_data(self.team, self.start_date, self.end_date, use_survey_data=True)
 
         # Should have AI adoption values
         self.assertGreater(len(result["ai_adoption"]["values"]), 0)
-        # 3 out of 4 = 75%
+        # 3 out of 4 surveys = 75%
         self.assertIn(75.0, result["ai_adoption"]["values"])
 
     def test_review_time_calculates_weekly_average(self):
@@ -180,16 +191,17 @@ class TestGetSparklineData(TestCase):
         week1_start = self.end_date - timedelta(days=14)
         week2_start = self.end_date - timedelta(days=7)
 
-        # Create 1 PR in week 1
-        PullRequestFactory(
-            team=self.team,
-            author=self.member,
-            state="merged",
-            merged_at=timezone.make_aware(timezone.datetime.combine(week1_start, timezone.datetime.min.time())),
-        )
-
-        # Create 3 PRs in week 2
+        # Create 3 PRs in week 1 (meets MIN_SPARKLINE_SAMPLE_SIZE)
         for _ in range(3):
+            PullRequestFactory(
+                team=self.team,
+                author=self.member,
+                state="merged",
+                merged_at=timezone.make_aware(timezone.datetime.combine(week1_start, timezone.datetime.min.time())),
+            )
+
+        # Create 6 PRs in week 2 (100% increase)
+        for _ in range(6):
             PullRequestFactory(
                 team=self.team,
                 author=self.member,
@@ -207,8 +219,8 @@ class TestGetSparklineData(TestCase):
         week1_start = self.end_date - timedelta(days=14)
         week2_start = self.end_date - timedelta(days=7)
 
-        # Create 3 PRs in week 1
-        for _ in range(3):
+        # Create 6 PRs in week 1 (meets MIN_SPARKLINE_SAMPLE_SIZE)
+        for _ in range(6):
             PullRequestFactory(
                 team=self.team,
                 author=self.member,
@@ -216,13 +228,14 @@ class TestGetSparklineData(TestCase):
                 merged_at=timezone.make_aware(timezone.datetime.combine(week1_start, timezone.datetime.min.time())),
             )
 
-        # Create 1 PR in week 2
-        PullRequestFactory(
-            team=self.team,
-            author=self.member,
-            state="merged",
-            merged_at=timezone.make_aware(timezone.datetime.combine(week2_start, timezone.datetime.min.time())),
-        )
+        # Create 3 PRs in week 2 (50% decrease, meets MIN_SPARKLINE_SAMPLE_SIZE)
+        for _ in range(3):
+            PullRequestFactory(
+                team=self.team,
+                author=self.member,
+                state="merged",
+                merged_at=timezone.make_aware(timezone.datetime.combine(week2_start, timezone.datetime.min.time())),
+            )
 
         result = get_sparkline_data(self.team, self.start_date, self.end_date)
 
@@ -234,8 +247,8 @@ class TestGetSparklineData(TestCase):
         week1_start = self.end_date - timedelta(days=14)
         week2_start = self.end_date - timedelta(days=7)
 
-        # Create 2 PRs in week 1
-        for _ in range(2):
+        # Create 3 PRs in week 1 (meets MIN_SPARKLINE_SAMPLE_SIZE)
+        for _ in range(3):
             PullRequestFactory(
                 team=self.team,
                 author=self.member,
@@ -243,8 +256,8 @@ class TestGetSparklineData(TestCase):
                 merged_at=timezone.make_aware(timezone.datetime.combine(week1_start, timezone.datetime.min.time())),
             )
 
-        # Create 4 PRs in week 2 (100% increase)
-        for _ in range(4):
+        # Create 6 PRs in week 2 (100% increase, meets MIN_SPARKLINE_SAMPLE_SIZE)
+        for _ in range(6):
             PullRequestFactory(
                 team=self.team,
                 author=self.member,
@@ -254,7 +267,7 @@ class TestGetSparklineData(TestCase):
 
         result = get_sparkline_data(self.team, self.start_date, self.end_date)
 
-        # 2 -> 4 = 100% increase
+        # 3 -> 6 = 100% increase
         self.assertEqual(result["prs_merged"]["change_pct"], 100)
 
     def test_filters_by_team(self):
@@ -406,3 +419,334 @@ class TestGetSparklineData(TestCase):
         self.assertGreaterEqual(len(values), 3)
         # First value should be smallest (1 PR), last should be largest (3 PRs)
         self.assertLessEqual(values[0], values[-1])
+
+
+class TestAIAdoptionSparklineDataSource(TestCase):
+    """Tests for AI adoption sparkline using survey data (ISS-006).
+
+    The sparkline should use PRSurvey.author_ai_assisted (survey responses)
+    to match the card calculation from get_key_metrics, NOT PullRequest.is_ai_assisted
+    (pattern detection).
+    """
+
+    def setUp(self):
+        """Set up test fixtures."""
+        from apps.metrics.factories import PRSurveyFactory
+
+        self.PRSurveyFactory = PRSurveyFactory
+        self.team = TeamFactory()
+        self.member = TeamMemberFactory(team=self.team)
+        self.end_date = date.today()
+        self.start_date = self.end_date - timedelta(days=90)
+
+    def test_ai_adoption_sparkline_uses_survey_data_not_pattern_detection(self):
+        """AI adoption sparkline should use survey data when use_survey_data=True.
+
+        This is the key test for ISS-006: create PRs where pattern detection
+        says NO AI (is_ai_assisted=False), but surveys say YES AI.
+        Sparkline should show the survey value, not pattern value.
+        """
+        merge_date = self.end_date - timedelta(days=3)
+
+        # Create 4 PRs with NO AI according to pattern detection
+        prs = []
+        for _ in range(4):
+            pr = PullRequestFactory(
+                team=self.team,
+                author=self.member,
+                state="merged",
+                merged_at=timezone.make_aware(timezone.datetime.combine(merge_date, timezone.datetime.min.time())),
+                is_ai_assisted=False,  # Pattern detection says NO AI
+            )
+            prs.append(pr)
+
+        # But 3 of them have surveys saying YES, AI was used
+        for pr in prs[:3]:
+            self.PRSurveyFactory(
+                team=self.team,
+                pull_request=pr,
+                author=self.member,
+                author_ai_assisted=True,  # Survey says YES AI
+            )
+
+        # 1 PR has survey saying NO AI
+        self.PRSurveyFactory(
+            team=self.team,
+            pull_request=prs[3],
+            author=self.member,
+            author_ai_assisted=False,  # Survey says NO AI
+        )
+
+        result = get_sparkline_data(self.team, self.start_date, self.end_date, use_survey_data=True)
+
+        # Should use survey data: 3/4 = 75%
+        # NOT pattern detection: 0/4 = 0%
+        self.assertGreater(len(result["ai_adoption"]["values"]), 0)
+        self.assertIn(75.0, result["ai_adoption"]["values"])
+
+    def test_ai_adoption_sparkline_excludes_prs_without_survey_responses(self):
+        """PRs without survey responses should not be counted when use_survey_data=True.
+
+        This matches get_key_metrics behavior where only PRs with surveys
+        are considered for AI adoption calculation.
+        """
+        merge_date = self.end_date - timedelta(days=3)
+
+        # Create 4 PRs
+        prs = []
+        for _ in range(4):
+            pr = PullRequestFactory(
+                team=self.team,
+                author=self.member,
+                state="merged",
+                merged_at=timezone.make_aware(timezone.datetime.combine(merge_date, timezone.datetime.min.time())),
+                is_ai_assisted=False,
+            )
+            prs.append(pr)
+
+        # Only 2 PRs have surveys (1 AI-assisted, 1 not)
+        self.PRSurveyFactory(
+            team=self.team,
+            pull_request=prs[0],
+            author=self.member,
+            author_ai_assisted=True,
+        )
+        self.PRSurveyFactory(
+            team=self.team,
+            pull_request=prs[1],
+            author=self.member,
+            author_ai_assisted=False,
+        )
+        # prs[2] and prs[3] have NO surveys
+
+        result = get_sparkline_data(self.team, self.start_date, self.end_date, use_survey_data=True)
+
+        # Should be 1/2 = 50% (only count PRs with surveys)
+        # NOT 1/4 = 25% (counting all PRs)
+        self.assertGreater(len(result["ai_adoption"]["values"]), 0)
+        self.assertIn(50.0, result["ai_adoption"]["values"])
+
+    def test_ai_adoption_sparkline_returns_zero_when_no_surveys(self):
+        """Returns 0% when no PRs have survey responses with use_survey_data=True."""
+        merge_date = self.end_date - timedelta(days=3)
+
+        # Create PRs without any surveys
+        for _ in range(3):
+            PullRequestFactory(
+                team=self.team,
+                author=self.member,
+                state="merged",
+                merged_at=timezone.make_aware(timezone.datetime.combine(merge_date, timezone.datetime.min.time())),
+                is_ai_assisted=True,  # Pattern says AI, but no survey
+            )
+
+        result = get_sparkline_data(self.team, self.start_date, self.end_date, use_survey_data=True)
+
+        # Should return 0% because no surveys exist
+        # NOT 100% from is_ai_assisted field
+        self.assertGreater(len(result["ai_adoption"]["values"]), 0)
+        self.assertIn(0.0, result["ai_adoption"]["values"])
+
+    def test_ai_adoption_sparkline_handles_null_survey_responses(self):
+        """Survey responses with author_ai_assisted=None should not be counted when use_survey_data=True."""
+        merge_date = self.end_date - timedelta(days=3)
+
+        # Create PRs with surveys
+        for i in range(4):
+            pr = PullRequestFactory(
+                team=self.team,
+                author=self.member,
+                state="merged",
+                merged_at=timezone.make_aware(timezone.datetime.combine(merge_date, timezone.datetime.min.time())),
+            )
+            # 2 surveys with response (1 True, 1 False), 2 with None (no response yet)
+            if i == 0:
+                self.PRSurveyFactory(team=self.team, pull_request=pr, author=self.member, author_ai_assisted=True)
+            elif i == 1:
+                self.PRSurveyFactory(team=self.team, pull_request=pr, author=self.member, author_ai_assisted=False)
+            else:
+                self.PRSurveyFactory(team=self.team, pull_request=pr, author=self.member, author_ai_assisted=None)
+
+        result = get_sparkline_data(self.team, self.start_date, self.end_date, use_survey_data=True)
+
+        # Should only count surveys with actual responses: 1/2 = 50%
+        # NOT include None responses in calculation
+        self.assertGreater(len(result["ai_adoption"]["values"]), 0)
+        self.assertIn(50.0, result["ai_adoption"]["values"])
+
+
+class TestSparklineLowDataHandling(TestCase):
+    """Tests for sparkline trend calculation with low-data weeks (ISS-001/ISS-007).
+
+    The trend calculation should skip weeks with insufficient data (< MIN_SAMPLE_SIZE PRs)
+    to avoid misleading extreme percentages like +44321% or -98%.
+    """
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.team = TeamFactory()
+        self.member = TeamMemberFactory(team=self.team)
+        self.end_date = date.today()
+        self.start_date = self.end_date - timedelta(days=90)
+
+    def test_trend_ignores_first_week_with_insufficient_data(self):
+        """Trend should use first VALID week (>= min_sample_size PRs) as baseline.
+
+        ISS-001/ISS-007: When first week has only 1-2 PRs, it creates an
+        unrealistic baseline that leads to extreme percentage changes.
+        """
+        week1_start = self.end_date - timedelta(days=21)  # First week: 1 PR (below threshold)
+        week2_start = self.end_date - timedelta(days=14)  # Second week: 5 PRs (valid)
+        week3_start = self.end_date - timedelta(days=7)  # Third week: 10 PRs (valid)
+
+        # Week 1: Only 1 PR with 1h cycle time (below min_sample_size threshold)
+        PullRequestFactory(
+            team=self.team,
+            author=self.member,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime.combine(week1_start, timezone.datetime.min.time())),
+            cycle_time_hours=Decimal("1.0"),
+        )
+
+        # Week 2: 5 PRs with 10h avg cycle time
+        for _ in range(5):
+            PullRequestFactory(
+                team=self.team,
+                author=self.member,
+                state="merged",
+                merged_at=timezone.make_aware(timezone.datetime.combine(week2_start, timezone.datetime.min.time())),
+                cycle_time_hours=Decimal("10.0"),
+            )
+
+        # Week 3: 10 PRs with 20h avg cycle time
+        for _ in range(10):
+            PullRequestFactory(
+                team=self.team,
+                author=self.member,
+                state="merged",
+                merged_at=timezone.make_aware(timezone.datetime.combine(week3_start, timezone.datetime.min.time())),
+                cycle_time_hours=Decimal("20.0"),
+            )
+
+        result = get_sparkline_data(self.team, self.start_date, self.end_date)
+
+        # Should calculate trend from week 2 (10h) to week 3 (20h) = 100% increase
+        # NOT from week 1 (1h) to week 3 (20h) = 1900% increase
+        self.assertEqual(result["cycle_time"]["change_pct"], 100)
+        self.assertEqual(result["cycle_time"]["trend"], "up")
+
+    def test_trend_ignores_last_week_with_insufficient_data(self):
+        """Trend should use last VALID week as endpoint, not low-data recent week.
+
+        Example: If the most recent week is a holiday with only 2 PRs,
+        don't use it as the trend endpoint.
+        """
+        week1_start = self.end_date - timedelta(days=21)  # First week: 5 PRs
+        week2_start = self.end_date - timedelta(days=14)  # Second week: 10 PRs
+        week3_start = self.end_date - timedelta(days=7)  # Third week: 2 PRs (holiday)
+
+        # Week 1: 5 PRs with 100h avg cycle time
+        for _ in range(5):
+            PullRequestFactory(
+                team=self.team,
+                author=self.member,
+                state="merged",
+                merged_at=timezone.make_aware(timezone.datetime.combine(week1_start, timezone.datetime.min.time())),
+                cycle_time_hours=Decimal("100.0"),
+            )
+
+        # Week 2: 10 PRs with 50h avg cycle time
+        for _ in range(10):
+            PullRequestFactory(
+                team=self.team,
+                author=self.member,
+                state="merged",
+                merged_at=timezone.make_aware(timezone.datetime.combine(week2_start, timezone.datetime.min.time())),
+                cycle_time_hours=Decimal("50.0"),
+            )
+
+        # Week 3 (holiday): Only 2 PRs with 2h avg (below threshold)
+        for _ in range(2):
+            PullRequestFactory(
+                team=self.team,
+                author=self.member,
+                state="merged",
+                merged_at=timezone.make_aware(timezone.datetime.combine(week3_start, timezone.datetime.min.time())),
+                cycle_time_hours=Decimal("2.0"),
+            )
+
+        result = get_sparkline_data(self.team, self.start_date, self.end_date)
+
+        # Should calculate trend from week 1 (100h) to week 2 (50h) = -50%
+        # NOT from week 1 (100h) to week 3 (2h) = -98%
+        self.assertEqual(result["cycle_time"]["change_pct"], -50)
+        self.assertEqual(result["cycle_time"]["trend"], "down")
+
+    def test_returns_flat_when_no_week_has_sufficient_data(self):
+        """Returns flat trend when all weeks are below sample size threshold."""
+        week1_start = self.end_date - timedelta(days=14)
+        week2_start = self.end_date - timedelta(days=7)
+
+        # Week 1: 1 PR
+        PullRequestFactory(
+            team=self.team,
+            author=self.member,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime.combine(week1_start, timezone.datetime.min.time())),
+            cycle_time_hours=Decimal("10.0"),
+        )
+
+        # Week 2: 2 PRs
+        for _ in range(2):
+            PullRequestFactory(
+                team=self.team,
+                author=self.member,
+                state="merged",
+                merged_at=timezone.make_aware(timezone.datetime.combine(week2_start, timezone.datetime.min.time())),
+                cycle_time_hours=Decimal("100.0"),
+            )
+
+        result = get_sparkline_data(self.team, self.start_date, self.end_date)
+
+        # With all weeks below threshold, should return flat/0
+        self.assertEqual(result["cycle_time"]["change_pct"], 0)
+        self.assertEqual(result["cycle_time"]["trend"], "flat")
+
+    def test_pr_count_trend_also_respects_minimum_sample_size(self):
+        """PR count trend should also skip low-data weeks."""
+        week1_start = self.end_date - timedelta(days=21)  # 1 PR
+        week2_start = self.end_date - timedelta(days=14)  # 5 PRs
+        week3_start = self.end_date - timedelta(days=7)  # 10 PRs
+
+        # Week 1: 1 PR (below threshold)
+        PullRequestFactory(
+            team=self.team,
+            author=self.member,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime.combine(week1_start, timezone.datetime.min.time())),
+        )
+
+        # Week 2: 5 PRs
+        for _ in range(5):
+            PullRequestFactory(
+                team=self.team,
+                author=self.member,
+                state="merged",
+                merged_at=timezone.make_aware(timezone.datetime.combine(week2_start, timezone.datetime.min.time())),
+            )
+
+        # Week 3: 10 PRs
+        for _ in range(10):
+            PullRequestFactory(
+                team=self.team,
+                author=self.member,
+                state="merged",
+                merged_at=timezone.make_aware(timezone.datetime.combine(week3_start, timezone.datetime.min.time())),
+            )
+
+        result = get_sparkline_data(self.team, self.start_date, self.end_date)
+
+        # Should calculate trend from week 2 (5) to week 3 (10) = 100% increase
+        # NOT from week 1 (1) to week 3 (10) = 900% increase
+        self.assertEqual(result["prs_merged"]["change_pct"], 100)
+        self.assertEqual(result["prs_merged"]["trend"], "up")

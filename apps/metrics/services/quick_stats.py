@@ -28,12 +28,14 @@ def _calculate_percentage_change(current: int | float, previous: int | float) ->
         return 0.0
 
 
-def get_team_quick_stats(team, days: int = 7) -> dict[str, Any]:
+def get_team_quick_stats(team, days: int = 7, use_survey_data: bool = False) -> dict[str, Any]:
     """Calculate quick stats for a team over a specified period.
 
     Args:
         team: The team to calculate stats for
         days: Number of days to look back (default: 7)
+        use_survey_data: When True, use PRSurvey data for AI metrics.
+                        When False (default), use effective_is_ai_assisted (detection).
 
     Returns:
         Dictionary containing:
@@ -89,27 +91,46 @@ def get_team_quick_stats(team, days: int = 7) -> dict[str, Any]:
     else:
         cycle_time_change = None
 
-    # Calculate AI assisted percentage from surveys
-    current_surveys = PRSurvey.objects.filter(
-        team=team,
-        pull_request__in=current_prs,
-        author_ai_assisted__isnull=False,
-    )
-    previous_surveys = PRSurvey.objects.filter(
-        team=team,
-        pull_request__in=previous_prs,
-        author_ai_assisted__isnull=False,
-    )
+    # Calculate AI assisted percentage based on data source
+    if use_survey_data:
+        # Use survey data for AI metrics
+        current_surveys = PRSurvey.objects.filter(
+            team=team,
+            pull_request__in=current_prs,
+            author_ai_assisted__isnull=False,
+        )
+        previous_surveys = PRSurvey.objects.filter(
+            team=team,
+            pull_request__in=previous_prs,
+            author_ai_assisted__isnull=False,
+        )
 
-    current_survey_count = current_surveys.count()
-    current_ai_count = current_surveys.filter(author_ai_assisted=True).count()
+        current_survey_count = current_surveys.count()
+        current_ai_count = current_surveys.filter(author_ai_assisted=True).count()
 
-    previous_survey_count = previous_surveys.count()
-    previous_ai_count = previous_surveys.filter(author_ai_assisted=True).count()
+        previous_survey_count = previous_surveys.count()
+        previous_ai_count = previous_surveys.filter(author_ai_assisted=True).count()
 
-    ai_assisted_percent = (current_ai_count / current_survey_count) * 100 if current_survey_count > 0 else 0.0
-    previous_ai_percent = (previous_ai_count / previous_survey_count) * 100 if previous_survey_count > 0 else 0.0
-    ai_percent_change = ai_assisted_percent - previous_ai_percent
+        ai_assisted_percent = (current_ai_count / current_survey_count) * 100 if current_survey_count > 0 else 0.0
+        previous_ai_percent = (previous_ai_count / previous_survey_count) * 100 if previous_survey_count > 0 else 0.0
+        ai_percent_change = ai_assisted_percent - previous_ai_percent
+        # Track survey counts for None handling
+        current_data_count = current_survey_count
+        previous_data_count = previous_survey_count
+    else:
+        # Use detection data (effective_is_ai_assisted) for AI metrics
+        current_pr_list = list(current_prs)
+        previous_pr_list = list(previous_prs)
+
+        current_data_count = len(current_pr_list)
+        previous_data_count = len(previous_pr_list)
+
+        current_ai_count = sum(1 for pr in current_pr_list if pr.effective_is_ai_assisted)
+        previous_ai_count = sum(1 for pr in previous_pr_list if pr.effective_is_ai_assisted)
+
+        ai_assisted_percent = (current_ai_count / current_data_count) * 100 if current_data_count > 0 else 0.0
+        previous_ai_percent = (previous_ai_count / previous_data_count) * 100 if previous_data_count > 0 else 0.0
+        ai_percent_change = ai_assisted_percent - previous_ai_percent
 
     # Calculate quality ratings from survey reviews
     current_reviews = PRSurveyReview.objects.filter(
@@ -145,12 +166,17 @@ def get_team_quick_stats(team, days: int = 7) -> dict[str, Any]:
     recent_prs = current_prs.select_related("author").prefetch_related(survey_prefetch).order_by("-merged_at")[:10]
 
     for pr in recent_prs:
-        ai_assisted = None
-        try:
-            if pr.survey.author_ai_assisted is not None:
-                ai_assisted = pr.survey.author_ai_assisted
-        except PRSurvey.DoesNotExist:
-            pass
+        if use_survey_data:
+            # Use survey data for AI status
+            ai_assisted = None
+            try:
+                if pr.survey.author_ai_assisted is not None:
+                    ai_assisted = pr.survey.author_ai_assisted
+            except PRSurvey.DoesNotExist:
+                pass
+        else:
+            # Use detection data (effective_is_ai_assisted) for AI status
+            ai_assisted = pr.effective_is_ai_assisted
 
         recent_activity.append(
             {
@@ -200,8 +226,8 @@ def get_team_quick_stats(team, days: int = 7) -> dict[str, Any]:
             "change_percent": cycle_time_change,
         },
         "ai_assisted": {
-            "percent": ai_assisted_percent if current_survey_count > 0 else None,
-            "change_points": ai_percent_change if previous_survey_count > 0 else None,
+            "percent": ai_assisted_percent if current_data_count > 0 else None,
+            "change_points": ai_percent_change if previous_data_count > 0 else None,
         },
         "avg_quality": {
             "rating": avg_quality_rating,

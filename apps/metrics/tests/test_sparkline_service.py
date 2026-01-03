@@ -104,26 +104,24 @@ class TestGetSparklineData(TestCase):
         end_date = now.date()
         start_date = end_date - timedelta(days=84)
 
-        # Create PRs: 1 in first week, 2 in last week
-        PullRequestFactory(
-            team=self.team,
-            state="merged",
-            merged_at=now - timedelta(days=80),  # ~11 weeks ago
-        )
-        PullRequestFactory(
-            team=self.team,
-            state="merged",
-            merged_at=now - timedelta(days=3),  # This week
-        )
-        PullRequestFactory(
-            team=self.team,
-            state="merged",
-            merged_at=now - timedelta(days=3),  # This week
-        )
+        # Create PRs: 3 in first week, 6 in last week
+        # MIN_SPARKLINE_SAMPLE_SIZE = 3, so we need at least 3 PRs per week
+        for _ in range(3):
+            PullRequestFactory(
+                team=self.team,
+                state="merged",
+                merged_at=now - timedelta(days=80),  # ~11 weeks ago
+            )
+        for _ in range(6):
+            PullRequestFactory(
+                team=self.team,
+                state="merged",
+                merged_at=now - timedelta(days=3),  # This week
+            )
 
         result = dashboard_service.get_sparkline_data(self.team, start_date, end_date)
 
-        # 1 -> 2 = 100% increase
+        # 3 -> 6 = 100% increase
         self.assertEqual(result["prs_merged"]["change_pct"], 100)
 
     def test_filters_by_team(self):
@@ -204,13 +202,15 @@ class TestGetSparklineData(TestCase):
         end_date = now.date()
         start_date = end_date - timedelta(days=84)
 
-        # Create increasing trend: 1 PR 11 weeks ago, 3 PRs this week
-        PullRequestFactory(
-            team=self.team,
-            state="merged",
-            merged_at=now - timedelta(days=77),
-        )
+        # Create increasing trend: 3 PRs 11 weeks ago, 6 PRs this week
+        # MIN_SPARKLINE_SAMPLE_SIZE = 3, so we need at least 3 PRs per week
         for _ in range(3):
+            PullRequestFactory(
+                team=self.team,
+                state="merged",
+                merged_at=now - timedelta(days=77),
+            )
+        for _ in range(6):
             PullRequestFactory(
                 team=self.team,
                 state="merged",
@@ -229,22 +229,24 @@ class TestGetSparklineData(TestCase):
         end_date = now.date()
         start_date = end_date - timedelta(days=84)
 
-        # Create decreasing trend: 3 PRs 11 weeks ago, 1 PR this week
-        for _ in range(3):
+        # Create decreasing trend: 6 PRs 11 weeks ago, 3 PRs this week
+        # MIN_SPARKLINE_SAMPLE_SIZE = 3, so we need at least 3 PRs per week
+        for _ in range(6):
             PullRequestFactory(
                 team=self.team,
                 state="merged",
                 merged_at=now - timedelta(days=77),
             )
-        PullRequestFactory(
-            team=self.team,
-            state="merged",
-            merged_at=now - timedelta(days=3),
-        )
+        for _ in range(3):
+            PullRequestFactory(
+                team=self.team,
+                state="merged",
+                merged_at=now - timedelta(days=3),
+            )
 
         result = dashboard_service.get_sparkline_data(self.team, start_date, end_date)
 
-        # Negative change
+        # Negative change (6 -> 3 = -50%)
         self.assertEqual(result["prs_merged"]["trend"], "down")
 
 

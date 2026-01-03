@@ -58,7 +58,9 @@ def _get_week_datetime_range(week_start: date, week_end: date) -> tuple:
     return start_datetime, end_datetime
 
 
-def compute_member_weekly_metrics(team, member: TeamMember, week_start: date, week_end: date) -> dict:
+def compute_member_weekly_metrics(
+    team, member: TeamMember, week_start: date, week_end: date, use_survey_data: bool = False
+) -> dict:
     """
     Compute weekly metrics for a single team member.
 
@@ -67,6 +69,8 @@ def compute_member_weekly_metrics(team, member: TeamMember, week_start: date, we
         member: The team member to compute metrics for
         week_start: Start of the week (Monday)
         week_end: End of the week (Sunday)
+        use_survey_data: When True, use PRSurvey data for AI metrics.
+                        When False (default), use effective_is_ai_assisted (detection).
 
     Returns:
         Dictionary with computed metrics
@@ -102,16 +106,28 @@ def compute_member_weekly_metrics(team, member: TeamMember, week_start: date, we
         committed_at__lte=end_datetime,
     ).count()
 
-    # Query PR surveys for AI metrics (with select_related for optimization)
-    surveys = PRSurvey.objects.filter(
-        team=team,
-        author=member,
-        pull_request__merged_at__gte=start_datetime,
-        pull_request__merged_at__lte=end_datetime,
-    ).select_related("pull_request")
-
-    ai_assisted_prs = surveys.filter(author_ai_assisted=True).count()
-    surveys_completed = surveys.filter(author_responded_at__isnull=False).count()
+    # Calculate AI-assisted PRs based on data source
+    if use_survey_data:
+        # Use PRSurvey data for AI metrics
+        surveys = PRSurvey.objects.filter(
+            team=team,
+            author=member,
+            pull_request__merged_at__gte=start_datetime,
+            pull_request__merged_at__lte=end_datetime,
+        ).select_related("pull_request")
+        ai_assisted_prs = surveys.filter(author_ai_assisted=True).count()
+        surveys_completed = surveys.filter(author_responded_at__isnull=False).count()
+    else:
+        # Use detection data (effective_is_ai_assisted) for AI metrics
+        ai_assisted_prs = sum(1 for pr in merged_prs if pr.effective_is_ai_assisted)
+        # Query surveys only for completion count
+        surveys = PRSurvey.objects.filter(
+            team=team,
+            author=member,
+            pull_request__merged_at__gte=start_datetime,
+            pull_request__merged_at__lte=end_datetime,
+        )
+        surveys_completed = surveys.filter(author_responded_at__isnull=False).count()
 
     # Query survey reviews for quality ratings (with select_related for optimization)
     reviews = PRSurveyReview.objects.filter(

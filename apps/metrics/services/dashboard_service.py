@@ -5,7 +5,7 @@ into dashboard-friendly formats.
 """
 
 import statistics
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 
 from django.core.cache import cache
@@ -35,6 +35,11 @@ PR_SIZE_XS_MAX = 10
 PR_SIZE_S_MAX = 50
 PR_SIZE_M_MAX = 200
 PR_SIZE_L_MAX = 500
+
+# Minimum sample size for sparkline trend calculations (ISS-001/ISS-007)
+# Weeks with fewer PRs than this are skipped when calculating trend percentages
+# to avoid misleading extreme values from low-activity periods (holidays, etc.)
+MIN_SPARKLINE_SAMPLE_SIZE = 3
 
 
 def _apply_repo_filter(qs: QuerySet, repo: str | None) -> QuerySet:
@@ -90,6 +95,29 @@ def _calculate_ai_percentage(surveys: QuerySet[PRSurvey]) -> Decimal:
         ai_assisted_count = surveys.filter(author_ai_assisted=True).count()
         return Decimal(str(round(ai_assisted_count * 100.0 / total_surveys, 2)))
     return Decimal("0.00")
+
+
+def _calculate_ai_percentage_from_detection(prs: QuerySet[PullRequest]) -> Decimal:
+    """Calculate percentage of AI-assisted PRs using detection data.
+
+    Uses effective_is_ai_assisted property which prioritizes:
+    1. LLM detection (llm_summary.ai.is_assisted with confidence >= 0.5)
+    2. Pattern detection (is_ai_assisted field)
+
+    Args:
+        prs: QuerySet of PullRequest objects
+
+    Returns:
+        Decimal percentage (0.00 to 100.00)
+    """
+    total_prs = prs.count()
+    if total_prs == 0:
+        return Decimal("0.00")
+
+    # Count PRs where effective_is_ai_assisted is True
+    # Since this is a property, we need to iterate
+    ai_count = sum(1 for pr in prs if pr.effective_is_ai_assisted)
+    return Decimal(str(round(ai_count * 100.0 / total_prs, 2)))
 
 
 def _get_github_url(pr: PullRequest) -> str:
@@ -155,7 +183,13 @@ def _get_key_metrics_cache_key(team_id: int, start_date: date, end_date: date) -
     return f"key_metrics:{team_id}:{start_date}:{end_date}"
 
 
-def get_key_metrics(team: Team, start_date: date, end_date: date, repo: str | None = None) -> dict:
+def get_key_metrics(
+    team: Team,
+    start_date: date,
+    end_date: date,
+    repo: str | None = None,
+    use_survey_data: bool | None = None,
+) -> dict:
     """Get key metrics for a team within a date range.
 
     Results are cached for 5 minutes to improve dashboard performance.
@@ -165,6 +199,9 @@ def get_key_metrics(team: Team, start_date: date, end_date: date, repo: str | No
         start_date: Start date (inclusive)
         end_date: End date (inclusive)
         repo: Optional repository to filter by (owner/repo format)
+        use_survey_data: If True, use survey data for AI adoption percentage.
+            If False, use detection data (effective_is_ai_assisted).
+            If None, defaults to False (detection-based).
 
     Returns:
         dict with keys:
@@ -174,8 +211,12 @@ def get_key_metrics(team: Team, start_date: date, end_date: date, repo: str | No
             - avg_quality_rating (Decimal or None): Average quality rating
             - ai_assisted_pct (Decimal): Percentage of AI-assisted PRs (0.00 to 100.00)
     """
-    # Check cache first (include repo in cache key)
-    cache_key = _get_key_metrics_cache_key(team.id, start_date, end_date) + f":{repo or 'all'}"
+    # Default to detection-based when use_survey_data is None
+    use_surveys = use_survey_data if use_survey_data is not None else False
+
+    # Check cache first (include repo and data source in cache key)
+    data_source = "survey" if use_surveys else "detection"
+    cache_key = _get_key_metrics_cache_key(team.id, start_date, end_date) + f":{repo or 'all'}:{data_source}"
     cached_result = cache.get(cache_key)
     if cached_result is not None:
         return cached_result
@@ -196,9 +237,12 @@ def get_key_metrics(team: Team, start_date: date, end_date: date, repo: str | No
     reviews = PRSurveyReview.objects.filter(survey__pull_request__in=prs)
     avg_quality_rating = reviews.aggregate(avg=Avg("quality_rating"))["avg"]
 
-    # Calculate AI-assisted percentage
-    surveys = PRSurvey.objects.filter(pull_request__in=prs)
-    ai_assisted_pct = _calculate_ai_percentage(surveys)
+    # Calculate AI-assisted percentage based on data source
+    if use_surveys:
+        surveys = PRSurvey.objects.filter(pull_request__in=prs)
+        ai_assisted_pct = _calculate_ai_percentage(surveys)
+    else:
+        ai_assisted_pct = _calculate_ai_percentage_from_detection(prs)
 
     result = {
         "prs_merged": prs_merged,
@@ -2065,7 +2109,13 @@ def get_trend_comparison(
 # =============================================================================
 
 
-def get_sparkline_data(team: Team, start_date: date, end_date: date, repo: str | None = None) -> dict:
+def get_sparkline_data(
+    team: Team,
+    start_date: date,
+    end_date: date,
+    repo: str | None = None,
+    use_survey_data: bool | None = None,
+) -> dict:
     """Get sparkline data for key metric cards.
 
     Returns 12 weeks of data for each metric, along with change percentage
@@ -2076,6 +2126,8 @@ def get_sparkline_data(team: Team, start_date: date, end_date: date, repo: str |
         start_date: Start date (inclusive)
         end_date: End date (inclusive)
         repo: Optional repository filter (owner/repo format)
+        use_survey_data: If True, use survey data for AI adoption.
+            If False/None, use detection data (effective_is_ai_assisted).
 
     Returns:
         dict with keys for each metric (prs_merged, cycle_time, ai_adoption, review_time).
@@ -2100,19 +2152,60 @@ def get_sparkline_data(team: Team, start_date: date, end_date: date, repo: str |
     cycle_time_values = [float(entry["avg"]) if entry["avg"] else 0.0 for entry in cycle_time_data]
 
     # Get weekly AI adoption percentages
-    ai_adoption_data = (
-        prs.annotate(week=TruncWeek("merged_at"))
-        .values("week")
-        .annotate(
-            total=Count("id"),
-            ai_count=Count("id", filter=Q(is_ai_assisted=True)),
+    # Default to detection data; use survey data when use_survey_data=True
+    use_surveys = use_survey_data if use_survey_data is not None else False
+
+    if use_surveys:
+        # Survey-based calculation (ISS-006 fix)
+        # Uses PRSurvey.author_ai_assisted
+        # Only counts PRs with survey responses (author_ai_assisted is not None)
+        ai_adoption_data = (
+            prs.annotate(week=TruncWeek("merged_at"))
+            .values("week")
+            .annotate(
+                # Count PRs with surveys that have a response (not None)
+                total_with_response=Count(
+                    "survey",
+                    filter=Q(survey__author_ai_assisted__isnull=False),
+                ),
+                # Count PRs with surveys saying AI was used
+                ai_count=Count(
+                    "survey",
+                    filter=Q(survey__author_ai_assisted=True),
+                ),
+            )
+            .order_by("week")
         )
-        .order_by("week")
-    )
-    ai_adoption_values = [
-        round((entry["ai_count"] / entry["total"]) * 100, 1) if entry["total"] > 0 else 0.0
-        for entry in ai_adoption_data
-    ]
+        ai_adoption_values = [
+            round((entry["ai_count"] / entry["total_with_response"]) * 100, 1)
+            if entry["total_with_response"] > 0
+            else 0.0
+            for entry in ai_adoption_data
+        ]
+    else:
+        # Detection-based calculation (default)
+        # Uses effective_is_ai_assisted (LLM > pattern detection)
+        # Group PRs by week and calculate AI adoption per week
+        from collections import defaultdict
+
+        weekly_stats = defaultdict(lambda: {"total": 0, "ai_count": 0})
+
+        for pr in prs.select_related("team"):
+            if pr.merged_at:
+                # Get Monday of the week
+                week_start = pr.merged_at.date() - timedelta(days=pr.merged_at.weekday())
+                weekly_stats[week_start]["total"] += 1
+                if pr.effective_is_ai_assisted:
+                    weekly_stats[week_start]["ai_count"] += 1
+
+        # Convert to sorted list of values
+        sorted_weeks = sorted(weekly_stats.keys())
+        ai_adoption_values = [
+            round((weekly_stats[week]["ai_count"] / weekly_stats[week]["total"]) * 100, 1)
+            if weekly_stats[week]["total"] > 0
+            else 0.0
+            for week in sorted_weeks
+        ]
 
     # Get weekly review time averages
     review_time_data = (
@@ -2120,13 +2213,49 @@ def get_sparkline_data(team: Team, start_date: date, end_date: date, repo: str |
     )
     review_time_values = [float(entry["avg"]) if entry["avg"] else 0.0 for entry in review_time_data]
 
-    def _calculate_change_and_trend(values: list) -> tuple[int, str]:
-        """Calculate change percentage and trend direction from values list."""
+    def _calculate_change_and_trend(
+        values: list,
+        sample_sizes: list | None = None,
+        min_sample_size: int = MIN_SPARKLINE_SAMPLE_SIZE,
+    ) -> tuple[int, str]:
+        """Calculate change percentage and trend direction from values list.
+
+        Args:
+            values: List of metric values per week
+            sample_sizes: Optional list of PR counts per week (same length as values)
+            min_sample_size: Minimum PRs required for a week to be valid (ISS-001/ISS-007)
+
+        Returns:
+            Tuple of (change_percentage, trend_direction)
+            trend_direction is "up", "down", or "flat"
+        """
         if len(values) < 2:
             return 0, "flat"
 
-        first_val = values[0]
-        last_val = values[-1]
+        # Find first valid week (>= min_sample_size PRs)
+        first_idx = 0
+        if sample_sizes:
+            for i, size in enumerate(sample_sizes):
+                if size >= min_sample_size:
+                    first_idx = i
+                    break
+            else:
+                # No week has enough data
+                return 0, "flat"
+
+        # Find last valid week (>= min_sample_size PRs)
+        last_idx = len(values) - 1
+        if sample_sizes:
+            for i in range(len(sample_sizes) - 1, -1, -1):
+                if sample_sizes[i] >= min_sample_size:
+                    last_idx = i
+                    break
+            # Check if we found a valid last week after first
+            if last_idx <= first_idx:
+                return 0, "flat"
+
+        first_val = values[first_idx]
+        last_val = values[last_idx]
 
         if first_val == 0:
             if last_val > 0:
@@ -2144,10 +2273,15 @@ def get_sparkline_data(team: Team, start_date: date, end_date: date, repo: str |
 
         return change_pct, trend
 
-    prs_merged_change, prs_merged_trend = _calculate_change_and_trend(prs_merged_values)
-    cycle_time_change, cycle_time_trend = _calculate_change_and_trend(cycle_time_values)
-    ai_adoption_change, ai_adoption_trend = _calculate_change_and_trend(ai_adoption_values)
-    review_time_change, review_time_trend = _calculate_change_and_trend(review_time_values)
+    # Pass sample sizes (PR counts per week) to trend calculation
+    prs_merged_change, prs_merged_trend = _calculate_change_and_trend(prs_merged_values, sample_sizes=prs_merged_values)
+    cycle_time_change, cycle_time_trend = _calculate_change_and_trend(cycle_time_values, sample_sizes=prs_merged_values)
+    ai_adoption_change, ai_adoption_trend = _calculate_change_and_trend(
+        ai_adoption_values, sample_sizes=prs_merged_values
+    )
+    review_time_change, review_time_trend = _calculate_change_and_trend(
+        review_time_values, sample_sizes=prs_merged_values
+    )
 
     return {
         "prs_merged": {
@@ -2664,16 +2798,21 @@ def get_needs_attention_prs(
     }
 
 
-def get_ai_impact_stats(team: Team, start_date: date, end_date: date) -> dict:
+def get_ai_impact_stats(
+    team: Team,
+    start_date: date,
+    end_date: date,
+    use_survey_data: bool | None = None,
+) -> dict:
     """Get AI impact statistics comparing AI-assisted vs non-AI PRs.
-
-    Uses the `effective_is_ai_assisted` property which prioritizes:
-    LLM detection > pattern detection > survey data
 
     Args:
         team: Team instance
         start_date: Start date (inclusive)
         end_date: End date (inclusive)
+        use_survey_data: If True, use survey data (PRSurvey.author_ai_assisted) with
+            detection fallback. If False/None (default), use only detection data
+            (effective_is_ai_assisted which prioritizes LLM > pattern detection).
 
     Returns:
         dict with keys:
@@ -2684,8 +2823,11 @@ def get_ai_impact_stats(team: Team, start_date: date, end_date: date) -> dict:
             - total_prs: int total PRs in period
             - ai_prs: int count of AI-assisted PRs
     """
-    # Get all merged PRs in range
-    prs = list(_get_merged_prs_in_range(team, start_date, end_date))
+    # Default to detection data; use survey data when use_survey_data=True
+    use_surveys = use_survey_data if use_survey_data is not None else False
+
+    # Get all merged PRs in range with survey data prefetched
+    prs = list(_get_merged_prs_in_range(team, start_date, end_date).prefetch_related("survey"))
 
     total_prs = len(prs)
 
@@ -2699,15 +2841,37 @@ def get_ai_impact_stats(team: Team, start_date: date, end_date: date) -> dict:
             "ai_prs": 0,
         }
 
-    # Separate PRs by AI status using effective_is_ai_assisted property
+    # Separate PRs by AI status based on data source
     ai_prs = []
     non_ai_prs = []
 
     for pr in prs:
-        if pr.effective_is_ai_assisted:
-            ai_prs.append(pr)
+        if use_surveys:
+            # Survey-based: Use survey data with detection fallback
+            try:
+                survey = pr.survey
+                if survey.author_ai_assisted is True:
+                    ai_prs.append(pr)
+                elif survey.author_ai_assisted is False:
+                    non_ai_prs.append(pr)
+                else:
+                    # Survey exists but author_ai_assisted is None - use fallback
+                    if pr.effective_is_ai_assisted:
+                        ai_prs.append(pr)
+                    else:
+                        non_ai_prs.append(pr)
+            except PRSurvey.DoesNotExist:
+                # No survey - fall back to effective_is_ai_assisted
+                if pr.effective_is_ai_assisted:
+                    ai_prs.append(pr)
+                else:
+                    non_ai_prs.append(pr)
         else:
-            non_ai_prs.append(pr)
+            # Detection-based: Use only effective_is_ai_assisted
+            if pr.effective_is_ai_assisted:
+                ai_prs.append(pr)
+            else:
+                non_ai_prs.append(pr)
 
     ai_count = len(ai_prs)
 
@@ -2813,11 +2977,14 @@ def detect_review_bottleneck(
     end_date: date,  # noqa: ARG001
     repo: str | None = None,
 ) -> dict | None:
-    """Detect if any reviewer has > 3x average pending reviews.
+    """Detect if any reviewer has > 3x average PRs awaiting their approval.
 
-    "Pending reviews" are defined as open, non-draft PRs where the reviewer's
-    LATEST review is NOT "approved". If a reviewer has already approved a PR,
-    that PR is not pending for them anymore.
+    "PRs awaiting approval" are open, non-draft PRs where the reviewer's
+    LATEST review is NOT "approved". These are PRs the reviewer has reviewed
+    (changes_requested, commented, dismissed) but not yet approved.
+
+    This is NOT about PRs they haven't reviewed yet - it's about PRs stuck
+    in their review queue awaiting final approval.
 
     Note: Date parameters are accepted for API consistency but not used.
     We look at ALL currently open PRs since pending work is independent of
@@ -2832,8 +2999,8 @@ def detect_review_bottleneck(
     Returns:
         dict with bottleneck info if detected:
             - reviewer_name: str display name of bottleneck reviewer
-            - pending_count: int number of PRs awaiting their review
-            - team_avg: float average pending reviews across all reviewers
+            - pending_count: int number of PRs awaiting their approval
+            - team_avg: float average PRs awaiting approval across all reviewers
         None if no bottleneck detected (no one exceeds 3x threshold)
     """
     from collections import defaultdict

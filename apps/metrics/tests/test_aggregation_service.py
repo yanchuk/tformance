@@ -150,7 +150,7 @@ class TestComputeMemberWeeklyMetrics(TestCase):
         self.assertEqual(metrics["hotfix_count"], 1)
 
     def test_compute_member_weekly_metrics_calculates_ai_metrics_correctly(self):
-        """Test that AI metrics from surveys are calculated correctly."""
+        """Test that AI metrics from surveys are calculated correctly when use_survey_data=True."""
         # Given PRs with surveys
         pr1 = PullRequestFactory(
             team=self.team,
@@ -216,10 +216,12 @@ class TestComputeMemberWeeklyMetrics(TestCase):
             guess_correct=False,
         )
 
-        # When computing weekly metrics
-        metrics = compute_member_weekly_metrics(self.team, self.member, self.week_start, self.week_end)
+        # When computing weekly metrics with survey data
+        metrics = compute_member_weekly_metrics(
+            self.team, self.member, self.week_start, self.week_end, use_survey_data=True
+        )
 
-        # Then AI metrics should be calculated correctly
+        # Then AI metrics should be calculated correctly from surveys
         self.assertEqual(metrics["ai_assisted_prs"], 1)  # Only pr1
         self.assertEqual(metrics["surveys_completed"], 2)  # pr1 and pr2
         self.assertEqual(metrics["avg_quality_rating"], Decimal("2.50"))  # (3+2)/2
@@ -398,3 +400,108 @@ class TestAggregateTeamWeeklyMetrics(TestCase):
             results = aggregate_team_weekly_metrics(self.team, self.week_start)
 
         self.assertEqual(len(results), 10)
+
+
+class TestComputeMemberWeeklyMetricsFeatureFlag(TestCase):
+    """Tests for compute_member_weekly_metrics with AI adoption feature flag.
+
+    When use_survey_data=False (default):
+        - ai_assisted_prs uses effective_is_ai_assisted (LLM + pattern detection)
+
+    When use_survey_data=True:
+        - ai_assisted_prs uses PRSurvey.author_ai_assisted (survey data)
+    """
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.team = TeamFactory()
+        self.member = TeamMemberFactory(team=self.team)
+        self.week_start = date(2025, 12, 15)  # Monday
+        self.week_end = date(2025, 12, 21)  # Sunday
+
+    def test_uses_detection_by_default_when_use_survey_data_false(self):
+        """When use_survey_data=False, ai_assisted_prs should use detection data."""
+        # Create PR with detection indicating AI, but no survey
+        PullRequestFactory(
+            team=self.team,
+            author=self.member,
+            state="merged",
+            merged_at=timezone.make_aware(datetime(2025, 12, 16, 10, 0)),
+            is_ai_assisted=True,  # Pattern detection says AI
+        )
+
+        metrics = compute_member_weekly_metrics(
+            self.team, self.member, self.week_start, self.week_end, use_survey_data=False
+        )
+
+        # Should show 1 AI-assisted PR from detection
+        self.assertEqual(metrics["ai_assisted_prs"], 1)
+
+    def test_detection_ignores_survey_when_use_survey_data_false(self):
+        """When use_survey_data=False, should ignore survey data and use detection."""
+        # Create PR with detection saying NO AI, but survey says YES
+        pr = PullRequestFactory(
+            team=self.team,
+            author=self.member,
+            state="merged",
+            merged_at=timezone.make_aware(datetime(2025, 12, 16, 10, 0)),
+            is_ai_assisted=False,  # Pattern detection says no AI
+        )
+        PRSurveyFactory(
+            team=self.team,
+            pull_request=pr,
+            author=self.member,
+            author_ai_assisted=True,  # Survey says YES AI - should be ignored
+            author_responded_at=timezone.now(),
+        )
+
+        metrics = compute_member_weekly_metrics(
+            self.team, self.member, self.week_start, self.week_end, use_survey_data=False
+        )
+
+        # Should show 0 AI-assisted from detection (ignoring survey)
+        self.assertEqual(metrics["ai_assisted_prs"], 0)
+
+    def test_uses_survey_when_use_survey_data_true(self):
+        """When use_survey_data=True, ai_assisted_prs should use survey data."""
+        # Create PR with detection saying NO AI, but survey says YES
+        pr = PullRequestFactory(
+            team=self.team,
+            author=self.member,
+            state="merged",
+            merged_at=timezone.make_aware(datetime(2025, 12, 16, 10, 0)),
+            is_ai_assisted=False,  # Detection says no AI
+        )
+        PRSurveyFactory(
+            team=self.team,
+            pull_request=pr,
+            author=self.member,
+            author_ai_assisted=True,  # Survey says YES AI
+            author_responded_at=timezone.now(),
+        )
+
+        metrics = compute_member_weekly_metrics(
+            self.team, self.member, self.week_start, self.week_end, use_survey_data=True
+        )
+
+        # Should show 1 AI-assisted from survey
+        self.assertEqual(metrics["ai_assisted_prs"], 1)
+
+    def test_detection_uses_effective_is_ai_assisted_with_llm_priority(self):
+        """Detection should use effective_is_ai_assisted which prioritizes LLM data."""
+        # Create PR with pattern saying AI, but LLM says no
+        PullRequestFactory(
+            team=self.team,
+            author=self.member,
+            state="merged",
+            merged_at=timezone.make_aware(datetime(2025, 12, 16, 10, 0)),
+            is_ai_assisted=True,  # Pattern says AI
+            llm_summary={"ai": {"is_assisted": False, "confidence": 0.9}},  # LLM says no
+        )
+
+        metrics = compute_member_weekly_metrics(
+            self.team, self.member, self.week_start, self.week_end, use_survey_data=False
+        )
+
+        # LLM takes priority, should return 0 (LLM said no)
+        self.assertEqual(metrics["ai_assisted_prs"], 0)
