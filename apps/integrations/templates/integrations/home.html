@@ -108,6 +108,7 @@
     </div>
 
     <!-- Jira Integration Card -->
+    {% with jira_status=integration_statuses.0 %}
     <div class="app-card">
       <div class="flex items-center gap-3 mb-4">
         <div class="w-12 h-12 flex items-center justify-center rounded-lg bg-base-300">
@@ -115,8 +116,13 @@
             <path d="M11.571 11.513H0a5.218 5.218 0 0 0 5.232 5.215h2.13v2.057A5.215 5.215 0 0 0 12.575 24V12.518a1.005 1.005 0 0 0-1.005-1.005zm5.723-5.756H5.736a5.215 5.215 0 0 0 5.215 5.214h2.129v2.058a5.218 5.218 0 0 0 5.215 5.214V6.758a1.001 1.001 0 0 0-1.001-1.001zM23.013 0H11.455a5.215 5.215 0 0 0 5.215 5.215h2.129v2.057A5.215 5.215 0 0 0 24 12.483V1.005A1.001 1.001 0 0 0 23.013 0z"/>
           </svg>
         </div>
-        <div>
-          <h2 class="font-semibold text-base-content">Jira</h2>
+        <div class="flex-1">
+          <div class="flex items-center gap-2">
+            <h2 class="font-semibold text-base-content">Jira</h2>
+            {% if jira_status.coming_soon and not jira_connected %}
+              <span class="app-badge app-badge-warning text-xs">Coming Soon</span>
+            {% endif %}
+          </div>
           <p class="text-sm text-base-content/80">{% translate "Issues and sprint tracking" %}</p>
         </div>
       </div>
@@ -177,7 +183,8 @@
             </div>
           </form>
         </div>
-      {% else %}
+      {% elif jira_status.enabled %}
+        {# Flag enabled but not connected - show Connect button #}
         <div class="flex items-center gap-2 mb-4 p-3 bg-base-300 rounded-lg">
           <svg class="w-5 h-5 text-base-content/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
@@ -191,8 +198,40 @@
             {% translate "Connect Jira" %}
           </a>
         </div>
+      {% else %}
+        {# Flag disabled - show Coming Soon with benefits #}
+        <div class="space-y-2 mb-4">
+          {% for benefit in jira_status.benefits %}
+            <div class="flex items-start gap-2 text-sm">
+              <svg class="w-4 h-4 text-primary mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+              </svg>
+              <div>
+                <span class="font-medium text-base-content">{{ benefit.title }}</span>
+                <span class="text-base-content/70"> - {{ benefit.description }}</span>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+
+        <div class="flex justify-end">
+          <form method="post"
+                action="{% url 'integrations:track_interest' %}"
+                hx-post="{% url 'integrations:track_interest' %}"
+                hx-swap="outerHTML">
+            {% csrf_token %}
+            <input type="hidden" name="integration" value="jira">
+            <button type="submit" class="app-btn-ghost app-btn-sm gap-1">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
+              </svg>
+              I'm Interested
+            </button>
+          </form>
+        </div>
       {% endif %}
     </div>
+    {% endwith %}
 
     <!-- Slack Integration Card -->
     <div class="app-card">
@@ -345,6 +384,57 @@
         </p>
       {% endif %}
     </div>
+
+    <!-- Google Workspace Card (Coming Soon) -->
+    {% with google_status=integration_statuses.3 %}
+    <div class="app-card">
+      <div class="flex items-center gap-3 mb-4">
+        <div class="w-12 h-12 flex items-center justify-center rounded-lg bg-base-300">
+          <svg class="w-8 h-8 text-green-500" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+          </svg>
+        </div>
+        <div class="flex-1">
+          <div class="flex items-center gap-2">
+            <h2 class="font-semibold text-base-content">Google Workspace</h2>
+            <span class="app-badge app-badge-warning text-xs">Coming Soon</span>
+          </div>
+          <p class="text-sm text-base-content/80">{% translate "Track communication workload in calendars" %}</p>
+        </div>
+      </div>
+
+      {# Google Workspace always shows benefits and I'm Interested #}
+      <div class="space-y-2 mb-4">
+        {% for benefit in google_status.benefits %}
+          <div class="flex items-start gap-2 text-sm">
+            <svg class="w-4 h-4 text-primary mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+            </svg>
+            <div>
+              <span class="font-medium text-base-content">{{ benefit.title }}</span>
+              <span class="text-base-content/70"> - {{ benefit.description }}</span>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+
+      <div class="flex justify-end">
+        <form method="post"
+              action="{% url 'integrations:track_interest' %}"
+              hx-post="{% url 'integrations:track_interest' %}"
+              hx-swap="outerHTML">
+          {% csrf_token %}
+          <input type="hidden" name="integration" value="google_workspace">
+          <button type="submit" class="app-btn-ghost app-btn-sm gap-1">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
+            </svg>
+            I'm Interested
+          </button>
+        </form>
+      </div>
+    </div>
+    {% endwith %}
   </div>
 </section>
 {% endblock %}

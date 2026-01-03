@@ -1,7 +1,7 @@
 """Integration status and overview views."""
 
 from django.contrib import messages
-from django.http import Http404
+from django.http import Http404, HttpResponseBadRequest
 from django.shortcuts import redirect
 from django.template.response import TemplateResponse
 from django.views.decorators.http import require_POST
@@ -13,8 +13,13 @@ from apps.integrations.models import (
     TrackedJiraProject,
     TrackedRepository,
 )
+from apps.integrations.services.integration_flags import (
+    INTEGRATION_METADATA,
+    get_all_integration_statuses,
+)
 from apps.metrics.models import AIUsageDaily, TeamMember
 from apps.teams.decorators import login_and_team_required
+from apps.utils.analytics import track_event
 
 
 @login_and_team_required
@@ -72,6 +77,9 @@ def integrations_home(request):
     if copilot_available:
         copilot_last_sync = AIUsageDaily.objects.filter(team=team, source="copilot").order_by("-created_at").first()
 
+    # Get feature flag statuses for all integrations
+    integration_statuses = get_all_integration_statuses(request)
+
     context = {
         "github_connected": github_connected,
         "github_integration": github_integration,
@@ -85,6 +93,7 @@ def integrations_home(request):
         "copilot_available": copilot_available,
         "copilot_last_sync": copilot_last_sync,
         "active_tab": "integrations",
+        "integration_statuses": integration_statuses,
     }
 
     template = "integrations/home.html#page-content" if request.htmx else "integrations/home.html"
@@ -122,3 +131,41 @@ def copilot_sync(request):
 
     messages.success(request, "Copilot metrics sync started")
     return redirect("integrations:integrations_home")
+
+
+@login_and_team_required
+@require_POST
+def track_integration_interest(request):
+    """Track user interest in a coming soon integration.
+
+    Logs a PostHog event when user clicks "I'm Interested" on a disabled integration.
+    Returns an HTMX partial with "Thanks!" confirmation.
+
+    Args:
+        request: The HTTP request object with 'integration' in POST data.
+
+    Returns:
+        HTMX partial with confirmation, or 400 for invalid integration.
+    """
+    integration = request.POST.get("integration")
+
+    # Validate integration slug
+    valid_integrations = list(INTEGRATION_METADATA.keys())
+    if not integration or integration not in valid_integrations:
+        return HttpResponseBadRequest("Invalid integration")
+
+    # Track interest event in PostHog
+    track_event(
+        request.user,
+        "integration_interest_clicked",
+        {
+            "integration": integration,
+            "team_slug": request.team.slug,
+        },
+    )
+
+    return TemplateResponse(
+        request,
+        "integrations/partials/interest_confirmed.html",
+        {"integration": integration},
+    )

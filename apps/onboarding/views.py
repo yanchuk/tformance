@@ -478,6 +478,8 @@ def sync_progress(request):
     1. Session team (if user navigated from a specific team's dashboard)
     2. User's first team (fallback)
     """
+    from apps.integrations.services.integration_flags import get_next_onboarding_step
+
     if not request.user.teams.exists():
         return redirect("onboarding:start")
 
@@ -490,6 +492,9 @@ def sync_progress(request):
     # Check if team has any PR data (quick sync has produced results)
     first_insights_ready = PullRequest.objects.filter(team=team).exists()
 
+    # Determine next step based on enabled feature flags
+    next_step = get_next_onboarding_step(request, "sync_progress")
+
     return render(
         request,
         "onboarding/sync_progress.html",
@@ -499,6 +504,7 @@ def sync_progress(request):
             "page_title": _("Syncing Data"),
             "step": 3,
             "first_insights_ready": first_insights_ready,
+            "next_step": next_step,
         },
     )
 
@@ -612,17 +618,29 @@ def connect_jira(request):
 
     GET with action=connect: Initiate Jira OAuth flow
     POST: Skip Jira and continue to Slack
+
+    If the integration_jira_enabled flag is off, automatically skip to the next step.
     """
     from urllib.parse import urlencode
 
     from apps.auth.oauth_state import FLOW_TYPE_JIRA_ONBOARDING, create_oauth_state
     from apps.integrations.models import JiraIntegration
     from apps.integrations.services import jira_oauth
+    from apps.integrations.services.integration_flags import get_next_onboarding_step, is_integration_enabled
 
     if not request.user.teams.exists():
         return redirect("onboarding:start")
 
     team = request.user.teams.first()
+
+    # Check if Jira integration is enabled via feature flag
+    if not is_integration_enabled(request, "jira"):
+        # Skip to next step (slack if enabled, otherwise complete)
+        next_step = get_next_onboarding_step(request, "jira")
+        if next_step == "slack":
+            return redirect("onboarding:connect_slack")
+        else:
+            return redirect("onboarding:complete")
 
     # Check if Jira is already connected
     jira_connected = JiraIntegration.objects.filter(team=team).exists()
@@ -833,19 +851,28 @@ def jira_sync_status(request):
 
 @login_required
 def connect_slack(request):
-    """Optional step to connect Slack."""
+    """Optional step to connect Slack.
+
+    If the integration_slack_enabled flag is off, automatically skip to complete.
+    """
     from urllib.parse import urlencode
 
     from django.conf import settings
 
     from apps.auth.oauth_state import FLOW_TYPE_SLACK_ONBOARDING, create_oauth_state
     from apps.integrations.models import SlackIntegration
+    from apps.integrations.services.integration_flags import is_integration_enabled
     from apps.integrations.services.slack_oauth import SLACK_OAUTH_AUTHORIZE_URL, SLACK_OAUTH_SCOPES
 
     if not request.user.teams.exists():
         return redirect("onboarding:start")
 
     team = request.user.teams.first()
+
+    # Check if Slack integration is enabled via feature flag
+    if not is_integration_enabled(request, "slack"):
+        # Skip to complete
+        return redirect("onboarding:complete")
 
     # Check if Slack is already connected
     slack_integration = SlackIntegration.objects.filter(team=team).first()

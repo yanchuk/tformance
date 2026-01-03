@@ -11,6 +11,7 @@ urlpatterns = [
 team_urlpatterns = (
     [
         path("", views.integrations_home, name="integrations_home"),
+        path("interest/", views.track_integration_interest, name="track_interest"),
         path("github/connect/", views.github_connect, name="github_connect"),
         path("github/disconnect/", views.github_disconnect, name="github_disconnect"),
         path("github/select-org/", views.github_select_org, name="github_select_org"),

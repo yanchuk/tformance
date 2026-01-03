@@ -2,8 +2,10 @@
 
 from django.test import TestCase
 from django.urls import reverse
+from waffle.testutils import override_flag
 
 from apps.metrics.factories import TeamFactory
+from apps.teams.models import Flag
 from apps.users.models import CustomUser
 
 
@@ -284,11 +286,17 @@ class StartSyncApiViewTests(TestCase):
         self.assertEqual(response.json()["task_id"], "test-task-id-123")
 
 
+@override_flag("integration_jira_enabled", active=True)
+@override_flag("integration_slack_enabled", active=True)
 class ConnectJiraViewTests(TestCase):
     """Tests for connect_jira view."""
 
     def setUp(self):
         """Set up test fixtures."""
+        # Ensure flags exist for override_flag to work
+        Flag.objects.get_or_create(name="integration_jira_enabled")
+        Flag.objects.get_or_create(name="integration_slack_enabled")
+
         self.user = CustomUser.objects.create_user(
             username="jira_test@example.com",
             email="jira_test@example.com",
@@ -359,12 +367,18 @@ class ConnectJiraViewTests(TestCase):
         self.assertRedirects(response, reverse("onboarding:select_jira_projects"))
 
 
+@override_flag("integration_jira_enabled", active=True)
+@override_flag("integration_slack_enabled", active=True)
 class SelectJiraProjectsViewTests(TestCase):
     """Tests for select_jira_projects view."""
 
     def setUp(self):
         """Set up test fixtures."""
         from apps.integrations.factories import JiraIntegrationFactory
+
+        # Ensure flags exist for override_flag to work
+        Flag.objects.get_or_create(name="integration_jira_enabled")
+        Flag.objects.get_or_create(name="integration_slack_enabled")
 
         self.user = CustomUser.objects.create_user(
             username="jira_projects@example.com",
@@ -486,12 +500,16 @@ class SelectJiraProjectsViewTests(TestCase):
         self.assertRedirects(response, reverse("onboarding:connect_slack"))
 
 
+@override_flag("integration_slack_enabled", active=True)
 class SlackConnectViewTests(TestCase):
     """Tests for connect_slack onboarding view."""
 
     def setUp(self):
         """Set up test fixtures."""
         from apps.teams.roles import ROLE_ADMIN
+
+        # Ensure flags exist for override_flag to work
+        Flag.objects.get_or_create(name="integration_slack_enabled")
 
         self.user = CustomUser.objects.create_user(
             username="slack_test@example.com",

@@ -10,9 +10,11 @@ These tests verify the remaining UX improvements:
 
 from django.test import TestCase
 from django.urls import reverse
+from waffle.testutils import override_flag
 
 from apps.integrations.factories import GitHubIntegrationFactory, TrackedRepositoryFactory
 from apps.metrics.factories import TeamFactory
+from apps.teams.models import Flag
 from apps.users.models import CustomUser
 
 
@@ -67,11 +69,15 @@ class EnhancedSyncIndicatorTests(TestCase):
         )
 
 
+@override_flag("integration_jira_enabled", active=True)
 class FocusStatesTests(TestCase):
     """Tests for focus states on interactive elements."""
 
     def setUp(self):
         """Set up test fixtures."""
+        # Ensure flags exist for override_flag to work
+        Flag.objects.get_or_create(name="integration_jira_enabled")
+
         self.user = CustomUser.objects.create_user(
             username="focus@example.com",
             email="focus@example.com",
@@ -91,11 +97,17 @@ class FocusStatesTests(TestCase):
         self.assertIn("app-btn-primary", content)
 
 
+@override_flag("integration_jira_enabled", active=True)
+@override_flag("integration_slack_enabled", active=True)
 class OAuthLoadingStateTests(TestCase):
     """Tests for loading states on OAuth buttons."""
 
     def setUp(self):
         """Set up test fixtures."""
+        # Ensure flags exist for override_flag to work
+        Flag.objects.get_or_create(name="integration_jira_enabled")
+        Flag.objects.get_or_create(name="integration_slack_enabled")
+
         self.user = CustomUser.objects.create_user(
             username="oauth_loading@example.com",
             email="oauth_loading@example.com",

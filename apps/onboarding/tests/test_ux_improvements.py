@@ -10,17 +10,25 @@ These tests verify the UX improvements identified in the PM/UX review:
 
 from django.test import TestCase
 from django.urls import reverse
+from waffle.testutils import override_flag
 
 from apps.integrations.factories import GitHubIntegrationFactory, TrackedRepositoryFactory
 from apps.metrics.factories import TeamFactory
+from apps.teams.models import Flag
 from apps.users.models import CustomUser
 
 
+@override_flag("integration_jira_enabled", active=True)
+@override_flag("integration_slack_enabled", active=True)
 class ProgressIndicatorOptionalLabelsTests(TestCase):
     """Tests for optional step labels on Jira and Slack steps."""
 
     def setUp(self):
         """Set up test fixtures."""
+        # Ensure flags exist for override_flag to work
+        Flag.objects.get_or_create(name="integration_jira_enabled")
+        Flag.objects.get_or_create(name="integration_slack_enabled")
+
         self.user = CustomUser.objects.create_user(
             username="progress@example.com",
             email="progress@example.com",
@@ -135,11 +143,17 @@ class CompletePageMessagingTests(TestCase):
         self.assertContains(response, self.team.name)
 
 
+@override_flag("integration_jira_enabled", active=True)
+@override_flag("integration_slack_enabled", active=True)
 class ButtonHierarchyTests(TestCase):
     """Tests for correct button hierarchy on Jira/Slack pages."""
 
     def setUp(self):
         """Set up test fixtures."""
+        # Ensure flags exist for override_flag to work
+        Flag.objects.get_or_create(name="integration_jira_enabled")
+        Flag.objects.get_or_create(name="integration_slack_enabled")
+
         self.user = CustomUser.objects.create_user(
             username="buttons@example.com",
             email="buttons@example.com",

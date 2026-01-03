@@ -2,17 +2,23 @@
 
 from django.test import TestCase
 from django.urls import reverse
+from waffle.testutils import override_flag
 
 from apps.integrations.factories import SlackIntegrationFactory
 from apps.metrics.factories import TeamFactory
+from apps.teams.models import Flag
 from apps.users.models import CustomUser
 
 
+@override_flag("integration_slack_enabled", active=True)
 class SlackConfigurationFormTests(TestCase):
     """Tests for Slack configuration form in onboarding."""
 
     def setUp(self):
         """Set up test fixtures."""
+        # Ensure flags exist for override_flag to work
+        Flag.objects.get_or_create(name="integration_slack_enabled")
+
         self.user = CustomUser.objects.create_user(
             username="slack_config@example.com",
             email="slack_config@example.com",

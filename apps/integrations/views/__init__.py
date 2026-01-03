@@ -45,12 +45,13 @@ from .slack import (
     slack_disconnect,
     slack_settings,
 )
-from .status import copilot_sync, integrations_home
+from .status import copilot_sync, integrations_home, track_integration_interest
 
 __all__ = [
     # Status
     "integrations_home",
     "copilot_sync",
+    "track_integration_interest",
     # GitHub
     "github_connect",
     "github_disconnect",
