@@ -1,7 +1,7 @@
 {% load i18n %}
 {% load pr_list_tags %}
 
-<div class="overflow-x-auto min-w-0">
+<div class="overflow-x-auto min-w-0" x-data="{ expandedPrId: null }">
   <table class="table table-zebra w-full table-fixed">
     <thead>
       <tr>
@@ -54,19 +54,24 @@
       </tr>
     </thead>
     {% for pr in prs %}
-      {# Each PR uses its own tbody with Alpine scope for expand/collapse and inline notes #}
-      <tbody x-data="{ expanded: false, inlineOpen: false }" @inline-closed="inlineOpen = false">
-      <tr @click="expanded = !expanded" class="cursor-pointer hover:bg-base-200/50 transition-colors" :class="{ 'border-b-0': expanded }">
+      {# Each PR uses its own tbody with Alpine scope for inline notes #}
+      <tbody x-data="{ inlineOpen: false }" @inline-closed="inlineOpen = false">
+      <tr @click="expandedPrId = (expandedPrId === {{ pr.id }}) ? null : {{ pr.id }}"
+          class="cursor-pointer hover:bg-base-200/50 transition-colors"
+          :class="{
+            'border-b-0': expandedPrId === {{ pr.id }},
+            'border-l-4 border-l-primary bg-base-200/50': expandedPrId === {{ pr.id }}
+          }">
         <td class="max-w-xs">
           <div class="flex items-center gap-2">
             {# Note icon - at the very left for quick access #}
             {% user_note_for_pr pr as note %}
             {% include 'notes/partials/note_icon.html' with pr=pr note=note %}
             {# Expand/collapse indicator #}
-            <button @click.stop="expanded = !expanded"
-                    class="btn btn-ghost btn-xs btn-square flex-shrink-0"
-                    :class="{ 'rotate-90': expanded }"
-                    title="{% trans 'Click to expand details' %}">
+            <button @click.stop="expandedPrId = (expandedPrId === {{ pr.id }}) ? null : {{ pr.id }}"
+                    class="btn btn-ghost btn-xs btn-square flex-shrink-0 transition-all"
+                    :class="{ 'rotate-90 text-primary': expandedPrId === {{ pr.id }} }"
+                    :title="expandedPrId === {{ pr.id }} ? '{% trans 'Click to collapse' %}' : '{% trans 'Click to expand details' %}'">
               <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
               </svg>
@@ -207,7 +212,7 @@
         </td>
       </tr>
       {# Expanded row - shown when clicking the expand button #}
-      <tr x-show="expanded"
+      <tr x-show="expandedPrId === {{ pr.id }}"
           x-cloak
           x-transition:enter="transition ease-out duration-200"
           x-transition:enter-start="opacity-0"
@@ -215,7 +220,7 @@
           x-transition:leave="transition ease-in duration-150"
           x-transition:leave-start="opacity-100"
           x-transition:leave-end="opacity-0"
-          class="bg-base-200/30">
+          class="bg-base-200/50 border-l-4 border-l-primary">
         <td colspan="11" class="px-4 py-3 border-t border-base-300">
           {% include 'metrics/pull_requests/partials/expanded_row.html' with pr=pr %}
         </td>
