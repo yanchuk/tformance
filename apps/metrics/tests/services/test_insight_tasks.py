@@ -76,9 +76,9 @@ class TestGenerateWeeklyInsightsTask(TestCase):
         # Verify cache_insight was called for each team with correct parameters
         self.assertEqual(mock_cache.call_count, 2)
 
-        # Check first call
+        # Check first call - cache_insight uses days=7 for weekly insights
         call_kwargs = mock_cache.call_args_list[0][1]
-        self.assertEqual(call_kwargs["cadence"], "weekly")
+        self.assertEqual(call_kwargs["days"], 7)
         self.assertEqual(call_kwargs["insight"], insight_result)
 
     @patch("apps.metrics.tasks.generate_insight")
@@ -224,6 +224,6 @@ class TestGenerateMonthlyInsightsTask(TestCase):
 
         generate_monthly_insights()
 
-        # Verify cache_insight was called with monthly cadence
+        # Verify cache_insight was called with days=30 for monthly insights
         call_kwargs = mock_cache.call_args[1]
-        self.assertEqual(call_kwargs["cadence"], "monthly")
+        self.assertEqual(call_kwargs["days"], 30)

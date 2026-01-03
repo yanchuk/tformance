@@ -601,8 +601,8 @@ class TestRefreshInsightView(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "metrics/partials/engineering_insights.html")
 
-    def test_accepts_cadence_query_param(self):
-        """Test that refresh_insight accepts cadence query param."""
+    def test_accepts_days_query_param(self):
+        """Test that refresh_insight accepts days query param."""
         from unittest.mock import patch
 
         self.client.force_login(self.member_user)
@@ -619,10 +619,10 @@ class TestRefreshInsightView(TestCase):
                 patch("apps.metrics.services.insight_llm.gather_insight_data"),
                 patch("apps.metrics.services.insight_llm.cache_insight"),
             ):
-                response = self.client.post(reverse("metrics:refresh_insight") + "?cadence=monthly")
+                response = self.client.post(reverse("metrics:refresh_insight") + "?days=30")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.context["cadence"], "monthly")
+        self.assertEqual(response.context["days"], 30)
 
     def test_context_contains_error_on_exception(self):
         """Test that context contains error message when LLM call fails."""

@@ -381,7 +381,9 @@ class TestDashboardAccessControl(TestCase):
 
     def setUp(self):
         """Set up test fixtures using factories."""
-        self.team = TeamFactory()
+        # Set onboarding_complete=False so pipeline status check is evaluated
+        # (default True bypasses the status check via dashboard_accessible property)
+        self.team = TeamFactory(onboarding_complete=False)
         self.admin_user = UserFactory()
         self.team.members.add(self.admin_user, through_defaults={"role": ROLE_ADMIN})
         self.client = Client()
