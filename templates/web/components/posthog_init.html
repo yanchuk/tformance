@@ -69,19 +69,5 @@ posthog.init('{{ POSTHOG_API_KEY }}', {
         }
     }
 })();
-
-// Feedback survey trigger function
-// PostHog survey configured as Popover type with event trigger: feedback_button_clicked
-// When this event is captured, PostHog automatically shows the styled popover survey
-window.triggerFeedbackSurvey = function() {
-    // Check if PostHog SDK is fully loaded (not just the stub)
-    if (typeof posthog !== 'undefined' && posthog.__loaded) {
-        // Capture the event - PostHog will automatically show the popover survey
-        posthog.capture('feedback_button_clicked');
-    } else {
-        // Fallback to mailto if PostHog SDK not fully loaded
-        window.open('mailto:feedback@tformance.com?subject=Tformance Feedback', '_blank');
-    }
-};
 </script>
 {% endif %}
