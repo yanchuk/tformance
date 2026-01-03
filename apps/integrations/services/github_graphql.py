@@ -1,12 +1,21 @@
 """GitHub GraphQL API client service."""
 
 import logging
+import time
 
 import aiohttp
 from gql import Client, gql
 from gql.transport.aiohttp import AIOHTTPTransport
 
 logger = logging.getLogger(__name__)
+
+
+def _get_sync_logger():
+    """Get sync logger lazily to allow mocking in tests."""
+    from apps.utils.sync_logger import get_sync_logger
+
+    return get_sync_logger(__name__)
+
 
 # GraphQL query templates
 # Cost estimation: ~1 point per query (GitHub GraphQL has 5000 point/hour limit)
@@ -422,12 +431,31 @@ class GitHubGraphQLClient:
         rate_limit = result.get("rateLimit", {})
         remaining = rate_limit.get("remaining", 0)
         reset_at = rate_limit.get("resetAt", "unknown")
+        limit = rate_limit.get("limit", 5000)
+
+        # Log rate limit status
+        _get_sync_logger().info(
+            "sync.api.rate_limit",
+            extra={
+                "remaining": remaining,
+                "limit": limit,
+                "reset_at": reset_at,
+            },
+        )
 
         if remaining < RATE_LIMIT_THRESHOLD:
             # Try to wait if enabled
             if self.wait_for_reset and reset_at != "unknown":
+                start_wait = time.time()
                 waited = await wait_for_rate_limit_reset_async(reset_at, self.max_wait_seconds)
                 if waited:
+                    wait_seconds = time.time() - start_wait
+                    _get_sync_logger().info(
+                        "sync.api.rate_wait",
+                        extra={
+                            "wait_seconds": wait_seconds,
+                        },
+                    )
                     logger.info(f"Rate limit recovered after waiting, continuing {operation}")
                     return
 
@@ -467,8 +495,23 @@ class GitHubGraphQLClient:
         last_error = None
         for attempt in range(max_retries):
             try:
+                start_time = time.time()
                 result = await self._execute(
                     FETCH_PRS_BULK_QUERY, variable_values={"owner": owner, "repo": repo, "cursor": cursor}
+                )
+                duration_ms = (time.time() - start_time) * 1000
+
+                # Log GraphQL query timing
+                rate_limit = result.get("rateLimit", {})
+                points_cost = rate_limit.get("cost", 0)
+                _get_sync_logger().info(
+                    "sync.api.graphql",
+                    extra={
+                        "query_name": "fetch_prs_bulk",
+                        "duration_ms": duration_ms,
+                        "status": "success",
+                        "points_cost": points_cost,
+                    },
                 )
 
                 await self._check_rate_limit(result, f"fetch_prs_bulk({owner}/{repo})")

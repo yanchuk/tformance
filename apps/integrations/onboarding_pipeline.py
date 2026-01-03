@@ -18,6 +18,7 @@ from celery import chain, shared_task
 from celery.result import AsyncResult
 
 from apps.utils.errors import sanitize_error
+from apps.utils.sync_logger import get_sync_logger
 
 logger = logging.getLogger(__name__)
 
@@ -38,12 +39,40 @@ def update_pipeline_status(self, team_id: int, status: str, error: str | None = 
     Returns:
         dict with status and team_id
     """
+    from django.utils import timezone
+
     from apps.teams.models import Team
 
     try:
         team = Team.objects.get(id=team_id)
+        previous_phase = team.onboarding_pipeline_status
         team.update_pipeline_status(status, error=error)
         logger.info(f"Pipeline status updated: team={team_id}, status={status}")
+
+        # Log phase change
+        sync_log = get_sync_logger(__name__)
+        sync_log.info(
+            "sync.pipeline.phase_changed",
+            extra={
+                "team_id": team_id,
+                "phase": status,
+                "previous_phase": previous_phase,
+            },
+        )
+
+        # Log completion event for terminal states
+        if status in ("phase1_complete", "complete"):
+            duration_seconds = 0
+            if team.onboarding_pipeline_started_at:
+                duration_seconds = (timezone.now() - team.onboarding_pipeline_started_at).total_seconds()
+            sync_log.info(
+                "sync.pipeline.completed",
+                extra={
+                    "team_id": team_id,
+                    "duration_seconds": duration_seconds,
+                },
+            )
+
         return {"status": "ok", "team_id": team_id, "pipeline_status": status}
     except Team.DoesNotExist:
         logger.error(f"Team not found: {team_id}")
@@ -76,6 +105,7 @@ def handle_pipeline_failure(
     from apps.teams.models import Team
 
     error_message = sanitize_error(exc) if exc else "Unknown error"
+    error_type = type(exc).__name__ if exc else "UnknownError"
 
     if team_id is None:
         logger.error(f"Pipeline failure handler called without team_id: {error_message}")
@@ -83,8 +113,22 @@ def handle_pipeline_failure(
 
     try:
         team = Team.objects.get(id=team_id)
+        failed_phase = team.onboarding_pipeline_status
         team.update_pipeline_status("failed", error=error_message)
         logger.error(f"Pipeline failed for team {team_id}: {error_message}")
+
+        # Log failure event
+        sync_log = get_sync_logger(__name__)
+        sync_log.error(
+            "sync.pipeline.failed",
+            extra={
+                "team_id": team_id,
+                "error_type": error_type,
+                "error_message": error_message,
+                "failed_phase": failed_phase,
+            },
+        )
+
         return {"status": "failed", "team_id": team_id, "error": error_message}
     except Team.DoesNotExist:
         logger.error(f"Team not found during failure handling: {team_id}")
@@ -310,6 +354,17 @@ def start_phase1_pipeline(team_id: int, repo_ids: list[int]) -> AsyncResult:
     from apps.metrics.tasks import compute_team_insights, run_llm_analysis_batch
 
     logger.info(f"Starting Phase 1 pipeline: team={team_id}, repos={repo_ids}")
+
+    # Log pipeline started event
+    sync_log = get_sync_logger(__name__)
+    sync_log.info(
+        "sync.pipeline.started",
+        extra={
+            "team_id": team_id,
+            "repos_count": len(repo_ids),
+            "phase": "phase1",
+        },
+    )
 
     # Build Phase 1 pipeline (Quick Start)
     pipeline = chain(

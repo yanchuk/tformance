@@ -5,6 +5,7 @@ compared to REST (1 call per 50 PRs vs 6-7 calls per PR).
 """
 
 import logging
+import time
 from datetime import timedelta
 from typing import Any
 
@@ -23,6 +24,13 @@ from apps.metrics.processors import _calculate_cycle_time_hours, _calculate_time
 from apps.metrics.services.ai_detector import PATTERNS_VERSION, detect_ai_author, detect_ai_in_text
 
 logger = logging.getLogger(__name__)
+
+
+def _get_sync_logger():
+    """Get sync logger lazily to allow mocking in tests."""
+    from apps.utils.sync_logger import get_sync_logger
+
+    return get_sync_logger(__name__)
 
 
 class SyncResult:
@@ -342,22 +350,52 @@ def _process_pr(
     }
 
     # Create or update PR
+    start_time = time.time()
     pr, created = PullRequest.objects.update_or_create(
         team=team,
         github_pr_id=pr_number,
         github_repo=github_repo,
         defaults=pr_defaults,
     )
+    duration_ms = (time.time() - start_time) * 1000
     result.prs_synced += 1
     logger.debug(f"{'Created' if created else 'Updated'} PR #{pr_number}")
+
+    # Log DB write for PR
+    _get_sync_logger().info(
+        "sync.db.write",
+        extra={
+            "entity_type": "pull_request",
+            "created": 1 if created else 0,
+            "updated": 0 if created else 1,
+            "duration_ms": duration_ms,
+        },
+    )
 
     # Update timing metrics
     _update_pr_timing_metrics(pr)
 
+    # Count nested data for logging
+    reviews_nodes = pr_data.get("reviews", {}).get("nodes", [])
+    commits_nodes = pr_data.get("commits", {}).get("nodes", [])
+    files_nodes = pr_data.get("files", {}).get("nodes", [])
+
+    # Log PR processed event
+    _get_sync_logger().info(
+        "sync.pr.processed",
+        extra={
+            "pr_id": pr.id,
+            "pr_number": pr_number,
+            "reviews_count": len(reviews_nodes),
+            "commits_count": len(commits_nodes),
+            "files_count": len(files_nodes),
+        },
+    )
+
     # Process nested data
-    _process_reviews(team, pr, pr_data.get("reviews", {}).get("nodes", []), result)
-    _process_commits(team, pr, github_repo, pr_data.get("commits", {}).get("nodes", []), result)
-    _process_files(team, pr, pr_data.get("files", {}).get("nodes", []), result)
+    _process_reviews(team, pr, reviews_nodes, result)
+    _process_commits(team, pr, github_repo, commits_nodes, result)
+    _process_files(team, pr, files_nodes, result)
 
 
 def _process_reviews(

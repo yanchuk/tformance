@@ -1,6 +1,7 @@
 """Celery tasks for integrations."""
 
 import logging
+import time
 
 from celery import shared_task
 from celery.exceptions import Retry
@@ -93,6 +94,18 @@ def sync_repository_task(self, repo_id: int) -> dict:
         countdown = self.default_retry_delay * (2**self.request.retries)
 
         try:
+            # Log sync.task.retry before retrying
+            from apps.utils.sync_logger import get_sync_logger
+
+            sync_logger = get_sync_logger(__name__)
+            sync_logger.warning(
+                "sync.task.retry",
+                extra={
+                    "retry_count": self.request.retries + 1,
+                    "countdown": countdown,
+                    "error": str(exc),
+                },
+            )
             # Retry with exponential backoff
             logger.warning(f"Sync failed for {tracked_repo.full_name}, retrying in {countdown}s: {exc}")
             raise self.retry(exc=exc, countdown=countdown)
@@ -2216,24 +2229,56 @@ def sync_historical_data_task(
 
     service = OnboardingSyncService(team=team, github_token=github_token)
 
+    # Import sync_logger inside function so mocks in tests work correctly
+    from apps.utils.sync_logger import get_sync_logger
+
+    sync_logger = get_sync_logger(__name__)
+
     for idx, repo in enumerate(sorted_repos, 1):
         logger.info(f"[SYNC_TASK] Starting sync for repo {idx}/{total_repos}: {repo.full_name} (id={repo.id})")
+
+        # Log sync.repo.started
+        sync_logger.info(
+            "sync.repo.started",
+            extra={
+                "team_id": team_id,
+                "repo_id": repo.id,
+                "full_name": repo.full_name,
+            },
+        )
 
         # Update repo status to syncing
         repo.sync_status = "syncing"
         repo.sync_started_at = timezone.now()
         repo.save(update_fields=["sync_status", "sync_started_at"])
 
+        repo_sync_start_time = time.time()
+
         try:
             # Define progress callback for celery_progress
             # Use default argument to capture current repo value (avoids B023 closure issue)
-            def progress_callback(prs_completed: int, prs_total: int, message: str, current_repo=repo):
+            # Also capture sync_logger to avoid closure issue
+            def progress_callback(
+                prs_completed: int, prs_total: int, message: str, current_repo=repo, _sync_logger=sync_logger
+            ):
                 # Update repo progress
                 if prs_total > 0:
                     current_repo.sync_progress = int((prs_completed / prs_total) * 100)
                     current_repo.sync_prs_completed = prs_completed
                     current_repo.sync_prs_total = prs_total
                     current_repo.save(update_fields=["sync_progress", "sync_prs_completed", "sync_prs_total"])
+
+                    # Log sync.repo.progress
+                    pct = int((prs_completed / prs_total) * 100)
+                    _sync_logger.info(
+                        "sync.repo.progress",
+                        extra={
+                            "prs_done": prs_completed,
+                            "prs_total": prs_total,
+                            "pct": pct,
+                            "repo_id": current_repo.id,
+                        },
+                    )
 
             # Sync the repository with date range parameters
             result = service.sync_repository(
@@ -2244,6 +2289,9 @@ def sync_historical_data_task(
             )
             prs_synced = result.get("prs_synced", 0)
             total_prs += prs_synced
+
+            # Calculate duration
+            repo_sync_duration = time.time() - repo_sync_start_time
 
             # Mark as completed
             repo.sync_status = "completed"
@@ -2259,11 +2307,33 @@ def sync_historical_data_task(
                 prs_synced=prs_synced,
             )
 
+            # Log sync.repo.completed
+            sync_logger.info(
+                "sync.repo.completed",
+                extra={
+                    "team_id": team_id,
+                    "repo_id": repo.id,
+                    "prs_synced": prs_synced,
+                    "duration_seconds": repo_sync_duration,
+                },
+            )
+
             logger.info(f"[SYNC_TASK] Completed sync for {repo.full_name}: {prs_synced} PRs synced")
 
         except Exception as e:
             logger.error(f"[SYNC_TASK] Failed to sync {repo.full_name}: {type(e).__name__}: {e}")
             failed_repos += 1
+
+            # Log sync.repo.failed
+            sync_logger.error(
+                "sync.repo.failed",
+                extra={
+                    "team_id": team_id,
+                    "repo_id": repo.id,
+                    "error_type": type(e).__name__,
+                    "error_message": str(e),
+                },
+            )
 
             # Mark as failed
             repo.sync_status = "failed"
