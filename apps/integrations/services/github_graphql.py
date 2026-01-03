@@ -825,21 +825,24 @@ class GitHubGraphQLClient:
             search_parts.append(f"created:<={until_str}")
 
         search_query = " ".join(search_parts)
-        logger.debug(f"Searching PRs with query: {search_query}")
+        logger.info(f"[PR_COUNT_DEBUG] Search query: {search_query}")
 
         try:
+            logger.info("[PR_COUNT_DEBUG] Executing SEARCH_PR_COUNT_QUERY...")
             result = await self._execute(SEARCH_PR_COUNT_QUERY, variable_values={"searchQuery": search_query})
+            logger.info(f"[PR_COUNT_DEBUG] Query executed, result keys: {result.keys() if result else 'None'}")
 
             await self._check_rate_limit(result, f"get_pr_count_in_date_range({owner}/{repo})")
 
             issue_count = result.get("search", {}).get("issueCount", 0)
-            logger.info(f"Found {issue_count} PRs in {owner}/{repo} matching date range")
+            logger.info(f"[PR_COUNT_DEBUG] Found {issue_count} PRs in {owner}/{repo} matching date range")
 
             return issue_count
 
         except GitHubGraphQLRateLimitError:
+            logger.error("[PR_COUNT_DEBUG] Rate limit error!")
             raise
         except Exception as e:
-            error_msg = f"GraphQL search query failed for {owner}/{repo}: {type(e).__name__}: {str(e)}"
+            error_msg = f"[PR_COUNT_DEBUG] GraphQL search query failed for {owner}/{repo}: {type(e).__name__}: {str(e)}"
             logger.error(error_msg)
             raise GitHubGraphQLError(error_msg) from e

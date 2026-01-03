@@ -188,10 +188,16 @@ async def sync_repository_history_graphql(
         # Get accurate PR count for date range using Search API
         # This fixes the bug where totalCount returns ALL PRs, not just date-filtered ones
         try:
+            logger.info(f"[SYNC_DEBUG] Calling get_pr_count_in_date_range for {owner}/{repo} since={cutoff_date}")
             total_prs = await client.get_pr_count_in_date_range(owner=owner, repo=repo, since=cutoff_date, until=None)
+            logger.info(f"[SYNC_DEBUG] get_pr_count_in_date_range returned: {total_prs}")
         except GitHubGraphQLError as e:
             # Fall back to 0 if search fails - progress will be estimated from first page
-            logger.warning(f"Failed to get PR count for date range: {e}")
+            logger.warning(f"[SYNC_DEBUG] Failed to get PR count for date range: {e}")
+            total_prs = 0
+        except Exception as e:
+            # Catch ALL exceptions to see what's happening
+            logger.error(f"[SYNC_DEBUG] UNEXPECTED exception in get_pr_count_in_date_range: {type(e).__name__}: {e}")
             total_prs = 0
 
         # Initialize progress with accurate total count
@@ -220,6 +226,7 @@ async def sync_repository_history_graphql(
             # Fall back to totalCount if get_pr_count_in_date_range failed
             if total_prs == 0:
                 total_prs = pull_requests_data.get("totalCount", 0)
+                logger.warning(f"[SYNC_DEBUG] FALLBACK to totalCount: {total_prs} (get_pr_count returned 0)")
                 # Initialize progress with total count
                 await _update_sync_progress(tracked_repo_id, 0, total_prs)
 
