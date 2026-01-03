@@ -32,10 +32,11 @@ class Team(SubscriptionModelBase, BaseModel):
     )
 
     # Onboarding pipeline tracking (Two-Phase)
-    # Phase 1: Quick Start (30 days) → syncing → llm_processing → metrics → insights → phase1_complete
+    # Phase 1: Quick Start (30 days) → syncing_members → syncing → llm_processing → metrics → insights → phase1_complete
     # Phase 2: Background (31-90 days) → background_syncing → background_llm → complete
     PIPELINE_STATUS_CHOICES = [
         ("not_started", "Not Started"),
+        ("syncing_members", "Syncing Team Members"),  # A-025: sync members before PRs
         ("syncing", "Syncing PRs"),
         ("llm_processing", "Analyzing with AI"),
         ("computing_metrics", "Computing Metrics"),
@@ -110,6 +111,7 @@ class Team(SubscriptionModelBase, BaseModel):
         Includes both Phase 1 (quick start) and Phase 2 (background) statuses.
         """
         return self.onboarding_pipeline_status in [
+            "syncing_members",
             "syncing",
             "llm_processing",
             "computing_metrics",

@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 
 from django.test import TestCase
 
-from apps.integrations.factories import TrackedRepositoryFactory
+from apps.integrations.factories import GitHubIntegrationFactory, TrackedRepositoryFactory
 from apps.metrics.factories import TeamFactory
 
 
@@ -236,3 +236,48 @@ class TestPipelineTaskSequence(TestCase):
 
         # Verify chain was created
         mock_chain.assert_called_once()
+
+
+class TestSyncGithubMembersPipelineTask(TestCase):
+    """Tests for sync_github_members_pipeline_task (A-025 fix)."""
+
+    def setUp(self):
+        self.team = TeamFactory()
+
+    def test_sync_github_members_pipeline_task_exists(self):
+        """Test that sync_github_members_pipeline_task is importable."""
+        from apps.integrations.onboarding_pipeline import sync_github_members_pipeline_task
+
+        self.assertTrue(callable(sync_github_members_pipeline_task))
+
+    def test_sync_github_members_pipeline_task_handles_missing_team(self):
+        """Test that task handles non-existent team gracefully."""
+        from apps.integrations.onboarding_pipeline import sync_github_members_pipeline_task
+
+        result = sync_github_members_pipeline_task(99999)
+
+        self.assertIn("error", result)
+
+    def test_sync_github_members_pipeline_task_skips_without_integration(self):
+        """Test that task skips when no GitHub integration exists."""
+        from apps.integrations.onboarding_pipeline import sync_github_members_pipeline_task
+
+        result = sync_github_members_pipeline_task(self.team.id)
+
+        self.assertTrue(result.get("skipped"))
+        self.assertIn("No GitHub integration", result.get("reason", ""))
+
+    @patch("apps.integrations.tasks.sync_github_members_task")
+    def test_sync_github_members_pipeline_task_calls_oauth_sync(self, mock_sync_task):
+        """Test that task calls OAuth member sync when integration exists."""
+        from apps.integrations.onboarding_pipeline import sync_github_members_pipeline_task
+
+        # Create OAuth integration
+        integration = GitHubIntegrationFactory(team=self.team)
+        mock_sync_task.return_value = {"created": 5, "updated": 0}
+
+        result = sync_github_members_pipeline_task(self.team.id)
+
+        # Verify sync task was called (synchronously, not .delay())
+        mock_sync_task.assert_called_once_with(integration.id)
+        self.assertEqual(result.get("created"), 5)

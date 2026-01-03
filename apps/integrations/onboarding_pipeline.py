@@ -333,6 +333,7 @@ def start_phase1_pipeline(team_id: int, repo_ids: list[int]) -> AsyncResult:
     Start Phase 1 (Quick Start) of the two-phase onboarding pipeline.
 
     Phase 1 provides fast time-to-dashboard (~5 minutes):
+    0. Sync team members from GitHub org (A-025)
     1. Sync last 30 days of PR data (quick)
     2. LLM analyze ALL synced PRs (~150 PRs = ~5 min)
     3. Aggregate metrics
@@ -368,6 +369,9 @@ def start_phase1_pipeline(team_id: int, repo_ids: list[int]) -> AsyncResult:
 
     # Build Phase 1 pipeline (Quick Start)
     pipeline = chain(
+        # Stage 0: Sync team members first (A-025 fix)
+        update_pipeline_status.si(team_id, "syncing_members"),
+        sync_github_members_pipeline_task.si(team_id),
         # Stage 1: Sync last 30 days only (fast)
         update_pipeline_status.si(team_id, "syncing"),
         sync_historical_data_task.si(team_id, repo_ids, days_back=30),
@@ -412,6 +416,65 @@ def start_onboarding_pipeline(team_id: int, repo_ids: list[int]) -> AsyncResult:
         AsyncResult from the Phase 1 chain execution
     """
     return start_phase1_pipeline(team_id, repo_ids)
+
+
+# =============================================================================
+# GitHub Member Sync Task for Pipeline
+# =============================================================================
+
+
+@shared_task(bind=True, soft_time_limit=180, time_limit=240)
+def sync_github_members_pipeline_task(self, team_id: int) -> dict:
+    """
+    Sync GitHub organization members as part of the onboarding pipeline.
+
+    This task runs synchronously within the pipeline chain to ensure members
+    are synced before PR data is fetched (A-025 fix).
+
+    Handles both integration types:
+    - GitHubIntegration (OAuth flow)
+    - GitHubAppInstallation (App flow)
+
+    Args:
+        team_id: The team's ID
+
+    Returns:
+        Dict with sync results or skip reason
+    """
+    from apps.integrations.models import GitHubAppInstallation, GitHubIntegration
+    from apps.integrations.tasks import sync_github_app_members_task, sync_github_members_task
+    from apps.teams.models import Team
+
+    try:
+        team = Team.objects.get(id=team_id)
+    except Team.DoesNotExist:
+        logger.error(f"Team not found for member sync: {team_id}")
+        return {"error": f"Team {team_id} not found"}
+
+    logger.info(f"Starting member sync in pipeline for team {team.name}")
+
+    # Try OAuth integration first
+    try:
+        integration = GitHubIntegration.objects.get(team=team)
+        # Run synchronously (not .delay()) to ensure completion before next stage
+        result = sync_github_members_task(integration.id)
+        logger.info(f"Member sync complete via OAuth for team {team.name}: {result}")
+        return result
+    except GitHubIntegration.DoesNotExist:
+        pass
+
+    # Try GitHub App installation
+    try:
+        installation = GitHubAppInstallation.objects.get(team=team)
+        # Run synchronously (not .delay()) to ensure completion before next stage
+        result = sync_github_app_members_task(installation.id)
+        logger.info(f"Member sync complete via App for team {team.name}: {result}")
+        return result
+    except GitHubAppInstallation.DoesNotExist:
+        pass
+
+    logger.warning(f"No GitHub integration found for team {team.slug}, skipping member sync")
+    return {"skipped": True, "reason": "No GitHub integration found"}
 
 
 # =============================================================================
