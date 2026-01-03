@@ -34,7 +34,8 @@ if TYPE_CHECKING:
 # v7.0.0: Enhanced context - more commits (20), commit co-authors, more review comments (10), AI config files
 # v8.0.0: Enhanced tech detection (mapping tables, framework signals) + summary guidelines (PR type decision tree)
 # v8.1.0: Added @@ mention syntax for reviewers (@@username links to PRs they review vs @username for authors)
-PROMPT_VERSION = "8.1.0"
+# v8.2.0: Added anti-bias rules for tech detection (do NOT infer from org/repo names, require file evidence)
+PROMPT_VERSION = "8.2.0"
 
 # Main PR analysis prompt - v8.0.0 (synced from Jinja2 templates)
 PR_ANALYSIS_SYSTEM_PROMPT = """# Identity

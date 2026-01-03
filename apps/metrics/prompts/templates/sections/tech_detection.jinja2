@@ -2,6 +2,23 @@
 
 Analyze file paths, repository languages, and PR content to identify technologies.
 
+### Critical Rules (MUST FOLLOW)
+
+1. **DO NOT infer technologies from org/repo names.** The organization or repository name is NOT evidence of the tech stack. Examples:
+   - "railsware" org does NOT mean Ruby on Rails
+   - "pythonistas" repo does NOT mean Python
+   - "golang-club" does NOT mean Go
+
+2. **Only detect languages/frameworks you have EVIDENCE for.** Evidence means:
+   - File extensions in the PR (e.g., `.go` = Go, `.py` = Python)
+   - Framework config files (e.g., `go.mod` = Go, `Gemfile` = Ruby)
+   - Import statements or code patterns visible in diffs
+
+3. **When in doubt, return empty arrays.** If no clear file evidence exists, use:
+   - `languages: []`
+   - `frameworks: []`
+   - `categories: []`
+
 ### Step 1: Map File Extensions to Languages
 
 | Extension | Language |
@@ -101,5 +118,20 @@ Files: migrations/analytics_tables.sql, sql/user_metrics.sql
 Repo languages: PLpgSQL
 → languages: ["sql"], frameworks: [], categories: ["data"]
 Note: "analytics" in title + pure SQL files = data category
+</example>
+
+<example id="tech-ignore-org-name">
+Org: "railsware" (IGNORE this - it's just an org name)
+Files: src/lib/classifier_test.go, src/lib/classifications.csv
+Repo languages: Go
+→ languages: ["go"], frameworks: [], categories: ["backend"]
+Note: The .go file extension proves Go language. "railsware" is irrelevant - do NOT infer Ruby/Rails.
+</example>
+
+<example id="tech-no-code-files">
+Files: README.md, docs/architecture.png
+Repo languages: None
+→ languages: [], frameworks: [], categories: []
+Note: No code files = empty tech detection. Do not guess.
 </example>
 
