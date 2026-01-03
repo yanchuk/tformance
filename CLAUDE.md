@@ -368,6 +368,28 @@ make dev       # Run in foreground with logs
 
 Access the app at http://localhost:8000
 
+Start Celery worker (required for background tasks like sync, LLM analysis):
+
+```bash
+make celery    # Starts worker + beat with --pool=solo
+```
+
+⚠️ **macOS Celery Warning**: Always use `make celery` or `--pool=solo`. The default `prefork` pool causes **SIGSEGV crashes** on macOS. Never run bare `celery -A tformance worker` without the pool flag.
+
+⚠️ **Celery Async Warning**: Never use `asyncio.run()` in Celery tasks - use `async_to_sync()` instead.
+
+```python
+# WRONG - creates new event loop, breaks @sync_to_async thread context
+import asyncio
+result = asyncio.run(async_function())
+
+# CORRECT - Django's recommended approach
+from asgiref.sync import async_to_sync
+result = async_to_sync(async_function)()
+```
+
+**Why**: `asyncio.run()` creates a new event loop which breaks `@sync_to_async(thread_sensitive=True)` decorators' thread handling, causing database operations to **silently fail** (no errors, but data not saved) in Celery workers.
+
 **Important for Claude Code sessions**: After completing each implementation phase, verify the dev server is running:
 ```bash
 curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/  # Should return 200
