@@ -142,21 +142,27 @@ class TestDashboardAccessProperty(TestCase):
 
     def test_dashboard_not_accessible_when_syncing(self):
         """Test that dashboard is not accessible during Phase 1 sync."""
-        team = TeamFactory()
+        team = TeamFactory(onboarding_complete=False)
         team.onboarding_pipeline_status = "syncing"
         self.assertFalse(team.dashboard_accessible)
 
     def test_dashboard_not_accessible_when_llm_processing(self):
         """Test that dashboard is not accessible during Phase 1 LLM."""
-        team = TeamFactory()
+        team = TeamFactory(onboarding_complete=False)
         team.onboarding_pipeline_status = "llm_processing"
         self.assertFalse(team.dashboard_accessible)
 
     def test_dashboard_not_accessible_when_not_started(self):
         """Test that dashboard is not accessible when onboarding not started."""
-        team = TeamFactory()
+        team = TeamFactory(onboarding_complete=False)
         team.onboarding_pipeline_status = "not_started"
         self.assertFalse(team.dashboard_accessible)
+
+    def test_dashboard_accessible_when_onboarding_complete_true(self):
+        """Test that dashboard is accessible for legacy teams with onboarding_complete=True."""
+        team = TeamFactory(onboarding_complete=True)
+        team.onboarding_pipeline_status = "not_started"  # Legacy state
+        self.assertTrue(team.dashboard_accessible)
 
 
 class TestBackgroundInProgressProperty(TestCase):

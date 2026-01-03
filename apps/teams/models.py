@@ -122,9 +122,12 @@ class Team(SubscriptionModelBase, BaseModel):
     def dashboard_accessible(self) -> bool:
         """Return True if dashboard should be accessible to the user.
 
-        Dashboard is accessible after Phase 1 completes (phase1_complete)
-        and remains accessible during Phase 2 background processing.
+        Dashboard is accessible when:
+        1. onboarding_complete is True (legacy teams)
+        2. Pipeline status indicates Phase 1+ is complete
         """
+        if self.onboarding_complete:
+            return True
         return self.onboarding_pipeline_status in [
             "phase1_complete",
             "background_syncing",
