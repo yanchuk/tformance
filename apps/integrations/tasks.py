@@ -47,9 +47,11 @@ from apps.utils.errors import sanitize_error
 logger = logging.getLogger(__name__)
 
 
-@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+@shared_task(bind=True, max_retries=3, default_retry_delay=60, soft_time_limit=300, time_limit=360)
 def sync_repository_task(self, repo_id: int) -> dict:
     """Sync a single tracked repository.
+
+    A-006: Added soft_time_limit=300s, time_limit=360s to prevent API hangs.
 
     Args:
         self: Celery task instance (bound task)
@@ -216,9 +218,11 @@ def _sync_incremental_with_graphql_or_rest(tracked_repo) -> dict:
     return sync_repository_incremental(tracked_repo)
 
 
-@shared_task(bind=True, max_retries=3, default_retry_delay=30)
+@shared_task(bind=True, max_retries=3, default_retry_delay=30, soft_time_limit=60, time_limit=90)
 def create_repository_webhook_task(self, tracked_repo_id: int, webhook_url: str) -> dict:
     """Create a GitHub webhook for a tracked repository asynchronously.
+
+    A-006: Added soft_time_limit=60s, time_limit=90s to prevent API hangs.
 
     This task is queued after creating a TrackedRepository to avoid blocking
     the view response. The webhook_id is updated on the TrackedRepository
@@ -275,9 +279,12 @@ def create_repository_webhook_task(self, tracked_repo_id: int, webhook_url: str)
         return {"error": str(e)}
 
 
-@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+@shared_task(bind=True, max_retries=3, default_retry_delay=60, soft_time_limit=600, time_limit=660)
 def sync_repository_initial_task(self, repo_id: int, days_back: int = 30) -> dict:
     """Sync historical data for a newly tracked repository.
+
+    A-006: Added soft_time_limit=600s (10 min), time_limit=660s (11 min) for initial sync.
+    Initial sync is longer than incremental because it fetches historical data.
 
     Args:
         self: Celery task instance (bound task)
@@ -489,9 +496,11 @@ def _sync_members_with_graphql_or_rest(integration, org_slug: str) -> dict:
     )
 
 
-@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+@shared_task(bind=True, max_retries=3, default_retry_delay=60, soft_time_limit=180, time_limit=240)
 def sync_github_members_task(self, integration_id: int) -> dict:
     """Sync GitHub organization members for a team.
+
+    A-006: Added soft_time_limit=180s, time_limit=240s to prevent API hangs.
 
     Args:
         self: Celery task instance (bound task)
@@ -595,9 +604,60 @@ def sync_all_github_members_task() -> dict:
     }
 
 
-@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+@shared_task(bind=True, max_retries=3, default_retry_delay=60, soft_time_limit=180, time_limit=240)
+def sync_github_app_members_task(self, installation_id: int) -> dict:
+    """Sync GitHub organization members for a team using GitHub App installation (A-007).
+
+    This is the GitHub App equivalent of sync_github_members_task. It uses
+    installation tokens instead of OAuth tokens to sync organization members.
+
+    A-006: Added soft_time_limit=180s, time_limit=240s to prevent API hangs.
+
+    Args:
+        self: Celery task instance (bound task)
+        installation_id: ID of the GitHubAppInstallation to sync members for
+
+    Returns:
+        Dict with sync results (created, updated, unchanged, failed) or error status
+    """
+    from apps.integrations.models import GitHubAppInstallation
+    from apps.integrations.services.github_app import get_installation_token
+    from apps.integrations.services.member_sync import sync_github_members
+
+    try:
+        installation = GitHubAppInstallation.objects.select_related("team").get(id=installation_id)  # noqa: TEAM001 - ID from Celery task queue
+    except GitHubAppInstallation.DoesNotExist:
+        logger.warning(f"GitHubAppInstallation with id {installation_id} not found")
+        return {"error": f"GitHubAppInstallation with id {installation_id} not found"}
+
+    if not installation.team:
+        logger.info(f"Skipping member sync - no team linked for installation {installation_id}")
+        return {"skipped": True, "reason": "No team linked"}
+
+    org_slug = installation.account_login
+    if not org_slug:
+        logger.info(f"Skipping member sync - no org for installation {installation_id}")
+        return {"skipped": True, "reason": "No organization"}
+
+    try:
+        access_token = get_installation_token(installation.installation_id)
+        result = sync_github_members(
+            team=installation.team,
+            access_token=access_token,
+            org_slug=org_slug,
+        )
+        logger.info(f"GitHub App member sync completed for {org_slug}: {result}")
+        return result
+    except Exception as e:
+        logger.error(f"GitHub App member sync failed for {org_slug}: {e}")
+        raise self.retry(exc=e) from e
+
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=60, soft_time_limit=300, time_limit=360)
 def sync_jira_project_task(self, project_id: int) -> dict:
     """Sync a single tracked Jira project.
+
+    A-006: Added soft_time_limit=300s, time_limit=360s to prevent Jira API hangs.
 
     Args:
         self: Celery task instance (bound task)
@@ -1049,9 +1109,11 @@ def post_weekly_leaderboards_task() -> dict:
     }
 
 
-@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+@shared_task(bind=True, max_retries=3, default_retry_delay=60, soft_time_limit=180, time_limit=240)
 def sync_copilot_metrics_task(self, team_id: int) -> dict:
     """Sync Copilot metrics for a team.
+
+    A-006: Added soft_time_limit=180s, time_limit=240s to prevent GitHub API hangs.
 
     Args:
         self: Celery task instance (bound task)
@@ -1239,9 +1301,11 @@ def sync_all_copilot_metrics() -> dict:
     }
 
 
-@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+@shared_task(bind=True, max_retries=3, default_retry_delay=60, soft_time_limit=60, time_limit=90)
 def post_survey_comment_task(self, pull_request_id: int) -> dict:
     """Post survey comment to merged PR.
+
+    A-006: Added soft_time_limit=60s, time_limit=90s to prevent GitHub API hangs.
 
     Creates a PRSurvey and posts survey invitation comment to GitHub.
     Retries up to 3 times with exponential backoff on transient errors.
@@ -1316,9 +1380,11 @@ def post_survey_comment_task(self, pull_request_id: int) -> dict:
             return {"error": error_msg, "survey_id": survey.id}
 
 
-@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+@shared_task(bind=True, max_retries=3, default_retry_delay=60, soft_time_limit=60, time_limit=90)
 def update_pr_description_survey_task(self, pull_request_id: int) -> dict:
     """Update PR description with survey voting links.
+
+    A-006: Added soft_time_limit=60s, time_limit=90s to prevent GitHub API hangs.
 
     Creates a PRSurvey and updates the PR description with survey links.
     This is the preferred approach (vs comments) as it's more visible.
@@ -1569,9 +1635,11 @@ def _fetch_pr_core_data_with_graphql_or_rest(pr, tracked_repo, access_token, err
     }
 
 
-@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+@shared_task(bind=True, max_retries=3, default_retry_delay=60, soft_time_limit=180, time_limit=240)
 def fetch_pr_complete_data_task(self, pr_id: int) -> dict:
     """Fetch complete PR data (commits, files, check runs, comments) after merge.
+
+    A-006: Added soft_time_limit=180s, time_limit=240s to prevent GitHub API hangs.
 
     Args:
         self: Celery task instance (bound task)
@@ -1760,9 +1828,11 @@ def _filter_prs_by_days(prs_data: list[dict], days_back: int = 7) -> list[dict]:
     return filtered
 
 
-@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+@shared_task(bind=True, max_retries=3, default_retry_delay=60, soft_time_limit=180, time_limit=240)
 def sync_quick_data_task(self, repo_id: int) -> dict:
     """Quick sync: 7 days, pattern detection only, for fast initial insights.
+
+    A-006: Added soft_time_limit=180s, time_limit=240s to prevent API hangs.
 
     After completion, queues sync_full_history_task for background full sync.
 
@@ -1906,9 +1976,12 @@ def sync_quick_data_task(self, repo_id: int) -> dict:
                 return {"error": sanitize_error(exc)}
 
 
-@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+@shared_task(bind=True, max_retries=3, default_retry_delay=60, soft_time_limit=900, time_limit=960)
 def sync_full_history_task(self, repo_id: int, days_back: int = 90) -> dict:
     """Full historical sync with LLM analysis, runs in background after quick sync.
+
+    A-006: Added soft_time_limit=900s (15 min), time_limit=960s (16 min) for full history sync.
+    Longer timeout than initial sync because it fetches 90 days of history.
 
     Args:
         self: Celery task instance (bound task)
@@ -1981,9 +2054,11 @@ def sync_full_history_task(self, repo_id: int, days_back: int = 90) -> dict:
             return {"error": sanitize_error(exc)}
 
 
-@shared_task(bind=True)
+@shared_task(bind=True, soft_time_limit=600, time_limit=660)
 def queue_llm_analysis_batch_task(self, team_id: int, batch_size: int = 50) -> dict:
     """Process PRs missing LLM analysis in batches.
+
+    A-006: Added soft_time_limit=600s (10 min), time_limit=660s (11 min) for LLM batch processing.
 
     Args:
         self: Celery task instance (bound task)
@@ -2040,7 +2115,7 @@ def queue_llm_analysis_batch_task(self, team_id: int, batch_size: int = 50) -> d
     return {"prs_processed": prs_updated}
 
 
-@shared_task(bind=True)
+@shared_task(bind=True, soft_time_limit=1800, time_limit=1860)
 def sync_historical_data_task(
     self,
     team_id: int,
@@ -2050,6 +2125,9 @@ def sync_historical_data_task(
 ) -> dict:
     """
     Sync historical PR data for selected repositories during onboarding.
+
+    A-006: Added soft_time_limit=1800s (30 min), time_limit=1860s (31 min).
+    This is the main onboarding sync task and needs a generous timeout for large repos.
 
     This task fetches historical data for newly connected repositories,
     processes PRs through LLM for AI detection, and reports real-time progress.

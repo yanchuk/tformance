@@ -309,3 +309,153 @@ class TestSelectReposPageLoading(TestCase):
         # Check for loading indicator
         self.assertIn("htmx-indicator", content)
         self.assertIn("fa-spinner", content)
+
+
+class TestTrackedReposAtTop(TestCase):
+    """Tests for A-008: Tracked repos should appear at top of list."""
+
+    def setUp(self):
+        """Set up test fixtures using factories."""
+        self.user = CustomUser.objects.create_user(
+            username="tracked_repos_test@example.com",
+            email="tracked_repos_test@example.com",
+            password="testpassword123",
+        )
+        self.team = TeamFactory()
+        self.team.members.add(self.user)
+        self.integration = GitHubIntegrationFactory(team=self.team)
+        self.client.login(username="tracked_repos_test@example.com", password="testpassword123")
+
+    def test_tracked_repos_appear_first_in_list(self):
+        """Test that repos already being tracked appear before untracked repos.
+
+        A-008: When user views repo list during onboarding, repos they already
+        track should appear at the top of the list (before sorting by updated_at).
+        """
+        from apps.integrations.factories import TrackedRepositoryFactory
+
+        # Create a tracked repository (repo id 2)
+        TrackedRepositoryFactory(
+            team=self.team,
+            integration=self.integration,
+            github_repo_id=2,
+            full_name="org/tracked-repo",
+        )
+
+        # Mock repos from GitHub API - note the tracked one has older updated_at
+        mock_repos = [
+            {
+                "id": 1,
+                "full_name": "org/untracked-recent",
+                "name": "untracked-recent",
+                "description": "Untracked but most recently updated",
+                "language": "Python",
+                "private": False,
+                "updated_at": datetime(2024, 12, 25, 12, 0, 0, tzinfo=UTC),
+                "archived": False,
+                "default_branch": "main",
+            },
+            {
+                "id": 2,
+                "full_name": "org/tracked-repo",
+                "name": "tracked-repo",
+                "description": "Already being tracked but older",
+                "language": "Python",
+                "private": False,
+                "updated_at": datetime(2024, 6, 1, 10, 0, 0, tzinfo=UTC),
+                "archived": False,
+                "default_branch": "main",
+            },
+            {
+                "id": 3,
+                "full_name": "org/another-untracked",
+                "name": "another-untracked",
+                "description": "Another untracked repo",
+                "language": "JavaScript",
+                "private": True,
+                "updated_at": datetime(2024, 9, 15, 8, 0, 0, tzinfo=UTC),
+                "archived": False,
+                "default_branch": "main",
+            },
+        ]
+
+        with patch("apps.onboarding.views.github_oauth.get_organization_repositories") as mock_get_repos:
+            mock_get_repos.return_value = mock_repos
+
+            response = self.client.get(reverse("onboarding:fetch_repos"))
+
+        self.assertEqual(response.status_code, 200)
+        repos = response.context["repos"]
+
+        # Tracked repo should be first, even though it has older updated_at
+        self.assertEqual(repos[0]["name"], "tracked-repo")
+        # Then untracked repos sorted by updated_at
+        self.assertEqual(repos[1]["name"], "untracked-recent")  # Dec 25
+        self.assertEqual(repos[2]["name"], "another-untracked")  # Sep 15
+
+    def test_multiple_tracked_repos_sorted_by_updated_at(self):
+        """Test that multiple tracked repos are sorted by updated_at among themselves."""
+        from apps.integrations.factories import TrackedRepositoryFactory
+
+        # Create two tracked repositories
+        TrackedRepositoryFactory(
+            team=self.team,
+            integration=self.integration,
+            github_repo_id=1,
+            full_name="org/tracked-old",
+        )
+        TrackedRepositoryFactory(
+            team=self.team,
+            integration=self.integration,
+            github_repo_id=2,
+            full_name="org/tracked-recent",
+        )
+
+        mock_repos = [
+            {
+                "id": 1,
+                "full_name": "org/tracked-old",
+                "name": "tracked-old",
+                "description": "Tracked but older",
+                "language": "Python",
+                "private": False,
+                "updated_at": datetime(2024, 3, 1, 0, 0, 0, tzinfo=UTC),
+                "archived": False,
+                "default_branch": "main",
+            },
+            {
+                "id": 2,
+                "full_name": "org/tracked-recent",
+                "name": "tracked-recent",
+                "description": "Tracked and recent",
+                "language": "Python",
+                "private": False,
+                "updated_at": datetime(2024, 12, 1, 0, 0, 0, tzinfo=UTC),
+                "archived": False,
+                "default_branch": "main",
+            },
+            {
+                "id": 3,
+                "full_name": "org/untracked",
+                "name": "untracked",
+                "description": "Not tracked",
+                "language": "Python",
+                "private": False,
+                "updated_at": datetime(2024, 12, 20, 0, 0, 0, tzinfo=UTC),
+                "archived": False,
+                "default_branch": "main",
+            },
+        ]
+
+        with patch("apps.onboarding.views.github_oauth.get_organization_repositories") as mock_get_repos:
+            mock_get_repos.return_value = mock_repos
+
+            response = self.client.get(reverse("onboarding:fetch_repos"))
+
+        repos = response.context["repos"]
+
+        # Both tracked repos should come first, sorted by updated_at
+        self.assertEqual(repos[0]["name"], "tracked-recent")  # Tracked, Dec 1
+        self.assertEqual(repos[1]["name"], "tracked-old")  # Tracked, Mar 1
+        # Then untracked repo
+        self.assertEqual(repos[2]["name"], "untracked")  # Not tracked, Dec 20

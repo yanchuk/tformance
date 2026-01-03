@@ -34,6 +34,8 @@
         <i class="fa-solid fa-check-circle text-success"></i>
         <span class="text-base-content/90">{% translate "GitHub connected" %}</span>
       </li>
+      {# A-002: Only show Jira row when integration is enabled #}
+      {% if jira_enabled %}
       <li class="flex items-center gap-3">
         {% if jira_connected %}
         <i class="fa-solid fa-check-circle text-success"></i>
@@ -43,6 +45,9 @@
         <span class="text-base-content/70">{% translate "Jira" %} - {% translate "Available to connect later" %}</span>
         {% endif %}
       </li>
+      {% endif %}
+      {# A-002: Only show Slack row when integration is enabled #}
+      {% if slack_enabled %}
       <li class="flex items-center gap-3">
         {% if slack_connected %}
         <i class="fa-solid fa-check-circle text-success"></i>
@@ -52,6 +57,7 @@
         <span class="text-base-content/70">{% translate "Slack" %} - {% translate "Available to connect later" %}</span>
         {% endif %}
       </li>
+      {% endif %}
     </ul>
   </div>
 
@@ -61,9 +67,18 @@
       {% translate "Go to Dashboard" %}
     </a>
 
+    {# A-002: Only mention enabled integrations in footer #}
+    {% if jira_enabled or slack_enabled %}
     <p class="text-sm text-base-content/70">
-      {% translate "You can connect Jira and Slack later from Settings > Integrations." %}
+      {% if jira_enabled and slack_enabled %}
+        {% translate "You can connect Jira and Slack later from Settings > Integrations." %}
+      {% elif jira_enabled %}
+        {% translate "You can connect Jira later from Settings > Integrations." %}
+      {% elif slack_enabled %}
+        {% translate "You can connect Slack later from Settings > Integrations." %}
+      {% endif %}
     </p>
+    {% endif %}
   </div>
 </div>
 {% endblock %}

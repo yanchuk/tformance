@@ -360,9 +360,9 @@ class GitHubAppCallbackViewTests(TestCase):
         self.assertRedirects(response, reverse("onboarding:select_repos"))
 
     @patch("apps.integrations.services.github_app.get_installation")
-    @patch("apps.integrations.services.member_sync.sync_github_members")
-    def test_github_app_callback_syncs_members(self, mock_sync_members, mock_get_installation):
-        """Test that callback triggers member sync for the organization."""
+    @patch("apps.integrations.tasks.sync_github_app_members_task.delay")
+    def test_github_app_callback_queues_member_sync_task(self, mock_task_delay, mock_get_installation):
+        """Test that callback queues sync_github_app_members_task for async member sync (A-007)."""
         mock_get_installation.return_value = {
             "id": 11112222,
             "account": {
@@ -387,11 +387,14 @@ class GitHubAppCallbackViewTests(TestCase):
             },
         )
 
-        # Should call member sync
-        mock_sync_members.assert_called_once()
-        # The call should be with the created team
+        # Should queue async member sync task for GitHub App installation
+        mock_task_delay.assert_called_once()
+        # The task should receive the installation ID (not GitHubIntegration ID)
+        from apps.integrations.models import GitHubAppInstallation
+
         team = Team.objects.get(name="sync-org")
-        mock_sync_members.assert_called_with(team)
+        installation = GitHubAppInstallation.objects.get(team=team)
+        mock_task_delay.assert_called_with(installation.id)
 
     def test_github_app_callback_invalid_state(self):
         """Test that callback rejects invalid state parameter."""

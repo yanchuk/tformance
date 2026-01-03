@@ -31,6 +31,9 @@
         <span class="text-xs text-base-content/60">{% translate "Setup" %}</span>
         <span class="text-xs text-base-content/60"><i class="fa-regular fa-clock mr-1"></i>~5 min</span>
       </div>
+      {# A-002: Dynamically show stepper steps based on enabled integrations #}
+      {# Calculate total steps and Done step number #}
+      {% with done_step=3|add:jira_enabled|add:slack_enabled %}
       <div class="app-steps">
         {# Step 1: GitHub #}
         <div class="app-step">
@@ -43,8 +46,9 @@
           <div class="app-step-indicator {% if step >= 2 %}app-step-indicator-active{% endif %}">2</div>
           <span class="app-step-label hidden sm:block {% if step >= 2 %}app-step-label-active{% endif %}">{% translate "Repos" %}</span>
         </div>
+        {% if jira_enabled %}
         <div class="app-step-connector {% if step >= 3 %}app-step-connector-complete{% endif %}"></div>
-        {# Step 3: Jira (optional) #}
+        {# Step 3: Jira (optional - only shown when flag enabled) #}
         <div class="app-step">
           <div class="app-step-indicator {% if step >= 3 %}app-step-indicator-active{% endif %}">3</div>
           <span class="app-step-label hidden sm:block {% if step >= 3 %}app-step-label-active{% endif %}">
@@ -52,28 +56,32 @@
             <span class="text-xs text-base-content/50 block">(optional)</span>
           </span>
         </div>
+        {% endif %}
+        {% if slack_enabled %}
         <div class="app-step-connector {% if step >= 4 %}app-step-connector-complete{% endif %}"></div>
-        {# Step 4: Slack (optional) #}
+        {# Step 4: Slack (optional - only shown when flag enabled) #}
         <div class="app-step">
-          <div class="app-step-indicator {% if step >= 4 %}app-step-indicator-active{% endif %}">4</div>
+          <div class="app-step-indicator {% if step >= 4 %}app-step-indicator-active{% endif %}">{% if jira_enabled %}4{% else %}3{% endif %}</div>
           <span class="app-step-label hidden sm:block {% if step >= 4 %}app-step-label-active{% endif %}">
             {% translate "Slack" %}
             <span class="text-xs text-base-content/50 block">(optional)</span>
           </span>
         </div>
+        {% endif %}
         <div class="app-step-connector {% if step >= 5 %}app-step-connector-complete{% endif %}"></div>
-        {# Step 5: Complete #}
+        {# Final Step: Complete #}
         <div class="app-step">
           <div class="app-step-indicator {% if step >= 5 %}app-step-indicator-complete{% endif %}">
             {% if step >= 5 %}
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
             </svg>
-            {% else %}5{% endif %}
+            {% else %}{{ done_step }}{% endif %}
           </div>
           <span class="app-step-label hidden sm:block {% if step >= 5 %}app-step-label-active{% endif %}">{% translate "Done" %}</span>
         </div>
       </div>
+      {% endwith %}
     </div>
   </div>
 

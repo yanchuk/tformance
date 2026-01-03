@@ -6,17 +6,17 @@
     <div class="mb-3">
       {% if base_account.provider == 'google'%}
         <span class="pg-icon">
-          <img src="{% static 'images/socialauth/google-logo.svg' %}" />
+          <img src="{% static 'images/socialauth/google-logo.svg' %}" class="w-6 h-6" />
         </span>
         <span>{{ base_account.extra_data.email }}</span>
       {% elif base_account.provider == 'twitter' %}
         <span class="pg-icon">
-          <img src="{% static 'images/socialauth/twitter-logo.svg' %}" />
+          <img src="{% static 'images/socialauth/twitter-logo.svg' %}" class="w-6 h-6" />
         </span>
         <a href="{{ account.get_profile_url }}" target="_blank">@{{ account.get_screen_name }}</a>
       {% elif base_account.provider == 'github' %}
         <span class="pg-icon">
-          <img src="{% static 'images/socialauth/github-logo.svg' %}" />
+          <img src="{% static 'images/socialauth/github-logo.svg' %}" class="w-6 h-6" />
         </span>
         <a href="{{ account.get_profile_url }}" target="_blank">@{{ account.account.extra_data.login }}</a>
       {% else %}
@@ -28,5 +28,5 @@
 {% empty %}
   <p class="mb-3">{% translate "You haven't linked any social accounts yet. Create one below." %}</p>
 {% endfor %}
-<a class="pg-button-secondary" href="{% url 'socialaccount_connections' %}">Manage Accounts</a>
-{% if not user.has_usable_password %}<a class="mx-2 pg-button-secondary" href="{% url 'account_set_password' %}">Add a Password</a>{% endif %}
+<a class="btn btn-secondary" href="{% url 'socialaccount_connections' %}">Manage Accounts</a>
+{% if not user.has_usable_password %}<a class="mx-2 btn btn-secondary" href="{% url 'account_set_password' %}">Add a Password</a>{% endif %}

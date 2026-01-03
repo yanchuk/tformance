@@ -152,22 +152,38 @@ def _create_github_integration(team, credential, org):
 def _sync_github_members_after_connection(team):
     """Queue async sync of GitHub organization members after connecting an integration.
 
-    This is called after successfully creating a GitHubIntegration to queue
+    This is called after successfully connecting GitHub (via OAuth or App) to queue
     a Celery task for importing team members from the GitHub organization.
     The actual sync happens asynchronously.
+
+    Handles both integration types (A-007):
+    - GitHubIntegration (OAuth flow) -> sync_github_members_task
+    - GitHubAppInstallation (App flow) -> sync_github_app_members_task
 
     Args:
         team: The team to sync members for.
 
     Returns:
-        bool: True if task was queued, False if GitHubIntegration not found.
+        bool: True if task was queued, False if no integration found.
     """
-    from apps.integrations.tasks import sync_github_members_task
+    from apps.integrations.models import GitHubAppInstallation
+    from apps.integrations.tasks import sync_github_app_members_task, sync_github_members_task
 
+    # Try OAuth integration first
     try:
         integration = GitHubIntegration.objects.get(team=team)
         sync_github_members_task.delay(integration.id)
         return True
     except GitHubIntegration.DoesNotExist:
-        logger.warning(f"GitHubIntegration not found for team {team.slug}, skipping member sync")
-        return False
+        pass
+
+    # Try GitHub App installation
+    try:
+        installation = GitHubAppInstallation.objects.get(team=team)
+        sync_github_app_members_task.delay(installation.id)
+        return True
+    except GitHubAppInstallation.DoesNotExist:
+        pass
+
+    logger.warning(f"No GitHub integration found for team {team.slug}, skipping member sync")
+    return False

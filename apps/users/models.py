@@ -31,10 +31,26 @@ class CustomUser(AbstractUser):
 
     @property
     def avatar_url(self) -> str:
+        """Get user's avatar URL with priority: local upload > GitHub > Gravatar.
+
+        A-017: Added GitHub avatar support for users who signed in via GitHub OAuth.
+        """
         if self.avatar:
             return self.avatar.url
-        else:
-            return f"https://www.gravatar.com/avatar/{self.gravatar_id}?s=128&d=identicon"
+
+        # A-017: Check for GitHub avatar from social account
+        from allauth.socialaccount.models import SocialAccount
+
+        try:
+            github_account = SocialAccount.objects.get(user=self, provider="github")
+            github_avatar = github_account.extra_data.get("avatar_url")
+            if github_avatar:
+                return github_avatar
+        except SocialAccount.DoesNotExist:
+            pass
+
+        # Fallback to Gravatar
+        return f"https://www.gravatar.com/avatar/{self.gravatar_id}?s=128&d=identicon"
 
     @property
     def gravatar_id(self) -> str:

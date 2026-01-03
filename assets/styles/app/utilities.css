@@ -8,6 +8,17 @@ a[hx-get] {
   cursor: pointer;
 }
 
+/* A-005: HTMX indicator should use display:none instead of opacity
+   to avoid blank space when hidden. This overrides HTMX's default
+   opacity-based hiding that leaves elements taking up space. */
+.htmx-indicator {
+  display: none;
+}
+.htmx-request .htmx-indicator,
+.htmx-request.htmx-indicator {
+  display: block;
+}
+
 .h-100 {
   height: 100%;
 }

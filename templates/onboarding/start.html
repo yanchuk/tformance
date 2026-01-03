@@ -40,7 +40,10 @@
       <li class="flex items-start gap-3">
         <i class="fa-solid fa-robot text-accent mt-1"></i>
         <div>
-          <span class="text-base-content font-medium">{% translate "Copilot usage metrics" %}</span>
+          <span class="text-base-content font-medium">
+            {% translate "Copilot usage metrics" %}
+            <span class="text-base-content/50 text-sm">({% translate "coming soon" %})</span>
+          </span>
           <p class="text-xs text-base-content/60 mt-0.5">{% translate "Correlate AI tool usage with delivery outcomes" %}</p>
         </div>
       </li>
@@ -58,11 +61,17 @@
       </a>
     </div>
 
-    <div class="mt-6 pt-4 border-t border-base-300 text-center">
-      <p class="text-xs text-base-content/60">
-        <i class="fa-solid fa-shield-halved text-accent mr-1.5"></i>
-        {% translate "We never see your code — only PR metadata like titles, timestamps, and review counts." %}
-      </p>
+    {# A-003: Privacy callout box with better visual emphasis #}
+    <div class="mt-6 pt-4 border-t border-base-300">
+      <div class="bg-accent/5 border border-accent/20 rounded-lg p-4 flex items-start gap-3">
+        <i class="fa-solid fa-shield-halved text-accent text-xl mt-0.5"></i>
+        <div class="text-left">
+          <p class="text-sm font-medium text-base-content mb-1">{% translate "Privacy First" %}</p>
+          <p class="text-xs text-base-content/70">
+            {% translate "We never see your code — only PR metadata like titles, timestamps, and review counts." %}
+          </p>
+        </div>
+      </div>
     </div>
   </div>
 

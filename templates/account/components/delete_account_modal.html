@@ -1,0 +1,36 @@
+{% comment %}
+A-016: Delete Account Confirmation Modal
+Shows a warning modal before permanently deleting the user account.
+{% endcomment %}
+{% load i18n %}
+<input type="checkbox" id="delete-account-modal" class="modal-toggle" />
+<div class="modal">
+  <div class="modal-box w-11/12 max-w-lg">
+    <h3 class="font-bold text-lg text-error">{% translate "Delete Your Account?" %}</h3>
+    <div class="py-4 space-y-3">
+      <p>
+        {% blocktranslate trimmed %}
+        This will permanently delete your account and remove you from all teams.
+        {% endblocktranslate %}
+      </p>
+      <div class="alert alert-warning">
+        <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+        <span><strong>{% translate "This action cannot be undone." %}</strong></span>
+      </div>
+      <p class="text-sm text-base-content/70">
+        {% blocktranslate trimmed %}
+        All your data, settings, and team memberships will be permanently removed.
+        {% endblocktranslate %}
+      </p>
+    </div>
+    <div class="modal-action">
+      <label for="delete-account-modal" class="btn">{% translate "Cancel" %}</label>
+      <form action="{% url 'users:delete_account' %}" method="post">
+        {% csrf_token %}
+        <button class="btn btn-error" type="submit">{% translate "Yes, Delete My Account" %}</button>
+      </form>
+    </div>
+  </div>
+</div>

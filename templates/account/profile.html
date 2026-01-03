@@ -1,6 +1,7 @@
 {% extends "web/app/app_base.html" %}
 {% load static %}
 {% load django_vite %}
+{% load i18n %}
 {% block app %}
 <section class="app-card">
   {% include 'account/components/profile_form.html' %}
@@ -9,7 +10,15 @@
 <section class="app-card">
   {% include 'account/components/social/social_accounts.html' %}
 </section>
-{% include 'account/components/api_keys.html' %}
+{# A-015: API Keys hidden for alpha - functionality not ready for users #}
+{# {% include 'account/components/api_keys.html' %} #}
+{# A-016: Delete Account - GDPR compliance #}
+<section class="app-card">
+  <h2 class="pg-subtitle text-error">{% translate "Danger Zone" %}</h2>
+  <p class="text-base-content/70 mb-4">{% translate "Permanently delete your account and all associated data." %}</p>
+  <label for="delete-account-modal" class="btn btn-error modal-button">{% translate "Delete Account" %}</label>
+</section>
+{% include 'account/components/delete_account_modal.html' %}
 {% endblock %}
 {% block page_js %}
 {% vite_asset 'assets/javascript/app.js' %}

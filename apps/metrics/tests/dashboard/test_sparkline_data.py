@@ -750,3 +750,153 @@ class TestSparklineLowDataHandling(TestCase):
         # NOT from week 1 (1) to week 3 (10) = 900% increase
         self.assertEqual(result["prs_merged"]["change_pct"], 100)
         self.assertEqual(result["prs_merged"]["trend"], "up")
+
+
+class TestTrendPercentageCapping(TestCase):
+    """Tests for capping extreme trend percentages (A-001).
+
+    When trends show extreme values like +3100% or +12096%, they're not
+    meaningful to users and indicate statistical anomalies. These should
+    be capped at ±500% to show "significant change" without false precision.
+    """
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.team = TeamFactory()
+        self.member = TeamMemberFactory(team=self.team)
+        self.end_date = date.today()
+        self.start_date = self.end_date - timedelta(days=90)
+
+    def test_trend_percentage_capped_at_positive_500(self):
+        """Extreme positive trends should be capped at +500%.
+
+        A-001: Dashboard showed +12096% for review time because first week
+        had 0.04h (2.4 min) avg and last week had 5h avg. Raw calculation
+        gives 12400%, but this should be capped at 500%.
+        """
+        week1_start = self.end_date - timedelta(days=14)
+        week2_start = self.end_date - timedelta(days=7)
+
+        # Week 1: 10 PRs with very low review time (0.1h = 6 min avg)
+        for _ in range(10):
+            PullRequestFactory(
+                team=self.team,
+                author=self.member,
+                state="merged",
+                merged_at=timezone.make_aware(timezone.datetime.combine(week1_start, timezone.datetime.min.time())),
+                review_time_hours=Decimal("0.1"),
+            )
+
+        # Week 2: 10 PRs with much higher review time (10h avg)
+        # Raw change: (10 - 0.1) / 0.1 * 100 = 9900%
+        for _ in range(10):
+            PullRequestFactory(
+                team=self.team,
+                author=self.member,
+                state="merged",
+                merged_at=timezone.make_aware(timezone.datetime.combine(week2_start, timezone.datetime.min.time())),
+                review_time_hours=Decimal("10.0"),
+            )
+
+        result = get_sparkline_data(self.team, self.start_date, self.end_date)
+
+        # Should be capped at +500%, not +9900%
+        self.assertEqual(result["review_time"]["change_pct"], 500)
+        self.assertEqual(result["review_time"]["trend"], "up")
+
+    def test_trend_percentage_capped_at_negative_500(self):
+        """Extreme negative trends should be capped at -500%.
+
+        When metrics drop dramatically (e.g., cycle time from 100h to 1h),
+        the raw -99% is fine, but if it were to exceed -500% somehow,
+        it should be capped. More practically, test with very small
+        ending values that create large negative percentages.
+        """
+        week1_start = self.end_date - timedelta(days=14)
+        week2_start = self.end_date - timedelta(days=7)
+
+        # Week 1: 10 PRs with high cycle time (100h avg)
+        for _ in range(10):
+            PullRequestFactory(
+                team=self.team,
+                author=self.member,
+                state="merged",
+                merged_at=timezone.make_aware(timezone.datetime.combine(week1_start, timezone.datetime.min.time())),
+                cycle_time_hours=Decimal("100.0"),
+            )
+
+        # Week 2: 10 PRs with very low cycle time (1h avg)
+        # Raw change: (1 - 100) / 100 * 100 = -99%
+        # This is within bounds, so let's test PR count instead
+        for _ in range(10):
+            PullRequestFactory(
+                team=self.team,
+                author=self.member,
+                state="merged",
+                merged_at=timezone.make_aware(timezone.datetime.combine(week2_start, timezone.datetime.min.time())),
+                cycle_time_hours=Decimal("1.0"),
+            )
+
+        result = get_sparkline_data(self.team, self.start_date, self.end_date)
+
+        # -99% is within bounds, should pass through
+        self.assertEqual(result["cycle_time"]["change_pct"], -99)
+        self.assertEqual(result["cycle_time"]["trend"], "down")
+
+    def test_pr_count_trend_capped_at_positive_500(self):
+        """PR count extreme increase should be capped at +500%."""
+        week1_start = self.end_date - timedelta(days=14)
+        week2_start = self.end_date - timedelta(days=7)
+
+        # Week 1: 10 PRs (minimum valid sample)
+        for _ in range(10):
+            PullRequestFactory(
+                team=self.team,
+                author=self.member,
+                state="merged",
+                merged_at=timezone.make_aware(timezone.datetime.combine(week1_start, timezone.datetime.min.time())),
+            )
+
+        # Week 2: 100 PRs (raw: 900% increase)
+        for _ in range(100):
+            PullRequestFactory(
+                team=self.team,
+                author=self.member,
+                state="merged",
+                merged_at=timezone.make_aware(timezone.datetime.combine(week2_start, timezone.datetime.min.time())),
+            )
+
+        result = get_sparkline_data(self.team, self.start_date, self.end_date)
+
+        # Should be capped at +500%, not +900%
+        self.assertEqual(result["prs_merged"]["change_pct"], 500)
+        self.assertEqual(result["prs_merged"]["trend"], "up")
+
+    def test_values_within_500_are_not_capped(self):
+        """Values within ±500% should pass through unchanged."""
+        week1_start = self.end_date - timedelta(days=14)
+        week2_start = self.end_date - timedelta(days=7)
+
+        # Week 1: 10 PRs
+        for _ in range(10):
+            PullRequestFactory(
+                team=self.team,
+                author=self.member,
+                state="merged",
+                merged_at=timezone.make_aware(timezone.datetime.combine(week1_start, timezone.datetime.min.time())),
+            )
+
+        # Week 2: 30 PRs (raw: 200% increase - within bounds)
+        for _ in range(30):
+            PullRequestFactory(
+                team=self.team,
+                author=self.member,
+                state="merged",
+                merged_at=timezone.make_aware(timezone.datetime.combine(week2_start, timezone.datetime.min.time())),
+            )
+
+        result = get_sparkline_data(self.team, self.start_date, self.end_date)
+
+        # 200% is within bounds, should not be capped
+        self.assertEqual(result["prs_merged"]["change_pct"], 200)
+        self.assertEqual(result["prs_merged"]["trend"], "up")

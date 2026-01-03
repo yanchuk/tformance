@@ -24,8 +24,10 @@ from django.views.decorators.http import require_POST
 
 from apps.integrations.models import GitHubIntegration, IntegrationCredential, TrackedRepository
 from apps.integrations.onboarding_pipeline import start_onboarding_pipeline
-from apps.integrations.services import github_oauth, member_sync
+from apps.integrations.services import github_oauth
 from apps.integrations.services.encryption import decrypt, encrypt
+from apps.integrations.services.integration_flags import get_next_onboarding_step, is_integration_enabled
+from apps.integrations.views.helpers import _sync_github_members_after_connection
 from apps.metrics.models import DailyInsight, PullRequest, WeeklyMetrics
 from apps.onboarding.services.notifications import send_welcome_email
 from apps.teams.helpers import get_next_unique_team_slug
@@ -39,6 +41,18 @@ logger = logging.getLogger(__name__)
 ONBOARDING_TOKEN_KEY = "onboarding_github_token"
 ONBOARDING_ORGS_KEY = "onboarding_github_orgs"
 ONBOARDING_SELECTED_ORG_KEY = "onboarding_selected_org"
+
+
+def _get_onboarding_flags_context(request) -> dict:
+    """Get feature flag context for onboarding templates.
+
+    Returns dict with jira_enabled and slack_enabled for conditional stepper rendering.
+    Used by A-002: Hide Jira/Slack steps when flags are disabled.
+    """
+    return {
+        "jira_enabled": is_integration_enabled(request, "jira"),
+        "slack_enabled": is_integration_enabled(request, "slack"),
+    }
 
 
 @login_required
@@ -55,7 +69,12 @@ def onboarding_start(request):
     return render(
         request,
         "onboarding/start.html",
-        {"page_title": _("Connect GitHub"), "step": 1, "has_github_social": has_github_social},
+        {
+            "page_title": _("Connect GitHub"),
+            "step": 1,
+            "has_github_social": has_github_social,
+            **_get_onboarding_flags_context(request),
+        },
     )
 
 
@@ -207,11 +226,8 @@ def github_app_callback(request):
     if not team.members.filter(id=request.user.id).exists():
         Membership.objects.create(team=team, user=request.user, role=ROLE_ADMIN)
 
-    # Sync GitHub members (fail silently to not block onboarding)
-    try:
-        member_sync.sync_github_members(team)
-    except Exception as e:
-        logger.warning(f"Failed to sync GitHub members during onboarding: {e}")
+    # Queue async member sync (A-007: fix missing arguments bug)
+    _sync_github_members_after_connection(team)
 
     return redirect("onboarding:select_repos")
 
@@ -247,6 +263,7 @@ def select_organization(request):
             "organizations": orgs,
             "page_title": _("Select Organization"),
             "step": 1,
+            **_get_onboarding_flags_context(request),
         },
     )
 
@@ -302,12 +319,8 @@ def _create_team_from_org(request, org: dict):
             webhook_secret=webhook_secret,
         )
 
-        # Sync organization members
-        try:
-            member_sync.sync_github_members(team)
-        except Exception as e:
-            logger.warning(f"Failed to sync GitHub members during onboarding: {e}")
-            # Don't block onboarding if member sync fails
+        # Queue async member sync (A-007: fix missing arguments bug)
+        _sync_github_members_after_connection(team)
 
         # Send welcome email (fail silently to not block onboarding)
         try:
@@ -428,6 +441,7 @@ def select_repositories(request):
             "app_installation": app_installation,
             "page_title": _("Select Repositories"),
             "step": 2,
+            **_get_onboarding_flags_context(request),
         },
     )
 
@@ -460,8 +474,19 @@ def fetch_repos(request):
         logger.error(f"Failed to fetch repos during onboarding: {e}")
         return render(request, "onboarding/partials/repos_error.html", {"error": str(e)})
 
-    # Sort repos by updated_at descending (most recent first), None values at end
-    repos = sorted(repos, key=lambda r: r.get("updated_at") or datetime.min.replace(tzinfo=UTC), reverse=True)
+    # A-008: Get tracked repo IDs to prioritize them at the top of the list
+    tracked_repo_ids = set(TrackedRepository.objects.filter(team=team).values_list("github_repo_id", flat=True))
+
+    # Sort repos: tracked first (sorted by updated_at), then untracked (sorted by updated_at)
+    # None values for updated_at are placed at the end within each group
+    def sort_key(repo):
+        is_tracked = repo.get("id") in tracked_repo_ids
+        updated_at = repo.get("updated_at") or datetime.min.replace(tzinfo=UTC)
+        # Tracked repos get priority (0), untracked get (1)
+        # Then sort by updated_at descending (negate for reverse)
+        return (0 if is_tracked else 1, -updated_at.timestamp())
+
+    repos = sorted(repos, key=sort_key)
 
     return render(
         request,
@@ -478,8 +503,6 @@ def sync_progress(request):
     1. Session team (if user navigated from a specific team's dashboard)
     2. User's first team (fallback)
     """
-    from apps.integrations.services.integration_flags import get_next_onboarding_step
-
     if not request.user.teams.exists():
         return redirect("onboarding:start")
 
@@ -505,6 +528,7 @@ def sync_progress(request):
             "step": 3,
             "first_insights_ready": first_insights_ready,
             "next_step": next_step,
+            **_get_onboarding_flags_context(request),
         },
     )
 
@@ -626,7 +650,6 @@ def connect_jira(request):
     from apps.auth.oauth_state import FLOW_TYPE_JIRA_ONBOARDING, create_oauth_state
     from apps.integrations.models import JiraIntegration
     from apps.integrations.services import jira_oauth
-    from apps.integrations.services.integration_flags import get_next_onboarding_step, is_integration_enabled
 
     if not request.user.teams.exists():
         return redirect("onboarding:start")
@@ -687,6 +710,7 @@ def connect_jira(request):
             "page_title": _("Connect Jira"),
             "step": 3,
             "sync_task_id": request.session.get("sync_task_id"),
+            **_get_onboarding_flags_context(request),
         },
     )
 
@@ -791,6 +815,7 @@ def select_jira_projects(request):
             "page_title": _("Select Jira Projects"),
             "step": 3,
             "sync_task_id": request.session.get("sync_task_id"),
+            **_get_onboarding_flags_context(request),
         },
     )
 
@@ -861,7 +886,6 @@ def connect_slack(request):
 
     from apps.auth.oauth_state import FLOW_TYPE_SLACK_ONBOARDING, create_oauth_state
     from apps.integrations.models import SlackIntegration
-    from apps.integrations.services.integration_flags import is_integration_enabled
     from apps.integrations.services.slack_oauth import SLACK_OAUTH_AUTHORIZE_URL, SLACK_OAUTH_SCOPES
 
     if not request.user.teams.exists():
@@ -952,6 +976,7 @@ def connect_slack(request):
             "sync_task_id": request.session.get("sync_task_id"),
             "jira_sync_task_id": request.session.get("jira_sync_task_id"),
             "slack_integration": slack_integration,
+            **_get_onboarding_flags_context(request),
         },
     )
 
@@ -1046,5 +1071,6 @@ def onboarding_complete(request):
             "jira_sync_task_id": request.session.get("jira_sync_task_id"),
             "jira_connected": jira_connected,
             "slack_connected": slack_connected,
+            **_get_onboarding_flags_context(request),
         },
     )

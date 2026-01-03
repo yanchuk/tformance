@@ -98,3 +98,22 @@ def revoke_api_key(request):
         ),
     )
     return HttpResponseRedirect(reverse("users:user_profile"))
+
+
+@login_required
+@require_POST
+def delete_account(request):
+    """A-016: Delete user's own account (GDPR compliance).
+
+    This permanently deletes the user account and logs them out.
+    User will be removed from all teams they belong to.
+    """
+    from django.contrib.auth import logout
+
+    user = request.user
+    # Log out the user first
+    logout(request)
+    # Delete the user (this will cascade delete related data)
+    user.delete()
+    messages.success(request, _("Your account has been permanently deleted."))
+    return HttpResponseRedirect(reverse("account_login"))

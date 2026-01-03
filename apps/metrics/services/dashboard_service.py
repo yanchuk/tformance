@@ -41,6 +41,12 @@ PR_SIZE_L_MAX = 500
 # to avoid misleading extreme values from low-activity periods (holidays, etc.)
 MIN_SPARKLINE_SAMPLE_SIZE = 3
 
+# Maximum trend percentage to display (A-001)
+# Extreme values like +12096% are not meaningful to users and indicate
+# statistical anomalies (e.g., 2min avg review time baseline). Cap at ±500%
+# to indicate "significant change" without false precision.
+MAX_TREND_PERCENTAGE = 500
+
 
 def _apply_repo_filter(qs: QuerySet, repo: str | None) -> QuerySet:
     """Apply repository filter to a queryset if repo is specified.
@@ -2263,6 +2269,9 @@ def get_sparkline_data(
             return 0, "flat"
 
         change_pct = int(round(((last_val - first_val) / first_val) * 100))
+
+        # Cap extreme percentages at ±MAX_TREND_PERCENTAGE (A-001)
+        change_pct = max(-MAX_TREND_PERCENTAGE, min(MAX_TREND_PERCENTAGE, change_pct))
 
         if change_pct > 0:
             trend = "up"

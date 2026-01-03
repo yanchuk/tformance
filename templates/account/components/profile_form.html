@@ -6,7 +6,7 @@
       <img class="avatar" src="{{ user.avatar_url }}">
       <div id='profile-upload-holder'>
         <label for="profile-upload" >
-          <a id="profile-upload-label" class="pg-button-light">
+          <a id="profile-upload-label" class="btn btn-ghost btn-sm">
             {% translate "Change Picture" %}
           </a>
         </label>
@@ -25,7 +25,7 @@
       {% render_text_input form.first_name %}
       {% render_text_input form.last_name %}
       <div class="mt-2">
-        <input class="pg-button-primary" type="submit" value="{% translate "Save" %}">
+        <input class="btn btn-primary" type="submit" value="{% translate "Save" %}">
       </div>
     </form>
   </div>
