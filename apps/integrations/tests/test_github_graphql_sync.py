@@ -14,6 +14,19 @@ from apps.metrics.factories import TeamFactory, TeamMemberFactory
 from apps.metrics.models import Commit, PRFile, PRReview, PullRequest, TeamMember
 
 
+def create_mock_graphql_client():
+    """Create a mock GitHubGraphQLClient with all async methods properly mocked.
+
+    Returns a MagicMock with all async methods set up as AsyncMock to prevent
+    'can't be used in await expression' errors.
+    """
+    mock_client = MagicMock()
+    # The get_pr_count_in_date_range method is called before fetch_prs_bulk
+    # Return 0 to trigger fallback to totalCount from fetch_prs_bulk response
+    mock_client.get_pr_count_in_date_range = AsyncMock(return_value=0)
+    return mock_client
+
+
 def create_graphql_pr_response(pr_number=123, state="MERGED", has_reviews=True, has_commits=True, has_files=True):
     """Helper to create realistic GraphQL PR response data."""
     base_time = timezone.now() - timedelta(days=5)
@@ -82,7 +95,7 @@ class TestSyncRepositoryHistoryGraphQLBasicFunctionality(TransactionTestCase):
     def test_sync_creates_pull_request_from_graphql_data(self, mock_client_class):
         """Test that sync creates PullRequest records from GraphQL response."""
         # Arrange
-        mock_client = MagicMock()
+        mock_client = create_mock_graphql_client()
         mock_client_class.return_value = mock_client
 
         pr_data = create_graphql_pr_response(pr_number=123, state="MERGED")
@@ -110,7 +123,7 @@ class TestSyncRepositoryHistoryGraphQLBasicFunctionality(TransactionTestCase):
     def test_sync_maps_graphql_fields_to_model_fields(self, mock_client_class):
         """Test that sync correctly maps GraphQL camelCase fields to snake_case model fields."""
         # Arrange
-        mock_client = MagicMock()
+        mock_client = create_mock_graphql_client()
         mock_client_class.return_value = mock_client
 
         base_time = timezone.now() - timedelta(days=5)
@@ -155,7 +168,7 @@ class TestSyncRepositoryHistoryGraphQLBasicFunctionality(TransactionTestCase):
     def test_sync_uses_graphql_client_fetch_prs_bulk(self, mock_client_class):
         """Test that sync uses GitHubGraphQLClient.fetch_prs_bulk to fetch PRs."""
         # Arrange
-        mock_client = MagicMock()
+        mock_client = create_mock_graphql_client()
         mock_client_class.return_value = mock_client
 
         mock_client.fetch_prs_bulk = AsyncMock(
@@ -178,7 +191,7 @@ class TestSyncRepositoryHistoryGraphQLBasicFunctionality(TransactionTestCase):
     def test_sync_returns_result_dict_with_counts(self, mock_client_class):
         """Test that sync returns dict with prs_synced, reviews_synced, etc."""
         # Arrange
-        mock_client = MagicMock()
+        mock_client = create_mock_graphql_client()
         mock_client_class.return_value = mock_client
 
         mock_client.fetch_prs_bulk = AsyncMock(
@@ -215,7 +228,7 @@ class TestSyncRepositoryHistoryGraphQLPagination(TransactionTestCase):
     def test_sync_handles_multiple_pages_of_prs(self, mock_client_class):
         """Test that sync fetches all pages of PRs using pagination cursors."""
         # Arrange
-        mock_client = MagicMock()
+        mock_client = create_mock_graphql_client()
         mock_client_class.return_value = mock_client
 
         # Page 1 response
@@ -261,7 +274,7 @@ class TestSyncRepositoryHistoryGraphQLPagination(TransactionTestCase):
     def test_sync_passes_pagination_cursor_correctly(self, mock_client_class):
         """Test that sync passes pagination cursor to subsequent fetch_prs_bulk calls."""
         # Arrange
-        mock_client = MagicMock()
+        mock_client = create_mock_graphql_client()
         mock_client_class.return_value = mock_client
 
         page1_data = {
@@ -311,7 +324,7 @@ class TestSyncRepositoryHistoryGraphQLDaysBackFilter(TransactionTestCase):
     def test_sync_filters_prs_older_than_days_back(self, mock_client_class):
         """Test that sync filters out PRs created before days_back threshold."""
         # Arrange
-        mock_client = MagicMock()
+        mock_client = create_mock_graphql_client()
         mock_client_class.return_value = mock_client
 
         # PR created 100 days ago (should be filtered out with days_back=90)
@@ -346,7 +359,7 @@ class TestSyncRepositoryHistoryGraphQLDaysBackFilter(TransactionTestCase):
     def test_sync_respects_custom_days_back_parameter(self, mock_client_class):
         """Test that sync respects custom days_back parameter."""
         # Arrange
-        mock_client = MagicMock()
+        mock_client = create_mock_graphql_client()
         mock_client_class.return_value = mock_client
 
         # PR created 20 days ago (should be filtered out with days_back=10)
@@ -384,7 +397,7 @@ class TestSyncRepositoryHistoryGraphQLNestedData(TransactionTestCase):
     def test_sync_creates_pr_reviews_from_nested_data(self, mock_client_class):
         """Test that sync creates PRReview records from nested reviews data."""
         # Arrange
-        mock_client = MagicMock()
+        mock_client = create_mock_graphql_client()
         mock_client_class.return_value = mock_client
 
         pr_data = create_graphql_pr_response(pr_number=123, has_reviews=True)
@@ -412,7 +425,7 @@ class TestSyncRepositoryHistoryGraphQLNestedData(TransactionTestCase):
     def test_sync_creates_commits_from_nested_data(self, mock_client_class):
         """Test that sync creates Commit records from nested commits data."""
         # Arrange
-        mock_client = MagicMock()
+        mock_client = create_mock_graphql_client()
         mock_client_class.return_value = mock_client
 
         pr_data = create_graphql_pr_response(pr_number=123, has_commits=True)
@@ -440,7 +453,7 @@ class TestSyncRepositoryHistoryGraphQLNestedData(TransactionTestCase):
     def test_sync_creates_pr_files_from_nested_data(self, mock_client_class):
         """Test that sync creates PRFile records from nested files data."""
         # Arrange
-        mock_client = MagicMock()
+        mock_client = create_mock_graphql_client()
         mock_client_class.return_value = mock_client
 
         pr_data = create_graphql_pr_response(pr_number=123, has_files=True)
@@ -469,7 +482,7 @@ class TestSyncRepositoryHistoryGraphQLNestedData(TransactionTestCase):
     def test_sync_handles_pr_without_nested_data(self, mock_client_class):
         """Test that sync handles PRs with no reviews, commits, or files gracefully."""
         # Arrange
-        mock_client = MagicMock()
+        mock_client = create_mock_graphql_client()
         mock_client_class.return_value = mock_client
 
         pr_data = create_graphql_pr_response(pr_number=123, has_reviews=False, has_commits=False, has_files=False)
@@ -504,7 +517,7 @@ class TestSyncRepositoryHistoryGraphQLErrorHandling(TransactionTestCase):
     def test_sync_logs_errors_but_continues_processing_other_prs(self, mock_client_class):
         """Test that sync logs errors for individual PRs but continues processing others."""
         # Arrange
-        mock_client = MagicMock()
+        mock_client = create_mock_graphql_client()
         mock_client_class.return_value = mock_client
 
         # PR with invalid data that will cause processing error
@@ -540,7 +553,7 @@ class TestSyncRepositoryHistoryGraphQLErrorHandling(TransactionTestCase):
     def test_sync_returns_errors_list_in_result(self, mock_client_class):
         """Test that sync returns list of errors in result dict."""
         # Arrange
-        mock_client = MagicMock()
+        mock_client = create_mock_graphql_client()
         mock_client_class.return_value = mock_client
 
         mock_client.fetch_prs_bulk = AsyncMock(side_effect=GitHubGraphQLError("API error"))
@@ -556,7 +569,7 @@ class TestSyncRepositoryHistoryGraphQLErrorHandling(TransactionTestCase):
     def test_sync_handles_graphql_rate_limit_error(self, mock_client_class):
         """Test that sync handles GitHubGraphQLRateLimitError appropriately."""
         # Arrange
-        mock_client = MagicMock()
+        mock_client = create_mock_graphql_client()
         mock_client_class.return_value = mock_client
 
         mock_client.fetch_prs_bulk = AsyncMock(side_effect=GitHubGraphQLRateLimitError("Rate limit exceeded"))
@@ -572,7 +585,7 @@ class TestSyncRepositoryHistoryGraphQLErrorHandling(TransactionTestCase):
     def test_sync_handles_graphql_error(self, mock_client_class):
         """Test that sync handles GitHubGraphQLError appropriately."""
         # Arrange
-        mock_client = MagicMock()
+        mock_client = create_mock_graphql_client()
         mock_client_class.return_value = mock_client
 
         mock_client.fetch_prs_bulk = AsyncMock(side_effect=GitHubGraphQLError("GraphQL query failed"))
@@ -597,7 +610,7 @@ class TestSyncRepositoryHistoryGraphQLProgressTracking(TransactionTestCase):
     def test_sync_updates_tracked_repository_sync_status(self, mock_client_class):
         """Test that sync updates TrackedRepository.sync_status during sync."""
         # Arrange
-        mock_client = MagicMock()
+        mock_client = create_mock_graphql_client()
         mock_client_class.return_value = mock_client
 
         mock_client.fetch_prs_bulk = AsyncMock(
@@ -618,7 +631,7 @@ class TestSyncRepositoryHistoryGraphQLProgressTracking(TransactionTestCase):
     def test_sync_updates_tracked_repository_last_sync_at(self, mock_client_class):
         """Test that sync updates TrackedRepository.last_sync_at timestamp."""
         # Arrange
-        mock_client = MagicMock()
+        mock_client = create_mock_graphql_client()
         mock_client_class.return_value = mock_client
 
         mock_client.fetch_prs_bulk = AsyncMock(
@@ -643,7 +656,7 @@ class TestSyncRepositoryHistoryGraphQLProgressTracking(TransactionTestCase):
     def test_sync_sets_sync_status_to_error_on_failure(self, mock_client_class):
         """Test that sync sets TrackedRepository.sync_status to 'error' on failure."""
         # Arrange
-        mock_client = MagicMock()
+        mock_client = create_mock_graphql_client()
         mock_client_class.return_value = mock_client
 
         mock_client.fetch_prs_bulk = AsyncMock(side_effect=Exception("Unexpected error"))
@@ -654,6 +667,81 @@ class TestSyncRepositoryHistoryGraphQLProgressTracking(TransactionTestCase):
         # Assert
         self.tracked_repo.refresh_from_db()
         self.assertEqual(self.tracked_repo.sync_status, "error")
+
+    @patch("apps.integrations.services.github_graphql_sync.GitHubGraphQLClient")
+    def test_sync_updates_progress_fields_during_sync(self, mock_client_class):
+        """Test that sync updates sync_progress, sync_prs_completed, sync_prs_total."""
+        # Arrange
+        mock_client = create_mock_graphql_client()
+        mock_client_class.return_value = mock_client
+
+        pr_data = create_graphql_pr_response(pr_number=1)
+        mock_client.fetch_prs_bulk = AsyncMock(
+            return_value={
+                "repository": {
+                    "pullRequests": {
+                        "nodes": [pr_data],
+                        "totalCount": 50,  # Total PRs in repo
+                        "pageInfo": {"hasNextPage": False, "endCursor": None},
+                    }
+                },
+                "rateLimit": {"remaining": 5000},
+            }
+        )
+
+        # Act
+        asyncio.run(sync_repository_history_graphql(self.tracked_repo, days_back=90))
+
+        # Assert
+        self.tracked_repo.refresh_from_db()
+        self.assertEqual(self.tracked_repo.sync_prs_total, 50)
+        self.assertEqual(self.tracked_repo.sync_prs_completed, 50)  # Should be total at end
+        self.assertEqual(self.tracked_repo.sync_progress, 100)  # Should be 100% at end
+
+    @patch("apps.integrations.services.github_graphql_sync.GitHubGraphQLClient")
+    def test_sync_initializes_progress_from_totalcount(self, mock_client_class):
+        """Test that sync gets totalCount from first GraphQL response."""
+        # Arrange
+        mock_client = create_mock_graphql_client()
+        mock_client_class.return_value = mock_client
+
+        # First page with hasNextPage=True to simulate pagination
+        first_page_prs = [create_graphql_pr_response(pr_number=i) for i in range(1, 11)]
+        second_page_prs = [create_graphql_pr_response(pr_number=i) for i in range(11, 16)]
+
+        mock_client.fetch_prs_bulk = AsyncMock(
+            side_effect=[
+                {
+                    "repository": {
+                        "pullRequests": {
+                            "nodes": first_page_prs,
+                            "totalCount": 100,
+                            "pageInfo": {"hasNextPage": True, "endCursor": "cursor1"},
+                        }
+                    },
+                    "rateLimit": {"remaining": 5000},
+                },
+                {
+                    "repository": {
+                        "pullRequests": {
+                            "nodes": second_page_prs,
+                            "totalCount": 100,
+                            "pageInfo": {"hasNextPage": False, "endCursor": None},
+                        }
+                    },
+                    "rateLimit": {"remaining": 5000},
+                },
+            ]
+        )
+
+        # Act
+        asyncio.run(sync_repository_history_graphql(self.tracked_repo, days_back=90))
+
+        # Assert
+        self.tracked_repo.refresh_from_db()
+        self.assertEqual(self.tracked_repo.sync_prs_total, 100)
+        # Progress should be 100% at end (completed/total capped)
+        self.assertEqual(self.tracked_repo.sync_progress, 100)
 
 
 class TestSyncRepositoryHistoryGraphQLDataUpdateBehavior(TransactionTestCase):
@@ -679,7 +767,7 @@ class TestSyncRepositoryHistoryGraphQLDataUpdateBehavior(TransactionTestCase):
             state="open",
         )
 
-        mock_client = MagicMock()
+        mock_client = create_mock_graphql_client()
         mock_client_class.return_value = mock_client
 
         pr_data = create_graphql_pr_response(pr_number=123, state="MERGED")
@@ -707,7 +795,7 @@ class TestSyncRepositoryHistoryGraphQLDataUpdateBehavior(TransactionTestCase):
     def test_sync_creates_new_pull_request_if_not_exists(self, mock_client_class):
         """Test that sync creates new PullRequest if doesn't exist."""
         # Arrange
-        mock_client = MagicMock()
+        mock_client = create_mock_graphql_client()
         mock_client_class.return_value = mock_client
 
         pr_data = create_graphql_pr_response(pr_number=999)
@@ -777,7 +865,7 @@ class TestSyncRepositoryIncrementalGraphQLBasicFunctionality(TransactionTestCase
     def test_sync_incremental_returns_result_dict_with_counts(self, mock_client_class):
         """Test that sync_repository_incremental_graphql returns dict with sync counts."""
         # Arrange
-        mock_client = MagicMock()
+        mock_client = create_mock_graphql_client()
         mock_client_class.return_value = mock_client
         mock_client.fetch_prs_updated_since = AsyncMock(
             return_value={
@@ -802,7 +890,7 @@ class TestSyncRepositoryIncrementalGraphQLBasicFunctionality(TransactionTestCase
     def test_sync_incremental_uses_fetch_prs_updated_since(self, mock_client_class):
         """Test that incremental sync uses fetch_prs_updated_since method."""
         # Arrange
-        mock_client = MagicMock()
+        mock_client = create_mock_graphql_client()
         mock_client_class.return_value = mock_client
         mock_client.fetch_prs_updated_since = AsyncMock(
             return_value={
@@ -823,7 +911,7 @@ class TestSyncRepositoryIncrementalGraphQLBasicFunctionality(TransactionTestCase
     def test_sync_incremental_passes_since_parameter(self, mock_client_class):
         """Test that incremental sync passes the last_sync_at as since parameter."""
         # Arrange
-        mock_client = MagicMock()
+        mock_client = create_mock_graphql_client()
         mock_client_class.return_value = mock_client
         mock_client.fetch_prs_updated_since = AsyncMock(
             return_value={
@@ -861,7 +949,7 @@ class TestSyncRepositoryIncrementalGraphQLPRProcessing(TransactionTestCase):
     def test_sync_incremental_creates_pr_from_response(self, mock_client_class):
         """Test that incremental sync creates PullRequest from GraphQL response."""
         # Arrange
-        mock_client = MagicMock()
+        mock_client = create_mock_graphql_client()
         mock_client_class.return_value = mock_client
 
         pr_data = create_incremental_pr_response(pr_number=456)
@@ -887,7 +975,7 @@ class TestSyncRepositoryIncrementalGraphQLPRProcessing(TransactionTestCase):
     def test_sync_incremental_updates_existing_pr(self, mock_client_class):
         """Test that incremental sync updates existing PullRequest."""
         # Arrange
-        mock_client = MagicMock()
+        mock_client = create_mock_graphql_client()
         mock_client_class.return_value = mock_client
 
         # Create existing PR
@@ -939,7 +1027,7 @@ class TestSyncRepositoryIncrementalGraphQLErrorHandling(TransactionTestCase):
     def test_sync_incremental_handles_graphql_error(self, mock_client_class):
         """Test that incremental sync handles GraphQL errors gracefully."""
         # Arrange
-        mock_client = MagicMock()
+        mock_client = create_mock_graphql_client()
         mock_client_class.return_value = mock_client
         mock_client.fetch_prs_updated_since = AsyncMock(side_effect=GitHubGraphQLError("Query failed"))
 
@@ -956,7 +1044,7 @@ class TestSyncRepositoryIncrementalGraphQLErrorHandling(TransactionTestCase):
     def test_sync_incremental_handles_rate_limit_error(self, mock_client_class):
         """Test that incremental sync handles rate limit errors."""
         # Arrange
-        mock_client = MagicMock()
+        mock_client = create_mock_graphql_client()
         mock_client_class.return_value = mock_client
         mock_client.fetch_prs_updated_since = AsyncMock(side_effect=GitHubGraphQLRateLimitError("Rate limit"))
 
@@ -986,7 +1074,7 @@ class TestSyncRepositoryIncrementalGraphQLStatusTracking(TransactionTestCase):
     def test_sync_incremental_updates_last_sync_at(self, mock_client_class):
         """Test that incremental sync updates last_sync_at on completion."""
         # Arrange
-        mock_client = MagicMock()
+        mock_client = create_mock_graphql_client()
         mock_client_class.return_value = mock_client
         mock_client.fetch_prs_updated_since = AsyncMock(
             return_value={
@@ -1011,7 +1099,7 @@ class TestSyncRepositoryIncrementalGraphQLStatusTracking(TransactionTestCase):
     def test_sync_incremental_sets_sync_status_complete(self, mock_client_class):
         """Test that incremental sync sets sync_status to complete on success."""
         # Arrange
-        mock_client = MagicMock()
+        mock_client = create_mock_graphql_client()
         mock_client_class.return_value = mock_client
         mock_client.fetch_prs_updated_since = AsyncMock(
             return_value={
@@ -1033,7 +1121,7 @@ class TestSyncRepositoryIncrementalGraphQLStatusTracking(TransactionTestCase):
     def test_sync_incremental_sets_sync_status_error_on_failure(self, mock_client_class):
         """Test that incremental sync sets sync_status to error on failure."""
         # Arrange
-        mock_client = MagicMock()
+        mock_client = create_mock_graphql_client()
         mock_client_class.return_value = mock_client
         mock_client.fetch_prs_updated_since = AsyncMock(side_effect=GitHubGraphQLError("Query failed"))
 
@@ -1045,6 +1133,40 @@ class TestSyncRepositoryIncrementalGraphQLStatusTracking(TransactionTestCase):
         # Assert
         self.tracked_repo.refresh_from_db()
         self.assertEqual(self.tracked_repo.sync_status, "error")
+
+    @patch("apps.integrations.services.github_graphql_sync.GitHubGraphQLClient")
+    def test_sync_incremental_updates_progress_fields(self, mock_client_class):
+        """Test that incremental sync updates progress fields."""
+        # Arrange
+        mock_client = create_mock_graphql_client()
+        mock_client_class.return_value = mock_client
+
+        pr_data = create_graphql_pr_response(pr_number=1)
+        pr_data["updatedAt"] = timezone.now().isoformat()  # Recent update
+
+        mock_client.fetch_prs_updated_since = AsyncMock(
+            return_value={
+                "repository": {
+                    "pullRequests": {
+                        "nodes": [pr_data],
+                        "pageInfo": {"hasNextPage": False, "endCursor": None},
+                    }
+                },
+                "rateLimit": {"remaining": 5000},
+            }
+        )
+
+        # Act
+        from apps.integrations.services.github_graphql_sync import sync_repository_incremental_graphql
+
+        asyncio.run(sync_repository_incremental_graphql(self.tracked_repo))
+
+        # Assert
+        self.tracked_repo.refresh_from_db()
+        # Progress should be 100% at completion
+        self.assertEqual(self.tracked_repo.sync_progress, 100)
+        # For incremental, prs_completed = prs_total at end
+        self.assertEqual(self.tracked_repo.sync_prs_completed, self.tracked_repo.sync_prs_total)
 
 
 # =============================================================================
@@ -1078,7 +1200,7 @@ class TestFetchPRCompleteDataGraphQLBasic(TransactionTestCase):
             github_pr_id=42,
         )
 
-        mock_client = MagicMock()
+        mock_client = create_mock_graphql_client()
         mock_client_class.return_value = mock_client
         mock_client.fetch_single_pr = AsyncMock(
             return_value={
@@ -1108,7 +1230,7 @@ class TestFetchPRCompleteDataGraphQLBasic(TransactionTestCase):
             github_pr_id=42,
         )
 
-        mock_client = MagicMock()
+        mock_client = create_mock_graphql_client()
         mock_client_class.return_value = mock_client
         mock_client.fetch_single_pr = AsyncMock(
             return_value={
@@ -1158,7 +1280,7 @@ class TestFetchPRCompleteDataGraphQLDataProcessing(TransactionTestCase):
         )
 
         pr_response = create_graphql_pr_response(pr_number=42, has_commits=True)
-        mock_client = MagicMock()
+        mock_client = create_mock_graphql_client()
         mock_client_class.return_value = mock_client
         mock_client.fetch_single_pr = AsyncMock(
             return_value={
@@ -1188,7 +1310,7 @@ class TestFetchPRCompleteDataGraphQLDataProcessing(TransactionTestCase):
         )
 
         pr_response = create_graphql_pr_response(pr_number=42, has_files=True)
-        mock_client = MagicMock()
+        mock_client = create_mock_graphql_client()
         mock_client_class.return_value = mock_client
         mock_client.fetch_single_pr = AsyncMock(
             return_value={
@@ -1218,7 +1340,7 @@ class TestFetchPRCompleteDataGraphQLDataProcessing(TransactionTestCase):
         )
 
         pr_response = create_graphql_pr_response(pr_number=42, has_reviews=True)
-        mock_client = MagicMock()
+        mock_client = create_mock_graphql_client()
         mock_client_class.return_value = mock_client
         mock_client.fetch_single_pr = AsyncMock(
             return_value={
@@ -1260,7 +1382,7 @@ class TestFetchPRCompleteDataGraphQLErrorHandling(TransactionTestCase):
             github_pr_id=42,
         )
 
-        mock_client = MagicMock()
+        mock_client = create_mock_graphql_client()
         mock_client_class.return_value = mock_client
         mock_client.fetch_single_pr = AsyncMock(side_effect=GitHubGraphQLError("Query failed"))
 
@@ -1285,7 +1407,7 @@ class TestFetchPRCompleteDataGraphQLErrorHandling(TransactionTestCase):
             github_pr_id=42,
         )
 
-        mock_client = MagicMock()
+        mock_client = create_mock_graphql_client()
         mock_client_class.return_value = mock_client
         mock_client.fetch_single_pr = AsyncMock(side_effect=GitHubGraphQLRateLimitError("Rate limit exceeded"))
 
@@ -1310,7 +1432,7 @@ class TestFetchPRCompleteDataGraphQLErrorHandling(TransactionTestCase):
             github_pr_id=42,
         )
 
-        mock_client = MagicMock()
+        mock_client = create_mock_graphql_client()
         mock_client_class.return_value = mock_client
         mock_client.fetch_single_pr = AsyncMock(
             return_value={
@@ -1350,7 +1472,7 @@ class TestSyncGitHubMembersGraphQLBasic(TransactionTestCase):
     def test_sync_github_members_graphql_returns_result_dict(self, mock_client_class):
         """Test that sync_github_members_graphql returns dict with counts."""
         # Arrange
-        mock_client = MagicMock()
+        mock_client = create_mock_graphql_client()
         mock_client_class.return_value = mock_client
         mock_client.fetch_org_members = AsyncMock(
             return_value={
@@ -1389,7 +1511,7 @@ class TestSyncGitHubMembersGraphQLDataProcessing(TransactionTestCase):
     def test_creates_team_member_from_graphql_response(self, mock_client_class):
         """Test that sync creates TeamMember from GraphQL member data."""
         # Arrange
-        mock_client = MagicMock()
+        mock_client = create_mock_graphql_client()
         mock_client_class.return_value = mock_client
         mock_client.fetch_org_members = AsyncMock(
             return_value={
@@ -1433,7 +1555,7 @@ class TestSyncGitHubMembersGraphQLDataProcessing(TransactionTestCase):
             display_name="Old Name",
         )
 
-        mock_client = MagicMock()
+        mock_client = create_mock_graphql_client()
         mock_client_class.return_value = mock_client
         mock_client.fetch_org_members = AsyncMock(
             return_value={
@@ -1470,7 +1592,7 @@ class TestSyncGitHubMembersGraphQLDataProcessing(TransactionTestCase):
     def test_handles_member_without_name(self, mock_client_class):
         """Test that sync handles member with null name field."""
         # Arrange
-        mock_client = MagicMock()
+        mock_client = create_mock_graphql_client()
         mock_client_class.return_value = mock_client
         mock_client.fetch_org_members = AsyncMock(
             return_value={
@@ -1515,7 +1637,7 @@ class TestSyncGitHubMembersGraphQLPagination(TransactionTestCase):
     def test_handles_pagination(self, mock_client_class):
         """Test that sync handles paginated responses."""
         # Arrange
-        mock_client = MagicMock()
+        mock_client = create_mock_graphql_client()
         mock_client_class.return_value = mock_client
 
         # First page response
@@ -1565,7 +1687,7 @@ class TestSyncGitHubMembersGraphQLErrorHandling(TransactionTestCase):
     def test_handles_graphql_error(self, mock_client_class):
         """Test that GraphQL errors are caught and returned in errors list."""
         # Arrange
-        mock_client = MagicMock()
+        mock_client = create_mock_graphql_client()
         mock_client_class.return_value = mock_client
         mock_client.fetch_org_members = AsyncMock(side_effect=GitHubGraphQLError("Query failed"))
 
@@ -1582,7 +1704,7 @@ class TestSyncGitHubMembersGraphQLErrorHandling(TransactionTestCase):
     def test_handles_rate_limit_error(self, mock_client_class):
         """Test that rate limit errors are caught and returned."""
         # Arrange
-        mock_client = MagicMock()
+        mock_client = create_mock_graphql_client()
         mock_client_class.return_value = mock_client
         mock_client.fetch_org_members = AsyncMock(side_effect=GitHubGraphQLRateLimitError("Rate limit"))
 
@@ -1614,7 +1736,7 @@ class TestGraphQLSyncAIDetectionInitialSync(TransactionTestCase):
     def test_pr_by_bot_author_is_marked_ai_assisted(self, mock_client_class):
         """Test that PR authored by a bot (e.g., Devin) is marked as AI-assisted."""
         # Arrange
-        mock_client = MagicMock()
+        mock_client = create_mock_graphql_client()
         mock_client_class.return_value = mock_client
 
         # PR authored by Devin AI bot
@@ -1643,7 +1765,7 @@ class TestGraphQLSyncAIDetectionInitialSync(TransactionTestCase):
     def test_pr_with_ai_disclosure_in_body_is_marked_ai_assisted(self, mock_client_class):
         """Test that PR with AI disclosure in body is marked as AI-assisted."""
         # Arrange
-        mock_client = MagicMock()
+        mock_client = create_mock_graphql_client()
         mock_client_class.return_value = mock_client
 
         # PR by human author with AI disclosure in body
@@ -1676,7 +1798,7 @@ class TestGraphQLSyncAIDetectionInitialSync(TransactionTestCase):
     def test_pr_without_ai_involvement_not_marked_ai_assisted(self, mock_client_class):
         """Test that PR without AI involvement stays is_ai_assisted=False."""
         # Arrange
-        mock_client = MagicMock()
+        mock_client = create_mock_graphql_client()
         mock_client_class.return_value = mock_client
 
         # Regular PR by human author
@@ -1705,7 +1827,7 @@ class TestGraphQLSyncAIDetectionInitialSync(TransactionTestCase):
     def test_pr_by_dependabot_is_marked_ai_assisted(self, mock_client_class):
         """Test that PR by dependabot is marked as AI-assisted."""
         # Arrange
-        mock_client = MagicMock()
+        mock_client = create_mock_graphql_client()
         mock_client_class.return_value = mock_client
 
         pr_data = create_graphql_pr_response(pr_number=100, state="MERGED")
@@ -1734,7 +1856,7 @@ class TestGraphQLSyncAIDetectionInitialSync(TransactionTestCase):
     def test_pr_combines_bot_author_and_text_detection(self, mock_client_class):
         """Test that PR combines bot author and text detection for ai_tools_detected."""
         # Arrange
-        mock_client = MagicMock()
+        mock_client = create_mock_graphql_client()
         mock_client_class.return_value = mock_client
 
         # Bot PR with additional AI tool mention in body
@@ -1778,7 +1900,7 @@ class TestGraphQLSyncAIDetectionIncrementalSync(TransactionTestCase):
     def test_incremental_sync_detects_bot_author(self, mock_client_class):
         """Test that incremental sync detects bot authors."""
         # Arrange
-        mock_client = MagicMock()
+        mock_client = create_mock_graphql_client()
         mock_client_class.return_value = mock_client
 
         pr_data = create_incremental_pr_response(pr_number=300, state="MERGED")
@@ -1808,7 +1930,7 @@ class TestGraphQLSyncAIDetectionIncrementalSync(TransactionTestCase):
     def test_incremental_sync_detects_ai_disclosure_in_body(self, mock_client_class):
         """Test that incremental sync detects AI disclosure in PR body."""
         # Arrange
-        mock_client = MagicMock()
+        mock_client = create_mock_graphql_client()
         mock_client_class.return_value = mock_client
 
         pr_data = create_incremental_pr_response(pr_number=400, state="MERGED")
@@ -1849,7 +1971,7 @@ class TestGraphQLSyncAIDetectionIncrementalSync(TransactionTestCase):
             author=self.human_author,
         )
 
-        mock_client = MagicMock()
+        mock_client = create_mock_graphql_client()
         mock_client_class.return_value = mock_client
 
         # Update adds AI disclosure
@@ -1896,7 +2018,7 @@ class TestGraphQLSyncTimingMetrics(TransactionTestCase):
     def test_process_pr_calculates_cycle_time_for_merged_pr(self, mock_client_class):
         """Test that _process_pr calculates cycle_time_hours for merged PRs."""
         # Arrange
-        mock_client = MagicMock()
+        mock_client = create_mock_graphql_client()
         mock_client_class.return_value = mock_client
 
         # PR created and merged 48 hours later (2 days)
@@ -1929,7 +2051,7 @@ class TestGraphQLSyncTimingMetrics(TransactionTestCase):
     def test_process_pr_does_not_calculate_cycle_time_for_open_pr(self, mock_client_class):
         """Test that _process_pr does not calculate cycle_time_hours for open PRs."""
         # Arrange
-        mock_client = MagicMock()
+        mock_client = create_mock_graphql_client()
         mock_client_class.return_value = mock_client
 
         # Open PR (not merged)
@@ -1959,7 +2081,7 @@ class TestGraphQLSyncTimingMetrics(TransactionTestCase):
     def test_process_reviews_updates_first_review_at(self, mock_client_class):
         """Test that _process_reviews updates PR's first_review_at field."""
         # Arrange
-        mock_client = MagicMock()
+        mock_client = create_mock_graphql_client()
         mock_client_class.return_value = mock_client
 
         pr_created = timezone.now() - timedelta(days=3)
@@ -1991,7 +2113,7 @@ class TestGraphQLSyncTimingMetrics(TransactionTestCase):
     def test_process_reviews_calculates_review_time_hours(self, mock_client_class):
         """Test that _process_reviews calculates review_time_hours."""
         # Arrange
-        mock_client = MagicMock()
+        mock_client = create_mock_graphql_client()
         mock_client_class.return_value = mock_client
 
         pr_created = timezone.now() - timedelta(days=3)
@@ -2023,7 +2145,7 @@ class TestGraphQLSyncTimingMetrics(TransactionTestCase):
     def test_process_reviews_uses_earliest_review_timestamp(self, mock_client_class):
         """Test that _process_reviews uses the earliest review when multiple reviews exist."""
         # Arrange
-        mock_client = MagicMock()
+        mock_client = create_mock_graphql_client()
         mock_client_class.return_value = mock_client
 
         pr_created = timezone.now() - timedelta(days=3)
@@ -2080,3 +2202,89 @@ class TestGraphQLSyncTimingMetrics(TransactionTestCase):
         # Should use the earliest review (4 hours after creation)
         self.assertEqual(pr.first_review_at.replace(microsecond=0), first_review.replace(microsecond=0))
         self.assertAlmostEqual(float(pr.review_time_hours), 4.0, delta=0.1)
+
+
+# =============================================================================
+# Sync Progress Tracking Tests (Fix for totalCount bug)
+# =============================================================================
+
+
+class TestSyncProgressTracking(TransactionTestCase):
+    """Tests for accurate progress tracking using date-filtered PR count.
+
+    The bug: totalCount from GitHub GraphQL pullRequests connection returns ALL PRs
+    in the repository, not just PRs in the sync date range. This causes:
+    - Progress showing 2% when sync is actually complete
+    - Wrong time estimates during onboarding
+
+    Solution: Use get_pr_count_in_date_range() to get accurate count of PRs
+    within the date filter before starting sync.
+    """
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.team = TeamFactory()
+        self.tracked_repo = TrackedRepositoryFactory(team=self.team, full_name="owner/repo")
+        self.author = TeamMemberFactory(team=self.team, github_id="testuser")
+
+    @patch("apps.integrations.services.github_graphql_sync.GitHubGraphQLClient")
+    def test_progress_uses_date_filtered_count(self, mock_client_class):
+        """Test that sync progress uses get_pr_count_in_date_range instead of totalCount.
+
+        This is the core test for the sync progress fix.
+
+        Scenario:
+        - Repository has 2410 total PRs (all time)
+        - Sync is filtering to last 30 days = 14 PRs
+        - totalCount returns 2410 (BUG: wrong for progress)
+        - get_pr_count_in_date_range returns 14 (CORRECT for progress)
+
+        Expected: sync_prs_total should be 14, not 2410
+        """
+        # Arrange
+        mock_client = create_mock_graphql_client()
+        mock_client_class.return_value = mock_client
+
+        # get_pr_count_in_date_range returns accurate count for date range
+        mock_client.get_pr_count_in_date_range = AsyncMock(return_value=14)
+
+        # fetch_prs_bulk returns totalCount of ALL PRs (the bug)
+        # But with the fix, we should use get_pr_count_in_date_range instead
+        recent_prs = [create_graphql_pr_response(pr_number=i) for i in range(1, 15)]
+        for i, pr in enumerate(recent_prs):
+            # PRs within last 30 days
+            pr["createdAt"] = (timezone.now() - timedelta(days=i + 1)).isoformat()
+
+        mock_client.fetch_prs_bulk = AsyncMock(
+            return_value={
+                "repository": {
+                    "pullRequests": {
+                        "nodes": recent_prs,
+                        # BUG: totalCount returns ALL repo PRs, not date-filtered
+                        "totalCount": 2410,
+                        "pageInfo": {"hasNextPage": False, "endCursor": None},
+                    }
+                },
+                "rateLimit": {"remaining": 5000},
+            }
+        )
+
+        # Act
+        asyncio.run(sync_repository_history_graphql(self.tracked_repo, days_back=30))
+
+        # Assert
+        # Verify get_pr_count_in_date_range was called
+        mock_client.get_pr_count_in_date_range.assert_called_once()
+
+        # Verify the call included correct parameters
+        call_args = mock_client.get_pr_count_in_date_range.call_args
+        self.assertEqual(call_args[1]["owner"], "owner")
+        self.assertEqual(call_args[1]["repo"], "repo")
+        self.assertIsNotNone(call_args[1].get("since"))  # Should have since date
+
+        # Verify tracked_repo has correct total (date-filtered, not all-time)
+        self.tracked_repo.refresh_from_db()
+        self.assertEqual(self.tracked_repo.sync_prs_total, 14)  # NOT 2410
+
+        # Progress should complete successfully
+        self.assertEqual(self.tracked_repo.sync_progress, 100)

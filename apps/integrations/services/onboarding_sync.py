@@ -6,11 +6,11 @@ and processing through LLM for AI detection.
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
+from asgiref.sync import async_to_sync
 from django.conf import settings
 
 from apps.integrations.services.github_graphql_sync import sync_repository_history_graphql
@@ -90,13 +90,17 @@ class OnboardingSyncService:
             progress_callback(0, 1, f"Starting sync for {repo.full_name}")
 
         try:
-            # Run async GraphQL sync in sync context
-            result = asyncio.run(
-                sync_repository_history_graphql(
-                    repo,
-                    days_back=days_back,
-                    skip_recent=skip_recent,
-                )
+            # Run async GraphQL sync in sync context using async_to_sync
+            # NOTE: Using async_to_sync instead of asyncio.run() is critical!
+            # asyncio.run() creates a new event loop which breaks @sync_to_async
+            # decorators' thread handling, causing DB operations to silently fail
+            # in Celery workers. async_to_sync properly manages the event loop
+            # and thread context for Django's database connections.
+            sync_graphql = async_to_sync(sync_repository_history_graphql)
+            result = sync_graphql(
+                repo,
+                days_back=days_back,
+                skip_recent=skip_recent,
             )
 
             prs_synced = result.get("prs_synced", 0)

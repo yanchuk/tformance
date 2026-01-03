@@ -140,8 +140,7 @@ def _sync_with_graphql_or_rest(tracked_repo, days_back: int) -> dict:
     Returns:
         Dict with sync results (prs_synced, reviews_synced, etc.)
     """
-    import asyncio
-
+    from asgiref.sync import async_to_sync
     from django.conf import settings
 
     github_config = getattr(settings, "GITHUB_API_CONFIG", {})
@@ -155,8 +154,12 @@ def _sync_with_graphql_or_rest(tracked_repo, days_back: int) -> dict:
         try:
             from apps.integrations.services.github_graphql_sync import sync_repository_history_graphql
 
-            # Run async function in sync context
-            result = asyncio.run(sync_repository_history_graphql(tracked_repo, days_back=days_back))
+            # Run async function in sync context using async_to_sync
+            # NOTE: Using async_to_sync instead of asyncio.run() is critical!
+            # asyncio.run() creates a new event loop which breaks @sync_to_async
+            # decorators' thread handling, causing DB operations to silently fail.
+            sync_graphql = async_to_sync(sync_repository_history_graphql)
+            result = sync_graphql(tracked_repo, days_back=days_back)
 
             # Check if GraphQL sync had errors
             if result.get("errors") and fallback_to_rest:
@@ -191,8 +194,7 @@ def _sync_incremental_with_graphql_or_rest(tracked_repo) -> dict:
     Returns:
         Dict with sync results (prs_synced, reviews_synced, etc.)
     """
-    import asyncio
-
+    from asgiref.sync import async_to_sync
     from django.conf import settings
 
     github_config = getattr(settings, "GITHUB_API_CONFIG", {})
@@ -206,8 +208,10 @@ def _sync_incremental_with_graphql_or_rest(tracked_repo) -> dict:
         try:
             from apps.integrations.services.github_graphql_sync import sync_repository_incremental_graphql
 
-            # Run async function in sync context
-            result = asyncio.run(sync_repository_incremental_graphql(tracked_repo))
+            # Run async function in sync context using async_to_sync
+            # NOTE: async_to_sync properly manages event loop + thread context for Django DB
+            sync_graphql = async_to_sync(sync_repository_incremental_graphql)
+            result = sync_graphql(tracked_repo)
 
             # Check if GraphQL sync had errors
             if result.get("errors") and fallback_to_rest:
@@ -465,8 +469,7 @@ def _sync_members_with_graphql_or_rest(integration, org_slug: str) -> dict:
     Returns:
         dict: Sync results with created, updated, unchanged counts
     """
-    import asyncio
-
+    from asgiref.sync import async_to_sync
     from django.conf import settings
 
     github_config = getattr(settings, "GITHUB_API_CONFIG", {})
@@ -480,7 +483,9 @@ def _sync_members_with_graphql_or_rest(integration, org_slug: str) -> dict:
             from apps.integrations.services.github_graphql_sync import sync_github_members_graphql
 
             logger.info(f"Using GraphQL for member sync: {org_slug}")
-            result = asyncio.run(sync_github_members_graphql(integration, org_name=org_slug))
+            # Use async_to_sync for proper Django DB thread context management
+            sync_members = async_to_sync(sync_github_members_graphql)
+            result = sync_members(integration, org_name=org_slug)
 
             # If GraphQL has errors and fallback is enabled, fall back to REST
             if result.get("errors") and fallback_to_rest:
@@ -1596,8 +1601,7 @@ def _fetch_pr_core_data_with_graphql_or_rest(pr, tracked_repo, access_token, err
     Returns:
         dict with commits_synced, files_synced, reviews_synced counts
     """
-    import asyncio
-
+    from asgiref.sync import async_to_sync
     from django.conf import settings
 
     github_config = getattr(settings, "GITHUB_API_CONFIG", {})
@@ -1611,8 +1615,14 @@ def _fetch_pr_core_data_with_graphql_or_rest(pr, tracked_repo, access_token, err
         try:
             from apps.integrations.services.github_graphql_sync import fetch_pr_complete_data_graphql
 
-            # Run async function in sync context
-            result = asyncio.run(fetch_pr_complete_data_graphql(pr, tracked_repo))
+            # Run async function in sync context using async_to_sync
+            # NOTE: Using async_to_sync instead of asyncio.run() is critical!
+            # asyncio.run() creates a new event loop which breaks @sync_to_async
+            # decorators' thread handling, causing DB operations to silently fail
+            # in Celery workers. async_to_sync properly manages the event loop
+            # and thread context for Django's database connections.
+            sync_fetch = async_to_sync(fetch_pr_complete_data_graphql)
+            result = sync_fetch(pr, tracked_repo)
 
             # Check if GraphQL sync had errors
             if result.get("errors") and fallback_to_rest:
@@ -2118,7 +2128,8 @@ def queue_llm_analysis_batch_task(self, team_id: int, batch_size: int = 50) -> d
         try:
             pr = PullRequest.objects.get(id=result.pr_id)  # noqa: TEAM001 - ID from LLM batch result
             pr.llm_summary = result.llm_summary
-            pr.save(update_fields=["llm_summary"])
+            pr.llm_summary_version = result.prompt_version
+            pr.save(update_fields=["llm_summary", "llm_summary_version"])
             prs_updated += 1
         except PullRequest.DoesNotExist:
             logger.warning(f"PR {result.pr_id} not found when updating LLM results")

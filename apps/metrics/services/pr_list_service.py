@@ -282,18 +282,39 @@ def get_prs_queryset(team: Team, filters: dict[str, Any]) -> QuerySet[PullReques
     # Filter by date range
     # For open PRs (no merged_at), filter by pr_created_at instead
     # For merged/closed PRs, filter by merged_at for consistency with dashboard
+    # For "All States", use appropriate date field based on each PR's state
     state_filter = filters.get("state")
-    date_field = "pr_created_at" if state_filter == "open" else "merged_at"
+    date_from = _parse_date(filters.get("date_from")) if filters.get("date_from") else None
+    date_to = _parse_date(filters.get("date_to")) if filters.get("date_to") else None
 
-    if filters.get("date_from"):
-        date_from = _parse_date(filters["date_from"])
-        if date_from:
-            qs = qs.filter(**{f"{date_field}__date__gte": date_from})
+    if date_from or date_to:
+        if state_filter == "open":
+            # Open PRs: filter by pr_created_at
+            if date_from:
+                qs = qs.filter(pr_created_at__date__gte=date_from)
+            if date_to:
+                qs = qs.filter(pr_created_at__date__lte=date_to)
+        elif state_filter in ("merged", "closed"):
+            # Merged/closed PRs: filter by merged_at
+            if date_from:
+                qs = qs.filter(merged_at__date__gte=date_from)
+            if date_to:
+                qs = qs.filter(merged_at__date__lte=date_to)
+        else:
+            # "All States" (state_filter is None):
+            # Use appropriate date field based on PR state
+            # Open PRs filtered by pr_created_at, merged/closed by merged_at
+            open_q = Q(state="open")
+            merged_q = Q(state__in=["merged", "closed"])
 
-    if filters.get("date_to"):
-        date_to = _parse_date(filters["date_to"])
-        if date_to:
-            qs = qs.filter(**{f"{date_field}__date__lte": date_to})
+            if date_from:
+                open_q &= Q(pr_created_at__date__gte=date_from)
+                merged_q &= Q(merged_at__date__gte=date_from)
+            if date_to:
+                open_q &= Q(pr_created_at__date__lte=date_to)
+                merged_q &= Q(merged_at__date__lte=date_to)
+
+            qs = qs.filter(open_q | merged_q)
 
     # Filter by issue type (for "needs attention" filters)
     # Uses priority-based exclusion to match dashboard counts:

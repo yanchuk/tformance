@@ -160,10 +160,9 @@ async def sync_repository_history_graphql(
         await _update_sync_status(tracked_repo_id, "error")
         return result.to_dict()
 
-    # Get access token from integration
-    try:
-        access_token = tracked_repo.integration.credential.access_token
-    except AttributeError:
+    # Get access token from integration (async-safe to avoid SynchronousOnlyOperation)
+    access_token = await _get_access_token(tracked_repo_id)
+    if not access_token:
         result.errors.append("No access token available for repository")
         await _update_sync_status(tracked_repo_id, "error")
         return result.to_dict()
@@ -184,6 +183,20 @@ async def sync_repository_history_graphql(
     try:
         cursor = None
         has_more = True
+        prs_processed = 0
+
+        # Get accurate PR count for date range using Search API
+        # This fixes the bug where totalCount returns ALL PRs, not just date-filtered ones
+        try:
+            total_prs = await client.get_pr_count_in_date_range(owner=owner, repo=repo, since=cutoff_date, until=None)
+        except GitHubGraphQLError as e:
+            # Fall back to 0 if search fails - progress will be estimated from first page
+            logger.warning(f"Failed to get PR count for date range: {e}")
+            total_prs = 0
+
+        # Initialize progress with accurate total count
+        if total_prs > 0:
+            await _update_sync_progress(tracked_repo_id, 0, total_prs)
 
         while has_more:
             # Fetch page of PRs
@@ -204,21 +217,33 @@ async def sync_repository_history_graphql(
             pr_nodes = pull_requests_data.get("nodes", [])
             page_info = pull_requests_data.get("pageInfo", {})
 
+            # Fall back to totalCount if get_pr_count_in_date_range failed
+            if total_prs == 0:
+                total_prs = pull_requests_data.get("totalCount", 0)
+                # Initialize progress with total count
+                await _update_sync_progress(tracked_repo_id, 0, total_prs)
+
             # Process each PR
             for pr_data in pr_nodes:
                 try:
                     await _process_pr_async(team_id, full_name, pr_data, cutoff_date, skip_before_date, result)
+                    prs_processed += 1
                 except Exception as e:
                     pr_number = pr_data.get("number", "unknown")
                     error_msg = f"Error processing PR #{pr_number}: {type(e).__name__}: {e}"
                     logger.warning(error_msg)
                     result.errors.append(error_msg)
+                    prs_processed += 1  # Count even on error for progress
+
+            # Update progress after each batch
+            await _update_sync_progress(tracked_repo_id, prs_processed, total_prs)
 
             # Check pagination
             has_more = page_info.get("hasNextPage", False)
             cursor = page_info.get("endCursor")
 
-        # Update sync status to complete
+        # Update sync status to complete (also sets progress to 100%)
+        await _update_sync_progress(tracked_repo_id, total_prs, total_prs)
         await _update_sync_complete(tracked_repo_id)
 
     except Exception as e:
@@ -243,6 +268,37 @@ def _update_sync_complete(tracked_repo_id: int) -> None:
         sync_status="complete",
         last_sync_at=timezone.now(),
     )
+
+
+@sync_to_async
+def _update_sync_progress(tracked_repo_id: int, completed: int, total: int) -> None:
+    """Update sync progress fields (async-safe).
+
+    Args:
+        tracked_repo_id: ID of the TrackedRepository
+        completed: Number of PRs synced so far
+        total: Total number of PRs to sync
+    """
+    progress = int((completed / total) * 100) if total > 0 else 0
+    TrackedRepository.objects.filter(id=tracked_repo_id).update(  # noqa: TEAM001
+        sync_progress=progress,
+        sync_prs_completed=completed,
+        sync_prs_total=total,
+    )
+
+
+@sync_to_async
+def _get_access_token(tracked_repo_id: int) -> str | None:
+    """Get access token for a tracked repository (async-safe).
+
+    This wraps ORM access to avoid SynchronousOnlyOperation errors
+    when called from async context.
+    """
+    try:
+        tracked_repo = TrackedRepository.objects.select_related("integration__credential").get(id=tracked_repo_id)  # noqa: TEAM001 - ID from Celery task
+        return tracked_repo.integration.credential.access_token
+    except (TrackedRepository.DoesNotExist, AttributeError):
+        return None
 
 
 @sync_to_async
@@ -494,6 +550,30 @@ def _process_files(
     result: SyncResult,
 ) -> None:
     """Process PR files from GraphQL response."""
+    # Log file processing for debugging sync issues
+    sync_logger = _get_sync_logger()
+    if file_nodes:
+        sync_logger.debug(
+            "sync.files.processing",
+            extra={
+                "pr_id": pr.id,
+                "pr_number": pr.github_pr_id,
+                "file_count": len(file_nodes),
+            },
+        )
+    elif pr.additions > 0 or pr.deletions > 0:
+        # Log warning when PR has code changes but no files - potential sync issue
+        sync_logger.warning(
+            "sync.files.missing",
+            extra={
+                "pr_id": pr.id,
+                "pr_number": pr.github_pr_id,
+                "additions": pr.additions,
+                "deletions": pr.deletions,
+                "hint": "PR has code changes but files array is empty",
+            },
+        )
+
     for file_data in file_nodes:
         filename = file_data.get("path")
         if not filename:
@@ -517,6 +597,17 @@ def _process_files(
             defaults=file_defaults,
         )
         result.files_synced += 1
+
+    # Log completion of file processing
+    if file_nodes:
+        sync_logger.info(
+            "sync.files.saved",
+            extra={
+                "pr_id": pr.id,
+                "pr_number": pr.github_pr_id,
+                "files_saved": len(file_nodes),
+            },
+        )
 
 
 async def sync_repository_incremental_graphql(tracked_repo) -> dict[str, Any]:
@@ -553,10 +644,9 @@ async def sync_repository_incremental_graphql(tracked_repo) -> dict[str, Any]:
         await _update_sync_status(tracked_repo_id, "error")
         return result.to_dict()
 
-    # Get access token from integration
-    try:
-        access_token = tracked_repo.integration.credential.access_token
-    except AttributeError:
+    # Get access token from integration (async-safe to avoid SynchronousOnlyOperation)
+    access_token = await _get_access_token(tracked_repo_id)
+    if not access_token:
         result.errors.append("No access token available for repository")
         await _update_sync_status(tracked_repo_id, "error")
         return result.to_dict()
@@ -570,6 +660,10 @@ async def sync_repository_incremental_graphql(tracked_repo) -> dict[str, Any]:
     try:
         cursor = None
         has_more = True
+        prs_processed = 0
+        # For incremental sync, we estimate total from first page
+        # (totalCount is all PRs in repo, not just updated ones)
+        estimated_total = 0
 
         while has_more:
             # Fetch page of updated PRs
@@ -590,6 +684,12 @@ async def sync_repository_incremental_graphql(tracked_repo) -> dict[str, Any]:
             pr_nodes = pull_requests_data.get("nodes", [])
             page_info = pull_requests_data.get("pageInfo", {})
 
+            # Estimate total from first page (use page size * remaining pages estimate)
+            if estimated_total == 0 and pr_nodes:
+                # Rough estimate: if there's more pages, assume 2x current batch
+                estimated_total = len(pr_nodes) * (2 if page_info.get("hasNextPage") else 1)
+                await _update_sync_progress(tracked_repo_id, 0, estimated_total)
+
             # Process each PR - filter by updatedAt since PRs are ordered by UPDATED_AT desc
             all_older_than_since = True
             for pr_data in pr_nodes:
@@ -601,11 +701,19 @@ async def sync_repository_incremental_graphql(tracked_repo) -> dict[str, Any]:
 
                 try:
                     await _process_pr_incremental_async(team_id, full_name, pr_data, result)
+                    prs_processed += 1
                 except Exception as e:
                     pr_number = pr_data.get("number", "unknown")
                     error_msg = f"Error processing PR #{pr_number}: {type(e).__name__}: {e}"
                     logger.warning(error_msg)
                     result.errors.append(error_msg)
+                    prs_processed += 1  # Count even on error
+
+            # Update progress after each batch
+            # Adjust estimated total if we've processed more than expected
+            if prs_processed > estimated_total:
+                estimated_total = prs_processed + len(pr_nodes)
+            await _update_sync_progress(tracked_repo_id, prs_processed, max(estimated_total, prs_processed))
 
             # Stop if all PRs in this page are older than since
             if all_older_than_since:
@@ -615,7 +723,8 @@ async def sync_repository_incremental_graphql(tracked_repo) -> dict[str, Any]:
             has_more = page_info.get("hasNextPage", False)
             cursor = page_info.get("endCursor")
 
-        # Update sync status to complete
+        # Update sync status to complete (set progress to 100%)
+        await _update_sync_progress(tracked_repo_id, prs_processed, prs_processed)
         await _update_sync_complete(tracked_repo_id)
 
     except Exception as e:
@@ -722,10 +831,19 @@ async def fetch_pr_complete_data_graphql(pr, tracked_repo) -> dict[str, Any]:
     """
     result = SyncResult()
 
+    # Get info from model instance (cached, doesn't trigger DB query)
+    tracked_repo_id = tracked_repo.id
+    full_name = tracked_repo.full_name
+    team_id = tracked_repo.team_id
+
     # Parse repo owner and name from full_name
-    owner, repo = tracked_repo.full_name.split("/")
-    access_token = tracked_repo.integration.credential.access_token
-    team = tracked_repo.team
+    owner, repo = full_name.split("/")
+
+    # Get access token (async-safe to avoid SynchronousOnlyOperation)
+    access_token = await _get_access_token(tracked_repo_id)
+    if not access_token:
+        result.errors.append("No access token available for repository")
+        return result.to_dict()
 
     try:
         # Initialize GraphQL client and fetch PR data
@@ -742,7 +860,7 @@ async def fetch_pr_complete_data_graphql(pr, tracked_repo) -> dict[str, Any]:
             return result.to_dict()
 
         # Process nested data (commits, files, reviews)
-        await _process_pr_nested_data_async(team.id, pr, tracked_repo.full_name, pr_data, result)
+        await _process_pr_nested_data_async(team_id, pr, full_name, pr_data, result)
 
     except GitHubGraphQLRateLimitError as e:
         error_msg = f"Rate limit error fetching PR #{pr.github_pr_id}: {e}"
@@ -803,6 +921,18 @@ class MemberSyncResult:
         }
 
 
+@sync_to_async
+def _get_integration_access_token(integration_id: int) -> str | None:
+    """Get access token for a GitHub integration (async-safe)."""
+    from apps.integrations.models import GitHubIntegration
+
+    try:
+        integration = GitHubIntegration.objects.select_related("credential").get(id=integration_id)  # noqa: TEAM001 - ID from Celery task
+        return integration.credential.access_token
+    except (GitHubIntegration.DoesNotExist, AttributeError):
+        return None
+
+
 async def sync_github_members_graphql(integration, org_name: str) -> dict[str, Any]:
     """Sync organization members using GraphQL API.
 
@@ -818,9 +948,15 @@ async def sync_github_members_graphql(integration, org_name: str) -> dict[str, A
     """
     result = MemberSyncResult()
 
-    # Get team info before async operations
+    # Get info from model instance (cached, doesn't trigger DB query)
+    integration_id = integration.id
     team_id = integration.team_id
-    access_token = integration.credential.access_token
+
+    # Get access token (async-safe to avoid SynchronousOnlyOperation)
+    access_token = await _get_integration_access_token(integration_id)
+    if not access_token:
+        result.errors.append("No access token available for integration")
+        return result.to_dict()
 
     # Create GraphQL client
     client = GitHubGraphQLClient(access_token)

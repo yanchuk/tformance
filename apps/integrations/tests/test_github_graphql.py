@@ -1078,3 +1078,173 @@ class TestRateLimitWaitBehavior(TestCase):
         # Act & Assert
         with self.assertRaises(GitHubGraphQLRateLimitError):
             asyncio.run(client.fetch_prs_bulk("owner", "repo"))
+
+
+class TestGetPRCountInDateRange(TestCase):
+    """Tests for GitHubGraphQLClient.get_pr_count_in_date_range method.
+
+    This method uses GitHub Search API to get accurate PR count within a date range.
+    Unlike totalCount from pullRequests connection (which returns ALL PRs), this
+    returns the exact count matching the date filter.
+    """
+
+    @patch("apps.integrations.services.github_graphql.Client")
+    @patch("apps.integrations.services.github_graphql.AIOHTTPTransport")
+    def test_returns_count_from_search_api(self, mock_transport_class, mock_client_class):
+        """Test that get_pr_count_in_date_range returns issueCount from search response."""
+        import asyncio
+        from datetime import datetime
+
+        # Arrange
+        mock_transport = MagicMock()
+        mock_transport_class.return_value = mock_transport
+
+        # Search API response with issueCount
+        return_value = {
+            "search": {"issueCount": 14},
+            "rateLimit": {"remaining": 5000},
+        }
+        mock_client, mock_session = create_mock_client_context_manager(return_value)
+        mock_client_class.return_value = mock_client
+
+        client = GitHubGraphQLClient("test_token")
+
+        # Act
+        since = datetime(2024, 12, 1, tzinfo=UTC)
+        until = datetime(2025, 1, 1, tzinfo=UTC)
+        result = asyncio.run(client.get_pr_count_in_date_range("owner", "repo", since=since, until=until))
+
+        # Assert
+        self.assertEqual(result, 14)
+
+    @patch("apps.integrations.services.github_graphql.Client")
+    @patch("apps.integrations.services.github_graphql.AIOHTTPTransport")
+    def test_builds_correct_search_query_with_both_dates(self, mock_transport_class, mock_client_class):
+        """Test that query includes both since and until dates in search query."""
+        import asyncio
+        from datetime import datetime
+
+        # Arrange
+        mock_transport = MagicMock()
+        mock_transport_class.return_value = mock_transport
+
+        return_value = {
+            "search": {"issueCount": 10},
+            "rateLimit": {"remaining": 5000},
+        }
+        mock_client, mock_session = create_mock_client_context_manager(return_value)
+        mock_client_class.return_value = mock_client
+
+        client = GitHubGraphQLClient("test_token")
+
+        # Act
+        since = datetime(2024, 12, 1, tzinfo=UTC)
+        until = datetime(2025, 1, 1, tzinfo=UTC)
+        asyncio.run(client.get_pr_count_in_date_range("owner", "repo", since=since, until=until))
+
+        # Assert
+        call_args = mock_session.execute.call_args
+        variables = call_args[1]["variable_values"]
+        search_query = variables["searchQuery"]
+
+        # Verify search query format: repo:owner/repo is:pr created:>=DATE created:<=DATE
+        self.assertIn("repo:owner/repo", search_query)
+        self.assertIn("is:pr", search_query)
+        self.assertIn("created:>=2024-12-01", search_query)
+        self.assertIn("created:<=2025-01-01", search_query)
+
+    @patch("apps.integrations.services.github_graphql.Client")
+    @patch("apps.integrations.services.github_graphql.AIOHTTPTransport")
+    def test_handles_only_since_date(self, mock_transport_class, mock_client_class):
+        """Test that query works with just since date (no until)."""
+        import asyncio
+        from datetime import datetime
+
+        # Arrange
+        mock_transport = MagicMock()
+        mock_transport_class.return_value = mock_transport
+
+        return_value = {
+            "search": {"issueCount": 25},
+            "rateLimit": {"remaining": 5000},
+        }
+        mock_client, mock_session = create_mock_client_context_manager(return_value)
+        mock_client_class.return_value = mock_client
+
+        client = GitHubGraphQLClient("test_token")
+
+        # Act - only since, no until
+        since = datetime(2024, 12, 1, tzinfo=UTC)
+        asyncio.run(client.get_pr_count_in_date_range("owner", "repo", since=since, until=None))
+
+        # Assert
+        call_args = mock_session.execute.call_args
+        variables = call_args[1]["variable_values"]
+        search_query = variables["searchQuery"]
+
+        self.assertIn("repo:owner/repo", search_query)
+        self.assertIn("is:pr", search_query)
+        self.assertIn("created:>=2024-12-01", search_query)
+        self.assertNotIn("created:<=", search_query)  # No until date
+
+    @patch("apps.integrations.services.github_graphql.Client")
+    @patch("apps.integrations.services.github_graphql.AIOHTTPTransport")
+    def test_handles_only_until_date(self, mock_transport_class, mock_client_class):
+        """Test that query works with just until date (no since)."""
+        import asyncio
+        from datetime import datetime
+
+        # Arrange
+        mock_transport = MagicMock()
+        mock_transport_class.return_value = mock_transport
+
+        return_value = {
+            "search": {"issueCount": 50},
+            "rateLimit": {"remaining": 5000},
+        }
+        mock_client, mock_session = create_mock_client_context_manager(return_value)
+        mock_client_class.return_value = mock_client
+
+        client = GitHubGraphQLClient("test_token")
+
+        # Act - only until, no since
+        until = datetime(2025, 1, 1, tzinfo=UTC)
+        asyncio.run(client.get_pr_count_in_date_range("owner", "repo", since=None, until=until))
+
+        # Assert
+        call_args = mock_session.execute.call_args
+        variables = call_args[1]["variable_values"]
+        search_query = variables["searchQuery"]
+
+        self.assertIn("repo:owner/repo", search_query)
+        self.assertIn("is:pr", search_query)
+        self.assertNotIn("created:>=", search_query)  # No since date
+        self.assertIn("created:<=2025-01-01", search_query)
+
+    @patch("apps.integrations.services.github_graphql.Client")
+    @patch("apps.integrations.services.github_graphql.AIOHTTPTransport")
+    def test_returns_zero_when_no_results(self, mock_transport_class, mock_client_class):
+        """Test that returns 0 when issueCount is 0."""
+        import asyncio
+        from datetime import datetime
+
+        # Arrange
+        mock_transport = MagicMock()
+        mock_transport_class.return_value = mock_transport
+
+        return_value = {
+            "search": {"issueCount": 0},
+            "rateLimit": {"remaining": 5000},
+        }
+        mock_client, mock_session = create_mock_client_context_manager(return_value)
+        mock_client_class.return_value = mock_client
+
+        client = GitHubGraphQLClient("test_token")
+
+        # Act
+        since = datetime(2024, 12, 1, tzinfo=UTC)
+        until = datetime(2024, 12, 2, tzinfo=UTC)
+        result = asyncio.run(client.get_pr_count_in_date_range("owner", "repo", since=since, until=until))
+
+        # Assert
+        self.assertEqual(result, 0)

@@ -2,6 +2,7 @@
 
 import logging
 import time
+from datetime import datetime
 
 import aiohttp
 from gql import Client, gql
@@ -104,6 +105,7 @@ FETCH_PRS_BULK_QUERY = gql(
               }
             }
           }
+          totalCount
           pageInfo {
             hasNextPage
             endCursor
@@ -199,6 +201,7 @@ FETCH_PRS_UPDATED_QUERY = gql(
               }
             }
           }
+          totalCount
           pageInfo {
             hasNextPage
             endCursor
@@ -331,6 +334,22 @@ FETCH_REPO_METADATA_QUERY = gql(
       repository(owner: $owner, name: $repo) {
         pushedAt
         updatedAt
+      }
+      rateLimit {
+        remaining
+        resetAt
+      }
+    }
+    """
+)
+
+# Query cost: ~1 point (search query for PR count in date range)
+# Uses GitHub Search API to get accurate PR count within a date range
+SEARCH_PR_COUNT_QUERY = gql(
+    """
+    query($searchQuery: String!) {
+      search(query: $searchQuery, type: ISSUE, first: 1) {
+        issueCount
       }
       rateLimit {
         remaining
@@ -765,5 +784,62 @@ class GitHubGraphQLClient:
             raise
         except Exception as e:
             error_msg = f"GraphQL query failed for {owner}/{repo} metadata: {type(e).__name__}: {str(e)}"
+            logger.error(error_msg)
+            raise GitHubGraphQLError(error_msg) from e
+
+    async def get_pr_count_in_date_range(
+        self,
+        owner: str,
+        repo: str,
+        since: datetime | None = None,
+        until: datetime | None = None,
+    ) -> int:
+        """Get the count of PRs in a repository within a date range.
+
+        Uses GitHub Search API to get accurate PR count within a date range.
+        Unlike totalCount from pullRequests connection (which returns ALL PRs),
+        this returns the exact count matching the date filter.
+
+        Args:
+            owner: Repository owner (organization or user)
+            repo: Repository name
+            since: Only count PRs created on or after this datetime (optional)
+            until: Only count PRs created on or before this datetime (optional)
+
+        Returns:
+            int: Number of PRs matching the search criteria
+
+        Raises:
+            GitHubGraphQLRateLimitError: When rate limit remaining < 100 points
+            GitHubGraphQLError: On any other GraphQL query errors
+        """
+        # Build search query: repo:owner/repo is:pr created:>=YYYY-MM-DD created:<=YYYY-MM-DD
+        search_parts = [f"repo:{owner}/{repo}", "is:pr"]
+
+        if since:
+            since_str = since.strftime("%Y-%m-%d")
+            search_parts.append(f"created:>={since_str}")
+
+        if until:
+            until_str = until.strftime("%Y-%m-%d")
+            search_parts.append(f"created:<={until_str}")
+
+        search_query = " ".join(search_parts)
+        logger.debug(f"Searching PRs with query: {search_query}")
+
+        try:
+            result = await self._execute(SEARCH_PR_COUNT_QUERY, variable_values={"searchQuery": search_query})
+
+            await self._check_rate_limit(result, f"get_pr_count_in_date_range({owner}/{repo})")
+
+            issue_count = result.get("search", {}).get("issueCount", 0)
+            logger.info(f"Found {issue_count} PRs in {owner}/{repo} matching date range")
+
+            return issue_count
+
+        except GitHubGraphQLRateLimitError:
+            raise
+        except Exception as e:
+            error_msg = f"GraphQL search query failed for {owner}/{repo}: {type(e).__name__}: {str(e)}"
             logger.error(error_msg)
             raise GitHubGraphQLError(error_msg) from e
