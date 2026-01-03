@@ -2,6 +2,7 @@
 Sync Indicator Widget Component
 Shows a floating progress widget in the bottom-right when repositories are actively syncing.
 A-009/A-010: Unified to use bottom-right widget pattern (consistent with onboarding).
+A-023: Added HTMX polling for auto-updates during sync.
 
 Required context:
 - sync_in_progress: boolean indicating if any repos are syncing
@@ -15,6 +16,13 @@ Usage:
 {% endcomment %}
 {% load i18n %}
 
+{# Wrap in div for HTMX polling - A-023 #}
+<div id="sync-indicator-wrapper"
+     {% if sync_in_progress %}
+     hx-get="{% url 'web_team:sync_indicator' %}"
+     hx-trigger="every 3s"
+     hx-swap="outerHTML"
+     {% endif %}>
 {% if sync_in_progress %}
 <div id="sync-indicator"
      class="fixed bottom-4 right-4 z-50 animate-bounce-in"
@@ -36,3 +44,4 @@ Usage:
   </div>
 </div>
 {% endif %}
+</div>

@@ -32,6 +32,7 @@ urlpatterns = [
 team_urlpatterns = (
     [
         path("", views.team_home, name="home"),
+        path("sync-indicator/", views.sync_indicator_partial, name="sync_indicator"),
     ],
     "web_team",
 )

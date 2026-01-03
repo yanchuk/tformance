@@ -114,6 +114,17 @@ def team_home(request):
     return render(request, "web/app_home.html", context)
 
 
+@login_and_team_required
+def sync_indicator_partial(request):
+    """Return the sync indicator widget partial for HTMX polling (A-023).
+
+    Used to auto-update the sync progress widget on the dashboard.
+    """
+    team = request.team
+    sync_status = get_team_sync_status(team)
+    return render(request, "web/components/sync_indicator.html", sync_status)
+
+
 def simulate_error(request):
     raise Exception("This is a simulated error.")
 
