@@ -4,6 +4,11 @@ import { test, expect, Page } from '@playwright/test';
  * Smoke Tests - Critical Path Verification
  * Run with: npx playwright test smoke.spec.ts
  * Tag: @smoke
+ *
+ * These tests verify the critical path of the application:
+ * - Infrastructure (health, static assets, 404)
+ * - Frontend libraries (HTMX, Alpine.js)
+ * - Authenticated user flow (login → dashboard → logout)
  */
 
 /**
@@ -12,6 +17,16 @@ import { test, expect, Page } from '@playwright/test';
 async function waitForJsInit(page: Page, timeout = 2000): Promise<void> {
   await page.waitForFunction(
     () => typeof window !== 'undefined' && document.readyState === 'complete',
+    { timeout }
+  );
+}
+
+/**
+ * Wait for HTMX request to complete.
+ */
+async function waitForHtmxComplete(page: Page, timeout = 5000): Promise<void> {
+  await page.waitForFunction(
+    () => !document.body.classList.contains('htmx-request'),
     { timeout }
   );
 }
@@ -73,5 +88,74 @@ test.describe('Smoke Tests @smoke', () => {
 
     // No critical app asset failures
     expect(failedRequests).toHaveLength(0);
+  });
+
+  test('HTMX library is loaded', async ({ page }) => {
+    await page.goto('/');
+    await waitForJsInit(page);
+
+    const htmxLoaded = await page.evaluate(() => typeof (window as any).htmx !== 'undefined');
+    expect(htmxLoaded).toBeTruthy();
+  });
+
+  test('Alpine.js library is loaded', async ({ page }) => {
+    await page.goto('/');
+    await waitForJsInit(page);
+
+    const alpineLoaded = await page.evaluate(() => typeof (window as any).Alpine !== 'undefined');
+    expect(alpineLoaded).toBeTruthy();
+  });
+});
+
+test.describe('Critical Path @smoke', () => {
+  test('authenticated user can access dashboard', async ({ page }) => {
+    // Login
+    await page.goto('/accounts/login/');
+    await page.getByRole('textbox', { name: 'Email' }).fill('admin@example.com');
+    await page.getByRole('textbox', { name: 'Password' }).fill('admin123');
+    await page.getByRole('button', { name: 'Sign In' }).click();
+
+    // Verify dashboard loads
+    await expect(page).toHaveURL(/\/app/);
+    await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
+  });
+
+  test('dashboard key sections load via HTMX', async ({ page }) => {
+    // Login
+    await page.goto('/accounts/login/');
+    await page.getByRole('textbox', { name: 'Email' }).fill('admin@example.com');
+    await page.getByRole('textbox', { name: 'Password' }).fill('admin123');
+    await page.getByRole('button', { name: 'Sign In' }).click();
+    await expect(page).toHaveURL(/\/app/);
+
+    // Wait for HTMX content to load
+    await waitForHtmxComplete(page);
+
+    // Verify key HTMX containers are populated
+    await expect(page.locator('#key-metrics-container')).toBeVisible();
+    await expect(page.locator('#ai-impact-container')).toBeVisible();
+
+    // Verify actual content loaded (not just containers)
+    await expect(page.getByText('PRs Merged').first()).toBeVisible();
+  });
+
+  test('logout redirects to home', async ({ page }) => {
+    // Login first
+    await page.goto('/accounts/login/');
+    await page.getByRole('textbox', { name: 'Email' }).fill('admin@example.com');
+    await page.getByRole('textbox', { name: 'Password' }).fill('admin123');
+    await page.getByRole('button', { name: 'Sign In' }).click();
+    await expect(page).toHaveURL(/\/app/);
+
+    // Navigate to logout page and confirm (use exact match to avoid sidebar button)
+    await page.goto('/accounts/logout/');
+    await page.getByRole('button', { name: 'Sign Out', exact: true }).click();
+
+    // Should redirect to homepage after logout
+    await expect(page).toHaveURL('/');
+
+    // Verify can't access protected page anymore
+    await page.goto('/app/');
+    await expect(page).toHaveURL(/\/accounts\/login/);
   });
 });
