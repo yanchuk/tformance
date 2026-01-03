@@ -4,7 +4,9 @@
 
 **Author:** Product & Engineering
 **Status:** Draft
-**Target:** Premium Feature (Pro/Enterprise Tier)
+**Decision:** Premium Feature (Pro/Enterprise Tier)
+**Priority:** Post-MVP - implement after initial paying customers
+**Blocked By:** MVP launch and pricing tier definition
 **Created:** January 2026
 
 ---

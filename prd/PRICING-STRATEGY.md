@@ -4,6 +4,9 @@
 
 **Author:** Product & Engineering
 **Status:** Draft
+**Decision:** TBD - requires validation with beta customers
+**Priority:** HIGH - needed before MVP launch
+**Timeline:** Finalize by end of beta period
 **Created:** January 2026
 
 ---

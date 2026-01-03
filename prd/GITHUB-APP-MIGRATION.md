@@ -4,6 +4,8 @@
 
 **Author:** Product & Engineering
 **Status:** Draft
+**Decision:** Post-MVP Enhancement
+**Priority:** Low (current OAuth App works for MVP)
 **Created:** January 2026
 
 ---

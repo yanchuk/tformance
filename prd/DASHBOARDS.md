@@ -310,26 +310,39 @@ def get_visible_members(user, team):
 
 ## File Organization
 
-**Current Implementation** (as of Dec 2025):
+**Current Implementation** (as of Jan 2026):
 
 ```
 apps/metrics/
-├── views/
+├── views/                    # 58 exported view functions
 │   ├── __init__.py           # Re-exports all views
-│   ├── analytics_views.py    # Tabbed analytics pages (Overview, AI, Delivery, etc.)
-│   ├── chart_views.py        # HTMX chart endpoints
-│   ├── dashboard_views.py    # Legacy CTO/Team dashboard views
-│   ├── pr_list_views.py      # Pull Requests data explorer
-│   └── trends_views.py       # Trends & benchmarks
-├── services/
-│   ├── dashboard_service.py  # Key metrics, team breakdown
-│   ├── pr_list_service.py    # PR filtering and export
-│   └── benchmark_service.py  # Industry benchmarks (DORA)
+│   ├── analytics_views.py    # Tabbed analytics pages (5 functions)
+│   ├── chart_views.py        # HTMX chart/card/table endpoints (36 functions)
+│   ├── dashboard_views.py    # Dashboard pages & insights (8 functions)
+│   ├── pr_list_views.py      # Pull Requests data explorer (3 functions)
+│   └── trends_views.py       # Trends & benchmarks (5 functions)
+├── services/                 # 16 service modules
+│   ├── dashboard_service.py  # Key metrics, team breakdown, trends
+│   ├── pr_list_service.py    # PR filtering, export, categorization
+│   ├── benchmark_service.py  # Industry benchmarks (DORA)
+│   ├── aggregation_service.py # Time-series data aggregation
+│   ├── chart_formatters.py   # Chart data formatting utilities
+│   ├── quick_stats.py        # Quick metrics calculations
+│   ├── survey_service.py     # Survey data processing
+│   ├── survey_tokens.py      # Survey token management
+│   ├── insight_service.py    # Insight aggregation & display
+│   ├── insight_llm.py        # LLM-powered insight generation
+│   ├── ai_detector.py        # Main AI detection coordinator
+│   ├── ai_patterns.py        # Regex patterns + PATTERNS_VERSION
+│   ├── ai_signals.py         # Signal aggregation for AI detection
+│   ├── ai_categories.py      # AI tool categorization (code vs review)
+│   ├── ai_adoption_helpers.py # Adoption trend helpers
+│   └── llm_prompts.py        # LLM prompt templates + PROMPT_VERSION
 ├── urls.py                   # URL patterns (metrics namespace)
 └── templatetags/
     └── pr_list_tags.py       # Custom template filters
 
-templates/metrics/
+templates/metrics/            # 59 template files
 ├── analytics/
 │   ├── base_analytics.html   # Tab navigation, date filters
 │   ├── overview.html         # CTO Overview (insights, key metrics)
@@ -337,25 +350,130 @@ templates/metrics/
 │   ├── delivery.html         # Cycle time, PR size
 │   ├── quality.html          # Review time, CI/CD
 │   ├── team.html             # Member breakdown, leaderboard
-│   ├── pull_requests.html    # Data explorer with filters
 │   └── trends.html           # Trends & benchmarks
-├── partials/
+│   └── trends/               # Trend-specific templates
+│       ├── benchmark_panel.html
+│       ├── pr_type_chart.html
+│       ├── tech_chart.html
+│       └── wide_chart.html
+├── partials/                 # 41 chart/card/table partials
 │   ├── key_metrics_cards.html
 │   ├── cycle_time_chart.html
 │   ├── ai_adoption_chart.html
 │   ├── team_breakdown_table.html
-│   └── ...                   # 25+ chart/table partials
+│   ├── copilot_metrics_card.html
+│   ├── copilot_trend_chart.html
+│   ├── copilot_members_table.html
+│   ├── survey_ai_detection_card.html
+│   ├── survey_response_time_card.html
+│   ├── jira_linkage_chart.html
+│   ├── velocity_trend_chart.html
+│   ├── sp_correlation_chart.html
+│   ├── insights_panel.html
+│   └── ...                   # Plus 28 more partials
 ├── pull_requests/
 │   ├── list.html             # Full PR list page
-│   └── partials/table.html   # HTMX table partial
+│   ├── list_standalone.html  # Non-team context PR list
+│   └── partials/
+│       ├── table.html        # HTMX table partial
+│       └── expanded_row.html # PR detail expansion
+├── metrics_home.html         # Entry point
 ├── cto_overview.html         # Legacy (redirects to analytics)
 └── team_dashboard.html       # Team lead view
 
-assets/javascript/dashboard/
+assets/javascript/dashboard/  # 5 JavaScript modules
+├── chart-manager.js          # Chart lifecycle management (HTMX compatible)
 ├── dashboard-charts.js       # Chart.js utilities (bar, line, cumulative)
 ├── chart-theme.js            # Easy Eyes theme colors
 ├── trend-charts.js           # Trend visualization
 └── sparkline.js              # Inline sparkline charts
 ```
 
+### Chart Manager (HTMX Integration)
+
+The `chart-manager.js` module provides centralized Chart.js lifecycle management to prevent duplicate instances during HTMX content swaps:
+
+```javascript
+// Register chart factories
+chartManager.register('cycle-time', (canvas, data) => {
+  return new Chart(canvas.getContext('2d'), { /* config */ });
+}, { dataId: 'cycle-time-data' });
+
+// Charts auto-initialize on htmx:afterSwap via chartManager.initAll()
+```
+
+**Registered charts:** ai-adoption-chart, cycle-time-chart, review-time-chart, copilot-trend-chart, pr-type-chart, tech-chart, trend-chart, and more.
+
 > **Note:** A future refactoring may extract dashboard functionality into a dedicated `apps/dashboard/` app for better separation of concerns.
+
+---
+
+## View Endpoints Reference
+
+### Analytics Views (analytics_views.py)
+| Function | URL Pattern | Purpose |
+|----------|-------------|---------|
+| `analytics_overview` | `/analytics/` | Main CTO overview tab |
+| `analytics_ai_adoption` | `/analytics/ai/` | AI adoption metrics |
+| `analytics_delivery` | `/analytics/delivery/` | Delivery performance |
+| `analytics_quality` | `/analytics/quality/` | Quality metrics |
+| `analytics_team` | `/analytics/team/` | Team breakdown |
+
+### Chart Views (chart_views.py) - 36 Endpoints
+**Key Metrics:**
+- `key_metrics_cards` - Summary stat cards
+- `cycle_time_chart` - Cycle time trends
+- `pr_size_chart` - PR size distribution
+- `review_time_chart` - Review turnaround
+
+**AI Detection:**
+- `ai_adoption_chart` - AI usage trends
+- `ai_detected_metrics_card` - Detection stats
+- `ai_quality_chart` - Quality by AI status
+- `ai_tool_breakdown_chart` - Tool distribution
+- `ai_bot_reviews_card` - Bot review stats
+
+**Copilot Integration:**
+- `copilot_metrics_card` - Copilot usage summary
+- `copilot_trend_chart` - Copilot trends
+- `copilot_members_table` - Per-member Copilot stats
+
+**Jira Integration:**
+- `jira_linkage_chart` - PR-issue linking
+- `sp_correlation_chart` - Story points vs metrics
+- `velocity_trend_chart` - Sprint velocity
+
+**Survey Metrics:**
+- `survey_ai_detection_card` - AI survey results
+- `survey_response_time_card` - Response latency
+- `survey_channel_distribution_card` - Survey channels
+
+**Team & Quality:**
+- `team_breakdown_table` - Team metrics table
+- `leaderboard_table` - AI detective rankings
+- `reviewer_workload_table` - Review distribution
+- `reviewer_correlations_table` - Review patterns
+- `revert_rate_card` - Revert statistics
+- `cicd_pass_rate_card` - CI/CD health
+
+### Dashboard Views (dashboard_views.py)
+| Function | Purpose |
+|----------|---------|
+| `home` | Metrics home page |
+| `cto_overview` | CTO dashboard |
+| `team_dashboard` | Team lead view |
+| `engineering_insights` | AI-powered insights |
+| `refresh_insight` | Regenerate insight |
+| `dismiss_insight` | Hide insight |
+| `background_progress` | Async task status |
+
+### Trends Views (trends_views.py)
+| Function | Purpose |
+|----------|---------|
+| `trends_overview` | Trends dashboard |
+| `trend_chart_data` | Trend data endpoint |
+| `wide_trend_chart` | Full-width trend |
+| `pr_type_breakdown_chart` | PR type distribution |
+| `tech_breakdown_chart` | Technology breakdown |
+| `benchmark_data` | DORA benchmarks |
+| `benchmark_panel` | Benchmark display |

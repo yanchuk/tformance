@@ -114,6 +114,8 @@ We store: OAuth tokens (encrypted), accounts, billing, all metrics/surveys (team
 
 | App | Purpose |
 |-----|---------|
+| `apps/api` | OpenAPI/REST API framework & schema |
+| `apps/auth` | OAuth callback routing & state management |
 | `apps/byos` | Bring Your Own Storage |
 | `apps/content` | Static content pages |
 | `apps/dashboard` | Dashboard views |
