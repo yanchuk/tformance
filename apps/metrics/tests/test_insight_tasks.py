@@ -57,16 +57,16 @@ class TestComputeTeamInsightsTask(TestCase):
         # Verify count is returned
         self.assertEqual(result, 5)
 
-    def test_compute_team_insights_invalid_team_id_raises(self):
-        """Test that compute_team_insights raises exception for invalid team_id."""
+    def test_compute_team_insights_invalid_team_id_returns_zero(self):
+        """Test that compute_team_insights returns 0 for invalid team_id (graceful degradation)."""
         from apps.metrics.tasks import compute_team_insights
-        from apps.teams.models import Team
 
         non_existent_id = 99999
 
-        # Call the task with non-existent ID - should raise exception
-        with self.assertRaises(Team.DoesNotExist):
-            compute_team_insights(non_existent_id)
+        # Call the task with non-existent ID - should return 0 (not raise)
+        # This ensures pipeline continues even with invalid team IDs
+        result = compute_team_insights(non_existent_id)
+        self.assertEqual(result, 0)
 
     @patch("apps.metrics.tasks.compute_insights")
     def test_compute_team_insights_uses_todays_date(self, mock_compute_insights):

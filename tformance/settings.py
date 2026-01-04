@@ -601,6 +601,7 @@ CELERY_WORKER_MAX_TASKS_PER_CHILD = 100  # Restart workers periodically (memory 
 CELERY_TASK_SOFT_TIME_LIMIT = 300  # 5 min soft limit
 CELERY_TASK_TIME_LIMIT = 600  # 10 min hard limit
 CELERY_RESULT_EXPIRES = 86400  # 24 hours - auto-cleanup stale results from Redis
+CELERY_TASK_TRACK_STARTED = True  # Store STARTED state in Redis for accurate Flower monitoring
 
 # Task routing for production (separate queues for different workload types)
 # Usage: celery -A tformance worker -Q sync -c 8 --pool=gevent

@@ -50,23 +50,19 @@ register_rule(RedundantReviewerRule)
 register_rule(UnlinkedPRsRule)
 
 
-@shared_task
-def compute_team_insights(team_id: int) -> int:
-    """Compute insights for a single team.
+def _dispatch_llm_insights_for_pipeline(team_id: int, team_name: str):
+    """Dispatch LLM insights based on current pipeline status.
 
-    Args:
-        team_id: The ID of the team to compute insights for
-
-    Returns:
-        Count of insights created
-
-    Raises:
-        Team.DoesNotExist: If the team_id does not exist
+    Always dispatches the next step to avoid pipeline getting stuck.
     """
-    team = Team.objects.get(id=team_id)
-    insights = compute_insights(team, date.today())
+    from apps.teams.models import Team
 
-    # Signal-based pipeline: dispatch LLM insights then update status
+    try:
+        team = Team.objects.get(id=team_id)
+    except Team.DoesNotExist:
+        logger.error(f"Team {team_id} not found when dispatching LLM insights")
+        return
+
     team.refresh_from_db()
     current_status = team.onboarding_pipeline_status
     if current_status == "computing_insights":
@@ -76,7 +72,7 @@ def compute_team_insights(team_id: int) -> int:
             kwargs={"days_list": [7, 30]},
             countdown=1,
         )
-        logger.info(f"Dispatched LLM insights (7d, 30d) for team {team.name}")
+        logger.info(f"Dispatched LLM insights (7d, 30d) for team {team_name}")
     elif current_status == "background_insights":
         # Phase 2: dispatch LLM insights (90d), which will update status to complete
         generate_team_llm_insights.apply_async(
@@ -84,7 +80,38 @@ def compute_team_insights(team_id: int) -> int:
             kwargs={"days_list": [90]},
             countdown=1,
         )
-        logger.info(f"Dispatched LLM insights (90d) for team {team.name}")
+        logger.info(f"Dispatched LLM insights (90d) for team {team_name}")
+
+
+@shared_task
+def compute_team_insights(team_id: int) -> int:
+    """Compute insights for a single team.
+
+    Args:
+        team_id: The ID of the team to compute insights for
+
+    Returns:
+        Count of insights created, or 0 if error
+    """
+    try:
+        team = Team.objects.get(id=team_id)
+    except Team.DoesNotExist:
+        logger.warning(f"Team with id {team_id} not found")
+        return 0
+
+    try:
+        insights = compute_insights(team, date.today())
+        logger.info(f"Computed {len(insights)} insights for team {team.name}")
+    except Exception as exc:
+        from sentry_sdk import capture_exception
+
+        logger.error(f"Failed to compute insights for team {team.name}: {exc}")
+        capture_exception(exc)
+        insights = []  # Continue with empty insights to advance pipeline
+
+    # Signal-based pipeline: dispatch LLM insights regardless of success/failure
+    # This ensures pipeline continues even if rule-based insights fail
+    _dispatch_llm_insights_for_pipeline(team_id, team.name)
 
     return len(insights)
 

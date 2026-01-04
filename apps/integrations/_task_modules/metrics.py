@@ -18,6 +18,34 @@ from apps.teams.models import Team
 logger = logging.getLogger(__name__)
 
 
+def _advance_llm_pipeline_status(team):
+    """Advance pipeline status after LLM processing (success or max retries).
+
+    Handles both Phase 1 (llm_processing → computing_metrics) and
+    Phase 2 (background_llm → background_metrics) transitions.
+    """
+    team.refresh_from_db()
+    current_status = team.onboarding_pipeline_status
+    if current_status == "llm_processing":
+        team.update_pipeline_status("computing_metrics")
+    elif current_status == "background_llm":
+        team.update_pipeline_status("background_metrics")
+
+
+def _advance_metrics_pipeline_status(team):
+    """Advance pipeline status after metrics aggregation (success or failure).
+
+    Handles both Phase 1 (computing_metrics → computing_insights) and
+    Phase 2 (background_metrics → background_insights) transitions.
+    """
+    team.refresh_from_db()
+    current_status = team.onboarding_pipeline_status
+    if current_status == "computing_metrics":
+        team.update_pipeline_status("computing_insights")
+    elif current_status == "background_metrics":
+        team.update_pipeline_status("background_insights")
+
+
 @shared_task
 def aggregate_team_weekly_metrics_task(team_id: int):
     """Aggregate weekly metrics for a single team.
@@ -51,14 +79,7 @@ def aggregate_team_weekly_metrics_task(team_id: int):
         logger.info(f"Successfully aggregated {count} weekly metrics for team {team.name}")
 
         # Signal-based pipeline: update status to trigger next task
-        team.refresh_from_db()
-        current_status = team.onboarding_pipeline_status
-        if current_status == "computing_metrics":
-            # Phase 1: next is computing insights
-            team.update_pipeline_status("computing_insights")
-        elif current_status == "background_metrics":
-            # Phase 2: next is re-computing insights with full 90-day data
-            team.update_pipeline_status("background_insights")
+        _advance_metrics_pipeline_status(team)
 
         return count
     except Exception as exc:
@@ -66,6 +87,12 @@ def aggregate_team_weekly_metrics_task(team_id: int):
 
         logger.error(f"Failed to aggregate weekly metrics for team {team.name}: {exc}")
         capture_exception(exc)
+
+        # Even on failure, advance pipeline to avoid getting stuck
+        # The next stage (computing_insights) can still run with partial/empty data
+        logger.warning(f"Advancing pipeline for team {team.name} despite metrics aggregation failure")
+        _advance_metrics_pipeline_status(team)
+
         return 0
 
 
@@ -97,7 +124,7 @@ def aggregate_all_teams_weekly_metrics_task():
     return teams_processed
 
 
-@shared_task(bind=True, soft_time_limit=900, time_limit=960)
+@shared_task(bind=True, max_retries=3, default_retry_delay=60, soft_time_limit=900, time_limit=960)
 def queue_llm_analysis_batch_task(self, team_id: int, batch_size: int = 50) -> dict:
     """Process PRs missing LLM analysis in batches.
 
@@ -135,17 +162,7 @@ def queue_llm_analysis_batch_task(self, team_id: int, batch_size: int = 50) -> d
 
     if not prs_to_process:
         logger.info(f"No PRs need LLM processing for team {team.name}")
-
-        # Signal-based pipeline: update status to trigger next task
-        team.refresh_from_db()
-        current_status = team.onboarding_pipeline_status
-        if current_status == "llm_processing":
-            # Phase 1: next is computing metrics
-            team.update_pipeline_status("computing_metrics")
-        elif current_status == "background_llm":
-            # Phase 2: re-aggregate metrics for the new data, then complete
-            team.update_pipeline_status("background_metrics")
-
+        _advance_llm_pipeline_status(team)
         return {"prs_processed": 0, "message": "No PRs need processing"}
 
     logger.info(f"Starting LLM batch analysis for {len(prs_to_process)} PRs for team {team.name}")
@@ -157,12 +174,29 @@ def queue_llm_analysis_batch_task(self, team_id: int, batch_size: int = 50) -> d
         results, stats = processor.submit_batch_with_fallback(prs_to_process)
         logger.info(f"Batch completed for team {team.name}: stats={stats}")
     except SoftTimeLimitExceeded:
-        logger.error(f"LLM batch task timed out for team {team.name} - will retry on next dispatch")
-        # Re-raise to let Celery handle it - pipeline will recover via stuck detection
-        raise
+        logger.error(f"LLM batch task timed out for team {team.name}")
+        if self.request.retries < self.max_retries:
+            logger.info(
+                f"Retrying LLM batch for team {team.name} (attempt {self.request.retries + 1}/{self.max_retries})"
+            )
+            raise self.retry(countdown=60) from None
+        else:
+            # Max retries exhausted - advance pipeline with partial results
+            logger.warning(f"LLM batch max retries exhausted for team {team.name}, advancing pipeline")
+            _advance_llm_pipeline_status(team)
+            return {"error": "timeout_max_retries", "prs_processed": 0}
     except Exception as e:
         logger.exception(f"LLM batch failed for team {team.name}: {e}")
-        raise
+        if self.request.retries < self.max_retries:
+            logger.info(
+                f"Retrying LLM batch for team {team.name} (attempt {self.request.retries + 1}/{self.max_retries})"
+            )
+            raise self.retry(exc=e, countdown=60) from None
+        else:
+            # Max retries exhausted - advance pipeline with partial results
+            logger.warning(f"LLM batch max retries exhausted for team {team.name}, advancing pipeline")
+            _advance_llm_pipeline_status(team)
+            return {"error": str(e), "prs_processed": 0}
 
     # Update PRs with results
     prs_updated = 0
@@ -193,13 +227,7 @@ def queue_llm_analysis_batch_task(self, team_id: int, batch_size: int = 50) -> d
         self.apply_async(args=[team_id], kwargs={"batch_size": batch_size}, countdown=2)
     else:
         # All PRs processed - update status to trigger next task
-        team.refresh_from_db()
-        current_status = team.onboarding_pipeline_status
-        if current_status == "llm_processing":
-            # Phase 1: next is computing metrics
-            team.update_pipeline_status("computing_metrics")
-        elif current_status == "background_llm":
-            # Phase 2: re-aggregate metrics for the new data, then complete
-            team.update_pipeline_status("background_metrics")
+        _advance_llm_pipeline_status(team)
+        logger.info(f"LLM processing complete for team {team.name}, advanced to next phase")
 
     return {"prs_processed": prs_updated, "remaining": remaining_prs}
