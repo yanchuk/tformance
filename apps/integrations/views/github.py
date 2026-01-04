@@ -144,8 +144,15 @@ def github_select_org(request):
         organization_slug = request.POST.get("organization_slug")
         organization_id = request.POST.get("organization_id")
 
+        # Validate organization_id is a valid integer (security fix)
+        try:
+            org_id_int = int(organization_id)
+        except (ValueError, TypeError):
+            messages.error(request, "Invalid organization ID. Please try again.")
+            return redirect("integrations:integrations_home")
+
         # Create GitHubIntegration using helper
-        org_data = {"login": organization_slug, "id": int(organization_id)}
+        org_data = {"login": organization_slug, "id": org_id_int}
         _create_github_integration(team, credential, org_data)
 
         # Queue async member sync task

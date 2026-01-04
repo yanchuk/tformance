@@ -826,6 +826,53 @@ class GitHubSelectOrgViewTest(TestCase):
         messages = list(get_messages(response.wsgi_request))
         self.assertTrue(any("success" in str(m).lower() or "connected" in str(m).lower() for m in messages))
 
+    def test_github_select_org_post_invalid_organization_id_shows_error(self):
+        """Test that github_select_org POST with invalid organization_id shows error.
+
+        Security fix: Ensure non-numeric organization_id doesn't crash the server.
+        """
+        # Create credential
+        IntegrationCredentialFactory(team=self.team, provider=IntegrationCredential.PROVIDER_GITHUB)
+
+        self.client.force_login(self.admin)
+
+        # POST with invalid (non-numeric) organization_id
+        response = self.client.post(
+            reverse("integrations:github_select_org"),
+            {"organization_slug": "acme-corp", "organization_id": "invalid-not-a-number"},
+            follow=True,
+        )
+
+        # Should redirect to integrations home with error message
+        self.assertEqual(response.status_code, 200)  # After following redirect
+        messages = list(get_messages(response.wsgi_request))
+        self.assertTrue(any("invalid" in str(m).lower() or "error" in str(m).lower() for m in messages))
+
+        # Should NOT create GitHubIntegration
+        self.assertFalse(GitHubIntegration.objects.filter(team=self.team).exists())
+
+    def test_github_select_org_post_empty_organization_id_shows_error(self):
+        """Test that github_select_org POST with empty organization_id shows error."""
+        # Create credential
+        IntegrationCredentialFactory(team=self.team, provider=IntegrationCredential.PROVIDER_GITHUB)
+
+        self.client.force_login(self.admin)
+
+        # POST with empty organization_id
+        response = self.client.post(
+            reverse("integrations:github_select_org"),
+            {"organization_slug": "acme-corp", "organization_id": ""},
+            follow=True,
+        )
+
+        # Should redirect to integrations home with error message
+        self.assertEqual(response.status_code, 200)
+        messages = list(get_messages(response.wsgi_request))
+        self.assertTrue(any("invalid" in str(m).lower() or "error" in str(m).lower() for m in messages))
+
+        # Should NOT create GitHubIntegration
+        self.assertFalse(GitHubIntegration.objects.filter(team=self.team).exists())
+
 
 class GitHubReposViewTest(TestCase):
     """Tests for github_repos view (list organization repositories)."""
