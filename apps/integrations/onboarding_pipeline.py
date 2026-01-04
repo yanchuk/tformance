@@ -260,9 +260,11 @@ def dispatch_phase2_pipeline(self, team_id: int, repo_ids: list[int]) -> dict:
         queue_llm_analysis_batch_task,
         sync_historical_data_task,
     )
-    from apps.metrics.tasks import compute_team_insights, generate_team_llm_insights
+    from apps.metrics.tasks import compute_team_insights
 
     # Build Phase 2 pipeline
+    # Note: generate_team_llm_insights handles the final status update to 'complete'
+    # and dispatches the completion email. Do NOT duplicate those here.
     pipeline = chain(
         # Stage 0: Sync members first (may have new contributors in older PRs)
         sync_github_members_pipeline_task.si(team_id),
@@ -273,14 +275,13 @@ def dispatch_phase2_pipeline(self, team_id: int, repo_ids: list[int]) -> dict:
         update_pipeline_status.si(team_id, "background_llm"),
         queue_llm_analysis_batch_task.si(team_id, batch_size=500),  # Process all remaining
         # Stage 3: Re-aggregate metrics with full data
+        update_pipeline_status.si(team_id, "background_metrics"),
         aggregate_team_weekly_metrics_task.si(team_id),
-        # Stage 4: Re-compute insights with full data
+        # Stage 4: Re-compute insights with full data - triggers generate_team_llm_insights
+        update_pipeline_status.si(team_id, "background_insights"),
         compute_team_insights.si(team_id),
-        # Stage 5: Generate 90-day LLM insight (now have full 90 days of data)
-        generate_team_llm_insights.si(team_id, days_list=[90]),
-        # Stage 6: Final completion
-        update_pipeline_status.si(team_id, "complete"),
-        send_onboarding_complete_email.si(team_id),
+        # generate_team_llm_insights is dispatched by compute_team_insights
+        # It handles status update to 'complete' and email dispatch
     )
 
     # Phase 2 failures don't block dashboard - use graceful error handler
@@ -311,10 +312,12 @@ def run_phase2_pipeline(team_id: int, repo_ids: list[int]) -> AsyncResult:
         queue_llm_analysis_batch_task,
         sync_historical_data_task,
     )
-    from apps.metrics.tasks import compute_team_insights, generate_team_llm_insights
+    from apps.metrics.tasks import compute_team_insights
 
     logger.info(f"Running Phase 2 pipeline: team={team_id}, repos={repo_ids}")
 
+    # Note: generate_team_llm_insights handles the final status update to 'complete'
+    # and dispatches the completion email. Do NOT duplicate those here.
     pipeline = chain(
         # Stage 0: Sync members first (may have new contributors in older PRs)
         sync_github_members_pipeline_task.si(team_id),
@@ -325,13 +328,13 @@ def run_phase2_pipeline(team_id: int, repo_ids: list[int]) -> AsyncResult:
         update_pipeline_status.si(team_id, "background_llm"),
         queue_llm_analysis_batch_task.si(team_id, batch_size=500),
         # Stage 3: Re-aggregate metrics
+        update_pipeline_status.si(team_id, "background_metrics"),
         aggregate_team_weekly_metrics_task.si(team_id),
-        # Stage 4: Re-compute insights
+        # Stage 4: Re-compute insights - triggers generate_team_llm_insights
+        update_pipeline_status.si(team_id, "background_insights"),
         compute_team_insights.si(team_id),
-        # Stage 5: Generate 90-day LLM insight (now have full 90 days of data)
-        generate_team_llm_insights.si(team_id, days_list=[90]),
-        # Stage 6: Final completion
-        update_pipeline_status.si(team_id, "complete"),
+        # generate_team_llm_insights is dispatched by compute_team_insights
+        # It handles status update to 'complete' and email dispatch
     )
 
     # Phase 2 failures don't block dashboard - use graceful error handler
@@ -685,6 +688,8 @@ def recover_stuck_pipeline(self, team_id: int) -> dict:
     )
 
     # Resume based on the step needed
+    # Note: Phase 1 recovery ends with phase1_complete status.
+    # Signal handler automatically dispatches Phase 2 - do NOT also call dispatch_phase2_pipeline.
     if resume_step == "sync_members":
         # Resume from member sync
         sync_github_members_pipeline_task.delay(team_id)
@@ -700,8 +705,8 @@ def recover_stuck_pipeline(self, team_id: int) -> dict:
             update_pipeline_status.si(team_id, "computing_insights"),
             compute_team_insights.si(team_id),
             generate_team_llm_insights.si(team_id, days_list=[7, 30]),
+            # Signal handler dispatches Phase 2 when phase1_complete is set
             update_pipeline_status.si(team_id, "phase1_complete"),
-            dispatch_phase2_pipeline.si(team_id, repo_ids),
         ).on_error(handle_pipeline_failure.s(team_id=team_id)).apply_async(countdown=5)
 
     elif resume_step == "sync_prs":
@@ -715,8 +720,8 @@ def recover_stuck_pipeline(self, team_id: int) -> dict:
             update_pipeline_status.si(team_id, "computing_insights"),
             compute_team_insights.si(team_id),
             generate_team_llm_insights.si(team_id, days_list=[7, 30]),
+            # Signal handler dispatches Phase 2 when phase1_complete is set
             update_pipeline_status.si(team_id, "phase1_complete"),
-            dispatch_phase2_pipeline.si(team_id, repo_ids),
         ).on_error(handle_pipeline_failure.s(team_id=team_id)).apply_async()
 
     elif resume_step == "llm_analysis":
@@ -728,8 +733,8 @@ def recover_stuck_pipeline(self, team_id: int) -> dict:
             update_pipeline_status.si(team_id, "computing_insights"),
             compute_team_insights.si(team_id),
             generate_team_llm_insights.si(team_id, days_list=[7, 30]),
+            # Signal handler dispatches Phase 2 when phase1_complete is set
             update_pipeline_status.si(team_id, "phase1_complete"),
-            dispatch_phase2_pipeline.si(team_id, repo_ids),
         ).on_error(handle_pipeline_failure.s(team_id=team_id)).apply_async()
 
     elif resume_step == "aggregate_metrics":
@@ -739,8 +744,8 @@ def recover_stuck_pipeline(self, team_id: int) -> dict:
             update_pipeline_status.si(team_id, "computing_insights"),
             compute_team_insights.si(team_id),
             generate_team_llm_insights.si(team_id, days_list=[7, 30]),
+            # Signal handler dispatches Phase 2 when phase1_complete is set
             update_pipeline_status.si(team_id, "phase1_complete"),
-            dispatch_phase2_pipeline.si(team_id, repo_ids),
         ).on_error(handle_pipeline_failure.s(team_id=team_id)).apply_async()
 
     elif resume_step == "compute_insights":
@@ -748,33 +753,35 @@ def recover_stuck_pipeline(self, team_id: int) -> dict:
         chain(
             compute_team_insights.si(team_id),
             generate_team_llm_insights.si(team_id, days_list=[7, 30]),
+            # Signal handler dispatches Phase 2 when phase1_complete is set
             update_pipeline_status.si(team_id, "phase1_complete"),
-            dispatch_phase2_pipeline.si(team_id, repo_ids),
         ).on_error(handle_pipeline_failure.s(team_id=team_id)).apply_async()
 
     elif resume_step == "phase2_sync":
         # Resume Phase 2 from sync (days 31-90) - includes member sync for new contributors
+        # Note: generate_team_llm_insights handles status update to 'complete' and email dispatch
         chain(
             sync_github_members_pipeline_task.si(team_id),
             sync_historical_data_task.si(team_id, repo_ids, days_back=90, skip_recent=30),
             update_pipeline_status.si(team_id, "background_llm"),
             queue_llm_analysis_batch_task.si(team_id, batch_size=500),
+            update_pipeline_status.si(team_id, "background_metrics"),
             aggregate_team_weekly_metrics_task.si(team_id),
+            update_pipeline_status.si(team_id, "background_insights"),
             compute_team_insights.si(team_id),
-            generate_team_llm_insights.si(team_id, days_list=[90]),
-            update_pipeline_status.si(team_id, "complete"),
-            send_onboarding_complete_email.si(team_id),
+            # generate_team_llm_insights updates status to 'complete' and dispatches email
         ).on_error(handle_phase2_failure.s(team_id=team_id)).apply_async()
 
     elif resume_step == "phase2_llm":
         # Resume Phase 2 from LLM analysis
+        # Note: generate_team_llm_insights handles status update to 'complete' and email dispatch
         chain(
             queue_llm_analysis_batch_task.si(team_id, batch_size=500),
+            update_pipeline_status.si(team_id, "background_metrics"),
             aggregate_team_weekly_metrics_task.si(team_id),
+            update_pipeline_status.si(team_id, "background_insights"),
             compute_team_insights.si(team_id),
-            generate_team_llm_insights.si(team_id, days_list=[90]),
-            update_pipeline_status.si(team_id, "complete"),
-            send_onboarding_complete_email.si(team_id),
+            # generate_team_llm_insights updates status to 'complete' and dispatches email
         ).on_error(handle_phase2_failure.s(team_id=team_id)).apply_async()
 
     return {"status": "recovered", "team_id": team_id, "from_status": status, "resume_step": resume_step}
