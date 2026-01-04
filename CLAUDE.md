@@ -18,6 +18,8 @@ Tformance is SaaS platform helping CTOs understand if AI coding tools are improv
 - We use Groq for LLM processing. We try always use Batches in Groq if it makes sense for scheduled tasks or onboarding PR batches processing as it saves costs by 50% and almost real-time.
 - Always prioritize "Django way" of doing things and appreciate framework capabilities and best practices.
 - We are following TDD (test-driven development) style.
+- Always try to fix a root cause, not just manually fix something right now (more related to data issues).
+- Behave as as senior engineer when you investigate issues. Make sure that you have needed logs (if not - suggest to add), do debug and look at the issue from different angles. 
 
 ## Documentation
 
