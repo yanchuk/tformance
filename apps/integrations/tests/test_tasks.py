@@ -37,7 +37,7 @@ class TestSyncRepositoryTask(TestCase):
             is_active=True,
         )
 
-    @patch("apps.integrations.tasks.sync_repository_incremental")
+    @patch("apps.integrations._task_modules.github_sync.sync_repository_incremental")
     def test_sync_repository_task_calls_sync_repository_incremental_with_correct_repo(self, mock_sync):
         """Test that sync_repository_task calls sync_repository_incremental with the correct repository."""
         from apps.integrations.tasks import sync_repository_task
@@ -93,7 +93,7 @@ class TestSyncRepositoryTask(TestCase):
         self.assertIn("error", result)
         self.assertIn("not found", result["error"].lower())
 
-    @patch("apps.integrations.tasks.sync_repository_incremental")
+    @patch("apps.integrations._task_modules.github_sync.sync_repository_incremental")
     def test_sync_repository_task_retries_on_failure(self, mock_sync):
         """Test that sync_repository_task retries up to 3 times on failure with exponential backoff."""
         from apps.integrations.tasks import sync_repository_task
@@ -115,7 +115,7 @@ class TestSyncRepositoryTask(TestCase):
             # (the actual retry logic is tested by checking the decorator config)
 
     @patch("sentry_sdk.capture_exception")
-    @patch("apps.integrations.tasks.sync_repository_incremental")
+    @patch("apps.integrations._task_modules.github_sync.sync_repository_incremental")
     def test_sync_repository_task_logs_to_sentry_on_final_failure(self, mock_sync, mock_sentry):
         """Test that sync_repository_task logs errors to Sentry on final failure after retries exhausted."""
         from apps.integrations.tasks import sync_repository_task
@@ -140,7 +140,7 @@ class TestSyncRepositoryTask(TestCase):
             self.assertIsInstance(result, dict)
             self.assertIn("error", result)
 
-    @patch("apps.integrations.tasks.sync_repository_incremental")
+    @patch("apps.integrations._task_modules.github_sync.sync_repository_incremental")
     def test_sync_repository_task_returns_result_dict_from_sync(self, mock_sync):
         """Test that sync_repository_task returns the result dict from sync_repository_incremental."""
         from apps.integrations.tasks import sync_repository_task
@@ -158,7 +158,7 @@ class TestSyncRepositoryTask(TestCase):
         # Verify result matches sync output
         self.assertEqual(result, expected_result)
 
-    @patch("apps.integrations.tasks.sync_repository_incremental")
+    @patch("apps.integrations._task_modules.github_sync.sync_repository_incremental")
     def test_sync_repository_task_sets_status_to_syncing_before_sync(self, mock_sync):
         """Test that sync_repository_task sets sync_status to 'syncing' before starting sync."""
         from apps.integrations.tasks import sync_repository_task
@@ -181,7 +181,7 @@ class TestSyncRepositoryTask(TestCase):
 
         # Verify status was set to 'syncing' (checked by the mock)
 
-    @patch("apps.integrations.tasks.sync_repository_incremental")
+    @patch("apps.integrations._task_modules.github_sync.sync_repository_incremental")
     def test_sync_repository_task_sets_status_to_complete_on_success(self, mock_sync):
         """Test that sync_repository_task sets sync_status to 'complete' on successful sync."""
         from apps.integrations.models import TrackedRepository
@@ -203,7 +203,7 @@ class TestSyncRepositoryTask(TestCase):
         repo = TrackedRepository.objects.get(id=self.tracked_repo.id)
         self.assertEqual(repo.sync_status, "complete")
 
-    @patch("apps.integrations.tasks.sync_repository_incremental")
+    @patch("apps.integrations._task_modules.github_sync.sync_repository_incremental")
     def test_sync_repository_task_sets_status_to_error_on_failure(self, mock_sync):
         """Test that sync_repository_task sets sync_status to 'error' on permanent failure."""
         from apps.integrations.models import TrackedRepository
@@ -229,7 +229,7 @@ class TestSyncRepositoryTask(TestCase):
                 repo = TrackedRepository.objects.get(id=self.tracked_repo.id)
                 self.assertEqual(repo.sync_status, "error")
 
-    @patch("apps.integrations.tasks.sync_repository_incremental")
+    @patch("apps.integrations._task_modules.github_sync.sync_repository_incremental")
     def test_sync_repository_task_saves_error_message_on_failure(self, mock_sync):
         """Test that sync_repository_task saves sanitized error message to last_sync_error on failure."""
         from apps.integrations.models import TrackedRepository
@@ -254,7 +254,7 @@ class TestSyncRepositoryTask(TestCase):
                 # Sanitized message should be user-friendly, not exposing internal details
                 self.assertIn("error occurred", repo.last_sync_error.lower())
 
-    @patch("apps.integrations.tasks.sync_repository_incremental")
+    @patch("apps.integrations._task_modules.github_sync.sync_repository_incremental")
     def test_sync_repository_task_clears_last_sync_error_on_successful_sync(self, mock_sync):
         """Test that sync_repository_task clears last_sync_error on successful sync after previous error."""
         from apps.integrations.models import TrackedRepository
@@ -296,7 +296,7 @@ class TestSyncAllRepositoriesTask(TestCase):
             credential=self.credential,
         )
 
-    @patch("apps.integrations.tasks.sync_repository_task")
+    @patch("apps.integrations._task_modules.github_sync.sync_repository_task")
     def test_sync_all_repositories_task_dispatches_tasks_for_all_active_repos(self, mock_task):
         """Test that sync_all_repositories_task dispatches sync_repository_task for all active repos."""
         from apps.integrations.tasks import sync_all_repositories_task
@@ -341,7 +341,7 @@ class TestSyncAllRepositoriesTask(TestCase):
         self.assertEqual(result["repos_dispatched"], 3)
         self.assertEqual(result["repos_skipped"], 0)
 
-    @patch("apps.integrations.tasks.sync_repository_task")
+    @patch("apps.integrations._task_modules.github_sync.sync_repository_task")
     def test_sync_all_repositories_task_skips_inactive_repos(self, mock_task):
         """Test that sync_all_repositories_task only dispatches tasks for active repos (is_active=True)."""
         from apps.integrations.tasks import sync_all_repositories_task
@@ -381,7 +381,7 @@ class TestSyncAllRepositoriesTask(TestCase):
         self.assertEqual(result["repos_dispatched"], 1)
         self.assertEqual(result["repos_skipped"], 2)
 
-    @patch("apps.integrations.tasks.sync_repository_task")
+    @patch("apps.integrations._task_modules.github_sync.sync_repository_task")
     def test_sync_all_repositories_task_returns_correct_counts(self, mock_task):
         """Test that sync_all_repositories_task returns dict with repos_dispatched and repos_skipped counts."""
         from apps.integrations.tasks import sync_all_repositories_task
@@ -417,7 +417,7 @@ class TestSyncAllRepositoriesTask(TestCase):
         self.assertEqual(result["repos_dispatched"], 2)
         self.assertEqual(result["repos_skipped"], 1)
 
-    @patch("apps.integrations.tasks.sync_repository_task")
+    @patch("apps.integrations._task_modules.github_sync.sync_repository_task")
     def test_sync_all_repositories_task_handles_empty_repository_list(self, mock_task):
         """Test that sync_all_repositories_task handles case where no repositories exist."""
         from apps.integrations.tasks import sync_all_repositories_task
@@ -439,7 +439,7 @@ class TestSyncAllRepositoriesTask(TestCase):
         self.assertEqual(result["repos_dispatched"], 0)
         self.assertEqual(result["repos_skipped"], 0)
 
-    @patch("apps.integrations.tasks.sync_repository_task")
+    @patch("apps.integrations._task_modules.github_sync.sync_repository_task")
     def test_sync_all_repositories_task_continues_on_individual_dispatch_error(self, mock_task):
         """Test that sync_all_repositories_task continues dispatching even if one dispatch fails."""
         from apps.integrations.tasks import sync_all_repositories_task
@@ -969,7 +969,7 @@ class TestAggregateWeeklyMetricsTasks(TestCase):
         last_monday = today - timedelta(days=days_since_monday + 7)
         self.expected_week_start = last_monday
 
-    @patch("apps.integrations.tasks.aggregate_team_weekly_metrics")
+    @patch("apps.integrations._task_modules.metrics.aggregate_team_weekly_metrics")
     def test_aggregate_team_weekly_metrics_task_calls_service(self, mock_aggregate):
         """Test that task calls aggregate_team_weekly_metrics with correct team and week."""
         from apps.integrations.tasks import aggregate_team_weekly_metrics_task
@@ -1011,7 +1011,7 @@ class TestAggregateWeeklyMetricsTasks(TestCase):
         # Verify result is None or 0 (no exception raised)
         self.assertIn(result, [None, 0])
 
-    @patch("apps.integrations.tasks.aggregate_team_weekly_metrics_task")
+    @patch("apps.integrations._task_modules.metrics.aggregate_team_weekly_metrics_task")
     def test_aggregate_all_teams_weekly_metrics_task_dispatches_per_team(self, mock_task):
         """Test that aggregate_all_teams_weekly_metrics_task dispatches task for each team with GitHub integration."""
         from apps.integrations.tasks import aggregate_all_teams_weekly_metrics_task
@@ -1043,7 +1043,7 @@ class TestAggregateWeeklyMetricsTasks(TestCase):
         # Verify result contains count of teams processed
         self.assertEqual(result, 3)
 
-    @patch("apps.integrations.tasks.aggregate_team_weekly_metrics_task")
+    @patch("apps.integrations._task_modules.metrics.aggregate_team_weekly_metrics_task")
     def test_aggregate_all_teams_weekly_metrics_task_skips_teams_without_github(self, mock_task):
         """Test that aggregate_all_teams_weekly_metrics_task skips teams without GitHub integration."""
         from apps.integrations.tasks import aggregate_all_teams_weekly_metrics_task
@@ -1090,7 +1090,7 @@ class TestSyncGitHubMembersTaskStatusUpdates(TestCase):
             organization_slug="test-org",
         )
 
-    @patch("apps.integrations.tasks._sync_members_with_graphql_or_rest")
+    @patch("apps.integrations._task_modules.github_sync._sync_members_with_graphql_or_rest")
     def test_task_sets_member_sync_status_to_syncing_at_start(self, mock_sync):
         """Test that task sets member_sync_status to 'syncing' at start."""
         from apps.integrations.models import GitHubIntegration
@@ -1120,7 +1120,7 @@ class TestSyncGitHubMembersTaskStatusUpdates(TestCase):
         self.assertEqual(len(status_during_sync), 1)
         self.assertEqual(status_during_sync[0], "syncing")
 
-    @patch("apps.integrations.tasks._sync_members_with_graphql_or_rest")
+    @patch("apps.integrations._task_modules.github_sync._sync_members_with_graphql_or_rest")
     def test_task_sets_member_sync_started_at_at_start(self, mock_sync):
         """Test that task sets member_sync_started_at at start."""
         from apps.integrations.models import GitHubIntegration
@@ -1154,7 +1154,7 @@ class TestSyncGitHubMembersTaskStatusUpdates(TestCase):
         self.assertGreaterEqual(started_at_during_sync[0], before_task)
         self.assertLessEqual(started_at_during_sync[0], after_task)
 
-    @patch("apps.integrations.tasks._sync_members_with_graphql_or_rest")
+    @patch("apps.integrations._task_modules.github_sync._sync_members_with_graphql_or_rest")
     def test_task_sets_member_sync_status_to_complete_on_success(self, mock_sync):
         """Test that task sets member_sync_status to 'complete' on successful sync."""
         from apps.integrations.models import GitHubIntegration
@@ -1172,7 +1172,7 @@ class TestSyncGitHubMembersTaskStatusUpdates(TestCase):
         integration = GitHubIntegration.objects.get(id=self.integration.id)
         self.assertEqual(integration.member_sync_status, "complete")
 
-    @patch("apps.integrations.tasks._sync_members_with_graphql_or_rest")
+    @patch("apps.integrations._task_modules.github_sync._sync_members_with_graphql_or_rest")
     def test_task_sets_member_sync_completed_at_on_success(self, mock_sync):
         """Test that task sets member_sync_completed_at on successful sync."""
         from apps.integrations.models import GitHubIntegration
@@ -1194,7 +1194,7 @@ class TestSyncGitHubMembersTaskStatusUpdates(TestCase):
         self.assertGreaterEqual(integration.member_sync_completed_at, before_task)
         self.assertLessEqual(integration.member_sync_completed_at, after_task)
 
-    @patch("apps.integrations.tasks._sync_members_with_graphql_or_rest")
+    @patch("apps.integrations._task_modules.github_sync._sync_members_with_graphql_or_rest")
     def test_task_stores_result_dict_in_member_sync_result_on_success(self, mock_sync):
         """Test that task stores result dict in member_sync_result on success."""
         from apps.integrations.models import GitHubIntegration
@@ -1215,7 +1215,7 @@ class TestSyncGitHubMembersTaskStatusUpdates(TestCase):
         self.assertEqual(integration.member_sync_result, expected_result)
 
     @patch("sentry_sdk.capture_exception")
-    @patch("apps.integrations.tasks._sync_members_with_graphql_or_rest")
+    @patch("apps.integrations._task_modules.github_sync._sync_members_with_graphql_or_rest")
     def test_task_sets_member_sync_status_to_error_on_failure(self, mock_sync, mock_sentry):
         """Test that task sets member_sync_status to 'error' on permanent failure."""
         from apps.integrations.models import GitHubIntegration
@@ -1236,7 +1236,7 @@ class TestSyncGitHubMembersTaskStatusUpdates(TestCase):
             self.assertEqual(integration.member_sync_status, "error")
 
     @patch("sentry_sdk.capture_exception")
-    @patch("apps.integrations.tasks._sync_members_with_graphql_or_rest")
+    @patch("apps.integrations._task_modules.github_sync._sync_members_with_graphql_or_rest")
     def test_task_stores_error_message_in_member_sync_error_on_failure(self, mock_sync, mock_sentry):
         """Test that task stores sanitized error message in member_sync_error on failure."""
         from apps.integrations.models import GitHubIntegration
