@@ -128,6 +128,7 @@ class SyncStatus(TypedDict):
     repos_syncing: list[str]
     repos_total: int
     repos_synced: int
+    pipeline_status: str | None
 
 
 def get_team_sync_status(team: Team) -> SyncStatus:
@@ -139,11 +140,12 @@ def get_team_sync_status(team: Team) -> SyncStatus:
 
     Returns:
         SyncStatus dict with:
-            - sync_in_progress: True if any repos are currently syncing
+            - sync_in_progress: True if any repos are syncing OR pipeline is active
             - sync_progress_percent: Average progress across all repos (0-100)
             - repos_syncing: List of full_name for repos currently syncing
             - repos_total: Total number of tracked repositories
             - repos_synced: Number of repos that have completed sync
+            - pipeline_status: Current pipeline status (for display purposes)
     """
     team_repos = TrackedRepository.objects.filter(team=team)
 
@@ -161,10 +163,20 @@ def get_team_sync_status(team: Team) -> SyncStatus:
     else:
         sync_progress_percent = 0
 
+    # Check if pipeline is actively running (not in terminal states)
+    # Widget should show during both Phase 1 and Phase 2
+    terminal_states = {"complete", "failed", "not_started", None}
+    pipeline_status = team.onboarding_pipeline_status
+    pipeline_active = pipeline_status not in terminal_states
+
+    # Sync in progress if repos syncing OR pipeline active
+    sync_in_progress = len(repos_syncing) > 0 or pipeline_active
+
     return {
-        "sync_in_progress": len(repos_syncing) > 0,
+        "sync_in_progress": sync_in_progress,
         "sync_progress_percent": sync_progress_percent,
         "repos_syncing": repos_syncing,
         "repos_total": repos_total,
         "repos_synced": repos_synced,
+        "pipeline_status": pipeline_status,
     }

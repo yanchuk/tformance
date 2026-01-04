@@ -1,15 +1,19 @@
 {% comment %}
 Sync Indicator Widget Component
-Shows a floating progress widget in the bottom-right when repositories are actively syncing.
+Shows a floating progress widget in the bottom-right when:
+- Repositories are actively syncing, OR
+- Onboarding pipeline is active (Phase 1 or Phase 2)
+
 A-009/A-010: Unified to use bottom-right widget pattern (consistent with onboarding).
 A-023: Added HTMX polling for auto-updates during sync.
 
 Required context:
-- sync_in_progress: boolean indicating if any repos are syncing
+- sync_in_progress: boolean indicating if sync/pipeline is active
 - sync_progress_percent: overall sync progress percentage (0-100)
 - repos_synced: number of repos that have completed syncing
 - repos_total: total number of tracked repos
 - repos_syncing: list of repo names currently syncing (optional)
+- pipeline_status: current pipeline phase (optional)
 
 Usage:
   {% include "web/components/sync_indicator.html" %}
@@ -33,13 +37,38 @@ Usage:
       <i class="fa-solid fa-sync fa-spin text-primary" aria-hidden="true"></i>
     </div>
     <div class="text-sm">
-      <div class="font-medium text-base-content">{% trans "Syncing" %} {{ sync_progress_percent }}%</div>
-      <div class="text-base-content/70">
-        {{ repos_synced }} {% trans "of" %} {{ repos_total }} {% trans "repos" %}
-        {% if repos_syncing and repos_syncing|length <= 2 %}
-          ({% for repo in repos_syncing %}{{ repo|truncatechars:20 }}{% if not forloop.last %}, {% endif %}{% endfor %})
-        {% endif %}
-      </div>
+      {% if repos_syncing %}
+        {# Repos are actively syncing #}
+        <div class="font-medium text-base-content">{% trans "Syncing" %} {{ sync_progress_percent }}%</div>
+        <div class="text-base-content/70">
+          {{ repos_synced }} {% trans "of" %} {{ repos_total }} {% trans "repos" %}
+          {% if repos_syncing|length <= 2 %}
+            ({% for repo in repos_syncing %}{{ repo|truncatechars:20 }}{% if not forloop.last %}, {% endif %}{% endfor %})
+          {% endif %}
+        </div>
+      {% elif pipeline_status == "syncing_members" %}
+        <div class="font-medium text-base-content">{% trans "Syncing team members..." %}</div>
+        <div class="text-base-content/70">{% trans "Fetching GitHub org data" %}</div>
+      {% elif pipeline_status == "syncing" or pipeline_status == "background_syncing" %}
+        <div class="font-medium text-base-content">{% trans "Syncing repositories..." %}</div>
+        <div class="text-base-content/70">{{ repos_synced }} {% trans "of" %} {{ repos_total }} {% trans "repos" %}</div>
+      {% elif pipeline_status == "llm_processing" or pipeline_status == "background_llm" %}
+        <div class="font-medium text-base-content">{% trans "Analyzing pull requests..." %}</div>
+        <div class="text-base-content/70">{% trans "AI is processing your PRs" %}</div>
+      {% elif pipeline_status == "computing_metrics" or pipeline_status == "background_metrics" %}
+        <div class="font-medium text-base-content">{% trans "Computing metrics..." %}</div>
+        <div class="text-base-content/70">{% trans "Aggregating team data" %}</div>
+      {% elif pipeline_status == "computing_insights" or pipeline_status == "background_insights" %}
+        <div class="font-medium text-base-content">{% trans "Generating insights..." %}</div>
+        <div class="text-base-content/70">{% trans "Almost done!" %}</div>
+      {% elif pipeline_status == "phase1_complete" %}
+        <div class="font-medium text-base-content">{% trans "Processing more data..." %}</div>
+        <div class="text-base-content/70">{% trans "Background sync in progress" %}</div>
+      {% else %}
+        {# Fallback for any other active state #}
+        <div class="font-medium text-base-content">{% trans "Processing..." %}</div>
+        <div class="text-base-content/70">{% trans "Please wait" %}</div>
+      {% endif %}
     </div>
   </div>
 </div>
