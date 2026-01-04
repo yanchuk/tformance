@@ -376,7 +376,13 @@ make celery    # Starts worker + beat with --pool=solo
 
 ⚠️ **macOS Celery Warning**: Always use `make celery` or `--pool=solo`. The default `prefork` pool causes **SIGSEGV crashes** on macOS. Never run bare `celery -A tformance worker` without the pool flag.
 
-⚠️ **Celery Async Warning**: Never use `asyncio.run()` in Celery tasks - use `async_to_sync()` instead.
+⚠️ **Async Pattern Warning**: Never use `asyncio.run()` in Django's synchronous contexts - use `async_to_sync()` instead.
+
+**Applies to:**
+- Celery tasks (workers)
+- Django sync views calling async code
+- Signal handlers
+- Middleware
 
 ```python
 # WRONG - creates new event loop, breaks @sync_to_async thread context
@@ -389,6 +395,24 @@ result = async_to_sync(async_function)()
 ```
 
 **Why**: `asyncio.run()` creates a new event loop which breaks `@sync_to_async(thread_sensitive=True)` decorators' thread handling, causing database operations to **silently fail** (no errors, but data not saved) in Celery workers.
+
+### asyncio.run() Safe vs Unsafe Usage
+
+| Context | Safe? | Reason |
+|---------|-------|--------|
+| Celery tasks | ❌ NO | Breaks thread-local DB connections |
+| Django sync views | ❌ NO | Same thread-local issue |
+| Signal handlers | ❌ NO | Same thread-local issue |
+| Middleware | ❌ NO | Same thread-local issue |
+| **Test code** | ✅ YES | Fresh process, isolated event loop |
+| **Management commands** | ✅ YES | Fresh process, no thread-local deps |
+| **Seeding utilities** | ✅ YES | Standalone scripts |
+
+**Linter Check**: Run `make lint-asyncio` to find violations. The test `test_async_to_sync_celery.py` also catches this at CI time.
+
+**Code Review Checklist**:
+- [ ] Any `asyncio.run(` in `apps/**/*.py` (excluding tests) should be `async_to_sync()`
+- [ ] Functions calling async code should import `from asgiref.sync import async_to_sync`
 
 **Important for Claude Code sessions**: After completing each implementation phase, verify the dev server is running:
 ```bash

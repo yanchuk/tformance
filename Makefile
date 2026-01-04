@@ -24,8 +24,15 @@ healthcheck: ## Check if all dev services are running
 django: ## Run Django dev server
 	@uv run manage.py runserver
 
-celery: ## Start Celery and celery beat
-	@uv run celery -A tformance worker -l INFO --beat --pool=solo
+celery: ## Start Celery and celery beat (4 concurrent tasks)
+	@uv run celery -A tformance worker -l INFO -E --beat --pool=threads --concurrency=4
+
+celery-dev: ## Start Celery with auto-reload on code changes (development)
+	@uv run watchmedo auto-restart --directory=./apps --directory=./tformance --pattern="*.py" --recursive -- \
+		celery -A tformance worker -l INFO -E --beat --pool=solo
+
+flower: ## Start Flower web UI for Celery monitoring (http://localhost:5555)
+	@uv run celery -A tformance flower --port=5555
 
 manage: ## Run any manage.py command. E.g. `make manage ARGS='createsuperuser'`
 	@uv run manage.py ${ARGS}
@@ -103,7 +110,13 @@ lint-colors: ## Check templates for hardcoded colors (use semantic DaisyUI class
 lint-colors-fix: ## Check templates for hardcoded colors with fix suggestions
 	@uv run python scripts/lint_colors.py templates/ --fix-suggestions
 
-lint: ruff lint-team-isolation lint-colors ## Run all linters (ruff + team isolation + colors)
+lint-asyncio: ## Check for asyncio.run() in Celery task modules (use async_to_sync)
+	@echo "Checking for asyncio.run() in task modules..."
+	@! grep -rn "asyncio\.run(" apps/integrations/_task_modules/*.py 2>/dev/null | grep -v "#.*asyncio\.run" | grep -v "test_" || \
+		(echo "ERROR: Found asyncio.run() in task modules. Use async_to_sync() instead."; exit 1)
+	@echo "✓ No asyncio.run() found in task modules"
+
+lint: ruff lint-team-isolation lint-colors lint-asyncio ## Run all linters (ruff + team isolation + colors + asyncio)
 
 export-prompts: ## Export LLM prompts and generate promptfoo config
 	@uv run manage.py export_prompts
@@ -172,7 +185,7 @@ deploy: ## Build and push Docker image to Docker Hub (for Unraid/Watchtower)
 
 dev2: deploy ## Alias for deploy (build + push Docker image)
 
-.PHONY: help dev django celery start stop restart start-bg healthcheck \
+.PHONY: help dev django celery celery-dev start stop restart start-bg healthcheck \
         test test-serial test-slow test-coverage test-fresh test-django test-quick \
         e2e e2e-smoke e2e-auth e2e-dashboard e2e-ui e2e-report \
         migrations migrate shell dbshell init install-hooks \

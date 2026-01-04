@@ -41,8 +41,7 @@ def _fetch_pr_core_data_with_graphql_or_rest(pr, tracked_repo, access_token, err
     Returns:
         dict with commits_synced, files_synced, reviews_synced counts
     """
-    import asyncio
-
+    from asgiref.sync import async_to_sync
     from django.conf import settings
 
     github_config = getattr(settings, "GITHUB_API_CONFIG", {})
@@ -56,8 +55,11 @@ def _fetch_pr_core_data_with_graphql_or_rest(pr, tracked_repo, access_token, err
         try:
             from apps.integrations.services.github_graphql_sync import fetch_pr_complete_data_graphql
 
-            # Run async function in sync context
-            result = asyncio.run(fetch_pr_complete_data_graphql(pr, tracked_repo))
+            # Run async function in sync context using async_to_sync (NOT asyncio.run!)
+            # NOTE: asyncio.run() creates a new event loop which breaks @sync_to_async
+            # decorators' thread handling, causing DB operations to silently fail
+            # in Celery workers. async_to_sync properly manages the event loop.
+            result = async_to_sync(fetch_pr_complete_data_graphql)(pr, tracked_repo)
 
             # Check if GraphQL sync had errors
             if result.get("errors") and fallback_to_rest:
