@@ -196,4 +196,4 @@ class Command(BaseCommand):
             self.stdout.write(self.style.SUCCESS(f"  Created {len(sample_insights)} sample insights for {team.name}"))
 
         self.stdout.write(self.style.SUCCESS(f"\nTotal: {total_insights} sample insights created"))
-        self.stdout.write("\nView them at: /a/<team-slug>/metrics/")
+        self.stdout.write("\nView them at: /app/metrics/")

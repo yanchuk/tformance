@@ -98,8 +98,8 @@ class WelcomeEmailTests(TestCase):
         send_welcome_email(self.team, self.user)
 
         self.assertEqual(len(mail.outbox), 1)
-        # Check that email contains a link to the team dashboard
-        self.assertIn(self.team.slug, mail.outbox[0].body)
+        # Check that email contains a link to the dashboard
+        self.assertIn("/app/", mail.outbox[0].body)
 
 
 @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")

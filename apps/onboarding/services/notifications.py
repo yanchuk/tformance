@@ -25,7 +25,7 @@ def send_welcome_email(team: Team, user: CustomUser) -> bool:
 
     # Build dashboard URL using PROJECT_METADATA
     base_url = getattr(settings, "PROJECT_METADATA", {}).get("URL", "http://localhost:8000")
-    dashboard_url = f"{base_url}/a/{team.slug}/"
+    dashboard_url = f"{base_url}/app/"
 
     subject = "Welcome to Tformance!"
 
@@ -80,7 +80,7 @@ def send_sync_complete_email(team: Team, user: CustomUser, prs_synced: int, repo
 
     # Build dashboard URL using PROJECT_METADATA
     base_url = getattr(settings, "PROJECT_METADATA", {}).get("URL", "http://localhost:8000")
-    dashboard_url = f"{base_url}/a/{team.slug}/"
+    dashboard_url = f"{base_url}/app/"
 
     subject = "Your Tformance data sync is complete!"
 

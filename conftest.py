@@ -150,7 +150,7 @@ def authenticated_team_client(team, user, db):
     Usage:
         def test_authenticated_view(authenticated_team_client):
             client, team, user = authenticated_team_client
-            response = client.get(f'/a/{team.slug}/dashboard/')
+            response = client.get("/app/")
             assert response.status_code == 200
     """
     from apps.teams.models import Membership
