@@ -27,9 +27,9 @@ django: ## Run Django dev server
 celery: ## Start Celery and celery beat (4 concurrent tasks)
 	@uv run celery -A tformance worker -l INFO -E --beat --pool=threads --concurrency=4
 
-celery-dev: ## Start Celery with auto-reload on code changes (development)
+celery-dev: ## Start Celery with auto-reload on code changes (development, 4 concurrent tasks)
 	@uv run watchmedo auto-restart --directory=./apps --directory=./tformance --pattern="*.py" --recursive -- \
-		celery -A tformance worker -l INFO -E --beat --pool=solo
+		celery -A tformance worker -l INFO -E --beat --pool=threads --concurrency=4
 
 flower: ## Start Flower web UI for Celery monitoring (http://localhost:5555)
 	@uv run celery -A tformance flower --port=5555
