@@ -46,6 +46,7 @@ dependencies = [
     "django-allauth[socialaccount,mfa]>=65.13.0",
     "django-anymail[resend]", # email services (Resend.com)
     "django-celery-beat",
+    "flower>=2.0.0",
     "django-environ",
     "django-health-check",
     "django-hijack",
@@ -88,6 +89,7 @@ dev = [
     "ruff>=0.13.1",
     "pegasus-cli>=0.8",
     "tblib>=3.0.0",  # Required for Django parallel test debugging
+    "watchdog>=4.0",  # Auto-reload for Celery during development (make celery-dev)
     # pytest ecosystem
     "pytest>=8.0",
     "pytest-django>=4.8",
