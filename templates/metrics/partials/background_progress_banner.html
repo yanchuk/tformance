@@ -6,7 +6,8 @@ Uses HTMX polling to update progress and auto-dismiss when complete.
 
 Context variables:
   - team: The team object with background_in_progress property
-  - background_status: Current status (background_syncing, background_llm)
+  - background_status: Current status (background_syncing, background_llm,
+                       background_metrics, background_insights)
   - sync_progress: 0-100 progress for sync
   - llm_progress: 0-100 progress for LLM analysis
 {% endcomment %}
@@ -34,6 +35,10 @@ Context variables:
             {% trans "Syncing historical data..." %}
           {% elif team.onboarding_pipeline_status == 'background_llm' %}
             {% trans "Analyzing PRs with AI..." %}
+          {% elif team.onboarding_pipeline_status == 'background_metrics' %}
+            {% trans "Computing metrics..." %}
+          {% elif team.onboarding_pipeline_status == 'background_insights' %}
+            {% trans "Generating insights..." %}
           {% else %}
             {% trans "Processing historical data..." %}
           {% endif %}
@@ -43,6 +48,8 @@ Context variables:
             {{ team.background_sync_progress }}%
           {% elif team.onboarding_pipeline_status == 'background_llm' %}
             {{ team.background_llm_progress }}%
+          {% elif team.onboarding_pipeline_status == 'background_metrics' or team.onboarding_pipeline_status == 'background_insights' %}
+            {% trans "Almost done..." %}
           {% endif %}
         </span>
       </div>
@@ -50,7 +57,7 @@ Context variables:
       <!-- Progress bar -->
       <progress
         class="progress progress-info w-full"
-        value="{% if team.onboarding_pipeline_status == 'background_syncing' %}{{ team.background_sync_progress }}{% elif team.onboarding_pipeline_status == 'background_llm' %}{{ team.background_llm_progress }}{% else %}0{% endif %}"
+        value="{% if team.onboarding_pipeline_status == 'background_syncing' %}{{ team.background_sync_progress }}{% elif team.onboarding_pipeline_status == 'background_llm' %}{{ team.background_llm_progress }}{% elif team.onboarding_pipeline_status == 'background_metrics' or team.onboarding_pipeline_status == 'background_insights' %}90{% else %}0{% endif %}"
         max="100">
       </progress>
 

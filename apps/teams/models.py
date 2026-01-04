@@ -152,6 +152,8 @@ class Team(SubscriptionModelBase, BaseModel):
         return self.onboarding_pipeline_status in [
             "background_syncing",
             "background_llm",
+            "background_metrics",
+            "background_insights",
         ]
 
     def update_background_progress(

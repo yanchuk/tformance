@@ -68,14 +68,23 @@ def compute_team_insights(team_id: int) -> int:
 
     # Signal-based pipeline: dispatch LLM insights then update status
     team.refresh_from_db()
-    if team.onboarding_pipeline_status == "computing_insights":
+    current_status = team.onboarding_pipeline_status
+    if current_status == "computing_insights":
         # Phase 1: dispatch LLM insights (7d, 30d), which will update status to phase1_complete
         generate_team_llm_insights.apply_async(
             args=[team_id],
             kwargs={"days_list": [7, 30]},
             countdown=1,
         )
-        logger.info(f"Dispatched LLM insights generation for team {team.name}")
+        logger.info(f"Dispatched LLM insights (7d, 30d) for team {team.name}")
+    elif current_status == "background_insights":
+        # Phase 2: dispatch LLM insights (90d), which will update status to complete
+        generate_team_llm_insights.apply_async(
+            args=[team_id],
+            kwargs={"days_list": [90]},
+            countdown=1,
+        )
+        logger.info(f"Dispatched LLM insights (90d) for team {team.name}")
 
     return len(insights)
 
@@ -167,12 +176,23 @@ def generate_team_llm_insights(team_id: int, days_list: list[int] | None = None)
             logger.exception(f"Failed to generate {days}-day insight for team {team.name}: {e}")
             errors.append({"days": days, "error": str(e)})
 
-    # Signal-based pipeline: update status to trigger Phase 2
+    # Signal-based pipeline: update status based on current phase
     team.refresh_from_db()
-    if team.onboarding_pipeline_status == "computing_insights":
+    current_status = team.onboarding_pipeline_status
+    if current_status == "computing_insights":
         # Phase 1 complete - signal will dispatch Phase 2
         team.update_pipeline_status("phase1_complete")
         logger.info(f"Phase 1 complete for team {team.name}, triggering Phase 2")
+    elif current_status == "background_insights":
+        # Phase 2 complete - all done!
+        team.update_pipeline_status("complete")
+        logger.info(f"Phase 2 complete for team {team.name}, onboarding finished")
+
+        # Send completion email now that we have full 90-day data
+        from apps.integrations.onboarding_pipeline import send_onboarding_complete_email
+
+        send_onboarding_complete_email.apply_async(args=[team_id], countdown=2)
+        logger.info(f"Dispatched onboarding complete email for team {team.name}")
 
     return {
         "team_id": team_id,

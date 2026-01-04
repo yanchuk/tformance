@@ -75,6 +75,10 @@ PHASE2_STATE_MACHINE = {
         "task_path": "apps.integrations._task_modules.metrics.aggregate_team_weekly_metrics_task",
         "kwargs_builder": lambda team: {},
     },
+    "background_insights": {
+        "task_path": "apps.metrics.tasks.compute_team_insights",
+        "kwargs_builder": lambda team: {},
+    },
 }
 
 # Combined state machine

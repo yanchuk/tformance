@@ -57,8 +57,8 @@ def aggregate_team_weekly_metrics_task(team_id: int):
             # Phase 1: next is computing insights
             team.update_pipeline_status("computing_insights")
         elif current_status == "background_metrics":
-            # Phase 2: all done, mark complete
-            team.update_pipeline_status("complete")
+            # Phase 2: next is re-computing insights with full 90-day data
+            team.update_pipeline_status("background_insights")
 
         return count
     except Exception as exc:

@@ -174,6 +174,15 @@ class TestPhase2StateMachine(TestCase):
 
         mock_task.apply_async.assert_called_once()
 
+    @patch("apps.metrics.tasks.compute_team_insights")
+    def test_background_insights_dispatches_insights(self, mock_task):
+        """background_insights should dispatch compute_team_insights for 90-day data."""
+        team = TeamFactory(onboarding_pipeline_status="background_metrics")
+
+        team.update_pipeline_status("background_insights")
+
+        mock_task.apply_async.assert_called_once()
+
 
 class TestSignalErrorHandling(TestCase):
     """Tests for signal handler error resilience."""
