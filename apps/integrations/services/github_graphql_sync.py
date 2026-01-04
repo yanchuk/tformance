@@ -231,11 +231,15 @@ async def sync_repository_history_graphql(
                 await _update_sync_progress(tracked_repo_id, 0, total_prs)
 
             # Process each PR
+            logger.info(f"[SYNC_DEBUG] About to process {len(pr_nodes)} PRs from this page")
             for pr_data in pr_nodes:
+                pr_num = pr_data.get("number", "?")
+                logger.info(f"[SYNC_DEBUG] CALLING _process_pr_async for PR #{pr_num}")
                 try:
                     was_processed = await _process_pr_async(
                         team_id, full_name, pr_data, cutoff_date, skip_before_date, result
                     )
+                    logger.info(f"[SYNC_DEBUG] _process_pr_async returned {was_processed} for PR #{pr_num}")
                     if was_processed:
                         prs_processed += 1
                 except Exception as e:
@@ -311,7 +315,7 @@ def _get_access_token(tracked_repo_id: int) -> str | None:
         return None
 
 
-@sync_to_async
+@sync_to_async(thread_sensitive=False)
 def _process_pr_async(
     team_id: int,
     github_repo: str,
@@ -327,8 +331,19 @@ def _process_pr_async(
     """
     from apps.teams.models import Team
 
-    team = Team.objects.get(id=team_id)
-    return _process_pr(team, github_repo, pr_data, cutoff_date, skip_before_date, result)
+    pr_number = pr_data.get("number", "unknown")
+    logger.info(f"[SYNC_DEBUG] _process_pr_async() ENTRY: PR #{pr_number}, team_id={team_id}")
+
+    try:
+        team = Team.objects.get(id=team_id)
+        logger.info(f"[SYNC_DEBUG] _process_pr_async() Team lookup OK: {team.name}")
+    except Team.DoesNotExist:
+        logger.error(f"[SYNC_DEBUG] _process_pr_async() Team NOT FOUND: {team_id}")
+        raise
+
+    result_val = _process_pr(team, github_repo, pr_data, cutoff_date, skip_before_date, result)
+    logger.info(f"[SYNC_DEBUG] _process_pr_async() returned: {result_val}")
+    return result_val
 
 
 def _detect_pr_ai_involvement(author_login: str | None, title: str, body: str) -> tuple[bool, list[str]]:
@@ -384,13 +399,21 @@ def _process_pr(
     Returns:
         True if PR was actually processed, False if skipped (outside date range).
     """
+    pr_number = pr_data.get("number")
+    logger.info(
+        f"[SYNC_DEBUG] _process_pr() ENTRY: PR #{pr_number}, cutoff={cutoff_date}, skip_before={skip_before_date}"
+    )
+
     # Parse PR created date and check date range
     created_at = _parse_datetime(pr_data.get("createdAt"))
+    logger.info(f"[SYNC_DEBUG] PR #{pr_number}: created_at={created_at}")
     if created_at and created_at < cutoff_date:
-        logger.debug(f"Skipping PR #{pr_data.get('number')} - older than cutoff")
+        logger.info(f"[SYNC_DEBUG] SKIPPING PR #{pr_number} - older than cutoff ({created_at} < {cutoff_date})")
         return False
     if skip_before_date and created_at and created_at > skip_before_date:
-        logger.debug(f"Skipping PR #{pr_data.get('number')} - too recent (Phase 2 skip)")
+        logger.info(
+            f"[SYNC_DEBUG] SKIPPING PR #{pr_number} - too recent for Phase 2 ({created_at} > {skip_before_date})"
+        )
         return False
 
     # Get author
@@ -400,8 +423,7 @@ def _process_pr(
     author_login = author_data.get("login")
     author = _get_team_member(team, author_login)
 
-    # Map PR data to model fields
-    pr_number = pr_data.get("number")
+    # Map PR data to model fields (pr_number already extracted at start of function)
     title = pr_data.get("title", "")
     body = pr_data.get("body", "") or ""
 
@@ -439,8 +461,8 @@ def _process_pr(
         "sync.db.write",
         extra={
             "entity_type": "pull_request",
-            "created": 1 if created else 0,
-            "updated": 0 if created else 1,
+            "was_created": 1 if created else 0,
+            "was_updated": 0 if created else 1,
             "duration_ms": duration_ms,
         },
     )
@@ -465,10 +487,32 @@ def _process_pr(
         },
     )
 
-    # Process nested data
-    _process_reviews(team, pr, reviews_nodes, result)
-    _process_commits(team, pr, github_repo, commits_nodes, result)
-    _process_files(team, pr, files_nodes, result)
+    # Process nested data with debug logging
+    logger.info(
+        f"[SYNC_DEBUG] PR #{pr_number}: Processing {len(files_nodes)} files, "
+        f"{len(commits_nodes)} commits, {len(reviews_nodes)} reviews"
+    )
+
+    try:
+        _process_reviews(team, pr, reviews_nodes, result)
+        logger.info(f"[SYNC_DEBUG] PR #{pr_number}: After _process_reviews, reviews_synced={result.reviews_synced}")
+    except Exception as e:
+        logger.error(f"[SYNC_DEBUG] PR #{pr_number}: _process_reviews FAILED: {type(e).__name__}: {e}")
+        raise
+
+    try:
+        _process_commits(team, pr, github_repo, commits_nodes, result)
+        logger.info(f"[SYNC_DEBUG] PR #{pr_number}: After _process_commits, commits_synced={result.commits_synced}")
+    except Exception as e:
+        logger.error(f"[SYNC_DEBUG] PR #{pr_number}: _process_commits FAILED: {type(e).__name__}: {e}")
+        raise
+
+    try:
+        _process_files(team, pr, files_nodes, result)
+        logger.info(f"[SYNC_DEBUG] PR #{pr_number}: After _process_files, files_synced={result.files_synced}")
+    except Exception as e:
+        logger.error(f"[SYNC_DEBUG] PR #{pr_number}: _process_files FAILED: {type(e).__name__}: {e}")
+        raise
 
     return True
 
@@ -501,21 +545,29 @@ def _process_reviews(
             "pull_request": pr,
         }
 
-        if review_id:
-            PRReview.objects.update_or_create(
-                team=team,
-                github_review_id=review_id,
-                defaults=review_defaults,
+        logger.debug(f"[SYNC_DEBUG] Creating PRReview: team={team.id}, review_id={review_id}")
+        try:
+            if review_id:
+                obj, created = PRReview.objects.update_or_create(
+                    team=team,
+                    github_review_id=review_id,
+                    defaults=review_defaults,
+                )
+            else:
+                # No GitHub ID, create by PR + reviewer + submitted_at
+                obj, created = PRReview.objects.update_or_create(
+                    team=team,
+                    pull_request=pr,
+                    reviewer=reviewer,
+                    submitted_at=review_defaults["submitted_at"],
+                    defaults=review_defaults,
+                )
+            logger.debug(f"[SYNC_DEBUG] PRReview {'created' if created else 'updated'}: id={obj.id}")
+        except Exception as e:
+            logger.error(
+                f"[SYNC_DEBUG] PRReview update_or_create FAILED for review_id={review_id}: {type(e).__name__}: {e}"
             )
-        else:
-            # No GitHub ID, create by PR + reviewer + submitted_at
-            PRReview.objects.update_or_create(
-                team=team,
-                pull_request=pr,
-                reviewer=reviewer,
-                submitted_at=review_defaults["submitted_at"],
-                defaults=review_defaults,
-            )
+            raise
         result.reviews_synced += 1
 
     # Update PR's first_review_at and review_time_hours if we found an earlier review
@@ -554,11 +606,17 @@ def _process_commits(
             "github_repo": github_repo,
         }
 
-        Commit.objects.update_or_create(
-            team=team,
-            github_sha=sha,
-            defaults=commit_defaults,
-        )
+        logger.debug(f"[SYNC_DEBUG] Creating Commit: team={team.id}, sha={sha[:8]}")
+        try:
+            obj, created = Commit.objects.update_or_create(
+                team=team,
+                github_sha=sha,
+                defaults=commit_defaults,
+            )
+            logger.debug(f"[SYNC_DEBUG] Commit {'created' if created else 'updated'}: id={obj.id}")
+        except Exception as e:
+            logger.error(f"[SYNC_DEBUG] Commit update_or_create FAILED for {sha[:8]}: {type(e).__name__}: {e}")
+            raise
         result.commits_synced += 1
 
 
@@ -609,12 +667,18 @@ def _process_files(
             "file_category": PRFile.categorize_file(filename),
         }
 
-        PRFile.objects.update_or_create(
-            team=team,
-            pull_request=pr,
-            filename=filename,
-            defaults=file_defaults,
-        )
+        logger.debug(f"[SYNC_DEBUG] Creating PRFile: team={team.id}, pr={pr.id}, filename={filename}")
+        try:
+            obj, created = PRFile.objects.update_or_create(
+                team=team,
+                pull_request=pr,
+                filename=filename,
+                defaults=file_defaults,
+            )
+            logger.debug(f"[SYNC_DEBUG] PRFile {'created' if created else 'updated'}: id={obj.id}")
+        except Exception as e:
+            logger.error(f"[SYNC_DEBUG] PRFile update_or_create FAILED for {filename}: {type(e).__name__}: {e}")
+            raise
         result.files_synced += 1
 
     # Log completion of file processing
@@ -826,6 +890,301 @@ def _process_pr_incremental(
     _process_reviews(team, pr, pr_data.get("reviews", {}).get("nodes", []), result)
     _process_commits(team, pr, github_repo, pr_data.get("commits", {}).get("nodes", []), result)
     _process_files(team, pr, pr_data.get("files", {}).get("nodes", []), result)
+
+
+# =============================================================================
+# Search API-based Repository Sync (Accurate Progress)
+# =============================================================================
+
+
+async def sync_repository_history_by_search(
+    tracked_repo,
+    days_back: int = 90,
+    skip_recent: int = 0,
+) -> dict[str, Any]:
+    """Sync repository PR history using GitHub Search API.
+
+    Uses Search API for date-filtered PR fetching, providing accurate progress tracking.
+    Unlike `sync_repository_history_graphql`, this function:
+    - Gets exact PR count from `issueCount` in search response (no separate count query)
+    - Fetches ONLY PRs in the specified date range (no Python filtering)
+    - Supports two-phase onboarding with precise date ranges
+
+    Supports two-phase onboarding:
+    - Phase 1: days_back=30, skip_recent=0 (sync recent 30 days)
+    - Phase 2: days_back=90, skip_recent=30 (sync days 31-90, older data)
+
+    Args:
+        tracked_repo: TrackedRepository instance to sync
+        days_back: Only sync PRs created within this many days (default 90)
+        skip_recent: Skip PRs from the most recent N days (default 0)
+
+    Returns:
+        Dict with sync results:
+            - prs_synced: Number of PRs created/updated
+            - reviews_synced: Number of reviews created/updated
+            - commits_synced: Number of commits created/updated
+            - files_synced: Number of files created/updated
+            - comments_synced: Number of comments created/updated
+            - errors: List of error messages
+    """
+    result = SyncResult()
+
+    # Get repo info before async operations (these are cached on the model instance)
+    tracked_repo_id = tracked_repo.id
+    team_id = tracked_repo.team_id
+    full_name = tracked_repo.full_name
+
+    # Parse owner/repo from full_name
+    try:
+        owner, repo = full_name.split("/", 1)
+    except ValueError:
+        result.errors.append(f"Invalid repository full_name: {full_name}")
+        await _update_sync_status(tracked_repo_id, "error")
+        return result.to_dict()
+
+    # Get access token from integration (async-safe to avoid SynchronousOnlyOperation)
+    access_token = await _get_access_token(tracked_repo_id)
+    if not access_token:
+        result.errors.append("No access token available for repository")
+        await _update_sync_status(tracked_repo_id, "error")
+        return result.to_dict()
+
+    # Calculate date filters for Search API
+    now = timezone.now()
+    since_date = now - timedelta(days=days_back)
+
+    # For Phase 2: Use date range to exclude recent PRs
+    # Phase 1 (skip_recent=0): only `since` is set → query uses `created:>=DATE`
+    # Phase 2 (skip_recent=30): both dates set → query uses `created:DATE1..DATE2`
+    until_date = now - timedelta(days=skip_recent) if skip_recent > 0 else None
+
+    # Create GraphQL client
+    client = GitHubGraphQLClient(access_token)
+
+    # Update sync status to syncing
+    await _update_sync_status(tracked_repo_id, "syncing")
+
+    try:
+        cursor = None
+        has_more = True
+        prs_processed = 0
+        total_prs = 0
+
+        while has_more:
+            # Fetch page of PRs using Search API
+            try:
+                response = await client.search_prs_by_date_range(
+                    owner=owner,
+                    repo=repo,
+                    since=since_date,
+                    until=until_date,
+                    cursor=cursor,
+                )
+            except GitHubGraphQLRateLimitError as e:
+                result.errors.append(f"Rate limit exceeded: {e}")
+                await _update_sync_status(tracked_repo_id, "error")
+                return result.to_dict()
+            except GitHubGraphQLError as e:
+                result.errors.append(f"GraphQL error: {e}")
+                await _update_sync_status(tracked_repo_id, "error")
+                return result.to_dict()
+
+            # Extract data from response
+            pr_nodes = response.get("prs", [])
+
+            # Set total from issueCount on first page (accurate count for progress!)
+            if total_prs == 0:
+                total_prs = response.get("issue_count", 0)
+                logger.info(f"[SYNC_DEBUG] Search API returned issueCount: {total_prs}")
+                # Initialize progress with accurate total count
+                await _update_sync_progress(tracked_repo_id, 0, total_prs)
+                # Also update TrackedRepository.prs_total
+                await _set_prs_total(tracked_repo_id, total_prs)
+
+            # Process each PR - no date filtering needed, Search API handles it
+            for pr_data in pr_nodes:
+                pr_num = pr_data.get("number", "?")
+                logger.info(f"[SYNC_DEBUG] Processing PR #{pr_num} from Search API")
+                try:
+                    # Process without cutoff_date/skip_before_date - Search API already filtered
+                    was_processed = await _process_pr_from_search_async(team_id, full_name, pr_data, result)
+                    if was_processed:
+                        prs_processed += 1
+                        # Update prs_processed on TrackedRepository
+                        await _increment_prs_processed(tracked_repo_id)
+                except Exception as e:
+                    pr_number = pr_data.get("number", "unknown")
+                    error_msg = f"Error processing PR #{pr_number}: {type(e).__name__}: {e}"
+                    logger.warning(error_msg)
+                    result.errors.append(error_msg)
+
+            # Update progress after each batch
+            await _update_sync_progress(tracked_repo_id, prs_processed, total_prs)
+
+            # Check pagination
+            has_more = response.get("has_next_page", False)
+            cursor = response.get("end_cursor")
+
+        # Update sync status to complete (also sets progress to 100%)
+        await _update_sync_progress(tracked_repo_id, total_prs, total_prs)
+        await _update_sync_complete(tracked_repo_id)
+
+    except Exception as e:
+        error_msg = f"Unexpected error during search-based sync: {type(e).__name__}: {e}"
+        logger.error(error_msg)
+        result.errors.append(error_msg)
+        await _update_sync_status(tracked_repo_id, "error")
+
+    return result.to_dict()
+
+
+@sync_to_async
+def _set_prs_total(tracked_repo_id: int, total: int) -> None:
+    """Set sync_prs_total on TrackedRepository (async-safe)."""
+    TrackedRepository.objects.filter(id=tracked_repo_id).update(sync_prs_total=total)  # noqa: TEAM001
+
+
+@sync_to_async
+def _increment_prs_processed(tracked_repo_id: int) -> None:
+    """Increment sync_prs_completed on TrackedRepository (async-safe).
+
+    Uses F() expression for atomic increment.
+    """
+    from django.db.models import F
+
+    TrackedRepository.objects.filter(id=tracked_repo_id).update(  # noqa: TEAM001
+        sync_prs_completed=F("sync_prs_completed") + 1
+    )
+
+
+@sync_to_async(thread_sensitive=False)
+def _process_pr_from_search_async(
+    team_id: int,
+    github_repo: str,
+    pr_data: dict,
+    result: SyncResult,
+) -> bool:
+    """Process a single PR from Search API response (async wrapper).
+
+    Unlike _process_pr_async, this does NOT apply date filtering since
+    the Search API already returns only PRs in the requested date range.
+
+    Returns:
+        True if PR was processed successfully.
+    """
+    from apps.teams.models import Team
+
+    pr_number = pr_data.get("number", "unknown")
+    logger.info(f"[SYNC_DEBUG] _process_pr_from_search_async() ENTRY: PR #{pr_number}, team_id={team_id}")
+
+    try:
+        team = Team.objects.get(id=team_id)
+        logger.info(f"[SYNC_DEBUG] _process_pr_from_search_async() Team lookup OK: {team.name}")
+    except Team.DoesNotExist:
+        logger.error(f"[SYNC_DEBUG] _process_pr_from_search_async() Team NOT FOUND: {team_id}")
+        raise
+
+    return _process_pr_from_search(team, github_repo, pr_data, result)
+
+
+def _process_pr_from_search(
+    team,
+    github_repo: str,
+    pr_data: dict,
+    result: SyncResult,
+) -> bool:
+    """Process a single PR from Search API response.
+
+    Creates or updates PullRequest and related records (reviews, commits, files).
+    Does NOT apply date filtering - Search API handles that.
+
+    Returns:
+        True if PR was processed successfully.
+    """
+    pr_number = pr_data.get("number")
+    logger.info(f"[SYNC_DEBUG] _process_pr_from_search() ENTRY: PR #{pr_number}")
+
+    # Parse PR created date
+    created_at = _parse_datetime(pr_data.get("createdAt"))
+
+    # Get author
+    author_data = pr_data.get("author")
+    if not author_data:
+        raise ValueError("PR has no author data")
+    author_login = author_data.get("login")
+    author = _get_team_member(team, author_login)
+
+    # Map PR data to model fields
+    title = pr_data.get("title", "")
+    body = pr_data.get("body", "") or ""
+
+    # Detect AI involvement
+    is_ai_assisted, ai_tools = _detect_pr_ai_involvement(author_login, title, body)
+
+    pr_defaults = {
+        "title": title,
+        "body": body,
+        "state": _map_pr_state(pr_data.get("state", "OPEN")),
+        "pr_created_at": created_at,
+        "merged_at": _parse_datetime(pr_data.get("mergedAt")),
+        "additions": pr_data.get("additions", 0),
+        "deletions": pr_data.get("deletions", 0),
+        "author": author,
+        "is_ai_assisted": is_ai_assisted,
+        "ai_tools_detected": ai_tools,
+        "ai_detection_version": PATTERNS_VERSION,
+    }
+
+    # Create or update PR
+    start_time = time.time()
+    pr, created = PullRequest.objects.update_or_create(
+        team=team,
+        github_pr_id=pr_number,
+        github_repo=github_repo,
+        defaults=pr_defaults,
+    )
+    duration_ms = (time.time() - start_time) * 1000
+    result.prs_synced += 1
+    logger.debug(f"{'Created' if created else 'Updated'} PR #{pr_number}")
+
+    # Log DB write for PR
+    _get_sync_logger().info(
+        "sync.db.write",
+        extra={
+            "entity_type": "pull_request",
+            "was_created": 1 if created else 0,
+            "was_updated": 0 if created else 1,
+            "duration_ms": duration_ms,
+        },
+    )
+
+    # Update timing metrics
+    _update_pr_timing_metrics(pr)
+
+    # Count nested data for logging
+    reviews_nodes = pr_data.get("reviews", {}).get("nodes", [])
+    commits_nodes = pr_data.get("commits", {}).get("nodes", [])
+    files_nodes = pr_data.get("files", {}).get("nodes", [])
+
+    # Log PR processed event
+    _get_sync_logger().info(
+        "sync.pr.processed",
+        extra={
+            "pr_id": pr.id,
+            "pr_number": pr_number,
+            "reviews_count": len(reviews_nodes),
+            "commits_count": len(commits_nodes),
+            "files_count": len(files_nodes),
+        },
+    )
+
+    # Process nested data
+    _process_reviews(team, pr, reviews_nodes, result)
+    _process_commits(team, pr, github_repo, commits_nodes, result)
+    _process_files(team, pr, files_nodes, result)
+
+    return True
 
 
 # =============================================================================

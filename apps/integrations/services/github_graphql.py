@@ -359,6 +359,100 @@ SEARCH_PR_COUNT_QUERY = gql(
     """
 )
 
+# Query cost: ~2-3 points per page (search with full PR data)
+# Uses GitHub Search API to fetch PRs with full data within a date range
+# Unlike pullRequests connection, this supports date filtering via created:>=DATE or created:DATE1..DATE2
+SEARCH_PRS_BY_DATE_QUERY = gql(
+    """
+    query($searchQuery: String!, $cursor: String) {
+      search(query: $searchQuery, type: ISSUE, first: 10, after: $cursor) {
+        issueCount
+        pageInfo {
+          hasNextPage
+          endCursor
+        }
+        nodes {
+          ... on PullRequest {
+            number
+            title
+            body
+            state
+            createdAt
+            mergedAt
+            additions
+            deletions
+            isDraft
+            author {
+              login
+            }
+            labels(first: 10) {
+              nodes {
+                name
+                color
+              }
+            }
+            milestone {
+              title
+              number
+              dueOn
+            }
+            assignees(first: 10) {
+              nodes {
+                login
+              }
+            }
+            closingIssuesReferences(first: 5) {
+              nodes {
+                number
+                title
+              }
+            }
+            reviews(first: 25) {
+              nodes {
+                databaseId
+                state
+                body
+                submittedAt
+                author {
+                  login
+                }
+              }
+            }
+            commits(first: 50) {
+              nodes {
+                commit {
+                  oid
+                  message
+                  additions
+                  deletions
+                  author {
+                    date
+                    user {
+                      login
+                    }
+                  }
+                }
+              }
+            }
+            files(first: 50) {
+              nodes {
+                path
+                additions
+                deletions
+                changeType
+              }
+            }
+          }
+        }
+      }
+      rateLimit {
+        remaining
+        resetAt
+      }
+    }
+    """
+)
+
 # Rate limit threshold - raise error if remaining points drop below this
 RATE_LIMIT_THRESHOLD = 100
 
@@ -535,8 +629,20 @@ class GitHubGraphQLClient:
 
                 await self._check_rate_limit(result, f"fetch_prs_bulk({owner}/{repo})")
 
-                pr_count = len(result.get("repository", {}).get("pullRequests", {}).get("nodes", []))
+                pr_nodes = result.get("repository", {}).get("pullRequests", {}).get("nodes", [])
+                pr_count = len(pr_nodes)
                 logger.info(f"Fetched {pr_count} PRs from {owner}/{repo}")
+
+                # Log detailed info about each PR's nested data for debugging
+                for pr_data in pr_nodes:
+                    pr_number = pr_data.get("number")
+                    files = pr_data.get("files", {}).get("nodes", [])
+                    commits = pr_data.get("commits", {}).get("nodes", [])
+                    reviews = pr_data.get("reviews", {}).get("nodes", [])
+                    logger.info(
+                        f"[SYNC_DEBUG] GraphQL Response PR #{pr_number}: "
+                        f"files={len(files)}, commits={len(commits)}, reviews={len(reviews)}"
+                    )
 
                 return result
 
@@ -846,3 +952,114 @@ class GitHubGraphQLClient:
             error_msg = f"[PR_COUNT_DEBUG] GraphQL search query failed for {owner}/{repo}: {type(e).__name__}: {str(e)}"
             logger.error(error_msg)
             raise GitHubGraphQLError(error_msg) from e
+
+    async def search_prs_by_date_range(
+        self,
+        owner: str,
+        repo: str,
+        since: datetime | None = None,
+        until: datetime | None = None,
+        cursor: str | None = None,
+        max_retries: int = 3,
+    ) -> dict:
+        """Search for PRs in a repository within a date range.
+
+        Uses GitHub Search API to fetch PRs with full data (reviews, commits, files)
+        within a specified date range. Unlike fetch_prs_bulk which has no date filtering,
+        this method only returns PRs matching the date criteria.
+
+        The response includes issueCount which gives the exact total for progress tracking.
+
+        Args:
+            owner: Repository owner (organization or user)
+            repo: Repository name
+            since: Only return PRs created on or after this datetime (optional)
+            until: Only return PRs created on or before this datetime (optional)
+            cursor: Pagination cursor for subsequent pages (optional)
+            max_retries: Maximum number of retry attempts on timeout (default: 3)
+
+        Returns:
+            dict: Contains:
+                - issue_count: Total number of PRs matching the search criteria
+                - prs: List of PR data dictionaries with full details
+                - has_next_page: Whether more pages are available
+                - end_cursor: Cursor for fetching next page
+
+        Raises:
+            GitHubGraphQLRateLimitError: When rate limit remaining < 100 points
+            GitHubGraphQLTimeoutError: When request times out after max retries
+            GitHubGraphQLError: On any other GraphQL query errors
+        """
+        import asyncio
+
+        # Build search query based on date parameters
+        search_parts = [f"repo:{owner}/{repo}", "is:pr"]
+
+        if since and until:
+            # Date range format: created:2024-10-05..2024-12-04
+            since_str = since.strftime("%Y-%m-%d")
+            until_str = until.strftime("%Y-%m-%d")
+            search_parts.append(f"created:{since_str}..{until_str}")
+        elif since:
+            # Only since: created:>=YYYY-MM-DD
+            since_str = since.strftime("%Y-%m-%d")
+            search_parts.append(f"created:>={since_str}")
+        elif until:
+            # Only until: created:<=YYYY-MM-DD
+            until_str = until.strftime("%Y-%m-%d")
+            search_parts.append(f"created:<={until_str}")
+
+        # Sort by created date descending (newest first)
+        search_parts.append("sort:created-desc")
+
+        search_query = " ".join(search_parts)
+        logger.info(f"Search PRs query: {search_query}")
+
+        last_error = None
+        for attempt in range(max_retries):
+            try:
+                result = await self._execute(
+                    SEARCH_PRS_BY_DATE_QUERY,
+                    variable_values={"searchQuery": search_query, "cursor": cursor},
+                )
+
+                await self._check_rate_limit(result, f"search_prs_by_date_range({owner}/{repo})")
+
+                search_data = result.get("search", {})
+                issue_count = search_data.get("issueCount", 0)
+                page_info = search_data.get("pageInfo", {})
+                nodes = search_data.get("nodes", [])
+
+                logger.info(f"Found {issue_count} total PRs, fetched {len(nodes)} this page for {owner}/{repo}")
+
+                return {
+                    "issue_count": issue_count,
+                    "prs": nodes,
+                    "has_next_page": page_info.get("hasNextPage", False),
+                    "end_cursor": page_info.get("endCursor"),
+                }
+
+            except GitHubGraphQLRateLimitError:
+                raise
+            except TimeoutError as e:
+                last_error = e
+                if attempt < max_retries - 1:
+                    wait_time = 2**attempt
+                    logger.warning(
+                        f"Timeout searching PRs for {owner}/{repo}, attempt {attempt + 1}/{max_retries}. "
+                        f"Retrying in {wait_time}s..."
+                    )
+                    await asyncio.sleep(wait_time)
+                else:
+                    error_msg = f"GraphQL search request timed out for {owner}/{repo} after {max_retries} attempts"
+                    logger.error(error_msg)
+                    raise GitHubGraphQLTimeoutError(error_msg) from e
+            except Exception as e:
+                error_msg = f"GraphQL search query failed for {owner}/{repo}: {type(e).__name__}: {str(e)}"
+                logger.error(error_msg)
+                raise GitHubGraphQLError(error_msg) from e
+
+        # Should not reach here, but just in case
+        raise GitHubGraphQLTimeoutError(
+            f"GraphQL search request timed out for {owner}/{repo} after {max_retries} attempts"
+        ) from last_error

@@ -374,8 +374,9 @@ class TestOnboardingSyncService(TestCase):
         repo = TrackedRepositoryFactory(team=self.team, integration=self.integration)
         service = OnboardingSyncService(team=self.team, github_token=self.github_token)
 
-        with patch("apps.integrations.services.onboarding_sync.sync_repository_history_graphql") as mock_sync:
-            mock_sync.return_value = {"prs_synced": 5}
+        # Mock both sync functions - Search API is default when use_search_api=True
+        with patch("apps.integrations.services.onboarding_sync.sync_repository_history_by_search") as mock_search:
+            mock_search.return_value = {"prs_synced": 5}
 
             result = service.sync_repository(repo)
 
@@ -383,18 +384,19 @@ class TestOnboardingSyncService(TestCase):
         self.assertIn("prs_synced", result)
 
     def test_sync_repository_calls_graphql_sync(self):
-        """Test that sync_repository uses GraphQL sync function."""
+        """Test that sync_repository uses Search API sync function by default."""
         from apps.integrations.services.onboarding_sync import OnboardingSyncService
 
         repo = TrackedRepositoryFactory(team=self.team, integration=self.integration)
         service = OnboardingSyncService(team=self.team, github_token=self.github_token)
 
-        with patch("apps.integrations.services.onboarding_sync.sync_repository_history_graphql") as mock_sync:
-            mock_sync.return_value = {"prs_synced": 10}
+        # Search API is default when use_search_api=True
+        with patch("apps.integrations.services.onboarding_sync.sync_repository_history_by_search") as mock_search:
+            mock_search.return_value = {"prs_synced": 10}
 
             service.sync_repository(repo)
 
-            mock_sync.assert_called_once()
+            mock_search.assert_called_once()
 
     def test_sync_repository_uses_configured_history_months(self):
         """Test that sync uses HISTORY_MONTHS config for days_back."""
@@ -403,13 +405,14 @@ class TestOnboardingSyncService(TestCase):
         repo = TrackedRepositoryFactory(team=self.team, integration=self.integration)
         service = OnboardingSyncService(team=self.team, github_token=self.github_token)
 
-        with patch("apps.integrations.services.onboarding_sync.sync_repository_history_graphql") as mock_sync:
-            mock_sync.return_value = {"prs_synced": 0}
+        # Search API is default when use_search_api=True
+        with patch("apps.integrations.services.onboarding_sync.sync_repository_history_by_search") as mock_search:
+            mock_search.return_value = {"prs_synced": 0}
 
             service.sync_repository(repo)
 
             # Check that days_back was passed (12 months = ~365 days)
-            call_kwargs = mock_sync.call_args[1]
+            call_kwargs = mock_search.call_args[1]
             self.assertIn("days_back", call_kwargs)
             self.assertGreaterEqual(call_kwargs["days_back"], 365)
 
@@ -425,8 +428,9 @@ class TestOnboardingSyncService(TestCase):
         def track_progress(prs_completed, prs_total, message):
             progress_calls.append((prs_completed, prs_total, message))
 
-        with patch("apps.integrations.services.onboarding_sync.sync_repository_history_graphql") as mock_sync:
-            mock_sync.return_value = {"prs_synced": 5}
+        # Search API is default when use_search_api=True
+        with patch("apps.integrations.services.onboarding_sync.sync_repository_history_by_search") as mock_search:
+            mock_search.return_value = {"prs_synced": 5}
 
             service.sync_repository(repo, progress_callback=track_progress)
 
@@ -441,8 +445,9 @@ class TestOnboardingSyncService(TestCase):
         repo2 = TrackedRepositoryFactory(team=self.team, integration=self.integration)
         service = OnboardingSyncService(team=self.team, github_token=self.github_token)
 
-        with patch("apps.integrations.services.onboarding_sync.sync_repository_history_graphql") as mock_sync:
-            mock_sync.return_value = {"prs_synced": 10}
+        # Search API is default when use_search_api=True
+        with patch("apps.integrations.services.onboarding_sync.sync_repository_history_by_search") as mock_search:
+            mock_search.return_value = {"prs_synced": 10}
 
             result = service.sync_all_repositories([repo1, repo2])
 

@@ -1248,3 +1248,378 @@ class TestGetPRCountInDateRange(TestCase):
 
         # Assert
         self.assertEqual(result, 0)
+
+
+class TestSearchPRsByDateRange(TestCase):
+    """Tests for GitHubGraphQLClient.search_prs_by_date_range method.
+
+    This method uses GitHub Search API to fetch PRs with full data within a date range.
+    Unlike fetch_prs_bulk (which has no date filtering), this returns only PRs matching
+    the date filter along with issueCount for accurate progress tracking.
+    """
+
+    @patch("apps.integrations.services.github_graphql.Client")
+    @patch("apps.integrations.services.github_graphql.AIOHTTPTransport")
+    def test_returns_issue_count_and_prs(self, mock_transport_class, mock_client_class):
+        """Test that search_prs_by_date_range returns issueCount and PR nodes."""
+        import asyncio
+        from datetime import datetime
+
+        # Arrange
+        mock_transport = MagicMock()
+        mock_transport_class.return_value = mock_transport
+
+        return_value = {
+            "search": {
+                "issueCount": 13,
+                "pageInfo": {"hasNextPage": False, "endCursor": None},
+                "nodes": [
+                    {
+                        "number": 123,
+                        "title": "Test PR",
+                        "state": "MERGED",
+                        "createdAt": "2024-12-15T10:00:00Z",
+                        "author": {"login": "testuser"},
+                        "reviews": {"nodes": []},
+                        "commits": {"nodes": []},
+                        "files": {"nodes": []},
+                    }
+                ],
+            },
+            "rateLimit": {"remaining": 5000},
+        }
+        mock_client, mock_session = create_mock_client_context_manager(return_value)
+        mock_client_class.return_value = mock_client
+
+        client = GitHubGraphQLClient("test_token")
+
+        # Act
+        since = datetime(2024, 12, 1, tzinfo=UTC)
+        result = asyncio.run(client.search_prs_by_date_range("owner", "repo", since=since))
+
+        # Assert
+        self.assertEqual(result["issue_count"], 13)
+        self.assertEqual(len(result["prs"]), 1)
+        self.assertEqual(result["prs"][0]["number"], 123)
+
+    @patch("apps.integrations.services.github_graphql.Client")
+    @patch("apps.integrations.services.github_graphql.AIOHTTPTransport")
+    def test_builds_correct_query_for_since_only(self, mock_transport_class, mock_client_class):
+        """Test that query includes created:>=DATE when only since is provided."""
+        import asyncio
+        from datetime import datetime
+
+        # Arrange
+        mock_transport = MagicMock()
+        mock_transport_class.return_value = mock_transport
+
+        return_value = {
+            "search": {
+                "issueCount": 5,
+                "pageInfo": {"hasNextPage": False, "endCursor": None},
+                "nodes": [],
+            },
+            "rateLimit": {"remaining": 5000},
+        }
+        mock_client, mock_session = create_mock_client_context_manager(return_value)
+        mock_client_class.return_value = mock_client
+
+        client = GitHubGraphQLClient("test_token")
+
+        # Act
+        since = datetime(2024, 12, 5, tzinfo=UTC)
+        asyncio.run(client.search_prs_by_date_range("owner", "repo", since=since))
+
+        # Assert
+        call_args = mock_session.execute.call_args
+        variables = call_args[1]["variable_values"]
+        search_query = variables["searchQuery"]
+
+        self.assertIn("repo:owner/repo", search_query)
+        self.assertIn("is:pr", search_query)
+        self.assertIn("created:>=2024-12-05", search_query)
+        self.assertIn("sort:created-desc", search_query)
+
+    @patch("apps.integrations.services.github_graphql.Client")
+    @patch("apps.integrations.services.github_graphql.AIOHTTPTransport")
+    def test_builds_correct_query_for_date_range(self, mock_transport_class, mock_client_class):
+        """Test that query uses created:DATE1..DATE2 format for date range."""
+        import asyncio
+        from datetime import datetime
+
+        # Arrange
+        mock_transport = MagicMock()
+        mock_transport_class.return_value = mock_transport
+
+        return_value = {
+            "search": {
+                "issueCount": 15,
+                "pageInfo": {"hasNextPage": False, "endCursor": None},
+                "nodes": [],
+            },
+            "rateLimit": {"remaining": 5000},
+        }
+        mock_client, mock_session = create_mock_client_context_manager(return_value)
+        mock_client_class.return_value = mock_client
+
+        client = GitHubGraphQLClient("test_token")
+
+        # Act - Phase 2 style: days 31-90 (since=90d ago, until=31d ago)
+        since = datetime(2024, 10, 5, tzinfo=UTC)  # 90 days ago
+        until = datetime(2024, 12, 4, tzinfo=UTC)  # 31 days ago
+        asyncio.run(client.search_prs_by_date_range("owner", "repo", since=since, until=until))
+
+        # Assert
+        call_args = mock_session.execute.call_args
+        variables = call_args[1]["variable_values"]
+        search_query = variables["searchQuery"]
+
+        self.assertIn("repo:owner/repo", search_query)
+        self.assertIn("is:pr", search_query)
+        # Date range format: created:2024-10-05..2024-12-04
+        self.assertIn("created:2024-10-05..2024-12-04", search_query)
+        self.assertIn("sort:created-desc", search_query)
+
+    @patch("apps.integrations.services.github_graphql.Client")
+    @patch("apps.integrations.services.github_graphql.AIOHTTPTransport")
+    def test_returns_has_next_page_info(self, mock_transport_class, mock_client_class):
+        """Test that search_prs_by_date_range returns pagination info."""
+        import asyncio
+        from datetime import datetime
+
+        # Arrange
+        mock_transport = MagicMock()
+        mock_transport_class.return_value = mock_transport
+
+        return_value = {
+            "search": {
+                "issueCount": 25,
+                "pageInfo": {"hasNextPage": True, "endCursor": "cursor_abc123"},
+                "nodes": [{"number": 1}] * 10,  # 10 PRs
+            },
+            "rateLimit": {"remaining": 5000},
+        }
+        mock_client, mock_session = create_mock_client_context_manager(return_value)
+        mock_client_class.return_value = mock_client
+
+        client = GitHubGraphQLClient("test_token")
+
+        # Act
+        since = datetime(2024, 12, 1, tzinfo=UTC)
+        result = asyncio.run(client.search_prs_by_date_range("owner", "repo", since=since))
+
+        # Assert
+        self.assertTrue(result["has_next_page"])
+        self.assertEqual(result["end_cursor"], "cursor_abc123")
+        self.assertEqual(result["issue_count"], 25)
+
+    @patch("apps.integrations.services.github_graphql.Client")
+    @patch("apps.integrations.services.github_graphql.AIOHTTPTransport")
+    def test_passes_cursor_for_pagination(self, mock_transport_class, mock_client_class):
+        """Test that search_prs_by_date_range passes cursor for subsequent pages."""
+        import asyncio
+        from datetime import datetime
+
+        # Arrange
+        mock_transport = MagicMock()
+        mock_transport_class.return_value = mock_transport
+
+        return_value = {
+            "search": {
+                "issueCount": 25,
+                "pageInfo": {"hasNextPage": False, "endCursor": None},
+                "nodes": [{"number": 11}] * 10,
+            },
+            "rateLimit": {"remaining": 5000},
+        }
+        mock_client, mock_session = create_mock_client_context_manager(return_value)
+        mock_client_class.return_value = mock_client
+
+        client = GitHubGraphQLClient("test_token")
+
+        # Act - pass cursor for page 2
+        since = datetime(2024, 12, 1, tzinfo=UTC)
+        asyncio.run(client.search_prs_by_date_range("owner", "repo", since=since, cursor="cursor_abc123"))
+
+        # Assert
+        call_args = mock_session.execute.call_args
+        variables = call_args[1]["variable_values"]
+        self.assertEqual(variables["cursor"], "cursor_abc123")
+
+    @patch("apps.integrations.services.github_graphql.Client")
+    @patch("apps.integrations.services.github_graphql.AIOHTTPTransport")
+    def test_includes_full_pr_fields(self, mock_transport_class, mock_client_class):
+        """Test that search_prs_by_date_range returns full PR data including reviews, commits, files."""
+        import asyncio
+        from datetime import datetime
+
+        # Arrange
+        mock_transport = MagicMock()
+        mock_transport_class.return_value = mock_transport
+
+        return_value = {
+            "search": {
+                "issueCount": 1,
+                "pageInfo": {"hasNextPage": False, "endCursor": None},
+                "nodes": [
+                    {
+                        "number": 456,
+                        "title": "Feature: Add new API",
+                        "body": "This PR adds...",
+                        "state": "MERGED",
+                        "createdAt": "2024-12-10T09:00:00Z",
+                        "mergedAt": "2024-12-12T14:30:00Z",
+                        "additions": 150,
+                        "deletions": 20,
+                        "isDraft": False,
+                        "author": {"login": "developer1"},
+                        "labels": {"nodes": [{"name": "feature", "color": "0e8a16"}]},
+                        "milestone": {"title": "v1.0", "number": 1, "dueOn": "2025-01-01"},
+                        "assignees": {"nodes": [{"login": "developer1"}]},
+                        "closingIssuesReferences": {"nodes": [{"number": 100, "title": "Issue"}]},
+                        "reviews": {
+                            "nodes": [
+                                {
+                                    "databaseId": 1001,
+                                    "state": "APPROVED",
+                                    "body": "LGTM!",
+                                    "submittedAt": "2024-12-11T10:00:00Z",
+                                    "author": {"login": "reviewer1"},
+                                }
+                            ]
+                        },
+                        "commits": {
+                            "nodes": [
+                                {
+                                    "commit": {
+                                        "oid": "abc123def456",
+                                        "message": "Add new endpoint",
+                                        "additions": 50,
+                                        "deletions": 5,
+                                        "author": {"date": "2024-12-10T09:00:00Z", "user": {"login": "developer1"}},
+                                    }
+                                }
+                            ]
+                        },
+                        "files": {
+                            "nodes": [
+                                {"path": "src/api/endpoint.py", "additions": 50, "deletions": 5, "changeType": "ADDED"}
+                            ]
+                        },
+                    }
+                ],
+            },
+            "rateLimit": {"remaining": 5000},
+        }
+        mock_client, mock_session = create_mock_client_context_manager(return_value)
+        mock_client_class.return_value = mock_client
+
+        client = GitHubGraphQLClient("test_token")
+
+        # Act
+        since = datetime(2024, 12, 1, tzinfo=UTC)
+        result = asyncio.run(client.search_prs_by_date_range("owner", "repo", since=since))
+
+        # Assert
+        pr = result["prs"][0]
+        self.assertEqual(pr["number"], 456)
+        self.assertEqual(pr["title"], "Feature: Add new API")
+        self.assertEqual(pr["additions"], 150)
+        self.assertEqual(pr["deletions"], 20)
+        self.assertEqual(len(pr["reviews"]["nodes"]), 1)
+        self.assertEqual(len(pr["commits"]["nodes"]), 1)
+        self.assertEqual(len(pr["files"]["nodes"]), 1)
+
+    @patch("apps.integrations.services.github_graphql.Client")
+    @patch("apps.integrations.services.github_graphql.AIOHTTPTransport")
+    def test_handles_empty_results(self, mock_transport_class, mock_client_class):
+        """Test that search_prs_by_date_range handles empty results correctly."""
+        import asyncio
+        from datetime import datetime
+
+        # Arrange
+        mock_transport = MagicMock()
+        mock_transport_class.return_value = mock_transport
+
+        return_value = {
+            "search": {
+                "issueCount": 0,
+                "pageInfo": {"hasNextPage": False, "endCursor": None},
+                "nodes": [],
+            },
+            "rateLimit": {"remaining": 5000},
+        }
+        mock_client, mock_session = create_mock_client_context_manager(return_value)
+        mock_client_class.return_value = mock_client
+
+        client = GitHubGraphQLClient("test_token")
+
+        # Act
+        since = datetime(2024, 12, 1, tzinfo=UTC)
+        result = asyncio.run(client.search_prs_by_date_range("owner", "repo", since=since))
+
+        # Assert
+        self.assertEqual(result["issue_count"], 0)
+        self.assertEqual(len(result["prs"]), 0)
+        self.assertFalse(result["has_next_page"])
+
+    @patch("apps.integrations.services.github_graphql.Client")
+    @patch("apps.integrations.services.github_graphql.AIOHTTPTransport")
+    def test_raises_rate_limit_error(self, mock_transport_class, mock_client_class):
+        """Test that search_prs_by_date_range raises error when rate limit low."""
+        import asyncio
+        from datetime import datetime
+
+        # Arrange
+        mock_transport = MagicMock()
+        mock_transport_class.return_value = mock_transport
+
+        return_value = {
+            "search": {"issueCount": 10, "pageInfo": {}, "nodes": []},
+            "rateLimit": {"remaining": 50},  # Low rate limit
+        }
+        mock_client, mock_session = create_mock_client_context_manager(return_value)
+        mock_client_class.return_value = mock_client
+
+        client = GitHubGraphQLClient("test_token", wait_for_reset=False)
+
+        # Act & Assert
+        since = datetime(2024, 12, 1, tzinfo=UTC)
+        with self.assertRaises(GitHubGraphQLRateLimitError):
+            asyncio.run(client.search_prs_by_date_range("owner", "repo", since=since))
+
+    @patch("asyncio.sleep", new_callable=AsyncMock)
+    @patch("apps.integrations.services.github_graphql.Client")
+    @patch("apps.integrations.services.github_graphql.AIOHTTPTransport")
+    def test_retries_on_timeout(self, mock_transport_class, mock_client_class, mock_sleep):
+        """Test that search_prs_by_date_range retries on timeout."""
+        import asyncio
+        from datetime import datetime
+
+        # Arrange
+        mock_transport = MagicMock()
+        mock_transport_class.return_value = mock_transport
+
+        success_response = {
+            "search": {
+                "issueCount": 5,
+                "pageInfo": {"hasNextPage": False, "endCursor": None},
+                "nodes": [],
+            },
+            "rateLimit": {"remaining": 5000},
+        }
+
+        # Fail once, then succeed
+        mock_client, mock_session = create_mock_client_context_manager()
+        mock_session.execute = AsyncMock(side_effect=[TimeoutError(), success_response])
+        mock_client_class.return_value = mock_client
+
+        client = GitHubGraphQLClient("test_token")
+
+        # Act
+        since = datetime(2024, 12, 1, tzinfo=UTC)
+        result = asyncio.run(client.search_prs_by_date_range("owner", "repo", since=since, max_retries=3))
+
+        # Assert
+        self.assertEqual(mock_session.execute.call_count, 2)
+        self.assertEqual(result["issue_count"], 5)

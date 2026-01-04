@@ -13,7 +13,10 @@ from typing import TYPE_CHECKING
 from asgiref.sync import async_to_sync
 from django.conf import settings
 
-from apps.integrations.services.github_graphql_sync import sync_repository_history_graphql
+from apps.integrations.services.github_graphql_sync import (
+    sync_repository_history_by_search,
+    sync_repository_history_graphql,
+)
 
 if TYPE_CHECKING:
     from apps.integrations.models import TrackedRepository
@@ -90,14 +93,26 @@ class OnboardingSyncService:
             progress_callback(0, 1, f"Starting sync for {repo.full_name}")
 
         try:
+            # Check if Search API is enabled for more accurate progress tracking
+            github_config = getattr(settings, "GITHUB_API_CONFIG", {})
+            graphql_ops = github_config.get("GRAPHQL_OPERATIONS", {})
+            use_search_api = graphql_ops.get("use_search_api", False)
+
             # Run async GraphQL sync in sync context using async_to_sync
             # NOTE: Using async_to_sync instead of asyncio.run() is critical!
             # asyncio.run() creates a new event loop which breaks @sync_to_async
             # decorators' thread handling, causing DB operations to silently fail
             # in Celery workers. async_to_sync properly manages the event loop
             # and thread context for Django's database connections.
-            sync_graphql = async_to_sync(sync_repository_history_graphql)
-            result = sync_graphql(
+            if use_search_api:
+                # Search API provides accurate PR count from issueCount
+                logger.info(f"Using Search API for accurate progress: {repo.full_name}")
+                sync_fn = async_to_sync(sync_repository_history_by_search)
+            else:
+                # Default to pullRequests connection (less accurate progress)
+                sync_fn = async_to_sync(sync_repository_history_graphql)
+
+            result = sync_fn(
                 repo,
                 days_back=days_back,
                 skip_recent=skip_recent,

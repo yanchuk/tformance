@@ -2288,3 +2288,256 @@ class TestSyncProgressTracking(TransactionTestCase):
 
         # Progress should complete successfully
         self.assertEqual(self.tracked_repo.sync_progress, 100)
+
+
+# ============================================================================
+# Search API Sync Tests (sync_repository_history_by_search)
+# ============================================================================
+
+
+def create_search_pr_response(pr_number=123, state="MERGED"):
+    """Helper to create PR data as returned by Search API."""
+    base_time = timezone.now() - timedelta(days=5)
+    return {
+        "number": pr_number,
+        "title": f"Search PR #{pr_number}",
+        "body": "PR description",
+        "state": state,
+        "createdAt": base_time.isoformat(),
+        "mergedAt": (base_time + timedelta(hours=24)).isoformat() if state == "MERGED" else None,
+        "additions": 100,
+        "deletions": 50,
+        "isDraft": False,
+        "author": {"login": "testuser"},
+        "labels": {"nodes": []},
+        "milestone": None,
+        "assignees": {"nodes": []},
+        "closingIssuesReferences": {"nodes": []},
+        "reviews": {"nodes": []},
+        "commits": {"nodes": []},
+        "files": {"nodes": []},
+    }
+
+
+class TestSyncRepositoryHistoryBySearch(TransactionTestCase):
+    """Tests for sync_repository_history_by_search function.
+
+    This function uses the Search API to fetch PRs with date filtering,
+    enabling accurate progress tracking and efficient phase 2 syncing.
+    """
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.team = TeamFactory()
+        self.tracked_repo = TrackedRepositoryFactory(team=self.team, full_name="owner/repo")
+        self.author = TeamMemberFactory(team=self.team, github_id="testuser")
+
+    def test_sync_by_search_function_exists(self):
+        """Test that sync_repository_history_by_search function exists and is importable."""
+        from apps.integrations.services.github_graphql_sync import sync_repository_history_by_search
+
+        self.assertTrue(callable(sync_repository_history_by_search))
+
+    @patch("apps.integrations.services.github_graphql_sync.GitHubGraphQLClient")
+    def test_sync_by_search_sets_prs_total_from_issue_count(self, mock_client_class):
+        """Test that sync sets prs_total from Search API issueCount."""
+        # Arrange
+        mock_client = MagicMock()
+        mock_client_class.return_value = mock_client
+
+        # Search API returns issueCount which is accurate for date range
+        mock_client.search_prs_by_date_range = AsyncMock(
+            return_value={
+                "issue_count": 15,
+                "prs": [],
+                "has_next_page": False,
+                "end_cursor": None,
+            }
+        )
+
+        # Act
+        from apps.integrations.services.github_graphql_sync import sync_repository_history_by_search
+
+        asyncio.run(sync_repository_history_by_search(self.tracked_repo, days_back=30))
+
+        # Assert
+        self.tracked_repo.refresh_from_db()
+        self.assertEqual(self.tracked_repo.sync_prs_total, 15)
+
+    @patch("apps.integrations.services.github_graphql_sync.GitHubGraphQLClient")
+    def test_sync_by_search_creates_pull_requests(self, mock_client_class):
+        """Test that sync creates PullRequest records from Search API response."""
+        # Arrange
+        mock_client = MagicMock()
+        mock_client_class.return_value = mock_client
+
+        pr_data = create_search_pr_response(pr_number=123, state="MERGED")
+        mock_client.search_prs_by_date_range = AsyncMock(
+            return_value={
+                "issue_count": 1,
+                "prs": [pr_data],
+                "has_next_page": False,
+                "end_cursor": None,
+            }
+        )
+
+        # Act
+        from apps.integrations.services.github_graphql_sync import sync_repository_history_by_search
+
+        result = asyncio.run(sync_repository_history_by_search(self.tracked_repo, days_back=30))
+
+        # Assert
+        self.assertEqual(result["prs_synced"], 1)
+        pr = PullRequest.objects.filter(team=self.team, github_pr_id=123).first()
+        self.assertIsNotNone(pr)
+        self.assertEqual(pr.title, "Search PR #123")
+        self.assertEqual(pr.state, "merged")
+
+    @patch("apps.integrations.services.github_graphql_sync.GitHubGraphQLClient")
+    def test_sync_by_search_increments_prs_processed(self, mock_client_class):
+        """Test that sync increments prs_processed for each PR."""
+        # Arrange
+        mock_client = MagicMock()
+        mock_client_class.return_value = mock_client
+
+        prs = [create_search_pr_response(pr_number=i) for i in range(1, 6)]  # 5 PRs
+        mock_client.search_prs_by_date_range = AsyncMock(
+            return_value={
+                "issue_count": 5,
+                "prs": prs,
+                "has_next_page": False,
+                "end_cursor": None,
+            }
+        )
+
+        # Act
+        from apps.integrations.services.github_graphql_sync import sync_repository_history_by_search
+
+        asyncio.run(sync_repository_history_by_search(self.tracked_repo, days_back=30))
+
+        # Assert
+        self.tracked_repo.refresh_from_db()
+        self.assertEqual(self.tracked_repo.sync_prs_completed, 5)
+
+    @patch("apps.integrations.services.github_graphql_sync.GitHubGraphQLClient")
+    def test_sync_by_search_phase1_uses_since_only(self, mock_client_class):
+        """Test that Phase 1 sync (days_back=30) only uses since date."""
+        # Arrange
+        mock_client = MagicMock()
+        mock_client_class.return_value = mock_client
+        mock_client.search_prs_by_date_range = AsyncMock(
+            return_value={
+                "issue_count": 0,
+                "prs": [],
+                "has_next_page": False,
+                "end_cursor": None,
+            }
+        )
+
+        # Act
+        from apps.integrations.services.github_graphql_sync import sync_repository_history_by_search
+
+        asyncio.run(sync_repository_history_by_search(self.tracked_repo, days_back=30))
+
+        # Assert
+        mock_client.search_prs_by_date_range.assert_called_once()
+        call_kwargs = mock_client.search_prs_by_date_range.call_args[1]
+        self.assertEqual(call_kwargs["owner"], "owner")
+        self.assertEqual(call_kwargs["repo"], "repo")
+        self.assertIsNotNone(call_kwargs.get("since"))
+        self.assertIsNone(call_kwargs.get("until"))  # No until for Phase 1
+
+    @patch("apps.integrations.services.github_graphql_sync.GitHubGraphQLClient")
+    def test_sync_by_search_phase2_uses_date_range(self, mock_client_class):
+        """Test that Phase 2 sync (skip_recent=30) uses both since and until dates."""
+        # Arrange
+        mock_client = MagicMock()
+        mock_client_class.return_value = mock_client
+        mock_client.search_prs_by_date_range = AsyncMock(
+            return_value={
+                "issue_count": 0,
+                "prs": [],
+                "has_next_page": False,
+                "end_cursor": None,
+            }
+        )
+
+        # Act
+        from apps.integrations.services.github_graphql_sync import sync_repository_history_by_search
+
+        asyncio.run(sync_repository_history_by_search(self.tracked_repo, days_back=90, skip_recent=30))
+
+        # Assert
+        mock_client.search_prs_by_date_range.assert_called_once()
+        call_kwargs = mock_client.search_prs_by_date_range.call_args[1]
+        self.assertEqual(call_kwargs["owner"], "owner")
+        self.assertEqual(call_kwargs["repo"], "repo")
+        self.assertIsNotNone(call_kwargs.get("since"))
+        self.assertIsNotNone(call_kwargs.get("until"))  # Has until for Phase 2
+
+    @patch("apps.integrations.services.github_graphql_sync.GitHubGraphQLClient")
+    def test_sync_by_search_paginates_through_all_pages(self, mock_client_class):
+        """Test that sync paginates through all pages of results."""
+        # Arrange
+        mock_client = MagicMock()
+        mock_client_class.return_value = mock_client
+
+        page1_prs = [create_search_pr_response(pr_number=i) for i in range(1, 6)]
+        page2_prs = [create_search_pr_response(pr_number=i) for i in range(6, 11)]
+
+        mock_client.search_prs_by_date_range = AsyncMock(
+            side_effect=[
+                {
+                    "issue_count": 10,
+                    "prs": page1_prs,
+                    "has_next_page": True,
+                    "end_cursor": "cursor_page2",
+                },
+                {
+                    "issue_count": 10,
+                    "prs": page2_prs,
+                    "has_next_page": False,
+                    "end_cursor": None,
+                },
+            ]
+        )
+
+        # Act
+        from apps.integrations.services.github_graphql_sync import sync_repository_history_by_search
+
+        result = asyncio.run(sync_repository_history_by_search(self.tracked_repo, days_back=30))
+
+        # Assert
+        self.assertEqual(mock_client.search_prs_by_date_range.call_count, 2)
+        self.assertEqual(result["prs_synced"], 10)
+
+        # Verify cursor was passed for second call
+        second_call_kwargs = mock_client.search_prs_by_date_range.call_args_list[1][1]
+        self.assertEqual(second_call_kwargs.get("cursor"), "cursor_page2")
+
+    @patch("apps.integrations.services.github_graphql_sync.GitHubGraphQLClient")
+    def test_sync_by_search_returns_result_dict(self, mock_client_class):
+        """Test that sync returns dict with all sync counts."""
+        # Arrange
+        mock_client = MagicMock()
+        mock_client_class.return_value = mock_client
+        mock_client.search_prs_by_date_range = AsyncMock(
+            return_value={
+                "issue_count": 0,
+                "prs": [],
+                "has_next_page": False,
+                "end_cursor": None,
+            }
+        )
+
+        # Act
+        from apps.integrations.services.github_graphql_sync import sync_repository_history_by_search
+
+        result = asyncio.run(sync_repository_history_by_search(self.tracked_repo, days_back=30))
+
+        # Assert
+        self.assertIn("prs_synced", result)
+        self.assertIn("reviews_synced", result)
+        self.assertIn("commits_synced", result)
+        self.assertIn("files_synced", result)
+        self.assertIn("errors", result)

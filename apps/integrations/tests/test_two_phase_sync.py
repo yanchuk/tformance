@@ -159,34 +159,36 @@ class TestOnboardingSyncServiceDaysBack(TestCase):
             full_name="test-org/test-repo",
         )
 
-    @patch("apps.integrations.services.onboarding_sync.sync_repository_history_graphql")
-    def test_sync_repository_accepts_days_back(self, mock_sync_graphql):
+    @patch("apps.integrations.services.onboarding_sync.sync_repository_history_by_search")
+    def test_sync_repository_accepts_days_back(self, mock_sync_search):
         """Test that sync_repository accepts days_back parameter."""
         from apps.integrations.services.onboarding_sync import OnboardingSyncService
 
         # Mock the async function - async_to_sync will handle wrapping
-        mock_sync_graphql.return_value = {"prs_synced": 10}
+        # Search API is default when use_search_api=True
+        mock_sync_search.return_value = {"prs_synced": 10}
 
         service = OnboardingSyncService(team=self.team, github_token="test-token")
         service.sync_repository(repo=self.repo, days_back=30)
 
-        # Verify the GraphQL sync was invoked with days_back parameter
-        mock_sync_graphql.assert_called_once()
-        call_kwargs = mock_sync_graphql.call_args.kwargs
+        # Verify the Search API sync was invoked with days_back parameter
+        mock_sync_search.assert_called_once()
+        call_kwargs = mock_sync_search.call_args.kwargs
         self.assertEqual(call_kwargs["days_back"], 30)
 
-    @patch("apps.integrations.services.onboarding_sync.sync_repository_history_graphql")
-    def test_sync_repository_accepts_skip_recent(self, mock_sync_graphql):
+    @patch("apps.integrations.services.onboarding_sync.sync_repository_history_by_search")
+    def test_sync_repository_accepts_skip_recent(self, mock_sync_search):
         """Test that sync_repository accepts skip_recent parameter."""
         from apps.integrations.services.onboarding_sync import OnboardingSyncService
 
-        mock_sync_graphql.return_value = {"prs_synced": 10}
+        # Search API is default when use_search_api=True
+        mock_sync_search.return_value = {"prs_synced": 10}
 
         service = OnboardingSyncService(team=self.team, github_token="test-token")
         # This should not raise an error
         service.sync_repository(repo=self.repo, days_back=90, skip_recent=30)
 
-        mock_sync_graphql.assert_called_once()
-        call_kwargs = mock_sync_graphql.call_args.kwargs
+        mock_sync_search.assert_called_once()
+        call_kwargs = mock_sync_search.call_args.kwargs
         self.assertEqual(call_kwargs["days_back"], 90)
         self.assertEqual(call_kwargs["skip_recent"], 30)

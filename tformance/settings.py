@@ -389,6 +389,8 @@ GITHUB_API_CONFIG = {
         "incremental_sync": env.bool("GITHUB_GRAPHQL_INCREMENTAL_SYNC", default=True),
         "pr_complete_data": env.bool("GITHUB_GRAPHQL_PR_COMPLETE", default=True),
         "member_sync": env.bool("GITHUB_GRAPHQL_MEMBERS", default=True),
+        # Use Search API for accurate progress tracking during sync
+        "use_search_api": env.bool("GITHUB_USE_SEARCH_API", default=True),
     },
     # Fallback to REST on GraphQL errors
     "FALLBACK_TO_REST": env.bool("GITHUB_FALLBACK_REST", default=True),
@@ -818,9 +820,15 @@ LOGGING = {
             "style": "{",
             "datefmt": "%d/%b/%Y %H:%M:%S",  # match Django server time format
         },
+        "celery": {
+            "format": "[{asctime}] {levelname} [{task_name}] {message}",
+            "style": "{",
+            "datefmt": "%d/%b/%Y %H:%M:%S",
+        },
     },
     "handlers": {
         "console": {"class": "logging.StreamHandler", "formatter": "verbose"},
+        "celery_console": {"class": "logging.StreamHandler", "formatter": "celery"},
     },
     "loggers": {
         "django": {
@@ -830,6 +838,22 @@ LOGGING = {
         "tformance": {
             "handlers": ["console"],
             "level": env("TFORMANCE_LOG_LEVEL", default="INFO"),
+        },
+        # Celery core logging
+        "celery": {
+            "handlers": ["console"],
+            "level": env("CELERY_LOG_LEVEL", default="INFO"),
+        },
+        # Celery task execution logging
+        "celery.task": {
+            "handlers": ["console"],
+            "level": env("CELERY_LOG_LEVEL", default="INFO"),
+            "propagate": False,
+        },
+        # App loggers (apps.integrations.tasks, apps.metrics.tasks, etc.)
+        "apps": {
+            "handlers": ["console"],
+            "level": env("APPS_LOG_LEVEL", default="INFO"),
         },
     },
 }

@@ -27,36 +27,53 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 
 
-def _sync_with_graphql_or_rest(tracked_repo, days_back: int) -> dict:
+def _sync_with_graphql_or_rest(tracked_repo, days_back: int, skip_recent: int = 0) -> dict:
     """Sync repository using GraphQL or REST API based on feature flags.
 
     Uses GraphQL API if enabled for initial_sync operation, falling back to REST
     if GraphQL fails and fallback is enabled.
 
+    Supports two-phase onboarding:
+    - Phase 1: days_back=30, skip_recent=0 (sync recent 30 days)
+    - Phase 2: days_back=90, skip_recent=30 (sync days 31-90, older data)
+
     Args:
         tracked_repo: TrackedRepository instance to sync
         days_back: Number of days of history to sync
+        skip_recent: Skip PRs from the most recent N days (default 0)
 
     Returns:
         Dict with sync results (prs_synced, reviews_synced, etc.)
     """
-    import asyncio
-
+    from asgiref.sync import async_to_sync
     from django.conf import settings
 
     github_config = getattr(settings, "GITHUB_API_CONFIG", {})
     use_graphql = github_config.get("USE_GRAPHQL", False)
     graphql_ops = github_config.get("GRAPHQL_OPERATIONS", {})
     initial_sync_enabled = graphql_ops.get("initial_sync", True)
+    use_search_api = graphql_ops.get("use_search_api", False)  # New flag for Search API
     fallback_to_rest = github_config.get("FALLBACK_TO_REST", True)
 
     if use_graphql and initial_sync_enabled:
         logger.info(f"Using GraphQL API for sync: {tracked_repo.full_name}")
         try:
-            from apps.integrations.services.github_graphql_sync import sync_repository_history_graphql
+            # Use Search API if enabled (more accurate progress tracking)
+            if use_search_api:
+                from apps.integrations.services.github_graphql_sync import sync_repository_history_by_search
 
-            # Run async function in sync context
-            result = asyncio.run(sync_repository_history_graphql(tracked_repo, days_back=days_back))
+                logger.info(f"Using Search API for accurate progress: {tracked_repo.full_name}")
+                # Run async function in sync context using async_to_sync (NOT asyncio.run!)
+                result = async_to_sync(sync_repository_history_by_search)(
+                    tracked_repo, days_back=days_back, skip_recent=skip_recent
+                )
+            else:
+                from apps.integrations.services.github_graphql_sync import sync_repository_history_graphql
+
+                # Run async function in sync context using async_to_sync (NOT asyncio.run!)
+                result = async_to_sync(sync_repository_history_graphql)(
+                    tracked_repo, days_back=days_back, skip_recent=skip_recent
+                )
 
             # Check if GraphQL sync had errors
             if result.get("errors") and fallback_to_rest:
@@ -91,8 +108,7 @@ def _sync_incremental_with_graphql_or_rest(tracked_repo) -> dict:
     Returns:
         Dict with sync results (prs_synced, reviews_synced, etc.)
     """
-    import asyncio
-
+    from asgiref.sync import async_to_sync
     from django.conf import settings
 
     github_config = getattr(settings, "GITHUB_API_CONFIG", {})
@@ -106,8 +122,8 @@ def _sync_incremental_with_graphql_or_rest(tracked_repo) -> dict:
         try:
             from apps.integrations.services.github_graphql_sync import sync_repository_incremental_graphql
 
-            # Run async function in sync context
-            result = asyncio.run(sync_repository_incremental_graphql(tracked_repo))
+            # Run async function in sync context using async_to_sync (NOT asyncio.run!)
+            result = async_to_sync(sync_repository_incremental_graphql)(tracked_repo)
 
             # Check if GraphQL sync had errors
             if result.get("errors") and fallback_to_rest:
@@ -141,8 +157,7 @@ def _sync_members_with_graphql_or_rest(integration, org_slug: str) -> dict:
     Returns:
         dict: Sync results with created, updated, unchanged counts
     """
-    import asyncio
-
+    from asgiref.sync import async_to_sync
     from django.conf import settings
 
     github_config = getattr(settings, "GITHUB_API_CONFIG", {})
@@ -156,7 +171,8 @@ def _sync_members_with_graphql_or_rest(integration, org_slug: str) -> dict:
             from apps.integrations.services.github_graphql_sync import sync_github_members_graphql
 
             logger.info(f"Using GraphQL for member sync: {org_slug}")
-            result = asyncio.run(sync_github_members_graphql(integration, org_name=org_slug))
+            # Run async function in sync context using async_to_sync (NOT asyncio.run!)
+            result = async_to_sync(sync_github_members_graphql)(integration, org_name=org_slug)
 
             # If GraphQL has errors and fallback is enabled, fall back to REST
             if result.get("errors") and fallback_to_rest:
