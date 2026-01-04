@@ -414,3 +414,27 @@ class TestLLMBatchLimitNone(TestCase):
 
         # Should only process 50 (default limit)
         self.assertEqual(result["processed"], 50)
+
+
+class TestLLMTaskTimeLimits(TestCase):
+    """Tests for time limit configuration on run_llm_analysis_batch task.
+
+    Time limits ensure the pipeline error handlers fire if the task hangs,
+    preventing stuck onboarding pipelines (A-006 fix).
+    """
+
+    def test_task_has_soft_time_limit(self):
+        """Task should have soft_time_limit=900 (15 min) to raise SoftTimeLimitExceeded."""
+        self.assertEqual(run_llm_analysis_batch.soft_time_limit, 900)
+
+    def test_task_has_hard_time_limit(self):
+        """Task should have time_limit=960 (16 min) for hard kill if soft limit fails."""
+        self.assertEqual(run_llm_analysis_batch.time_limit, 960)
+
+    def test_task_has_max_retries(self):
+        """Task should have max_retries=2 for transient failures."""
+        self.assertEqual(run_llm_analysis_batch.max_retries, 2)
+
+    def test_task_has_retry_delay(self):
+        """Task should have default_retry_delay=300 (5 min) between retries."""
+        self.assertEqual(run_llm_analysis_batch.default_retry_delay, 300)

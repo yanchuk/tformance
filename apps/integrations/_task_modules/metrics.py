@@ -49,6 +49,17 @@ def aggregate_team_weekly_metrics_task(team_id: int):
         weekly_metrics = aggregate_team_weekly_metrics(team, previous_monday)
         count = len(weekly_metrics)
         logger.info(f"Successfully aggregated {count} weekly metrics for team {team.name}")
+
+        # Signal-based pipeline: update status to trigger next task
+        team.refresh_from_db()
+        current_status = team.onboarding_pipeline_status
+        if current_status == "computing_metrics":
+            # Phase 1: next is computing insights
+            team.update_pipeline_status("computing_insights")
+        elif current_status == "background_metrics":
+            # Phase 2: all done, mark complete
+            team.update_pipeline_status("complete")
+
         return count
     except Exception as exc:
         from sentry_sdk import capture_exception
@@ -119,6 +130,17 @@ def queue_llm_analysis_batch_task(self, team_id: int, batch_size: int = 50) -> d
 
     if not prs_to_process:
         logger.info(f"No PRs need LLM processing for team {team.name}")
+
+        # Signal-based pipeline: update status to trigger next task
+        team.refresh_from_db()
+        current_status = team.onboarding_pipeline_status
+        if current_status == "llm_processing":
+            # Phase 1: next is computing metrics
+            team.update_pipeline_status("computing_metrics")
+        elif current_status == "background_llm":
+            # Phase 2: re-aggregate metrics for the new data, then complete
+            team.update_pipeline_status("background_metrics")
+
         return {"prs_processed": 0, "message": "No PRs need processing"}
 
     logger.info(f"Starting LLM batch analysis for {len(prs_to_process)} PRs for team {team.name}")
@@ -144,4 +166,25 @@ def queue_llm_analysis_batch_task(self, team_id: int, batch_size: int = 50) -> d
 
     logger.info(f"Successfully updated {prs_updated} PRs with LLM analysis for team {team.name}")
 
-    return {"prs_processed": prs_updated}
+    # Check if there are more PRs to process
+    remaining_prs = PullRequest.objects.filter(
+        team=team,
+        llm_summary__isnull=True,
+    ).count()
+
+    if remaining_prs > 0:
+        # More PRs to process - requeue self
+        logger.info(f"{remaining_prs} PRs still need LLM processing for team {team.name}, requeueing...")
+        self.apply_async(args=[team_id], kwargs={"batch_size": batch_size}, countdown=2)
+    else:
+        # All PRs processed - update status to trigger next task
+        team.refresh_from_db()
+        current_status = team.onboarding_pipeline_status
+        if current_status == "llm_processing":
+            # Phase 1: next is computing metrics
+            team.update_pipeline_status("computing_metrics")
+        elif current_status == "background_llm":
+            # Phase 2: re-aggregate metrics for the new data, then complete
+            team.update_pipeline_status("background_metrics")
+
+    return {"prs_processed": prs_updated, "remaining": remaining_prs}

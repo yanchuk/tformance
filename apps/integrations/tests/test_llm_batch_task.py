@@ -68,7 +68,7 @@ class TestQueueLLMAnalysisBatchTask(TestCase):
         )
 
         # Mock the LLM processor to capture what PRs are processed
-        with patch("apps.integrations.tasks.GroqBatchProcessor") as mock_processor_class:
+        with patch("apps.integrations._task_modules.metrics.GroqBatchProcessor") as mock_processor_class:
             mock_processor = MagicMock()
             mock_processor_class.return_value = mock_processor
             mock_processor.submit_batch_with_fallback.return_value = ([], {})
@@ -101,7 +101,7 @@ class TestQueueLLMAnalysisBatchTask(TestCase):
             prs.append(pr)
 
         # Test with batch_size=3 (should process only 3 PRs)
-        with patch("apps.integrations.tasks.GroqBatchProcessor") as mock_processor_class:
+        with patch("apps.integrations._task_modules.metrics.GroqBatchProcessor") as mock_processor_class:
             mock_processor = MagicMock()
             mock_processor_class.return_value = mock_processor
             mock_processor.submit_batch_with_fallback.return_value = ([], {})
@@ -154,7 +154,7 @@ class TestQueueLLMAnalysisBatchTask(TestCase):
             },
         )
 
-        with patch("apps.integrations.tasks.GroqBatchProcessor") as mock_processor_class:
+        with patch("apps.integrations._task_modules.metrics.GroqBatchProcessor") as mock_processor_class:
             mock_processor = MagicMock()
             mock_processor_class.return_value = mock_processor
             mock_processor.submit_batch_with_fallback.return_value = (
@@ -191,7 +191,7 @@ class TestQueueLLMAnalysisBatchTask(TestCase):
         )
 
         # Call task
-        with patch("apps.integrations.tasks.GroqBatchProcessor") as mock_processor_class:
+        with patch("apps.integrations._task_modules.metrics.GroqBatchProcessor") as mock_processor_class:
             mock_processor = MagicMock()
             mock_processor_class.return_value = mock_processor
             mock_processor.submit_batch_with_fallback.return_value = ([], {})
@@ -230,7 +230,7 @@ class TestQueueLLMAnalysisBatchTask(TestCase):
         )
 
         # Call task for self.team
-        with patch("apps.integrations.tasks.GroqBatchProcessor") as mock_processor_class:
+        with patch("apps.integrations._task_modules.metrics.GroqBatchProcessor") as mock_processor_class:
             mock_processor = MagicMock()
             mock_processor_class.return_value = mock_processor
             mock_processor.submit_batch_with_fallback.return_value = ([], {})
@@ -286,7 +286,7 @@ class TestQueueLLMAnalysisBatchTask(TestCase):
             for pr in prs
         ]
 
-        with patch("apps.integrations.tasks.GroqBatchProcessor") as mock_processor_class:
+        with patch("apps.integrations._task_modules.metrics.GroqBatchProcessor") as mock_processor_class:
             mock_processor = MagicMock()
             mock_processor_class.return_value = mock_processor
             mock_processor.submit_batch_with_fallback.return_value = (
@@ -336,7 +336,7 @@ class TestQueueLLMAnalysisBatchTask(TestCase):
             )
 
         # Call task without specifying batch_size
-        with patch("apps.integrations.tasks.GroqBatchProcessor") as mock_processor_class:
+        with patch("apps.integrations._task_modules.metrics.GroqBatchProcessor") as mock_processor_class:
             mock_processor = MagicMock()
             mock_processor_class.return_value = mock_processor
             mock_processor.submit_batch_with_fallback.return_value = ([], {})
