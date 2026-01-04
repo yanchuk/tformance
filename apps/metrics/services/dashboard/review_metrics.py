@@ -58,6 +58,7 @@ def get_review_distribution(
 
     reviews = (
         PRReview.objects.filter(**filters)  # noqa: TEAM001 - team in filters
+        .exclude(reviewer__isnull=True)  # Filter out reviews without matched reviewer
         .values("reviewer__id", "reviewer__display_name", "reviewer__github_id")
         .annotate(count=Count("pull_request", distinct=True))  # Count unique PRs, not review submissions
         .order_by("-count")

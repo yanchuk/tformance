@@ -229,6 +229,10 @@ def get_team_velocity(team: Team, start_date: date, end_date: date, limit: int =
         if not pr.author:
             continue
 
+        # Skip bot authors (e.g., dependabot, github-bot)
+        if pr.author.github_username and "bot" in pr.author.github_username.lower():
+            continue
+
         author_id = pr.author.id
         if author_id not in author_prs:
             author_prs[author_id] = []
