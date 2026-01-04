@@ -150,12 +150,26 @@ def queue_llm_analysis_batch_task(self, team_id: int, batch_size: int = 50) -> d
         logger.warning(f"Team with id {team_id} not found")
         return {"error": "Team not found", "prs_processed": 0}
 
-    # Find PRs missing llm_summary for this team
+    # Mark PRs without body - they can't be analyzed by LLM
+    # This prevents them from being re-queried on every batch
+    prs_without_body = PullRequest.objects.filter(
+        team=team,
+        llm_summary__isnull=True,
+        body="",
+    )
+    no_body_count = prs_without_body.count()
+    if no_body_count > 0:
+        # Mark with placeholder so they aren't re-queried
+        prs_without_body.update(llm_summary={"skipped": True, "reason": "no_body"})
+        logger.info(f"Marked {no_body_count} PRs without body as skipped for team {team.name}")
+
+    # Find PRs with body missing llm_summary for this team
     prs_to_process = list(
         PullRequest.objects.filter(
             team=team,
             llm_summary__isnull=True,
         )
+        .exclude(body="")  # Only process PRs with body content
         .select_related("author")
         .prefetch_related("files", "commits", "reviews__reviewer", "comments__author")[:batch_size]
     )

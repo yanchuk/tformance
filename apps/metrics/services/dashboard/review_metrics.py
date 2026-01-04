@@ -104,7 +104,7 @@ def get_reviewer_workload(team: Team, start_date: date, end_date: date, repo: st
         team=team,
         submitted_at__gte=start_of_day(start_date),
         submitted_at__lte=end_of_day(end_date),
-    )
+    ).exclude(reviewer__isnull=True)  # Filter out reviews without matched reviewer
     # Filter by repository through the pull_request relationship
     if repo:
         reviews = reviews.filter(pull_request__github_repo=repo)
@@ -374,10 +374,12 @@ def detect_review_bottleneck(
         None if no bottleneck detected (no one exceeds 3x threshold)
     """
     # Get all reviews on open, non-draft PRs
+    # Exclude reviews with NULL reviewer (external collaborators/bots not synced)
     filters = {
         "team": team,
         "pull_request__state": "open",
         "pull_request__is_draft": False,
+        "reviewer__isnull": False,  # Exclude reviews without linked reviewer
     }
     if repo:
         filters["pull_request__github_repo"] = repo
