@@ -352,32 +352,55 @@ def select_repositories(request):
         selected_repo_ids = request.POST.getlist("repos")
 
         if selected_repo_ids:
-            # Fetch repos from GitHub to get full_name for each
-            try:
-                all_repos = _views.github_oauth.get_organization_repositories(
-                    integration.credential.access_token,
-                    integration.organization_slug,
-                    exclude_archived=True,
-                )
-                repo_map = {str(repo["id"]): repo for repo in all_repos}
+            # Use cached repos from session (set during fetch_repos HTMX call)
+            repo_cache = request.session.get("onboarding_repos_cache", {})
 
-                # Create TrackedRepository for each selected repo
-                for repo_id in selected_repo_ids:
-                    repo_data = repo_map.get(repo_id)
-                    if repo_data:
-                        TrackedRepository.objects.get_or_create(
+            # Fallback: if cache is empty (session expired), fetch from GitHub
+            if not repo_cache:
+                logger.info("Repo cache empty, fetching from GitHub")
+                try:
+                    all_repos = _views.github_oauth.get_organization_repositories(
+                        integration.credential.access_token,
+                        integration.organization_slug,
+                        exclude_archived=True,
+                    )
+                    repo_cache = {str(repo["id"]): repo for repo in all_repos}
+                except Exception as e:
+                    logger.error(f"Failed to fetch repos during onboarding: {e}")
+                    messages.error(request, _("Failed to save repository selection. Please try again."))
+                    return redirect("onboarding:select_repos")
+
+            # Get existing repo IDs to avoid duplicates
+            existing_repo_ids = set(
+                TrackedRepository.objects.filter(
+                    team=team,
+                    github_repo_id__in=[int(rid) for rid in selected_repo_ids],
+                ).values_list("github_repo_id", flat=True)
+            )
+
+            # Build list of new repos to create
+            repos_to_create = []
+            for repo_id in selected_repo_ids:
+                if int(repo_id) in existing_repo_ids:
+                    continue  # Skip existing
+                repo_data = repo_cache.get(repo_id)
+                if repo_data:
+                    repos_to_create.append(
+                        TrackedRepository(
                             team=team,
+                            integration=integration,
                             github_repo_id=int(repo_id),
-                            defaults={
-                                "integration": integration,
-                                "full_name": repo_data["full_name"],
-                                "is_active": True,
-                            },
+                            full_name=repo_data["full_name"],
+                            is_active=True,
                         )
-            except Exception as e:
-                logger.error(f"Failed to create tracked repos during onboarding: {e}")
-                messages.error(request, _("Failed to save repository selection. Please try again."))
-                return redirect("onboarding:select_repos")
+                    )
+
+            # Bulk create new repos (single query)
+            if repos_to_create:
+                TrackedRepository.objects.bulk_create(repos_to_create, ignore_conflicts=True)
+
+            # Clear cache
+            request.session.pop("onboarding_repos_cache", None)
 
         # Start sync in background and continue to next step
         repo_ids = list(TrackedRepository.objects.filter(team=team).values_list("id", flat=True))
@@ -453,6 +476,16 @@ def fetch_repos(request):
         return (0 if is_tracked else 1, -updated_at.timestamp())
 
     repos = sorted(repos, key=sort_key)
+
+    # Cache repos in session for POST handler (avoids re-fetching from GitHub)
+    # Store as dict keyed by repo_id for fast lookup
+    request.session["onboarding_repos_cache"] = {
+        str(repo["id"]): {
+            "id": repo["id"],
+            "full_name": repo.get("full_name") or repo.get("name", ""),
+        }
+        for repo in repos
+    }
 
     return render(
         request,
