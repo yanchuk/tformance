@@ -10,7 +10,7 @@
        title="{% blocktrans with size=item.category count=item.count %}View {{ count }} {{ size }} PRs{% endblocktrans %}">
       <span class="w-8 text-sm font-medium text-base-content/70 group-hover:text-primary transition-colors">{{ item.category }}</span>
       <div class="flex-1 bg-base-200 rounded-full h-6 overflow-hidden group-hover:ring-2 ring-primary/50 transition-all">
-        {% widthratio item.count chart_data.0.count|default:1 100 as bar_width %}
+        {% widthratio item.count max_count 100 as bar_width %}
         <div class="h-full rounded-full flex items-center justify-end pr-2 transition-all duration-300
           {% if item.category == 'XS' or item.category == 'S' %}bg-success{% elif item.category == 'M' %}bg-warning{% else %}bg-error{% endif %}"
           style="width: {% if item.count > 0 %}max({{ bar_width }}%, 24px){% else %}0{% endif %};">

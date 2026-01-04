@@ -218,11 +218,13 @@ def pr_size_chart(request: HttpRequest) -> HttpResponse:
     start_date, end_date = get_date_range_from_request(request)
     repo = _get_repo_filter(request)
     data = dashboard_service.get_pr_size_distribution(request.team, start_date, end_date, repo=repo)
+    max_count = max((item["count"] for item in data), default=1)
     return TemplateResponse(
         request,
         "metrics/partials/pr_size_chart.html",
         {
             "chart_data": data,
+            "max_count": max_count,
             "selected_repo": repo or "",
         },
     )
