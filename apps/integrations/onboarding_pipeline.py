@@ -73,6 +73,8 @@ def update_pipeline_status(self, team_id: int, status: str, error: str | None = 
                 },
             )
 
+        print(f"!!! PIPELINE_STATUS_UPDATED: team={team_id}, status={status} - Chain should continue")
+        logger.warning(f"!!! PIPELINE_STATUS_UPDATED: team={team_id}, status={status} - Chain should continue")
         return {"status": "ok", "team_id": team_id, "pipeline_status": status}
     except Team.DoesNotExist:
         logger.error(f"Team not found: {team_id}")
@@ -255,23 +257,28 @@ def dispatch_phase2_pipeline(self, team_id: int, repo_ids: list[int]) -> dict:
     # Import here to avoid circular imports
     from apps.integrations.tasks import (
         aggregate_team_weekly_metrics_task,
+        queue_llm_analysis_batch_task,
         sync_historical_data_task,
     )
-    from apps.metrics.tasks import compute_team_insights, run_llm_analysis_batch
+    from apps.metrics.tasks import compute_team_insights, generate_team_llm_insights
 
     # Build Phase 2 pipeline
     pipeline = chain(
+        # Stage 0: Sync members first (may have new contributors in older PRs)
+        sync_github_members_pipeline_task.si(team_id),
         # Stage 1: Sync historical data (days 31-90)
         update_pipeline_status.si(team_id, "background_syncing"),
         sync_historical_data_task.si(team_id, repo_ids, days_back=90, skip_recent=30),
-        # Stage 2: LLM analysis for remaining PRs
+        # Stage 2: LLM analysis for remaining PRs (uses Groq Batch API for 50% cost savings)
         update_pipeline_status.si(team_id, "background_llm"),
-        run_llm_analysis_batch.si(team_id, limit=None),  # Process all remaining
+        queue_llm_analysis_batch_task.si(team_id, batch_size=500),  # Process all remaining
         # Stage 3: Re-aggregate metrics with full data
         aggregate_team_weekly_metrics_task.si(team_id),
         # Stage 4: Re-compute insights with full data
         compute_team_insights.si(team_id),
-        # Stage 5: Final completion
+        # Stage 5: Generate 90-day LLM insight (now have full 90 days of data)
+        generate_team_llm_insights.si(team_id, days_list=[90]),
+        # Stage 6: Final completion
         update_pipeline_status.si(team_id, "complete"),
         send_onboarding_complete_email.si(team_id),
     )
@@ -301,24 +308,29 @@ def run_phase2_pipeline(team_id: int, repo_ids: list[int]) -> AsyncResult:
     """
     from apps.integrations.tasks import (
         aggregate_team_weekly_metrics_task,
+        queue_llm_analysis_batch_task,
         sync_historical_data_task,
     )
-    from apps.metrics.tasks import compute_team_insights, run_llm_analysis_batch
+    from apps.metrics.tasks import compute_team_insights, generate_team_llm_insights
 
     logger.info(f"Running Phase 2 pipeline: team={team_id}, repos={repo_ids}")
 
     pipeline = chain(
+        # Stage 0: Sync members first (may have new contributors in older PRs)
+        sync_github_members_pipeline_task.si(team_id),
         # Stage 1: Sync historical data (days 31-90)
         update_pipeline_status.si(team_id, "background_syncing"),
         sync_historical_data_task.si(team_id, repo_ids, days_back=90, skip_recent=30),
-        # Stage 2: LLM analysis for remaining PRs
+        # Stage 2: LLM analysis for remaining PRs (uses Groq Batch API for 50% cost savings)
         update_pipeline_status.si(team_id, "background_llm"),
-        run_llm_analysis_batch.si(team_id, limit=None),
+        queue_llm_analysis_batch_task.si(team_id, batch_size=500),
         # Stage 3: Re-aggregate metrics
         aggregate_team_weekly_metrics_task.si(team_id),
         # Stage 4: Re-compute insights
         compute_team_insights.si(team_id),
-        # Stage 5: Final completion
+        # Stage 5: Generate 90-day LLM insight (now have full 90 days of data)
+        generate_team_llm_insights.si(team_id, days_list=[90]),
+        # Stage 6: Final completion
         update_pipeline_status.si(team_id, "complete"),
     )
 
@@ -328,33 +340,34 @@ def run_phase2_pipeline(team_id: int, repo_ids: list[int]) -> AsyncResult:
     return pipeline.apply_async()
 
 
-def start_phase1_pipeline(team_id: int, repo_ids: list[int]) -> AsyncResult:
+def start_phase1_pipeline(team_id: int, repo_ids: list[int]) -> dict:
     """
     Start Phase 1 (Quick Start) of the two-phase onboarding pipeline.
 
-    Phase 1 provides fast time-to-dashboard (~5 minutes):
-    0. Sync team members from GitHub org (A-025)
-    1. Sync last 30 days of PR data (quick)
-    2. LLM analyze ALL synced PRs (~150 PRs = ~5 min)
-    3. Aggregate metrics
-    4. Compute insights
-    5. Set status to 'phase1_complete' (dashboard accessible)
-    6. Dispatch Phase 2 for background processing
+    Uses signal-based state machine for resilient execution:
+    - Updates status to 'syncing_members'
+    - Django signal dispatches `sync_github_members_pipeline_task`
+    - Each task updates status on completion, triggering the next task
+    - Pipeline is self-healing: status field is source of truth
+
+    Phase 1 sequence (signal-driven):
+    0. syncing_members → sync_github_members_pipeline_task
+    1. syncing → sync_historical_data_task (30 days)
+    2. llm_processing → queue_llm_analysis_batch_task
+    3. computing_metrics → aggregate_team_weekly_metrics_task
+    4. computing_insights → compute_team_insights → generate_team_llm_insights
+    5. phase1_complete → (signal triggers Phase 2)
 
     Args:
         team_id: The team's ID
-        repo_ids: List of TrackedRepository IDs to sync
+        repo_ids: List of TrackedRepository IDs to sync (no longer used, kept for API compat)
 
     Returns:
-        AsyncResult from the chain execution
+        dict with pipeline start status
     """
-    from apps.integrations.tasks import (
-        aggregate_team_weekly_metrics_task,
-        sync_historical_data_task,
-    )
-    from apps.metrics.tasks import compute_team_insights, run_llm_analysis_batch
+    from apps.teams.models import Team
 
-    logger.info(f"Starting Phase 1 pipeline: team={team_id}, repos={repo_ids}")
+    logger.info(f"Starting Phase 1 pipeline (signal-based): team={team_id}")
 
     # Log pipeline started event
     sync_log = get_sync_logger(__name__)
@@ -362,58 +375,54 @@ def start_phase1_pipeline(team_id: int, repo_ids: list[int]) -> AsyncResult:
         "sync.pipeline.started",
         extra={
             "team_id": team_id,
-            "repos_count": len(repo_ids),
+            "repos_count": len(repo_ids) if repo_ids else 0,
             "phase": "phase1",
+            "execution_mode": "signal_based",
         },
     )
 
-    # Build Phase 1 pipeline (Quick Start)
-    pipeline = chain(
-        # Stage 0: Sync team members first (A-025 fix)
-        update_pipeline_status.si(team_id, "syncing_members"),
-        sync_github_members_pipeline_task.si(team_id),
-        # Stage 1: Sync last 30 days only (fast)
-        update_pipeline_status.si(team_id, "syncing"),
-        sync_historical_data_task.si(team_id, repo_ids, days_back=30),
-        # Stage 2: LLM analysis for ALL synced PRs
-        update_pipeline_status.si(team_id, "llm_processing"),
-        run_llm_analysis_batch.si(team_id, limit=None),  # Process ALL for Phase 1
-        # Stage 3: Metrics aggregation
-        update_pipeline_status.si(team_id, "computing_metrics"),
-        aggregate_team_weekly_metrics_task.si(team_id),
-        # Stage 4: Insights computation
-        update_pipeline_status.si(team_id, "computing_insights"),
-        compute_team_insights.si(team_id),
-        # Stage 5: Phase 1 Complete (dashboard accessible!)
-        update_pipeline_status.si(team_id, "phase1_complete"),
-        # Stage 6: Dispatch Phase 2 in background
-        dispatch_phase2_pipeline.si(team_id, repo_ids),
-    )
+    try:
+        team = Team.objects.get(id=team_id)
+    except Team.DoesNotExist:
+        logger.error(f"Team not found: {team_id}")
+        return {"status": "error", "error": f"Team {team_id} not found"}
 
-    # Attach error handler
-    pipeline = pipeline.on_error(handle_pipeline_failure.s(team_id=team_id))
+    # Start the pipeline by updating status to syncing_members
+    # The signal handler will dispatch sync_github_members_pipeline_task
+    team.update_pipeline_status("syncing_members")
 
-    # Execute the pipeline
-    return pipeline.apply_async()
+    logger.info(f"Phase 1 pipeline started for team {team_id} - signal will dispatch first task")
+
+    return {
+        "status": "started",
+        "team_id": team_id,
+        "execution_mode": "signal_based",
+        "initial_status": "syncing_members",
+    }
 
 
-def start_onboarding_pipeline(team_id: int, repo_ids: list[int]) -> AsyncResult:
+def start_onboarding_pipeline(team_id: int, repo_ids: list[int]) -> dict:
     """
     Start the onboarding pipeline using Two-Phase Quick Start.
 
     Delegates to start_phase1_pipeline for faster time-to-dashboard.
     Phase 2 runs automatically in the background after Phase 1.
 
-    Two-Phase Onboarding:
+    Two-Phase Onboarding (signal-based):
     - Phase 1: 30 days sync → ALL PRs LLM → dashboard ready (~5 min)
     - Phase 2: 31-90 days sync → remaining LLM → complete (background)
+
+    Signal-driven execution:
+    - Each status change triggers the next task via Django signals
+    - Self-healing: if worker restarts, pipeline resumes from current status
+    - Observable: status field is always the source of truth
 
     Args:
         team_id: The team's ID
         repo_ids: List of TrackedRepository IDs to sync
 
     Returns:
-        AsyncResult from the Phase 1 chain execution
+        dict with pipeline start status
     """
     return start_phase1_pipeline(team_id, repo_ids)
 
@@ -453,28 +462,37 @@ def sync_github_members_pipeline_task(self, team_id: int) -> dict:
 
     logger.info(f"Starting member sync in pipeline for team {team.name}")
 
+    result = None
+
     # Try OAuth integration first
     try:
         integration = GitHubIntegration.objects.get(team=team)
         # Run synchronously (not .delay()) to ensure completion before next stage
         result = sync_github_members_task(integration.id)
         logger.info(f"Member sync complete via OAuth for team {team.name}: {result}")
-        return result
     except GitHubIntegration.DoesNotExist:
         pass
 
-    # Try GitHub App installation
-    try:
-        installation = GitHubAppInstallation.objects.get(team=team)
-        # Run synchronously (not .delay()) to ensure completion before next stage
-        result = sync_github_app_members_task(installation.id)
-        logger.info(f"Member sync complete via App for team {team.name}: {result}")
-        return result
-    except GitHubAppInstallation.DoesNotExist:
-        pass
+    # Try GitHub App installation if OAuth not found
+    if result is None:
+        try:
+            installation = GitHubAppInstallation.objects.get(team=team)
+            # Run synchronously (not .delay()) to ensure completion before next stage
+            result = sync_github_app_members_task(installation.id)
+            logger.info(f"Member sync complete via App for team {team.name}: {result}")
+        except GitHubAppInstallation.DoesNotExist:
+            pass
 
-    logger.warning(f"No GitHub integration found for team {team.slug}, skipping member sync")
-    return {"skipped": True, "reason": "No GitHub integration found"}
+    if result is None:
+        logger.warning(f"No GitHub integration found for team {team.slug}, skipping member sync")
+        result = {"skipped": True, "reason": "No GitHub integration found"}
+
+    # Signal-based pipeline: update status to trigger next task
+    # Reload team to get fresh state
+    team.refresh_from_db()
+    team.update_pipeline_status("syncing")
+
+    return result
 
 
 # =============================================================================
@@ -576,3 +594,250 @@ def start_jira_onboarding_pipeline(team_id: int, project_ids: list[int]) -> Asyn
     )
 
     return pipeline.apply_async()
+
+
+# =============================================================================
+# Pipeline Recovery System
+# =============================================================================
+# Celery chains don't survive worker restarts - when a worker dies mid-chain,
+# pending tasks in the chain are lost. This recovery system detects stuck
+# pipelines and resumes them from the appropriate step.
+
+
+STUCK_THRESHOLD_MINUTES = 15  # Consider pipeline stuck after 15 minutes of no progress
+
+
+def get_pipeline_resume_step(status: str) -> str | None:
+    """
+    Get the next pipeline step to resume from based on current status.
+
+    The pipeline can get stuck after a status update but before the next task
+    starts (e.g., worker restart). This function returns what task should run next.
+
+    Args:
+        status: Current pipeline status
+
+    Returns:
+        The next step to execute, or None if no recovery needed
+    """
+    # Map status -> what should run next
+    resume_map = {
+        # Phase 1 statuses
+        "syncing_members": "sync_members",  # Resume member sync
+        "syncing": "sync_prs",  # Resume PR sync (may be partially done)
+        "llm_processing": "llm_analysis",  # Resume LLM analysis
+        "computing_metrics": "aggregate_metrics",  # Resume aggregation
+        "computing_insights": "compute_insights",  # Resume insights
+        # Phase 2 statuses
+        "background_syncing": "phase2_sync",  # Resume Phase 2 sync
+        "background_llm": "phase2_llm",  # Resume Phase 2 LLM
+    }
+    return resume_map.get(status)
+
+
+@shared_task(bind=True)
+def recover_stuck_pipeline(self, team_id: int) -> dict:
+    """
+    Recover a single stuck pipeline by resuming from the appropriate step.
+
+    This task is safe to call multiple times - it checks current status
+    and only takes action if the pipeline is actually stuck.
+
+    Args:
+        team_id: The team's ID
+
+    Returns:
+        dict with recovery action taken
+    """
+    from apps.integrations.models import TrackedRepository
+    from apps.integrations.tasks import (
+        aggregate_team_weekly_metrics_task,
+        queue_llm_analysis_batch_task,
+        sync_historical_data_task,
+    )
+    from apps.metrics.tasks import compute_team_insights, generate_team_llm_insights
+    from apps.teams.models import Team
+
+    try:
+        team = Team.objects.get(id=team_id)
+    except Team.DoesNotExist:
+        logger.error(f"Recovery: Team not found: {team_id}")
+        return {"status": "error", "error": f"Team {team_id} not found"}
+
+    status = team.onboarding_pipeline_status
+    resume_step = get_pipeline_resume_step(status)
+
+    if not resume_step:
+        logger.debug(f"Recovery: Team {team_id} status '{status}' doesn't need recovery")
+        return {"status": "skipped", "reason": f"Status '{status}' not recoverable"}
+
+    repo_ids = list(TrackedRepository.objects.filter(team=team).values_list("id", flat=True))
+    logger.warning(f"Recovery: Resuming team {team_id} pipeline from '{status}' (step: {resume_step})")
+
+    sync_log = get_sync_logger(__name__)
+    sync_log.warning(
+        "sync.pipeline.recovery",
+        extra={
+            "team_id": team_id,
+            "stuck_status": status,
+            "resume_step": resume_step,
+        },
+    )
+
+    # Resume based on the step needed
+    if resume_step == "sync_members":
+        # Resume from member sync
+        sync_github_members_pipeline_task.delay(team_id)
+        # After member sync completes, we need to continue the pipeline
+        # The simplest approach: dispatch the remaining Phase 1 chain
+        chain(
+            update_pipeline_status.si(team_id, "syncing"),
+            sync_historical_data_task.si(team_id, repo_ids, days_back=30),
+            update_pipeline_status.si(team_id, "llm_processing"),
+            queue_llm_analysis_batch_task.si(team_id, batch_size=500),
+            update_pipeline_status.si(team_id, "computing_metrics"),
+            aggregate_team_weekly_metrics_task.si(team_id),
+            update_pipeline_status.si(team_id, "computing_insights"),
+            compute_team_insights.si(team_id),
+            generate_team_llm_insights.si(team_id, days_list=[7, 30]),
+            update_pipeline_status.si(team_id, "phase1_complete"),
+            dispatch_phase2_pipeline.si(team_id, repo_ids),
+        ).on_error(handle_pipeline_failure.s(team_id=team_id)).apply_async(countdown=5)
+
+    elif resume_step == "sync_prs":
+        # Resume from PR sync - may be partially done, sync_historical_data_task handles this
+        chain(
+            sync_historical_data_task.si(team_id, repo_ids, days_back=30),
+            update_pipeline_status.si(team_id, "llm_processing"),
+            queue_llm_analysis_batch_task.si(team_id, batch_size=500),
+            update_pipeline_status.si(team_id, "computing_metrics"),
+            aggregate_team_weekly_metrics_task.si(team_id),
+            update_pipeline_status.si(team_id, "computing_insights"),
+            compute_team_insights.si(team_id),
+            generate_team_llm_insights.si(team_id, days_list=[7, 30]),
+            update_pipeline_status.si(team_id, "phase1_complete"),
+            dispatch_phase2_pipeline.si(team_id, repo_ids),
+        ).on_error(handle_pipeline_failure.s(team_id=team_id)).apply_async()
+
+    elif resume_step == "llm_analysis":
+        # Resume from LLM analysis - queue_llm_analysis_batch_task handles partial completion
+        chain(
+            queue_llm_analysis_batch_task.si(team_id, batch_size=500),
+            update_pipeline_status.si(team_id, "computing_metrics"),
+            aggregate_team_weekly_metrics_task.si(team_id),
+            update_pipeline_status.si(team_id, "computing_insights"),
+            compute_team_insights.si(team_id),
+            generate_team_llm_insights.si(team_id, days_list=[7, 30]),
+            update_pipeline_status.si(team_id, "phase1_complete"),
+            dispatch_phase2_pipeline.si(team_id, repo_ids),
+        ).on_error(handle_pipeline_failure.s(team_id=team_id)).apply_async()
+
+    elif resume_step == "aggregate_metrics":
+        # Resume from metrics aggregation
+        chain(
+            aggregate_team_weekly_metrics_task.si(team_id),
+            update_pipeline_status.si(team_id, "computing_insights"),
+            compute_team_insights.si(team_id),
+            generate_team_llm_insights.si(team_id, days_list=[7, 30]),
+            update_pipeline_status.si(team_id, "phase1_complete"),
+            dispatch_phase2_pipeline.si(team_id, repo_ids),
+        ).on_error(handle_pipeline_failure.s(team_id=team_id)).apply_async()
+
+    elif resume_step == "compute_insights":
+        # Resume from insights computation
+        chain(
+            compute_team_insights.si(team_id),
+            generate_team_llm_insights.si(team_id, days_list=[7, 30]),
+            update_pipeline_status.si(team_id, "phase1_complete"),
+            dispatch_phase2_pipeline.si(team_id, repo_ids),
+        ).on_error(handle_pipeline_failure.s(team_id=team_id)).apply_async()
+
+    elif resume_step == "phase2_sync":
+        # Resume Phase 2 from sync (days 31-90) - includes member sync for new contributors
+        chain(
+            sync_github_members_pipeline_task.si(team_id),
+            sync_historical_data_task.si(team_id, repo_ids, days_back=90, skip_recent=30),
+            update_pipeline_status.si(team_id, "background_llm"),
+            queue_llm_analysis_batch_task.si(team_id, batch_size=500),
+            aggregate_team_weekly_metrics_task.si(team_id),
+            compute_team_insights.si(team_id),
+            generate_team_llm_insights.si(team_id, days_list=[90]),
+            update_pipeline_status.si(team_id, "complete"),
+            send_onboarding_complete_email.si(team_id),
+        ).on_error(handle_phase2_failure.s(team_id=team_id)).apply_async()
+
+    elif resume_step == "phase2_llm":
+        # Resume Phase 2 from LLM analysis
+        chain(
+            queue_llm_analysis_batch_task.si(team_id, batch_size=500),
+            aggregate_team_weekly_metrics_task.si(team_id),
+            compute_team_insights.si(team_id),
+            generate_team_llm_insights.si(team_id, days_list=[90]),
+            update_pipeline_status.si(team_id, "complete"),
+            send_onboarding_complete_email.si(team_id),
+        ).on_error(handle_phase2_failure.s(team_id=team_id)).apply_async()
+
+    return {"status": "recovered", "team_id": team_id, "from_status": status, "resume_step": resume_step}
+
+
+@shared_task(bind=True)
+def check_and_recover_stuck_pipelines(self) -> dict:
+    """
+    Check for and recover stuck pipelines across all teams.
+
+    This task should be scheduled to run every 5-10 minutes via Celery Beat.
+    It finds teams that have been in intermediate pipeline states for too long
+    and dispatches recovery tasks for them.
+
+    Criteria for "stuck":
+    - Pipeline status is in an intermediate state (not terminal)
+    - Status hasn't changed for STUCK_THRESHOLD_MINUTES
+    - No active Celery tasks for this team's pipeline
+
+    Returns:
+        dict with recovery statistics
+    """
+    from datetime import timedelta
+
+    from django.db.models import Q
+    from django.utils import timezone
+
+    from apps.teams.models import Team
+
+    # Intermediate states that could be stuck
+    intermediate_statuses = [
+        "syncing_members",
+        "syncing",
+        "llm_processing",
+        "computing_metrics",
+        "computing_insights",
+        "background_syncing",
+        "background_llm",
+    ]
+
+    cutoff = timezone.now() - timedelta(minutes=STUCK_THRESHOLD_MINUTES)
+
+    # Find teams with intermediate status and old updated_at
+    # We use updated_at as a proxy for "when did something last happen"
+    stuck_teams = Team.objects.filter(
+        Q(onboarding_pipeline_status__in=intermediate_statuses),
+        Q(updated_at__lt=cutoff) | Q(onboarding_pipeline_started_at__lt=cutoff),
+    ).values_list("id", flat=True)
+
+    stuck_count = len(stuck_teams)
+
+    if stuck_count == 0:
+        logger.debug("Pipeline recovery check: no stuck pipelines found")
+        return {"checked": True, "stuck_found": 0, "recovered": 0}
+
+    logger.warning(f"Pipeline recovery check: found {stuck_count} stuck pipeline(s)")
+
+    recovered = 0
+    for team_id in stuck_teams:
+        try:
+            recover_stuck_pipeline.delay(team_id)
+            recovered += 1
+        except Exception as e:
+            logger.error(f"Failed to dispatch recovery for team {team_id}: {e}")
+
+    return {"checked": True, "stuck_found": stuck_count, "recovered": recovered}

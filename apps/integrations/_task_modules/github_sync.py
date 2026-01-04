@@ -1208,6 +1208,16 @@ def sync_historical_data_task(
         f"repos_synced={repos_synced}, failed_repos={failed_repos}, total_prs={total_prs}"
     )
 
+    # Signal-based pipeline: update status to trigger next task
+    # Determine which phase we're in based on skip_recent parameter
+    team.refresh_from_db()
+    if skip_recent == 0:
+        # Phase 1: next is LLM processing
+        team.update_pipeline_status("llm_processing")
+    else:
+        # Phase 2: next is background LLM processing
+        team.update_pipeline_status("background_llm")
+
     return {
         "status": "complete",
         "repos_synced": repos_synced,

@@ -82,6 +82,12 @@ class Team(SubscriptionModelBase, BaseModel):
 
     # your team customizations go here.
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Track original status for signal-based pipeline dispatch
+        # This allows detecting actual status changes vs regular saves
+        self._original_pipeline_status = self.onboarding_pipeline_status
+
     def __str__(self):
         return self.name
 

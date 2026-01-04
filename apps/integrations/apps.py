@@ -9,4 +9,8 @@ class IntegrationsConfig(AppConfig):
     def ready(self):
         """Register signal receivers when app is ready."""
         # Import receivers to register signal handlers
-        from apps.integrations import receivers  # noqa: F401
+        # Import pipeline signals for status-based task dispatch
+        from apps.integrations import (
+            pipeline_signals,  # noqa: F401
+            receivers,  # noqa: F401
+        )

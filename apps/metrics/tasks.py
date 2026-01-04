@@ -65,6 +65,18 @@ def compute_team_insights(team_id: int) -> int:
     """
     team = Team.objects.get(id=team_id)
     insights = compute_insights(team, date.today())
+
+    # Signal-based pipeline: dispatch LLM insights then update status
+    team.refresh_from_db()
+    if team.onboarding_pipeline_status == "computing_insights":
+        # Phase 1: dispatch LLM insights (7d, 30d), which will update status to phase1_complete
+        generate_team_llm_insights.apply_async(
+            args=[team_id],
+            kwargs={"days_list": [7, 30]},
+            countdown=1,
+        )
+        logger.info(f"Dispatched LLM insights generation for team {team.name}")
+
     return len(insights)
 
 
@@ -89,6 +101,86 @@ def compute_all_team_insights() -> dict:
     return {"teams_dispatched": teams_dispatched}
 
 
+@shared_task
+def generate_team_llm_insights(team_id: int, days_list: list[int] | None = None) -> dict:
+    """Generate LLM-powered insights for a single team.
+
+    Used during onboarding to generate initial insights after data sync.
+    Generates insights for multiple time periods in one task call.
+
+    Args:
+        team_id: ID of the team to generate insights for
+        days_list: List of time periods to generate insights for.
+                   Defaults to [7, 30] for post-sync insights.
+                   Use [90] for Phase 2 (background sync) insights.
+
+    Returns:
+        Dict with generated periods and any errors
+
+    Example:
+        # After Phase 1 (30-day sync complete):
+        generate_team_llm_insights.delay(team_id, days_list=[7, 30])
+
+        # After Phase 2 (90-day sync complete):
+        generate_team_llm_insights.delay(team_id, days_list=[90])
+    """
+    if days_list is None:
+        days_list = [7, 30]
+
+    try:
+        team = Team.objects.get(id=team_id)
+    except Team.DoesNotExist:
+        logger.warning(f"Team {team_id} not found for LLM insight generation")
+        return {"error": f"Team {team_id} not found"}
+
+    today = date.today()
+    generated = []
+    errors = []
+
+    for days in days_list:
+        try:
+            start_date = today - timedelta(days=days)
+            end_date = today
+
+            # Gather metrics data for the team
+            data = gather_insight_data(
+                team=team,
+                start_date=start_date,
+                end_date=end_date,
+            )
+
+            # Generate insight using LLM
+            insight = generate_insight(data)
+
+            # Cache the result
+            cache_insight(
+                team=team,
+                insight=insight,
+                target_date=today,
+                days=days,
+            )
+
+            generated.append(days)
+            logger.info(f"Generated {days}-day LLM insight for team {team.name}")
+
+        except Exception as e:
+            logger.exception(f"Failed to generate {days}-day insight for team {team.name}: {e}")
+            errors.append({"days": days, "error": str(e)})
+
+    # Signal-based pipeline: update status to trigger Phase 2
+    team.refresh_from_db()
+    if team.onboarding_pipeline_status == "computing_insights":
+        # Phase 1 complete - signal will dispatch Phase 2
+        team.update_pipeline_status("phase1_complete")
+        logger.info(f"Phase 1 complete for team {team.name}, triggering Phase 2")
+
+    return {
+        "team_id": team_id,
+        "generated": generated,
+        "errors": errors,
+    }
+
+
 # Import Groq lazily to avoid import errors when not installed
 def Groq(*args, **kwargs):
     """Lazy import of Groq client."""
@@ -97,7 +189,7 @@ def Groq(*args, **kwargs):
     return GroqClient(*args, **kwargs)
 
 
-@shared_task(bind=True, max_retries=2, default_retry_delay=300)
+@shared_task(bind=True, max_retries=2, default_retry_delay=300, soft_time_limit=900, time_limit=960)
 def run_llm_analysis_batch(self, team_id: int, limit: int | None = 50, rate_limit_delay: float = 2.1) -> dict:
     """Run LLM analysis on PRs for a team to populate llm_summary.
 
