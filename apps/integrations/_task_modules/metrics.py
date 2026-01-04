@@ -97,11 +97,14 @@ def aggregate_all_teams_weekly_metrics_task():
     return teams_processed
 
 
-@shared_task(bind=True, soft_time_limit=600, time_limit=660)
+@shared_task(bind=True, soft_time_limit=900, time_limit=960)
 def queue_llm_analysis_batch_task(self, team_id: int, batch_size: int = 50) -> dict:
     """Process PRs missing LLM analysis in batches.
 
-    A-006: Added soft_time_limit=600s (10 min), time_limit=660s (11 min) for LLM batch processing.
+    Time limits increased to 15/16 min to handle batch API polling + retry:
+    - First batch submission + polling (~5-10 min)
+    - Retry batch for failures (~5 min)
+    - Results download and saving (~1 min)
 
     Args:
         self: Celery task instance (bound task)
@@ -111,6 +114,8 @@ def queue_llm_analysis_batch_task(self, team_id: int, batch_size: int = 50) -> d
     Returns:
         Dict with prs_processed count or error status
     """
+    from celery.exceptions import SoftTimeLimitExceeded
+
     # Verify team exists
     try:
         team = Team.objects.get(id=team_id)
@@ -146,8 +151,18 @@ def queue_llm_analysis_batch_task(self, team_id: int, batch_size: int = 50) -> d
     logger.info(f"Starting LLM batch analysis for {len(prs_to_process)} PRs for team {team.name}")
 
     # Process with LLM using GroqBatchProcessor
+    # Wrap in try/except to catch time limit and other errors
     processor = GroqBatchProcessor()
-    results, stats = processor.submit_batch_with_fallback(prs_to_process)
+    try:
+        results, stats = processor.submit_batch_with_fallback(prs_to_process)
+        logger.info(f"Batch completed for team {team.name}: stats={stats}")
+    except SoftTimeLimitExceeded:
+        logger.error(f"LLM batch task timed out for team {team.name} - will retry on next dispatch")
+        # Re-raise to let Celery handle it - pipeline will recover via stuck detection
+        raise
+    except Exception as e:
+        logger.exception(f"LLM batch failed for team {team.name}: {e}")
+        raise
 
     # Update PRs with results
     prs_updated = 0

@@ -43,7 +43,9 @@ class TestPipelineSignalDispatch(TestCase):
         team = TeamFactory(onboarding_pipeline_status="not_started")
 
         # Change status via update_pipeline_status (the normal flow)
-        team.update_pipeline_status("syncing_members")
+        # Use captureOnCommitCallbacks to execute deferred callbacks
+        with self.captureOnCommitCallbacks(execute=True):
+            team.update_pipeline_status("syncing_members")
 
         # Signal should have dispatched the task for the new status
         mock_dispatch.assert_called_once()
@@ -62,8 +64,9 @@ class TestPipelineSignalDispatch(TestCase):
         team = Team.objects.get(id=team.id)
 
         # Save without changing status
-        team.name = "Updated Name"
-        team.save()
+        with self.captureOnCommitCallbacks(execute=True):
+            team.name = "Updated Name"
+            team.save()
 
         # No dispatch should happen for unchanged status
         mock_dispatch.assert_not_called()
@@ -74,8 +77,9 @@ class TestPipelineSignalDispatch(TestCase):
         team = TeamFactory(onboarding_pipeline_status="syncing")
 
         # Update only non-status field using update_fields
-        team.background_sync_progress = 50
-        team.save(update_fields=["background_sync_progress"])
+        with self.captureOnCommitCallbacks(execute=True):
+            team.background_sync_progress = 50
+            team.save(update_fields=["background_sync_progress"])
 
         # No dispatch should happen
         mock_dispatch.assert_not_called()
@@ -93,7 +97,8 @@ class TestPipelineStateMachine(TestCase):
         """syncing_members status should dispatch member sync task."""
         team = TeamFactory(onboarding_pipeline_status="not_started")
 
-        team.update_pipeline_status("syncing_members")
+        with self.captureOnCommitCallbacks(execute=True):
+            team.update_pipeline_status("syncing_members")
 
         mock_task.apply_async.assert_called_once()
         call_args = mock_task.apply_async.call_args
@@ -104,7 +109,8 @@ class TestPipelineStateMachine(TestCase):
         """syncing status should dispatch historical data sync task."""
         team = TeamFactory(onboarding_pipeline_status="syncing_members")
 
-        team.update_pipeline_status("syncing")
+        with self.captureOnCommitCallbacks(execute=True):
+            team.update_pipeline_status("syncing")
 
         mock_task.apply_async.assert_called_once()
 
@@ -113,7 +119,8 @@ class TestPipelineStateMachine(TestCase):
         """llm_processing status should dispatch LLM analysis task."""
         team = TeamFactory(onboarding_pipeline_status="syncing")
 
-        team.update_pipeline_status("llm_processing")
+        with self.captureOnCommitCallbacks(execute=True):
+            team.update_pipeline_status("llm_processing")
 
         mock_task.apply_async.assert_called_once()
 
@@ -122,7 +129,8 @@ class TestPipelineStateMachine(TestCase):
         """computing_metrics status should dispatch metrics aggregation."""
         team = TeamFactory(onboarding_pipeline_status="llm_processing")
 
-        team.update_pipeline_status("computing_metrics")
+        with self.captureOnCommitCallbacks(execute=True):
+            team.update_pipeline_status("computing_metrics")
 
         mock_task.apply_async.assert_called_once()
 
@@ -131,7 +139,8 @@ class TestPipelineStateMachine(TestCase):
         """computing_insights status should dispatch insights computation."""
         team = TeamFactory(onboarding_pipeline_status="computing_metrics")
 
-        team.update_pipeline_status("computing_insights")
+        with self.captureOnCommitCallbacks(execute=True):
+            team.update_pipeline_status("computing_insights")
 
         mock_task.apply_async.assert_called_once()
 
@@ -144,7 +153,8 @@ class TestPhase1ToPhase2Transition(TestCase):
         """phase1_complete status should trigger Phase 2 dispatch."""
         team = TeamFactory(onboarding_pipeline_status="computing_insights")
 
-        team.update_pipeline_status("phase1_complete")
+        with self.captureOnCommitCallbacks(execute=True):
+            team.update_pipeline_status("phase1_complete")
 
         mock_dispatch.assert_called_once_with(team.id)
 
@@ -157,7 +167,8 @@ class TestPhase2StateMachine(TestCase):
         """background_syncing should dispatch historical sync with skip_recent."""
         team = TeamFactory(onboarding_pipeline_status="phase1_complete")
 
-        team.update_pipeline_status("background_syncing")
+        with self.captureOnCommitCallbacks(execute=True):
+            team.update_pipeline_status("background_syncing")
 
         mock_task.apply_async.assert_called_once()
         # Should include days_back=90 and skip_recent=30
@@ -170,7 +181,8 @@ class TestPhase2StateMachine(TestCase):
         """background_llm should dispatch LLM analysis task."""
         team = TeamFactory(onboarding_pipeline_status="background_syncing")
 
-        team.update_pipeline_status("background_llm")
+        with self.captureOnCommitCallbacks(execute=True):
+            team.update_pipeline_status("background_llm")
 
         mock_task.apply_async.assert_called_once()
 
@@ -179,7 +191,8 @@ class TestPhase2StateMachine(TestCase):
         """background_insights should dispatch compute_team_insights for 90-day data."""
         team = TeamFactory(onboarding_pipeline_status="background_metrics")
 
-        team.update_pipeline_status("background_insights")
+        with self.captureOnCommitCallbacks(execute=True):
+            team.update_pipeline_status("background_insights")
 
         mock_task.apply_async.assert_called_once()
 
@@ -195,7 +208,9 @@ class TestSignalErrorHandling(TestCase):
         team = TeamFactory(onboarding_pipeline_status="not_started")
 
         # This should NOT raise - save should succeed
-        team.update_pipeline_status("syncing_members")
+        # Note: Exception happens in on_commit callback, not during save
+        with self.captureOnCommitCallbacks(execute=True):
+            team.update_pipeline_status("syncing_members")
 
         # Verify status was saved despite exception
         team.refresh_from_db()
@@ -208,7 +223,9 @@ class TestSignalErrorHandling(TestCase):
         mock_dispatch.side_effect = Exception("Task dispatch failed")
 
         team = TeamFactory(onboarding_pipeline_status="not_started")
-        team.update_pipeline_status("syncing_members")
+
+        with self.captureOnCommitCallbacks(execute=True):
+            team.update_pipeline_status("syncing_members")
 
         # Exception should be logged
         mock_logger.exception.assert_called()
@@ -222,7 +239,8 @@ class TestTerminalStatesNoDispatch(TestCase):
         """complete status should not dispatch any task."""
         team = TeamFactory(onboarding_pipeline_status="background_llm")
 
-        team.update_pipeline_status("complete")
+        with self.captureOnCommitCallbacks(execute=True):
+            team.update_pipeline_status("complete")
 
         # dispatch_pipeline_task is called but returns False for terminal state
         # Let's verify by checking what it was called with
@@ -235,7 +253,8 @@ class TestTerminalStatesNoDispatch(TestCase):
         """failed status should not dispatch any task."""
         team = TeamFactory(onboarding_pipeline_status="syncing")
 
-        team.update_pipeline_status("failed", error="Something went wrong")
+        with self.captureOnCommitCallbacks(execute=True):
+            team.update_pipeline_status("failed", error="Something went wrong")
 
         # dispatch_pipeline_task is called but returns False for terminal state
         if mock_dispatch.called:

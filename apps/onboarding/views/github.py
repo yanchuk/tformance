@@ -382,11 +382,12 @@ def select_repositories(request):
         # Start sync in background and continue to next step
         repo_ids = list(TrackedRepository.objects.filter(team=team).values_list("id", flat=True))
         if repo_ids:
-            # Start the full onboarding pipeline (sync + LLM + metrics + insights)
-            task = _views.start_onboarding_pipeline(team.id, repo_ids)
-            # Store task_id in session for progress tracking
-            request.session["sync_task_id"] = task.id
-            logger.info(f"Started onboarding pipeline task {task.id} for team {team.name}")
+            # Start the full onboarding pipeline (signal-based state machine)
+            result = _views.start_onboarding_pipeline(team.id, repo_ids)
+            # Signal-based pipeline uses status field for tracking, not task_id
+            # Clear any old task_id from session
+            request.session.pop("sync_task_id", None)
+            logger.info(f"Started onboarding pipeline for team {team.name}: {result}")
 
         # Track step completion
         track_event(
@@ -529,10 +530,18 @@ def start_sync(request):
     # Get all tracked repo IDs for this team
     repo_ids = list(TrackedRepository.objects.filter(team=team).values_list("id", flat=True))
 
-    # Start the full onboarding pipeline (sync + LLM + metrics + insights)
-    task = _views.start_onboarding_pipeline(team.id, repo_ids)
+    # Start the full onboarding pipeline (signal-based state machine)
+    result = _views.start_onboarding_pipeline(team.id, repo_ids)
 
-    return JsonResponse({"task_id": task.id})
+    # Signal-based pipeline returns dict, not AsyncResult
+    # Return status info instead of task_id for frontend to switch to DB polling
+    return JsonResponse(
+        {
+            "status": result.get("status", "started"),
+            "pipeline_status": team.onboarding_pipeline_status,
+            "message": "Pipeline started - use sync_status endpoint for progress",
+        }
+    )
 
 
 @login_required

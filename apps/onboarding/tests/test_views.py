@@ -270,20 +270,23 @@ class StartSyncApiViewTests(TestCase):
 
         self.assertEqual(response.status_code, 405)  # Method not allowed
 
-    def test_returns_task_id(self):
-        """Test that API returns a task ID."""
+    def test_returns_pipeline_status(self):
+        """Test that API returns pipeline status info (signal-based pipeline)."""
         from unittest.mock import patch
 
         self.client.login(username="api_test@example.com", password="testpassword123")
 
         with patch("apps.onboarding.views.start_onboarding_pipeline") as mock_pipeline:
-            mock_pipeline.return_value.id = "test-task-id-123"
+            # Signal-based pipeline returns dict, not AsyncResult
+            mock_pipeline.return_value = {"status": "started", "team_id": self.team.id}
 
             response = self.client.post(reverse("onboarding:start_sync"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertIn("task_id", response.json())
-        self.assertEqual(response.json()["task_id"], "test-task-id-123")
+        data = response.json()
+        # New response format uses pipeline_status and status, not task_id
+        self.assertIn("status", data)
+        self.assertIn("pipeline_status", data)
 
 
 @override_flag("integration_jira_enabled", active=True)
@@ -1121,13 +1124,18 @@ class PipelineIntegrationTests(TestCase):
         # Should redirect to sync_progress
         self.assertRedirects(response, reverse("onboarding:sync_progress"))
 
-    def test_select_repos_post_stores_task_id_in_session(self):
-        """Test that select_repos stores the pipeline task_id in session.
+    def test_select_repos_post_clears_old_task_id_from_session(self):
+        """Test that select_repos clears old task_id from session.
 
-        The session should contain the task_id returned by start_onboarding_pipeline
-        for progress tracking on the sync_progress page.
+        Signal-based pipeline uses status field for tracking, not task_id.
+        Any old task_id should be cleared from session.
         """
         from unittest.mock import patch
+
+        # First, set an old task_id in session
+        session = self.client.session
+        session["sync_task_id"] = "old-task-id"
+        session.save()
 
         with patch("apps.onboarding.views.github_oauth.get_organization_repositories") as mock_repos:
             mock_repos.return_value = [
@@ -1135,16 +1143,17 @@ class PipelineIntegrationTests(TestCase):
             ]
 
             with patch("apps.onboarding.views.start_onboarding_pipeline") as mock_pipeline:
-                mock_pipeline.return_value.id = "pipeline-task-id-456"
+                # Signal-based pipeline returns dict, not AsyncResult
+                mock_pipeline.return_value = {"status": "started", "team_id": self.team.id}
 
                 self.client.post(
                     reverse("onboarding:select_repos"),
                     {"repos": [str(self.repo1.github_repo_id)]},
                 )
 
-                # Verify task_id is stored in session
+                # Verify old task_id was cleared (signal-based pipeline doesn't need it)
                 session = self.client.session
-                self.assertEqual(session.get("sync_task_id"), "pipeline-task-id-456")
+                self.assertIsNone(session.get("sync_task_id"))
 
     def test_start_sync_post_calls_start_onboarding_pipeline(self):
         """Test that start_sync POST calls start_onboarding_pipeline instead of sync_historical_data_task.
@@ -1155,7 +1164,8 @@ class PipelineIntegrationTests(TestCase):
         from unittest.mock import patch
 
         with patch("apps.onboarding.views.start_onboarding_pipeline") as mock_pipeline:
-            mock_pipeline.return_value.id = "pipeline-task-id-789"
+            # Signal-based pipeline returns dict, not AsyncResult
+            mock_pipeline.return_value = {"status": "started", "team_id": self.team.id}
 
             response = self.client.post(reverse("onboarding:start_sync"))
 
@@ -1169,29 +1179,34 @@ class PipelineIntegrationTests(TestCase):
             self.assertIn(self.repo1.id, repo_ids)
             self.assertIn(self.repo2.id, repo_ids)
 
-        # Should return JSON with task_id
+        # Should return JSON with status info (signal-based pipeline)
         self.assertEqual(response.status_code, 200)
         data = response.json()
-        self.assertEqual(data["task_id"], "pipeline-task-id-789")
+        self.assertEqual(data["status"], "started")
 
-    def test_start_sync_returns_pipeline_task_id_in_response(self):
-        """Test that start_sync returns the task_id from the pipeline AsyncResult.
+    def test_start_sync_returns_pipeline_status_in_response(self):
+        """Test that start_sync returns pipeline status info (signal-based pipeline).
 
-        The JSON response should contain the task_id from the pipeline,
-        which can be used for polling the task progress.
+        The JSON response contains status info for the signal-based pipeline,
+        which uses the team's pipeline_status field for tracking progress.
         """
         from unittest.mock import patch
 
         with patch("apps.onboarding.views.start_onboarding_pipeline") as mock_pipeline:
-            # Create a mock AsyncResult
-            mock_result = type("AsyncResult", (), {"id": "unique-pipeline-id-abc"})()
-            mock_pipeline.return_value = mock_result
+            # Signal-based pipeline returns dict with status info
+            mock_pipeline.return_value = {
+                "status": "started",
+                "team_id": self.team.id,
+                "execution_mode": "signal_based",
+            }
 
             response = self.client.post(reverse("onboarding:start_sync"))
 
             data = response.json()
-            self.assertIn("task_id", data)
-            self.assertEqual(data["task_id"], "unique-pipeline-id-abc")
+            # Should have status and message for frontend to switch to DB polling
+            self.assertIn("status", data)
+            self.assertIn("pipeline_status", data)
+            self.assertIn("message", data)
 
     def test_select_repos_does_not_call_sync_historical_data_task_directly(self):
         """Test that select_repos does NOT call sync_historical_data_task.delay() directly.

@@ -219,12 +219,17 @@ def on_pipeline_status_change(sender, instance, update_fields, **kwargs):
     This signal handler detects when onboarding_pipeline_status changes
     and dispatches the appropriate next task based on the state machine.
 
+    Uses transaction.on_commit() to defer task dispatch until after the
+    database transaction commits, ensuring the view responds quickly.
+
     Args:
         sender: Team model class
         instance: Team instance
         update_fields: Fields that were updated (if save used update_fields)
         **kwargs: Additional signal kwargs
     """
+    from django.db import transaction
+
     # Skip if this save didn't include the status field
     if update_fields and "onboarding_pipeline_status" not in update_fields:
         return
@@ -241,18 +246,27 @@ def on_pipeline_status_change(sender, instance, update_fields, **kwargs):
     # Update the tracked original status for future saves
     instance._original_pipeline_status = new_status
 
-    try:
-        # Special handling for phase1_complete - trigger Phase 2
-        if new_status == PHASE1_COMPLETE_STATE:
-            dispatch_phase2_start(instance.id)
-            return
+    # Capture values for the closure (instance may change)
+    team_id = instance.id
 
-        # Dispatch task for this status
-        dispatch_pipeline_task(instance.id, new_status)
+    def dispatch_after_commit():
+        """Dispatch task after transaction commits to avoid blocking the response."""
+        try:
+            # Special handling for phase1_complete - trigger Phase 2
+            if new_status == PHASE1_COMPLETE_STATE:
+                dispatch_phase2_start(team_id)
+                return
 
-    except Exception as e:
-        # Never let signal handler break the save
-        logger.exception(f"Pipeline signal handler error for team {instance.id}: {e}")
+            # Dispatch task for this status
+            dispatch_pipeline_task(team_id, new_status)
+
+        except Exception as e:
+            # Never let signal handler break the save
+            logger.exception(f"Pipeline signal handler error for team {team_id}: {e}")
+
+    # Defer task dispatch until after transaction commits
+    # This ensures the view responds immediately
+    transaction.on_commit(dispatch_after_commit)
 
 
 # =============================================================================
