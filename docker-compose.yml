@@ -26,6 +26,15 @@ services:
       test: bash -c 'exec 6<>/dev/tcp/redis/6379'
       interval: 2s
       retries: 10
+  flower:
+    image: mher/flower:2.0
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - FLOWER_BASIC_AUTH=${FLOWER_BASIC_AUTH:-admin:admin}
+    ports:
+      - "5555:5555"
+    depends_on:
+      - redis
 
 volumes:
   postgres_data:
