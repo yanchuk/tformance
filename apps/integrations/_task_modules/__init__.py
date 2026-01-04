@@ -4,9 +4,18 @@ This package contains domain-focused task modules:
 - github_sync: Repository and member sync tasks
 - metrics: Weekly metrics aggregation and LLM analysis
 - pr_data: PR data fetch, surveys, and repository languages
+- jira_sync: Jira project and user sync tasks
+- slack: Slack surveys, reveals, leaderboards
+- copilot: GitHub Copilot metrics sync
 
 All tasks are re-exported here for Celery autodiscover compatibility.
 """
+
+# Copilot tasks
+from apps.integrations._task_modules.copilot import (
+    sync_all_copilot_metrics,
+    sync_copilot_metrics_task,
+)
 
 # GitHub sync tasks
 from apps.integrations._task_modules.github_sync import (
@@ -27,6 +36,13 @@ from apps.integrations._task_modules.github_sync import (
     sync_repository_task,
 )
 
+# Jira sync tasks
+from apps.integrations._task_modules.jira_sync import (
+    sync_all_jira_projects_task,
+    sync_jira_project_task,
+    sync_jira_users_task,
+)
+
 # Metrics tasks
 from apps.integrations._task_modules.metrics import (
     aggregate_all_teams_weekly_metrics_task,
@@ -42,6 +58,15 @@ from apps.integrations._task_modules.pr_data import (
     refresh_all_repo_languages_task,
     refresh_repo_languages_task,
     update_pr_description_survey_task,
+)
+
+# Slack tasks
+from apps.integrations._task_modules.slack import (
+    post_weekly_leaderboards_task,
+    schedule_slack_survey_fallback_task,
+    send_pr_surveys_task,
+    send_reveal_task,
+    sync_slack_users_task,
 )
 
 __all__ = [
@@ -74,4 +99,17 @@ __all__ = [
     "refresh_all_repo_languages_task",
     # PR data helpers
     "_fetch_pr_core_data_with_graphql_or_rest",
+    # Jira sync tasks
+    "sync_jira_project_task",
+    "sync_all_jira_projects_task",
+    "sync_jira_users_task",
+    # Slack tasks
+    "send_pr_surveys_task",
+    "send_reveal_task",
+    "sync_slack_users_task",
+    "post_weekly_leaderboards_task",
+    "schedule_slack_survey_fallback_task",
+    # Copilot tasks
+    "sync_copilot_metrics_task",
+    "sync_all_copilot_metrics",
 ]

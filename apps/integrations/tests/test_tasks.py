@@ -528,9 +528,9 @@ class TestSkipRespondedReviewers(TestCase):
         PRReviewFactory(pull_request=self.pr, reviewer=self.reviewer1)
         PRReviewFactory(pull_request=self.pr, reviewer=self.reviewer2)
 
-    @patch("apps.integrations.tasks.create_pr_survey")
-    @patch("apps.integrations.tasks.send_dm")
-    @patch("apps.integrations.tasks.get_slack_client")
+    @patch("apps.integrations._task_modules.slack.create_pr_survey")
+    @patch("apps.integrations._task_modules.slack.send_dm")
+    @patch("apps.integrations._task_modules.slack.get_slack_client")
     def test_skip_reviewer_already_responded_via_github(self, mock_get_client, mock_send_dm, mock_create_survey):
         """Test that reviewer who responded via GitHub web survey doesn't get Slack DM."""
         from apps.integrations.tasks import send_pr_surveys_task
@@ -570,9 +570,9 @@ class TestSkipRespondedReviewers(TestCase):
         self.assertEqual(result["reviewers_skipped"], 1)
         self.assertEqual(result["reviewers_sent"], 1)  # Only reviewer2 got DM
 
-    @patch("apps.integrations.tasks.create_pr_survey")
-    @patch("apps.integrations.tasks.send_dm")
-    @patch("apps.integrations.tasks.get_slack_client")
+    @patch("apps.integrations._task_modules.slack.create_pr_survey")
+    @patch("apps.integrations._task_modules.slack.send_dm")
+    @patch("apps.integrations._task_modules.slack.get_slack_client")
     def test_skip_author_already_responded_via_github(self, mock_get_client, mock_send_dm, mock_create_survey):
         """Test that author who responded via GitHub doesn't get Slack DM."""
         from apps.integrations.tasks import send_pr_surveys_task
@@ -604,9 +604,9 @@ class TestSkipRespondedReviewers(TestCase):
         self.assertFalse(result["author_sent"])
         self.assertEqual(result["reviewers_sent"], 2)
 
-    @patch("apps.integrations.tasks.create_pr_survey")
-    @patch("apps.integrations.tasks.send_dm")
-    @patch("apps.integrations.tasks.get_slack_client")
+    @patch("apps.integrations._task_modules.slack.create_pr_survey")
+    @patch("apps.integrations._task_modules.slack.send_dm")
+    @patch("apps.integrations._task_modules.slack.get_slack_client")
     def test_sends_dm_when_reviewer_has_not_responded(self, mock_get_client, mock_send_dm, mock_create_survey):
         """Test that reviewers without responses get Slack DMs as normal."""
         from apps.integrations.tasks import send_pr_surveys_task
@@ -636,9 +636,9 @@ class TestSkipRespondedReviewers(TestCase):
         self.assertEqual(result.get("reviewers_skipped", 0), 0)
         self.assertEqual(result.get("author_skipped", False), False)
 
-    @patch("apps.integrations.tasks.create_pr_survey")
-    @patch("apps.integrations.tasks.send_dm")
-    @patch("apps.integrations.tasks.get_slack_client")
+    @patch("apps.integrations._task_modules.slack.create_pr_survey")
+    @patch("apps.integrations._task_modules.slack.send_dm")
+    @patch("apps.integrations._task_modules.slack.get_slack_client")
     def test_sends_dm_when_prsurveyreview_exists_but_not_responded(
         self, mock_get_client, mock_send_dm, mock_create_survey
     ):
@@ -678,9 +678,9 @@ class TestSkipRespondedReviewers(TestCase):
         self.assertEqual(result.get("reviewers_skipped", 0), 0)
         self.assertEqual(result["reviewers_sent"], 2)
 
-    @patch("apps.integrations.tasks.create_pr_survey")
-    @patch("apps.integrations.tasks.send_dm")
-    @patch("apps.integrations.tasks.get_slack_client")
+    @patch("apps.integrations._task_modules.slack.create_pr_survey")
+    @patch("apps.integrations._task_modules.slack.send_dm")
+    @patch("apps.integrations._task_modules.slack.get_slack_client")
     def test_task_returns_skipped_counts(self, mock_get_client, mock_send_dm, mock_create_survey):
         """Test that task returns reviewers_skipped and author_skipped in result."""
         from apps.integrations.tasks import send_pr_surveys_task
