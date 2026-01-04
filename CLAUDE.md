@@ -150,6 +150,105 @@ Always use `make celery` or `--pool=solo`. Default `prefork` pool causes SIGSEGV
 
 All new features use Red-Green-Refactor cycle. See [TESTING-GUIDE.md](dev/guides/TESTING-GUIDE.md).
 
+## Django Development Rules
+
+### Models
+
+**Always extend the correct base class:**
+
+```python
+# Team-owned data (most common) - includes team field
+from apps.teams.models import BaseTeamModel
+
+class PullRequest(BaseTeamModel):
+    title = models.CharField(max_length=255)
+
+# Global data (rare) - no team field
+from apps.utils.models import BaseModel
+
+class GlobalConfig(BaseModel):
+    key = models.CharField(max_length=100)
+```
+
+### Views
+
+**Use function-based views with proper decorators:**
+
+```python
+from apps.teams.decorators import login_and_team_required, team_admin_required
+
+@login_and_team_required
+def dashboard(request, team_slug):
+    team = request.team  # Set by decorator
+    data = MyModel.for_team.filter(...)
+    return render(request, "app/dashboard.html", {"data": data})
+
+@team_admin_required  # Admin-only access
+def settings(request, team_slug):
+    pass
+```
+
+### URLs
+
+```python
+# apps/myapp/urls.py
+urlpatterns = []  # Non-team URLs (rare)
+
+# Team-scoped → /a/<team_slug>/myapp/...
+team_urlpatterns = [
+    path("", views.dashboard, name="dashboard"),
+]
+```
+
+### Queries
+
+```python
+# Always use for_team manager for team-scoped data
+items = MyModel.for_team.filter(state="active")
+
+# Optimize with select_related/prefetch_related
+prs = PullRequest.for_team.select_related("author").prefetch_related("reviews")
+```
+
+### Anti-Patterns to Avoid
+
+- ❌ Class-based views (use function-based, except DRF)
+- ❌ `objects.filter(team=team)` → use `for_team` manager
+- ❌ Business logic in views → extract to services
+- ❌ N+1 queries → use `select_related`/`prefetch_related`
+- ❌ Files over 200-300 lines → split into modules
+
+## Frontend Rules
+
+### HTMX Partials
+
+**Never use inline `<script>` tags in HTMX partials** - they won't execute after swaps. Use Alpine.js components or ChartManager instead.
+
+### DaisyUI Colors
+
+**Always use semantic DaisyUI colors, never hardcoded Tailwind:**
+
+| Use | Avoid |
+|-----|-------|
+| `text-base-content` | `text-white`, `text-gray-*` |
+| `bg-base-100`, `bg-base-200` | `bg-gray-800`, `bg-neutral-*` |
+| `text-success`, `text-error` | `text-green-*`, `text-red-*` |
+| `border-base-300` | `border-gray-*` |
+
+### Testing with Factories
+
+**Always use Factory Boy for test data:**
+
+```python
+from apps.metrics.factories import PullRequestFactory, TeamMemberFactory
+
+def test_pr_metrics(self):
+    member = TeamMemberFactory(team=self.team)
+    pr = PullRequestFactory(team=self.team, author=member)
+```
+
+Use `factory.Sequence` for unique fields to avoid constraint violations.
+
 ## General Coding Preferences
 
 - **Run tests before committing**: `make test`
