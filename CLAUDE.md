@@ -8,15 +8,16 @@ Tformance is SaaS platform helping CTOs understand if AI coding tools are improv
 
 **Main concepts**:
 - We use localhost:8000 for most of development.
-- We use cloudflare tunnel to run localhost on dev.ianchuk.com.
-- Dev2.ianchuk.com is our app running in docker in Unraid, not auto updated and required `make dev2` command to build image and some time for Watchtower on Unraid to pull an update.
+- We use cloudflare tunnel to run localhost on http://dev.ianchuk.com.
+- https://Dev2.ianchuk.com is our app running in docker in Unraid, not auto updated and required `make dev2` command to build image and some time for Watchtower on Unraid to pull an update.
 - If our changes are significant and might interference with other ongoing tasks we use git worktrees and after merge.
 - Ongoing tasks and documentation are listed in /dev having /dev/active and /dev/completed tasks descriptions.
 - Sometimes in /dev/active might be already completed and not moved to /dev/completed plans.
 - We try to use /dev-docs command as often as possible to create new feature or large scope changes so we create proper plans in /dev/active those help to keep context in case of context window compact.
 - We use feature flags (django waffle) and for MVP Alpha we rely only on Github data without connecting Jira, Slack, Copilot.
 - We use Groq for LLM processing. We try always use Batches in Groq if it makes sense for scheduled tasks or onboarding PR batches processing as it saves costs by 50% and almost real-time.
-- Always prioritize "Django way" of doing things and appreciate framework capabilities and best practices
+- Always prioritize "Django way" of doing things and appreciate framework capabilities and best practices.
+- We are following TDD (test-driven development) style.
 
 ## Documentation
 

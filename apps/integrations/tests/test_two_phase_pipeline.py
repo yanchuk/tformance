@@ -59,9 +59,9 @@ class TestPhase1PipelineLLM(TestCase):
         self.repo = TrackedRepositoryFactory(team=self.team)
 
     @patch("apps.integrations.onboarding_pipeline.chain")
-    @patch("apps.metrics.tasks.run_llm_analysis_batch")
+    @patch("apps.integrations.tasks.queue_llm_analysis_batch_task")
     def test_phase1_processes_all_synced_prs(self, mock_llm_task, mock_chain):
-        """Phase 1 should use limit=None to process ALL synced PRs."""
+        """Phase 1 should use batch_size=500 to process all synced PRs."""
         from apps.integrations.onboarding_pipeline import start_phase1_pipeline
 
         mock_chain_instance = MagicMock()
@@ -71,10 +71,11 @@ class TestPhase1PipelineLLM(TestCase):
 
         start_phase1_pipeline(self.team.id, [self.repo.id])
 
-        # Verify run_llm_analysis_batch.si was called with limit=None
+        # Verify queue_llm_analysis_batch_task.si was called with batch_size=500
         mock_llm_task.si.assert_called()
-        call_kwargs = mock_llm_task.si.call_args[1]
-        self.assertIsNone(call_kwargs.get("limit"))
+        call_args = mock_llm_task.si.call_args
+        # First positional arg is team_id, batch_size is keyword
+        self.assertEqual(call_args[1].get("batch_size"), 500)
 
 
 class TestPhase1PipelineStatus(TestCase):

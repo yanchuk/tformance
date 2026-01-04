@@ -686,6 +686,11 @@ SCHEDULED_TASKS = {
         "schedule": schedules.crontab(minute=0, hour=6, day_of_month=1),  # 1st of month 6 AM UTC
         "expire_seconds": 60 * 60 * 2,  # 2 hour expiry
     },
+    "recover-stuck-pipelines": {
+        "task": "apps.integrations.onboarding_pipeline.check_and_recover_stuck_pipelines",
+        "schedule": timedelta(minutes=10),  # Every 10 minutes
+        "expire_seconds": 60 * 5,  # 5 minute expiry
+    },
 }
 
 # Channels / Daphne setup

@@ -15,16 +15,46 @@
     </p>
   </div>
 
-  {# Overall progress bar #}
+  {# Pipeline steps indicator #}
   <div class="mb-8">
-    <div class="flex justify-between text-sm mb-2">
-      <span id="progress-message" class="text-base-content/70">{% translate "Starting sync..." %}</span>
-      <span id="progress-percent" class="font-mono text-base-content">0%</span>
+    <ul class="steps steps-horizontal w-full text-xs">
+      <li id="step-members" class="step" data-content="1">
+        <span class="step-label hidden sm:inline">{% translate "Members" %}</span>
+      </li>
+      <li id="step-sync" class="step" data-content="2">
+        <span class="step-label hidden sm:inline">{% translate "PRs" %}</span>
+      </li>
+      <li id="step-llm" class="step" data-content="3">
+        <span class="step-label hidden sm:inline">{% translate "AI Analysis" %}</span>
+      </li>
+      <li id="step-metrics" class="step" data-content="4">
+        <span class="step-label hidden sm:inline">{% translate "Metrics" %}</span>
+      </li>
+      <li id="step-insights" class="step" data-content="5">
+        <span class="step-label hidden sm:inline">{% translate "Insights" %}</span>
+      </li>
+    </ul>
+  </div>
+
+  {# Current phase details #}
+  <div class="mb-8 p-4 bg-base-200 rounded-lg">
+    <div class="flex items-center gap-3 mb-3">
+      <i id="phase-icon" class="fa-solid fa-sync fa-spin text-primary text-lg"></i>
+      <span id="progress-message" class="text-base-content font-medium">{% translate "Starting sync..." %}</span>
     </div>
-    <div class="w-full bg-base-300 rounded-full h-3">
-      <div id="progress-bar" class="bg-primary h-3 rounded-full transition-all duration-300" style="width: 0%"></div>
+
+    {# Progress bar for current phase #}
+    <div class="mb-2">
+      <div class="flex justify-between text-sm mb-1">
+        <span id="phase-detail" class="text-base-content/60"></span>
+        <span id="progress-percent" class="font-mono text-base-content">0%</span>
+      </div>
+      <div class="w-full bg-base-300 rounded-full h-2">
+        <div id="progress-bar" class="bg-primary h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+      </div>
     </div>
-    <div class="text-center mt-2">
+
+    <div class="text-center">
       <span id="estimated-time" class="text-sm text-base-content/60">
         <i class="fa-regular fa-clock mr-1"></i>
         {% translate "Calculating..." %}
@@ -153,6 +183,8 @@ document.addEventListener('DOMContentLoaded', function() {
   const progressBar = document.getElementById('progress-bar');
   const progressPercent = document.getElementById('progress-percent');
   const progressMessage = document.getElementById('progress-message');
+  const phaseDetail = document.getElementById('phase-detail');
+  const phaseIcon = document.getElementById('phase-icon');
   const estimatedTime = document.getElementById('estimated-time');
   const estimatedTimeIcon = estimatedTime.querySelector('i');
   const syncActions = document.getElementById('sync-actions');
@@ -161,14 +193,111 @@ document.addEventListener('DOMContentLoaded', function() {
   const syncErrorMessage = document.getElementById('sync-error-message');
   const retrySyncBtn = document.getElementById('retry-sync-btn');
 
+  // Step indicator elements
+  const stepElements = {
+    members: document.getElementById('step-members'),
+    sync: document.getElementById('step-sync'),
+    llm: document.getElementById('step-llm'),
+    metrics: document.getElementById('step-metrics'),
+    insights: document.getElementById('step-insights')
+  };
+
+  // Phase to step mapping
+  const phaseToStep = {
+    'members': 1, 'syncing_members': 1,
+    'sync': 2, 'syncing': 2, 'phase1': 2,
+    'llm': 3, 'llm_processing': 3,
+    'metrics': 4, 'computing_metrics': 4,
+    'insights': 5, 'computing_insights': 5,
+    'complete': 6, 'phase1_complete': 6,
+    'phase2': 6, 'background_syncing': 6,
+    'done': 6
+  };
+
   // Time tracking for estimation and stall detection
   let syncStartTime = null;
   let lastProgressTime = null;
   let lastProgressPercent = 0;
-  let stallTimeoutMs = 45000; // 45 seconds without progress = stalled
+  let stallTimeoutMs = 90000; // 90 seconds without progress = stalled (increased for LLM)
   let isPolling = false;
   let currentTaskId = null;
   let dbStatusInterval = null;
+  let currentPhase = null;
+
+  // Update step indicators based on current phase
+  function updateStepIndicators(phase, currentStep) {
+    const stepNum = phaseToStep[phase] || currentStep || 0;
+
+    Object.entries(stepElements).forEach(([key, el]) => {
+      if (!el) return;
+      const elStep = phaseToStep[key];
+
+      if (elStep < stepNum) {
+        // Completed step
+        el.classList.add('step-primary');
+        el.setAttribute('data-content', '✓');
+      } else if (elStep === stepNum) {
+        // Current step
+        el.classList.add('step-primary');
+      } else {
+        // Future step
+        el.classList.remove('step-primary');
+      }
+    });
+  }
+
+  // Update phase-specific details
+  function updatePhaseDetails(data) {
+    if (data.sync_phase && data.sync_phase !== currentPhase) {
+      currentPhase = data.sync_phase;
+      // Reset progress for new phase
+      progressBar.style.width = '0%';
+      progressPercent.textContent = '0%';
+    }
+
+    // Update phase icon
+    const phase = data.sync_phase || data.pipeline_status;
+    if (phase === 'complete' || phase === 'phase1_complete' || phase === 'done') {
+      phaseIcon.className = 'fa-solid fa-check text-success text-lg';
+    } else {
+      phaseIcon.className = 'fa-solid fa-sync fa-spin text-primary text-lg';
+    }
+
+    // Update phase label
+    if (data.sync_phase_label) {
+      progressMessage.textContent = data.sync_phase_label;
+    }
+
+    // Update phase-specific detail
+    let detailText = '';
+    if (phase === 'llm' || phase === 'llm_processing') {
+      if (data.llm_progress && data.llm_progress.total > 0) {
+        detailText = data.llm_progress.processed + ' / ' + data.llm_progress.total + ' PRs analyzed';
+        const llmPercent = Math.round((data.llm_progress.processed / data.llm_progress.total) * 100);
+        progressBar.style.width = llmPercent + '%';
+        progressPercent.textContent = llmPercent + '%';
+      }
+    } else if (phase === 'sync' || phase === 'syncing' || phase === 'phase1') {
+      if (data.prs_synced > 0) {
+        detailText = data.prs_synced + ' PRs imported';
+      }
+    } else if (phase === 'metrics' || phase === 'computing_metrics') {
+      detailText = 'Aggregating weekly metrics...';
+      progressBar.style.width = '50%';
+      progressPercent.textContent = '50%';
+    } else if (phase === 'insights' || phase === 'computing_insights') {
+      detailText = 'Generating AI-powered insights...';
+      progressBar.style.width = '50%';
+      progressPercent.textContent = '50%';
+    } else if (data.prs_synced > 0) {
+      detailText = data.prs_synced + ' PRs synced';
+    }
+
+    phaseDetail.textContent = detailText;
+
+    // Update step indicators
+    updateStepIndicators(phase, data.current_step);
+  }
 
   // Update estimated time remaining based on progress
   function updateEstimatedTime(percent) {
@@ -383,8 +512,22 @@ document.addEventListener('DOMContentLoaded', function() {
         'Content-Type': 'application/json'
       }
     })
-    .then(response => response.json())
+    .then(response => {
+      // Handle 409: pipeline already in progress - poll DB status instead
+      if (response.status === 409) {
+        console.log('Pipeline already in progress, polling DB status');
+        isPolling = true;
+        progressMessage.textContent = 'Sync in progress...';
+        // Start DB-only polling mode
+        dbStatusInterval = setInterval(pollDbStatusWithProgress, 2000);
+        pollDbStatusWithProgress();
+        return null; // Skip further processing
+      }
+      return response.json();
+    })
     .then(data => {
+      if (!data) return; // 409 case handled above
+
       if (data.task_id) {
         currentTaskId = data.task_id;
         // Poll for progress using celery-progress
@@ -406,6 +549,93 @@ document.addEventListener('DOMContentLoaded', function() {
       console.error('Error starting sync:', error);
       showErrorState('Error starting sync. Please check your connection.');
     });
+  }
+
+  // Poll DB status and update progress bar (when no Celery task ID)
+  function pollDbStatusWithProgress() {
+    fetch(config.statusUrl)
+      .then(response => response.json())
+      .then(data => {
+        if (data.error) {
+          console.warn('Status error:', data.error);
+          return;
+        }
+
+        // Update phase indicators and details
+        updatePhaseDetails(data);
+
+        // Update individual repo statuses
+        if (data.repos) {
+          data.repos.forEach(repo => {
+            updateRepoStatus(repo.id, repo.sync_status, repo.sync_progress, repo.last_sync_error);
+          });
+        }
+
+        // For sync phase, calculate progress from repos
+        const phase = data.sync_phase || data.pipeline_status;
+        if (phase === 'sync' || phase === 'syncing' || phase === 'phase1' || phase === 'members' || phase === 'syncing_members') {
+          let totalProgress = 0;
+          let repoCount = 0;
+          if (data.repos && data.repos.length > 0) {
+            data.repos.forEach(repo => {
+              if (repo.sync_status === 'completed') {
+                totalProgress += 100;
+              } else if (repo.sync_status === 'syncing') {
+                totalProgress += repo.sync_progress || 0;
+              }
+              repoCount++;
+            });
+            const percent = Math.round(totalProgress / repoCount);
+            progressBar.style.width = percent + '%';
+            progressPercent.textContent = percent + '%';
+            updateEstimatedTime(percent);
+          }
+        }
+
+        // Track progress changes for stall detection
+        const currentProgress = data.pipeline_progress || 0;
+        if (currentProgress > lastProgressPercent) {
+          lastProgressPercent = currentProgress;
+          lastProgressTime = Date.now();
+        }
+
+        // Update message with phase and PR count
+        if (data.sync_phase_label) {
+          let msg = data.sync_phase_label;
+          if (data.prs_synced > 0 && (phase === 'sync' || phase === 'syncing')) {
+            msg += ' (' + data.prs_synced + ' PRs imported)';
+          }
+          progressMessage.textContent = msg;
+        } else if (data.prs_synced > 0) {
+          progressMessage.textContent = 'Syncing... (' + data.prs_synced + ' PRs imported)';
+        }
+
+        // Check for completion - phase1_complete means dashboard is ready
+        const pipelineStatus = data.pipeline_status;
+        if (pipelineStatus === 'phase1_complete' || pipelineStatus === 'complete' || pipelineStatus === 'background_syncing') {
+          const msg = data.insights_ready
+            ? 'Your dashboard is ready! ' + data.prs_synced + ' PRs analyzed.'
+            : 'Initial sync complete! ' + data.prs_synced + ' PRs imported.';
+          showCompleteState(msg);
+          return;
+        }
+
+        // Check for stall (but not during LLM processing which can be slow)
+        const isSlowPhase = phase === 'llm' || phase === 'llm_processing' || phase === 'insights' || phase === 'computing_insights';
+        const effectiveStallTimeout = isSlowPhase ? stallTimeoutMs * 3 : stallTimeoutMs;
+        if (lastProgressTime && (Date.now() - lastProgressTime > effectiveStallTimeout)) {
+          showErrorState('Sync appears to be stuck. No progress in ' + Math.round(effectiveStallTimeout/1000) + ' seconds.');
+          return;
+        }
+
+        // Check for failure
+        if (pipelineStatus === 'failed') {
+          showErrorState('Sync failed. ' + (data.pipeline_error || 'Please try again.'));
+        }
+      })
+      .catch(error => {
+        console.warn('Error fetching DB status:', error);
+      });
   }
 
   function pollProgress(url) {

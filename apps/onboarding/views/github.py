@@ -594,20 +594,28 @@ def sync_status(request):
     metrics_ready = WeeklyMetrics.objects.filter(team=team).exists()
     insights_ready = DailyInsight.objects.filter(team=team).exists()
 
+    # Pipeline phases with labels for UI
+    PIPELINE_PHASES = {
+        "syncing_members": {"phase": "members", "label": "Syncing team members", "step": 1},
+        "syncing": {"phase": "sync", "label": "Importing PRs from last 30 days", "step": 2},
+        "llm_processing": {"phase": "llm", "label": "Analyzing PRs with AI", "step": 3},
+        "computing_metrics": {"phase": "metrics", "label": "Computing team metrics", "step": 4},
+        "computing_insights": {"phase": "insights", "label": "Generating insights", "step": 5},
+        "phase1_complete": {"phase": "complete", "label": "Ready!", "step": 6},
+        "background_syncing": {"phase": "phase2", "label": "Syncing older PRs (31-90 days)", "step": 6},
+        "complete": {"phase": "done", "label": "All done!", "step": 6},
+    }
+    TOTAL_STEPS = 6
+
     # Determine sync phase for UI messaging
     pipeline_status = team.onboarding_pipeline_status
-    if pipeline_status == "syncing":
-        sync_phase = "phase1"
-        sync_phase_label = "Syncing PRs from last 30 days"
-    elif pipeline_status == "background_syncing":
-        sync_phase = "phase2"
-        sync_phase_label = "Syncing older PRs (31-90 days ago)"
-    elif pipeline_status == "llm_processing":
-        sync_phase = "llm"
-        sync_phase_label = "Analyzing PRs with AI"
-    else:
-        sync_phase = None
-        sync_phase_label = None
+    phase_info = PIPELINE_PHASES.get(pipeline_status, {"phase": None, "label": None, "step": 0})
+    sync_phase = phase_info["phase"]
+    sync_phase_label = phase_info["label"]
+    current_step = phase_info["step"]
+
+    # Calculate pipeline overall progress (0-100)
+    pipeline_progress = int((current_step / TOTAL_STEPS) * 100) if current_step else 0
 
     return JsonResponse(
         {
@@ -618,6 +626,9 @@ def sync_status(request):
             "pipeline_stage": team.get_onboarding_pipeline_status_display(),
             "sync_phase": sync_phase,
             "sync_phase_label": sync_phase_label,
+            "pipeline_progress": pipeline_progress,
+            "current_step": current_step,
+            "total_steps": TOTAL_STEPS,
             "llm_progress": {
                 "processed": llm_processed,
                 "total": prs_synced,

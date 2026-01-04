@@ -931,6 +931,119 @@ class SyncStatusPipelineFieldsTests(TestCase):
         self.assertTrue(data["insights_ready"])
 
 
+class SyncStatusPhaseFieldsTests(TestCase):
+    """Tests for sync_status API endpoint sync_phase and sync_phase_label fields.
+
+    These tests verify that the sync_status endpoint returns phase-specific
+    messaging for the onboarding progress UI.
+    """
+
+    def setUp(self):
+        """Set up test fixtures."""
+        from apps.integrations.factories import GitHubIntegrationFactory, IntegrationCredentialFactory
+        from apps.integrations.models import TrackedRepository
+
+        self.user = CustomUser.objects.create_user(
+            username="phase_test@example.com",
+            email="phase_test@example.com",
+            password="testpassword123",
+        )
+        self.team = TeamFactory()
+        self.team.members.add(self.user)
+
+        credential = IntegrationCredentialFactory(team=self.team, provider="github")
+        self.integration = GitHubIntegrationFactory(
+            team=self.team,
+            credential=credential,
+            organization_slug="test-org",
+        )
+
+        TrackedRepository.objects.create(
+            team=self.team,
+            integration=self.integration,
+            github_repo_id=88888,
+            full_name="test-org/phase-repo",
+            sync_status="syncing",
+        )
+
+        self.client.login(username="phase_test@example.com", password="testpassword123")
+
+    def test_returns_sync_phase_fields(self):
+        """Test that sync_status returns sync_phase and sync_phase_label."""
+        response = self.client.get(reverse("onboarding:sync_status"))
+        data = response.json()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("sync_phase", data)
+        self.assertIn("sync_phase_label", data)
+
+    def test_phase1_syncing_status(self):
+        """Test sync_phase for Phase 1 (syncing recent 30 days)."""
+        self.team.onboarding_pipeline_status = "syncing"
+        self.team.save()
+
+        response = self.client.get(reverse("onboarding:sync_status"))
+        data = response.json()
+
+        self.assertEqual(data["sync_phase"], "sync")
+        self.assertEqual(data["sync_phase_label"], "Importing PRs from last 30 days")
+
+    def test_phase2_background_syncing_status(self):
+        """Test sync_phase for Phase 2 (background sync 31-90 days)."""
+        self.team.onboarding_pipeline_status = "background_syncing"
+        self.team.save()
+
+        response = self.client.get(reverse("onboarding:sync_status"))
+        data = response.json()
+
+        self.assertEqual(data["sync_phase"], "phase2")
+        self.assertEqual(data["sync_phase_label"], "Syncing older PRs (31-90 days)")
+
+    def test_llm_processing_status(self):
+        """Test sync_phase for LLM processing phase."""
+        self.team.onboarding_pipeline_status = "llm_processing"
+        self.team.save()
+
+        response = self.client.get(reverse("onboarding:sync_status"))
+        data = response.json()
+
+        self.assertEqual(data["sync_phase"], "llm")
+        self.assertEqual(data["sync_phase_label"], "Analyzing PRs with AI")
+
+    def test_done_phase_for_complete_status(self):
+        """Test sync_phase is 'done' when pipeline is complete."""
+        self.team.onboarding_pipeline_status = "complete"
+        self.team.save()
+
+        response = self.client.get(reverse("onboarding:sync_status"))
+        data = response.json()
+
+        self.assertEqual(data["sync_phase"], "done")
+        self.assertEqual(data["sync_phase_label"], "All done!")
+
+    def test_null_phase_for_not_started_status(self):
+        """Test sync_phase is null when pipeline not started."""
+        self.team.onboarding_pipeline_status = "not_started"
+        self.team.save()
+
+        response = self.client.get(reverse("onboarding:sync_status"))
+        data = response.json()
+
+        self.assertIsNone(data["sync_phase"])
+        self.assertIsNone(data["sync_phase_label"])
+
+    def test_metrics_phase_for_computing_metrics_status(self):
+        """Test sync_phase is 'metrics' when computing metrics."""
+        self.team.onboarding_pipeline_status = "computing_metrics"
+        self.team.save()
+
+        response = self.client.get(reverse("onboarding:sync_status"))
+        data = response.json()
+
+        self.assertEqual(data["sync_phase"], "metrics")
+        self.assertEqual(data["sync_phase_label"], "Computing team metrics")
+
+
 class PipelineIntegrationTests(TestCase):
     """Tests for onboarding views integration with the onboarding pipeline.
 
