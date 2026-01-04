@@ -89,7 +89,7 @@ class TestSyncRepositoryHistoryGraphQLBasicFunctionality(TransactionTestCase):
         """Set up test fixtures."""
         self.team = TeamFactory()
         self.tracked_repo = TrackedRepositoryFactory(team=self.team, full_name="owner/repo")
-        self.author = TeamMemberFactory(team=self.team, github_id="testuser")
+        self.author = TeamMemberFactory(team=self.team, github_username="testuser")
 
     @patch("apps.integrations.services.github_graphql_sync.GitHubGraphQLClient")
     def test_sync_creates_pull_request_from_graphql_data(self, mock_client_class):
@@ -222,7 +222,7 @@ class TestSyncRepositoryHistoryGraphQLPagination(TransactionTestCase):
         """Set up test fixtures."""
         self.team = TeamFactory()
         self.tracked_repo = TrackedRepositoryFactory(team=self.team, full_name="owner/repo")
-        self.author = TeamMemberFactory(team=self.team, github_id="testuser")
+        self.author = TeamMemberFactory(team=self.team, github_username="testuser")
 
     @patch("apps.integrations.services.github_graphql_sync.GitHubGraphQLClient")
     def test_sync_handles_multiple_pages_of_prs(self, mock_client_class):
@@ -318,7 +318,7 @@ class TestSyncRepositoryHistoryGraphQLDaysBackFilter(TransactionTestCase):
         """Set up test fixtures."""
         self.team = TeamFactory()
         self.tracked_repo = TrackedRepositoryFactory(team=self.team, full_name="owner/repo")
-        self.author = TeamMemberFactory(team=self.team, github_id="testuser")
+        self.author = TeamMemberFactory(team=self.team, github_username="testuser")
 
     @patch("apps.integrations.services.github_graphql_sync.GitHubGraphQLClient")
     def test_sync_filters_prs_older_than_days_back(self, mock_client_class):
@@ -390,8 +390,8 @@ class TestSyncRepositoryHistoryGraphQLNestedData(TransactionTestCase):
         """Set up test fixtures."""
         self.team = TeamFactory()
         self.tracked_repo = TrackedRepositoryFactory(team=self.team, full_name="owner/repo")
-        self.author = TeamMemberFactory(team=self.team, github_id="testuser")
-        self.reviewer = TeamMemberFactory(team=self.team, github_id="reviewer1")
+        self.author = TeamMemberFactory(team=self.team, github_username="testuser")
+        self.reviewer = TeamMemberFactory(team=self.team, github_username="reviewer1")
 
     @patch("apps.integrations.services.github_graphql_sync.GitHubGraphQLClient")
     def test_sync_creates_pr_reviews_from_nested_data(self, mock_client_class):
@@ -540,7 +540,7 @@ class TestSyncRepositoryHistoryGraphQLErrorHandling(TransactionTestCase):
         )
 
         # Create author for good PR
-        TeamMemberFactory(team=self.team, github_id="testuser")
+        TeamMemberFactory(team=self.team, github_username="testuser")
 
         # Act
         result = asyncio.run(sync_repository_history_graphql(self.tracked_repo, days_back=90))
@@ -751,7 +751,7 @@ class TestSyncRepositoryHistoryGraphQLDataUpdateBehavior(TransactionTestCase):
         """Set up test fixtures."""
         self.team = TeamFactory()
         self.tracked_repo = TrackedRepositoryFactory(team=self.team, full_name="owner/repo")
-        self.author = TeamMemberFactory(team=self.team, github_id="testuser")
+        self.author = TeamMemberFactory(team=self.team, github_username="testuser")
 
     @patch("apps.integrations.services.github_graphql_sync.GitHubGraphQLClient")
     def test_sync_updates_existing_pull_request(self, mock_client_class):
@@ -853,7 +853,7 @@ class TestSyncRepositoryIncrementalGraphQLBasicFunctionality(TransactionTestCase
             full_name="owner/repo",
             last_sync_at=timezone.now() - timedelta(hours=24),
         )
-        self.author = TeamMemberFactory(team=self.team, github_id="testuser")
+        self.author = TeamMemberFactory(team=self.team, github_username="testuser")
 
     def test_sync_incremental_function_exists(self):
         """Test that sync_repository_incremental_graphql function exists and is importable."""
@@ -943,7 +943,7 @@ class TestSyncRepositoryIncrementalGraphQLPRProcessing(TransactionTestCase):
             full_name="owner/repo",
             last_sync_at=timezone.now() - timedelta(hours=24),
         )
-        self.author = TeamMemberFactory(team=self.team, github_id="testuser")
+        self.author = TeamMemberFactory(team=self.team, github_username="testuser")
 
     @patch("apps.integrations.services.github_graphql_sync.GitHubGraphQLClient")
     def test_sync_incremental_creates_pr_from_response(self, mock_client_class):
@@ -1730,7 +1730,7 @@ class TestGraphQLSyncAIDetectionInitialSync(TransactionTestCase):
         """Set up test fixtures."""
         self.team = TeamFactory()
         self.tracked_repo = TrackedRepositoryFactory(team=self.team, full_name="owner/repo")
-        self.human_author = TeamMemberFactory(team=self.team, github_id="testuser")
+        self.human_author = TeamMemberFactory(team=self.team, github_username="testuser")
 
     @patch("apps.integrations.services.github_graphql_sync.GitHubGraphQLClient")
     def test_pr_by_bot_author_is_marked_ai_assisted(self, mock_client_class):
@@ -1894,7 +1894,7 @@ class TestGraphQLSyncAIDetectionIncrementalSync(TransactionTestCase):
             full_name="owner/repo",
             last_sync_at=timezone.now() - timedelta(hours=24),
         )
-        self.human_author = TeamMemberFactory(team=self.team, github_id="testuser")
+        self.human_author = TeamMemberFactory(team=self.team, github_username="testuser")
 
     @patch("apps.integrations.services.github_graphql_sync.GitHubGraphQLClient")
     def test_incremental_sync_detects_bot_author(self, mock_client_class):
@@ -2011,8 +2011,8 @@ class TestGraphQLSyncTimingMetrics(TransactionTestCase):
         """Set up test fixtures."""
         self.team = TeamFactory()
         self.tracked_repo = TrackedRepositoryFactory(team=self.team, full_name="owner/repo")
-        self.author = TeamMemberFactory(team=self.team, github_id="testuser")
-        self.reviewer = TeamMemberFactory(team=self.team, github_id="reviewer1")
+        self.author = TeamMemberFactory(team=self.team, github_username="testuser")
+        self.reviewer = TeamMemberFactory(team=self.team, github_username="reviewer1")
 
     @patch("apps.integrations.services.github_graphql_sync.GitHubGraphQLClient")
     def test_process_pr_calculates_cycle_time_for_merged_pr(self, mock_client_class):
@@ -2225,7 +2225,7 @@ class TestSyncProgressTracking(TransactionTestCase):
         """Set up test fixtures."""
         self.team = TeamFactory()
         self.tracked_repo = TrackedRepositoryFactory(team=self.team, full_name="owner/repo")
-        self.author = TeamMemberFactory(team=self.team, github_id="testuser")
+        self.author = TeamMemberFactory(team=self.team, github_username="testuser")
 
     @patch("apps.integrations.services.github_graphql_sync.GitHubGraphQLClient")
     def test_progress_uses_date_filtered_count(self, mock_client_class):
@@ -2330,7 +2330,7 @@ class TestSyncRepositoryHistoryBySearch(TransactionTestCase):
         """Set up test fixtures."""
         self.team = TeamFactory()
         self.tracked_repo = TrackedRepositoryFactory(team=self.team, full_name="owner/repo")
-        self.author = TeamMemberFactory(team=self.team, github_id="testuser")
+        self.author = TeamMemberFactory(team=self.team, github_username="testuser")
 
     def test_sync_by_search_function_exists(self):
         """Test that sync_repository_history_by_search function exists and is importable."""

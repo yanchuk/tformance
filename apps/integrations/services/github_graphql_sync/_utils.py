@@ -122,7 +122,7 @@ def _get_team_member(team, github_login: str | None) -> TeamMember | None:
     if not github_login:
         return None
     try:
-        return TeamMember.objects.get(team=team, github_id=github_login)
+        return TeamMember.objects.get(team=team, github_username=github_login)
     except TeamMember.DoesNotExist:
         return None
 
