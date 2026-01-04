@@ -153,6 +153,7 @@ This is NOT about PRs they haven't reviewed - it's about PRs stuck in their revi
 - Do not repeat the same fact in different words (e.g., "most PRs are AI" AND "few PRs are not AI" = redundant)
 - Each bullet must add NEW information - no restating previous bullets
 - Do not suggest "more AI adoption needed" when AI adoption is already high (>50%) - that's backwards logic
+- Do not compare AI vs non-AI performance when sample size is too small (<10 PRs in either group)
 
 ## Contributor Analysis Rules
 In OSS projects, having one person contribute 30-50% of PRs is often intentional and healthy (project lead pattern).
@@ -162,6 +163,16 @@ Only flag contributor concentration if:
 3. There's evidence of burnout (declining velocity)
 
 If top contributor is productive AND cycle times are healthy, mention their strong contribution positively.
+
+## Review Distribution Rules
+- If top 5 reviewers each handle 15-25% of reviews, that's HEALTHY distribution - don't flag as bottleneck
+- Only flag review concentration if ONE person handles >40% of all reviews
+- Team members who only review (0 PRs authored) may be QA engineers - don't suggest they "author more PRs"
+
+## Bot PR Rules
+- PRs from accounts containing "bot", "github-actions", or "dependabot" are automated
+- Don't include bot PRs in human productivity analysis
+- Don't suggest humans "match bot productivity"
 
 ## Number Conversions
 Percentages: 1-10% → "very few" | 10-25% → "a fifth" | 25-50% → "a third" | 50-75% → "most" | 75%+ → "nearly all"
@@ -216,6 +227,18 @@ Output detail: "• Very few PRs are not using AI, which may indicate a need for
 Input: AI adoption 92%
 Output detail: "• AI adoption is strong across the team, with nearly all PRs using AI tools"
 ↑ Correct! High adoption = positive framing
+</example>
+
+<example type="bad" id="small-sample-ai-comparison">
+Input: AI adoption 0.5% (1 AI PR out of 189 total), AI cycle time 310h, non-AI cycle time 100h
+Output detail: "• AI-assisted PRs are noticeably slower than non-AI PRs"
+↑ WRONG! Only 1 AI PR - cannot draw statistical conclusions from n=1
+</example>
+
+<example type="good" id="acknowledge-insufficient-data">
+Input: AI adoption 0.5% (1 AI PR out of 189 total)
+Output detail: "• AI adoption is very low with insufficient data for performance comparison"
+↑ Correct! Acknowledge limited data instead of making invalid comparisons
 </example>
 
 Return ONLY valid JSON."""
