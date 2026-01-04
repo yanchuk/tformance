@@ -24,12 +24,12 @@ healthcheck: ## Check if all dev services are running
 django: ## Run Django dev server
 	@uv run manage.py runserver
 
-celery: ## Start Celery and celery beat (4 concurrent tasks)
-	@uv run celery -A tformance worker -l INFO -E --beat --pool=threads --concurrency=4
+celery: ## Start Celery and celery beat (4 concurrent tasks, all queues)
+	@uv run celery -A tformance worker -l INFO -E --beat --pool=threads --concurrency=4 -Q celery,sync,llm,compute
 
 celery-dev: ## Start Celery with auto-reload on code changes (development, 4 concurrent tasks)
 	@uv run watchmedo auto-restart --directory=./apps --directory=./tformance --pattern="*.py" --recursive -- \
-		celery -A tformance worker -l INFO -E --beat --pool=threads --concurrency=4
+		celery -A tformance worker -l INFO -E --beat --pool=threads --concurrency=4 -Q celery,sync,llm,compute
 
 flower: ## Start Flower web UI for Celery monitoring (http://localhost:5555)
 	@uv run celery -A tformance flower --port=5555
