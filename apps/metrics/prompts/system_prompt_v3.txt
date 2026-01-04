@@ -12,7 +12,6 @@ Analyze the provided engineering metrics and generate an executive insight with:
 1. A headline addressing the most critical finding (based on priority rules)
 2. Detail providing context with specific numbers
 3. One actionable recommendation
-4. Four metric cards summarizing key indicators
 
 ## Priority Rules
 
@@ -53,21 +52,9 @@ Return a JSON object with exactly these fields:
 {
   "headline": "1-2 sentence executive summary based on highest priority",
   "detail": "2-3 sentences with key numbers and context",
-  "recommendation": "One specific, actionable next step",
-  "metric_cards": [
-    {"label": "Throughput", "value": "% or count", "trend": "positive|negative|neutral|warning"},
-    {"label": "Cycle Time", "value": "hours or %", "trend": "positive|negative|neutral|warning"},
-    {"label": "AI Adoption", "value": "%", "trend": "positive|negative|neutral|warning"},
-    {"label": "Quality", "value": "revert rate", "trend": "positive|negative|neutral|warning"}
-  ]
+  "recommendation": "One specific, actionable next step"
 }
 ```
-
-Trend meanings:
-- positive = good news, improvement
-- negative = bad news, decline
-- neutral = stable, no change
-- warning = needs attention
 
 CRITICAL OUTPUT RULES:
 - Start your response with the { character
@@ -89,13 +76,7 @@ CRITICAL OUTPUT RULES:
 {
   "headline": "Quality alert: 12% of PRs were reverted this period, exceeding the 8% threshold.",
   "detail": "Despite 20% throughput growth and 45% AI adoption showing 10% faster cycle times, the 12% revert rate indicates quality issues requiring immediate attention.",
-  "recommendation": "Investigate reverted PRs for root causes and consider adding pre-merge testing requirements.",
-  "metric_cards": [
-    {"label": "Throughput", "value": "+20%", "trend": "positive"},
-    {"label": "Cycle Time", "value": "stable", "trend": "neutral"},
-    {"label": "AI Adoption", "value": "45%", "trend": "positive"},
-    {"label": "Quality", "value": "12% reverts", "trend": "warning"}
-  ]
+  "recommendation": "Investigate reverted PRs for root causes and consider adding pre-merge testing requirements."
 }
 </output>
 
@@ -115,13 +96,7 @@ CRITICAL OUTPUT RULES:
 {
   "headline": "Team dependency risk: One contributor owns 65% of merged PRs across 5 team members.",
   "detail": "Work concentration at 65% creates continuity risk if this person is unavailable. Quality remains healthy at 2% reverts. Cycle time improved 5%.",
-  "recommendation": "Distribute ownership through pair programming or knowledge transfer sessions.",
-  "metric_cards": [
-    {"label": "Throughput", "value": "stable", "trend": "neutral"},
-    {"label": "Cycle Time", "value": "-5%", "trend": "positive"},
-    {"label": "AI Adoption", "value": "25%", "trend": "neutral"},
-    {"label": "Team Health", "value": "65% concentration", "trend": "warning"}
-  ]
+  "recommendation": "Distribute ownership through pair programming or knowledge transfer sessions."
 }
 </output>
 
@@ -141,13 +116,7 @@ CRITICAL OUTPUT RULES:
 {
   "headline": "AI adoption concern: AI-assisted PRs are taking 100% longer than non-AI PRs despite 55% adoption.",
   "detail": "At 55% AI adoption, AI-assisted PRs average 48 hours cycle time versus 24 hours for non-AI PRs. This suggests AI tools may be used for complex work or require process adjustment.",
-  "recommendation": "Analyze AI-assisted PRs to understand complexity differences and consider training on effective AI tool usage.",
-  "metric_cards": [
-    {"label": "Throughput", "value": "stable", "trend": "neutral"},
-    {"label": "Cycle Time", "value": "+100% AI", "trend": "warning"},
-    {"label": "AI Adoption", "value": "55%", "trend": "neutral"},
-    {"label": "Quality", "value": "3% reverts", "trend": "positive"}
-  ]
+  "recommendation": "Analyze AI-assisted PRs to understand complexity differences and consider training on effective AI tool usage."
 }
 </output>
 
