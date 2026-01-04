@@ -1,10 +1,10 @@
 # Tformance Product Requirements Document
 
-## MVP v1.0
+## MVP v1.1
 
-**Document Version:** 1.0
-**Date:** December 2025
-**Status:** Draft for Review
+**Document Version:** 1.1
+**Date:** January 2026
+**Status:** Updated to reflect current implementation
 
 ---
 
@@ -29,8 +29,9 @@ An analytics platform that helps CTOs of small-to-medium engineering teams under
 **Core differentiator:** We don't just show metrics. We help answer: *"Is AI actually helping my team, or are we just paying for licenses?"*
 
 **Key innovations:**
+- **Multi-layer AI detection** - LLM analysis + pattern matching + surveys for comprehensive AI usage tracking
 - **AI correlation analysis** - Connect AI tool usage with delivery outcomes
-- **Gamified PR surveys** - Fun "AI Detective" game to capture quality feedback
+- **Two-phase onboarding** - Dashboard accessible in ~5 min, historical data loads in background
 - **GitHub-first onboarding** - Connect GitHub and your team is auto-discovered
 
 ---
@@ -78,22 +79,23 @@ An analytics platform that helps CTOs of small-to-medium engineering teams under
 
 | Platform | Data | Sync Frequency |
 |----------|------|----------------|
-| GitHub | PRs, commits, reviews, org members | Daily + webhooks |
-| Jira | Issues, story points, sprints | Daily |
-| GitHub Copilot | Usage metrics (5+ licensed users required) | Daily |
-| Slack | Bot for surveys + leaderboard | Real-time |
+| GitHub | PRs, commits, reviews, org members | Daily (4AM UTC) + webhooks |
+| Jira | Issues, story points, sprints | Daily (4:30AM UTC) - Feature-flagged |
+| GitHub Copilot | Usage metrics (5+ licensed users required) | Manual/On-demand |
+| Slack | Bot authentication, web-based surveys | Real-time auth |
 
-> **Note:** Cursor integration moved to v2 (requires Enterprise tier). MVP relies on self-reported AI attribution via PR surveys.
+> **Note:** Jira, Slack, and Copilot integrations are controlled by feature flags and can be skipped during onboarding. Cursor integration moved to v2 (requires Enterprise tier).
 
 ### Features
 
 | Feature | Description |
 |---------|-------------|
 | **AI Correlation Dashboard** | Visualize AI usage vs delivery metrics |
-| **PR Survey System** | Author: "AI-assisted?" / Reviewer: Quality rating + AI guess |
-| **AI Detective Game** | Reveal if reviewer guessed correctly, weekly leaderboard |
+| **PR Survey System** | Web-based surveys for author AI disclosure and reviewer quality ratings |
+| **Multi-Layer AI Detection** | LLM analysis + pattern matching + signal aggregation (see Section 5.5) |
 | **Layered Visibility** | Dev sees own, Lead sees team, CTO sees all |
 | **Auto User Discovery** | Import team from GitHub org automatically |
+| **Two-Phase Onboarding** | Fast dashboard access (30 days), background historical sync |
 
 ### Not MVP (v2+)
 
@@ -103,6 +105,8 @@ An analytics platform that helps CTOs of small-to-medium engineering teams under
 - Time tracking
 - Comparison views
 - Alerts & notifications
+- AI Detective Game (weekly leaderboard, gamification UI)
+- Slack survey delivery (currently web-only)
 
 ---
 
@@ -114,12 +118,47 @@ An analytics platform that helps CTOs of small-to-medium engineering teams under
 | | Cycle Time (PR open → merge) | GitHub |
 | | Review Time | GitHub |
 | | Change Failure Rate (reverts) | GitHub |
+| | Review Rounds (iterations) | GitHub |
+| | Fix Response Time | GitHub |
 | **Jira** | Velocity (story points/sprint) | Jira |
 | | Issue Cycle Time | Jira |
-| **AI Usage** | Copilot metrics | GitHub API |
-| | AI-assisted PRs | Self-reported survey |
-| **Quality** | PR Quality Rating (1-3) | Reviewer survey |
-| | AI Detection Rate | Guessing game |
+| **AI Usage** | Copilot metrics | GitHub API (manual) |
+| | AI-assisted PRs | LLM + Pattern detection |
+| | AI Tool Breakdown | LLM analysis |
+| **Quality** | PR Quality Rating (1-3) | Web surveys |
+| **Tech** | Category Breakdown | LLM + file analysis |
+
+---
+
+## 5.5 AI Detection System
+
+Our core differentiator: multi-layer AI detection that goes beyond simple surveys.
+
+### Detection Layers (Priority Order)
+
+| Layer | Method | Confidence | Source |
+|-------|--------|------------|--------|
+| 1. LLM Analysis | Groq/Llama analyzes full PR | High (≥0.5 threshold) | PR body, files, commits |
+| 2. Pattern Detection | Regex signatures | Medium | "Generated with Claude", co-authors |
+| 3. Signal Aggregation | Config file presence | Low | .cursorrules, CLAUDE.md |
+| 4. Survey Data | Author self-report | Ground truth | PR surveys |
+
+### LLM Priority Rule
+
+The `effective_is_ai_assisted` property prioritizes LLM detection when confidence ≥ 0.5, falling back to pattern detection. This ensures highest accuracy while maintaining coverage.
+
+### Detected Tools
+
+- **Code generation:** Copilot, Claude, Cursor, ChatGPT, Codeium, Tabnine
+- **Review tools:** CodeRabbit, Codiumate, PR-Agent
+- **AI authors:** Devin, Dependabot (bots)
+
+### Why This Matters
+
+Competitors rely on either ML-only detection (expensive, requires training data) or survey-only (low response rates). Our hybrid approach combines:
+- High accuracy from LLM analysis
+- Comprehensive coverage from pattern matching
+- Ground truth validation from optional surveys
 
 ---
 
@@ -130,18 +169,16 @@ An analytics platform that helps CTOs of small-to-medium engineering teams under
 - See if AI-assisted PRs have different quality ratings
 - Prepare for 1:1s with individual developer data
 - Configure team settings and user mapping
+- Monitor AI detection accuracy and tool adoption trends
 
 ### Developer
-- Receive quick Slack survey after PR merge (1 click)
+- Receive survey after PR merge (web-based)
 - See only my own metrics and team aggregates
-- Participate in AI Detective game
 - View my quality ratings and trends
 
 ### Reviewer
 - Rate PR quality after merge (Could be better / OK / Super)
-- Guess if PR was AI-assisted
-- See reveal and track guess accuracy
-- Compete on weekly leaderboard
+- Optionally guess if PR was AI-assisted (for AI Detective v2)
 
 ---
 
@@ -163,6 +200,12 @@ An analytics platform that helps CTOs of small-to-medium engineering teams under
 - Role-based access control enforced at application layer
 - Data export available on request
 
+### LLM Data Handling
+- PR content (title, body, file paths) sent to Groq API for AI detection analysis
+- No source code content stored by LLM provider
+- Prompt versions tracked for audit trail
+- Fallback to pattern detection if LLM unavailable
+
 ### Visibility Model
 | Role | Individual Data | Team Aggregates |
 |------|-----------------|-----------------|
@@ -180,7 +223,31 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for full security details.
 - **Backend:** Django (sync workers, Slack bot, auth)
 - **Database:** PostgreSQL (single database, team-isolated)
 - **Dashboards:** Native (Chart.js + HTMX + DaisyUI)
-- **Sync:** Daily batch + GitHub webhooks for real-time PR events
+- **Task Queue:** Celery + Redis (separate queues for sync, LLM, compute)
+- **Sync:** Daily batch (4AM UTC) + GitHub webhooks for real-time PR events
+
+### Two-Phase Onboarding Pipeline
+
+**Phase 1 (Fast Start - ~5 min):**
+1. Sync GitHub members (auto-discover team)
+2. Sync recent 30 days of PRs
+3. LLM analysis for AI detection
+4. Aggregate metrics
+5. **Dashboard accessible** ✓
+
+**Phase 2 (Background):**
+1. Sync historical 31-90 days
+2. LLM analysis for older PRs
+3. Re-aggregate metrics
+4. Mark complete
+
+This ensures teams can start using the dashboard quickly while comprehensive historical data loads in the background.
+
+### LLM Processing
+- **Provider:** Groq (Llama models) for cost-effective batch analysis
+- **Batch processing:** With retry logic and rate limiting
+- **Prompt versioning:** Tracked for experiment tracking and audit trail
+- **Separate queue:** Dedicated Celery queue prevents blocking sync tasks
 
 ### Why Daily Sync (not hourly)
 - Analytics don't need real-time data
@@ -227,9 +294,12 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for full technical details.
 
 | Risk | Mitigation |
 |------|------------|
-| Low survey response rate | Gamification, minimal friction |
+| Low survey response rate | Web-based surveys, minimal friction (gamification in v2) |
 | "Surveillance" perception | Privacy-first messaging, layered visibility |
-| GitHub API rate limits | Daily sync, caching |
+| GitHub API rate limits | Daily sync, caching, GraphQL batching |
+| LLM API availability | Fallback to pattern detection, retry logic |
+| AI detection accuracy | Multi-layer approach, confidence thresholds |
+| Onboarding slow for large orgs | Two-phase pipeline, dashboard accessible early |
 
 ---
 
@@ -252,21 +322,21 @@ All major competitors have now added AI measurement features. Our differentiatio
 | Feature | Our MVP | Jellyfish | LinearB | Swarmia | Span | Workweave |
 |---------|---------|-----------|---------|---------|------|-----------|
 | AI usage correlation | ✅ Core | ✅ New | ✅ New | ✅ New | ✅ Core | ✅ Core |
-| **Gamified surveys** | ✅ Unique | ❌ | ❌ | ❌ | ❌ | ❌ |
-| AI code detection | Survey | Yes | Partial | Partial | 95% ML | 94% ML |
-| GitHub-first onboarding | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **AI code detection** | **LLM + Pattern + Survey** | Yes | Partial | Partial | 95% ML | 94% ML |
+| Fast onboarding | ✅ Two-phase | ✅ | ✅ | ✅ | ✅ | ✅ |
 | GitHub/Jira metrics | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Free tier | Trial | ❌ | 8 users | 9 devs | ❌ | 5 devs |
 | Price/seat | **$10-25** | ~$50+ | $35-46 | €22-42 | Custom | $50 |
 
 ### Updated Differentiation Strategy
 
-1. **Gamified "AI Detective" game** - Only platform making data collection fun
-2. **Price accessibility** - 50-70% cheaper than all competitors
-3. **SMB focus** - 10-50 dev teams (competitors chasing enterprise)
+1. **Hybrid AI detection** - LLM analysis + pattern matching + optional surveys (comprehensive coverage)
+2. **Two-phase onboarding** - Dashboard accessible in ~5 min, historical data loads in background
+3. **Price accessibility** - 50-70% cheaper than all competitors
+4. **SMB focus** - 10-50 dev teams (competitors chasing enterprise)
 
 ### Emerging Threats
-- **Span**: 95% AI code detection accuracy (technical approach vs our survey approach)
+- **Span**: 95% AI code detection accuracy (our hybrid approach achieves similar with lower cost)
 - **Swarmia**: Similar free tier strategy, strong G2 reviews (4.4/5)
 - **Workweave**: $4.2M funding, aggressive AI positioning
 
@@ -283,3 +353,4 @@ All major competitors have now added AI measurement features. Our differentiatio
 ---
 
 *Document created: December 2025*
+*Last updated: January 2026*

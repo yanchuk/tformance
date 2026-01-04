@@ -16,6 +16,7 @@ Tformance is SaaS platform helping CTOs understand if AI coding tools are improv
 - We try to use /dev-docs command as often as possible to create new feature or large scope changes so we create proper plans in /dev/active those help to keep context in case of context window compact.
 - We use feature flags (django waffle) and for MVP Alpha we rely only on Github data without connecting Jira, Slack, Copilot.
 - We use Groq for LLM processing. We try always use Batches in Groq if it makes sense for scheduled tasks or onboarding PR batches processing as it saves costs by 50% and almost real-time.
+- Always prioritize "Django way" of doing things and appreciate framework capabilities and best practices
 
 ## Documentation
 
@@ -248,7 +249,53 @@ prs = PullRequest.for_team.select_related("author").prefetch_related("reviews")
 | `text-success`, `text-error` | `text-green-*`, `text-red-*` |
 | `border-base-300` | `border-gray-*` |
 
-### Testing with Factories
+## Code Style
+
+### Python
+
+- Follow PEP 8 with **120 character line limit**
+- Use **double quotes** for strings (ruff enforced)
+- Sort imports with isort (via ruff)
+- Use type hints in new code (not strictly enforced)
+- Use Django signals sparingly and document them well
+- Always validate user input server-side
+- Handle errors explicitly, avoid silent failures
+
+### JavaScript
+
+- Use ES6+ syntax with **2 spaces** for indentation
+- Use **single quotes** for strings
+- End statements with semicolons
+- Use camelCase for variables/functions, PascalCase for components
+- Use generated OpenAPI client for API calls (not raw fetch/axios)
+- Handle errors explicitly in promises/async functions
+
+## TDD Workflow
+
+**All new features MUST use Red-Green-Refactor cycle.**
+
+### Before Starting Any Implementation
+
+1. Run existing tests first: `make test` to ensure passing state
+2. Check `apps/<app>/tests/` for related test files
+3. Never break existing tests
+
+### RED Phase - Write Failing Test First
+- Write test describing expected behavior
+- Run test and confirm it **fails** (proves test is valid)
+- Do NOT write implementation code yet
+
+### GREEN Phase - Make It Pass
+- Write **minimum** code needed to pass
+- No extra features, no "nice to haves"
+- Run test and confirm it **passes**
+
+### REFACTOR Phase - Improve
+- Clean up while keeping tests green
+- Extract reusable code, improve naming
+- Run tests after each change
+
+## Factory Guidelines
 
 **Always use Factory Boy for test data:**
 
@@ -260,7 +307,71 @@ def test_pr_metrics(self):
     pr = PullRequestFactory(team=self.team, author=member)
 ```
 
-Use `factory.Sequence` for unique fields to avoid constraint violations.
+- `Factory.build()` for unit tests (doesn't save to DB)
+- `Factory.create()` or `Factory()` for integration tests (saves to DB)
+- `Factory.create_batch(n)` to create multiple instances
+- Use `factory.Sequence` for unique fields to avoid constraint violations
+
+**Available Factories:**
+- `apps/metrics/factories.py`: TeamFactory, TeamMemberFactory, PullRequestFactory, PRReviewFactory, CommitFactory
+- `apps/feedback/factories.py`, `apps/integrations/factories.py`, `apps/notes/factories.py`
+
+## Design System
+
+> **DO NOT CHANGE THEME COLORS WITHOUT EXPLICIT USER APPROVAL**
+
+### Color Usage (DaisyUI Semantic Colors Only)
+
+| Use Case | Correct Class | Avoid |
+|----------|--------------|-------|
+| Primary text | `text-base-content` | `text-white`, `text-stone-*` |
+| Secondary text | `text-base-content/80` | `text-gray-400` |
+| Backgrounds | `bg-base-100`, `bg-base-200` | `bg-deep`, `bg-neutral-*` |
+| Borders | `border-base-300` | `border-elevated`, `border-neutral-*` |
+| Success | `text-success`, `app-status-connected` | `text-emerald-*`, `text-green-*` |
+| Error | `text-error` | `text-red-*` |
+| Primary accent | `text-primary`, `bg-primary` | `text-orange-*` |
+
+### CSS Utility Classes
+
+Use `app-*` prefixed classes from `design-system.css`:
+- Cards: `app-card`, `app-card-interactive`
+- Buttons: `app-btn-primary`, `app-btn-secondary`
+- Stats: `app-stat-value`, `app-stat-value-positive`, `app-stat-value-negative`
+- Status: `app-status-connected`, `app-status-disconnected`, `app-status-error`
+
+### Fonts
+- **DM Sans** - UI text, headings
+- **JetBrains Mono** - Code, metrics, data values
+
+## HTMX + Alpine.js Patterns
+
+### Critical Rules
+
+1. **NEVER use inline `<script>` tags in HTMX partials** - They won't execute after swaps
+2. Use `Alpine.store()` for state that must persist across HTMX navigation
+3. Use `ChartManager` for all chart initialization
+
+### Alpine Stores
+
+```javascript
+// Access in templates via $store
+<button @click="$store.dateRange.setDays(7)"
+        :class="{'btn-primary': $store.dateRange.isActive(7)}">7d</button>
+```
+
+Available: `$store.dateRange`, `$store.metrics`
+
+### Template Best Practices
+
+```html
+<!-- DO: Use data attributes for chart config -->
+<canvas id="my-chart" data-chart-data-id="my-chart-data"></canvas>
+{{ chart_data|json_script:"my-chart-data" }}
+
+<!-- DON'T: Inline scripts in partials -->
+<script>new Chart(...)</script>  <!-- Won't execute after HTMX swap! -->
+```
 
 ## General Coding Preferences
 
@@ -281,6 +392,106 @@ When files exceed limits, split into directories:
 - Always include `__init__.py` with re-exports for backward compatibility
 - Make sure test files are also granular and avoid having huge files if there is an option to make atomic ones and it makes sense
 
+## External Integrations
+
+### Library Selection Hierarchy
+
+**Always prefer official SDKs/libraries over direct API calls:**
+
+1. **Official SDK/library** - Published and maintained by service provider
+2. **Well-maintained 3rd party library** - Popular, actively maintained, good docs
+3. **Direct API calls** - Last resort when no suitable library exists
+
+| Service | Library | Package | Notes |
+|---------|---------|---------|-------|
+| GitHub | PyGithub (REST), gql (GraphQL) | `PyGithub`, `gql` | REST for simple ops, GraphQL for bulk |
+| Jira | jira-python | `jira` | Most popular, well-maintained |
+| Slack | slack-sdk | `slack-sdk` | Official Slack SDK |
+
+### Why Libraries Over Direct API
+
+- **Pagination handling** - Automatic cursor-based pagination
+- **Rate limiting** - Built-in retry logic and rate limit respect
+- **Authentication** - Token refresh, OAuth flows handled
+- **Error handling** - Typed exceptions, clear error messages
+- **Testing** - Easier to mock library objects than raw HTTP
+
+### GitHub GraphQL API
+
+**Use GraphQL for bulk operations** (PRs, commits, files). REST for single-item operations.
+
+```python
+# GraphQL client location
+from apps.integrations.services.github_graphql import GitHubGraphQLClient
+
+# Main sync functions
+from apps.integrations.services.github_graphql_sync import (
+    sync_repository_history_graphql,      # Full historical sync
+    sync_repository_history_by_search,    # Date-filtered sync
+    sync_repository_incremental_graphql,  # Since last sync
+    fetch_pr_complete_data_graphql,       # Single PR
+    sync_github_members_graphql,          # Org members
+)
+```
+
+**GraphQL Best Practices:**
+- Use `first: 10-25` for queries with nested connections
+- Include `rateLimit { remaining resetAt }` in all queries
+- Handle `GitHubGraphQLRateLimitError` (5000 points/hour limit)
+- Use exponential backoff for timeouts
+
+### Context7 for Documentation
+
+Use Context7 MCP server for up-to-date library documentation:
+```
+mcp__context7__resolve-library-id(libraryName="PyGithub")
+mcp__context7__query-docs(libraryId="/...", query="pull requests")
+```
+
+## Testing
+
+### Command Reference
+
+```bash
+make test                                    # Run all tests (parallel)
+make test ARGS='apps.module.tests.test_file' # Run specific module
+make test ARGS='-k test_name'                # Run tests matching pattern
+make test-serial                             # Without parallelization
+make test-slow                               # Show 20 slowest tests
+make test-coverage                           # With coverage report
+make test-fresh                              # Fresh database
+
+# pytest-specific
+.venv/bin/pytest apps/metrics -v             # Verbose output
+.venv/bin/pytest --lf                        # Run last failed only
+.venv/bin/pytest -x                          # Stop on first failure
+```
+
+### E2E Testing (Playwright)
+
+**Requires dev server running.** Test credentials: `admin@example.com` / `admin123`
+
+```bash
+make e2e              # Run all E2E tests
+make e2e-smoke        # Smoke tests only (~4s)
+make e2e-ui           # Open Playwright UI
+```
+
+Key test suites in `tests/e2e/`:
+- `smoke.spec.ts`, `auth.spec.ts`, `dashboard.spec.ts`
+- `htmx-error-handling.spec.ts`, `htmx-navigation.spec.ts`
+
+### Visual Verification with Playwright MCP
+
+```python
+# 1. Navigate to page
+mcp__playwright__browser_navigate(url="http://localhost:8000/...")
+# 2. Capture state
+mcp__playwright__browser_snapshot()
+# 3. Screenshot for visual confirmation
+mcp__playwright__browser_take_screenshot()
+```
+
 ## Quick Commands
 
 ```bash
@@ -288,6 +499,8 @@ make dev              # Start dev server
 make test             # Run all tests
 make celery           # Start Celery worker
 make ruff             # Format and lint
+make e2e              # E2E tests
+make lint-team-isolation  # Check team isolation
 ```
 
 Full reference: [COMMANDS-REFERENCE.md](dev/guides/COMMANDS-REFERENCE.md)
