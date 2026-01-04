@@ -2,7 +2,20 @@
 
 ## Project Overview
 
-SaaS platform helping CTOs understand if AI coding tools are improving team performance. Connects to GitHub, Jira, and Slack to correlate AI usage with delivery metrics.
+Tformance is SaaS platform helping CTOs understand if AI coding tools are improving team performance. Connects to GitHub, Jira, and Slack to correlate AI usage with delivery metrics.
+
+## Project development concept
+
+**Main concepts**:
+- We use localhost:8000 for most of development.
+- We use cloudflare tunnel to run localhost on dev.ianchuk.com.
+- Dev2.ianchuk.com is our app running in docker in Unraid, not auto updated and required `make dev2` command to build image and some time for Watchtower on Unraid to pull an update.
+- If our changes are significant and might interference with other ongoing tasks we use git worktrees and after merge.
+- Ongoing tasks and documentation are listed in /dev having /dev/active and /dev/completed tasks descriptions.
+- Sometimes in /dev/active might be already completed and not moved to /dev/completed plans.
+- We try to use /dev-docs command as often as possible to create new feature or large scope changes so we create proper plans in /dev/active those help to keep context in case of context window compact.
+- We use feature flags (django waffle) and for MVP Alpha we rely only on Github data without connecting Jira, Slack, Copilot.
+- We use Groq for LLM processing. We try always use Batches in Groq if it makes sense for scheduled tasks or onboarding PR batches processing as it saves costs by 50% and almost real-time.
 
 ## Documentation
 
@@ -31,13 +44,13 @@ SaaS platform helping CTOs understand if AI coding tools are improving team perf
 | Client data | Single DB (team-isolated) | Faster MVP, lower friction |
 | Dashboards | Native (Chart.js + HTMX) | Full design control |
 | Sync frequency | Daily | Simpler than real-time |
-| AI data source | Surveys + Copilot API | Surveys for all, Copilot for 5+ licenses |
+| AI data source | Detection from PRs by keyword patterns, LLM processing. Later with Surveys and Copilot data | PR analytics doesn't require actions, Copilot for 5+ licenses, Surveys will help |
 
 ## Integrations
 
 | Service | Auth | Scope |
 |---------|------|-------|
-| GitHub | OAuth | `read:org`, `repo`, `read:user` |
+| GitHub | OAuth (But planned to move to Github App for more refined access) | `read:org`, `repo`, `read:user` |
 | Jira | OAuth (Atlassian) | `read:jira-work`, `read:jira-user` |
 | Slack | OAuth | `chat:write`, `users:read`, `users:read.email` |
 | Copilot | Via GitHub OAuth | `manage_billing:copilot` |
@@ -266,6 +279,7 @@ When files exceed limits, split into directories:
 - `models.py` (>500 lines) → `models/` with domain files
 - `views.py` (>500 lines) → `views/` with feature files
 - Always include `__init__.py` with re-exports for backward compatibility
+- Make sure test files are also granular and avoid having huge files if there is an option to make atomic ones and it makes sense
 
 ## Quick Commands
 
