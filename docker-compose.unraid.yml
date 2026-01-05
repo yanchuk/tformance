@@ -173,7 +173,7 @@ services:
       SLACK_CLIENT_SECRET: ${SLACK_CLIENT_SECRET:-}
       SLACK_SIGNING_SECRET: ${SLACK_SIGNING_SECRET:-}
       GROQ_API_KEY: ${GROQ_API_KEY:-}
-    command: celery -A tformance worker -l INFO --pool threads --concurrency 10
+    command: celery -A tformance worker -l INFO --pool threads --concurrency 10 -Q celery,sync,compute,llm
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
     networks:

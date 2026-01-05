@@ -31,7 +31,7 @@ def get_date_range_from_request(request: HttpRequest) -> tuple[date, date]:
         Tuple of (start_date, end_date) calculated from 'days' query param
         Default: 30 days ending today
     """
-    days = int(request.GET.get("days", 30))
+    days = int(request.GET.get("days") or 30)
     end_date = timezone.now().date()
     start_date = end_date - timedelta(days=days)
     return start_date, end_date
@@ -93,7 +93,7 @@ def get_extended_date_range(request: HttpRequest, default_preset: str | None = N
             pass
 
     # Default to days-based calculation
-    days = int(request.GET.get("days", 30))
+    days = int(request.GET.get("days") or 30)
     start_date = today - timedelta(days=days)
     end_date = today
     granularity = _get_auto_granularity(days, request.GET.get("granularity"))

@@ -49,9 +49,12 @@ Usage:
       {% elif pipeline_status == "syncing_members" %}
         <div class="font-medium text-base-content">{% trans "Syncing team members..." %}</div>
         <div class="text-base-content/70">{% trans "Fetching GitHub org data" %}</div>
-      {% elif pipeline_status == "syncing" or pipeline_status == "background_syncing" %}
-        <div class="font-medium text-base-content">{% trans "Syncing repositories..." %}</div>
+      {% elif pipeline_status == "syncing" %}
+        <div class="font-medium text-base-content">{% trans "Syncing" %} {{ sync_progress_percent }}%</div>
         <div class="text-base-content/70">{{ repos_synced }} {% trans "of" %} {{ repos_total }} {% trans "repos" %}</div>
+      {% elif pipeline_status == "background_syncing" %}
+        <div class="font-medium text-base-content">{% trans "Syncing historical data" %} {{ sync_progress_percent }}%</div>
+        <div class="text-base-content/70">{% trans "Fetching last 90 days" %}</div>
       {% elif pipeline_status == "llm_processing" or pipeline_status == "background_llm" %}
         <div class="font-medium text-base-content">{% trans "Analyzing pull requests..." %}</div>
         <div class="text-base-content/70">{% trans "AI is processing your PRs" %}</div>

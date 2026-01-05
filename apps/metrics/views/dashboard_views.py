@@ -23,7 +23,7 @@ def _get_date_range_context(request: HttpRequest) -> dict[str, int | date]:
     Returns:
         Dictionary containing days, start_date, end_date, and active_tab
     """
-    days = int(request.GET.get("days", 30))
+    days = int(request.GET.get("days") or 30)
     start_date, end_date = get_date_range_from_request(request)
 
     return {
@@ -101,7 +101,7 @@ def engineering_insights(request: HttpRequest) -> HttpResponse:
     Query params:
         days: Number of days for the insight period (7, 30, or 90)
     """
-    days = int(request.GET.get("days", 30))
+    days = int(request.GET.get("days") or 30)
 
     # Get the most recent cached insight for this days period
     # Uses days as comparison_period (e.g., "7", "30", "90")
@@ -203,7 +203,7 @@ def refresh_insight(request: HttpRequest) -> HttpResponse:
         generate_insight,
     )
 
-    days = int(request.GET.get("days", 30))
+    days = int(request.GET.get("days") or 30)
     today = date.today()
     start_date = today - timedelta(days=days)
 

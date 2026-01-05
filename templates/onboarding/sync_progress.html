@@ -218,8 +218,21 @@ document.addEventListener('DOMContentLoaded', function() {
   let syncStartTime = null;
   let lastProgressTime = null;
   let lastProgressPercent = 0;
+  let lastPrCount = 0;
+  let lastRepoActivity = 0;  // Track repo progress changes
   let stallTimeoutMs = 90000; // 90 seconds without progress = stalled (increased for LLM)
   let isPolling = false;
+
+  // Calculate repo activity score for stall detection
+  // Sum of all repo sync_progress values + completed count * 100
+  function calculateRepoActivity(repos) {
+    if (!repos || !repos.length) return 0;
+    return repos.reduce((sum, repo) => {
+      const progress = repo.sync_progress || 0;
+      const bonus = repo.sync_status === 'completed' ? 100 : 0;
+      return sum + progress + bonus;
+    }, 0);
+  }
   let currentTaskId = null;
   let dbStatusInterval = null;
   let currentPhase = null;
@@ -593,9 +606,20 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         // Track progress changes for stall detection
+        // Check multiple signals: pipeline progress, PR count, or repo activity
         const currentProgress = data.pipeline_progress || 0;
-        if (currentProgress > lastProgressPercent) {
+        const currentPrCount = data.prs_synced || 0;
+        const currentRepoActivity = calculateRepoActivity(data.repos);
+
+        const hasProgress =
+          currentProgress > lastProgressPercent ||
+          currentPrCount > lastPrCount ||
+          currentRepoActivity > lastRepoActivity;
+
+        if (hasProgress) {
           lastProgressPercent = currentProgress;
+          lastPrCount = currentPrCount;
+          lastRepoActivity = currentRepoActivity;
           lastProgressTime = Date.now();
         }
 

@@ -104,7 +104,7 @@ def team_breakdown_table(request: HttpRequest) -> HttpResponse:
     """Team breakdown table (admin only)."""
     start_date, end_date = get_date_range_from_request(request)
     repo = _get_repo_filter(request)
-    days = int(request.GET.get("days", 30))
+    days = int(request.GET.get("days") or 30)
     sort = request.GET.get("sort", "prs_merged")
     order = request.GET.get("order", "desc")
 
@@ -158,8 +158,8 @@ def review_distribution_chart(request: HttpRequest) -> HttpResponse:
     """
     start_date, end_date = get_date_range_from_request(request)
     repo = _get_repo_filter(request)
-    limit = int(request.GET.get("limit", 5))  # Default to top 5 reviewers
-    days = int(request.GET.get("days", 30))
+    limit = int(request.GET.get("limit") or 5)  # Default to top 5 reviewers
+    days = int(request.GET.get("days") or 30)
 
     # Get all reviewers first for total count, then slice for display
     all_data = dashboard_service.get_review_distribution(request.team, start_date, end_date, repo=repo)
@@ -556,7 +556,7 @@ def benchmark_data(request: HttpRequest, metric: str) -> HttpResponse:
     if metric not in valid_metrics:
         return JsonResponse({"error": f"Invalid metric: {metric}"}, status=400)
 
-    days = int(request.GET.get("days", 30))
+    days = int(request.GET.get("days") or 30)
     result = benchmark_service.get_benchmark_for_team(request.team, metric, days)
 
     # Convert Decimal to float for JSON serialization
@@ -586,7 +586,7 @@ def benchmark_panel(request: HttpRequest, metric: str) -> HttpResponse:
             {"benchmark": None, "metric": metric},
         )
 
-    days = int(request.GET.get("days", 30))
+    days = int(request.GET.get("days") or 30)
 
     try:
         result = benchmark_service.get_benchmark_for_team(request.team, metric, days)
@@ -690,7 +690,7 @@ def needs_attention_view(request: HttpRequest) -> HttpResponse:
         issue_counts[issue_type] += 1
 
     # Get days param for links
-    days = int(request.GET.get("days", 30))
+    days = int(request.GET.get("days") or 30)
 
     # Define badge order, labels, colors, and tooltips for horizontal bar
     badge_config = {
@@ -784,8 +784,8 @@ def team_velocity_view(request: HttpRequest) -> HttpResponse:
     Returns top N contributors by PR count with avg cycle time.
     """
     start_date, end_date = get_date_range_from_request(request)
-    limit = int(request.GET.get("limit", 5))
-    days = int(request.GET.get("days", 30))
+    limit = int(request.GET.get("limit") or 5)
+    days = int(request.GET.get("days") or 30)
 
     contributors = dashboard_service.get_team_velocity(request.team, start_date, end_date, limit=limit)
 
