@@ -17,6 +17,10 @@ from apps.teams.models import Team
 
 logger = logging.getLogger(__name__)
 
+# Maximum number of times the LLM batch task can requeue itself
+# Prevents infinite loops if PRs never get processed (e.g., due to bug)
+MAX_REQUEUE_DEPTH = 50
+
 
 def _advance_llm_pipeline_status(team):
     """Advance pipeline status after LLM processing (success or max retries).
@@ -125,7 +129,7 @@ def aggregate_all_teams_weekly_metrics_task():
 
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=60, soft_time_limit=900, time_limit=960)
-def queue_llm_analysis_batch_task(self, team_id: int, batch_size: int = 50) -> dict:
+def queue_llm_analysis_batch_task(self, team_id: int, batch_size: int = 50, requeue_depth: int = 0) -> dict:
     """Process PRs missing LLM analysis in batches.
 
     Time limits increased to 15/16 min to handle batch API polling + retry:
@@ -137,6 +141,7 @@ def queue_llm_analysis_batch_task(self, team_id: int, batch_size: int = 50) -> d
         self: Celery task instance (bound task)
         team_id: The team to process PRs for
         batch_size: Number of PRs to process per batch (default 50)
+        requeue_depth: Current requeue depth (used to prevent infinite loops)
 
     Returns:
         Dict with prs_processed count or error status
@@ -236,9 +241,29 @@ def queue_llm_analysis_batch_task(self, team_id: int, batch_size: int = 50) -> d
     ).count()
 
     if remaining_prs > 0:
-        # More PRs to process - requeue self
-        logger.info(f"{remaining_prs} PRs still need LLM processing for team {team.name}, requeueing...")
-        self.apply_async(args=[team_id], kwargs={"batch_size": batch_size}, countdown=2)
+        # Check if we've exceeded max requeue depth
+        if requeue_depth >= MAX_REQUEUE_DEPTH:
+            logger.warning(
+                f"Max requeue depth ({MAX_REQUEUE_DEPTH}) reached for team {team.name}. "
+                f"{remaining_prs} PRs still pending. Advancing pipeline to prevent infinite loop."
+            )
+            _advance_llm_pipeline_status(team)
+            return {
+                "prs_processed": prs_updated,
+                "remaining": remaining_prs,
+                "warning": f"max_requeue_depth ({MAX_REQUEUE_DEPTH}) reached",
+            }
+
+        # More PRs to process - requeue self with incremented depth
+        logger.info(
+            f"{remaining_prs} PRs still need LLM processing for team {team.name}, "
+            f"requeueing (depth {requeue_depth + 1}/{MAX_REQUEUE_DEPTH})..."
+        )
+        self.apply_async(
+            args=[team_id],
+            kwargs={"batch_size": batch_size, "requeue_depth": requeue_depth + 1},
+            countdown=2,
+        )
     else:
         # All PRs processed - update status to trigger next task
         _advance_llm_pipeline_status(team)

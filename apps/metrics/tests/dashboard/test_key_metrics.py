@@ -194,6 +194,32 @@ class TestGetKeyMetrics(TestCase):
 
         self.assertEqual(result["prs_merged"], 1)
 
+    def test_calculate_ai_percentage_uses_single_query(self):
+        """Test that _calculate_ai_percentage uses single aggregate query, not two count queries.
+
+        Performance fix: Consolidate two separate count() calls into one aggregate().
+        """
+        from apps.metrics.models import PRSurvey
+        from apps.metrics.services.dashboard._helpers import _calculate_ai_percentage
+
+        # Create surveys with mixed AI-assisted values
+        for i, ai_assisted in enumerate([True, True, False, True, False]):
+            pr = PullRequestFactory(
+                team=self.team,
+                state="merged",
+                merged_at=timezone.make_aware(timezone.datetime(2024, 1, 10 + i, 12, 0)),
+            )
+            PRSurveyFactory(team=self.team, pull_request=pr, author_ai_assisted=ai_assisted)
+
+        surveys = PRSurvey.objects.filter(team=self.team)
+
+        # Should use only 1 query (aggregate), not 2 (count + filter.count)
+        with self.assertNumQueries(1):
+            result = _calculate_ai_percentage(surveys)
+
+        # Verify correctness: 3 out of 5 = 60%
+        self.assertEqual(result, Decimal("60.00"))
+
 
 @override_settings(CACHES={"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}})
 class TestGetKeyMetricsCache(TestCase):

@@ -438,3 +438,40 @@ class TestGetAICategoryBreakdown(TestCase):
         self.assertEqual(result["review_ai_count"], 0)
         self.assertEqual(result["both_ai_count"], 0)
         self.assertEqual(result["code_ai_pct"], 0.0)
+
+    def test_uses_only_for_memory_efficiency(self):
+        """Test that category breakdown uses .only() for memory efficiency.
+
+        Should only load id, llm_summary, ai_tools_detected fields
+        instead of all PR columns (body, title, etc. are large and unnecessary).
+        """
+        from django.db import connection
+        from django.test.utils import override_settings
+
+        # Create several PRs with large body content
+        for i in range(5):
+            PullRequestFactory(
+                team=self.team,
+                state="merged",
+                merged_at=timezone.make_aware(timezone.datetime(2024, 1, 10 + i, 12, 0)),
+                is_ai_assisted=True,
+                ai_tools_detected=["cursor"] if i % 2 == 0 else ["coderabbit"],
+                body="Large body content " * 100,  # Simulate large field
+            )
+
+        # Enable query logging
+        with override_settings(DEBUG=True):
+            connection.queries_log.clear()
+            result = dashboard_service.get_ai_category_breakdown(self.team, self.start_date, self.end_date)
+
+        # Verify result is correct
+        self.assertEqual(result["total_ai_prs"], 5)
+
+        # Verify queries were captured and check for .only() usage
+        # When .only() is used, large fields like "body" should NOT be in SELECT
+        if connection.queries:
+            select_query = [q["sql"] for q in connection.queries if "SELECT" in q["sql"].upper()]
+            if select_query:
+                query = select_query[-1].lower()
+                # .only() should exclude unnecessary columns
+                self.assertNotIn('"body"', query, "Query should use .only() to exclude 'body' column")

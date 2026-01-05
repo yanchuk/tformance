@@ -7,7 +7,7 @@ They should not be imported directly by external code.
 from datetime import date
 from decimal import Decimal
 
-from django.db.models import Avg, QuerySet
+from django.db.models import Avg, Count, Q, QuerySet
 from django.db.models.functions import TruncMonth, TruncWeek
 
 from apps.metrics.models import PullRequest
@@ -57,16 +57,20 @@ def _get_merged_prs_in_range(team: Team, start_date: date, end_date: date) -> Qu
 def _calculate_ai_percentage(surveys: QuerySet) -> Decimal:
     """Calculate percentage of AI-assisted surveys.
 
+    Uses single aggregate query for efficiency (avoids 2 separate count queries).
+
     Args:
         surveys: QuerySet of PRSurvey objects
 
     Returns:
         Decimal percentage (0.00 to 100.00)
     """
-    total_surveys = surveys.count()
-    if total_surveys > 0:
-        ai_assisted_count = surveys.filter(author_ai_assisted=True).count()
-        return Decimal(str(round(ai_assisted_count * 100.0 / total_surveys, 2)))
+    stats = surveys.aggregate(
+        total=Count("id"),
+        ai_count=Count("id", filter=Q(author_ai_assisted=True)),
+    )
+    if stats["total"] > 0:
+        return Decimal(str(round(stats["ai_count"] * 100.0 / stats["total"], 2)))
     return Decimal("0.00")
 
 
