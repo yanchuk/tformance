@@ -70,7 +70,8 @@
     </div>
   </div>
 
-  <!-- AI Detective Leaderboard -->
+  {% if slack_enabled %}
+  <!-- AI Detective Leaderboard (requires Slack/surveys integration) -->
   <div class="card bg-base-100 shadow-md mb-6">
     <div class="card-body">
       <h2 class="card-title text-base">
@@ -88,8 +89,10 @@
       </div>
     </div>
   </div>
+  {% endif %}
 
-  <!-- Copilot Members (if available) -->
+  {% if copilot_enabled %}
+  <!-- Copilot Members (requires Copilot integration) -->
   <div class="card bg-base-100 shadow-md mb-6">
     <div class="card-body">
       <h2 class="card-title text-base">
@@ -107,6 +110,7 @@
       </div>
     </div>
   </div>
+  {% endif %}
 
   <!-- Quick Links Section -->
   <div class="card bg-base-100 shadow-md">

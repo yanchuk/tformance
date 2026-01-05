@@ -4,6 +4,7 @@ from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect
 from django.template.response import TemplateResponse
 
+from apps.integrations.services.integration_flags import is_integration_enabled
 from apps.metrics.models import PullRequest
 from apps.metrics.view_utils import get_extended_date_range
 from apps.teams.decorators import team_admin_required
@@ -222,6 +223,10 @@ def analytics_team(request: HttpRequest) -> HttpResponse:
     Admin-only view.
     """
     context = _get_analytics_context(request, "team")
+
+    # Check if integrations are enabled (for conditional sections)
+    context["slack_enabled"] = is_integration_enabled(request, "slack")
+    context["copilot_enabled"] = is_integration_enabled(request, "copilot")
 
     # Track page view
     track_event(
