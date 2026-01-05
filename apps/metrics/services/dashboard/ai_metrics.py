@@ -246,7 +246,13 @@ def get_ai_category_breakdown(team: Team, start_date: date, end_date: date, repo
         get_ai_category,
     )
 
-    prs = _get_merged_prs_in_range(team, start_date, end_date).filter(is_ai_assisted=True)
+    # Use .only() to limit fields fetched - we only need llm_summary and ai_tools_detected
+    # for effective_ai_tools property. Avoids loading large 'body' column.
+    prs = (
+        _get_merged_prs_in_range(team, start_date, end_date)
+        .filter(is_ai_assisted=True)
+        .only("id", "llm_summary", "ai_tools_detected")
+    )
     prs = _apply_repo_filter(prs, repo)
 
     code_count = 0

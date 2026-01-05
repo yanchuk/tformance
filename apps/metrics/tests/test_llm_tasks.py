@@ -438,3 +438,81 @@ class TestLLMTaskTimeLimits(TestCase):
     def test_task_has_retry_delay(self):
         """Task should have default_retry_delay=300 (5 min) between retries."""
         self.assertEqual(run_llm_analysis_batch.default_retry_delay, 300)
+
+
+class TestLLMBatchQueryOptimization(TestCase):
+    """Tests for query optimization in run_llm_analysis_batch.
+
+    Verifies that prefetch_related is used correctly to avoid N+1 queries.
+    """
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.team = TeamFactory()
+
+    def test_data_extraction_uses_prefetch_cache(self):
+        """Data extraction should use prefetched cache, not trigger new queries.
+
+        The task prefetches 'files', 'commits', 'reviews__reviewer' but the extraction
+        code must access them correctly to use the cache.
+        """
+        from apps.metrics.models import PullRequest
+
+        # Create 5 PRs with related data
+        for i in range(5):
+            pr = PullRequestFactory(team=self.team, body=f"Test PR {i}")
+            PRFileFactory(pull_request=pr, team=self.team, filename=f"file_{i}.py")
+            CommitFactory(pull_request=pr, team=self.team, message=f"Commit {i}")
+            reviewer = TeamMemberFactory(team=self.team, display_name=f"Reviewer {i}")
+            PRReviewFactory(pull_request=pr, team=self.team, reviewer=reviewer)
+
+        # Simulate the prefetch query from the task (line 283-287)
+        prs = list(
+            PullRequest.objects.filter(team=self.team)
+            .select_related("author")
+            .prefetch_related("files", "commits", "reviews__reviewer")
+        )
+
+        # Data extraction should use no additional queries (cache should be used)
+        # If there's N+1, this will fail with more than 0 queries
+        with self.assertNumQueries(0):
+            for pr in prs:
+                # Extract file paths - must iterate, not use values_list (bypasses cache)
+                _file_paths = [f.filename for f in pr.files.all()]  # noqa: F841
+                # Extract commit messages - must iterate, not use values_list
+                _commit_messages = [c.message for c in pr.commits.all()]  # noqa: F841
+                # Extract reviewers - this should already work with prefetch
+                _reviewers = list(  # noqa: F841
+                    set(r.reviewer.display_name for r in pr.reviews.all() if r.reviewer and r.reviewer.display_name)
+                )
+
+    def test_values_list_bypasses_prefetch_cache(self):
+        """Verify that values_list() bypasses prefetch cache (causes N+1).
+
+        This test documents the current buggy behavior where values_list()
+        is used instead of iterating over prefetched objects. The task code at
+        lines 304-305 uses values_list which triggers a query per PR.
+        """
+        from apps.metrics.models import PullRequest
+
+        # Create 5 PRs with related data
+        for i in range(5):
+            pr = PullRequestFactory(team=self.team, body=f"Test PR {i}")
+            PRFileFactory(pull_request=pr, team=self.team, filename=f"file_{i}.py")
+            CommitFactory(pull_request=pr, team=self.team, message=f"Commit {i}")
+
+        # Simulate the prefetch query from the task (line 283-287)
+        prs = list(
+            PullRequest.objects.filter(team=self.team)
+            .select_related("author")
+            .prefetch_related("files", "commits", "reviews__reviewer")
+        )
+
+        # Using values_list() bypasses the prefetch cache - each call is a new query
+        # This is the CURRENT behavior that needs to be fixed
+        # 5 PRs * 2 values_list calls = 10 extra queries
+        with self.assertNumQueries(10):
+            for pr in prs:
+                # CURRENT BUGGY CODE (lines 304-305 in tasks.py):
+                _file_paths = list(pr.files.values_list("filename", flat=True))  # noqa: F841
+                _commit_messages = list(pr.commits.values_list("message", flat=True))  # noqa: F841

@@ -300,9 +300,9 @@ def run_llm_analysis_batch(self, team_id: int, limit: int | None = 50, rate_limi
 
     for pr in prs:
         try:
-            # Extract related data (v6.1.0)
-            file_paths = list(pr.files.values_list("filename", flat=True))
-            commit_messages = list(pr.commits.values_list("message", flat=True))
+            # Extract related data (v6.1.0) - use prefetch cache, not values_list
+            file_paths = [f.filename for f in pr.files.all()]
+            commit_messages = [c.message for c in pr.commits.all()]
             reviewers = list(
                 set(r.reviewer.display_name for r in pr.reviews.all() if r.reviewer and r.reviewer.display_name)
             )
