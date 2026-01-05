@@ -76,6 +76,7 @@ from apps.metrics.services.dashboard import (
     get_reviewer_workload,
     get_sparkline_data,
     get_story_point_correlation,
+    get_team_averages,
     get_team_breakdown,
     get_team_health_metrics,
     get_team_velocity,

@@ -11,7 +11,7 @@ from django.test import TestCase
 from django.utils import timezone
 
 from apps.metrics.factories import (
-    PRSurveyFactory,
+    PRReviewFactory,
     PullRequestFactory,
     TeamFactory,
     TeamMemberFactory,
@@ -97,16 +97,16 @@ class TestGetTeamBreakdown(TestCase):
         """Test that get_team_breakdown calculates AI-assisted percentage per member."""
         member = TeamMemberFactory(team=self.team, display_name="Charlie Brown")
 
-        # Create 4 PRs: 3 AI-assisted, 1 not
+        # Create 4 PRs: 3 AI-assisted, 1 not (using is_ai_assisted field, not surveys)
         ai_flags = [True, True, True, False]
         for i, ai_flag in enumerate(ai_flags):
-            pr = PullRequestFactory(
+            PullRequestFactory(
                 team=self.team,
                 author=member,
                 state="merged",
                 merged_at=timezone.make_aware(timezone.datetime(2024, 1, 10 + i, 12, 0)),
+                is_ai_assisted=ai_flag,
             )
-            PRSurveyFactory(team=self.team, pull_request=pr, author_ai_assisted=ai_flag)
 
         result = dashboard_service.get_team_breakdown(self.team, self.start_date, self.end_date)
 
@@ -170,8 +170,11 @@ class TestGetTeamBreakdown(TestCase):
             )
 
         # Should use constant number of queries (not N+1)
-        # Expected: 2 queries (PR aggregates with JOIN, surveys aggregate)
-        with self.assertNumQueries(2):
+        # Expected: 3 queries:
+        #   1. PR aggregates with JOIN (prs_merged, cycle_time, pr_size, ai_pct)
+        #   2. Reviews given aggregate
+        #   3. Review response time aggregate
+        with self.assertNumQueries(3):
             result = dashboard_service.get_team_breakdown(self.team, self.start_date, self.end_date)
 
         self.assertEqual(len(result), 10)
@@ -319,35 +322,35 @@ class TestGetTeamBreakdown(TestCase):
         member_high_ai = TeamMemberFactory(team=self.team, display_name="High AI User")
         member_mid_ai = TeamMemberFactory(team=self.team, display_name="Mid AI User")
 
-        # Low AI: 1 out of 4 PRs = 25%
+        # Low AI: 1 out of 4 PRs = 25% (using is_ai_assisted field, not surveys)
         for i in range(4):
-            pr = PullRequestFactory(
+            PullRequestFactory(
                 team=self.team,
                 author=member_low_ai,
                 state="merged",
                 merged_at=timezone.make_aware(timezone.datetime(2024, 1, 5 + i, 12, 0)),
+                is_ai_assisted=(i == 0),
             )
-            PRSurveyFactory(team=self.team, pull_request=pr, author_ai_assisted=(i == 0))
 
         # High AI: 4 out of 4 PRs = 100%
         for i in range(4):
-            pr = PullRequestFactory(
+            PullRequestFactory(
                 team=self.team,
                 author=member_high_ai,
                 state="merged",
                 merged_at=timezone.make_aware(timezone.datetime(2024, 1, 10 + i, 12, 0)),
+                is_ai_assisted=True,
             )
-            PRSurveyFactory(team=self.team, pull_request=pr, author_ai_assisted=True)
 
         # Mid AI: 2 out of 4 PRs = 50%
         for i in range(4):
-            pr = PullRequestFactory(
+            PullRequestFactory(
                 team=self.team,
                 author=member_mid_ai,
                 state="merged",
                 merged_at=timezone.make_aware(timezone.datetime(2024, 1, 15 + i, 12, 0)),
+                is_ai_assisted=(i < 2),
             )
-            PRSurveyFactory(team=self.team, pull_request=pr, author_ai_assisted=(i < 2))
 
         result = dashboard_service.get_team_breakdown(
             self.team, self.start_date, self.end_date, sort_by="ai_pct", order="desc"
@@ -361,6 +364,336 @@ class TestGetTeamBreakdown(TestCase):
         self.assertAlmostEqual(float(result[1]["ai_pct"]), 50.0, places=1)
         self.assertEqual(result[2]["member_name"], "Low AI User")
         self.assertAlmostEqual(float(result[2]["ai_pct"]), 25.0, places=1)
+
+    # ========================================================================
+    # NEW METRICS TESTS - Individual Performance Analytics Feature
+    # ========================================================================
+
+    def test_get_team_breakdown_calculates_avg_pr_size(self):
+        """Test that get_team_breakdown calculates avg PR size (additions + deletions)."""
+        member = TeamMemberFactory(team=self.team, display_name="Alice Smith")
+
+        # Create 3 PRs with different sizes
+        # PR 1: 100 additions + 50 deletions = 150 lines
+        PullRequestFactory(
+            team=self.team,
+            author=member,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 10, 12, 0)),
+            additions=100,
+            deletions=50,
+        )
+        # PR 2: 200 additions + 100 deletions = 300 lines
+        PullRequestFactory(
+            team=self.team,
+            author=member,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 11, 12, 0)),
+            additions=200,
+            deletions=100,
+        )
+        # PR 3: 50 additions + 100 deletions = 150 lines
+        PullRequestFactory(
+            team=self.team,
+            author=member,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 12, 12, 0)),
+            additions=50,
+            deletions=100,
+        )
+
+        result = dashboard_service.get_team_breakdown(self.team, self.start_date, self.end_date)
+
+        member_data = next((m for m in result if m["member_name"] == "Alice Smith"), None)
+        self.assertIsNotNone(member_data)
+        self.assertIn("avg_pr_size", member_data)
+        # Average should be (150 + 300 + 150) / 3 = 200 lines
+        self.assertEqual(member_data["avg_pr_size"], 200)
+
+    def test_get_team_breakdown_handles_zero_additions_deletions(self):
+        """Test that avg_pr_size handles zero additions/deletions correctly."""
+        member = TeamMemberFactory(team=self.team, display_name="Bob Jones")
+
+        # Create PR with zero additions/deletions (empty PR)
+        PullRequestFactory(
+            team=self.team,
+            author=member,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 10, 12, 0)),
+            additions=0,
+            deletions=0,
+        )
+
+        result = dashboard_service.get_team_breakdown(self.team, self.start_date, self.end_date)
+
+        member_data = next((m for m in result if m["member_name"] == "Bob Jones"), None)
+        self.assertIsNotNone(member_data)
+        self.assertIn("avg_pr_size", member_data)
+        # Should return 0 for empty PRs
+        self.assertEqual(member_data["avg_pr_size"], 0)
+
+    def test_get_team_breakdown_counts_reviews_given(self):
+        """Test that get_team_breakdown counts reviews given by member as reviewer."""
+        author = TeamMemberFactory(team=self.team, display_name="Author")
+        reviewer = TeamMemberFactory(team=self.team, display_name="Reviewer")
+
+        # Create PRs authored by 'author' but reviewed by 'reviewer'
+        for i in range(3):
+            pr = PullRequestFactory(
+                team=self.team,
+                author=author,
+                state="merged",
+                merged_at=timezone.make_aware(timezone.datetime(2024, 1, 10 + i, 12, 0)),
+            )
+            # Reviewer gives 5 reviews total across PRs
+            if i < 2:
+                PRReviewFactory(
+                    team=self.team,
+                    pull_request=pr,
+                    reviewer=reviewer,
+                    submitted_at=timezone.make_aware(timezone.datetime(2024, 1, 10 + i, 14, 0)),
+                )
+
+        # Reviewer also needs a PR to appear in breakdown (reviewer must have authored at least 1 PR)
+        PullRequestFactory(
+            team=self.team,
+            author=reviewer,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 15, 12, 0)),
+        )
+
+        result = dashboard_service.get_team_breakdown(self.team, self.start_date, self.end_date)
+
+        reviewer_data = next((m for m in result if m["member_name"] == "Reviewer"), None)
+        self.assertIsNotNone(reviewer_data)
+        self.assertIn("reviews_given", reviewer_data)
+        self.assertEqual(reviewer_data["reviews_given"], 2)
+
+    def test_get_team_breakdown_excludes_ai_bot_reviews(self):
+        """Test that reviews_given excludes AI/bot reviews (is_ai_review=True)."""
+        author = TeamMemberFactory(team=self.team, display_name="Author")
+        reviewer = TeamMemberFactory(team=self.team, display_name="Human Reviewer")
+
+        # Create PRs
+        for i in range(3):
+            pr = PullRequestFactory(
+                team=self.team,
+                author=author,
+                state="merged",
+                merged_at=timezone.make_aware(timezone.datetime(2024, 1, 10 + i, 12, 0)),
+            )
+            # 2 human reviews, 1 bot review
+            PRReviewFactory(
+                team=self.team,
+                pull_request=pr,
+                reviewer=reviewer,
+                submitted_at=timezone.make_aware(timezone.datetime(2024, 1, 10 + i, 14, 0)),
+                is_ai_review=i == 2,  # Third review is AI
+            )
+
+        # Reviewer needs a PR to appear in breakdown
+        PullRequestFactory(
+            team=self.team,
+            author=reviewer,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 15, 12, 0)),
+        )
+
+        result = dashboard_service.get_team_breakdown(self.team, self.start_date, self.end_date)
+
+        reviewer_data = next((m for m in result if m["member_name"] == "Human Reviewer"), None)
+        self.assertIsNotNone(reviewer_data)
+        self.assertIn("reviews_given", reviewer_data)
+        # Should only count 2 human reviews, not the AI review
+        self.assertEqual(reviewer_data["reviews_given"], 2)
+
+    def test_get_team_breakdown_calculates_avg_review_response_hours(self):
+        """Test that avg_review_response_hours is avg time from PR creation to first review."""
+        author = TeamMemberFactory(team=self.team, display_name="Author")
+        reviewer = TeamMemberFactory(team=self.team, display_name="Fast Reviewer")
+
+        # PR 1: Created Jan 10 at 10:00, first review at 12:00 = 2 hours
+        pr1 = PullRequestFactory(
+            team=self.team,
+            author=author,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 10, 18, 0)),
+            pr_created_at=timezone.make_aware(timezone.datetime(2024, 1, 10, 10, 0)),
+        )
+        PRReviewFactory(
+            team=self.team,
+            pull_request=pr1,
+            reviewer=reviewer,
+            submitted_at=timezone.make_aware(timezone.datetime(2024, 1, 10, 12, 0)),  # 2 hours later
+        )
+
+        # PR 2: Created Jan 11 at 10:00, first review at 14:00 = 4 hours
+        pr2 = PullRequestFactory(
+            team=self.team,
+            author=author,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 11, 18, 0)),
+            pr_created_at=timezone.make_aware(timezone.datetime(2024, 1, 11, 10, 0)),
+        )
+        PRReviewFactory(
+            team=self.team,
+            pull_request=pr2,
+            reviewer=reviewer,
+            submitted_at=timezone.make_aware(timezone.datetime(2024, 1, 11, 14, 0)),  # 4 hours later
+        )
+
+        # Reviewer needs a PR to appear in breakdown
+        PullRequestFactory(
+            team=self.team,
+            author=reviewer,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 15, 12, 0)),
+        )
+
+        result = dashboard_service.get_team_breakdown(self.team, self.start_date, self.end_date)
+
+        reviewer_data = next((m for m in result if m["member_name"] == "Fast Reviewer"), None)
+        self.assertIsNotNone(reviewer_data)
+        self.assertIn("avg_review_response_hours", reviewer_data)
+        # Average should be (2 + 4) / 2 = 3 hours
+        self.assertAlmostEqual(float(reviewer_data["avg_review_response_hours"]), 3.0, places=1)
+
+    def test_get_team_breakdown_ai_pct_uses_effective_is_ai_assisted(self):
+        """Test that ai_pct uses effective_is_ai_assisted (LLM-based) not surveys."""
+        member = TeamMemberFactory(team=self.team, display_name="AI Developer")
+
+        # Create 4 PRs with LLM-detected AI assistance (NOT surveys)
+        # 3 AI-assisted, 1 not (using is_ai_assisted and llm_summary)
+        ai_flags = [True, True, True, False]
+        for i, is_ai in enumerate(ai_flags):
+            PullRequestFactory(
+                team=self.team,
+                author=member,
+                state="merged",
+                merged_at=timezone.make_aware(timezone.datetime(2024, 1, 10 + i, 12, 0)),
+                is_ai_assisted=is_ai,  # Pattern-based detection
+                llm_summary={"ai": {"is_assisted": is_ai, "confidence": 0.9}} if is_ai else None,
+            )
+
+        result = dashboard_service.get_team_breakdown(self.team, self.start_date, self.end_date)
+
+        member_data = next((m for m in result if m["member_name"] == "AI Developer"), None)
+        self.assertIsNotNone(member_data)
+        # 3 out of 4 = 75% AI-assisted
+        self.assertAlmostEqual(float(member_data["ai_pct"]), 75.0, places=1)
+
+    def test_get_team_breakdown_ai_pct_without_surveys(self):
+        """Test that ai_pct works when there are no surveys (common case)."""
+        member = TeamMemberFactory(team=self.team, display_name="Developer No Survey")
+
+        # Create PRs with is_ai_assisted flag but NO surveys
+        PullRequestFactory(
+            team=self.team,
+            author=member,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 10, 12, 0)),
+            is_ai_assisted=True,
+        )
+        PullRequestFactory(
+            team=self.team,
+            author=member,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 11, 12, 0)),
+            is_ai_assisted=False,
+        )
+        # No PRSurvey created!
+
+        result = dashboard_service.get_team_breakdown(self.team, self.start_date, self.end_date)
+
+        member_data = next((m for m in result if m["member_name"] == "Developer No Survey"), None)
+        self.assertIsNotNone(member_data)
+        # Should still calculate 50% from is_ai_assisted field (not 0%)
+        self.assertAlmostEqual(float(member_data["ai_pct"]), 50.0, places=1)
+
+
+class TestGetTeamAverages(TestCase):
+    """Tests for get_team_averages function - team-wide averages for comparison."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.team = TeamFactory()
+        self.start_date = date(2024, 1, 1)
+        self.end_date = date(2024, 1, 31)
+
+    def test_get_team_averages_returns_dict(self):
+        """Test that get_team_averages returns a dict with avg metrics."""
+        # Create some data
+        member = TeamMemberFactory(team=self.team, display_name="Alice")
+        PullRequestFactory(
+            team=self.team,
+            author=member,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 10, 12, 0)),
+        )
+
+        result = dashboard_service.get_team_averages(self.team, self.start_date, self.end_date)
+
+        self.assertIsInstance(result, dict)
+        self.assertIn("avg_prs", result)
+        self.assertIn("avg_cycle_time", result)
+        self.assertIn("avg_pr_size", result)
+        self.assertIn("avg_reviews", result)
+        self.assertIn("avg_response_time", result)
+        self.assertIn("avg_ai_pct", result)
+
+    def test_get_team_averages_calculates_all_metrics(self):
+        """Test that get_team_averages calculates correct averages."""
+        member1 = TeamMemberFactory(team=self.team, display_name="Alice")
+        member2 = TeamMemberFactory(team=self.team, display_name="Bob")
+
+        # Alice: 3 PRs, 24h cycle time, 100 lines avg
+        for i in range(3):
+            PullRequestFactory(
+                team=self.team,
+                author=member1,
+                state="merged",
+                merged_at=timezone.make_aware(timezone.datetime(2024, 1, 10 + i, 12, 0)),
+                cycle_time_hours=Decimal("24.00"),
+                additions=50,
+                deletions=50,
+            )
+
+        # Bob: 1 PR, 48h cycle time, 200 lines
+        bob_pr = PullRequestFactory(
+            team=self.team,
+            author=member2,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 15, 12, 0)),
+            cycle_time_hours=Decimal("48.00"),
+            additions=100,
+            deletions=100,
+        )
+
+        # Alice reviews Bob's PR
+        PRReviewFactory(
+            team=self.team,
+            pull_request=bob_pr,
+            reviewer=member1,
+            submitted_at=timezone.make_aware(timezone.datetime(2024, 1, 15, 14, 0)),
+        )
+
+        result = dashboard_service.get_team_averages(self.team, self.start_date, self.end_date)
+
+        # avg_prs = (3 + 1) / 2 = 2
+        self.assertEqual(result["avg_prs"], 2)
+        # avg_cycle_time = avg of member averages = (24 + 48) / 2 = 36 hours
+        # (not weighted by PR count - we want equal weight per member for comparison)
+        self.assertAlmostEqual(float(result["avg_cycle_time"]), 36.0, places=1)
+        # avg_pr_size = avg of member averages = (100 + 200) / 2 = 150 lines
+        self.assertAlmostEqual(float(result["avg_pr_size"]), 150.0, places=1)
+
+    def test_get_team_averages_empty_team(self):
+        """Test that get_team_averages handles empty team gracefully."""
+        result = dashboard_service.get_team_averages(self.team, self.start_date, self.end_date)
+
+        self.assertIsInstance(result, dict)
+        # Should return zeros or None for empty data
+        self.assertEqual(result["avg_prs"], 0)
 
 
 class TestAvatarUrlFromGithubId(TestCase):
