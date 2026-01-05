@@ -133,14 +133,30 @@ def engineering_insights(request: HttpRequest) -> HttpResponse:
             action = {"action_type": a, "label": a.replace("_", " ").title()} if isinstance(a, str) else a
             resolved_actions.append({"label": action.get("label", ""), "url": resolve_action_url(action, days)})
 
-        # Normalize possible_causes to always be a list (LLM sometimes returns string)
+        # Normalize detail to always be a string (LLM sometimes returns array)
+        raw_detail = insight_data.get("detail", "")
+        detail = "\n".join(raw_detail) if isinstance(raw_detail, list) else raw_detail
+
+        # Extract possible_causes from detail if it contains bullet points
+        # LLM prompt puts bullets in detail, but template expects separate possible_causes
         raw_causes = insight_data.get("possible_causes", [])
-        possible_causes = ([raw_causes] if raw_causes else []) if isinstance(raw_causes, str) else raw_causes
+        if raw_causes:
+            # Use provided possible_causes if available
+            possible_causes = ([raw_causes] if raw_causes else []) if isinstance(raw_causes, str) else raw_causes
+        elif "•" in detail:
+            # Extract bullet points from detail into possible_causes
+            lines = detail.split("\n")
+            possible_causes = [line.lstrip("• ").strip() for line in lines if line.strip().startswith("•")]
+            # Remove bullet points from detail (keep any non-bullet content)
+            non_bullet_lines = [line for line in lines if not line.strip().startswith("•")]
+            detail = "\n".join(non_bullet_lines).strip() if non_bullet_lines else ""
+        else:
+            possible_causes = []
 
         context["insight"] = {
             "id": insight_record.id,
             "headline": insight_data.get("headline", ""),
-            "detail": insight_data.get("detail", ""),
+            "detail": detail,
             "possible_causes": possible_causes,
             "recommendation": insight_data.get("recommendation", ""),
             "metric_cards": insight_data.get("metric_cards", []),
