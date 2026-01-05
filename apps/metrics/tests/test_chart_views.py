@@ -619,6 +619,50 @@ class TestTeamBreakdownTable(TestCase):
         # Should fall back to default order
         self.assertEqual(response.context["order"], "desc")
 
+    def test_team_breakdown_table_accepts_sort_by_pr_size(self):
+        """Test that team_breakdown_table accepts pr_size as a sort field."""
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(reverse("metrics:table_breakdown"), {"sort": "pr_size"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["sort"], "pr_size")
+
+    def test_team_breakdown_table_accepts_sort_by_reviews(self):
+        """Test that team_breakdown_table accepts reviews as a sort field."""
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(reverse("metrics:table_breakdown"), {"sort": "reviews"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["sort"], "reviews")
+
+    def test_team_breakdown_table_accepts_sort_by_response_time(self):
+        """Test that team_breakdown_table accepts response_time as a sort field."""
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(reverse("metrics:table_breakdown"), {"sort": "response_time"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["sort"], "response_time")
+
+    def test_team_breakdown_table_context_includes_team_averages(self):
+        """Test that team_breakdown_table context includes team_averages for comparison."""
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(reverse("metrics:table_breakdown"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("team_averages", response.context)
+        # Verify team_averages has expected keys
+        team_averages = response.context["team_averages"]
+        self.assertIn("avg_prs", team_averages)
+        self.assertIn("avg_cycle_time", team_averages)
+        self.assertIn("avg_pr_size", team_averages)
+        self.assertIn("avg_reviews", team_averages)
+        self.assertIn("avg_response_time", team_averages)
+        self.assertIn("avg_ai_pct", team_averages)
+
 
 class TestLeaderboardTable(TestCase):
     """Tests for leaderboard_table view (member-accessible)."""

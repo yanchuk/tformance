@@ -17,21 +17,42 @@
             hx-get="{% url 'metrics:table_breakdown' %}?sort=prs_merged&order={% if sort == 'prs_merged' and order == 'desc' %}asc{% else %}desc{% endif %}&days={{ days|default:30 }}{% if selected_repo %}&repo={{ selected_repo }}{% endif %}"
             hx-target="#team-breakdown-container"
             hx-swap="innerHTML">
-          {% trans "PRs Merged" %}
+          {% trans "PRs" %}
           {% if sort == 'prs_merged' %}<span class="ml-1">{% if order == 'asc' %}▲{% else %}▼{% endif %}</span>{% endif %}
         </th>
         <th class="text-right cursor-pointer hover:bg-base-300 select-none"
             hx-get="{% url 'metrics:table_breakdown' %}?sort=cycle_time&order={% if sort == 'cycle_time' and order == 'asc' %}desc{% else %}asc{% endif %}&days={{ days|default:30 }}{% if selected_repo %}&repo={{ selected_repo }}{% endif %}"
             hx-target="#team-breakdown-container"
             hx-swap="innerHTML">
-          {% trans "Avg Cycle Time" %}
+          {% trans "Cycle" %}
           {% if sort == 'cycle_time' %}<span class="ml-1">{% if order == 'asc' %}▲{% else %}▼{% endif %}</span>{% endif %}
+        </th>
+        <th class="text-right cursor-pointer hover:bg-base-300 select-none hidden md:table-cell"
+            hx-get="{% url 'metrics:table_breakdown' %}?sort=pr_size&order={% if sort == 'pr_size' and order == 'desc' %}asc{% else %}desc{% endif %}&days={{ days|default:30 }}{% if selected_repo %}&repo={{ selected_repo }}{% endif %}"
+            hx-target="#team-breakdown-container"
+            hx-swap="innerHTML">
+          {% trans "PR Size" %}
+          {% if sort == 'pr_size' %}<span class="ml-1">{% if order == 'asc' %}▲{% else %}▼{% endif %}</span>{% endif %}
+        </th>
+        <th class="text-right cursor-pointer hover:bg-base-300 select-none hidden md:table-cell"
+            hx-get="{% url 'metrics:table_breakdown' %}?sort=reviews&order={% if sort == 'reviews' and order == 'desc' %}asc{% else %}desc{% endif %}&days={{ days|default:30 }}{% if selected_repo %}&repo={{ selected_repo }}{% endif %}"
+            hx-target="#team-breakdown-container"
+            hx-swap="innerHTML">
+          {% trans "Reviews" %}
+          {% if sort == 'reviews' %}<span class="ml-1">{% if order == 'asc' %}▲{% else %}▼{% endif %}</span>{% endif %}
+        </th>
+        <th class="text-right cursor-pointer hover:bg-base-300 select-none hidden lg:table-cell"
+            hx-get="{% url 'metrics:table_breakdown' %}?sort=response_time&order={% if sort == 'response_time' and order == 'asc' %}desc{% else %}asc{% endif %}&days={{ days|default:30 }}{% if selected_repo %}&repo={{ selected_repo }}{% endif %}"
+            hx-target="#team-breakdown-container"
+            hx-swap="innerHTML">
+          {% trans "Response" %}
+          {% if sort == 'response_time' %}<span class="ml-1">{% if order == 'asc' %}▲{% else %}▼{% endif %}</span>{% endif %}
         </th>
         <th class="text-right cursor-pointer hover:bg-base-300 select-none"
             hx-get="{% url 'metrics:table_breakdown' %}?sort=ai_pct&order={% if sort == 'ai_pct' and order == 'desc' %}asc{% else %}desc{% endif %}&days={{ days|default:30 }}{% if selected_repo %}&repo={{ selected_repo }}{% endif %}"
             hx-target="#team-breakdown-container"
             hx-swap="innerHTML">
-          {% trans "AI-Assisted" %}
+          {% trans "AI %" %}
           {% if sort == 'ai_pct' %}<span class="ml-1">{% if order == 'asc' %}▲{% else %}▼{% endif %}</span>{% endif %}
         </th>
       </tr>
@@ -63,6 +84,13 @@
         <td class="text-right font-mono">
           {% if row.avg_cycle_time %}{{ row.avg_cycle_time|floatformat:1 }}h{% else %}-{% endif %}
         </td>
+        <td class="text-right font-mono hidden md:table-cell">
+          {% if row.avg_pr_size %}{{ row.avg_pr_size|floatformat:0 }}{% else %}-{% endif %}
+        </td>
+        <td class="text-right font-mono hidden md:table-cell">{{ row.reviews_given|default:0 }}</td>
+        <td class="text-right font-mono hidden lg:table-cell">
+          {% if row.avg_review_response_hours %}{{ row.avg_review_response_hours|floatformat:1 }}h{% else %}-{% endif %}
+        </td>
         <td class="text-right">
           {% if row.ai_pct %}
           <span class="badge badge-info badge-sm">{{ row.ai_pct|floatformat:0 }}%</span>
@@ -73,6 +101,25 @@
       </tr>
       {% endfor %}
     </tbody>
+    {% if team_averages %}
+    <tfoot>
+      <tr class="bg-base-200 font-semibold">
+        <td>{% trans "Team Average" %}</td>
+        <td class="text-right font-mono">{{ team_averages.avg_prs|floatformat:1 }}</td>
+        <td class="text-right font-mono">{% if team_averages.avg_cycle_time %}{{ team_averages.avg_cycle_time|floatformat:1 }}h{% else %}-{% endif %}</td>
+        <td class="text-right font-mono hidden md:table-cell">{% if team_averages.avg_pr_size %}{{ team_averages.avg_pr_size|floatformat:0 }}{% else %}-{% endif %}</td>
+        <td class="text-right font-mono hidden md:table-cell">{{ team_averages.avg_reviews|floatformat:1 }}</td>
+        <td class="text-right font-mono hidden lg:table-cell">{% if team_averages.avg_response_time %}{{ team_averages.avg_response_time|floatformat:1 }}h{% else %}-{% endif %}</td>
+        <td class="text-right">
+          {% if team_averages.avg_ai_pct %}
+          <span class="badge badge-info badge-sm">{{ team_averages.avg_ai_pct|floatformat:0 }}%</span>
+          {% else %}
+          <span class="text-base-content/70">-</span>
+          {% endif %}
+        </td>
+      </tr>
+    </tfoot>
+    {% endif %}
   </table>
   {% else %}
   <div class="flex flex-col items-center justify-center py-12">

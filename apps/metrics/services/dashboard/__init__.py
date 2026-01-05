@@ -88,6 +88,7 @@ from apps.metrics.services.dashboard.review_metrics import (
 )
 from apps.metrics.services.dashboard.team_metrics import (
     get_copilot_by_member,
+    get_team_averages,
     get_team_breakdown,
     get_team_velocity,
 )
@@ -150,6 +151,7 @@ __all__ = [
     "get_ai_tool_breakdown",
     # Team metrics
     "get_copilot_by_member",
+    "get_team_averages",
     "get_team_breakdown",
     "get_team_velocity",
     # Phase 3: Trend metrics

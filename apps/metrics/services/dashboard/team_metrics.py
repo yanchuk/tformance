@@ -6,9 +6,10 @@ Functions for team breakdown, member velocity, and Copilot usage per member.
 from datetime import date
 from decimal import Decimal
 
-from django.db.models import Avg, Count, Q, Sum
+from django.db.models import Avg, Count, F, Min, Q, Sum
+from django.db.models.functions import Coalesce
 
-from apps.metrics.models import AIUsageDaily, PRSurvey
+from apps.metrics.models import AIUsageDaily, PRReview
 from apps.metrics.services.dashboard._helpers import (
     _apply_repo_filter,
     _avatar_url_from_github_id,
@@ -32,7 +33,7 @@ def get_team_breakdown(
         team: Team instance
         start_date: Start date (inclusive)
         end_date: End date (inclusive)
-        sort_by: Field to sort by (prs_merged, cycle_time, ai_pct, name)
+        sort_by: Field to sort by (prs_merged, cycle_time, ai_pct, name, pr_size, reviews, response_time)
         order: Sort order (asc or desc)
         repo: Optional repository to filter by (owner/repo format)
 
@@ -42,7 +43,10 @@ def get_team_breakdown(
             - member_name (str): Team member display name
             - prs_merged (int): Count of merged PRs
             - avg_cycle_time (Decimal): Average cycle time in hours (0.00 if None)
-            - ai_pct (float): AI adoption percentage (0.0 to 100.0)
+            - avg_pr_size (int): Average PR size in lines (additions + deletions)
+            - reviews_given (int): Count of reviews given as reviewer
+            - avg_review_response_hours (Decimal): Avg time to first review (as reviewer)
+            - ai_pct (float): AI adoption percentage (0.0 to 100.0) from effective_is_ai_assisted
     """
     prs = _get_merged_prs_in_range(team, start_date, end_date)
     prs = _apply_repo_filter(prs, repo)
@@ -53,6 +57,9 @@ def get_team_breakdown(
         "cycle_time": "avg_cycle_time",
         "ai_pct": None,  # Sort in Python after aggregation
         "name": "author__display_name",
+        "pr_size": "avg_pr_size",
+        "reviews": None,  # Sort in Python (requires separate query)
+        "response_time": None,  # Sort in Python (requires separate query)
     }
 
     # Determine database sort field
@@ -65,6 +72,7 @@ def get_team_breakdown(
         order_by_clause = [f"{prefix}{db_sort_field}"]
 
     # Single aggregated query for PR metrics per author (replaces N+1 loop)
+    # Added avg_pr_size (additions + deletions) and ai_pct from is_ai_assisted
     query = (
         prs.exclude(author__isnull=True)
         .values(
@@ -75,6 +83,9 @@ def get_team_breakdown(
         .annotate(
             prs_merged=Count("id"),
             avg_cycle_time=Avg("cycle_time_hours"),
+            avg_pr_size=Avg(Coalesce(F("additions"), 0) + Coalesce(F("deletions"), 0)),
+            total_prs=Count("id"),
+            ai_assisted_count=Count("id", filter=Q(is_ai_assisted=True)),
         )
     )
 
@@ -84,30 +95,59 @@ def get_team_breakdown(
 
     pr_aggregates = list(query)
 
-    # Get all author IDs for batch survey lookup
+    # Get all author IDs for batch lookups
     author_ids = [row["author__id"] for row in pr_aggregates]
 
-    # Single aggregated query for AI percentages per author (replaces N+1 loop)
-    survey_aggregates = (
-        PRSurvey.objects.filter(
+    # Get reviews given per member (as reviewer, excluding AI reviews)
+    reviews_aggregates = (
+        PRReview.objects.filter(
             team=team,
-            pull_request__in=prs,
-            pull_request__author_id__in=author_ids,
+            reviewer_id__in=author_ids,
+            submitted_at__gte=start_date,
+            submitted_at__lte=end_date,
+            is_ai_review=False,
         )
-        .values("pull_request__author_id")
+        .values("reviewer_id")
+        .annotate(reviews_given=Count("id"))
+    )
+    reviews_by_member = {row["reviewer_id"]: row["reviews_given"] for row in reviews_aggregates}
+
+    # Get average review response time per reviewer
+    # This is the time from PR creation to the reviewer's first review on that PR
+    # We need to get the minimum submitted_at for each PR per reviewer
+    first_reviews = (
+        PRReview.objects.filter(
+            team=team,
+            reviewer_id__in=author_ids,
+            submitted_at__gte=start_date,
+            submitted_at__lte=end_date,
+            is_ai_review=False,
+            pull_request__pr_created_at__isnull=False,
+        )
+        .values("reviewer_id", "pull_request_id")
         .annotate(
-            total_surveys=Count("id"),
-            ai_assisted_count=Count("id", filter=Q(author_ai_assisted=True)),
+            first_review_at=Min("submitted_at"),
         )
+        .values("reviewer_id", "first_review_at", "pull_request__pr_created_at")
     )
 
-    # Build lookup dict for AI percentages
-    ai_pct_by_author = {}
-    for row in survey_aggregates:
-        author_id = row["pull_request__author_id"]
-        total = row["total_surveys"]
-        ai_count = row["ai_assisted_count"]
-        ai_pct_by_author[author_id] = round(ai_count * 100.0 / total, 2) if total > 0 else 0.0
+    # Calculate average response time per reviewer
+    response_times_by_member: dict[int, list[float]] = {}
+    for row in first_reviews:
+        reviewer_id = row["reviewer_id"]
+        pr_created = row["pull_request__pr_created_at"]
+        first_review = row["first_review_at"]
+        if pr_created and first_review:
+            response_hours = (first_review - pr_created).total_seconds() / 3600
+            if response_hours >= 0:  # Only positive response times
+                if reviewer_id not in response_times_by_member:
+                    response_times_by_member[reviewer_id] = []
+                response_times_by_member[reviewer_id].append(response_hours)
+
+    avg_response_by_member = {}
+    for reviewer_id, times in response_times_by_member.items():
+        if times:
+            avg_response_by_member[reviewer_id] = Decimal(str(round(sum(times) / len(times), 2)))
 
     # Build result list from aggregated data
     result = []
@@ -120,6 +160,11 @@ def get_team_breakdown(
         avatar_url = _avatar_url_from_github_id(github_id)
         initials = _compute_initials(display_name) if display_name else "??"
 
+        # Calculate AI percentage from is_ai_assisted field (not surveys)
+        total_prs = row["total_prs"]
+        ai_count = row["ai_assisted_count"]
+        ai_pct = round(ai_count * 100.0 / total_prs, 2) if total_prs > 0 else 0.0
+
         result.append(
             {
                 "member_id": author_id,
@@ -128,15 +173,78 @@ def get_team_breakdown(
                 "initials": initials,
                 "prs_merged": row["prs_merged"],
                 "avg_cycle_time": row["avg_cycle_time"] if row["avg_cycle_time"] else Decimal("0.00"),
-                "ai_pct": ai_pct_by_author.get(author_id, 0.0),
+                "avg_pr_size": int(row["avg_pr_size"]) if row["avg_pr_size"] else 0,
+                "reviews_given": reviews_by_member.get(author_id, 0),
+                "avg_review_response_hours": avg_response_by_member.get(author_id, Decimal("0.00")),
+                "ai_pct": ai_pct,
             }
         )
 
-    # Apply Python-based sorting if needed (for ai_pct which can't be sorted in DB)
+    # Apply Python-based sorting if needed
     if sort_by == "ai_pct":
         result.sort(key=lambda x: x["ai_pct"], reverse=(order == "desc"))
+    elif sort_by == "reviews":
+        result.sort(key=lambda x: x["reviews_given"], reverse=(order == "desc"))
+    elif sort_by == "response_time":
+        result.sort(key=lambda x: x["avg_review_response_hours"], reverse=(order == "desc"))
 
     return result
+
+
+def get_team_averages(
+    team: Team,
+    start_date: date,
+    end_date: date,
+    repo: str | None = None,
+) -> dict:
+    """Get team-wide averages for comparison.
+
+    Args:
+        team: Team instance
+        start_date: Start date (inclusive)
+        end_date: End date (inclusive)
+        repo: Optional repository to filter by (owner/repo format)
+
+    Returns:
+        dict with keys:
+            - avg_prs (float): Average PRs per member
+            - avg_cycle_time (float): Average cycle time in hours
+            - avg_pr_size (float): Average PR size in lines
+            - avg_reviews (float): Average reviews given per member
+            - avg_response_time (float): Average review response time in hours
+            - avg_ai_pct (float): Average AI adoption percentage
+    """
+    # Get breakdown data for all members
+    breakdown = get_team_breakdown(team, start_date, end_date, repo=repo)
+
+    if not breakdown:
+        return {
+            "avg_prs": 0,
+            "avg_cycle_time": 0.0,
+            "avg_pr_size": 0.0,
+            "avg_reviews": 0.0,
+            "avg_response_time": 0.0,
+            "avg_ai_pct": 0.0,
+        }
+
+    num_members = len(breakdown)
+
+    # Calculate averages across all members
+    total_prs = sum(m["prs_merged"] for m in breakdown)
+    total_cycle_time = sum(float(m["avg_cycle_time"]) for m in breakdown)
+    total_pr_size = sum(m["avg_pr_size"] for m in breakdown)
+    total_reviews = sum(m["reviews_given"] for m in breakdown)
+    total_response_time = sum(float(m["avg_review_response_hours"]) for m in breakdown)
+    total_ai_pct = sum(m["ai_pct"] for m in breakdown)
+
+    return {
+        "avg_prs": round(total_prs / num_members, 1),
+        "avg_cycle_time": round(total_cycle_time / num_members, 2),
+        "avg_pr_size": round(total_pr_size / num_members, 1),
+        "avg_reviews": round(total_reviews / num_members, 1),
+        "avg_response_time": round(total_response_time / num_members, 2),
+        "avg_ai_pct": round(total_ai_pct / num_members, 2),
+    }
 
 
 def get_copilot_by_member(
