@@ -1,5 +1,5 @@
 .section {
-  @apply m-2;
+  @apply pl-2 pr-6 py-2;
 }
 
 .help {
@@ -8,5 +8,5 @@
 }
 
 .app-card {
-  @apply lg:shadow-md p-3 mb-2 mt-2 lg:mt-0 lg:p-5;
+  @apply lg:shadow-md p-3 mb-2 mt-2 lg:mt-0 lg:p-4;
 }
