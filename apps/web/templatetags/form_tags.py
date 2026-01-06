@@ -57,12 +57,10 @@ def render_select_input(form_field, **attrs):
 def render_checkbox_input(form_field, **attrs):
     CHECKBOX_INPUT_TEMPLATE = """
     <div class="w-full mt-2" {% include "django/forms/attrs.html" %}>
-      <div>
-        <label class="font-bold cursor-pointer flex items-center gap-2">
-          {{ form_field }}
-          {{ form_field.label }}
-        </label>
-      </div>
+      <label class="cursor-pointer inline-flex items-center gap-2">
+        {{ form_field }}
+        <span class="text-sm text-base-content/90">{{ form_field.label }}</span>
+      </label>
       <small class="pg-text-muted">{{ form_field.help_text|safe }}</small>
       {{ form_field.errors }}
     </div>
