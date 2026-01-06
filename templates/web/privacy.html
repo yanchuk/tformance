@@ -1,0 +1,245 @@
+{% extends "web/base.html" %}
+{% load static %}
+{% block body %}
+<section class="section mt-7 mb-12">
+  <div class="container max-w-4xl">
+    <div class="prose prose-lg max-w-none">
+      <h1 class="text-3xl font-bold text-base-content mb-2">Privacy Policy</h1>
+      <p class="text-base-content/60 text-sm mb-8">Last updated: January 6, 2026</p>
+
+      <h2 class="text-xl font-semibold text-base-content mt-8 mb-4">1. Introduction</h2>
+      <p class="text-base-content/80 mb-4">
+        Welcome to Tformance. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our AI impact analytics platform (the "Service"). Please read this privacy policy carefully. If you do not agree with the terms of this privacy policy, please do not access the Service.
+      </p>
+      <p class="text-base-content/80 mb-4">
+        Tformance is a B2B SaaS platform that helps engineering leaders understand if AI coding tools are improving team performance by connecting to GitHub to correlate AI usage with delivery metrics.
+      </p>
+
+      <h2 class="text-xl font-semibold text-base-content mt-8 mb-4">2. Information We Collect</h2>
+
+      <h3 class="text-lg font-medium text-base-content mt-6 mb-3">2.1 Account Information</h3>
+      <p class="text-base-content/80 mb-4">
+        When you register for an account, we collect:
+      </p>
+      <ul class="list-disc list-inside text-base-content/80 mb-4 space-y-1">
+        <li>Email address</li>
+        <li>Name (if provided)</li>
+        <li>Organization/team name</li>
+        <li>Authentication credentials (OAuth tokens for connected services)</li>
+      </ul>
+
+      <h3 class="text-lg font-medium text-base-content mt-6 mb-3">2.2 Integration Data</h3>
+      <p class="text-base-content/80 mb-4">
+        When you connect third-party services, we access and process:
+      </p>
+      <ul class="list-disc list-inside text-base-content/80 mb-4 space-y-1">
+        <li><strong>GitHub:</strong> Repository metadata, pull requests, commits, code reviews, organization members, and GitHub Copilot usage metrics (if available)</li>
+      </ul>
+      <p class="text-base-content/80 mb-4">
+        We do not store the full content of your source code. We analyze pull request titles, descriptions, and file metadata to detect AI-assisted development patterns.
+      </p>
+
+      <h3 class="text-lg font-medium text-base-content mt-6 mb-3">2.3 Usage Data</h3>
+      <p class="text-base-content/80 mb-4">
+        We automatically collect certain information when you access the Service, including:
+      </p>
+      <ul class="list-disc list-inside text-base-content/80 mb-4 space-y-1">
+        <li>Browser type and version</li>
+        <li>Operating system</li>
+        <li>Pages visited and features used</li>
+        <li>Time and date of visits</li>
+        <li>Error logs and performance data</li>
+      </ul>
+
+      <h2 class="text-xl font-semibold text-base-content mt-8 mb-4">3. How We Use Your Information</h2>
+      <p class="text-base-content/80 mb-4">
+        We use the information we collect to:
+      </p>
+      <ul class="list-disc list-inside text-base-content/80 mb-4 space-y-1">
+        <li>Provide, maintain, and improve the Service</li>
+        <li>Calculate and display engineering metrics and AI impact analytics</li>
+        <li>Analyze pull requests using AI/LLM to detect AI-assisted development</li>
+        <li>Send transactional emails (account verification, password resets, notifications)</li>
+        <li>Process payments and manage subscriptions</li>
+        <li>Respond to customer support requests</li>
+        <li>Monitor and analyze usage patterns to improve the Service</li>
+        <li>Detect and prevent fraud or abuse</li>
+      </ul>
+
+      <h2 class="text-xl font-semibold text-base-content mt-8 mb-4">4. AI/LLM Data Processing</h2>
+      <p class="text-base-content/80 mb-4">
+        Our Service uses Large Language Models (LLMs) to analyze pull request data and detect AI-assisted development patterns. Specifically:
+      </p>
+      <ul class="list-disc list-inside text-base-content/80 mb-4 space-y-1">
+        <li>Pull request titles, descriptions, and file metadata may be sent to our LLM provider (Groq) for analysis</li>
+        <li>LLM outputs are used to categorize work and detect AI tool usage patterns</li>
+        <li>We do not use your data to train LLM models</li>
+        <li>LLM analysis results may not always be accurate; they should be used as indicators, not definitive assessments</li>
+      </ul>
+
+      <h2 class="text-xl font-semibold text-base-content mt-8 mb-4">5. Data Sharing and Subprocessors</h2>
+      <p class="text-base-content/80 mb-4">
+        We share your information with the following categories of third parties:
+      </p>
+
+      <h3 class="text-lg font-medium text-base-content mt-6 mb-3">5.1 Subprocessors</h3>
+      <div class="overflow-x-auto mb-6">
+        <table class="table table-zebra w-full text-sm">
+          <thead>
+            <tr class="text-base-content">
+              <th class="bg-base-200">Service</th>
+              <th class="bg-base-200">Purpose</th>
+              <th class="bg-base-200">Data Processed</th>
+              <th class="bg-base-200">Location</th>
+            </tr>
+          </thead>
+          <tbody class="text-base-content/80">
+            <tr>
+              <td>Heroku (Salesforce)</td>
+              <td>Hosting/Infrastructure</td>
+              <td>All application data, database, caching</td>
+              <td>USA</td>
+            </tr>
+            <tr>
+              <td>Groq</td>
+              <td>LLM Processing</td>
+              <td>PR descriptions for AI analysis</td>
+              <td>USA</td>
+            </tr>
+            <tr>
+              <td>Resend</td>
+              <td>Email Service</td>
+              <td>Transactional emails</td>
+              <td>USA</td>
+            </tr>
+            <tr>
+              <td>PostHog</td>
+              <td>Product Analytics</td>
+              <td>Usage events, feature flags</td>
+              <td>USA</td>
+            </tr>
+            <tr>
+              <td>Google Analytics</td>
+              <td>Web Analytics</td>
+              <td>Page views, user interactions</td>
+              <td>USA</td>
+            </tr>
+            <tr>
+              <td>Sentry</td>
+              <td>Error Tracking</td>
+              <td>Application errors, performance</td>
+              <td>USA</td>
+            </tr>
+            <tr>
+              <td>Cloudflare</td>
+              <td>Infrastructure</td>
+              <td>CDN, bot detection</td>
+              <td>Global</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 class="text-lg font-medium text-base-content mt-6 mb-3">5.2 Other Disclosures</h3>
+      <p class="text-base-content/80 mb-4">
+        We may also disclose your information:
+      </p>
+      <ul class="list-disc list-inside text-base-content/80 mb-4 space-y-1">
+        <li>To comply with legal obligations or valid legal processes</li>
+        <li>To protect our rights, privacy, safety, or property</li>
+        <li>In connection with a merger, acquisition, or sale of assets</li>
+        <li>With your consent or at your direction</li>
+      </ul>
+
+      <h2 class="text-xl font-semibold text-base-content mt-8 mb-4">6. International Data Transfers</h2>
+      <p class="text-base-content/80 mb-4">
+        Your information may be transferred to and processed in the United States and other countries where our service providers operate. These countries may have different data protection laws than your country of residence.
+      </p>
+      <p class="text-base-content/80 mb-4">
+        For transfers from the European Economic Area (EEA), United Kingdom, or Switzerland, we rely on:
+      </p>
+      <ul class="list-disc list-inside text-base-content/80 mb-4 space-y-1">
+        <li>Standard Contractual Clauses approved by the European Commission</li>
+        <li>EU-U.S. Data Privacy Framework (where applicable)</li>
+        <li>Other lawful transfer mechanisms as required</li>
+      </ul>
+
+      <h2 class="text-xl font-semibold text-base-content mt-8 mb-4">7. Data Retention</h2>
+      <p class="text-base-content/80 mb-4">
+        We retain your information for as long as your account is active or as needed to provide the Service. Specifically:
+      </p>
+      <ul class="list-disc list-inside text-base-content/80 mb-4 space-y-1">
+        <li><strong>Account data:</strong> Retained while account is active, deleted within 30 days of account deletion</li>
+        <li><strong>Integration data:</strong> Retained while integrations are connected, deleted upon disconnection or account deletion</li>
+        <li><strong>Usage logs:</strong> Retained for up to 90 days for debugging and security purposes</li>
+        <li><strong>Billing records:</strong> Retained as required by law (typically 7 years)</li>
+      </ul>
+
+      <h2 class="text-xl font-semibold text-base-content mt-8 mb-4">8. Your Rights (GDPR)</h2>
+      <p class="text-base-content/80 mb-4">
+        If you are located in the European Economic Area (EEA), United Kingdom, or Switzerland, you have certain rights regarding your personal data:
+      </p>
+      <ul class="list-disc list-inside text-base-content/80 mb-4 space-y-1">
+        <li><strong>Access:</strong> Request a copy of your personal data</li>
+        <li><strong>Rectification:</strong> Request correction of inaccurate data</li>
+        <li><strong>Erasure:</strong> Request deletion of your data ("right to be forgotten")</li>
+        <li><strong>Portability:</strong> Request transfer of your data to another service</li>
+        <li><strong>Restriction:</strong> Request restriction of processing</li>
+        <li><strong>Objection:</strong> Object to certain types of processing</li>
+        <li><strong>Withdraw Consent:</strong> Withdraw consent at any time where processing is based on consent</li>
+      </ul>
+      <p class="text-base-content/80 mb-4">
+        To exercise these rights, contact us at <a href="mailto:support@tformance.com" class="link text-primary">support@tformance.com</a>. We will respond to your request within 30 days.
+      </p>
+
+      <h2 class="text-xl font-semibold text-base-content mt-8 mb-4">9. Security</h2>
+      <p class="text-base-content/80 mb-4">
+        We implement appropriate technical and organizational measures to protect your information, including:
+      </p>
+      <ul class="list-disc list-inside text-base-content/80 mb-4 space-y-1">
+        <li>Encryption of data in transit (TLS/SSL) and at rest</li>
+        <li>Encryption of OAuth tokens using Fernet symmetric encryption</li>
+        <li>Access controls and authentication requirements</li>
+        <li>Regular security assessments and monitoring</li>
+        <li>Hosting on SOC 2 compliant infrastructure</li>
+      </ul>
+      <p class="text-base-content/80 mb-4">
+        However, no method of transmission over the Internet or electronic storage is 100% secure. We cannot guarantee absolute security.
+      </p>
+
+      <h2 class="text-xl font-semibold text-base-content mt-8 mb-4">10. Cookies and Tracking</h2>
+      <p class="text-base-content/80 mb-4">
+        We use cookies and similar technologies to:
+      </p>
+      <ul class="list-disc list-inside text-base-content/80 mb-4 space-y-1">
+        <li>Maintain your session and authentication state</li>
+        <li>Remember your preferences</li>
+        <li>Analyze usage patterns (via PostHog)</li>
+        <li>Prevent fraud (via Cloudflare Turnstile)</li>
+      </ul>
+      <p class="text-base-content/80 mb-4">
+        You can control cookies through your browser settings. Disabling certain cookies may affect the functionality of the Service.
+      </p>
+
+      <h2 class="text-xl font-semibold text-base-content mt-8 mb-4">11. Children's Privacy</h2>
+      <p class="text-base-content/80 mb-4">
+        The Service is not intended for individuals under 18 years of age. We do not knowingly collect personal information from children. If you become aware that a child has provided us with personal information, please contact us.
+      </p>
+
+      <h2 class="text-xl font-semibold text-base-content mt-8 mb-4">12. Changes to This Policy</h2>
+      <p class="text-base-content/80 mb-4">
+        We may update this Privacy Policy from time to time. We will notify you of any material changes by posting the new Privacy Policy on this page and updating the "Last updated" date. Your continued use of the Service after any changes constitutes acceptance of the updated policy.
+      </p>
+
+      <h2 class="text-xl font-semibold text-base-content mt-8 mb-4">13. Contact Us</h2>
+      <p class="text-base-content/80 mb-4">
+        If you have questions about this Privacy Policy or our data practices, please contact us at:
+      </p>
+      <p class="text-base-content/80 mb-4">
+        <strong>Email:</strong> <a href="mailto:support@tformance.com" class="link text-primary">support@tformance.com</a>
+      </p>
+
+    </div>
+  </div>
+</section>
+{% endblock %}

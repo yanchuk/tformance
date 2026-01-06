@@ -1,6 +1,11 @@
 {% load i18n %}
 <footer class="mt-10 mb-4">
-  <div class="text-center text-base-content/70">
+  <div class="text-center text-base-content/70 space-y-2">
+    <p class="text-sm">
+      <a href="{% url 'web:terms' %}" class="hover:text-primary transition-colors">{% translate "Terms of Service" %}</a>
+      <span class="mx-2">&middot;</span>
+      <a href="{% url 'web:privacy' %}" class="hover:text-primary transition-colors">{% translate "Privacy Policy" %}</a>
+    </p>
     <p>{{project_meta.NAME}} &mdash; {% translate "Copyright" %} <span id="copyright-year">2024</span></p>
   </div>
 </footer>

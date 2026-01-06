@@ -1,11 +1,213 @@
 {% extends "web/base.html" %}
 {% load static %}
 {% block body %}
-<section class="section mt-7">
-  <div class="container">
-    <div class="pg-content">
-      <h1>Terms Of Service</h1>
-      <p>Your site's terms go here.</p>
+<section class="section mt-7 mb-12">
+  <div class="container max-w-4xl">
+    <div class="prose prose-lg max-w-none">
+      <h1 class="text-3xl font-bold text-base-content mb-2">Terms of Service</h1>
+      <p class="text-base-content/60 text-sm mb-8">Last updated: January 6, 2026</p>
+
+      <h2 class="text-xl font-semibold text-base-content mt-8 mb-4">1. Acceptance of Terms</h2>
+      <p class="text-base-content/80 mb-4">
+        <strong>IMPORTANT - READ CAREFULLY:</strong> BY CREATING AN ACCOUNT OR BY UTILIZING THE TFORMANCE SERVICE, YOU AGREE TO BE BOUND BY THESE TERMS AND CONDITIONS.
+      </p>
+      <p class="text-base-content/80 mb-4">
+        TFORMANCE IS OFFERED ONLY FOR BUSINESS OR PROFESSIONAL USAGE.
+      </p>
+      <p class="text-base-content/80 mb-4">
+        Welcome to Tformance. These Terms of Service (the "Terms" or "Agreement") govern your use of the Tformance platform and services (collectively, the "Service") operated by Tformance (referred to as "Tformance", the "Company", "we", or "our" as applicable).
+      </p>
+      <p class="text-base-content/80 mb-4">
+        BY VISITING, VIEWING, OR USING THE SERVICE, YOU BEING A BUSINESS-TO-BUSINESS CUSTOMER, PROFESSIONAL, OR PUBLIC INSTITUTION (REFERRED TO AS "CUSTOMER", "YOU", OR "YOUR" AS APPLICABLE) AGREE TO THESE TERMS OF SERVICE AND TO OUR <a href="{% url 'web:privacy' %}" class="link text-primary">PRIVACY POLICY</a>. USING THE SERVICE ON BEHALF OF AN ENTITY, YOU AGREE THAT YOU HAVE THE AUTHORITY TO AGREE TO THESE TERMS OF SERVICE ON BEHALF OF THE ENTITY, AND "YOU" REFERS TO THE ENTITY. IF YOU DO NOT AGREE WITH THESE TERMS OF SERVICE, DO NOT USE THE SERVICE.
+      </p>
+      <p class="text-base-content/80 mb-4">
+        Tformance reserves the right to update and change these Terms of Service at any time. When such changes are made, we will publish the latest version on our website and update the "Last updated" date. By continuing to use or log in to the Service after the Terms of Service have changed, you indicate your agreement to the revised Terms. If you do not agree to these changes, you can stop using the Service at any time.
+      </p>
+
+      <h2 class="text-xl font-semibold text-base-content mt-8 mb-4">2. Service Description</h2>
+      <p class="text-base-content/80 mb-4">
+        Tformance is an AI impact analytics platform that helps engineering leaders understand if AI coding tools are improving team performance. The Service provides:
+      </p>
+      <ul class="list-disc list-inside text-base-content/80 mb-4 space-y-1">
+        <li>Integration with GitHub to collect engineering metrics</li>
+        <li>AI-powered analysis of pull requests to detect AI-assisted development patterns</li>
+        <li>Dashboard and reporting tools for engineering metrics and AI impact assessment</li>
+        <li>Team performance insights and analytics</li>
+      </ul>
+      <p class="text-base-content/80 mb-4">
+        Subject to these Terms of Service, Tformance grants to you and each Authorized End User (as defined below) a worldwide, non-exclusive, non-sublicensable, and non-transferable license to use the Service Content solely for purposes of using the Service.
+      </p>
+
+      <h2 class="text-xl font-semibold text-base-content mt-8 mb-4">3. AI Features Disclaimer</h2>
+      <p class="text-base-content/80 mb-4">
+        The Service utilizes artificial intelligence and machine learning features ("AI Features") to analyze pull requests and detect AI-assisted development patterns. Please be aware that:
+      </p>
+      <ul class="list-disc list-inside text-base-content/80 mb-4 space-y-1">
+        <li>Outputs of AI Features may not always be accurate or appropriate for every situation</li>
+        <li>We do not guarantee the accuracy, completeness, or suitability of results provided by AI Features</li>
+        <li>We shall not be liable for any damages, losses, or expenses arising from reliance on AI-generated results</li>
+        <li>You assume full responsibility for verifying the accuracy of any information or results provided through AI Features</li>
+        <li>AI analysis results should be used as indicators, not definitive assessments</li>
+      </ul>
+
+      <h2 class="text-xl font-semibold text-base-content mt-8 mb-4">4. User Content and Data</h2>
+      <p class="text-base-content/80 mb-4">
+        You or an Authorized End User may connect third-party services and provide data when using the Service ("User Content"). Subject to these Terms of Service, you grant Tformance an irrevocable, perpetual, worldwide, non-exclusive, non-sublicensable, royalty-free, and transferable right and license to reproduce, encode, store, copy, transmit, display, create derivative works of, and otherwise use User Content solely in connection with offering the Service to you, consistent with our <a href="{% url 'web:privacy' %}" class="link text-primary">Privacy Policy</a>.
+      </p>
+      <p class="text-base-content/80 mb-4">
+        Tformance does not claim ownership over any User Content. Your User Content belongs to you. However, by connecting integrations to the Service, you agree that Tformance may access, store, and process your data as necessary to provide the Service.
+      </p>
+      <p class="text-base-content/80 mb-4">
+        Tformance reserves the right to remove or refuse to process any Content that violates these Terms of Service or is otherwise objectionable. Tformance also reserves the right to access, read, preserve, and disclose any information as reasonably necessary to (a) satisfy any applicable law or legal process, (b) enforce these Terms of Service, (c) detect, prevent, or address fraud, security, or technical issues, (d) respond to user support requests, or (e) protect the rights, property, or safety of Tformance, its Customers, users, and the public.
+      </p>
+
+      <h2 class="text-xl font-semibold text-base-content mt-8 mb-4">5. Restrictions on Use</h2>
+      <p class="text-base-content/80 mb-4">
+        You agree that you will not:
+      </p>
+      <ul class="list-disc list-inside text-base-content/80 mb-4 space-y-1">
+        <li>Use the Service for any unlawful purpose or in violation of any applicable laws</li>
+        <li>Impersonate any person or entity, or falsely state or misrepresent your affiliation</li>
+        <li>Upload, post, or transmit any content that infringes intellectual property rights</li>
+        <li>Upload or transmit software viruses or malicious code</li>
+        <li>Interfere with or disrupt the Service or connected networks</li>
+        <li>Attempt to gain unauthorized access to the Service or related systems</li>
+        <li>Use the Service to collect data about other users without their consent</li>
+        <li>Reverse engineer, decompile, or disassemble any aspect of the Service</li>
+        <li>Exceed the scope of the Service plan you have subscribed to</li>
+        <li>Share account credentials or allow unauthorized users to access your account</li>
+        <li>Resell, redistribute, or commercially exploit the Service without written permission</li>
+      </ul>
+
+      <h2 class="text-xl font-semibold text-base-content mt-8 mb-4">6. Account Registration</h2>
+      <p class="text-base-content/80 mb-4">
+        To use the Service, you must have a valid registration account ("Account"). To acquire an Account, you must provide Tformance with an email address and other information ("Registration Data"). You are responsible for maintaining the confidentiality of access data for your Account and are fully responsible for all activities that occur under your Account.
+      </p>
+      <p class="text-base-content/80 mb-4">
+        You agree to (a) immediately notify Tformance at <a href="mailto:support@tformance.com" class="link text-primary">support@tformance.com</a> of any unauthorized use of your Account or any other breach of security, and (b) ensure that you exit from your Account at the end of each session. Tformance cannot and will not be liable for any loss or damage arising from your failure to comply with this section.
+      </p>
+      <p class="text-base-content/80 mb-4">
+        By using the Service, you represent and warrant that you are the authorized representative of a business entity, professional organization, or public institution. No one under the age of 18 may use the Service.
+      </p>
+      <p class="text-base-content/80 mb-4">
+        "Authorized End User" means any end user associated with your organization for whom you establish access credentials to the Service.
+      </p>
+
+      <h2 class="text-xl font-semibold text-base-content mt-8 mb-4">7. Subscription Plans and Billing</h2>
+      <p class="text-base-content/80 mb-4">
+        We offer both free and paid subscription plans. The free plan includes limited features and usage limits as described on our pricing page.
+      </p>
+      <p class="text-base-content/80 mb-4">
+        If you choose to subscribe to a paid plan ("Paid Plan"), you will provide Tformance with your payment information ("Billing Data"). You must provide current, complete, and accurate Billing Data and promptly update it to keep it current.
+      </p>
+      <p class="text-base-content/80 mb-4">
+        Subscription Fees are exclusive of any applicable taxes, levies, duties, or other similar exactions. You will pay all taxes associated with this Agreement excluding any taxes based on our net income.
+      </p>
+      <p class="text-base-content/80 mb-4">
+        As long as your Account remains active and you are subscribed to a Paid Plan, you will be charged the Subscription Fee even if you do not use the Service. You may, however, cancel your Paid Plan at any time.
+      </p>
+
+      <h2 class="text-xl font-semibold text-base-content mt-8 mb-4">8. Free Plan Limitations</h2>
+      <p class="text-base-content/80 mb-4">
+        The free subscription plan is subject to the following limitations:
+      </p>
+      <ul class="list-disc list-inside text-base-content/80 mb-4 space-y-1">
+        <li>Limited number of repositories that can be analyzed</li>
+        <li>Restricted historical data access</li>
+        <li>Limited team member seats</li>
+        <li>Reduced API rate limits</li>
+        <li>Basic features only; advanced analytics and integrations may require a Paid Plan</li>
+      </ul>
+      <p class="text-base-content/80 mb-4">
+        Tformance reserves the right to modify free plan features and limitations at any time.
+      </p>
+
+      <h2 class="text-xl font-semibold text-base-content mt-8 mb-4">9. Data Processing and GDPR</h2>
+      <p class="text-base-content/80 mb-4">
+        To the extent that Tformance processes any Personal Data as part of Customer Data that is subject to the General Data Protection Regulation (the "GDPR"), we will process such data in accordance with our <a href="{% url 'web:privacy' %}" class="link text-primary">Privacy Policy</a>.
+      </p>
+      <p class="text-base-content/80 mb-4">
+        You agree, represent, and warrant to Tformance that:
+      </p>
+      <ul class="list-disc list-inside text-base-content/80 mb-4 space-y-1">
+        <li>You will comply with all laws and regulations applicable to your use of the Service</li>
+        <li>You will obtain and maintain all necessary consents required to lawfully transfer data to the Service</li>
+        <li>You have the authority to connect third-party services and share that data with Tformance</li>
+      </ul>
+
+      <h2 class="text-xl font-semibold text-base-content mt-8 mb-4">10. Termination</h2>
+      <p class="text-base-content/80 mb-4">
+        Tformance may, at its sole discretion, at any time and for any reason, terminate the Service, terminate this Agreement, or suspend or terminate your Account. In the event of suspension or termination, your account will be disabled and you may not be granted access to your Account or any files or other Content contained in your Account.
+      </p>
+      <p class="text-base-content/80 mb-4">
+        If you terminate your Account and request that Tformance delete your User Content, we will make all reasonable efforts to do so within 30 days.
+      </p>
+
+      <h2 class="text-xl font-semibold text-base-content mt-8 mb-4">11. Intellectual Property</h2>
+      <p class="text-base-content/80 mb-4">
+        The Service and any software associated with the Service are protected by copyright laws and international copyright treaties, as well as other intellectual property laws and treaties. Tformance retains ownership of all proprietary rights in the Service and in all trade names, trademarks, and service marks associated with the Service.
+      </p>
+      <p class="text-base-content/80 mb-4">
+        You may not reverse engineer, reverse compile, or otherwise reduce to human-readable form any software associated with the Service.
+      </p>
+
+      <h2 class="text-xl font-semibold text-base-content mt-8 mb-4">12. Disclaimer of Warranties</h2>
+      <p class="text-base-content/80 mb-4">
+        THE SERVICE IS PROVIDED "AS IS" AND TFORMANCE EXPRESSLY DISCLAIMS ALL WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY WARRANTY OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, OR NON-INFRINGEMENT. TFORMANCE MAKES NO WARRANTY OR REPRESENTATION REGARDING THE RESULTS THAT MAY BE OBTAINED FROM THE USE OF THE SERVICE, THE SECURITY OF THE SERVICE, OR THAT THE SERVICE WILL MEET ANY USER'S REQUIREMENTS.
+      </p>
+      <p class="text-base-content/80 mb-4">
+        USE OF THE SERVICE IS AT YOUR SOLE RISK. YOU WILL BE SOLELY RESPONSIBLE FOR ANY DAMAGE TO YOU RESULTING FROM THE USE OF THE SERVICE.
+      </p>
+
+      <h2 class="text-xl font-semibold text-base-content mt-8 mb-4">13. Limitation of Liability</h2>
+      <p class="text-base-content/80 mb-4">
+        TO THE FULLEST EXTENT PERMITTED BY LAW, TFORMANCE SHALL NOT BE LIABLE FOR ANY INDIRECT, SPECIAL, INCIDENTAL, CONSEQUENTIAL, OR EXEMPLARY DAMAGES INCLUDING, WITHOUT LIMITATION, DAMAGES FOR LOSS OF BUSINESS PROFITS, BUSINESS INTERRUPTION, LOSS OF BUSINESS INFORMATION, OR ANY OTHER PECUNIARY LOSS OR DAMAGE.
+      </p>
+      <p class="text-base-content/80 mb-4">
+        IN NO EVENT SHALL THE AGGREGATE LIABILITY OF TFORMANCE ARISING OUT OF OR RELATED TO YOUR USE OF THE SERVICE EXCEED THE GREATER OF THE AMOUNT YOU PAID TO USE THE APPLICABLE SERVICES IN THE PAST TWELVE (12) MONTHS, OR $500.
+      </p>
+
+      <h2 class="text-xl font-semibold text-base-content mt-8 mb-4">14. Indemnification</h2>
+      <p class="text-base-content/80 mb-4">
+        You shall, at your expense, defend, indemnify, and hold harmless Tformance and its affiliates from and against any and all third-party demands, liabilities, costs, expenses (including all reasonable attorneys' fees), losses, damages, judgments, or settlements arising or resulting from:
+      </p>
+      <ul class="list-disc list-inside text-base-content/80 mb-4 space-y-1">
+        <li>Your use of the Service or your Account</li>
+        <li>Your noncompliance with applicable law or any provision of these Terms</li>
+        <li>Your willful misconduct or gross negligence</li>
+        <li>Your infringement or violation of any intellectual property right or proprietary right</li>
+        <li>Your breach of these Terms of Service</li>
+      </ul>
+
+      <h2 class="text-xl font-semibold text-base-content mt-8 mb-4">15. Governing Law and Dispute Resolution</h2>
+      <p class="text-base-content/80 mb-4">
+        This Agreement shall be governed by and construed in accordance with the laws of the State of Delaware, United States of America, without regard for choice of law provisions.
+      </p>
+      <p class="text-base-content/80 mb-4">
+        Any controversy or claim arising out of or relating to this Agreement, or the breach thereof, shall be settled by arbitration administered by the American Arbitration Association in accordance with its Commercial Arbitration Rules. The seat of arbitration shall be Delaware. The language shall be English. The number of arbitrators shall be one.
+      </p>
+
+      <h2 class="text-xl font-semibold text-base-content mt-8 mb-4">16. Modifications to Service</h2>
+      <p class="text-base-content/80 mb-4">
+        Tformance reserves the right to modify or discontinue the Service (or any part thereof) temporarily or permanently with or without notice and at any time. You agree that Tformance shall not be liable to you or to any third party for any modification, suspension, termination, or discontinuance of the Service.
+      </p>
+
+      <h2 class="text-xl font-semibold text-base-content mt-8 mb-4">17. General Provisions</h2>
+      <p class="text-base-content/80 mb-4">
+        This Agreement embodies the entire understanding and agreement between the parties respecting the subject matter of this Agreement and supersedes any and all prior understandings and agreements. If any provision of this Agreement is held to be invalid or unenforceable, the other provisions will remain unimpaired and the invalid provision will be deemed modified so that it is valid and enforceable to the maximum extent permitted by law.
+      </p>
+      <p class="text-base-content/80 mb-4">
+        Failure by either party to exercise any of its rights under this Agreement will not be deemed a waiver of such rights. No agency, partnership, joint venture, or employee-employer relationship is intended or created by these Terms of Service.
+      </p>
+
+      <h2 class="text-xl font-semibold text-base-content mt-8 mb-4">18. Contact Information</h2>
+      <p class="text-base-content/80 mb-4">
+        All notices or other correspondence to Tformance under this Agreement must be sent to:
+      </p>
+      <p class="text-base-content/80 mb-4">
+        <strong>Email:</strong> <a href="mailto:support@tformance.com" class="link text-primary">support@tformance.com</a>
+      </p>
+
     </div>
   </div>
 </section>

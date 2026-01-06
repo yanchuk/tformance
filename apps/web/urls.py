@@ -8,7 +8,9 @@ urlpatterns = [
     path("", views.home, name="home"),
     path("report/", views.ai_impact_report, name="ai_impact_report"),
     path("terms/", TemplateView.as_view(template_name="web/terms.html"), name="terms"),
+    path("privacy/", TemplateView.as_view(template_name="web/privacy.html"), name="privacy"),
     path("robots.txt", TemplateView.as_view(template_name="robots.txt", content_type="text/plain"), name="robots.txt"),
+    path("llms.txt", TemplateView.as_view(template_name="llms.txt", content_type="text/plain"), name="llms.txt"),
     # these views are just for testing error pages
     # actual error handling is handled by Django: https://docs.djangoproject.com/en/stable/ref/views/#error-views
     path("400/", TemplateView.as_view(template_name="400.html"), name="400"),

@@ -28,11 +28,12 @@ class TeamSignupForm(TurnstileSignupForm):
         self.fields["password1"].help_text = ""
         # Use format_html instead of mark_safe for safer HTML construction
         terms_url = reverse("web:terms")
-        terms_text = _("Terms and Conditions")
+        privacy_url = reverse("web:privacy")
         self.fields["terms_agreement"].label = format_html(
-            'I agree to the <a class="link" href="{}" target="_blank">{}</a>',
+            'I agree to the <a class="link" href="{}" target="_blank">Terms of Service</a> '
+            'and <a class="link" href="{}" target="_blank">Privacy Policy</a>',
             terms_url,
-            terms_text,
+            privacy_url,
         )
 
     def clean(self):
