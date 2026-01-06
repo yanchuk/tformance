@@ -18,7 +18,7 @@ services:
     container_name: tformance-db
     restart: unless-stopped
     volumes:
-      - tformance_postgres_data:/var/lib/postgresql/data
+      - /mnt/user/appdata/tformance-db:/var/lib/postgresql/data
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-tformance}
       POSTGRES_USER: ${POSTGRES_USER:-tformance}
@@ -40,7 +40,7 @@ services:
     restart: unless-stopped
     command: redis-server --appendonly yes
     volumes:
-      - tformance_redis_data:/data
+      - /mnt/user/appdata/tformance-redis:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -131,6 +131,8 @@ services:
       sh -c "
         echo 'Running database migrations...' &&
         python manage.py migrate --noinput &&
+        echo 'Bootstrapping Celery scheduled tasks...' &&
+        python manage.py bootstrap_celery_tasks --remove-stale &&
         echo 'Starting gunicorn...' &&
         exec gunicorn --bind 0.0.0.0:8000 --workers 2 --threads 4 --timeout 120 tformance.asgi:application -k uvicorn.workers.UvicornWorker
       "
@@ -207,15 +209,6 @@ services:
       - "com.centurylinklabs.watchtower.enable=true"
     networks:
       - tformance-internal
-
-# =============================================================================
-# VOLUMES (Persistent Data)
-# =============================================================================
-volumes:
-  tformance_postgres_data:
-    name: tformance_postgres_data
-  tformance_redis_data:
-    name: tformance_redis_data
 
 # =============================================================================
 # NETWORKS

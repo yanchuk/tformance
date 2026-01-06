@@ -385,11 +385,11 @@
       </div>
 
       {% if copilot_available %}
-        <div class="flex items-center gap-2 mb-4 p-3 bg-violet-500/10 rounded-lg border border-violet-500/30">
-          <svg class="w-5 h-5 text-violet-600 dark:text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div class="app-status-pill-available mb-4">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
           </svg>
-          <span class="text-violet-600 dark:text-violet-400 font-medium">{% translate "Available" %}</span>
+          <span>{% translate "Available" %}</span>
         </div>
 
         <div class="space-y-2 mb-4">

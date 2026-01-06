@@ -1,11 +1,10 @@
 {% load i18n %}
 {# Partial for sync status - used by HTMX polling and manual sync trigger #}
+{# Note: hx-* attributes always present to prevent flickering; trigger controls polling #}
 <div id="sync-status-{{ repo.id }}" class="flex flex-wrap gap-1 items-center"
-     {% if repo.sync_status == 'syncing' %}
-       hx-get="{% url 'integrations:github_repo_sync_progress' repo_id=repo.id %}"
-       hx-trigger="every 5s"
-       hx-swap="outerHTML"
-     {% endif %}>
+     hx-get="{% url 'integrations:github_repo_sync_progress' repo_id=repo.id %}"
+     hx-trigger="{% if repo.sync_status == 'syncing' %}every 5s{% else %}none{% endif %}"
+     hx-swap="outerHTML">
   {# Tracked badge (always shown for tracked repos) #}
   <span class="app-badge app-badge-success">{% translate "Tracked" %}</span>
 

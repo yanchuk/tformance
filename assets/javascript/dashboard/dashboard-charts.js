@@ -52,6 +52,11 @@ const barChartWithDates = (ctx, start, end, data, label) => {
       }]
     },
     options: {
+      layout: {
+        padding: {
+          top: 20  // Space for data labels above tall bars
+        }
+      },
       maintainAspectRatio: false,
       responsive: true,
       plugins: {
@@ -214,6 +219,11 @@ const weeklyBarChart = (ctx, data, label, options = {}) => {
       }]
     },
     options: {
+      layout: {
+        padding: {
+          top: 20  // Space for data labels above tall bars
+        }
+      },
       maintainAspectRatio: false,
       responsive: true,
       plugins: {

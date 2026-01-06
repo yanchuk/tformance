@@ -181,7 +181,11 @@ build-api-client:  ## Update the JavaScript API client code.
 deploy: ## Build and push Docker image to Docker Hub (for Unraid/Watchtower)
 	@echo "🐳 Building and pushing Docker image with buildx..."
 	@docker buildx build --platform linux/amd64 -f Dockerfile.web -t ayanchuk/tformance:latest --push .
-	@echo "✅ Done! Watchtower will pick up the new image."
+	@echo "✅ Done! Image pushed to Docker Hub."
+	@echo ""
+	@echo "📦 To manually pull on Unraid (if Watchtower is slow):"
+	@echo "   docker pull ayanchuk/tformance:latest"
+	@echo "   docker compose up -d"
 
 dev2: deploy ## Alias for deploy (build + push Docker image)
 

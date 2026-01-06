@@ -352,6 +352,9 @@ def github_repos(request):
         repo["sync_prs_completed"] = tracked.sync_prs_completed if tracked else 0
         repo["sync_prs_total"] = tracked.sync_prs_total if tracked else None
 
+    # Sort repos: tracked ones first, then alphabetically by name
+    repos.sort(key=lambda r: (not r["is_tracked"], r["name"].lower()))
+
     context = {
         "repos": repos,
         "integration": integration,

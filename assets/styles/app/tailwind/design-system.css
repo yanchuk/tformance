@@ -404,22 +404,27 @@
 }
 
 .app-status-pill-connected {
+  @apply inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium;
   @apply bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-400;
 }
 
 .app-status-pill-available {
+  @apply inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium;
   @apply bg-violet-500/10 border border-violet-500/30 text-violet-600 dark:text-violet-400;
 }
 
 .app-status-pill-disconnected {
+  @apply inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium;
   @apply bg-base-300 text-base-content/60;
 }
 
 .app-status-pill-warning {
+  @apply inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium;
   @apply bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400;
 }
 
 .app-status-pill-info {
+  @apply inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium;
   @apply bg-blue-500/10 border border-blue-500/30 text-blue-600 dark:text-blue-400;
 }
 
