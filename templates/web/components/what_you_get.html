@@ -1,5 +1,5 @@
 {% load static %}
-<section class="bg-base-100 py-16 md:py-24">
+<section class="bg-base-100 py-12 md:py-16">
   <div class="max-w-5xl mx-auto px-4">
     <div class="text-center mb-12">
       <h2 class="text-2xl md:text-3xl font-bold text-base-content">
@@ -121,41 +121,34 @@
         </div>
       </div>
 
-      <!-- Weekly Digest -->
-      <div class="bg-base-200 rounded-xl border border-base-300 p-6">
+      <!-- Weekly Digest - Coming Soon -->
+      <div class="bg-base-200 rounded-xl border border-dashed border-base-300 p-6 opacity-80">
         <div class="flex items-center gap-3 mb-4">
           <div class="w-10 h-10 rounded-lg bg-secondary/10 flex items-center justify-center">
             <svg class="w-5 h-5 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path>
             </svg>
           </div>
-          <h3 class="font-semibold text-base-content">Weekly Slack Digest</h3>
+          <div class="flex items-center gap-2">
+            <h3 class="font-semibold text-base-content">Weekly Slack Digest</h3>
+            <span class="text-xs px-2 py-0.5 bg-secondary/20 text-secondary rounded">Coming Soon</span>
+          </div>
         </div>
         <p class="text-sm text-base-content/80 mb-4">
-          Automated summary in your Slack channel. No dashboard login needed.
+          Automated summary in your Slack channel. Under development.
         </p>
-        <div class="bg-base-100 rounded-lg p-4 border border-base-300">
+        <div class="bg-base-100 rounded-lg p-4 border border-dashed border-base-300">
           <div class="flex items-start gap-3">
-            <div class="w-8 h-8 rounded bg-accent-primary flex items-center justify-center text-white text-xs font-bold flex-shrink-0">t</div>
+            <div class="w-8 h-8 rounded bg-base-content/20 flex items-center justify-center text-base-content/60 text-xs font-bold flex-shrink-0">t</div>
             <div class="text-sm">
-              <p class="text-base-content/90 font-medium">Weekly AI Impact Report</p>
-              <p class="text-base-content/80 text-xs mt-1">
-                This week: 23 AI-assisted PRs shipped 38% faster than baseline. Top performer: Team Alpha.
+              <p class="text-base-content/60 font-medium">Weekly AI Impact Report</p>
+              <p class="text-base-content/60 text-xs mt-1">
+                This week: 23 AI-assisted PRs shipped 38% faster than baseline.
               </p>
             </div>
           </div>
         </div>
       </div>
-    </div>
-
-    <!-- Export callout -->
-    <div class="mt-8 text-center">
-      <p class="text-sm text-base-content/80">
-        <svg class="w-4 h-4 inline-block mr-1 text-base-content/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
-        </svg>
-        Export any view to PDF or CSV. Share with your leadership.
-      </p>
     </div>
   </div>
 </section>

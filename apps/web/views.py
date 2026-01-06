@@ -66,7 +66,16 @@ def home(request):
             # No team and no invitations - redirect to onboarding
             return HttpResponseRedirect(reverse("onboarding:start"))
     else:
-        return render(request, "web/landing_page.html")
+        # Landing page with SEO-optimized metadata
+        context = {
+            "page_title": _("Engineering Analytics + AI Impact"),
+            "page_description": _(
+                "Understand your team's velocity and see if AI tools are actually helping. "
+                "Connect GitHub, get instant dashboards showing PR metrics, cycle time, and review load. "
+                "Free during Alpha."
+            ),
+        }
+        return render(request, "web/landing_page.html", context)
 
 
 def ai_impact_report(request):

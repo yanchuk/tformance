@@ -4,7 +4,7 @@
   <!-- Subtle grid background -->
   <div class="absolute inset-0 bg-[linear-gradient(rgba(249,115,22,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(249,115,22,0.03)_1px,transparent_1px)] bg-[size:60px_60px]"></div>
 
-  <div class="relative z-10 w-full max-w-6xl mx-auto px-4 py-16 md:py-24">
+  <div class="relative z-10 w-full max-w-6xl mx-auto px-4 py-12 md:py-16">
     <!-- Terminal Window -->
     <div class="terminal-window max-w-4xl mx-auto"
          x-data="{
@@ -12,40 +12,44 @@
            currentScenario: 0,
            scenarios: [
              [
-               { type: 'command', text: 'tformance analyze --team=engineering' },
+               { type: 'command', text: 'tformance analyze --roi' },
                { type: 'blank', text: '' },
-               { type: 'output', text: 'Analyzing 1,247 PRs from last quarter...' },
-               { type: 'output', text: 'AI-assisted PRs: 43% | Avg cycle time: -2.3 days' },
-               { type: 'output', text: 'Review burden: +18% | Quality score: unchanged' },
+               { type: 'output', text: 'Analyzing engineering metrics for Q4...' },
+               { type: 'output', text: 'GitHub Copilot cost: $19/seat x 12 devs = $228/mo' },
+               { type: 'output', text: 'AI-assisted PRs: 43% of total' },
+               { type: 'output', text: 'Cycle time delta: AI PRs ship 1.8 days faster' },
                { type: 'blank', text: '' },
-               { type: 'result', text: 'Verdict: AI is shipping code faster, but reviews are bottlenecked.' }
+               { type: 'result', text: 'Verdict: $228/mo → saving ~$3,200/mo in dev time' }
              ],
              [
-               { type: 'command', text: 'tformance compare --before=Q2 --after=Q3' },
+               { type: 'command', text: 'tformance compare --ai-vs-traditional' },
                { type: 'blank', text: '' },
-               { type: 'output', text: 'Comparing metrics before/after Copilot rollout...' },
-               { type: 'output', text: 'PR throughput: +34% | Time to first review: -1.8 days' },
-               { type: 'output', text: 'Bug rate: -12% | Test coverage: +8%' },
+               { type: 'output', text: 'Comparing last 30 days...' },
+               { type: 'output', text: 'Developer sentiment: AI helps a lot - 87%' },
+               { type: 'output', text: 'Actual cycle time change: +0.3 days (slightly slower)' },
+               { type: 'output', text: 'Review rounds: AI PRs need 0.4 more iterations' },
                { type: 'blank', text: '' },
-               { type: 'result', text: 'Verdict: Clear productivity gains. ROI positive after 6 weeks.' }
+               { type: 'result', text: 'Verdict: Perception doesn\'t match data. Reviews are the bottleneck.' }
              ],
              [
-               { type: 'command', text: 'tformance survey --sprint=current' },
+               { type: 'command', text: 'tformance metrics --reviews' },
                { type: 'blank', text: '' },
-               { type: 'output', text: 'Collecting developer sentiment data...' },
-               { type: 'output', text: 'Survey responses: 23/28 (82%)' },
-               { type: 'output', text: 'AI helpfulness: 4.2/5 | Would recommend: 87%' },
+               { type: 'output', text: 'Analyzing review patterns...' },
+               { type: 'output', text: 'PR volume: +34% since AI adoption' },
+               { type: 'output', text: 'Time to first review: 2.1 days (was 0.8 days)' },
+               { type: 'output', text: 'Review queue depth: 18 PRs waiting' },
                { type: 'blank', text: '' },
-               { type: 'result', text: 'Verdict: Team loves it. Main request: better context awareness.' }
+               { type: 'result', text: 'Verdict: AI generates more code. Reviews can\'t keep up.' }
              ],
              [
-               { type: 'command', text: 'tformance insights --member=@sarah' },
+               { type: 'command', text: 'tformance dashboard --team' },
                { type: 'blank', text: '' },
-               { type: 'output', text: 'Analyzing individual contribution patterns...' },
-               { type: 'output', text: 'AI adoption: 78% of PRs | Completion rate: +25%' },
-               { type: 'output', text: 'Code review quality: excellent | Mentoring: 12 PRs' },
+               { type: 'output', text: 'Loading team metrics...' },
+               { type: 'output', text: 'PRs merged this month: 89' },
+               { type: 'output', text: 'Median cycle time: 3.2 days' },
+               { type: 'output', text: 'Top contributor: Sarah (23 PRs, 2.1 day avg)' },
                { type: 'blank', text: '' },
-               { type: 'result', text: 'Verdict: Power user. Consider for AI champion role.' }
+               { type: 'result', text: 'Verdict: Team velocity trending up. Review time is your bottleneck.' }
              ]
            ],
            showCursor: true,
@@ -104,15 +108,15 @@
     <div class="text-center mt-12 md:mt-16">
       <!-- Category label -->
       <span class="inline-block px-3 py-1 text-sm font-mono text-accent-primary bg-accent-primary/10 rounded-full mb-6">
-        AI Coding Tool Analytics
+        Engineering Analytics + AI Impact
       </span>
 
       <h1 class="text-3xl md:text-5xl lg:text-6xl font-bold text-base-content leading-tight">
-        See if Copilot is actually helping your team ship
+        Understand your team's velocity.<br class="hidden md:block"> See if AI tools are actually helping.
       </h1>
 
       <p class="mt-6 text-lg md:text-xl text-base-content/80 max-w-3xl mx-auto leading-relaxed">
-        Connect GitHub. We track PR metrics. You see a dashboard comparing AI-assisted PRs vs traditional—cycle time, review load, quality.
+        Connect GitHub. Get instant dashboards showing PR metrics, cycle time, and review load. Compare AI-assisted work vs traditional—with data, not gut feelings.
       </p>
 
       <!-- CTAs -->
@@ -133,7 +137,7 @@
           <svg class="w-5 h-5 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
           </svg>
-          <span>Free while in beta</span>
+          <span>Free during Alpha</span>
         </div>
         <div class="flex items-center gap-2">
           <svg class="w-5 h-5 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">

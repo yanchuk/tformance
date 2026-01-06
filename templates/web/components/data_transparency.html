@@ -1,66 +1,89 @@
 {% load static %}
-<section class="bg-base-100 py-16 md:py-24">
+<section class="bg-base-100 py-12 md:py-16">
   <div class="max-w-5xl mx-auto px-4">
+    <!-- Prominent Privacy Header -->
     <div class="text-center mb-12">
-      <h2 class="text-2xl md:text-3xl font-bold text-base-content">
-        What We See (And Don't See)
+      <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-6">
+        <svg class="w-8 h-8 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+        </svg>
+      </div>
+      <h2 class="text-3xl md:text-4xl font-bold text-base-content">
+        We Never See Your Code
       </h2>
-      <p class="mt-4 text-base-content/80">
-        Transparency matters. Here's exactly what data we access.
+      <p class="mt-4 text-lg text-base-content/80 max-w-2xl mx-auto">
+        Seriously. Not a single line. Here's exactly what we access.
       </p>
     </div>
 
-    <div class="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-      <!-- What we collect -->
-      <div class="bg-base-200 rounded-xl border border-base-300 p-6">
-        <h3 class="flex items-center gap-2 text-lg font-semibold text-teal-400 mb-4">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-          </svg>
-          What We Collect
-        </h3>
-        <ul class="space-y-3 text-sm text-base-content/90">
-          <li class="flex items-start gap-2">
-            <span class="text-teal-400 mt-0.5">+</span>
-            PR metadata (title, size, timestamps)
-          </li>
-          <li class="flex items-start gap-2">
-            <span class="text-teal-400 mt-0.5">+</span>
-            Review counts and cycle times
-          </li>
-          <li class="flex items-start gap-2">
-            <span class="text-teal-400 mt-0.5">+</span>
-            Jira ticket status and links
-          </li>
-          <li class="flex items-start gap-2">
-            <span class="text-teal-400 mt-0.5">+</span>
-            Survey responses (AI usage)
-          </li>
-        </ul>
+    <!-- Privacy Cards with Accent Border -->
+    <div class="border-l-4 border-primary bg-base-200 rounded-xl p-8 md:p-10">
+      <div class="grid md:grid-cols-2 gap-8">
+        <!-- What we collect -->
+        <div>
+          <h3 class="flex items-center gap-2 text-lg font-semibold text-teal-400 mb-5">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+            What We Collect
+          </h3>
+          <ul class="space-y-3 text-base-content/90">
+            <li class="flex items-start gap-3">
+              <span class="text-teal-400 mt-0.5 font-bold">+</span>
+              <span>PR metadata (title, size, timestamps)</span>
+            </li>
+            <li class="flex items-start gap-3">
+              <span class="text-teal-400 mt-0.5 font-bold">+</span>
+              <span>Review counts and cycle times</span>
+            </li>
+            <li class="flex items-start gap-3">
+              <span class="text-teal-400 mt-0.5 font-bold">+</span>
+              <span>File paths and change counts</span>
+            </li>
+            <li class="flex items-start gap-3">
+              <span class="text-teal-400 mt-0.5 font-bold">+</span>
+              <span>Author and reviewer info</span>
+            </li>
+          </ul>
+        </div>
+
+        <!-- What we DON'T collect -->
+        <div>
+          <h3 class="flex items-center gap-2 text-lg font-semibold text-accent-error mb-5">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+            What We NEVER Touch
+          </h3>
+          <ul class="space-y-3 text-base-content/90">
+            <li class="flex items-start gap-3">
+              <span class="text-accent-error mt-0.5 font-bold">-</span>
+              <span>NO source code content</span>
+            </li>
+            <li class="flex items-start gap-3">
+              <span class="text-accent-error mt-0.5 font-bold">-</span>
+              <span>NO file diffs or patches</span>
+            </li>
+            <li class="flex items-start gap-3">
+              <span class="text-accent-error mt-0.5 font-bold">-</span>
+              <span>NO commit message bodies</span>
+            </li>
+            <li class="flex items-start gap-3">
+              <span class="text-accent-error mt-0.5 font-bold">-</span>
+              <span>NO private messages</span>
+            </li>
+          </ul>
+        </div>
       </div>
 
-      <!-- What we DON'T collect -->
-      <div class="bg-base-200 rounded-xl border border-base-300 p-6">
-        <h3 class="flex items-center gap-2 text-lg font-semibold text-accent-error mb-4">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+      <!-- Footer reassurance -->
+      <div class="mt-8 pt-6 border-t border-base-300 text-center">
+        <p class="text-base-content/80">
+          <svg class="w-4 h-4 inline-block mr-1 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
           </svg>
-          What We Don't Touch
-        </h3>
-        <ul class="space-y-3 text-sm text-base-content/90">
-          <li class="flex items-start gap-2">
-            <span class="text-accent-error mt-0.5">-</span>
-            NO code content or file diffs
-          </li>
-          <li class="flex items-start gap-2">
-            <span class="text-accent-error mt-0.5">-</span>
-            NO commit messages content
-          </li>
-          <li class="flex items-start gap-2">
-            <span class="text-accent-error mt-0.5">-</span>
-            NO private Slack messages
-          </li>
-        </ul>
+          Your code stays in GitHub. We only see metadata.
+        </p>
       </div>
     </div>
   </div>

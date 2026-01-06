@@ -723,12 +723,17 @@ WAFFLE_FLAG_MODEL = "teams.Flag"
 
 # replace any values below with specifics for your project
 PROJECT_METADATA = {
-    "NAME": gettext_lazy("tformance"),
-    "URL": "http://localhost:8000",
-    "DESCRIPTION": gettext_lazy("AI Impact Analytics - measure how AI coding tools affect your team's performance"),  # noqa: E501
-    "IMAGE": "https://upload.wikimedia.org/wikipedia/commons/2/20/PEO-pegasus_black.svg",
-    "KEYWORDS": "SaaS, django",
-    "CONTACT_EMAIL": "oleksii.ianchuk@gmail.com",
+    "NAME": gettext_lazy("Tformance"),
+    "URL": env("SITE_URL", default="https://tformance.com"),
+    "DESCRIPTION": gettext_lazy(
+        "Engineering analytics platform that measures AI coding tool impact on team performance. "
+        "Track GitHub Copilot ROI, compare AI-assisted vs traditional PRs, and identify review bottlenecks."
+    ),
+    "IMAGE": env("OG_IMAGE_URL", default="https://tformance.com/static/images/og-image.png"),
+    "KEYWORDS": "engineering analytics, AI coding tools, GitHub Copilot ROI, developer productivity, "
+    "PR metrics, cycle time, code review analytics, DORA metrics, team performance, "
+    "software engineering metrics, AI impact measurement, CTO dashboard",
+    "CONTACT_EMAIL": "hello@tformance.com",
 }
 
 # set this to True in production to have URLs generated with https instead of http

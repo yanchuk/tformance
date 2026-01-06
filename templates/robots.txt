@@ -1,3 +1,16 @@
 User-Agent: *
-Disallow: {% url 'admin:index' %}  # disable crawling django admin
-Disallow: {% url 'wagtailadmin_home' %}  # and wagtail admin
+Disallow: {% url 'admin:index' %}
+Disallow: {% url 'wagtailadmin_home' %}
+Disallow: /a/
+Disallow: /survey/
+Disallow: /accounts/
+Disallow: /api/
+
+# Allow important pages
+Allow: /
+Allow: /report/
+Allow: /terms/
+Allow: /privacy/
+
+# Sitemap
+Sitemap: https://tformance.com/sitemap.xml

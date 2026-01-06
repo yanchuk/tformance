@@ -1,5 +1,5 @@
 {% load static %}
-<section class="bg-base-200 py-16 md:py-24">
+<section class="bg-base-200 py-12 md:py-16">
   <div class="max-w-3xl mx-auto px-4">
     <div class="text-center mb-12">
       <h2 class="text-2xl md:text-3xl font-bold text-base-content">
@@ -54,7 +54,7 @@
         </button>
         <div x-show="open === 3" x-transition class="px-4 pb-4">
           <p class="text-base-content/90">
-            No SOC 2 yet—we know it's important to you. Plan to start certification as early as possible. We don't touch your code, data encrypted, security reviewed.
+            No SOC 2 yet—we know it's important to you. Plan to start certification as early as possible. We never see your code—only PR metadata like titles, timestamps, and file paths. Data encrypted at rest.
           </p>
         </div>
       </div>
@@ -135,6 +135,38 @@
         <div x-show="open === 8" x-transition class="px-4 pb-4">
           <p class="text-base-content/90">
             We wish, but not yet. As soon as we can and demand is high—we'll do it earlier rather than later.
+          </p>
+        </div>
+      </div>
+
+      <!-- FAQ 9 -->
+      <div class="bg-base-200 rounded-xl border border-base-300 overflow-hidden">
+        <button @click="open = open === 9 ? null : 9"
+                class="w-full p-4 text-left flex items-center justify-between hover:bg-base-300/50 transition-colors">
+          <span class="font-semibold text-base-content">What can you actually tell me about AI impact?</span>
+          <svg class="w-5 h-5 text-base-content/80 transition-transform" :class="{ 'rotate-180': open === 9 }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+          </svg>
+        </button>
+        <div x-show="open === 9" x-transition class="px-4 pb-4">
+          <p class="text-base-content/90">
+            We detect AI-assisted PRs through LLM analysis and pattern matching. You'll see: which PRs used AI tools, how they compare on cycle time and review rounds, and adoption rates by team member. Coming soon: Copilot usage metrics and Jira correlation.
+          </p>
+        </div>
+      </div>
+
+      <!-- FAQ 10 -->
+      <div class="bg-base-200 rounded-xl border border-base-300 overflow-hidden">
+        <button @click="open = open === 10 ? null : 10"
+                class="w-full p-4 text-left flex items-center justify-between hover:bg-base-300/50 transition-colors">
+          <span class="font-semibold text-base-content">What features are live right now?</span>
+          <svg class="w-5 h-5 text-base-content/80 transition-transform" :class="{ 'rotate-180': open === 10 }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+          </svg>
+        </button>
+        <div x-show="open === 10" x-transition class="px-4 pb-4">
+          <p class="text-base-content/90">
+            Live: GitHub integration, PR metrics, AI detection, team dashboards. Coming soon: Copilot metrics API, Jira integration, Slack surveys. We ship weekly.
           </p>
         </div>
       </div>

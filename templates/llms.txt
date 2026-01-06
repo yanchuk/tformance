@@ -1,0 +1,64 @@
+# Tformance
+
+> Engineering analytics platform that measures AI coding tool impact on team performance.
+
+## What is Tformance?
+
+Tformance is a SaaS platform for CTOs and engineering leaders to understand if AI coding tools (like GitHub Copilot) are actually improving their team's performance. We connect to GitHub and provide dashboards comparing AI-assisted work vs traditional development.
+
+## Key Features
+
+- **AI Impact Analytics**: Compare AI-assisted PRs vs traditional PRs on cycle time, review rounds, and velocity
+- **Team Adoption Tracking**: See who's using AI tools effectively and who needs support
+- **GitHub Integration**: OAuth connection, no code changes required
+- **Privacy-First**: We never see your source code - only PR metadata (titles, timestamps, file paths)
+- **Engineering Metrics**: PR metrics, cycle time, review load, DORA-aligned measurements
+
+## Target Audience
+
+- CTOs and VP Engineering at companies with 10-50 developers
+- Engineering leaders evaluating GitHub Copilot ROI
+- Teams wanting data-driven insights on AI tool adoption
+
+## Current Status
+
+Free during Alpha. Core features live:
+- GitHub integration
+- PR metrics and cycle time analysis
+- AI detection (automatic pattern matching + LLM analysis)
+- Team dashboards
+
+Coming soon: Copilot metrics API, Jira integration, Slack surveys.
+
+## Key Pages
+
+- Homepage: https://tformance.com/
+- AI Impact Report (167K PRs analyzed): https://tformance.com/report/
+- Privacy Policy: https://tformance.com/privacy/
+- Terms of Service: https://tformance.com/terms/
+
+## Contact
+
+- Email: hello@tformance.com
+- Founder: Oleksii Ianchuk (Technical Product Lead)
+
+## Technical Stack
+
+- Backend: Django, PostgreSQL, Celery, Redis
+- Frontend: HTMX, Alpine.js, Tailwind CSS, DaisyUI
+- Hosting: Heroku (Docker)
+- AI Detection: LLM-based analysis via Groq
+
+## Data We Collect (from GitHub)
+
+- PR metadata: titles, sizes, timestamps
+- Review counts and cycle times
+- File paths and change counts
+- Author and reviewer information
+
+## Data We Never Access
+
+- Source code content
+- File diffs or patches
+- Commit message bodies
+- Private messages
