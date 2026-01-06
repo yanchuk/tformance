@@ -266,3 +266,38 @@ class TestOnboardingStepLogic(TestCase):
 
         next_step = get_next_onboarding_step(request, "slack")
         self.assertEqual(next_step, "complete")
+
+
+class TestCicdFeatureFlag(TestCase):
+    """Tests for CI/CD feature flag helper function."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.factory = RequestFactory()
+        self.user = UserFactory()
+        self.team = TeamFactory()
+
+        # Ensure flag exists (required for override_flag to work)
+        Flag.objects.get_or_create(name="cicd_enabled")
+
+    def test_is_cicd_enabled_returns_false_by_default(self):
+        """Test that CI/CD is disabled by default (no flag active)."""
+        from apps.integrations.services.integration_flags import is_cicd_enabled
+
+        request = self.factory.get("/")
+        request.user = self.user
+        request.team = self.team
+
+        with override_flag("cicd_enabled", active=False):
+            self.assertFalse(is_cicd_enabled(request))
+
+    def test_is_cicd_enabled_returns_true_when_flag_active(self):
+        """Test that CI/CD is enabled when flag is active."""
+        from apps.integrations.services.integration_flags import is_cicd_enabled
+
+        request = self.factory.get("/")
+        request.user = self.user
+        request.team = self.team
+
+        with override_flag("cicd_enabled", active=True):
+            self.assertTrue(is_cicd_enabled(request))

@@ -4,7 +4,7 @@ from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect
 from django.template.response import TemplateResponse
 
-from apps.integrations.services.integration_flags import is_integration_enabled
+from apps.integrations.services.integration_flags import is_cicd_enabled, is_integration_enabled
 from apps.metrics.models import PullRequest
 from apps.metrics.view_utils import get_extended_date_range
 from apps.teams.decorators import team_admin_required
@@ -67,6 +67,8 @@ def _get_analytics_context(request: HttpRequest, active_page: str) -> dict:
         "repos": repos,  # List for template logic and json_script filter
         "repos_count": len(repos),  # Count for conditional display
         "selected_repo": selected_repo,
+        # Feature flags
+        "cicd_enabled": is_cicd_enabled(request),
     }
 
 

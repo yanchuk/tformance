@@ -53,8 +53,8 @@
     </div>
   </div>
 
-  <!-- Workload & CI/CD Row -->
-  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+  <!-- Workload Row -->
+  <div class="grid grid-cols-1 {% if cicd_enabled %}lg:grid-cols-2{% endif %} gap-6 mb-6">
     <!-- Reviewer Workload -->
     <div class="card bg-base-100 shadow-md">
       <div class="card-body">
@@ -73,6 +73,7 @@
       </div>
     </div>
 
+    {% if cicd_enabled %}
     <!-- CI/CD Pass Rate -->
     <div class="card bg-base-100 shadow-md">
       <div class="card-body">
@@ -90,6 +91,7 @@
         </div>
       </div>
     </div>
+    {% endif %}
   </div>
 
   <!-- Iteration Metrics & Revert Rate Row -->

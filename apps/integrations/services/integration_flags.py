@@ -15,6 +15,9 @@ FLAG_COPILOT = "integration_copilot_enabled"
 FLAG_SLACK = "integration_slack_enabled"
 FLAG_GOOGLE_WORKSPACE = "integration_google_workspace_enabled"
 
+# Global feature flags
+FLAG_CICD = "cicd_enabled"
+
 # Mapping of integration slugs to flag names
 INTEGRATION_FLAGS = {
     "jira": FLAG_JIRA,
@@ -259,3 +262,15 @@ def get_next_onboarding_step(request: HttpRequest, current_step: str) -> str:
 
     # Default to complete for unknown steps
     return "complete"
+
+
+def is_cicd_enabled(request: HttpRequest) -> bool:
+    """Check if CI/CD features are enabled via feature flag.
+
+    Args:
+        request: The HTTP request object (used for flag evaluation)
+
+    Returns:
+        True if CI/CD features should be shown, False otherwise
+    """
+    return waffle.flag_is_active(request, FLAG_CICD)

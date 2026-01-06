@@ -458,6 +458,7 @@
       </div>
     </div>
 
+    {% if cicd_enabled %}
     <!-- CI/CD Pass Rate and Deployments Row -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
       <!-- CI/CD Pass Rate -->
@@ -498,6 +499,7 @@
         </div>
       </div>
     </div>
+    {% endif %}
 
     <!-- File Category Breakdown -->
     <div class="card bg-base-100 shadow-md mb-6">
