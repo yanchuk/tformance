@@ -168,13 +168,34 @@ def _update_sync_progress(tracked_repo_id: int, completed: int, total: int) -> N
 def _get_access_token(tracked_repo_id: int) -> str | None:
     """Get access token for a tracked repository (async-safe).
 
+    Prefers GitHub App installation token over OAuth credential.
     This wraps ORM access to avoid SynchronousOnlyOperation errors
     when called from async context.
+
+    Raises:
+        GitHubAuthError: When repository has neither App installation nor OAuth credential.
     """
+    from apps.integrations.exceptions import GitHubAuthError
+
     try:
-        tracked_repo = TrackedRepository.objects.select_related("integration__credential").get(id=tracked_repo_id)  # noqa: TEAM001 - ID from Celery task
-        return tracked_repo.integration.credential.access_token
-    except (TrackedRepository.DoesNotExist, AttributeError):
+        tracked_repo = TrackedRepository.objects.select_related(  # noqa: TEAM001 - ID from Celery task
+            "app_installation", "integration__credential"
+        ).get(id=tracked_repo_id)
+
+        # Prefer App installation token (supports "no code access" claim)
+        if tracked_repo.app_installation:
+            return tracked_repo.app_installation.get_access_token()
+
+        # Fall back to OAuth credential (deprecated path)
+        if tracked_repo.integration and tracked_repo.integration.credential:
+            return tracked_repo.integration.credential.access_token
+
+        # Neither auth available - raise explicit error (Edge case #3)
+        raise GitHubAuthError(
+            f"Repository {tracked_repo.full_name} has no valid authentication. "
+            f"Please re-add the repository via Integrations settings."
+        )
+    except TrackedRepository.DoesNotExist:
         return None
 
 

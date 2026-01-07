@@ -6,6 +6,7 @@ from django.db.models import Avg
 
 from apps.integrations.constants import SYNC_STATUS_COMPLETE, SYNC_STATUS_SYNCING
 from apps.integrations.models import (
+    GitHubAppInstallation,
     GitHubIntegration,
     JiraIntegration,
     SlackIntegration,
@@ -23,6 +24,9 @@ class GitHubStatus(TypedDict):
     org_name: str | None
     member_count: int
     repo_count: int
+    # EC-18: Revocation status fields
+    is_revoked: bool
+    error: str | None
 
 
 class JiraStatus(TypedDict):
@@ -83,11 +87,29 @@ def get_team_integration_status(team: Team) -> TeamIntegrationStatus:
     """
     # GitHub integration status
     github_integration = GitHubIntegration.objects.filter(team=team).first()
+
+    # EC-18: Check for revocation status
+    is_revoked = False
+    error = None
+
+    # Check if App installation is inactive (uninstalled)
+    app_installation = GitHubAppInstallation.objects.filter(team=team).first()
+    if app_installation and not app_installation.is_active:
+        is_revoked = True
+        error = "GitHub App was uninstalled. Please reconnect."
+
+    # Check if OAuth credential is revoked
+    if github_integration and github_integration.credential and github_integration.credential.is_revoked:
+        is_revoked = True
+        error = "OAuth access was revoked. Please reconnect."
+
     github_status = {
         "connected": github_integration is not None,
         "org_name": github_integration.organization_slug if github_integration else None,
         "member_count": TeamMember.objects.filter(team=team, github_id__isnull=False).exclude(github_id="").count(),
         "repo_count": TrackedRepository.objects.filter(team=team).count() if github_integration else 0,
+        "is_revoked": is_revoked,
+        "error": error,
     }
 
     # Jira integration status

@@ -204,3 +204,59 @@ class TestGetTeamIntegrationStatus(TestCase):
         self.assertTrue(status["has_data"])
         self.assertEqual(status["pr_count"], 2)
         self.assertEqual(status["survey_count"], 1)
+
+
+class TestGetTeamIntegrationStatusRevocation(TestCase):
+    """EC-18: Tests for revocation status in get_team_integration_status."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.team = TeamFactory()
+
+    def test_github_status_includes_revocation_fields(self):
+        """Test that GitHub status includes is_revoked and error fields."""
+        from apps.integrations.services.status import get_team_integration_status
+
+        GitHubIntegrationFactory(team=self.team)
+
+        status = get_team_integration_status(self.team)
+
+        # New fields for EC-18
+        self.assertIn("is_revoked", status["github"])
+        self.assertIn("error", status["github"])
+        self.assertFalse(status["github"]["is_revoked"])
+        self.assertIsNone(status["github"]["error"])
+
+    def test_github_status_shows_revoked_when_credential_revoked(self):
+        """Test that status shows revoked when OAuth credential is revoked."""
+        from django.utils import timezone
+
+        from apps.integrations.services.status import get_team_integration_status
+
+        integration = GitHubIntegrationFactory(team=self.team)
+        # Mark credential as revoked
+        integration.credential.is_revoked = True
+        integration.credential.revoked_at = timezone.now()
+        integration.credential.revocation_reason = "User revoked in GitHub settings"
+        integration.credential.save()
+
+        status = get_team_integration_status(self.team)
+
+        self.assertTrue(status["github"]["is_revoked"])
+        self.assertIn("revoked", status["github"]["error"].lower())
+
+    def test_github_status_shows_revoked_when_app_installation_inactive(self):
+        """Test that status shows revoked when App installation is inactive."""
+        from apps.integrations.factories import GitHubAppInstallationFactory
+        from apps.integrations.services.status import get_team_integration_status
+
+        GitHubIntegrationFactory(team=self.team)
+        GitHubAppInstallationFactory(
+            team=self.team,
+            is_active=False,  # Inactive/uninstalled
+        )
+
+        status = get_team_integration_status(self.team)
+
+        self.assertTrue(status["github"]["is_revoked"])
+        self.assertIn("uninstall", status["github"]["error"].lower())

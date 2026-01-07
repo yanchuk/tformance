@@ -220,6 +220,57 @@ class TestIntegrationCredentialModel(TestCase):
         # connected_by should be null
         self.assertIsNone(credential.connected_by)
 
+    def test_integration_credential_revocation_fields_default_values(self):
+        """EC-17: Test that revocation fields have correct default values."""
+        credential = IntegrationCredentialFactory(
+            team=self.team,
+            provider="github",
+            access_token="test_token",
+        )
+
+        # Defaults: not revoked
+        self.assertFalse(credential.is_revoked)
+        self.assertIsNone(credential.revoked_at)
+        self.assertEqual(credential.revocation_reason, "")
+
+    def test_integration_credential_mark_as_revoked(self):
+        """EC-17: Test marking a credential as revoked with timestamp and reason."""
+        credential = IntegrationCredentialFactory(
+            team=self.team,
+            provider="github",
+            access_token="test_token",
+        )
+
+        # Mark as revoked
+        revocation_time = timezone.now()
+        credential.is_revoked = True
+        credential.revoked_at = revocation_time
+        credential.revocation_reason = "Token was revoked by user in GitHub settings"
+        credential.save()
+
+        # Refresh and verify
+        credential.refresh_from_db()
+        self.assertTrue(credential.is_revoked)
+        self.assertEqual(credential.revoked_at, revocation_time)
+        self.assertEqual(credential.revocation_reason, "Token was revoked by user in GitHub settings")
+
+    def test_integration_credential_revocation_reason_optional(self):
+        """EC-17: Test that revocation_reason can be left empty."""
+        credential = IntegrationCredentialFactory(
+            team=self.team,
+            provider="github",
+            access_token="test_token",
+        )
+
+        # Mark as revoked without reason
+        credential.is_revoked = True
+        credential.revoked_at = timezone.now()
+        credential.save()
+
+        credential.refresh_from_db()
+        self.assertTrue(credential.is_revoked)
+        self.assertEqual(credential.revocation_reason, "")
+
 
 class TestGitHubIntegrationModel(TestCase):
     """Tests for GitHubIntegration model."""

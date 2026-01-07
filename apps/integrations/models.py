@@ -67,6 +67,26 @@ class IntegrationCredential(BaseTeamModel):
         help_text="The user who connected this integration",
     )
 
+    # EC-17: Revocation tracking fields
+    is_revoked = models.BooleanField(
+        default=False,
+        verbose_name="Is revoked",
+        help_text="Whether the OAuth token has been revoked",
+    )
+    revoked_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Revoked at",
+        help_text="When the token was detected as revoked",
+    )
+    revocation_reason = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        verbose_name="Revocation reason",
+        help_text="Reason for token revocation (e.g., user revoked in GitHub settings)",
+    )
+
     class Meta:
         ordering = ["provider"]
         verbose_name = "Integration Credential"
@@ -192,7 +212,18 @@ class TrackedRepository(BaseTeamModel):
         on_delete=models.CASCADE,
         related_name="tracked_repositories",
         verbose_name="Integration",
-        help_text="GitHub integration this repository belongs to",
+        help_text="GitHub OAuth integration (deprecated, use app_installation)",
+        null=True,
+        blank=True,
+    )
+    app_installation = models.ForeignKey(
+        "GitHubAppInstallation",
+        on_delete=models.CASCADE,
+        related_name="tracked_repositories",
+        verbose_name="App Installation",
+        help_text="GitHub App installation for accessing this repository",
+        null=True,
+        blank=True,
     )
     github_repo_id = models.BigIntegerField(
         verbose_name="GitHub repository ID",
@@ -310,6 +341,40 @@ class TrackedRepository(BaseTeamModel):
 
     def __str__(self):
         return self.full_name
+
+    @property
+    def access_token(self) -> str:
+        """Get access token for GitHub API access.
+
+        Edge case #10: Implements auth fallback logic:
+        1. Try App installation first (when available and active)
+        2. Fall back to OAuth credential if App unavailable/inactive
+        3. Raise GitHubAuthError if neither available
+
+        Returns:
+            Valid access token (from App installation or OAuth)
+
+        Raises:
+            GitHubAuthError: If no valid authentication is available
+        """
+        from apps.integrations.exceptions import GitHubAppDeactivatedError, GitHubAuthError
+
+        # Try App installation first (preferred)
+        if self.app_installation is not None:
+            try:
+                return self.app_installation.get_access_token()
+            except GitHubAppDeactivatedError:
+                # App is inactive, try OAuth fallback
+                pass
+
+        # Fall back to OAuth credential
+        if self.integration is not None and self.integration.credential is not None:
+            return self.integration.credential.access_token
+
+        # Neither auth method available
+        raise GitHubAuthError(
+            f"Repository {self.full_name} has no valid authentication. Please reconnect via Integrations settings."
+        )
 
 
 class JiraIntegration(BaseTeamModel):
@@ -647,3 +712,96 @@ class GitHubAppInstallation(BaseTeamModel):
 
     def __str__(self):
         return f"GitHub App: {self.account_login} ({self.installation_id})"
+
+    def _token_is_valid(self) -> bool:
+        """Check if cached token is valid (not within 5-minute buffer of expiry)."""
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        if not self.cached_token or not self.token_expires_at:
+            return False
+        return self.token_expires_at > timezone.now() + timedelta(minutes=5)
+
+    def _get_deactivated_error_message(self) -> str:
+        """Get appropriate error message for deactivated installation.
+
+        Edge case #9: Distinguishes between suspended and deleted installations
+        to provide appropriate guidance to users.
+        """
+        if self.suspended_at:
+            # Suspended by GitHub - user should contact org admin
+            return (
+                f"GitHub App installation for {self.account_login} was suspended by GitHub. "
+                f"Please contact your organization administrator to resolve this issue."
+            )
+        else:
+            # Deleted/removed - user should reinstall
+            return (
+                f"GitHub App installation for {self.account_login} was removed. "
+                f"Please reinstall the GitHub App to continue syncing."
+            )
+
+    def get_access_token(self) -> str:
+        """Get valid access token, refreshing if expired.
+
+        Returns cached token if valid (not within 5-minute buffer of expiry).
+        Otherwise fetches a new token, caches it, and returns it.
+
+        Uses database locking (select_for_update) to prevent race conditions
+        when multiple concurrent requests try to refresh the token simultaneously.
+
+        Returns:
+            Valid installation access token string
+
+        Raises:
+            GitHubAppDeactivatedError: If installation is not active
+            GitHubAppError: If token retrieval fails
+        """
+        from django.db import transaction
+
+        from apps.integrations.exceptions import GitHubAppDeactivatedError
+        from apps.integrations.services.github_app import get_installation_token_with_expiry
+
+        # EC-12: Refresh is_active from DB to detect webhook deactivation
+        # This handles race where webhook deactivates installation during sync task
+        self.refresh_from_db(fields=["is_active", "suspended_at"])
+
+        # Check is_active first (Edge case #7)
+        if not self.is_active:
+            raise GitHubAppDeactivatedError(self._get_deactivated_error_message())
+
+        # Quick check without lock - return cached if valid
+        if self._token_is_valid():
+            return self.cached_token
+
+        # Acquire database lock before refreshing (Edge case #1)
+        # This prevents multiple concurrent requests from all calling GitHub API
+        with transaction.atomic():
+            # Re-fetch with lock to get fresh state
+            locked_self = GitHubAppInstallation.objects.select_for_update().get(pk=self.pk)
+
+            # Check is_active again after acquiring lock
+            if not locked_self.is_active:
+                raise GitHubAppDeactivatedError(locked_self._get_deactivated_error_message())
+
+            # Check if another thread already refreshed the token
+            if locked_self._token_is_valid():
+                # Update self with the fresh values
+                self.cached_token = locked_self.cached_token
+                self.token_expires_at = locked_self.token_expires_at
+                return locked_self.cached_token
+
+            # Fetch new token from GitHub API
+            token, expires_at = get_installation_token_with_expiry(locked_self.installation_id)
+
+            # Save to the locked instance
+            locked_self.cached_token = token
+            locked_self.token_expires_at = expires_at
+            locked_self.save(update_fields=["cached_token", "token_expires_at"])
+
+            # Update self with new values
+            self.cached_token = token
+            self.token_expires_at = expires_at
+
+            return token

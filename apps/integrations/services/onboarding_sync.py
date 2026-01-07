@@ -33,6 +33,9 @@ class OnboardingSyncService:
     Orchestrates historical sync for onboarding.
 
     Uses existing GraphQL fetcher with batched LLM processing.
+    Token management is handled per-repo by the GraphQL sync functions
+    via _get_access_token(), so github_token is kept for backward
+    compatibility but is not used by this service.
     """
 
     # Configurable settings from HISTORICAL_SYNC_CONFIG
@@ -40,16 +43,18 @@ class OnboardingSyncService:
     LLM_BATCH_SIZE = SYNC_CONFIG.get("LLM_BATCH_SIZE", 100)
     GRAPHQL_PAGE_SIZE = SYNC_CONFIG.get("GRAPHQL_PAGE_SIZE", 25)
 
-    def __init__(self, team: Team, github_token: str):
+    def __init__(self, team: Team, github_token: str | None = None):
         """
         Initialize the sync service.
 
         Args:
             team: The team to sync data for
-            github_token: GitHub access token for API calls
+            github_token: Deprecated - tokens are now fetched per-repo by
+                         GraphQL sync functions via _get_access_token().
+                         Kept for backward compatibility but not used.
         """
         self.team = team
-        self.github_token = github_token
+        self.github_token = github_token  # Kept for backward compatibility
 
     def _calculate_days_back(self) -> int:
         """Calculate days_back based on HISTORY_MONTHS config."""

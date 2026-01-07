@@ -192,6 +192,99 @@ class TestHandleInstallationEvent(TestCase):
         # Should not raise an exception
         handle_installation_event(payload)
 
+    def test_handle_installation_created_handles_duplicate_webhook(self):
+        """EC-11: Duplicate webhook should update, not crash with unique constraint.
+
+        When GitHub retries a webhook or user cancels/retries the install flow,
+        we may receive "created" event for an installation_id that already exists.
+        This should gracefully update the existing record.
+        """
+        from apps.integrations.models import GitHubAppInstallation
+        from apps.integrations.webhooks.github_app import handle_installation_event
+
+        # Create an installation that might exist from previous attempt
+        GitHubAppInstallationFactory(
+            team=None,  # Orphaned from abandoned flow
+            installation_id=12345678,
+            account_login="acme-corp-old",  # Old name
+            account_id=87654321,
+            is_active=False,  # Might be marked inactive
+        )
+
+        payload = {
+            "action": "created",
+            "installation": {
+                "id": 12345678,  # Same installation_id
+                "account": {
+                    "type": "Organization",
+                    "login": "acme-corp",  # Updated name
+                    "id": 87654321,
+                },
+                "permissions": {"pull_requests": "read"},
+                "events": ["pull_request"],
+                "repository_selection": "all",
+            },
+        }
+
+        # Should NOT raise IntegrityError
+        handle_installation_event(payload)
+
+        # Should have only one installation with this ID
+        installations = GitHubAppInstallation.objects.filter(installation_id=12345678)
+        self.assertEqual(installations.count(), 1)
+
+        # Should be updated with new data
+        installation = installations.first()
+        self.assertEqual(installation.account_login, "acme-corp")
+        self.assertTrue(installation.is_active)
+        self.assertEqual(installation.permissions, {"pull_requests": "read"})
+        self.assertEqual(installation.repository_selection, "all")
+
+    def test_handle_installation_created_logs_warning_on_account_type_change(self):
+        """EC-13: Should log warning when account type changes (User→Org).
+
+        This can happen when a GitHub user converts their account to an organization.
+        """
+        from apps.integrations.webhooks.github_app import handle_installation_event
+
+        # Create an installation with User account type
+        GitHubAppInstallationFactory(
+            team=self.team,
+            installation_id=12345678,
+            account_type="User",
+            account_login="developer",
+            account_id=87654321,
+        )
+
+        # Webhook with Organization type (account was converted)
+        payload = {
+            "action": "created",
+            "installation": {
+                "id": 12345678,
+                "account": {
+                    "type": "Organization",  # Changed from User
+                    "login": "developer",
+                    "id": 87654321,
+                },
+                "permissions": {},
+                "events": [],
+                "repository_selection": "all",
+            },
+        }
+
+        with self.assertLogs("apps.integrations.webhooks.github_app", level="WARNING") as log_cm:
+            handle_installation_event(payload)
+
+        # Verify warning was logged
+        self.assertTrue(
+            any("Account type changed" in msg for msg in log_cm.output),
+            f"Expected warning about account type change. Got: {log_cm.output}",
+        )
+        self.assertTrue(
+            any("User" in msg and "Organization" in msg for msg in log_cm.output),
+            f"Warning should mention both old and new types. Got: {log_cm.output}",
+        )
+
 
 class TestHandleInstallationRepositoriesEvent(TestCase):
     """Tests for handle_installation_repositories_event webhook handler."""
@@ -481,3 +574,191 @@ class TestGitHubAppWebhookEndpoint(TestCase):
         )
 
         self.assertEqual(response.status_code, 400)
+
+
+class TestReinstallMigration(TestCase):
+    """Tests for EC-6: User reinstalls App (new installation ID).
+
+    When a user uninstalls and reinstalls the GitHub App, the new installation
+    should:
+    1. Migrate TrackedRepository records from the old installation
+    2. Inherit the team from the old installation
+    3. Old installation should be marked as inactive
+    """
+
+    def setUp(self):
+        """Set up test fixtures using factories."""
+        from apps.integrations.factories import TrackedRepositoryFactory
+
+        self.team = TeamFactory()
+
+        # Create an old installation that was deleted/inactive
+        self.old_installation = GitHubAppInstallationFactory(
+            team=self.team,
+            installation_id=11111111,  # Old installation ID
+            account_id=87654321,  # Same account ID
+            account_login="acme-corp",
+            account_type="Organization",
+            is_active=False,  # Marked inactive after deletion
+        )
+
+        # Create TrackedRepository records pointing to old installation
+        # Note: integration=None to avoid creating GitHubIntegration (deprecated)
+        self.tracked_repo1 = TrackedRepositoryFactory(
+            team=self.team,
+            integration=None,  # App-based, no OAuth integration
+            app_installation=self.old_installation,
+            full_name="acme-corp/backend",
+            github_repo_id=100001,
+        )
+        self.tracked_repo2 = TrackedRepositoryFactory(
+            team=self.team,
+            integration=None,  # App-based, no OAuth integration
+            app_installation=self.old_installation,
+            full_name="acme-corp/frontend",
+            github_repo_id=100002,
+        )
+
+    def tearDown(self):
+        """Clean up team context."""
+        unset_current_team()
+
+    def test_reinstall_migrates_tracked_repos(self):
+        """Test that TrackedRepository records are migrated to new installation."""
+        from apps.integrations.models import GitHubAppInstallation
+        from apps.integrations.webhooks.github_app import handle_installation_event
+
+        # Simulate user reinstalling the App (new installation ID, same account)
+        payload = {
+            "action": "created",
+            "installation": {
+                "id": 22222222,  # New installation ID
+                "account": {
+                    "type": "Organization",
+                    "login": "acme-corp",
+                    "id": 87654321,  # Same account ID as old installation
+                },
+                "permissions": {"pull_requests": "read", "metadata": "read"},
+                "events": ["pull_request"],
+                "repository_selection": "selected",
+            },
+            "sender": {"login": "admin-user", "id": 11111111},
+        }
+
+        handle_installation_event(payload)
+
+        # Verify new installation was created
+        new_installation = GitHubAppInstallation.objects.get(installation_id=22222222)
+        self.assertTrue(new_installation.is_active)
+
+        # Verify TrackedRepository records were migrated to new installation
+        self.tracked_repo1.refresh_from_db()
+        self.tracked_repo2.refresh_from_db()
+
+        self.assertEqual(
+            self.tracked_repo1.app_installation_id,
+            new_installation.id,
+            "TrackedRepository should be migrated to new installation",
+        )
+        self.assertEqual(
+            self.tracked_repo2.app_installation_id,
+            new_installation.id,
+            "TrackedRepository should be migrated to new installation",
+        )
+
+    def test_reinstall_deactivates_old_installation(self):
+        """Test that old installation is deactivated (if not already)."""
+        from apps.integrations.models import GitHubAppInstallation
+        from apps.integrations.webhooks.github_app import handle_installation_event
+
+        # Make old installation active (simulating race where webhook arrives before deletion)
+        self.old_installation.is_active = True
+        self.old_installation.save()
+
+        payload = {
+            "action": "created",
+            "installation": {
+                "id": 22222222,
+                "account": {
+                    "type": "Organization",
+                    "login": "acme-corp",
+                    "id": 87654321,
+                },
+                "permissions": {},
+                "events": [],
+                "repository_selection": "all",
+            },
+        }
+
+        handle_installation_event(payload)
+
+        # Verify old installation was deactivated
+        self.old_installation.refresh_from_db()
+        self.assertFalse(
+            self.old_installation.is_active,
+            "Old installation should be deactivated when new one is created",
+        )
+
+        # Verify new installation is active
+        new_installation = GitHubAppInstallation.objects.get(installation_id=22222222)
+        self.assertTrue(new_installation.is_active)
+
+    def test_reinstall_inherits_team_from_old_installation(self):
+        """Test that new installation inherits team from old installation."""
+        from apps.integrations.models import GitHubAppInstallation
+        from apps.integrations.webhooks.github_app import handle_installation_event
+
+        payload = {
+            "action": "created",
+            "installation": {
+                "id": 22222222,
+                "account": {
+                    "type": "Organization",
+                    "login": "acme-corp",
+                    "id": 87654321,
+                },
+                "permissions": {},
+                "events": [],
+                "repository_selection": "all",
+            },
+        }
+
+        handle_installation_event(payload)
+
+        # Verify new installation inherited team from old installation
+        new_installation = GitHubAppInstallation.objects.get(installation_id=22222222)
+        self.assertEqual(
+            new_installation.team_id,
+            self.team.id,
+            "New installation should inherit team from old installation with same account_id",
+        )
+
+    def test_fresh_install_has_no_team(self):
+        """Test that fresh installations (no previous) have team=None."""
+        from apps.integrations.models import GitHubAppInstallation
+        from apps.integrations.webhooks.github_app import handle_installation_event
+
+        # New account that never had an installation
+        payload = {
+            "action": "created",
+            "installation": {
+                "id": 33333333,
+                "account": {
+                    "type": "Organization",
+                    "login": "brand-new-org",
+                    "id": 99999999,  # Different account ID
+                },
+                "permissions": {},
+                "events": [],
+                "repository_selection": "all",
+            },
+        }
+
+        handle_installation_event(payload)
+
+        # Verify new installation has no team (fresh install)
+        new_installation = GitHubAppInstallation.objects.get(installation_id=33333333)
+        self.assertIsNone(
+            new_installation.team,
+            "Fresh installation should have team=None",
+        )

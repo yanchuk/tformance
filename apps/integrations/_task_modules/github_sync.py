@@ -27,6 +27,60 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 
 
+def is_permanent_github_auth_failure(exc: Exception) -> bool:
+    """Check if exception is a permanent GitHub authentication failure.
+
+    401 errors (Bad credentials) are permanent - the token is revoked or invalid.
+    These should fail immediately without retry.
+
+    GitHubAppDeactivatedError is also permanent - the App was uninstalled and
+    retrying won't help. User needs to reinstall.
+
+    403 errors can be rate limits (transient) or forbidden (permanent).
+    Rate limits should retry, forbidden may need investigation.
+
+    Args:
+        exc: Exception to check
+
+    Returns:
+        True if this is a permanent auth failure that should not be retried
+    """
+    from apps.integrations.exceptions import GitHubAppDeactivatedError, GitHubAuthError
+
+    # Edge case #5: GitHubAppDeactivatedError is permanent - no point retrying
+    if isinstance(exc, (GitHubAppDeactivatedError, GitHubAuthError)):
+        return True
+
+    error_str = str(exc).lower()
+
+    # Check for 401 status code or "bad credentials" message
+    if "401" in error_str:
+        return True
+    if "bad credentials" in error_str:
+        return True
+    if "unauthorized" in error_str and "rate" not in error_str:
+        return True
+
+    # Check for gql/aiohttp transport errors indicating 401
+    # These come from the GraphQL client
+    return hasattr(exc, "status_code") and exc.status_code == 401
+
+
+def _mark_installation_inactive_for_repo(tracked_repo) -> None:
+    """Mark the App installation as inactive when auth fails.
+
+    Args:
+        tracked_repo: TrackedRepository with app_installation
+    """
+    if tracked_repo.app_installation:
+        tracked_repo.app_installation.is_active = False
+        tracked_repo.app_installation.save(update_fields=["is_active", "updated_at"])
+        logger.warning(
+            f"Marked GitHubAppInstallation {tracked_repo.app_installation.installation_id} "
+            f"as inactive due to auth failure"
+        )
+
+
 def _sync_with_graphql_or_rest(tracked_repo, days_back: int, skip_recent: int = 0) -> dict:
     """Sync repository using GraphQL or REST API based on feature flags.
 
@@ -193,10 +247,16 @@ def _sync_members_with_graphql_or_rest(integration, org_slug: str) -> dict:
                 raise
 
     # Use REST API (default or fallback)
+    # Prefer App installation token over OAuth
     logger.info(f"Using REST for member sync: {org_slug}")
+    from apps.integrations.models import GitHubAppInstallation
+
+    app_installation = GitHubAppInstallation.objects.filter(team=integration.team, is_active=True).first()
+    access_token = app_installation.get_access_token() if app_installation else integration.credential.access_token
+
     return sync_github_members(
         team=integration.team,
-        access_token=integration.credential.access_token,
+        access_token=access_token,
         org_slug=org_slug,
     )
 
@@ -288,7 +348,31 @@ def sync_repository_task(self, repo_id: int) -> dict:
 
         return result
     except Exception as exc:
-        # Calculate exponential backoff
+        # Edge case #5 & #15: Check if this is a permanent auth failure (401 or deactivated)
+        # If so, fail immediately without retry
+        if is_permanent_github_auth_failure(exc):
+            from sentry_sdk import capture_exception
+
+            from apps.integrations.exceptions import GitHubAppDeactivatedError, GitHubAuthError
+
+            logger.error(f"GitHub auth failure for {tracked_repo.full_name}: {exc}")
+            capture_exception(exc)
+
+            # Mark installation as inactive (only for 401 errors, not deactivated)
+            # GitHubAppDeactivatedError means it's already inactive
+            if not isinstance(exc, (GitHubAppDeactivatedError, GitHubAuthError)):
+                _mark_installation_inactive_for_repo(tracked_repo)
+
+            # Set status to error with clear message from the exception
+            tracked_repo.sync_status = TrackedRepository.SYNC_STATUS_ERROR
+            # Use exception message directly - it contains user-friendly guidance
+            error_msg = str(exc)
+            tracked_repo.last_sync_error = error_msg
+            tracked_repo.save(update_fields=["sync_status", "last_sync_error"])
+
+            return {"error": error_msg}
+
+        # Calculate exponential backoff for transient errors
         countdown = self.default_retry_delay * (2**self.request.retries)
 
         try:
@@ -822,7 +906,11 @@ def sync_quick_data_task(self, repo_id: int) -> dict:
         except Exception:
             # Max retries exhausted - try direct PR fetch as fallback
             try:
-                access_token = tracked_repo.integration.credential.access_token
+                # Prefer App installation token over OAuth
+                if tracked_repo.app_installation:
+                    access_token = tracked_repo.app_installation.get_access_token()
+                else:
+                    access_token = tracked_repo.integration.credential.access_token
                 all_prs = get_repository_pull_requests(access_token, tracked_repo.full_name)
                 filtered_prs = _filter_prs_by_days(all_prs, days_back=7)
                 prs_synced = len(filtered_prs)
@@ -1019,28 +1107,28 @@ def sync_historical_data_task(
     total_prs = 0
     failed_repos = 0
 
-    # Get GitHub token from integration
-    try:
-        integration = GitHubIntegration.objects.get(team=team)
-        logger.info(f"[SYNC_TASK] Found GitHubIntegration for team {team_id}, org={integration.organization_slug}")
+    # Edge case #4: Token refresh during long sync
+    # We no longer fetch a token upfront. GraphQL sync functions call
+    # _get_access_token() per-repo, which handles token refresh automatically.
+    # This prevents token expiry issues during long syncs (>1 hour).
 
-        # Access token through encrypted field descriptor
-        github_token = integration.credential.access_token
-        token_prefix = github_token[:10] if github_token else "None"
-        logger.info(
-            f"[SYNC_TASK] Token access successful: {token_prefix}... (len={len(github_token) if github_token else 0})"
-        )
+    # Verify team has at least one auth method configured
+    from apps.integrations.models import GitHubAppInstallation
 
-        if not github_token:
-            logger.error(f"[SYNC_TASK] Token is empty for team {team_id}")
-            return {"status": "error", "error": "GitHub token is empty"}
+    has_app_installation = GitHubAppInstallation.objects.filter(team=team, is_active=True).exists()
+    has_oauth_integration = GitHubIntegration.objects.filter(team=team).exists()
 
-    except GitHubIntegration.DoesNotExist:
-        logger.error(f"[SYNC_TASK] No GitHub integration found for team {team_id}")
-        return {"status": "error", "error": "GitHub integration not configured"}
-    except Exception as e:
-        logger.error(f"[SYNC_TASK] Failed to get GitHub token for team {team_id}: {type(e).__name__}: {e}")
-        return {"status": "error", "error": f"Token access failed: {type(e).__name__}"}
+    if not has_app_installation and not has_oauth_integration:
+        logger.error(f"[SYNC_TASK] No GitHub connection found for team {team_id}")
+        return {
+            "status": "error",
+            "error": f"Team {team.name} has no GitHub connection. Please reconnect via Integrations settings.",
+        }
+
+    logger.info(
+        f"[SYNC_TASK] Team {team_id} has auth configured: "
+        f"app_installation={has_app_installation}, oauth={has_oauth_integration}"
+    )
 
     # Send sync started signal
     onboarding_sync_started.send(
@@ -1049,7 +1137,8 @@ def sync_historical_data_task(
         repo_ids=repo_ids,
     )
 
-    service = OnboardingSyncService(team=team, github_token=github_token)
+    # GraphQL sync functions fetch tokens per-repo via _get_access_token()
+    service = OnboardingSyncService(team=team)
 
     # Import sync_logger inside function so mocks in tests work correctly
     from apps.utils.sync_logger import get_sync_logger

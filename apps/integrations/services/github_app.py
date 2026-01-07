@@ -1,6 +1,7 @@
 """GitHub App service for handling GitHub App authentication and API access."""
 
 import time
+from datetime import datetime
 
 import jwt
 from django.conf import settings
@@ -51,6 +52,26 @@ def get_jwt() -> str:
     return jwt.encode(payload, settings.GITHUB_APP_PRIVATE_KEY, algorithm="RS256")
 
 
+def get_installation_token_with_expiry(installation_id: int) -> tuple[str, datetime]:
+    """Get installation token and its expiry datetime.
+
+    Args:
+        installation_id: The GitHub App installation ID
+
+    Returns:
+        Tuple of (token string, expiry datetime)
+
+    Raises:
+        GitHubAppError: If token retrieval fails
+    """
+    try:
+        integration = _get_github_integration()
+        token = integration.get_access_token(installation_id)
+        return token.token, token.expires_at
+    except GithubException as e:
+        raise GitHubAppError(f"Failed to get installation token: {e.status} - {e.data}") from e
+
+
 def get_installation_token(installation_id: int) -> str:
     """Get an installation access token for a GitHub App installation.
 
@@ -63,12 +84,8 @@ def get_installation_token(installation_id: int) -> str:
     Raises:
         GitHubAppError: If token retrieval fails
     """
-    try:
-        integration = _get_github_integration()
-        token = integration.get_access_token(installation_id)
-        return token.token
-    except GithubException as e:
-        raise GitHubAppError(f"Failed to get installation token: {e.status} - {e.data}") from e
+    token, _ = get_installation_token_with_expiry(installation_id)
+    return token
 
 
 def get_installation_client(installation_id: int) -> Github:

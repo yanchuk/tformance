@@ -1,305 +1,405 @@
 # GitHub App Migration - Context
 
-**Last Updated:** 2026-01-01
+**Last Updated: 2026-01-07**
+
+## Current Status
+
+**Phase 1: COMPLETE ✅**
+- GitHub App primary authentication working
+- OAuth reduced to Copilot-only scope
+- All 132 tests passing
+
+**Phase 2: Edge Case Hardening ✅ COMPLETE**
+- 13 edge cases implemented (EC-1 through EC-13, EC-15 through EC-18)
+- 1 edge case config pending (EC-14: Enable webhooks in GitHub App settings)
+- ~110 total tests passing
+- Focus: production-readiness, graceful error handling, revocation detection
 
 ---
 
-## 1. Key Files
+## Key Files for Edge Cases
 
-### Core Files to Create
+### Token Management (#1, #4, #7)
+| File | Purpose | Edge Cases |
+|------|---------|------------|
+| `apps/integrations/models.py:566-650` | `GitHubAppInstallation.get_access_token()` | #1 race condition, #7 is_active check |
+| `apps/integrations/services/github_app.py` | Token fetching | #4 token expiry |
 
-| File | Purpose | Status |
-|------|---------|--------|
-| `apps/integrations/services/github_app.py` | GitHub App service (JWT, tokens) | Pending |
-| `apps/integrations/webhooks/github_app.py` | App webhook event handlers | Pending |
-| `apps/integrations/tests/test_github_app.py` | GitHub App service tests | Pending |
-| `apps/integrations/tests/test_github_app_webhooks.py` | Webhook handler tests | Pending |
+### Auth Error Handling (#2, #3, #15, #16)
+| File | Purpose | Edge Cases |
+|------|---------|------------|
+| `apps/integrations/_task_modules/github_sync.py` | Sync tasks | #2 neither auth, #15 401 retry loop |
+| `apps/integrations/services/github_graphql_sync/_utils.py` | GraphQL token | #3 silent None |
+| `apps/integrations/services/copilot_metrics.py` | Copilot sync | #16 401 not checked |
 
-### Files to Modify
+### Installation Lifecycle (#5, #6, #8, #9, #11, #12, #13)
+| File | Purpose | Edge Cases |
+|------|---------|------------|
+| `apps/integrations/webhooks/github_app.py` | Webhook handler | #5 mid-sync uninstall, #6 reinstall, #11 duplicate webhooks, #13 account type change |
+| `apps/integrations/models.py` | GitHubAppInstallation | #9 suspended vs deleted errors, #12 refresh_from_db |
+| `apps/integrations/management/commands/cleanup_orphaned_installations.py` | Cleanup orphans | #8 orphaned installations |
 
-| File | Changes | Status |
-|------|---------|--------|
-| `apps/integrations/models.py` | Add GitHubAppInstallation model | Pending |
-| `apps/integrations/services/github_client.py` | Add installation token support | Pending |
-| `tformance/settings.py` | Add GITHUB_APP_* settings | Pending |
-| `apps/onboarding/views.py` | Add GitHub App installation flow | Pending |
-| `apps/integrations/views/github.py` | Add app management views | Pending |
-| `apps/web/views.py` | Add app webhook endpoint | Pending |
-| `apps/web/urls.py` | Add webhook URL | Pending |
+### Revocation Handling (#14, #17, #18)
+| File | Purpose | Edge Cases |
+|------|---------|------------|
+| `apps/web/urls.py:23-24` | Webhook routes (exist!) | #14 re-enable webhooks |
+| `apps/integrations/models.py` | IntegrationCredential revocation fields | #17 revocation tracking |
+| `apps/integrations/services/status.py` | Status service | #18 revocation status in API |
 
-### Reference Files (Do Not Modify)
-
-| File | Why Important |
-|------|---------------|
-| `apps/integrations/services/github_oauth.py` | Keep for Copilot, pattern reference |
-| `apps/integrations/services/github_webhooks.py` | Signature verification to reuse |
-| `prd/GITHUB-APP-MIGRATION.md` | Complete migration plan |
-
----
-
-## 2. Key Decisions
-
-### Scope Decisions
-
-| Decision | Choice | Rationale |
-|----------|--------|-----------|
-| **Copilot handling** | Keep OAuth separately | `manage_billing:copilot` is OAuth-only scope |
-| **User login** | Keep OAuth for allauth | GitHub App user OAuth more complex, no benefit |
-| **Migration approach** | New installs only first | Lower risk, validate before migrating |
-| **OAuth removal** | Never (keep for Copilot) | Copilot metrics need OAuth |
-
-### Technical Decisions
-
-| Decision | Choice | Rationale |
-|----------|--------|-----------|
-| **PyGithub integration** | Use `GithubIntegration` class | Built-in JWT handling |
-| **Token caching** | Cache in model with expiry | Avoid API calls for every request |
-| **Webhook verification** | Same HMAC-SHA256 pattern | Reuse existing code |
-| **Model location** | `apps/integrations/models.py` | Consistent with other integrations |
+### Auth Fallback (#10)
+| File | Purpose | Edge Cases |
+|------|---------|------------|
+| `apps/integrations/models.py` | TrackedRepository.access_token | #10 App → OAuth → Error fallback chain |
 
 ---
 
-## 3. Environment Variables
+## Key Decisions (Phase 2)
 
-### Required for Development
+### Decision 1: Database Locking for Token Refresh
+**Decision**: Use `select_for_update()` for race condition prevention.
 
+**Rationale**:
+- PostgreSQL row locks work across Celery threads (`--pool=threads`)
+- Lock timeout is minimal (< 100ms typical)
+- Prevents duplicate GitHub API calls
+
+**Code Pattern**:
+```python
+with transaction.atomic():
+    locked = Model.objects.select_for_update().get(pk=self.pk)
+    # ... modify and save locked ...
+```
+
+### Decision 2: Fail Fast on 401
+**Decision**: Treat 401 as permanent failure, not transient.
+
+**Rationale**:
+- 401 = "Bad credentials" = token revoked or installation removed
+- Retrying wastes resources and delays error notification
+- Mark installation as `is_active=False` immediately
+
+**Code Pattern**:
+```python
+except GithubException as e:
+    if e.status == 401:
+        installation.is_active = False
+        installation.save()
+        raise TokenRevokedError(...)
+    elif e.status == 403:
+        raise self.retry(exc=e, countdown=60)  # Rate limit - retry
+```
+
+### Decision 3: Webhooks for Revocation Detection
+**Decision**: Re-enable GitHub App webhooks (routes already exist).
+
+**Rationale**:
+- Real-time notification when user uninstalls App
+- More reliable than checking 401 errors
+- Routes exist at `apps/web/urls.py` - just need to enable in GitHub
+
+**Configuration**:
 ```bash
-# GitHub App credentials (get from github.com/settings/apps)
-GITHUB_APP_ID=123456
-GITHUB_APP_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----\n...\n-----END RSA PRIVATE KEY-----"
-GITHUB_APP_WEBHOOK_SECRET=your_webhook_secret_here
-GITHUB_APP_CLIENT_ID=Iv1.xxxxxxxxxxxx
-GITHUB_APP_CLIENT_SECRET=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+GITHUB_APP_WEBHOOK_SECRET="<generate with secrets.token_hex(32)>"
 ```
 
-### Existing (Keep As-Is)
+---
 
+## Dependencies
+
+### Celery Worker Configuration
 ```bash
-# OAuth App credentials (still needed for Copilot + user login)
-GITHUB_CLIENT_ID=existing_oauth_client_id
-GITHUB_SECRET_ID=existing_oauth_secret
+# Development
+celery worker --pool=threads --concurrency=4
+
+# Production
+celery worker --pool=threads --concurrency=10
+```
+
+**Important**: `select_for_update()` works with thread pool because PostgreSQL row locks are connection-level, not process-level.
+
+### Environment Variables to Add
+```bash
+# GitHub App Webhook (required for revocation detection)
+GITHUB_APP_WEBHOOK_SECRET="<generate>"
 ```
 
 ---
 
-## 4. GitHub App Configuration
+## Test Strategy
 
-### Permissions Required
-
-| Permission | Access | Purpose |
-|------------|--------|---------|
-| **Contents** | Read | Fetch commits, files |
-| **Pull requests** | Read + Write | Read PRs, post comments |
-| **Metadata** | Read | Automatic with any access |
-| **Members** | Read | Sync organization members |
-
-### Webhook Events
-
-| Event | Purpose |
-|-------|---------|
-| `installation` | Track app install/uninstall |
-| `installation_repositories` | Track repo additions/removals |
-| `pull_request` | PR opened, closed, merged |
-| `pull_request_review` | Reviews submitted |
-| `push` | Commits pushed (optional) |
-
-### App URLs
-
-| URL | Value |
-|-----|-------|
-| Homepage | `https://tformance.com` |
-| Callback URL | `https://app.tformance.com/auth/github/app/callback/` |
-| Setup URL | `https://app.tformance.com/onboarding/github-app/` |
-| Webhook URL | `https://app.tformance.com/webhooks/github/app/` |
-
----
-
-## 5. Data Model
-
-### GitHubAppInstallation
+### Unit Tests for Edge Cases
 
 ```python
-class GitHubAppInstallation(BaseTeamModel):
-    """Tracks GitHub App installations per team.
+# apps/integrations/tests/test_github_app_installation.py
 
-    Replaces IntegrationCredential for GitHub (except Copilot).
-    Stores installation_id, which is used to get short-lived tokens.
-    """
+class TestGetAccessTokenRaceCondition:
+    """Edge case #1: Race condition in token refresh."""
 
-    # GitHub installation identifier
-    installation_id = models.BigIntegerField(unique=True)
+    def test_concurrent_requests_only_refresh_once(self):
+        """Multiple threads should not all call GitHub API."""
+        # Use threading to simulate concurrent requests
+        # Verify only one GitHub API call made
 
-    # Account that installed the app
-    account_type = models.CharField(max_length=20)  # "Organization" or "User"
-    account_login = models.CharField(max_length=100)
-    account_id = models.BigIntegerField()
+    def test_second_request_gets_cached_token(self):
+        """Second concurrent request should get cached token."""
 
-    # Installation state
-    is_active = models.BooleanField(default=True)
-    suspended_at = models.DateTimeField(null=True, blank=True)
+class TestGetAccessTokenIsActiveCheck:
+    """Edge case #7: Check is_active before returning token."""
 
-    # Permissions snapshot (for display/debugging)
-    permissions = models.JSONField(default=dict)
-    events = models.JSONField(default=list)
-    repository_selection = models.CharField(max_length=20, default="selected")
+    def test_raises_if_not_active(self):
+        """GitHubAppDeactivatedError raised for inactive installation."""
 
-    # Cached installation token (avoid API calls)
-    cached_token = EncryptedTextField(blank=True)
-    token_expires_at = models.DateTimeField(null=True, blank=True)
-
-    class Meta:
-        db_table = "integrations_github_app_installation"
-        indexes = [
-            models.Index(fields=["account_login"], name="gh_app_inst_login_idx"),
-            models.Index(fields=["is_active"], name="gh_app_inst_active_idx"),
-        ]
+    def test_returns_token_if_active(self):
+        """Token returned for active installation."""
 ```
-
-### Relationship to Existing Models
-
-```
-Team
- ├── GitHubIntegration (existing, keep for OAuth/Copilot)
- │    └── IntegrationCredential (OAuth tokens)
- │
- └── GitHubAppInstallation (new, prefer for API access)
-      └── (no credentials stored - tokens are ephemeral)
-```
-
----
-
-## 6. Service Architecture
-
-### GitHubAppService
 
 ```python
-class GitHubAppService:
-    """GitHub App authentication and API service.
+# apps/integrations/tests/test_github_sync.py
 
-    Usage:
-        service = GitHubAppService()
-        client = service.get_installation_client(installation_id)
-        repos = client.get_organization("acme").get_repos()
-    """
+class TestSyncAuthErrorHandling:
+    """Edge cases #2, #15: Auth error handling in sync tasks."""
 
-    def __init__(self):
-        self.app_id = settings.GITHUB_APP_ID
-        self.private_key = settings.GITHUB_APP_PRIVATE_KEY
+    def test_clear_error_when_no_auth(self):
+        """User-friendly error when neither App nor OAuth configured."""
 
-    def get_jwt(self) -> str:
-        """Generate JWT for app-level authentication.
+    def test_401_fails_fast_no_retry(self):
+        """401 error should not trigger Celery retry."""
 
-        Returns:
-            JWT token valid for 10 minutes
-        """
+    def test_401_marks_installation_inactive(self):
+        """401 error should set is_active=False."""
 
-    def get_installation_token(self, installation_id: int) -> str:
-        """Get installation access token for API calls.
-
-        Returns:
-            Access token valid for 1 hour
-
-        Raises:
-            GitHubAppError: If installation not found or suspended
-        """
-
-    def get_installation_client(self, installation_id: int) -> Github:
-        """Get authenticated PyGithub client.
-
-        Returns:
-            Github client configured with installation token
-        """
-
-    def get_installation(self, installation_id: int) -> dict:
-        """Fetch installation details from GitHub API.
-
-        Returns:
-            Installation data including account, permissions, events
-        """
-
-    def get_installation_repositories(self, installation_id: int) -> list[dict]:
-        """List repositories accessible to an installation.
-
-        Returns:
-            List of repository dictionaries
-        """
+    def test_403_retries_with_backoff(self):
+        """403 (rate limit) should retry with countdown."""
 ```
-
-### get_github_client_for_team (Updated)
 
 ```python
-def get_github_client_for_team(team: Team) -> Github:
-    """Get GitHub client using best available auth method.
+# apps/integrations/tests/test_graphql_utils.py
 
-    Priority:
-    1. GitHub App installation (preferred)
-    2. OAuth credential (fallback/Copilot)
+class TestGetAccessTokenExplicitError:
+    """Edge case #3: Explicit error instead of None."""
 
-    Returns:
-        Authenticated Github client
+    def test_raises_when_no_auth(self):
+        """GitHubAuthError raised when no authentication available."""
 
-    Raises:
-        NoGitHubConnectionError: If no auth method available
-    """
-    # Try GitHub App first
-    try:
-        installation = GitHubAppInstallation.objects.get(team=team, is_active=True)
-        return GitHubAppService().get_installation_client(installation.installation_id)
-    except GitHubAppInstallation.DoesNotExist:
-        pass
-
-    # Fall back to OAuth
-    try:
-        credential = IntegrationCredential.objects.get(
-            team=team, provider=IntegrationCredential.PROVIDER_GITHUB
-        )
-        return Github(credential.access_token)
-    except IntegrationCredential.DoesNotExist:
-        raise NoGitHubConnectionError(f"Team {team.slug} has no GitHub connection")
+    def test_error_includes_repo_name(self):
+        """Error message should include repository name."""
 ```
-
----
-
-## 7. Testing Strategy
-
-### Unit Tests
-
-| Test Class | Coverage |
-|------------|----------|
-| `TestGitHubAppService` | JWT generation, token fetching, client creation |
-| `TestGitHubAppInstallationModel` | Model validation, token caching |
-| `TestGitHubAppWebhooks` | Event handling, signature verification |
 
 ### Integration Tests
 
-| Test Class | Coverage |
-|------------|----------|
-| `TestGitHubAppInstallationFlow` | Full installation callback flow |
-| `TestGitHubAppClientResolution` | Client selection logic |
-| `TestGitHubAppSyncTasks` | Sync with installation tokens |
+```python
+# apps/integrations/tests/test_webhook_handler.py
 
-### Mocking Strategy
+class TestInstallationWebhook:
+    """Edge cases #5, #6: Webhook handling for installation events."""
 
-- Use `unittest.mock.patch` for GitHub API calls
-- Use `responses` or `vcr.py` for recorded HTTP responses
-- Create factory for `GitHubAppInstallation`
+    def test_installation_deleted_sets_inactive(self):
+        """Webhook sets is_active=False when installation deleted."""
 
----
+    def test_installation_suspended_sets_timestamp(self):
+        """Webhook sets suspended_at when installation suspended."""
 
-## 8. Related Documentation
-
-| Document | Purpose |
-|----------|---------|
-| `prd/GITHUB-APP-MIGRATION.md` | Full migration plan (6 phases) |
-| `CLAUDE.md` | Coding guidelines, TDD requirements |
-| `dev/guides/AUTHENTICATION-FLOWS.md` | OAuth patterns |
+    def test_reinstall_migrates_tracked_repos(self):
+        """New installation inherits TrackedRepository records."""
+```
 
 ---
 
-## 9. Open Questions
+## Error Classes to Add
 
-| Question | Status | Decision |
-|----------|--------|----------|
-| Should we cache installation tokens in Redis? | Pending | Start with model field, optimize later |
-| How to handle suspended installations? | Pending | Mark inactive, prompt reinstall |
-| What about private repos in user accounts? | Pending | Support "User" account type |
+```python
+# apps/integrations/exceptions.py
+
+class GitHubAppDeactivatedError(Exception):
+    """Raised when GitHubAppInstallation is no longer active."""
+    pass
+
+class GitHubAuthError(Exception):
+    """Raised when no valid authentication is available for a repository."""
+    pass
+
+class TokenRevokedError(Exception):
+    """Raised when GitHub token has been revoked."""
+    pass
+```
+
+---
+
+## Webhook Events to Handle
+
+| Event | Action |
+|-------|--------|
+| `installation.created` | Create/update GitHubAppInstallation |
+| `installation.deleted` | Set `is_active=False` |
+| `installation.suspended` | Set `suspended_at` timestamp |
+| `installation.unsuspended` | Clear `suspended_at` |
+| `installation_repositories.added` | (Optional) Log new repos available |
+| `installation_repositories.removed` | (Optional) Deactivate TrackedRepository |
+
+---
+
+## Rollback Plan
+
+If edge case fixes cause issues:
+1. Revert specific edge case commit
+2. Database state unchanged (no new migrations for CRITICAL/HIGH)
+3. Webhooks can be disabled in GitHub App settings instantly
+
+---
+
+## API Reference
+
+### PyGithub Exception Handling
+```python
+from github import GithubException
+
+try:
+    # GitHub API call
+except GithubException as e:
+    e.status  # HTTP status code (401, 403, 404, etc.)
+    e.data    # Response body as dict
+```
+
+### Common Status Codes
+| Code | Meaning | Action |
+|------|---------|--------|
+| 401 | Bad credentials | Fail fast, mark revoked |
+| 403 | Rate limit OR forbidden | Check for rate limit, retry if so |
+| 404 | Not found | Resource doesn't exist |
+| 422 | Validation failed | Check request parameters |
+
+---
+
+## Implementation Notes (MEDIUM/LOW Edge Cases)
+
+### EC-8: Orphaned Installations Cleanup
+**File Created**: `apps/integrations/management/commands/cleanup_orphaned_installations.py`
+
+```bash
+# Preview orphans older than 24 hours
+python manage.py cleanup_orphaned_installations --dry-run
+
+# Delete orphans older than 48 hours
+python manage.py cleanup_orphaned_installations --hours=48
+```
+
+### EC-9: Suspended vs Deleted Error Messages
+Added `_get_deactivated_error_message()` helper to `GitHubAppInstallation`:
+```python
+def _get_deactivated_error_message(self) -> str:
+    if self.suspended_at:
+        return "GitHub App installation for {login} was suspended by GitHub..."
+    else:
+        return "GitHub App installation for {login} was removed..."
+```
+
+### EC-10: Auth Fallback Chain
+`TrackedRepository.access_token` now implements fallback:
+```python
+@property
+def access_token(self) -> str:
+    # 1. Try App installation
+    if self.app_installation is not None:
+        try:
+            return self.app_installation.get_access_token()
+        except GitHubAppDeactivatedError:
+            pass  # Fall back to OAuth
+
+    # 2. Fall back to OAuth
+    if self.integration and self.integration.credential:
+        return self.integration.credential.access_token
+
+    # 3. Neither available
+    raise GitHubAuthError(f"Repository {self.full_name} has no valid authentication.")
+```
+
+### EC-11: Duplicate Webhook Handling
+Changed webhook handler from `create()` to `update_or_create()`:
+```python
+defaults = {...}
+if team:
+    defaults["team"] = team  # Only set if reinstall scenario
+
+new_installation, created = GitHubAppInstallation.objects.update_or_create(
+    installation_id=installation_id,
+    defaults=defaults,
+)
+```
+
+### EC-12: Concurrent Deactivation Detection
+Added `refresh_from_db()` to detect webhook-triggered deactivation:
+```python
+def get_access_token(self) -> str:
+    # EC-12: Refresh is_active from DB to detect webhook deactivation
+    self.refresh_from_db(fields=["is_active", "suspended_at"])
+    if not self.is_active:
+        raise GitHubAppDeactivatedError(self._get_deactivated_error_message())
+    # ... rest of method
+```
+
+### EC-13: Account Type Change Warning
+Logs warning when GitHub user converts to organization:
+```python
+new_account_type = account.get("type", "")
+existing_installation = GitHubAppInstallation.objects.filter(installation_id=installation_id).first()
+if existing_installation and existing_installation.account_type != new_account_type:
+    logger.warning(
+        f"Account type changed for installation {installation_id}: "
+        f"'{existing_installation.account_type}' → '{new_account_type}'"
+    )
+```
+
+### EC-17: IntegrationCredential Revocation Fields
+Added 3 fields with migration `0023_add_revocation_fields_to_credential.py`:
+```python
+is_revoked = models.BooleanField(default=False)
+revoked_at = models.DateTimeField(null=True, blank=True)
+revocation_reason = models.CharField(max_length=255, blank=True, default="")
+```
+
+### EC-18: Status Service Revocation Reporting
+Updated `GitHubStatus` TypedDict and `get_team_integration_status()`:
+```python
+class GitHubStatus(TypedDict):
+    connected: bool
+    org_name: str | None
+    member_count: int
+    repo_count: int
+    is_revoked: bool  # NEW
+    error: str | None  # NEW
+
+# Checks both App installation and OAuth credential:
+if app_installation and not app_installation.is_active:
+    is_revoked = True
+    error = "GitHub App was uninstalled. Please reconnect."
+if credential and credential.is_revoked:
+    is_revoked = True
+    error = "OAuth access was revoked. Please reconnect."
+```
+
+---
+
+## New Test Files Created
+
+| File | Tests | Edge Cases |
+|------|-------|------------|
+| `test_cleanup_orphaned_installations.py` | 5 | EC-8 |
+| `test_github_app_installation.py` (added) | 36 | EC-1, EC-5, EC-7, EC-9, EC-12 |
+| `test_tracked_repository.py` (added) | 10 | EC-10 |
+| `test_github_app_webhooks.py` (added) | 7 | EC-6, EC-11, EC-13 |
+| `test_models.py` (added) | 3 | EC-17 |
+| `test_status_service.py` (added) | 12 | EC-18 |
+
+---
+
+## Remaining Work
+
+**EC-14: Enable Webhooks (Config Only)**
+
+No code changes needed. Steps:
+1. Generate webhook secret: `python -c "import secrets; print(secrets.token_hex(32))"`
+2. Add to `.env`: `GITHUB_APP_WEBHOOK_SECRET="<generated>"`
+3. Add to Heroku: `heroku config:set GITHUB_APP_WEBHOOK_SECRET="<generated>"`
+4. Enable webhooks in GitHub App settings:
+   - Webhook URL: `https://tformance.com/webhooks/github-app/`
+   - Subscribe to: `installation` events (created, deleted, suspended, unsuspended)

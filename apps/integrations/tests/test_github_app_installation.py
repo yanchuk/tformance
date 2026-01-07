@@ -486,3 +486,416 @@ class TestGitHubAppInstallationDbTable(TestCase):
             GitHubAppInstallation._meta.db_table,
             "integrations_github_app_installation",
         )
+
+
+class TestGitHubAppInstallationGetAccessToken(TestCase):
+    """Tests for GitHubAppInstallation.get_access_token() method."""
+
+    def setUp(self):
+        """Set up test fixtures using factories."""
+        from apps.integrations.models import GitHubAppInstallation
+
+        self.team = TeamFactory()
+        self.installation = GitHubAppInstallation.objects.create(
+            team=self.team,
+            installation_id=12345678,
+            account_type="Organization",
+            account_login="acme-corp",
+            account_id=87654321,
+        )
+
+    def tearDown(self):
+        """Clean up team context."""
+        unset_current_team()
+
+    def test_get_access_token_returns_cached_if_valid(self):
+        """Test that get_access_token returns cached token when not expired."""
+        from datetime import timedelta
+
+        # Set cached token with expiry more than 5 minutes in the future
+        cached_token = "ghs_cached_token_valid"
+        self.installation.cached_token = cached_token
+        self.installation.token_expires_at = timezone.now() + timedelta(hours=1)
+        self.installation.save()
+
+        # Should return cached token without calling GitHub API
+        result = self.installation.get_access_token()
+        self.assertEqual(result, cached_token)
+
+    def test_get_access_token_refreshes_if_expired(self):
+        """Test that get_access_token refreshes token when expired."""
+        from datetime import timedelta
+        from unittest.mock import patch
+
+        # Set expired token
+        self.installation.cached_token = "ghs_old_expired_token"
+        self.installation.token_expires_at = timezone.now() - timedelta(hours=1)
+        self.installation.save()
+
+        new_token = "ghs_new_refreshed_token"
+        new_expiry = timezone.now() + timedelta(hours=1)
+
+        with patch("apps.integrations.services.github_app.get_installation_token_with_expiry") as mock_get_token:
+            mock_get_token.return_value = (new_token, new_expiry)
+
+            result = self.installation.get_access_token()
+
+            # Should return new token
+            self.assertEqual(result, new_token)
+            # Should have called the refresh function
+            mock_get_token.assert_called_once_with(self.installation.installation_id)
+
+    def test_get_access_token_refreshes_within_buffer(self):
+        """Test that get_access_token refreshes when within 5-minute buffer of expiry."""
+        from datetime import timedelta
+        from unittest.mock import patch
+
+        # Set token expiring in 3 minutes (within 5-min buffer)
+        self.installation.cached_token = "ghs_expiring_soon_token"
+        self.installation.token_expires_at = timezone.now() + timedelta(minutes=3)
+        self.installation.save()
+
+        new_token = "ghs_refreshed_before_buffer"
+        new_expiry = timezone.now() + timedelta(hours=1)
+
+        with patch("apps.integrations.services.github_app.get_installation_token_with_expiry") as mock_get_token:
+            mock_get_token.return_value = (new_token, new_expiry)
+
+            result = self.installation.get_access_token()
+
+            # Should return new token even though old one isn't technically expired
+            self.assertEqual(result, new_token)
+            mock_get_token.assert_called_once()
+
+    def test_get_access_token_caches_new_token(self):
+        """Test that get_access_token caches the new token after refresh."""
+        from datetime import timedelta
+        from unittest.mock import patch
+
+        # No cached token
+        self.installation.cached_token = ""
+        self.installation.token_expires_at = None
+        self.installation.save()
+
+        new_token = "ghs_brand_new_token"
+        new_expiry = timezone.now() + timedelta(hours=1)
+
+        with patch("apps.integrations.services.github_app.get_installation_token_with_expiry") as mock_get_token:
+            mock_get_token.return_value = (new_token, new_expiry)
+
+            result = self.installation.get_access_token()
+
+            # Verify token returned
+            self.assertEqual(result, new_token)
+
+            # Reload from DB to verify caching
+            self.installation.refresh_from_db()
+            self.assertEqual(self.installation.cached_token, new_token)
+            self.assertEqual(self.installation.token_expires_at, new_expiry)
+
+
+class TestGetAccessTokenRaceCondition(TestCase):
+    """Edge case #1: Race condition in token refresh.
+
+    Tests that multiple concurrent requests to get_access_token() do not
+    all call the GitHub API simultaneously when the token is expired.
+    Uses select_for_update() database locking to prevent race conditions.
+
+    Note: We use TestCase (not TransactionTestCase) and test the locking
+    logic without actual threading to avoid test database isolation issues.
+    The actual concurrent behavior is tested via the locking mechanism.
+    """
+
+    def setUp(self):
+        """Set up test fixtures using factories."""
+        from apps.integrations.models import GitHubAppInstallation
+
+        self.team = TeamFactory()
+        self.installation = GitHubAppInstallation.objects.create(
+            team=self.team,
+            installation_id=12345678,
+            account_type="Organization",
+            account_login="acme-corp",
+            account_id=87654321,
+            cached_token="",
+            token_expires_at=None,
+        )
+
+    def tearDown(self):
+        """Clean up team context."""
+        unset_current_team()
+
+    def test_uses_select_for_update_locking(self):
+        """Verify that get_access_token() uses select_for_update() for locking.
+
+        This test verifies the locking mechanism is in place by checking that
+        select_for_update() is called during token refresh.
+        """
+        from datetime import timedelta
+        from unittest.mock import patch
+
+        new_token = "ghs_locked_token"
+        new_expiry = timezone.now() + timedelta(hours=1)
+
+        with patch("apps.integrations.services.github_app.get_installation_token_with_expiry") as mock_get_token:
+            mock_get_token.return_value = (new_token, new_expiry)
+
+            # Patch select_for_update to track it was called
+            with patch.object(
+                type(self.installation)._default_manager,
+                "select_for_update",
+                wraps=type(self.installation)._default_manager.select_for_update,
+            ) as mock_select_for_update:
+                token = self.installation.get_access_token()
+
+                # Verify select_for_update was called (locking mechanism)
+                mock_select_for_update.assert_called_once()
+                self.assertEqual(token, new_token)
+
+    def test_second_call_returns_cached_without_api_call(self):
+        """Second call should return cached token without calling GitHub API.
+
+        After the first call refreshes and caches the token, subsequent calls
+        should return the cached value without making any API calls.
+        """
+        from datetime import timedelta
+        from unittest.mock import patch
+
+        new_token = "ghs_cached_after_refresh"
+        new_expiry = timezone.now() + timedelta(hours=1)
+
+        with patch("apps.integrations.services.github_app.get_installation_token_with_expiry") as mock_get_token:
+            mock_get_token.return_value = (new_token, new_expiry)
+
+            # First call - should fetch from API
+            token1 = self.installation.get_access_token()
+            self.assertEqual(mock_get_token.call_count, 1)
+            self.assertEqual(token1, new_token)
+
+            # Second call - should use cache (no additional API call)
+            token2 = self.installation.get_access_token()
+            self.assertEqual(mock_get_token.call_count, 1)  # Still 1, not 2
+            self.assertEqual(token2, new_token)
+
+            # Third call - should still use cache
+            token3 = self.installation.get_access_token()
+            self.assertEqual(mock_get_token.call_count, 1)  # Still 1
+            self.assertEqual(token3, new_token)
+
+    def test_locked_refresh_updates_self_instance(self):
+        """After locked refresh, self instance should have updated token values.
+
+        The get_access_token() method should update self.cached_token and
+        self.token_expires_at after refreshing, even though it saves via
+        the locked instance.
+        """
+        from datetime import timedelta
+        from unittest.mock import patch
+
+        new_token = "ghs_self_updated_token"
+        new_expiry = timezone.now() + timedelta(hours=1)
+
+        with patch("apps.integrations.services.github_app.get_installation_token_with_expiry") as mock_get_token:
+            mock_get_token.return_value = (new_token, new_expiry)
+
+            # Call get_access_token
+            result = self.installation.get_access_token()
+
+            # Verify self instance is updated
+            self.assertEqual(result, new_token)
+            self.assertEqual(self.installation.cached_token, new_token)
+            self.assertEqual(self.installation.token_expires_at, new_expiry)
+
+
+class TestGetAccessTokenIsActiveCheck(TestCase):
+    """Edge case #7: Check is_active before returning token.
+
+    Tests that get_access_token() checks the is_active flag before
+    returning a cached token. This prevents using stale tokens after
+    the installation has been deleted/deactivated.
+    """
+
+    def setUp(self):
+        """Set up test fixtures using factories."""
+        from datetime import timedelta
+
+        from apps.integrations.models import GitHubAppInstallation
+
+        self.team = TeamFactory()
+        self.installation = GitHubAppInstallation.objects.create(
+            team=self.team,
+            installation_id=12345678,
+            account_type="Organization",
+            account_login="acme-corp",
+            account_id=87654321,
+            cached_token="ghs_valid_cached_token",
+            token_expires_at=timezone.now() + timedelta(hours=1),
+            is_active=True,
+        )
+
+    def tearDown(self):
+        """Clean up team context."""
+        unset_current_team()
+
+    def test_get_access_token_raises_when_inactive(self):
+        """get_access_token() should raise GitHubAppDeactivatedError when is_active=False.
+
+        Even if there's a valid cached token, it should not be returned
+        if the installation has been deactivated (e.g., user uninstalled App).
+        """
+        from apps.integrations.exceptions import GitHubAppDeactivatedError
+
+        # Deactivate installation
+        self.installation.is_active = False
+        self.installation.save()
+
+        with self.assertRaises(GitHubAppDeactivatedError) as context:
+            self.installation.get_access_token()
+
+        # Error message should include account login for debugging
+        self.assertIn("acme-corp", str(context.exception))
+
+    def test_get_access_token_returns_token_when_active(self):
+        """get_access_token() should return token normally when is_active=True."""
+        # Installation is active by default from setUp
+        self.assertTrue(self.installation.is_active)
+
+        token = self.installation.get_access_token()
+
+        # Should return the cached token
+        self.assertEqual(token, "ghs_valid_cached_token")
+
+    def test_get_access_token_error_includes_reinstall_guidance(self):
+        """Error message should guide user to reinstall the App."""
+        from apps.integrations.exceptions import GitHubAppDeactivatedError
+
+        self.installation.is_active = False
+        self.installation.save()
+
+        with self.assertRaises(GitHubAppDeactivatedError) as context:
+            self.installation.get_access_token()
+
+        error_msg = str(context.exception).lower()
+        # Should mention reinstall or reconnect
+        self.assertTrue(
+            "reinstall" in error_msg or "reconnect" in error_msg,
+            f"Error should guide user to reinstall, got: {context.exception}",
+        )
+
+
+class TestSuspendedVsDeletedErrorMessages(TestCase):
+    """Edge case #9: Suspended vs Deleted Not Distinguished.
+
+    Tests that error messages differ for suspended vs deleted installations
+    to provide appropriate guidance to users.
+    """
+
+    def setUp(self):
+        """Set up test fixtures."""
+        from apps.integrations.factories import GitHubAppInstallationFactory
+
+        self.team = TeamFactory()
+        self.installation = GitHubAppInstallationFactory(
+            team=self.team,
+            installation_id=99999999,
+            account_login="acme-corp",
+            is_active=True,
+        )
+
+    def tearDown(self):
+        """Clean up team context."""
+        unset_current_team()
+
+    def test_error_message_for_suspended_installation(self):
+        """Suspended installation should mention 'suspended' and org admin contact."""
+        from apps.integrations.exceptions import GitHubAppDeactivatedError
+
+        # Suspend the installation
+        self.installation.is_active = False
+        self.installation.suspended_at = timezone.now()
+        self.installation.save()
+
+        with self.assertRaises(GitHubAppDeactivatedError) as context:
+            self.installation.get_access_token()
+
+        error_msg = str(context.exception).lower()
+        # Should mention suspended, not deleted
+        self.assertIn("suspended", error_msg, f"Error should mention 'suspended': {context.exception}")
+        # Should guide to contact org admin
+        self.assertTrue(
+            "admin" in error_msg or "organization" in error_msg,
+            f"Should suggest contacting org admin: {context.exception}",
+        )
+
+    def test_error_message_for_deleted_installation(self):
+        """Deleted installation should mention 'reinstall' guidance."""
+        from apps.integrations.exceptions import GitHubAppDeactivatedError
+
+        # Delete the installation (is_active=False but suspended_at=None)
+        self.installation.is_active = False
+        self.installation.suspended_at = None
+        self.installation.save()
+
+        with self.assertRaises(GitHubAppDeactivatedError) as context:
+            self.installation.get_access_token()
+
+        error_msg = str(context.exception).lower()
+        # Should NOT mention suspended
+        self.assertNotIn("suspended", error_msg, f"Deleted installation shouldn't say 'suspended': {context.exception}")
+        # Should mention reinstall
+        self.assertIn("reinstall", error_msg, f"Should guide user to reinstall: {context.exception}")
+
+
+class TestRaceBetweenWebhookAndSyncCheck(TestCase):
+    """Edge case #12: Race Between Webhook and Sync Check.
+
+    Tests that get_access_token() detects deactivation even when:
+    1. Python object has is_active=True (from initial load)
+    2. Database has been updated to is_active=False (by webhook)
+    3. Token is still cached and valid
+
+    This simulates a webhook arriving during a long-running sync task.
+    """
+
+    def setUp(self):
+        """Set up test fixtures."""
+        from datetime import timedelta
+
+        from apps.integrations.models import GitHubAppInstallation
+
+        self.team = TeamFactory()
+        self.installation = GitHubAppInstallation.objects.create(
+            team=self.team,
+            installation_id=12345678,
+            account_type="Organization",
+            account_login="acme-corp",
+            account_id=87654321,
+            cached_token="ghs_valid_cached_token",
+            token_expires_at=timezone.now() + timedelta(hours=1),
+            is_active=True,
+        )
+
+    def tearDown(self):
+        """Clean up team context."""
+        unset_current_team()
+
+    def test_detects_deactivation_from_database(self):
+        """get_access_token() should refresh from DB to detect deactivation.
+
+        Simulates: Task loads installation, webhook deactivates it, task calls get_access_token().
+        """
+        from apps.integrations.exceptions import GitHubAppDeactivatedError
+        from apps.integrations.models import GitHubAppInstallation
+
+        # Verify initial state - object and DB both active
+        self.assertTrue(self.installation.is_active)
+
+        # Simulate webhook updating DB directly (installation object not refreshed)
+        GitHubAppInstallation.objects.filter(pk=self.installation.pk).update(is_active=False)
+
+        # Object still thinks it's active
+        self.assertTrue(self.installation.is_active)
+
+        # get_access_token should detect the deactivation from DB
+        with self.assertRaises(GitHubAppDeactivatedError):
+            self.installation.get_access_token()
