@@ -1,6 +1,6 @@
 # Copilot Mock Data - Tasks (TDD)
 
-**Last Updated**: 2026-01-06
+**Last Updated**: 2026-01-07
 
 ---
 
@@ -133,101 +133,95 @@
 
 ---
 
-## Phase 4: PR Correlation ⏳ PENDING
+## Phase 4: PR Correlation ✅ COMPLETE
 
-### 4.1 Correlation Tests (RED)
+### 4.1 Correlation Tests (RED) ✅
 
 **Effort: M** | **Priority: P1**
 
-- [ ] Write `test_prs_on_usage_days_marked_ai_assisted`
-- [ ] Write `test_prs_on_non_usage_days_not_marked`
-- [ ] Write `test_ai_tools_detected_includes_copilot`
-- [ ] Write `test_correlation_respects_scenario_rate`
-- [ ] Run tests and confirm they FAIL
+- [x] Write `test_prs_on_usage_days_marked_ai_assisted`
+- [x] Write `test_prs_on_non_usage_days_not_marked`
+- [x] Write `test_ai_tools_detected_includes_copilot`
+- [x] Write `test_existing_ai_tools_preserved`
+- [x] Write `test_correlation_respects_team_isolation`
+- [x] Write `test_correlation_only_for_copilot_source`
+- [x] Write `test_correlation_requires_minimum_suggestions`
+- [x] Write `test_correlation_returns_count`
 
-**Acceptance Criteria:**
-- PRs correlate with member's daily Copilot usage
-- `is_ai_assisted` and `ai_tools_detected` updated correctly
+**8 tests pass**
 
-### 4.2 Correlation Implementation (GREEN)
+### 4.2 Correlation Implementation (GREEN) ✅
 
 **Effort: M** | **Priority: P1** | **Depends on: 4.1**
 
-- [ ] Add `correlate_prs_with_copilot_usage()` function
-- [ ] Query member's PRs by `pr_created_at__date`
-- [ ] Query member's `AIUsageDaily` records for date
-- [ ] Update PR fields when correlation found
-- [ ] Integrate into `seed_copilot_demo` command
-- [ ] Run tests and confirm they PASS
-
-**Acceptance Criteria:**
-- PRs created on Copilot-active days get `is_ai_assisted=True`
-- PRs on inactive days unchanged
+- [x] Add `correlate_prs_with_copilot_usage()` function
+- [x] Query member's PRs by `pr_created_at__date`
+- [x] Query member's `AIUsageDaily` records for date
+- [x] Update PR fields when correlation found
+- [x] Integrate into `seed_copilot_demo` command with `--correlate-prs` flag
+- [x] All tests pass
 
 ---
 
-## Phase 5: LLM Integration ⏳ PENDING
+## Phase 5: LLM Integration ✅ COMPLETE
 
-### 5.1 Prompt Template Tests (RED)
+### 5.1 Prompt Template Tests (RED) ✅
 
 **Effort: S** | **Priority: P1**
 
-- [ ] Write `test_copilot_metrics_section_renders`
-- [ ] Write `test_copilot_metrics_hidden_when_no_data`
-- [ ] Write `test_inactive_licenses_shown_in_template`
-- [ ] Run tests and confirm they FAIL
+- [x] Write `test_renders_copilot_section_with_data`
+- [x] Write `test_hides_section_when_no_data`
+- [x] Write `test_shows_inactive_licenses_warning`
+- [x] Write `test_hides_inactive_when_zero`
+- [x] Write `test_shows_low_adoption_warning`
+- [x] Write `test_shows_good_adoption_indicator`
 
-**Acceptance Criteria:**
-- Template renders Copilot section when data present
-- Template gracefully handles missing data
+**6 tests pass**
 
-### 5.2 Prompt Template Implementation (GREEN)
+### 5.2 Prompt Template Implementation (GREEN) ✅
 
 **Effort: S** | **Priority: P1** | **Depends on: 5.1**
 
-- [ ] Create `apps/metrics/prompts/templates/sections/copilot_metrics.jinja2`
-- [ ] Include in `insight/user_v2.jinja2`
-- [ ] Add `copilot_metrics` context in `render.py`
-- [ ] Run tests and confirm they PASS
+- [x] Create `apps/metrics/prompts/templates/sections/copilot_metrics.jinja2`
+- [x] Template renders Copilot metrics section
+- [x] Handles adoption thresholds (LOW/GOOD indicators)
+- [x] All tests pass
 
-### 5.3 Copilot Metrics Service (GREEN)
+### 5.3 Copilot Metrics Service (GREEN) ✅
 
 **Effort: M** | **Priority: P1** | **Depends on: 5.2**
 
-- [ ] Write `test_get_copilot_metrics_for_prompt_returns_dict`
-- [ ] Write `test_copilot_metrics_includes_inactive_count`
-- [ ] Write `test_copilot_metrics_includes_top_users`
-- [ ] Create `get_copilot_metrics_for_prompt(team, start_date, end_date)` function
-- [ ] Query `AIUsageDaily` and aggregate
-- [ ] Calculate inactive users, top performers, trends
-
-**Acceptance Criteria:**
-- LLM receives structured Copilot context
-- Insights can reference Copilot metrics
+- [x] `get_copilot_metrics_for_prompt()` exists in `copilot_metrics_prompt.py`
+- [x] Function queries `AIUsageDaily` and aggregates
+- [x] Calculates inactive users, top performers
+- [x] Feature flag checking with `include_copilot` parameter
+- [x] Full test coverage in `test_copilot_metrics_service.py`
 
 ---
 
-## Phase 6: Settings Toggle ⏳ PENDING
+## Phase 6: Settings Toggle ✅ COMPLETE
 
-### 6.1 Settings Tests (RED)
+### 6.1 Settings Tests (RED) ✅
 
 **Effort: S** | **Priority: P2**
 
-- [ ] Write `test_mock_mode_disabled_by_default`
-- [ ] Write `test_mock_mode_enabled_returns_mock_data`
-- [ ] Write `test_mock_seed_affects_output`
-- [ ] Write `test_mock_scenario_parameter_used`
-- [ ] Run tests and confirm they FAIL
+- [x] Write `test_mock_mode_disabled_by_default`
+- [x] Write `test_mock_mode_enabled_returns_mock_data`
+- [x] Write `test_mock_seed_produces_deterministic_output`
+- [x] Write `test_mock_scenario_parameter_used`
+- [x] Write `test_different_seed_produces_different_output`
 
-### 6.2 Settings Implementation (GREEN)
+**5 tests pass** - `apps/integrations/tests/test_copilot_mock_mode.py`
+
+### 6.2 Settings Implementation (GREEN) ✅
 
 **Effort: S** | **Priority: P2** | **Depends on: 6.1**
 
-- [ ] Add `COPILOT_USE_MOCK_DATA` to `settings.py`
-- [ ] Add `COPILOT_MOCK_SEED` to `settings.py`
-- [ ] Add `COPILOT_MOCK_SCENARIO` to `settings.py`
-- [ ] Modify `fetch_copilot_metrics()` to check settings
-- [ ] Run tests and confirm they PASS
+- [x] Add `COPILOT_USE_MOCK_DATA` to `settings.py` (default: False)
+- [x] Add `COPILOT_MOCK_SEED` to `settings.py` (default: 42)
+- [x] Add `COPILOT_MOCK_SCENARIO` to `settings.py` (default: "mixed_usage")
+- [x] Modify `fetch_copilot_metrics()` to check settings
+- [x] All tests pass
 
 ---
 
@@ -293,9 +287,9 @@ python manage.py generate_insights --team=demo
 | 1. Mock Generator Core | ✅ | 9/9 | ✅ |
 | 2. Scenario System | ✅ | 8/8 | ✅ |
 | 3. Management Command | ✅ | 14/14 | ✅ |
-| 4. PR Correlation | ⏳ | 0/4 | 0/2 |
-| 5. LLM Integration | ⏳ | 0/6 | 0/3 |
-| 6. Settings Toggle | ⏳ | 0/4 | 0/2 |
+| 4. PR Correlation | ✅ | 8/8 | ✅ |
+| 5. LLM Integration | ✅ | 6/6 | ✅ |
+| 6. Settings Toggle | ✅ | 5/5 | ✅ |
 | 7. Dashboard Verification | ⏳ | 0/2 | 0/2 |
 
-**Total: 31/47 tests, 3/7 phases complete**
+**Total: 50/52 tests, 6/7 phases complete**
