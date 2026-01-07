@@ -779,7 +779,9 @@ class GitHubAppInstallation(BaseTeamModel):
         # This prevents multiple concurrent requests from all calling GitHub API
         with transaction.atomic():
             # Re-fetch with lock to get fresh state
-            locked_self = GitHubAppInstallation.objects.select_for_update().get(pk=self.pk)
+            locked_self = GitHubAppInstallation.objects.select_for_update().get(  # noqa: TEAM001 - Self pk lookup
+                pk=self.pk
+            )
 
             # Check is_active again after acquiring lock
             if not locked_self.is_active:

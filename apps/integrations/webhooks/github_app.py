@@ -33,7 +33,7 @@ def handle_installation_event(payload: dict) -> None:
         team = None
         if account_id:
             old_installation = (
-                GitHubAppInstallation.objects.filter(
+                GitHubAppInstallation.objects.filter(  # noqa: TEAM001 - Webhook lookup by account_id
                     account_id=account_id,
                 )
                 .exclude(installation_id=installation_id)
@@ -50,7 +50,9 @@ def handle_installation_event(payload: dict) -> None:
         # EC-13: Check for account type changes before update
         # This can happen when a GitHub user converts to an organization
         new_account_type = account.get("type", "")
-        existing_installation = GitHubAppInstallation.objects.filter(installation_id=installation_id).first()
+        existing_installation = GitHubAppInstallation.objects.filter(  # noqa: TEAM001 - Webhook lookup
+            installation_id=installation_id
+        ).first()
         if existing_installation and existing_installation.account_type != new_account_type:
             logger.warning(
                 f"Account type changed for installation {installation_id}: "

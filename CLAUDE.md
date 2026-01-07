@@ -256,6 +256,8 @@ Model.objects.filter(state='merged')  # Missing team!
 
 Suppress when intentional: `# noqa: TEAM001 - ID from Celery task`
 
+**When adding new `BaseTeamModel` subclasses**, update `TEAM_MODELS` in `scripts/lint_team_isolation.py` to include the new model. Run `make lint-team-isolation` to verify.
+
 ### Celery on macOS
 
 Always use `make celery` or `--pool=solo`. Default `prefork` pool causes SIGSEGV crashes.

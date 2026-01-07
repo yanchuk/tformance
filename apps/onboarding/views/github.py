@@ -154,7 +154,9 @@ def github_app_callback(request):
         return redirect("onboarding:start")
 
     # Check if installation already exists (update scenario)
-    existing_installation = GitHubAppInstallation.objects.filter(installation_id=int(installation_id)).first()
+    existing_installation = GitHubAppInstallation.objects.filter(  # noqa: TEAM001 - OAuth callback lookup
+        installation_id=int(installation_id)
+    ).first()
 
     account_login = installation_data["account"]["login"]
 

@@ -35,7 +35,7 @@ class Command(BaseCommand):
         threshold = timezone.now() - timedelta(hours=hours)
 
         # Find orphaned installations (no team, older than threshold)
-        orphans = GitHubAppInstallation.objects.filter(
+        orphans = GitHubAppInstallation.objects.filter(  # noqa: TEAM001 - Queries orphaned (team=NULL)
             team__isnull=True,
             created_at__lt=threshold,
         )

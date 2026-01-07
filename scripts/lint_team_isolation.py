@@ -23,25 +23,45 @@ from dataclasses import dataclass
 from pathlib import Path
 
 # Models that extend BaseTeamModel - update this list if new models are added
+# Run `grep -r "class.*BaseTeamModel" apps/` to find all models
 TEAM_MODELS = {
-    # metrics app
+    # metrics/models/team.py
     "TeamMember",
+    # metrics/models/github.py
     "PullRequest",
     "PRReview",
+    "PRCheckRun",
+    "PRFile",
+    "PRComment",
     "Commit",
+    # metrics/models/jira.py
     "JiraIssue",
-    "AIUsageDaily",
+    # metrics/models/deployments.py
+    "Deployment",
+    # metrics/models/surveys.py
     "PRSurvey",
     "PRSurveyReview",
+    # metrics/models/aggregations.py
+    "AIUsageDaily",
     "WeeklyMetrics",
-    # integrations app
+    "ReviewerCorrelation",
+    "CopilotSeatSnapshot",
+    "CopilotLanguageDaily",
+    "CopilotEditorDaily",
+    # metrics/models/insights.py
+    "DailyInsight",
+    # integrations/models.py
     "IntegrationCredential",
     "GitHubIntegration",
     "TrackedRepository",
     "JiraIntegration",
     "TrackedJiraProject",
     "SlackIntegration",
-    # teams_example app
+    "GitHubAppInstallation",
+    # feedback/models.py
+    "AIFeedback",
+    "LLMFeedback",
+    # teams_example app (for testing)
     "Player",
 }
 
