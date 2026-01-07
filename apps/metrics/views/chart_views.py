@@ -809,3 +809,168 @@ def velocity_trend_chart(request: HttpRequest) -> HttpResponse:
         "metrics/partials/velocity_trend_chart.html",
         {"velocity_data": velocity_data},
     )
+
+
+@team_admin_required
+def copilot_seat_stats_card(request: HttpRequest) -> HttpResponse:
+    """Copilot seat utilization stats card (admin only).
+
+    Shows seat utilization metrics including total seats, active/inactive counts,
+    utilization rate, and cost analysis.
+    """
+    from apps.integrations.services.integration_flags import is_copilot_feature_active
+    from apps.metrics.models import CopilotSeatSnapshot
+
+    # Check feature flag - sub-flag check includes master flag validation
+    if not is_copilot_feature_active(request, "copilot_seat_utilization"):
+        return TemplateResponse(
+            request,
+            "metrics/partials/copilot_seat_stats_card.html",
+            {"seat_stats": None},
+        )
+
+    # Get the latest snapshot for this team
+    snapshot = CopilotSeatSnapshot.for_team.filter(team=request.team).order_by("-date").first()
+
+    seat_stats = None
+    if snapshot:
+        seat_stats = {
+            "total_seats": snapshot.total_seats,
+            "active_seats": snapshot.active_this_cycle,
+            "inactive_seats": snapshot.inactive_this_cycle,
+            "utilization_rate": snapshot.utilization_rate,
+            "monthly_cost": snapshot.monthly_cost,
+            "wasted_spend": snapshot.wasted_spend,
+            "cost_per_active_user": snapshot.cost_per_active_user,
+        }
+
+    return TemplateResponse(
+        request,
+        "metrics/partials/copilot_seat_stats_card.html",
+        {"seat_stats": seat_stats},
+    )
+
+
+@team_admin_required
+def copilot_language_chart(request: HttpRequest) -> HttpResponse:
+    """Copilot language breakdown chart (admin only).
+
+    Shows acceptance rates by programming language for Copilot suggestions.
+    """
+    from decimal import Decimal
+
+    from django.db.models import Sum
+
+    from apps.integrations.services.integration_flags import is_copilot_feature_active
+    from apps.metrics.models import CopilotLanguageDaily
+
+    # Check feature flag - requires both master flag and language insights flag
+    if not is_copilot_feature_active(request, "copilot_language_insights"):
+        return TemplateResponse(
+            request,
+            "metrics/partials/copilot_language_chart.html",
+            {"languages": []},
+        )
+
+    # Query and aggregate by language (all available data for the team)
+    language_data = (
+        CopilotLanguageDaily.for_team.filter(team=request.team)
+        .values("language")
+        .annotate(
+            suggestions_shown=Sum("suggestions_shown"),
+            suggestions_accepted=Sum("suggestions_accepted"),
+        )
+    )
+
+    # Calculate acceptance rate and build result list
+    languages = []
+    for entry in language_data:
+        shown = entry["suggestions_shown"] or 0
+        accepted = entry["suggestions_accepted"] or 0
+        if shown > 0:
+            acceptance_rate = Decimal(accepted * 100) / Decimal(shown)
+            acceptance_rate = acceptance_rate.quantize(Decimal("0.01"))
+        else:
+            acceptance_rate = Decimal("0.00")
+
+        languages.append(
+            {
+                "name": entry["language"],
+                "suggestions_shown": shown,
+                "suggestions_accepted": accepted,
+                "acceptance_rate": acceptance_rate,
+            }
+        )
+
+    # Sort by acceptance rate descending
+    languages.sort(key=lambda x: x["acceptance_rate"], reverse=True)
+
+    return TemplateResponse(
+        request,
+        "metrics/partials/copilot_language_chart.html",
+        {"languages": languages},
+    )
+
+
+@team_admin_required
+def copilot_editor_chart(request: HttpRequest) -> HttpResponse:
+    """Copilot editor breakdown chart (admin only).
+
+    Shows acceptance rates by IDE/editor for Copilot suggestions.
+    """
+    from decimal import Decimal
+
+    from django.db.models import Sum
+
+    from apps.integrations.services.integration_flags import is_copilot_feature_active
+    from apps.metrics.models import CopilotEditorDaily
+
+    # Check feature flag - requires both master flag and language insights flag
+    if not is_copilot_feature_active(request, "copilot_language_insights"):
+        return TemplateResponse(
+            request,
+            "metrics/partials/copilot_editor_chart.html",
+            {"editors": []},
+        )
+
+    # Query and aggregate by editor (all available data for the team)
+    editor_data = (
+        CopilotEditorDaily.for_team.filter(team=request.team)
+        .values("editor")
+        .annotate(
+            suggestions_shown=Sum("suggestions_shown"),
+            suggestions_accepted=Sum("suggestions_accepted"),
+            active_users=Sum("active_users"),
+        )
+    )
+
+    # Calculate acceptance rate and build result list
+    editors = []
+    for entry in editor_data:
+        shown = entry["suggestions_shown"] or 0
+        accepted = entry["suggestions_accepted"] or 0
+        active_users = entry["active_users"] or 0
+        if shown > 0:
+            acceptance_rate = Decimal(accepted * 100) / Decimal(shown)
+            acceptance_rate = acceptance_rate.quantize(Decimal("0.01"))
+        else:
+            acceptance_rate = Decimal("0.00")
+
+        editors.append(
+            {
+                "name": entry["editor"],
+                "suggestions_shown": shown,
+                "suggestions_accepted": accepted,
+                "active_users": active_users,
+                "acceptance_rate": acceptance_rate,
+            }
+        )
+
+    # Sort by acceptance rate descending
+    editors.sort(key=lambda x: x["acceptance_rate"], reverse=True)
+
+    return TemplateResponse(
+        request,
+        "metrics/partials/copilot_editor_chart.html",
+        {"editors": editors},
+    )

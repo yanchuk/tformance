@@ -18,6 +18,16 @@ FLAG_GOOGLE_WORKSPACE = "integration_google_workspace_enabled"
 # Global feature flags
 FLAG_CICD = "cicd_enabled"
 
+# Copilot feature flags - hierarchical structure
+# Master flag controls all Copilot features, sub-flags control individual features
+COPILOT_FEATURE_FLAGS = {
+    "copilot_enabled": "copilot_enabled",  # Master switch
+    "copilot_seat_utilization": "copilot_seat_utilization",  # ROI & seat analytics
+    "copilot_language_insights": "copilot_language_insights",  # Language/editor breakdown
+    "copilot_delivery_impact": "copilot_delivery_impact",  # PR comparison metrics
+    "copilot_llm_insights": "copilot_llm_insights",  # Include Copilot in LLM prompts
+}
+
 # Mapping of integration slugs to flag names
 INTEGRATION_FLAGS = {
     "jira": FLAG_JIRA,
@@ -274,3 +284,32 @@ def is_cicd_enabled(request: HttpRequest) -> bool:
         True if CI/CD features should be shown, False otherwise
     """
     return waffle.flag_is_active(request, FLAG_CICD)
+
+
+def is_copilot_feature_active(request: HttpRequest, flag_name: str) -> bool:
+    """Check if a Copilot feature flag is active.
+
+    Implements hierarchical flag checking - the master flag (copilot_enabled)
+    must be active for any sub-flag to be considered active.
+
+    Args:
+        request: The HTTP request object (used for flag evaluation)
+        flag_name: The Copilot feature flag name (from COPILOT_FEATURE_FLAGS)
+
+    Returns:
+        True if the feature is enabled, False otherwise
+    """
+    # Validate flag name exists
+    if flag_name not in COPILOT_FEATURE_FLAGS:
+        return False
+
+    # For master flag, just check it directly
+    if flag_name == "copilot_enabled":
+        return waffle.flag_is_active(request, COPILOT_FEATURE_FLAGS["copilot_enabled"])
+
+    # For sub-flags, check master first
+    if not waffle.flag_is_active(request, COPILOT_FEATURE_FLAGS["copilot_enabled"]):
+        return False
+
+    # Then check the specific sub-flag
+    return waffle.flag_is_active(request, COPILOT_FEATURE_FLAGS[flag_name])

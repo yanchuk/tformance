@@ -303,3 +303,236 @@ class ReviewerCorrelation(BaseTeamModel):
 
     def __str__(self):
         return f"{self.reviewer_1.display_name} ↔ {self.reviewer_2.display_name}: {self.agreement_rate:.2f}% agreement"
+
+
+# Copilot seat pricing constant
+COPILOT_SEAT_PRICE = Decimal("19.00")  # Monthly cost per seat in USD
+
+
+class CopilotSeatSnapshot(BaseTeamModel):
+    """Daily snapshot of Copilot seat utilization for a team.
+
+    Tracks seat counts and utilization for ROI analysis and cost tracking.
+    Data is synced from GitHub Billing/Seats API.
+    """
+
+    date = models.DateField(
+        verbose_name="Date",
+        help_text="Date of this snapshot",
+    )
+    total_seats = models.IntegerField(
+        verbose_name="Total Seats",
+        help_text="Total number of Copilot seats allocated",
+    )
+    active_this_cycle = models.IntegerField(
+        verbose_name="Active This Cycle",
+        help_text="Number of seats with activity this billing cycle",
+    )
+    inactive_this_cycle = models.IntegerField(
+        verbose_name="Inactive This Cycle",
+        help_text="Number of seats with no activity this billing cycle",
+    )
+    pending_cancellation = models.IntegerField(
+        default=0,
+        verbose_name="Pending Cancellation",
+        help_text="Number of seats pending cancellation",
+    )
+    synced_at = models.DateTimeField(
+        auto_now=True,
+        verbose_name="Synced At",
+        help_text="When this snapshot was last synced",
+    )
+
+    class Meta:
+        ordering = ["-date"]
+        verbose_name = "Copilot Seat Snapshot"
+        verbose_name_plural = "Copilot Seat Snapshots"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["team", "date"],
+                name="unique_team_copilot_seat_date",
+            )
+        ]
+        indexes = [
+            models.Index(fields=["date"], name="copilot_seat_date_idx"),
+        ]
+
+    def __str__(self):
+        return f"{self.team.name} - {self.date}: {self.active_this_cycle}/{self.total_seats} active"
+
+    @property
+    def utilization_rate(self) -> Decimal:
+        """Calculate seat utilization rate as a percentage.
+
+        Returns:
+            Decimal: Utilization rate (0-100), two decimal places.
+        """
+        if self.total_seats == 0:
+            return Decimal("0.00")
+        rate = (Decimal(self.active_this_cycle) / Decimal(self.total_seats)) * 100
+        return rate.quantize(Decimal("0.01"))
+
+    @property
+    def monthly_cost(self) -> Decimal:
+        """Calculate monthly cost based on total seats.
+
+        Returns:
+            Decimal: Total monthly cost in USD.
+        """
+        return (Decimal(self.total_seats) * COPILOT_SEAT_PRICE).quantize(Decimal("0.01"))
+
+    @property
+    def wasted_spend(self) -> Decimal:
+        """Calculate wasted spend on inactive seats.
+
+        Returns:
+            Decimal: Monthly cost of inactive seats in USD.
+        """
+        return (Decimal(self.inactive_this_cycle) * COPILOT_SEAT_PRICE).quantize(Decimal("0.01"))
+
+    @property
+    def cost_per_active_user(self) -> Decimal | None:
+        """Calculate effective cost per active user.
+
+        Returns:
+            Decimal: Cost per active user in USD, or None if no active users.
+        """
+        if self.active_this_cycle == 0:
+            return None
+        return (self.monthly_cost / Decimal(self.active_this_cycle)).quantize(Decimal("0.01"))
+
+
+class CopilotLanguageDaily(BaseTeamModel):
+    """Daily Copilot metrics broken down by programming language.
+
+    Stores language-specific acceptance rates to help CTOs understand
+    which languages benefit most from Copilot. Data is synced from
+    GitHub Copilot Metrics API.
+    """
+
+    date = models.DateField(
+        verbose_name="Date",
+        help_text="Date of this metrics record",
+    )
+    language = models.CharField(
+        max_length=50,
+        verbose_name="Language",
+        help_text="Programming language name (e.g., Python, TypeScript)",
+    )
+    suggestions_shown = models.IntegerField(
+        verbose_name="Suggestions Shown",
+        help_text="Number of Copilot suggestions shown",
+    )
+    suggestions_accepted = models.IntegerField(
+        verbose_name="Suggestions Accepted",
+        help_text="Number of Copilot suggestions accepted",
+    )
+    lines_suggested = models.IntegerField(
+        default=0,
+        verbose_name="Lines Suggested",
+        help_text="Total lines of code suggested by Copilot",
+    )
+    lines_accepted = models.IntegerField(
+        default=0,
+        verbose_name="Lines Accepted",
+        help_text="Total lines of suggested code accepted",
+    )
+    synced_at = models.DateTimeField(
+        auto_now=True,
+        verbose_name="Synced At",
+        help_text="When this record was last synced",
+    )
+
+    class Meta:
+        ordering = ["-date", "language"]
+        verbose_name = "Copilot Language Daily"
+        verbose_name_plural = "Copilot Language Daily"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["team", "date", "language"],
+                name="unique_team_copilot_language_date",
+            )
+        ]
+        indexes = [
+            models.Index(fields=["date"], name="copilot_lang_date_idx"),
+        ]
+
+    def __str__(self):
+        return f"{self.team.name} - {self.date} - {self.language}: {self.acceptance_rate}%"
+
+    @property
+    def acceptance_rate(self) -> Decimal:
+        """Calculate acceptance rate as a percentage.
+
+        Returns:
+            Decimal: Acceptance rate (0-100), two decimal places.
+        """
+        if self.suggestions_shown == 0:
+            return Decimal("0.00")
+        rate = (Decimal(self.suggestions_accepted) / Decimal(self.suggestions_shown)) * 100
+        return rate.quantize(Decimal("0.01"))
+
+
+class CopilotEditorDaily(BaseTeamModel):
+    """Daily Copilot metrics broken down by IDE/editor.
+
+    Stores editor-specific usage data from the GitHub Copilot Metrics API
+    to help CTOs understand which IDEs are most effective with Copilot.
+    """
+
+    date = models.DateField(
+        verbose_name="Date",
+        help_text="Date of this metrics record",
+    )
+    editor = models.CharField(
+        max_length=100,
+        verbose_name="Editor",
+        help_text="IDE/editor name (e.g., vscode, jetbrains, neovim)",
+    )
+    suggestions_shown = models.IntegerField(
+        verbose_name="Suggestions Shown",
+        help_text="Number of Copilot suggestions shown",
+    )
+    suggestions_accepted = models.IntegerField(
+        verbose_name="Suggestions Accepted",
+        help_text="Number of Copilot suggestions accepted",
+    )
+    active_users = models.IntegerField(
+        default=0,
+        verbose_name="Active Users",
+        help_text="Number of users actively using Copilot in this editor",
+    )
+    synced_at = models.DateTimeField(
+        auto_now=True,
+        verbose_name="Synced At",
+        help_text="When this record was last synced",
+    )
+
+    class Meta:
+        ordering = ["-date", "editor"]
+        verbose_name = "Copilot Editor Daily"
+        verbose_name_plural = "Copilot Editor Daily"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["team", "date", "editor"],
+                name="unique_team_copilot_editor_date",
+            )
+        ]
+        indexes = [
+            models.Index(fields=["date"], name="copilot_editor_date_idx"),
+        ]
+
+    def __str__(self):
+        return f"{self.team.name} - {self.date} - {self.editor}: {self.acceptance_rate}%"
+
+    @property
+    def acceptance_rate(self) -> Decimal:
+        """Calculate acceptance rate as a percentage.
+
+        Returns:
+            Decimal: Acceptance rate (0-100), two decimal places.
+        """
+        if self.suggestions_shown == 0:
+            return Decimal("0.00")
+        rate = (Decimal(self.suggestions_accepted) / Decimal(self.suggestions_shown)) * 100
+        return rate.quantize(Decimal("0.01"))

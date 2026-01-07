@@ -15,7 +15,14 @@ Module Structure:
 - benchmarks.py: IndustryBenchmark
 """
 
-from .aggregations import AIUsageDaily, ReviewerCorrelation, WeeklyMetrics
+from .aggregations import (
+    AIUsageDaily,
+    CopilotEditorDaily,
+    CopilotLanguageDaily,
+    CopilotSeatSnapshot,
+    ReviewerCorrelation,
+    WeeklyMetrics,
+)
 from .benchmarks import IndustryBenchmark
 from .deployments import Deployment
 from .github import Commit, PRCheckRun, PRComment, PRFile, PRReview, PullRequest
@@ -41,8 +48,11 @@ __all__ = [
     "PRSurveyReview",
     # Aggregations
     "AIUsageDaily",
+    "CopilotEditorDaily",
+    "CopilotLanguageDaily",
     "WeeklyMetrics",
     "ReviewerCorrelation",
+    "CopilotSeatSnapshot",
     # Insights
     "DailyInsight",
     # Deployments

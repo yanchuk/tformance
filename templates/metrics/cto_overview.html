@@ -94,6 +94,31 @@
       </div>
     </div>
 
+    {% if copilot_seat_utilization_enabled %}
+    <!-- Copilot Seat Utilization -->
+    <div class="card bg-base-100 shadow-md mb-6">
+      <div class="card-body">
+        <h2 class="card-title text-base">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-accent-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+          </svg>
+          {% trans "Seat Utilization & ROI" %}
+        </h2>
+        <p class="text-sm text-base-content/80 mb-2">{% trans "License usage and cost efficiency" %}</p>
+        <div id="copilot-seats-container"
+             hx-get="{% url 'metrics:cards_copilot_seats' %}?days={{ days }}"
+             hx-trigger="load"
+             hx-swap="innerHTML">
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {% for i in "1234" %}
+            <div class="skeleton h-24 w-full rounded-lg"></div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
     <!-- Copilot Trend and Members -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6 mb-6">
       <!-- Copilot Acceptance Rate Trend -->

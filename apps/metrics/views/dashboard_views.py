@@ -7,7 +7,7 @@ from django.template.response import TemplateResponse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from apps.integrations.services.integration_flags import is_cicd_enabled
+from apps.integrations.services.integration_flags import is_cicd_enabled, is_copilot_feature_active
 from apps.metrics.models import DailyInsight
 from apps.metrics.services import insight_service
 from apps.metrics.services.insight_llm import resolve_action_url
@@ -66,6 +66,7 @@ def cto_overview(request: HttpRequest) -> HttpResponse:
     context = _get_date_range_context(request)
     context["insights"] = insight_service.get_recent_insights(request.team)
     context["cicd_enabled"] = is_cicd_enabled(request)
+    context["copilot_seat_utilization_enabled"] = is_copilot_feature_active(request, "copilot_seat_utilization")
     # Return partial for HTMX requests (e.g., days filter changes)
     template = "metrics/cto_overview.html#page-content" if request.htmx else "metrics/cto_overview.html"
     return TemplateResponse(request, template, context)

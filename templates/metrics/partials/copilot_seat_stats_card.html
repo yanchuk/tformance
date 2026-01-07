@@ -1,0 +1,47 @@
+{% load i18n %}
+{% if seat_stats %}
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+  <!-- Total Seats -->
+  <div class="stat bg-base-200 rounded-lg p-4">
+    <div class="stat-title text-xs">{% trans "Total Seats" %}</div>
+    <div class="stat-value text-2xl">{{ seat_stats.total_seats }}</div>
+  </div>
+  <!-- Active Seats -->
+  <div class="stat bg-base-200 rounded-lg p-4">
+    <div class="stat-title text-xs">{% trans "Active" %}</div>
+    <div class="stat-value text-2xl text-success">{{ seat_stats.active_seats }}</div>
+    <div class="stat-desc text-xs">{{ seat_stats.utilization_rate|floatformat:0 }}% {% trans "utilization" %}</div>
+  </div>
+  <!-- Inactive Seats -->
+  <div class="stat bg-base-200 rounded-lg p-4">
+    <div class="stat-title text-xs">{% trans "Inactive" %}</div>
+    <div class="stat-value text-2xl text-warning">{{ seat_stats.inactive_seats }}</div>
+  </div>
+  <!-- Monthly Cost -->
+  <div class="stat bg-base-200 rounded-lg p-4">
+    <div class="stat-title text-xs">{% trans "Monthly Cost" %}</div>
+    <div class="stat-value text-2xl">${{ seat_stats.monthly_cost|floatformat:0 }}</div>
+  </div>
+</div>
+
+{% if seat_stats.inactive_seats > 0 %}
+<!-- ROI Warning -->
+<div class="alert alert-warning mt-4">
+  <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-5 w-5" fill="none" viewBox="0 0 24 24">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+  </svg>
+  <div>
+    <span class="font-medium">{{ seat_stats.inactive_seats }} {% trans "inactive licenses" %}</span>
+    <span class="text-sm">= ${{ seat_stats.wasted_spend|floatformat:0 }}/{% trans "month wasted" %}</span>
+    {% if seat_stats.cost_per_active_user %}
+    <span class="text-xs ml-2 opacity-70">({% trans "Cost per active user" %}: ${{ seat_stats.cost_per_active_user|floatformat:2 }})</span>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+{% else %}
+<div class="text-center py-8 text-base-content/60">
+  <p class="text-sm">{% trans "No seat utilization data available" %}</p>
+  <p class="text-xs mt-1">{% trans "Seat data syncs daily from GitHub Copilot Billing API" %}</p>
+</div>
+{% endif %}

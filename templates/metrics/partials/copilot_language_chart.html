@@ -1,0 +1,19 @@
+{% load i18n %}
+{% if languages %}
+<div class="space-y-3">
+  {% for lang in languages %}
+  <div class="flex items-center gap-3">
+    <div class="w-24 text-sm font-medium truncate">{{ lang.name }}</div>
+    <div class="flex-1">
+      <progress class="progress progress-primary w-full" value="{{ lang.acceptance_rate }}" max="100"></progress>
+    </div>
+    <div class="w-16 text-right text-sm font-mono">{{ lang.acceptance_rate }}%</div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="text-center py-8 text-base-content/60">
+  <p class="text-sm">{% trans "No language data available" %}</p>
+  <p class="text-xs mt-1">{% trans "Language metrics sync daily from GitHub Copilot API" %}</p>
+</div>
+{% endif %}
