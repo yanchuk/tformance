@@ -5,6 +5,7 @@ They should all FAIL until the service is implemented.
 """
 
 import time
+from datetime import UTC
 from unittest.mock import MagicMock, patch
 
 import jwt
@@ -414,3 +415,99 @@ class TestGetInstallationRepositories(TestCase):
 
         with self.assertRaises(GitHubAppError):
             get_installation_repositories(installation_id)
+
+
+@override_settings(
+    GITHUB_APP_ID=TEST_APP_ID,
+    GITHUB_APP_PRIVATE_KEY=TEST_PRIVATE_KEY,
+)
+class TestGetInstallationTokenWithExpiry(TestCase):
+    """Tests for get_installation_token_with_expiry() function."""
+
+    @patch("apps.integrations.services.github_app.GithubIntegration")
+    def test_returns_token_and_expiry_tuple(self, mock_github_integration_class):
+        """Test that get_installation_token_with_expiry returns (token, expires_at) tuple."""
+        from datetime import datetime
+
+        from apps.integrations.services.github_app import get_installation_token_with_expiry
+
+        # Mock GithubIntegration
+        mock_integration = MagicMock()
+        mock_github_integration_class.return_value = mock_integration
+
+        # Mock the get_access_token method with token and expires_at
+        mock_token = MagicMock()
+        mock_token.token = "ghs_test_installation_token_12345"
+        mock_token.expires_at = datetime(2026, 1, 6, 12, 0, 0, tzinfo=UTC)
+        mock_integration.get_access_token.return_value = mock_token
+
+        installation_id = 12345678
+
+        result = get_installation_token_with_expiry(installation_id)
+
+        # Should return a tuple
+        self.assertIsInstance(result, tuple)
+        self.assertEqual(len(result), 2)
+
+        # First element is token string
+        token, expires_at = result
+        self.assertEqual(token, "ghs_test_installation_token_12345")
+
+        # Second element is datetime
+        self.assertIsInstance(expires_at, datetime)
+        self.assertEqual(expires_at.year, 2026)
+
+    @patch("apps.integrations.services.github_app.GithubIntegration")
+    def test_raises_github_app_error_on_failure(self, mock_github_integration_class):
+        """Test that get_installation_token_with_expiry raises GitHubAppError on failure."""
+        from github import GithubException
+
+        from apps.integrations.services.github_app import (
+            GitHubAppError,
+            get_installation_token_with_expiry,
+        )
+
+        # Mock GithubIntegration
+        mock_integration = MagicMock()
+        mock_github_integration_class.return_value = mock_integration
+
+        # Mock get_access_token to raise exception
+        mock_integration.get_access_token.side_effect = GithubException(
+            status=404, data={"message": "Integration not found"}
+        )
+
+        installation_id = 99999999
+
+        with self.assertRaises(GitHubAppError) as context:
+            get_installation_token_with_expiry(installation_id)
+
+        self.assertIn("404", str(context.exception))
+
+    @patch("apps.integrations.services.github_app.GithubIntegration")
+    def test_calls_github_integration_correctly(self, mock_github_integration_class):
+        """Test that get_installation_token_with_expiry uses correct GitHub integration."""
+        from datetime import datetime
+
+        from apps.integrations.services.github_app import get_installation_token_with_expiry
+
+        # Mock GithubIntegration
+        mock_integration = MagicMock()
+        mock_github_integration_class.return_value = mock_integration
+
+        # Mock token
+        mock_token = MagicMock()
+        mock_token.token = "ghs_token"
+        mock_token.expires_at = datetime.now(UTC)
+        mock_integration.get_access_token.return_value = mock_token
+
+        installation_id = 12345678
+
+        get_installation_token_with_expiry(installation_id)
+
+        # Verify GithubIntegration was initialized with correct params
+        mock_github_integration_class.assert_called_once()
+        call_args = mock_github_integration_class.call_args
+        self.assertEqual(call_args[1]["integration_id"], int(TEST_APP_ID))
+
+        # Verify get_access_token was called with installation_id
+        mock_integration.get_access_token.assert_called_once_with(installation_id)

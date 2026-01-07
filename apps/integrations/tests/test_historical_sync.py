@@ -799,3 +799,344 @@ class TestSyncHistoricalDataTaskIntegration(TestCase):
         self.assertEqual(result["status"], "complete")
         self.assertEqual(result["total_prs"], 0)
         self.assertEqual(PullRequest.objects.filter(team=self.team).count(), 0)
+
+
+class TestSyncHistoricalDataNoAuth(TestCase):
+    """Edge case #2: Test clear error when team has neither App installation nor OAuth."""
+
+    def setUp(self):
+        """Set up test fixtures with team but NO GitHub connections."""
+        self.team = TeamFactory(name="TestTeam")
+        # Explicitly NOT creating any GitHubAppInstallation or GitHubIntegration
+
+    def test_sync_raises_clear_error_when_no_auth(self):
+        """sync_historical_data_task should return error with team name when no auth available."""
+        from apps.integrations.tasks import sync_historical_data_task
+
+        # Create repo with no app_installation and no integration
+        repo = TrackedRepositoryFactory(
+            team=self.team,
+            integration=None,
+            app_installation=None,
+            full_name="org/test-repo",
+        )
+
+        # Act
+        result = sync_historical_data_task(team_id=self.team.id, repo_ids=[repo.id])
+
+        # Assert - should return error status with clear message
+        self.assertEqual(result["status"], "error")
+        # Error should include team name
+        self.assertIn("TestTeam", result["error"])
+        # Error should include guidance
+        self.assertIn("reconnect", result["error"].lower())
+
+    def test_error_includes_integrations_settings_guidance(self):
+        """Error message should guide user to Integrations settings."""
+        from apps.integrations.tasks import sync_historical_data_task
+
+        repo = TrackedRepositoryFactory(
+            team=self.team,
+            integration=None,
+            app_installation=None,
+            full_name="myorg/my-project",
+        )
+
+        result = sync_historical_data_task(team_id=self.team.id, repo_ids=[repo.id])
+
+        self.assertEqual(result["status"], "error")
+        # Should mention where to reconnect
+        error_lower = result["error"].lower()
+        self.assertTrue(
+            "integrations" in error_lower or "settings" in error_lower,
+            f"Error should mention Integrations settings: {result['error']}",
+        )
+
+
+class TestSyncErrorHandling(TestCase):
+    """Edge case #15: Test 401 errors fail fast instead of retrying."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        from datetime import timedelta
+
+        from apps.integrations.factories import (
+            GitHubAppInstallationFactory,
+            TrackedRepositoryFactory,
+        )
+
+        self.team = TeamFactory(name="ErrorTestTeam")
+        self.app_installation = GitHubAppInstallationFactory(
+            team=self.team,
+            is_active=True,
+            cached_token="ghs_test_token",
+            token_expires_at=timezone.now() + timedelta(hours=1),
+        )
+        self.repo = TrackedRepositoryFactory(
+            team=self.team,
+            app_installation=self.app_installation,
+            integration=None,
+            full_name="test-org/test-repo",
+        )
+
+    def test_is_permanent_github_auth_failure_detects_401(self):
+        """Test that 401 errors are detected as permanent auth failures."""
+        from apps.integrations._task_modules.github_sync import is_permanent_github_auth_failure
+
+        # Test HTTP 401 status in exception message
+        exc_401 = Exception("401 Bad Credentials")
+        self.assertTrue(is_permanent_github_auth_failure(exc_401))
+
+        # Test "Bad credentials" message (GitHub's actual error)
+        exc_bad_creds = Exception("Bad credentials")
+        self.assertTrue(is_permanent_github_auth_failure(exc_bad_creds))
+
+    def test_is_permanent_github_auth_failure_allows_rate_limit(self):
+        """Test that 403 rate limit errors are NOT permanent (should retry)."""
+        from apps.integrations._task_modules.github_sync import is_permanent_github_auth_failure
+
+        # Rate limit should NOT be permanent - it's transient
+        exc_rate_limit = Exception("403: rate limit exceeded")
+        self.assertFalse(is_permanent_github_auth_failure(exc_rate_limit))
+
+        # Generic exceptions should NOT be permanent
+        exc_generic = Exception("Connection timeout")
+        self.assertFalse(is_permanent_github_auth_failure(exc_generic))
+
+    def test_sync_repository_task_does_not_retry_on_401(self):
+        """Test that sync_repository_task fails immediately on 401."""
+        from unittest.mock import patch
+
+        from apps.integrations.tasks import sync_repository_task
+
+        # Mock the sync to raise a 401 error
+        with patch("apps.integrations._task_modules.github_sync._sync_incremental_with_graphql_or_rest") as mock_sync:
+            mock_sync.side_effect = Exception("401 Bad Credentials")
+
+            # Call the task directly (not via Celery)
+            result = sync_repository_task(repo_id=self.repo.id)
+
+            # Should return error, NOT retry
+            self.assertIn("error", result)
+            # Should mention revoked/access issue
+            error_lower = result["error"].lower()
+            self.assertTrue(
+                "revoked" in error_lower or "access" in error_lower or "401" in error_lower,
+                f"Error should mention revoked access: {result['error']}",
+            )
+
+    def test_sync_repository_task_marks_installation_inactive_on_401(self):
+        """Test that 401 error marks the App installation as inactive."""
+        from unittest.mock import patch
+
+        from apps.integrations.tasks import sync_repository_task
+
+        # Verify installation is active before
+        self.assertTrue(self.app_installation.is_active)
+
+        # Mock the sync to raise a 401 error
+        with patch("apps.integrations._task_modules.github_sync._sync_incremental_with_graphql_or_rest") as mock_sync:
+            mock_sync.side_effect = Exception("401 Bad Credentials")
+
+            # Call the task
+            sync_repository_task(repo_id=self.repo.id)
+
+        # Refresh from DB and check is_active is False
+        self.app_installation.refresh_from_db()
+        self.assertFalse(self.app_installation.is_active)
+
+
+class TestTokenRefreshDuringLongSync(TestCase):
+    """Edge case #4: Test that tokens are refreshed per-repo during long syncs.
+
+    GitHub App tokens expire after 1 hour. For syncs with many repos, we need
+    to ensure each repo gets a fresh token rather than reusing an expired one.
+    """
+
+    def setUp(self):
+        """Set up test fixtures."""
+        from datetime import timedelta
+
+        from apps.integrations.factories import (
+            GitHubAppInstallationFactory,
+            TrackedRepositoryFactory,
+        )
+
+        self.team = TeamFactory(name="LongSyncTeam")
+        self.app_installation = GitHubAppInstallationFactory(
+            team=self.team,
+            is_active=True,
+            cached_token="ghs_initial_token",
+            token_expires_at=timezone.now() + timedelta(hours=1),
+        )
+        self.repo1 = TrackedRepositoryFactory(
+            team=self.team,
+            app_installation=self.app_installation,
+            integration=None,
+            full_name="org/repo1",
+        )
+        self.repo2 = TrackedRepositoryFactory(
+            team=self.team,
+            app_installation=self.app_installation,
+            integration=None,
+            full_name="org/repo2",
+        )
+
+    def test_onboarding_sync_service_does_not_require_token_upfront(self):
+        """Test that OnboardingSyncService works without upfront token.
+
+        Since sync operations fetch tokens per-repo through GraphQL utils,
+        the service should work with token=None and not use the constructor token.
+        """
+        from unittest.mock import patch
+
+        from apps.integrations.services.onboarding_sync import OnboardingSyncService
+
+        # Create service with no token (or empty token)
+        service = OnboardingSyncService(team=self.team, github_token="")
+
+        # Mock GraphQL sync to verify it's called (tokens come from _get_access_token)
+        with patch("apps.integrations.services.onboarding_sync.sync_repository_history_by_search") as mock_search:
+            mock_search.return_value = {"prs_synced": 5, "errors": []}
+
+            # This should NOT fail even though github_token is empty
+            # because sync_repository delegates to GraphQL which fetches its own token
+            result = service.sync_repository(self.repo1)
+
+            self.assertEqual(result["prs_synced"], 5)
+            mock_search.assert_called_once()
+
+    def test_sync_historical_data_task_does_not_fetch_token_upfront(self):
+        """Test that sync_historical_data_task doesn't fetch token upfront.
+
+        The task currently fetches a token at start, but this is wasteful since
+        OnboardingSyncService->GraphQL->_get_access_token fetches fresh tokens.
+        After EC-4 fix, we should NOT make an upfront GitHub API call.
+        """
+        from unittest.mock import patch
+
+        from apps.integrations.models import GitHubAppInstallation
+        from apps.integrations.tasks import sync_historical_data_task
+
+        # Track whether get_access_token was called on ANY installation
+        get_token_calls = []
+
+        def track_get_token(self_instance):
+            get_token_calls.append(f"called_for_{self_instance.installation_id}")
+            return "ghs_fresh_token"
+
+        # Patch the model method to track calls from ANY instance
+        with (
+            patch.object(GitHubAppInstallation, "get_access_token", track_get_token),
+            patch("apps.integrations.services.onboarding_sync.OnboardingSyncService") as mock_service_class,
+        ):
+            mock_service = mock_service_class.return_value
+            mock_service.sync_repository.return_value = {"prs_synced": 10, "errors": []}
+
+            sync_historical_data_task(
+                team_id=self.team.id,
+                repo_ids=[self.repo1.id],
+            )
+
+        # The upfront token fetch in sync_historical_data_task should be removed
+        # This test will FAIL until we fix the task to not call get_access_token upfront
+        # Currently the task fetches token at line 1113 before calling OnboardingSyncService
+        # After fix: OnboardingSyncService should handle token fetching internally
+        self.assertEqual(
+            len(get_token_calls),
+            0,
+            f"Task should NOT fetch token upfront - GraphQL sync fetches per-repo. Got calls: {get_token_calls}",
+        )
+
+    def test_onboarding_sync_service_accepts_optional_token(self):
+        """Test that OnboardingSyncService can be initialized without github_token.
+
+        After EC-4 fix, github_token should be optional since GraphQL sync
+        functions fetch their own tokens per-repo.
+        """
+        from apps.integrations.services.onboarding_sync import OnboardingSyncService
+
+        # Should be able to create service without token after fix
+        # This test verifies the interface allows None/optional token
+        try:
+            service = OnboardingSyncService(team=self.team, github_token=None)
+            # If github_token is truly optional, this should work
+            self.assertIsNone(service.github_token)
+        except TypeError:
+            # If this fails with TypeError, github_token is still required
+            self.fail("OnboardingSyncService should accept github_token=None after EC-4 fix")
+
+
+class TestSyncHandlesDeactivatedInstallation(TestCase):
+    """Edge case #5: Test that sync handles deactivated installation gracefully.
+
+    When user uninstalls the GitHub App mid-sync, the installation becomes inactive
+    and get_access_token() raises GitHubAppDeactivatedError. Sync tasks should
+    handle this gracefully with a clear error message.
+    """
+
+    def setUp(self):
+        """Set up test fixtures."""
+        from datetime import timedelta
+
+        from apps.integrations.factories import (
+            GitHubAppInstallationFactory,
+            TrackedRepositoryFactory,
+        )
+
+        self.team = TeamFactory(name="DeactivationTestTeam")
+        self.app_installation = GitHubAppInstallationFactory(
+            team=self.team,
+            is_active=True,
+            cached_token="ghs_test_token",
+            token_expires_at=timezone.now() + timedelta(hours=1),
+        )
+        self.repo = TrackedRepositoryFactory(
+            team=self.team,
+            app_installation=self.app_installation,
+            integration=None,
+            full_name="org/test-repo",
+        )
+
+    def test_sync_repository_task_handles_deactivated_installation(self):
+        """Test that sync_repository_task handles GitHubAppDeactivatedError gracefully."""
+        from unittest.mock import patch
+
+        from apps.integrations.exceptions import GitHubAppDeactivatedError
+        from apps.integrations.tasks import sync_repository_task
+
+        # Mock the sync to raise GitHubAppDeactivatedError
+        with patch("apps.integrations._task_modules.github_sync._sync_incremental_with_graphql_or_rest") as mock_sync:
+            mock_sync.side_effect = GitHubAppDeactivatedError(
+                "Installation is no longer active. Please reinstall the GitHub App."
+            )
+
+            # Call the task - should NOT raise, should return error
+            result = sync_repository_task(repo_id=self.repo.id)
+
+        # Should return error with clear message
+        self.assertIn("error", result)
+        error_lower = result["error"].lower()
+        self.assertTrue(
+            "no longer active" in error_lower or "deactivated" in error_lower or "reinstall" in error_lower,
+            f"Error should mention deactivated installation: {result['error']}",
+        )
+
+    def test_get_access_token_raises_when_installation_deactivated_mid_sync(self):
+        """Test that get_access_token raises GitHubAppDeactivatedError when inactive.
+
+        Simulates the scenario where installation is deactivated after sync starts.
+        """
+        from apps.integrations.exceptions import GitHubAppDeactivatedError
+
+        # Deactivate the installation (simulating webhook marking it inactive)
+        self.app_installation.is_active = False
+        self.app_installation.save(update_fields=["is_active"])
+
+        # Attempting to get token should raise GitHubAppDeactivatedError
+        with self.assertRaises(GitHubAppDeactivatedError) as context:
+            self.app_installation.get_access_token()
+
+        error_message = str(context.exception)
+        self.assertIn("no longer active", error_message.lower())
+        self.assertIn("reinstall", error_message.lower())
