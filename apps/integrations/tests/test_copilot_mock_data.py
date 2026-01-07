@@ -1,0 +1,610 @@
+"""Tests for Copilot mock data generator.
+
+This module tests the CopilotMockDataGenerator which produces mock data
+in the exact GitHub Copilot metrics API format for testing purposes.
+"""
+
+from django.test import TestCase
+
+# Import the non-existent module - this will cause tests to fail on import
+from apps.integrations.services.copilot_mock_data import CopilotMockDataGenerator
+
+
+class TestCopilotMockDataDateFormat(TestCase):
+    """Tests for date format in generated mock data."""
+
+    def test_generates_correct_date_format(self):
+        """Test that generator produces ISO 8601 date strings (YYYY-MM-DD)."""
+        # Arrange
+        generator = CopilotMockDataGenerator()
+        since = "2025-01-01"
+        until = "2025-01-05"
+
+        # Act
+        data = generator.generate(since=since, until=until)
+
+        # Assert - Each day's data should have ISO 8601 date format
+        self.assertIsInstance(data, list)
+        self.assertGreater(len(data), 0)
+
+        for day_data in data:
+            self.assertIn("date", day_data)
+            # Verify ISO 8601 format (YYYY-MM-DD)
+            date_str = day_data["date"]
+            self.assertIsInstance(date_str, str)
+            self.assertRegex(date_str, r"^\d{4}-\d{2}-\d{2}$")
+
+    def test_date_range_matches_parameters(self):
+        """Test that generated dates match since/until parameters."""
+        # Arrange
+        generator = CopilotMockDataGenerator()
+        since = "2025-01-10"
+        until = "2025-01-15"
+
+        # Act
+        data = generator.generate(since=since, until=until)
+
+        # Assert - Dates should be within the specified range
+        dates = [day_data["date"] for day_data in data]
+
+        # First date should be >= since
+        self.assertGreaterEqual(min(dates), since)
+
+        # Last date should be <= until
+        self.assertLessEqual(max(dates), until)
+
+        # Should have data for each day in range (6 days total)
+        expected_days = 6  # Jan 10, 11, 12, 13, 14, 15
+        self.assertEqual(len(data), expected_days)
+
+
+class TestCopilotMockDataRequiredFields(TestCase):
+    """Tests for required fields in generated mock data."""
+
+    def test_generates_all_required_fields(self):
+        """Test that each day's data has all required top-level fields."""
+        # Arrange
+        generator = CopilotMockDataGenerator()
+
+        # Act
+        data = generator.generate(since="2025-01-01", until="2025-01-01")
+
+        # Assert
+        self.assertEqual(len(data), 1)
+        day_data = data[0]
+
+        # Verify all required top-level fields are present
+        required_fields = [
+            "date",
+            "total_active_users",
+            "total_engaged_users",
+            "copilot_ide_code_completions",
+            "copilot_ide_chat",
+            "copilot_dotcom_chat",
+            "copilot_dotcom_pull_requests",
+        ]
+
+        for field in required_fields:
+            self.assertIn(field, day_data, f"Missing required field: {field}")
+
+        # Verify types
+        self.assertIsInstance(day_data["date"], str)
+        self.assertIsInstance(day_data["total_active_users"], int)
+        self.assertIsInstance(day_data["total_engaged_users"], int)
+        self.assertIsInstance(day_data["copilot_ide_code_completions"], dict)
+        self.assertIsInstance(day_data["copilot_ide_chat"], dict)
+        self.assertIsInstance(day_data["copilot_dotcom_chat"], dict)
+        self.assertIsInstance(day_data["copilot_dotcom_pull_requests"], dict)
+
+
+class TestCopilotMockDataCodeCompletions(TestCase):
+    """Tests for copilot_ide_code_completions structure."""
+
+    def test_code_completions_has_required_fields(self):
+        """Test that copilot_ide_code_completions contains all required fields."""
+        # Arrange
+        generator = CopilotMockDataGenerator()
+
+        # Act
+        data = generator.generate(since="2025-01-01", until="2025-01-01")
+
+        # Assert
+        code_completions = data[0]["copilot_ide_code_completions"]
+
+        required_fields = [
+            "total_completions",
+            "total_acceptances",
+            "total_lines_suggested",
+            "total_lines_accepted",
+            "languages",
+            "editors",
+        ]
+
+        for field in required_fields:
+            self.assertIn(field, code_completions, f"Missing required field: {field}")
+
+        # Verify types
+        self.assertIsInstance(code_completions["total_completions"], int)
+        self.assertIsInstance(code_completions["total_acceptances"], int)
+        self.assertIsInstance(code_completions["total_lines_suggested"], int)
+        self.assertIsInstance(code_completions["total_lines_accepted"], int)
+        self.assertIsInstance(code_completions["languages"], list)
+        self.assertIsInstance(code_completions["editors"], list)
+
+
+class TestCopilotMockDataLanguages(TestCase):
+    """Tests for languages array structure."""
+
+    def test_languages_array_structure(self):
+        """Test that each language entry has required fields."""
+        # Arrange
+        generator = CopilotMockDataGenerator()
+
+        # Act
+        data = generator.generate(since="2025-01-01", until="2025-01-01")
+
+        # Assert
+        languages = data[0]["copilot_ide_code_completions"]["languages"]
+
+        # Should have at least one language
+        self.assertGreater(len(languages), 0)
+
+        for lang in languages:
+            # Verify required fields
+            self.assertIn("name", lang)
+            self.assertIn("total_completions", lang)
+            self.assertIn("total_acceptances", lang)
+
+            # Verify types
+            self.assertIsInstance(lang["name"], str)
+            self.assertIsInstance(lang["total_completions"], int)
+            self.assertIsInstance(lang["total_acceptances"], int)
+
+
+class TestCopilotMockDataEditors(TestCase):
+    """Tests for editors array structure."""
+
+    def test_editors_array_structure(self):
+        """Test that each editor entry has required fields."""
+        # Arrange
+        generator = CopilotMockDataGenerator()
+
+        # Act
+        data = generator.generate(since="2025-01-01", until="2025-01-01")
+
+        # Assert
+        editors = data[0]["copilot_ide_code_completions"]["editors"]
+
+        # Should have at least one editor
+        self.assertGreater(len(editors), 0)
+
+        for editor in editors:
+            # Verify required fields
+            self.assertIn("name", editor)
+            self.assertIn("total_completions", editor)
+            self.assertIn("total_acceptances", editor)
+
+            # Verify types
+            self.assertIsInstance(editor["name"], str)
+            self.assertIsInstance(editor["total_completions"], int)
+            self.assertIsInstance(editor["total_acceptances"], int)
+
+
+class TestCopilotMockDataAcceptanceRates(TestCase):
+    """Tests for acceptance rate validity in generated data."""
+
+    def test_acceptance_rate_is_valid(self):
+        """Test that acceptance values are valid (acceptances <= completions)."""
+        # Arrange
+        generator = CopilotMockDataGenerator()
+
+        # Act - Generate multiple days to ensure consistency
+        data = generator.generate(since="2025-01-01", until="2025-01-07")
+
+        # Assert
+        for day_data in data:
+            code_completions = day_data["copilot_ide_code_completions"]
+
+            # total_acceptances should be <= total_completions
+            self.assertLessEqual(
+                code_completions["total_acceptances"],
+                code_completions["total_completions"],
+                f"Acceptances ({code_completions['total_acceptances']}) should not exceed "
+                f"completions ({code_completions['total_completions']}) for {day_data['date']}",
+            )
+
+            # total_lines_accepted should be <= total_lines_suggested
+            self.assertLessEqual(
+                code_completions["total_lines_accepted"],
+                code_completions["total_lines_suggested"],
+                f"Lines accepted ({code_completions['total_lines_accepted']}) should not exceed "
+                f"lines suggested ({code_completions['total_lines_suggested']}) for {day_data['date']}",
+            )
+
+            # Check languages
+            for lang in code_completions["languages"]:
+                self.assertLessEqual(
+                    lang["total_acceptances"],
+                    lang["total_completions"],
+                    f"Language {lang['name']}: acceptances should not exceed completions",
+                )
+
+            # Check editors
+            for editor in code_completions["editors"]:
+                self.assertLessEqual(
+                    editor["total_acceptances"],
+                    editor["total_completions"],
+                    f"Editor {editor['name']}: acceptances should not exceed completions",
+                )
+
+    def test_engaged_users_not_exceeding_active_users(self):
+        """Test that total_engaged_users <= total_active_users."""
+        # Arrange
+        generator = CopilotMockDataGenerator()
+
+        # Act
+        data = generator.generate(since="2025-01-01", until="2025-01-07")
+
+        # Assert
+        for day_data in data:
+            self.assertLessEqual(
+                day_data["total_engaged_users"],
+                day_data["total_active_users"],
+                f"Engaged users ({day_data['total_engaged_users']}) should not exceed "
+                f"active users ({day_data['total_active_users']}) for {day_data['date']}",
+            )
+
+
+class TestCopilotScenarios(TestCase):
+    """Tests for Copilot mock data scenarios.
+
+    These tests verify that different scenarios produce distinct data patterns
+    for testing various dashboard and analytics states.
+    """
+
+    def test_scenario_parameter_passed_to_generate(self):
+        """Test that generate() accepts optional scenario parameter."""
+        # Arrange
+        generator = CopilotMockDataGenerator(seed=42)
+
+        # Act - Should accept scenario parameter without error
+        data = generator.generate(
+            since="2025-01-01",
+            until="2025-01-07",
+            scenario="mixed_usage",
+        )
+
+        # Assert - Should return valid data
+        self.assertIsInstance(data, list)
+        self.assertEqual(len(data), 7)
+
+    def test_high_adoption_scenario(self):
+        """Test high_adoption scenario produces higher acceptance rates and more active users."""
+        # Arrange
+        generator = CopilotMockDataGenerator(seed=42)
+
+        # Act
+        data = generator.generate(
+            since="2025-01-01",
+            until="2025-01-07",
+            scenario="high_adoption",
+        )
+
+        # Assert - Acceptance rate should be 40-55% (higher than default 25-35%)
+        for day_data in data:
+            completions = day_data["copilot_ide_code_completions"]
+            if completions["total_completions"] > 0:
+                acceptance_rate = completions["total_acceptances"] / completions["total_completions"]
+                self.assertGreaterEqual(
+                    acceptance_rate,
+                    0.40,
+                    f"High adoption acceptance rate {acceptance_rate:.2%} should be >= 40%",
+                )
+                self.assertLessEqual(
+                    acceptance_rate,
+                    0.55,
+                    f"High adoption acceptance rate {acceptance_rate:.2%} should be <= 55%",
+                )
+
+            # More active users (15-30 vs default 10-20)
+            self.assertGreaterEqual(
+                day_data["total_active_users"],
+                15,
+                f"High adoption should have >= 15 active users, got {day_data['total_active_users']}",
+            )
+            self.assertLessEqual(
+                day_data["total_active_users"],
+                30,
+                f"High adoption should have <= 30 active users, got {day_data['total_active_users']}",
+            )
+
+    def test_low_adoption_scenario(self):
+        """Test low_adoption scenario produces lower acceptance rates and fewer active users."""
+        # Arrange
+        generator = CopilotMockDataGenerator(seed=42)
+
+        # Act
+        data = generator.generate(
+            since="2025-01-01",
+            until="2025-01-07",
+            scenario="low_adoption",
+        )
+
+        # Assert - Acceptance rate should be 15-25% (lower than default)
+        for day_data in data:
+            completions = day_data["copilot_ide_code_completions"]
+            if completions["total_completions"] > 0:
+                acceptance_rate = completions["total_acceptances"] / completions["total_completions"]
+                self.assertGreaterEqual(
+                    acceptance_rate,
+                    0.15,
+                    f"Low adoption acceptance rate {acceptance_rate:.2%} should be >= 15%",
+                )
+                self.assertLessEqual(
+                    acceptance_rate,
+                    0.25,
+                    f"Low adoption acceptance rate {acceptance_rate:.2%} should be <= 25%",
+                )
+
+            # Fewer active users (5-15)
+            self.assertGreaterEqual(
+                day_data["total_active_users"],
+                5,
+                f"Low adoption should have >= 5 active users, got {day_data['total_active_users']}",
+            )
+            self.assertLessEqual(
+                day_data["total_active_users"],
+                15,
+                f"Low adoption should have <= 15 active users, got {day_data['total_active_users']}",
+            )
+
+    def test_growth_scenario_weekly_progression(self):
+        """Test growth scenario shows clear upward trend over 8 weeks."""
+        # Arrange
+        generator = CopilotMockDataGenerator(seed=42)
+
+        # Act - Generate 8 weeks of data
+        data = generator.generate(
+            since="2025-01-01",
+            until="2025-02-25",  # 56 days = 8 weeks
+            scenario="growth",
+        )
+
+        # Assert - Calculate weekly averages
+        week_1_data = data[:7]
+        week_8_data = data[49:56]
+
+        week_1_avg_acceptance = self._calculate_avg_acceptance_rate(week_1_data)
+        week_8_avg_acceptance = self._calculate_avg_acceptance_rate(week_8_data)
+
+        # Week 1 should be around 30%
+        self.assertGreaterEqual(
+            week_1_avg_acceptance,
+            0.25,
+            f"Growth scenario week 1 should start around 30%, got {week_1_avg_acceptance:.2%}",
+        )
+        self.assertLessEqual(
+            week_1_avg_acceptance,
+            0.35,
+            f"Growth scenario week 1 should start around 30%, got {week_1_avg_acceptance:.2%}",
+        )
+
+        # Week 8 should be around 70%
+        self.assertGreaterEqual(
+            week_8_avg_acceptance,
+            0.65,
+            f"Growth scenario week 8 should reach around 70%, got {week_8_avg_acceptance:.2%}",
+        )
+        self.assertLessEqual(
+            week_8_avg_acceptance,
+            0.75,
+            f"Growth scenario week 8 should reach around 70%, got {week_8_avg_acceptance:.2%}",
+        )
+
+        # Verify upward trend
+        self.assertGreater(
+            week_8_avg_acceptance,
+            week_1_avg_acceptance,
+            f"Growth scenario should show upward trend: week 8 ({week_8_avg_acceptance:.2%}) "
+            f"should be > week 1 ({week_1_avg_acceptance:.2%})",
+        )
+
+    def test_decline_scenario_weekly_progression(self):
+        """Test decline scenario shows clear downward trend over 8 weeks."""
+        # Arrange
+        generator = CopilotMockDataGenerator(seed=42)
+
+        # Act - Generate 8 weeks of data
+        data = generator.generate(
+            since="2025-01-01",
+            until="2025-02-25",  # 56 days = 8 weeks
+            scenario="decline",
+        )
+
+        # Assert - Calculate weekly averages
+        week_1_data = data[:7]
+        week_8_data = data[49:56]
+
+        week_1_avg_acceptance = self._calculate_avg_acceptance_rate(week_1_data)
+        week_8_avg_acceptance = self._calculate_avg_acceptance_rate(week_8_data)
+
+        # Week 1 should be around 70%
+        self.assertGreaterEqual(
+            week_1_avg_acceptance,
+            0.65,
+            f"Decline scenario week 1 should start around 70%, got {week_1_avg_acceptance:.2%}",
+        )
+        self.assertLessEqual(
+            week_1_avg_acceptance,
+            0.75,
+            f"Decline scenario week 1 should start around 70%, got {week_1_avg_acceptance:.2%}",
+        )
+
+        # Week 8 should be around 30%
+        self.assertGreaterEqual(
+            week_8_avg_acceptance,
+            0.25,
+            f"Decline scenario week 8 should drop to around 30%, got {week_8_avg_acceptance:.2%}",
+        )
+        self.assertLessEqual(
+            week_8_avg_acceptance,
+            0.35,
+            f"Decline scenario week 8 should drop to around 30%, got {week_8_avg_acceptance:.2%}",
+        )
+
+        # Verify downward trend
+        self.assertLess(
+            week_8_avg_acceptance,
+            week_1_avg_acceptance,
+            f"Decline scenario should show downward trend: week 8 ({week_8_avg_acceptance:.2%}) "
+            f"should be < week 1 ({week_1_avg_acceptance:.2%})",
+        )
+
+    def test_mixed_usage_scenario(self):
+        """Test mixed_usage scenario produces high variance between days."""
+        # Arrange
+        generator = CopilotMockDataGenerator(seed=42)
+
+        # Act
+        data = generator.generate(
+            since="2025-01-01",
+            until="2025-01-14",  # 2 weeks
+            scenario="mixed_usage",
+        )
+
+        # Assert - Calculate acceptance rates for all days
+        acceptance_rates = []
+        for day_data in data:
+            completions = day_data["copilot_ide_code_completions"]
+            if completions["total_completions"] > 0:
+                rate = completions["total_acceptances"] / completions["total_completions"]
+                acceptance_rates.append(rate)
+
+        # Calculate variance
+        mean_rate = sum(acceptance_rates) / len(acceptance_rates)
+        variance = sum((r - mean_rate) ** 2 for r in acceptance_rates) / len(acceptance_rates)
+
+        # Mixed usage should have high variance (> 0.01 which is 10% standard deviation squared)
+        self.assertGreater(
+            variance,
+            0.01,
+            f"Mixed usage should have high variance, got {variance:.4f}",
+        )
+
+        # Should have both high and low days
+        min_rate = min(acceptance_rates)
+        max_rate = max(acceptance_rates)
+        rate_range = max_rate - min_rate
+
+        self.assertGreater(
+            rate_range,
+            0.20,
+            f"Mixed usage should have at least 20% range between min/max, got {rate_range:.2%}",
+        )
+
+    def test_inactive_licenses_scenario(self):
+        """Test inactive_licenses scenario includes days with very low or zero usage."""
+        # Arrange
+        generator = CopilotMockDataGenerator(seed=42)
+
+        # Act
+        data = generator.generate(
+            since="2025-01-01",
+            until="2025-01-14",  # 2 weeks
+            scenario="inactive_licenses",
+        )
+
+        # Assert - Should have at least some days with 0 active users or very low completions
+        has_zero_active_users = False
+        has_very_low_completions = False
+
+        for day_data in data:
+            if day_data["total_active_users"] == 0:
+                has_zero_active_users = True
+            completions = day_data["copilot_ide_code_completions"]["total_completions"]
+            if completions <= 5:
+                has_very_low_completions = True
+
+        # At least one of these conditions should be true
+        self.assertTrue(
+            has_zero_active_users or has_very_low_completions,
+            "Inactive licenses scenario should have days with 0 active users or <= 5 completions",
+        )
+
+        # Count inactive days
+        inactive_days = sum(
+            1
+            for day_data in data
+            if day_data["total_active_users"] == 0 or day_data["copilot_ide_code_completions"]["total_completions"] <= 5
+        )
+
+        # Should have multiple inactive days in 2 weeks
+        self.assertGreaterEqual(
+            inactive_days,
+            3,
+            f"Inactive licenses scenario should have >= 3 inactive days in 2 weeks, got {inactive_days}",
+        )
+
+    def test_default_scenario_is_mixed_usage(self):
+        """Test that default scenario (no parameter) behaves like mixed_usage."""
+        # Arrange
+        generator = CopilotMockDataGenerator(seed=42)
+
+        # Act - Generate without scenario parameter
+        data_default = generator.generate(since="2025-01-01", until="2025-01-07")
+
+        # Reset RNG and generate with explicit mixed_usage
+        generator_explicit = CopilotMockDataGenerator(seed=42)
+        data_explicit = generator_explicit.generate(
+            since="2025-01-01",
+            until="2025-01-07",
+            scenario="mixed_usage",
+        )
+
+        # Assert - Both should produce the same data
+        self.assertEqual(len(data_default), len(data_explicit))
+        for i, (default_day, explicit_day) in enumerate(zip(data_default, data_explicit, strict=False)):
+            self.assertEqual(
+                default_day["total_active_users"],
+                explicit_day["total_active_users"],
+                f"Day {i}: active users should match between default and explicit mixed_usage",
+            )
+            self.assertEqual(
+                default_day["copilot_ide_code_completions"]["total_completions"],
+                explicit_day["copilot_ide_code_completions"]["total_completions"],
+                f"Day {i}: completions should match between default and explicit mixed_usage",
+            )
+
+    def test_unknown_scenario_raises_value_error(self):
+        """Test that unknown scenario raises ValueError with helpful message."""
+        # Arrange
+        generator = CopilotMockDataGenerator(seed=42)
+
+        # Act & Assert
+        with self.assertRaises(ValueError) as context:
+            generator.generate(
+                since="2025-01-01",
+                until="2025-01-07",
+                scenario="unknown_scenario",
+            )
+
+        # Verify error message contains valid scenarios
+        error_message = str(context.exception)
+        self.assertIn("unknown_scenario", error_message)
+        self.assertIn("high_adoption", error_message)
+        self.assertIn("low_adoption", error_message)
+        self.assertIn("mixed_usage", error_message)
+
+    def _calculate_avg_acceptance_rate(self, data: list[dict]) -> float:
+        """Helper to calculate average acceptance rate across days."""
+        total_completions = 0
+        total_acceptances = 0
+
+        for day_data in data:
+            completions = day_data["copilot_ide_code_completions"]
+            total_completions += completions["total_completions"]
+            total_acceptances += completions["total_acceptances"]
+
+        if total_completions == 0:
+            return 0.0
+        return total_acceptances / total_completions
