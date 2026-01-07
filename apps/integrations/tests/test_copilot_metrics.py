@@ -880,3 +880,51 @@ class TestGetSeatUtilization(TestCase):
         self.assertEqual(result["monthly_cost"], Decimal("57.00"))
         # $57 / 2 = $28.50
         self.assertEqual(result["cost_per_active_user"], Decimal("28.50"))
+
+
+class TestCopilotMetrics401Handling(TestCase):
+    """Edge case #16: Test that 401 errors raise TokenRevokedError."""
+
+    @patch("apps.integrations.services.copilot_metrics.requests.get")
+    def test_api_request_raises_token_revoked_on_401(self, mock_get):
+        """Test that 401 response raises TokenRevokedError."""
+        from apps.integrations.exceptions import TokenRevokedError
+        from apps.integrations.services.copilot_metrics import _make_github_api_request
+
+        # Mock a 401 response
+        mock_response = MagicMock()
+        mock_response.status_code = 401
+        mock_response.json.return_value = {"message": "Bad credentials"}
+        mock_get.return_value = mock_response
+
+        # Act & Assert
+        with self.assertRaises(TokenRevokedError) as context:
+            _make_github_api_request(
+                url="https://api.github.com/orgs/test/copilot/usage",
+                headers={"Authorization": "Bearer invalid_token"},
+                error_prefix="Copilot metrics",
+            )
+
+        # Verify error message includes reconnect guidance
+        error_msg = str(context.exception)
+        self.assertIn("revoked", error_msg.lower())
+        self.assertIn("reconnect", error_msg.lower())
+
+    @patch("apps.integrations.services.copilot_metrics.requests.get")
+    def test_api_request_still_raises_copilot_error_on_403(self, mock_get):
+        """Test that 403 response still raises CopilotMetricsError (not TokenRevokedError)."""
+        # Mock a 403 response
+        mock_response = MagicMock()
+        mock_response.status_code = 403
+        mock_response.json.return_value = {"message": "Copilot not enabled"}
+        mock_get.return_value = mock_response
+
+        # Act & Assert - should raise CopilotMetricsError, not TokenRevokedError
+        with self.assertRaises(CopilotMetricsError):
+            from apps.integrations.services.copilot_metrics import _make_github_api_request
+
+            _make_github_api_request(
+                url="https://api.github.com/orgs/test/copilot/usage",
+                headers={"Authorization": "Bearer valid_token"},
+                error_prefix="Copilot metrics",
+            )

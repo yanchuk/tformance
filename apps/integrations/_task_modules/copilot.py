@@ -1,6 +1,7 @@
 """Copilot metrics Celery tasks.
 
 This module contains tasks for syncing GitHub Copilot usage metrics.
+Tasks respect feature flags and skip execution when flags are disabled.
 """
 
 import logging
@@ -15,10 +16,62 @@ from apps.integrations.services.copilot_metrics import (
     map_copilot_to_ai_usage,
     parse_metrics_response,
 )
+from apps.integrations.services.integration_flags import COPILOT_FEATURE_FLAGS
 from apps.teams.models import Team
 from apps.utils.errors import sanitize_error
 
 logger = logging.getLogger(__name__)
+
+
+def is_copilot_sync_enabled(team: Team) -> bool:
+    """Check if Copilot sync is enabled for a team.
+
+    Uses the copilot_enabled feature flag to determine if sync should run.
+    For Celery tasks (no request context), we check the flag globally.
+
+    Args:
+        team: The team to check
+
+    Returns:
+        True if Copilot sync is enabled, False otherwise
+    """
+    # Check if master flag is enabled globally (for superusers or everyone)
+    from apps.teams.models import Flag
+
+    flag_name = COPILOT_FEATURE_FLAGS.get("copilot_enabled")
+    if not flag_name:
+        return False
+
+    try:
+        flag = Flag.objects.get(name=flag_name)
+        # For Celery tasks, check if flag is enabled for everyone or superusers
+        # Since we don't have a request context, we use global flag state
+        return flag.everyone or flag.superusers
+    except Flag.DoesNotExist:
+        logger.warning(f"Copilot feature flag '{flag_name}' not found")
+        return False
+
+
+def is_copilot_sync_globally_enabled() -> bool:
+    """Check if Copilot sync is globally enabled (for scheduled tasks).
+
+    This is used by sync_all_copilot_metrics to check before dispatching tasks.
+
+    Returns:
+        True if Copilot sync is globally enabled, False otherwise
+    """
+    from apps.teams.models import Flag
+
+    flag_name = COPILOT_FEATURE_FLAGS.get("copilot_enabled")
+    if not flag_name:
+        return False
+
+    try:
+        flag = Flag.objects.get(name=flag_name)
+        return flag.everyone or flag.superusers
+    except Flag.DoesNotExist:
+        logger.warning(f"Copilot feature flag '{flag_name}' not found")
+        return False
 
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=60, soft_time_limit=180, time_limit=240)
@@ -42,6 +95,11 @@ def sync_copilot_metrics_task(self, team_id: int) -> dict:
     except Team.DoesNotExist:
         logger.warning(f"Team with id {team_id} not found")
         return {"error": f"Team with id {team_id} not found"}
+
+    # Check feature flag before proceeding
+    if not is_copilot_sync_enabled(team):
+        logger.info(f"Copilot sync skipped for team {team.name} - flag disabled")
+        return {"status": "skipped", "reason": "flag_disabled"}
 
     # Get GitHubIntegration for team
     try:
@@ -187,6 +245,11 @@ def sync_all_copilot_metrics() -> dict:
     Returns:
         Dict with count of dispatched tasks: teams_dispatched
     """
+    # Check global feature flag before dispatching any tasks
+    if not is_copilot_sync_globally_enabled():
+        logger.info("Copilot sync skipped - global flag disabled")
+        return {"status": "skipped", "reason": "flag_disabled"}
+
     logger.info("Starting Copilot metrics sync for all teams")
 
     # Query all teams with GitHub integrations
