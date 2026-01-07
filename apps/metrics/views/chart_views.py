@@ -913,6 +913,34 @@ def copilot_language_chart(request: HttpRequest) -> HttpResponse:
 
 
 @team_admin_required
+def copilot_delivery_impact_card(request: HttpRequest) -> HttpResponse:
+    """Copilot delivery impact comparison card (admin only).
+
+    Shows comparison of delivery metrics between Copilot users and non-Copilot users.
+    Uses standard date range extraction (days parameter, defaults to 30 days).
+    """
+    from apps.integrations.services.integration_flags import is_copilot_feature_active
+    from apps.metrics.services.dashboard.copilot_metrics import get_copilot_delivery_comparison
+
+    # Check feature flag - requires both master flag and delivery impact flag
+    if not is_copilot_feature_active(request, "copilot_delivery_impact"):
+        return TemplateResponse(
+            request,
+            "metrics/partials/copilot_delivery_impact_card.html",
+            {"comparison_data": None},
+        )
+
+    start_date, end_date = get_date_range_from_request(request)
+    comparison_data = get_copilot_delivery_comparison(request.team, start_date, end_date)
+
+    return TemplateResponse(
+        request,
+        "metrics/partials/copilot_delivery_impact_card.html",
+        {"comparison_data": comparison_data},
+    )
+
+
+@team_admin_required
 def copilot_editor_chart(request: HttpRequest) -> HttpResponse:
     """Copilot editor breakdown chart (admin only).
 

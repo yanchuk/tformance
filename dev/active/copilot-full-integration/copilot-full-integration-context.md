@@ -1,8 +1,8 @@
 # Copilot Full Integration - Technical Context
 
-**Last Updated**: 2026-01-07
+**Last Updated**: 2026-01-07 (Session 3)
 
-## Current Implementation State
+## Current Implementation State - ALL PHASES COMPLETE ✅
 
 ### Phase 1: Feature Flags Foundation ✅ COMPLETE
 All Copilot features are gated behind hierarchical Waffle flags.
@@ -69,6 +69,194 @@ Full implementation of language and editor breakdown analytics.
 - `templates/metrics/partials/copilot_language_chart.html` - Language breakdown display
 - `templates/metrics/partials/copilot_editor_chart.html` - Editor breakdown display
 
+### Phase 4: Delivery Impact ✅ COMPLETE
+
+#### Task 4.1: TeamMember Copilot Fields ✅
+Added fields to track per-user Copilot activity.
+
+**New Fields on TeamMember:**
+```python
+copilot_last_activity_at = models.DateTimeField(null=True, blank=True)
+copilot_last_editor = models.CharField(max_length=100, null=True, blank=True)
+```
+
+**New Property:**
+```python
+@property
+def has_recent_copilot_activity(self) -> bool:
+    """Check if member has used Copilot within the last 30 days."""
+    if not self.copilot_last_activity_at:
+        return False
+    threshold = timezone.now() - timedelta(days=30)
+    return self.copilot_last_activity_at >= threshold
+```
+
+**Migration:** `apps/metrics/migrations/0040_add_copilot_fields_to_team_member.py`
+
+**Tests:** `apps/metrics/tests/test_team_member_copilot.py` (7 tests)
+
+#### Task 4.2: Sync Per-User Copilot Activity ✅
+Implemented syncing from Seats API to TeamMember.
+
+**New Function:**
+```python
+def sync_copilot_member_activity(team, seats_data) -> int:
+    """Sync per-user Copilot activity from Seats API to TeamMember.
+
+    Returns count of members updated.
+    """
+```
+
+**Key Logic:**
+- Matches by `github_username`
+- Updates `copilot_last_activity_at` (parsed from ISO8601)
+- Updates `copilot_last_editor` (e.g., "vscode/1.85.1")
+- Skips members not found in database
+
+**Tests:** `apps/integrations/tests/test_copilot_member_sync.py` (7 tests)
+
+#### Task 4.3: Copilot vs Non-Copilot PR Comparison ✅
+Comparing delivery metrics between Copilot and non-Copilot users.
+
+**Function:**
+```python
+def get_copilot_delivery_comparison(team, start_date, end_date) -> dict:
+    """Compare delivery metrics between Copilot and non-Copilot users.
+
+    Returns:
+    {
+        "copilot_prs": {
+            "count": 142,
+            "avg_cycle_time_hours": Decimal("18.2"),
+            "avg_review_time_hours": Decimal("4.1"),
+        },
+        "non_copilot_prs": {
+            "count": 89,
+            "avg_cycle_time_hours": Decimal("24.5"),
+            "avg_review_time_hours": Decimal("5.8"),
+        },
+        "improvement": {
+            "cycle_time_percent": -26,  # negative = faster
+            "review_time_percent": -29,
+        },
+        "sample_sufficient": True,  # False if either group < 10 PRs
+    }
+    """
+```
+
+**Tests:** `apps/metrics/tests/dashboard/test_copilot_pr_comparison.py` (10 tests)
+
+#### Task 4.4: Delivery Impact Cards ✅
+View endpoint and template for delivery impact dashboard cards.
+
+**View:** `copilot_delivery_impact_card` in `apps/metrics/views/chart_views.py`
+**Template:** `templates/metrics/partials/copilot_delivery_impact_card.html`
+**URL:** `path("cards/copilot-delivery/", views.copilot_delivery_impact_card, name="cards_copilot_delivery")`
+
+**Tests:** `apps/metrics/tests/dashboard/test_copilot_delivery_impact_view.py` (10 tests)
+
+### Phase 5: Enhanced LLM Insights ✅ COMPLETE
+
+#### Task 5.1: Extended Prompt Context ✅
+Extended `get_copilot_metrics_for_prompt()` with seat utilization and delivery impact.
+
+**New Helper Functions:**
+```python
+def _get_seat_data(team: Team, end_date: date) -> dict | None:
+    """Get latest seat snapshot data for the team."""
+
+def _get_delivery_impact(team: Team, start_date: date, end_date: date) -> dict | None:
+    """Get delivery impact comparison data."""
+```
+
+**Extended Return Structure:**
+```python
+{
+    "active_users": 5,
+    "inactive_count": 2,
+    "avg_acceptance_rate": Decimal("35.5"),
+    "total_suggestions": 1000,
+    "total_acceptances": 355,
+    "top_users": [...],
+    "seat_data": {  # NEW
+        "total_seats": 10,
+        "active_seats": 8,
+        "inactive_seats": 2,
+        "utilization_rate": 80,
+        "wasted_spend": Decimal("38.00"),
+        "cost_per_active_user": Decimal("23.75"),
+    },
+    "delivery_impact": {  # NEW
+        "copilot_prs_count": 50,
+        "non_copilot_prs_count": 30,
+        "cycle_time_improvement_percent": -25,
+        "review_time_improvement_percent": -20,
+        "sample_sufficient": True,
+    },
+}
+```
+
+**Tests:** `apps/metrics/tests/test_copilot_prompt_context.py` (10 tests)
+
+#### Task 5.2: Updated Jinja2 Template ✅
+Updated `copilot_metrics.jinja2` with Seat Utilization and Delivery Impact sections.
+
+**New Sections:**
+```jinja2
+### Seat Utilization
+- Total licensed seats: {{ copilot_metrics.seat_data.total_seats }}
+- Active seats: {{ copilot_metrics.seat_data.active_seats }}
+- Inactive seats: {{ copilot_metrics.seat_data.inactive_seats }}
+- Utilization rate: {{ copilot_metrics.seat_data.utilization_rate }}%
+{% if copilot_metrics.seat_data.wasted_spend > 0 %}
+- Wasted spend: ${{ copilot_metrics.seat_data.wasted_spend }}/month on unused seats
+{% endif %}
+
+### Delivery Impact
+- Copilot PRs: {{ copilot_metrics.delivery_impact.copilot_prs_count }}
+- Non-Copilot PRs: {{ copilot_metrics.delivery_impact.non_copilot_prs_count }}
+{% if copilot_metrics.delivery_impact.cycle_time_improvement_percent > 0 %}
+- Cycle time: {{ copilot_metrics.delivery_impact.cycle_time_improvement_percent }}% faster with Copilot
+{% endif %}
+```
+
+**Tests:** `apps/metrics/tests/test_copilot_jinja2_template.py` (10 tests)
+
+#### Task 5.3: Flag Check in LLM Context ✅
+Added `request` and `include_copilot` parameters to `get_copilot_metrics_for_prompt()`.
+
+**Updated Signature:**
+```python
+def get_copilot_metrics_for_prompt(
+    team: Team,
+    start_date: date,
+    end_date: date,
+    request: HttpRequest | None = None,
+    include_copilot: bool | None = None,
+) -> dict:
+```
+
+**Flag Checking Logic:**
+1. If `include_copilot` is explicitly `True`, include Copilot metrics
+2. If `include_copilot` is explicitly `False`, exclude Copilot metrics
+3. If `request` is provided, check `is_copilot_feature_active(request, "copilot_llm_insights")`
+4. If neither, return empty dict (conservative default for Celery tasks)
+
+**Tests:** `apps/metrics/tests/test_llm_prompt_flag_check.py` (11 tests)
+
+### Phase 6: Graceful Degradation ✅ COMPLETE
+
+All graceful degradation tests passed immediately - the implementation already handled these scenarios correctly.
+
+**Verified Behaviors:**
+- Non-Copilot users see no Copilot sections
+- Empty states handled gracefully
+- Partial data scenarios handled correctly (missing seats, missing metrics)
+- Views return empty dict when no data
+- Templates handle missing data with conditional rendering
+
+**Tests:** `apps/metrics/tests/test_copilot_graceful_degradation.py` (15 tests)
+
 ## New Models Created
 
 ### CopilotSeatSnapshot (Migration 0036)
@@ -114,6 +302,17 @@ class CopilotEditorDaily(BaseTeamModel):
     # Property: acceptance_rate
 ```
 
+### TeamMember Extensions (Migration 0040)
+```python
+# Added to existing TeamMember model
+copilot_last_activity_at = models.DateTimeField(null=True, blank=True)
+copilot_last_editor = models.CharField(max_length=100, null=True, blank=True)
+
+# Property
+@property
+def has_recent_copilot_activity(self) -> bool
+```
+
 ## URL Patterns Added
 
 ```python
@@ -121,6 +320,7 @@ class CopilotEditorDaily(BaseTeamModel):
 path("cards/copilot-seats/", views.copilot_seat_stats_card, name="cards_copilot_seats"),
 path("cards/copilot-languages/", views.copilot_language_chart, name="cards_copilot_languages"),
 path("cards/copilot-editors/", views.copilot_editor_chart, name="cards_copilot_editors"),
+path("cards/copilot-delivery/", views.copilot_delivery_impact_card, name="cards_copilot_delivery"),
 ```
 
 ## Test Files Created
@@ -135,11 +335,20 @@ path("cards/copilot-editors/", views.copilot_editor_chart, name="cards_copilot_e
 | `apps/integrations/tests/test_copilot_language_editor_sync.py` | 10 | Sync services |
 | `apps/integrations/tests/test_copilot_language_chart_view.py` | 11 | Language chart view |
 | `apps/integrations/tests/test_copilot_editor_chart_view.py` | 11 | Editor chart view |
+| `apps/integrations/tests/test_copilot_member_sync.py` | 7 | Per-user activity sync |
 | `apps/metrics/tests/test_copilot_seat_snapshot.py` | 15 | Model & calculated properties |
 | `apps/metrics/tests/test_copilot_language_daily.py` | 10 | Language model |
 | `apps/metrics/tests/test_copilot_editor_daily.py` | 9 | Editor model |
+| `apps/metrics/tests/test_team_member_copilot.py` | 7 | TeamMember Copilot fields |
+| `apps/metrics/tests/test_copilot_metrics_service.py` | 8 | Copilot metrics service |
+| `apps/metrics/tests/test_copilot_prompt_context.py` | 10 | Extended prompt context |
+| `apps/metrics/tests/test_copilot_jinja2_template.py` | 10 | Jinja2 template rendering |
+| `apps/metrics/tests/test_llm_prompt_flag_check.py` | 11 | LLM flag checking |
+| `apps/metrics/tests/test_copilot_graceful_degradation.py` | 15 | Graceful degradation |
+| `apps/metrics/tests/dashboard/test_copilot_pr_comparison.py` | 10 | PR comparison service |
+| `apps/metrics/tests/dashboard/test_copilot_delivery_impact_view.py` | 10 | Delivery impact view |
 
-**Total: 128 new tests (all passing)**
+**Total: ~205 Copilot-specific tests (all passing)**
 
 ## Key Decisions Made
 
@@ -158,6 +367,12 @@ path("cards/copilot-editors/", views.copilot_editor_chart, name="cards_copilot_e
    - `total_acceptances` → `suggestions_accepted`
    - `total_active_users` → `active_users`
 
+7. **TeamMember Activity Matching**: Use `github_username` for matching Seats API data to TeamMember records.
+
+8. **PR Comparison Logic**: PRs categorized by author's `has_recent_copilot_activity` property (30-day threshold). Improvement percentages calculated as `(copilot - non_copilot) / non_copilot * 100`.
+
+9. **LLM Context Flag Checking**: Added `request` and `include_copilot` parameters to `get_copilot_metrics_for_prompt()`. When no request and no explicit override, returns empty dict (conservative for Celery tasks).
+
 ## Migration Status
 
 All migrations created and applied:
@@ -166,43 +381,24 @@ All migrations created and applied:
 - `apps/metrics/migrations/0037_add_copilot_language_daily.py` ✅
 - `apps/metrics/migrations/0038_add_copilot_editor_daily.py` ✅
 - `apps/metrics/migrations/0039_alter_copiloteditordaily_options_and_more.py` ✅
+- `apps/metrics/migrations/0040_add_copilot_fields_to_team_member.py` ✅
 
-## Commands to Run on Restart
+## Commands to Run
 
 ```bash
 # Verify migrations are applied
 .venv/bin/python manage.py migrate
 
-# Run all Copilot tests (excluding broken pre-existing tests)
-.venv/bin/pytest apps/metrics/tests/test_copilot_*.py apps/integrations/tests/test_copilot_*.py -v --tb=short --ignore=apps/integrations/tests/test_copilot_sync.py
+# Run all Copilot tests (excluding pre-existing broken sync tests)
+.venv/bin/pytest apps/metrics/tests/test_copilot_*.py apps/metrics/tests/test_team_member_copilot.py apps/metrics/tests/dashboard/test_copilot_*.py apps/integrations/tests/test_copilot_billing.py apps/integrations/tests/test_copilot_feature_flags.py apps/integrations/tests/test_copilot_task_flags.py apps/integrations/tests/test_copilot_member_sync.py apps/integrations/tests/test_copilot_seat_stats_view.py apps/integrations/tests/test_copilot_language_*.py apps/integrations/tests/test_copilot_editor_*.py -v --tb=short
 
 # Check for linting issues
-.venv/bin/ruff check apps/metrics/models/aggregations.py apps/integrations/services/copilot_metrics.py apps/metrics/views/chart_views.py
+.venv/bin/ruff check apps/metrics/models/aggregations.py apps/metrics/models/team.py apps/integrations/services/copilot_metrics.py apps/integrations/services/copilot_metrics_prompt.py apps/metrics/views/chart_views.py apps/metrics/services/dashboard/copilot_metrics.py
 ```
-
-## Next Steps (Phase 4, 5, 6)
-
-### Phase 4: Delivery Impact
-1. Add Copilot fields to TeamMember (`copilot_last_activity_at`, `copilot_last_editor`)
-2. Sync per-user Copilot activity from Seats API
-3. Implement Copilot vs Non-Copilot PR comparison query
-4. Add delivery impact cards to dashboard
-
-### Phase 5: Enhanced LLM Insights
-1. Extend Copilot prompt context with seat utilization data
-2. Update Jinja2 template for LLM prompts
-3. Add flag check to LLM context
-
-### Phase 6: Graceful Degradation
-1. Verify no UI changes for non-Copilot users
-2. Add empty states for Copilot connected but no data
-3. Handle partial data scenarios
 
 ## Known Issues
 
-1. **test_copilot_task_flags.py** - Some tests may fail due to separate `is_revoked` migration from another branch. This is a database schema issue, not a code issue.
-
-2. **test_copilot_sync.py** - Pre-existing tests have incorrect mock paths that need fixing (patching `apps.integrations.tasks.GitHubIntegration` which doesn't exist). Excluded from test runs via `--ignore`.
+1. **test_copilot_sync.py** - Pre-existing tests have incorrect mock paths that need fixing (patching `apps.integrations.tasks.GitHubIntegration` which doesn't exist). These 10 tests should be fixed in a separate PR. Excluded from test runs.
 
 ## API Response Schema
 
@@ -224,4 +420,26 @@ The Metrics API response has nested language/editor data:
 }
 ```
 
-This data is transformed by `parse_metrics_response()` and synced via `sync_copilot_language_data()` and `sync_copilot_editor_data()`.
+The Seats API response has per-user activity data:
+
+```json
+{
+  "seats": [
+    {
+      "assignee": {"login": "username", "id": 12345},
+      "last_activity_at": "2026-01-06T14:30:00Z",
+      "last_activity_editor": "vscode/1.85.1"
+    }
+  ]
+}
+```
+
+This data is transformed by `parse_metrics_response()` and synced via the appropriate sync functions.
+
+## Future Enhancements (Not in Scope)
+
+1. **E2E Tests** - Full browser tests for CTO Overview with Copilot enabled/disabled
+2. **Fix test_copilot_sync.py** - Pre-existing broken tests need mock path fixes
+3. **Inactive Users List** - Table showing users with licenses but no usage
+4. **Chat Metrics** - Track IDE and GitHub.com chat usage
+5. **PR Summary Usage** - Track AI-generated PR summary adoption

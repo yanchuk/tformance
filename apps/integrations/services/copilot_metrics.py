@@ -507,3 +507,47 @@ def sync_copilot_editor_data(team, parsed_metrics):
             count += 1
 
     return count
+
+
+def sync_copilot_member_activity(team, seats_data):
+    """Sync per-user Copilot activity from Seats API to TeamMember.
+
+    Args:
+        team: Team model instance
+        seats_data: Dict from fetch_copilot_seats containing seats array
+
+    Returns:
+        int: Count of members updated
+    """
+    from dateutil import parser
+
+    from apps.metrics.models import TeamMember
+
+    seats = seats_data.get("seats", [])
+    updated_count = 0
+
+    for seat in seats:
+        # Skip seats without activity
+        last_activity = seat.get("last_activity_at")
+        if not last_activity:
+            continue
+
+        # Get assignee username
+        assignee = seat.get("assignee", {})
+        username = assignee.get("login")
+        if not username:
+            continue
+
+        # Find matching member for THIS team only
+        try:
+            member = TeamMember.objects.get(team=team, github_username=username)
+        except TeamMember.DoesNotExist:
+            continue
+
+        # Update Copilot fields
+        member.copilot_last_activity_at = parser.parse(last_activity)
+        member.copilot_last_editor = seat.get("last_activity_editor")
+        member.save(update_fields=["copilot_last_activity_at", "copilot_last_editor"])
+        updated_count += 1
+
+    return updated_count

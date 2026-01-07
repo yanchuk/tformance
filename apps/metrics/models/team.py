@@ -54,6 +54,21 @@ class TeamMember(BaseTeamModel):
         help_text="Slack user ID for this team member",
     )
 
+    # Copilot activity tracking
+    copilot_last_activity_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Copilot last activity",
+        help_text="When this member last used GitHub Copilot",
+    )
+    copilot_last_editor = models.CharField(
+        max_length=100,
+        null=True,
+        blank=True,
+        verbose_name="Copilot last editor",
+        help_text="Editor used for last Copilot activity (e.g., vscode/1.85.1)",
+    )
+
     # Role
     ROLE_CHOICES = [
         ("developer", "Developer"),
@@ -120,3 +135,15 @@ class TeamMember(BaseTeamModel):
                 return f"{parts[0][0]}{parts[1][0]}".upper()
             return self.display_name[:2].upper()
         return "??"
+
+    @property
+    def has_recent_copilot_activity(self) -> bool:
+        """Check if member has used Copilot within the last 30 days."""
+        if not self.copilot_last_activity_at:
+            return False
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        threshold = timezone.now() - timedelta(days=30)
+        return self.copilot_last_activity_at >= threshold

@@ -46,6 +46,7 @@ from apps.metrics.services.dashboard.cicd_metrics import (
 
 # Phase 4: Copilot metrics
 from apps.metrics.services.dashboard.copilot_metrics import (
+    get_copilot_delivery_comparison,
     get_copilot_metrics,
     get_copilot_trend,
 )
@@ -188,6 +189,7 @@ __all__ = [
     "get_unlinked_prs",
     "get_weekly_pr_type_trend",
     # Phase 4: Copilot metrics
+    "get_copilot_delivery_comparison",
     "get_copilot_metrics",
     "get_copilot_trend",
     # Phase 4: CI/CD metrics
