@@ -415,16 +415,15 @@ HISTORICAL_SYNC_CONFIG = {
     "GROQ_POLL_INTERVAL": env.int("SYNC_GROQ_POLL_INTERVAL", default=5),
 }
 
-# GitHub App (for installation-based auth, replacing OAuth for repos/PRs)
-# Keep OAuth above for Copilot metrics which require user-level access
-# Set GITHUB_APP_ENABLED=True to use GitHub App instead of OAuth for repo/PR access
+# GitHub App (PRIMARY - for PRs, members, repos)
+# Uses installation tokens with minimal read-only permissions (no Contents access)
+# This supports the "we don't have access to your code" claim
+# OAuth above is kept for Copilot metrics (requires manage_billing:copilot) and social login
+# Set GITHUB_APP_ENABLED=True when you have App credentials configured
 GITHUB_APP_ENABLED = env.bool("GITHUB_APP_ENABLED", default=False)
 GITHUB_APP_ID = env("GITHUB_APP_ID", default="")
 GITHUB_APP_NAME = env("GITHUB_APP_NAME", default="tformance")
 GITHUB_APP_PRIVATE_KEY = env("GITHUB_APP_PRIVATE_KEY", default="")
-GITHUB_APP_WEBHOOK_SECRET = env("GITHUB_APP_WEBHOOK_SECRET", default="")
-GITHUB_APP_CLIENT_ID = env("GITHUB_APP_CLIENT_ID", default="")  # For user OAuth via App
-GITHUB_APP_CLIENT_SECRET = env("GITHUB_APP_CLIENT_SECRET", default="")
 
 # Jira OAuth (Atlassian)
 JIRA_CLIENT_ID = env("JIRA_CLIENT_ID", default="")

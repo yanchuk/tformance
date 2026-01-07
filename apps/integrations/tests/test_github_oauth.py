@@ -35,12 +35,25 @@ class TestGitHubOAuthScopes(TestCase):
         self.assertIn("manage_billing:copilot", GITHUB_OAUTH_SCOPES)
 
     def test_github_oauth_scopes_includes_all_required_scopes(self):
-        """Test that GITHUB_OAUTH_SCOPES includes all required scopes for the application."""
-        required_scopes = ["read:org", "repo", "read:user", "manage_billing:copilot"]
+        """Test that GITHUB_OAUTH_SCOPES includes all required scopes for the application.
+
+        Note: 'repo' scope is intentionally NOT included - GitHub App handles repo access.
+        OAuth is now only for social login + Copilot metrics.
+        """
+        # Minimal scopes - no 'repo' access (supports "no code access" claim)
+        required_scopes = ["read:org", "read:user", "manage_billing:copilot"]
 
         for scope in required_scopes:
             with self.subTest(scope=scope):
                 self.assertIn(scope, GITHUB_OAUTH_SCOPES, f"Missing required scope: {scope}")
+
+    def test_github_oauth_scopes_does_not_include_repo(self):
+        """Test that GITHUB_OAUTH_SCOPES does NOT include repo scope.
+
+        This is intentional - GitHub App handles repo/PR access with installation tokens.
+        Not having 'repo' scope supports the "we don't have access to your code" claim.
+        """
+        self.assertNotIn("repo", GITHUB_OAUTH_SCOPES)
 
     def test_github_oauth_scopes_includes_user_email(self):
         """Test that GITHUB_OAUTH_SCOPES constant includes user:email scope.
@@ -155,7 +168,7 @@ class TestAuthorizationURL(TestCase):
         self.assertIn("http", url)
 
     def test_authorization_url_includes_correct_scopes(self):
-        """Test that authorization URL includes required scopes: read:org, repo, read:user."""
+        """Test that authorization URL includes required scopes: read:org, read:user (NO repo!)."""
         team = TeamFactory()
         redirect_uri = "http://localhost:8000/integrations/github/callback"
 
@@ -168,7 +181,8 @@ class TestAuthorizationURL(TestCase):
             "read:org" in url or "read%3Aorg" in url,
             "Authorization URL should contain 'read:org' scope",
         )
-        self.assertIn("repo", url)
+        # NO repo scope - supports "we don't have access to your code" claim
+        self.assertNotIn("repo", url)
         self.assertTrue(
             "read:user" in url or "read%3Auser" in url,
             "Authorization URL should contain 'read:user' scope",

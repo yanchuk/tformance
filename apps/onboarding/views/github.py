@@ -328,6 +328,7 @@ def _create_team_from_org(request, org: dict):
 def select_repositories(request):
     """Select which repositories to track."""
     from apps.integrations.models import GitHubAppInstallation
+    from apps.integrations.services.github_app import get_installation_repositories
 
     # Get user's team
     if not request.user.teams.exists():
@@ -335,15 +336,15 @@ def select_repositories(request):
 
     team = request.user.teams.first()
 
-    # Check if GitHub is connected (OAuth or App)
+    # Check if GitHub is connected - prefer App installation over OAuth
+    app_installation = GitHubAppInstallation.objects.filter(team=team, is_active=True).first()
     integration = None
-    app_installation = None
-    try:
-        integration = GitHubIntegration.objects.get(team=team)
-    except GitHubIntegration.DoesNotExist:
-        # Check for GitHub App installation
-        app_installation = GitHubAppInstallation.objects.filter(team=team, is_active=True).first()
-        if not app_installation:
+
+    if not app_installation:
+        # Fallback to OAuth integration
+        try:
+            integration = GitHubIntegration.objects.get(team=team)
+        except GitHubIntegration.DoesNotExist:
             messages.error(request, _("GitHub not connected."))
             return redirect("onboarding:start")
 
@@ -359,11 +360,16 @@ def select_repositories(request):
             if not repo_cache:
                 logger.info("Repo cache empty, fetching from GitHub")
                 try:
-                    all_repos = _views.github_oauth.get_organization_repositories(
-                        integration.credential.access_token,
-                        integration.organization_slug,
-                        exclude_archived=True,
-                    )
+                    if app_installation:
+                        # Use GitHub App installation
+                        all_repos = get_installation_repositories(app_installation.installation_id)
+                    else:
+                        # Fallback to OAuth
+                        all_repos = _views.github_oauth.get_organization_repositories(
+                            integration.credential.access_token,
+                            integration.organization_slug,
+                            exclude_archived=True,
+                        )
                     repo_cache = {str(repo["id"]): repo for repo in all_repos}
                 except Exception as e:
                     logger.error(f"Failed to fetch repos during onboarding: {e}")
@@ -388,7 +394,8 @@ def select_repositories(request):
                     repos_to_create.append(
                         TrackedRepository(
                             team=team,
-                            integration=integration,
+                            integration=integration,  # Nullable, deprecated
+                            app_installation=app_installation,  # New primary auth
                             github_repo_id=int(repo_id),
                             full_name=repo_data["full_name"],
                             is_active=True,
@@ -441,24 +448,37 @@ def fetch_repos(request):
 
     Returns a partial HTML template with the repository list.
     """
+    from apps.integrations.models import GitHubAppInstallation
+    from apps.integrations.services.github_app import get_installation_repositories
+
     if not request.user.teams.exists():
         return render(request, "onboarding/partials/repos_error.html", {"error": "No team found"})
 
     team = request.user.teams.first()
 
-    try:
-        integration = GitHubIntegration.objects.get(team=team)
-    except GitHubIntegration.DoesNotExist:
-        return render(request, "onboarding/partials/repos_error.html", {"error": "GitHub not connected"})
+    # Check for GitHub connection - prefer App installation over OAuth
+    app_installation = GitHubAppInstallation.objects.filter(team=team, is_active=True).first()
+    integration = None
+
+    if not app_installation:
+        try:
+            integration = GitHubIntegration.objects.get(team=team)
+        except GitHubIntegration.DoesNotExist:
+            return render(request, "onboarding/partials/repos_error.html", {"error": "GitHub not connected"})
 
     # Fetch repositories from GitHub API
     repos = []
     try:
-        repos = _views.github_oauth.get_organization_repositories(
-            integration.credential.access_token,
-            integration.organization_slug,
-            exclude_archived=True,
-        )
+        if app_installation:
+            # Use GitHub App installation
+            repos = get_installation_repositories(app_installation.installation_id)
+        else:
+            # Fallback to OAuth
+            repos = _views.github_oauth.get_organization_repositories(
+                integration.credential.access_token,
+                integration.organization_slug,
+                exclude_archived=True,
+            )
     except Exception as e:
         logger.error(f"Failed to fetch repos during onboarding: {e}")
         return render(request, "onboarding/partials/repos_error.html", {"error": str(e)})

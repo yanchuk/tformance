@@ -58,7 +58,7 @@ class SecurityHeadersMiddleware:
         )
         style_src = (
             f"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com "
-            f"https://cdn.jsdelivr.net https://cdnjs.cloudflare.com {vite_src}"
+            f"https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://*.posthog.com {vite_src}"
         )
         connect_src = (
             f"connect-src 'self' https://api.github.com https://api.atlassian.com "

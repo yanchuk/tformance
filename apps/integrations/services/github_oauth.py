@@ -20,16 +20,19 @@ GITHUB_OAUTH_TOKEN_URL = "https://github.com/login/oauth/access_token"
 GITHUB_API_BASE_URL = "https://api.github.com"
 GITHUB_API_VERSION = "application/vnd.github.v3+json"
 
-# OAuth scopes required for GitHub integration
-# read:org - Access organization membership and teams
-# repo - Access repositories (code, PRs, commits)
-# read:user - Access user profile information
-# user:email - Access user email addresses (including private emails)
-# manage_billing:copilot - Access GitHub Copilot usage metrics
+# OAuth scopes required for GitHub integration (MINIMAL - no repo access!)
+# GitHub App handles repo/PR access with installation tokens
+# OAuth is now only for: social login + Copilot metrics
+#
+# read:org - Access organization membership (for Copilot org-level metrics)
+# read:user - Access user profile information (for social login)
+# user:email - Access user email addresses (for account linking)
+# manage_billing:copilot - Access GitHub Copilot usage metrics (optional, can fail gracefully)
+#
+# NOTE: NO "repo" scope - this supports "we don't have access to your code" claim
 GITHUB_OAUTH_SCOPES = " ".join(
     [
         "read:org",
-        "repo",
         "read:user",
         "user:email",
         "manage_billing:copilot",
