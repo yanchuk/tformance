@@ -12,28 +12,33 @@
     </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Impact on Software Engineering - 2025 OSS Analysis | Tformance</title>
-    <meta name="description" content="Analysis of 167K+ pull requests reveals how AI coding tools affect engineering metrics. Review AI correlates with -11% cycle time, but medians tell a different story.">
-    <meta name="keywords" content="AI coding tools impact, GitHub Copilot study, software engineering metrics, PR analysis, AI assisted development, developer productivity research, cycle time, code review">
-    <meta name="author" content="Tformance">
+    <title>AI Impact on Software Engineering - 2025 OSS Analysis | tformance</title>
+    <meta name="description" content="Analysis of 167,000+ PRs from 101 open source companies reveals Review AI correlates with -11% cycle time, but Code AI shows +16% slower cycles. Data-driven insights on AI coding tool adoption.">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://tformance.com/report/">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="apple-touch-icon" href="https://tformance.com/static/images/apple-touch-icon.png">
 
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="article">
     <meta property="og:url" content="https://tformance.com/report/">
-    <meta property="og:title" content="AI Impact on Software Engineering - 2025 OSS Analysis">
-    <meta property="og:description" content="Analysis of 167K+ pull requests reveals how AI coding tools affect engineering metrics. Review AI correlates with -11% cycle time, but medians tell a different story.">
+    <meta property="og:title" content="AI Impact on Software Engineering - 167K PRs Analyzed">
+    <meta property="og:description" content="Review AI correlates with -11% cycle time, but Code AI shows +16% slower cycles. Analysis of 167,000+ PRs from 101 OSS companies.">
     <meta property="og:image" content="https://tformance.com/static/images/og-report.png">
-    <meta property="og:site_name" content="Tformance">
+    <meta property="og:site_name" content="tformance">
 
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:url" content="https://tformance.com/report/">
-    <meta name="twitter:title" content="AI Impact on Software Engineering - 2025 OSS Analysis">
-    <meta name="twitter:description" content="Analysis of 167K+ pull requests reveals how AI coding tools affect engineering metrics. Review AI correlates with -11% cycle time.">
+    <meta name="twitter:title" content="AI Impact on Software Engineering - 167K PRs Analyzed">
+    <meta name="twitter:description" content="Review AI correlates with -11% cycle time, but Code AI shows +16% slower cycles. Analysis of 167,000+ PRs from 101 OSS companies.">
     <meta name="twitter:image" content="https://tformance.com/static/images/og-report.png">
 
-    <link rel="canonical" href="https://tformance.com/report/">
-    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <!-- Additional SEO -->
+    <meta name="author" content="Oleksii Ianchuk">
+    <meta name="keywords" content="AI coding tools, GitHub Copilot, software engineering, developer productivity, code review, AI impact, DORA metrics">
 
     <!-- Modern Stack: Tailwind CSS + Chart.js -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -1508,16 +1513,34 @@
         </header>
 
         <!-- LLM DATA LINK BANNER -->
-        <div style="background: linear-gradient(90deg, rgba(168, 85, 247, 0.15), rgba(249, 115, 22, 0.15)); border: 1px solid rgba(168, 85, 247, 0.4); border-radius: 8px; padding: 0.75rem 1.25rem; margin-bottom: 1.5rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem;">
+        <div style="background: linear-gradient(90deg, rgba(168, 85, 247, 0.15), rgba(249, 115, 22, 0.15)); border: 1px solid rgba(168, 85, 247, 0.4); border-radius: 8px; padding: 0.75rem 1.25rem; margin-bottom: 1.5rem; display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 1rem;">
             <div style="display: flex; align-items: center; gap: 0.5rem;">
                 <span style="font-size: 1.25rem;">🤖</span>
-                <span style="font-weight: 600; color: var(--text);">Feed this report to your AI:</span>
-                <code style="background: var(--bg-card); padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; color: var(--primary); border: 1px solid var(--border);">report_data_for_llms.md</code>
+                <span style="font-weight: 600; color: var(--text);">Feed this report to your AI →</span>
             </div>
-            <a href="https://raw.githubusercontent.com/yanchuk/tformance/main/docs/report_data_for_llms.md" target="_blank" style="background: var(--primary); color: white; padding: 0.5rem 1rem; border-radius: 6px; text-decoration: none; font-size: 0.85rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem;">
-                📋 Copy Raw URL
-            </a>
+            <button onclick="copyReportPrompt()" style="background: var(--primary); color: white; padding: 0.5rem 1rem; border-radius: 6px; border: none; font-size: 0.85rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                📋 Copy AI Prompt
+            </button>
         </div>
+        <script>
+        function copyReportPrompt() {
+            const prompt = 'Read this AI Impact Report and summarize key findings: https://tformance.com/report/llms.md';
+            navigator.clipboard.writeText(prompt).then(function() {
+                showCopyToast();
+            });
+        }
+        function showCopyToast() {
+            var existing = document.getElementById('copy-toast');
+            if (existing) existing.remove();
+            var toast = document.createElement('div');
+            toast.id = 'copy-toast';
+            toast.textContent = 'Prompt and link copied. Paste into your favorite AI to verify the report.';
+            toast.style.cssText = 'position:fixed;bottom:2rem;left:50%;transform:translateX(-50%);background:#1a1a2e;color:#ffffff;padding:1rem 1.5rem;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,0.4);border:2px solid var(--primary);z-index:99999;font-size:0.9rem;font-weight:500;';
+            document.body.appendChild(toast);
+            setTimeout(function() { toast.style.opacity = '0'; toast.style.transition = 'opacity 0.3s'; }, 3500);
+            setTimeout(function() { toast.remove(); }, 4000);
+        }
+        </script>
         <section id="tldr" style="background: linear-gradient(135deg, rgba(90, 153, 151, 0.2), rgba(249, 115, 22, 0.15)); border: 2px solid var(--accent); border-radius: 16px; padding: 2rem; margin-bottom: 2rem;">
             <h2 style="margin-bottom: 1rem;">⚡ TL;DR: Review AI Works. Code AI? It's Complicated.</h2>
 

@@ -7,6 +7,7 @@ app_name = "web"
 urlpatterns = [
     path("", views.home, name="home"),
     path("report/", views.ai_impact_report, name="ai_impact_report"),
+    path("report/llms.md", views.report_llms_data, name="report_llms_data"),
     path("terms/", TemplateView.as_view(template_name="web/terms.html"), name="terms"),
     path("privacy/", TemplateView.as_view(template_name="web/privacy.html"), name="privacy"),
     path("robots.txt", TemplateView.as_view(template_name="robots.txt", content_type="text/plain"), name="robots.txt"),

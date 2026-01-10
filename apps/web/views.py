@@ -92,6 +92,20 @@ def ai_impact_report(request):
         return HttpResponse("Report not found", status=404)
 
 
+def report_llms_data(request):
+    """Serve the AI Impact Report data in LLM-friendly markdown format."""
+    import os
+
+    from django.http import FileResponse, HttpResponse
+
+    report_path = os.path.join(settings.BASE_DIR, "public_report", "report_data_for_llms.md")
+
+    if os.path.exists(report_path):
+        return FileResponse(open(report_path, "rb"), content_type="text/markdown; charset=utf-8")
+    else:
+        return HttpResponse("Report data not found", status=404)
+
+
 @login_and_team_required
 def team_home(request):
     """Team home page with conditional content based on integration status.
