@@ -155,6 +155,6 @@ class JiraIssue(BaseTeamModel):
     @property
     def related_prs(self):
         """Get all PRs that reference this Jira issue via jira_key."""
-        from .github import PullRequest
+        from .pull_requests import PullRequest
 
         return PullRequest.objects.filter(team=self.team, jira_key=self.jira_key)

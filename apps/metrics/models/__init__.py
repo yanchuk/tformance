@@ -6,7 +6,8 @@ Import as: from apps.metrics.models import PullRequest
 
 Module Structure:
 - team.py: TeamMember
-- github.py: PullRequest, PRReview, PRCheckRun, PRFile, PRComment, Commit
+- pull_requests.py: PullRequest (core PR entity)
+- github.py: PRReview, PRCheckRun, PRFile, PRComment, Commit
 - jira.py: JiraIssue
 - surveys.py: PRSurvey, PRSurveyReview
 - aggregations.py: AIUsageDaily, WeeklyMetrics, ReviewerCorrelation
@@ -25,9 +26,10 @@ from .aggregations import (
 )
 from .benchmarks import IndustryBenchmark
 from .deployments import Deployment
-from .github import Commit, PRCheckRun, PRComment, PRFile, PRReview, PullRequest
+from .github import Commit, PRCheckRun, PRComment, PRFile, PRReview
 from .insights import DailyInsight
 from .jira import JiraIssue
+from .pull_requests import PullRequest
 from .surveys import PRSurvey, PRSurveyReview
 from .team import TeamMember
 

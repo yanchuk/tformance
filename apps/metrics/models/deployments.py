@@ -4,7 +4,7 @@ from django.db import models
 
 from apps.teams.models import BaseTeamModel
 
-from .github import PullRequest
+from .pull_requests import PullRequest
 from .team import TeamMember
 
 
