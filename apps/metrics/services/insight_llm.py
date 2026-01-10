@@ -30,6 +30,13 @@ from apps.metrics.services.dashboard_service import (
     get_velocity_comparison,
     get_velocity_trend,
 )
+from apps.metrics.types import (
+    ContributorInfo,
+    InsightAction,
+    InsightData,
+    InsightResponse,
+    MetricCard,
+)
 
 if TYPE_CHECKING:
     from apps.metrics.models import DailyInsight
@@ -232,7 +239,7 @@ ACTION_URL_MAP: dict[str, dict] = {
 }
 
 
-def resolve_action_url(action: dict, days: int) -> str:
+def resolve_action_url(action: InsightAction, days: int) -> str:
     """Convert action_type to URL with filters.
 
     Takes an action dict from LLM output and converts it to a valid
@@ -261,7 +268,7 @@ def resolve_action_url(action: dict, days: int) -> str:
     return f"{base}?{urlencode(params)}"
 
 
-def build_metric_cards(data: dict) -> list[dict]:
+def build_metric_cards(data: InsightData) -> list[MetricCard]:
     """Pre-compute metric cards from gathered data.
 
     Computes the 4 standard metric cards (Throughput, Cycle Time, AI Adoption, Quality)
@@ -382,7 +389,7 @@ def _is_bot_username(username: str | None) -> bool:
     return any(pattern in username_lower for pattern in BOT_USERNAME_PATTERNS)
 
 
-def _get_top_contributors(team: Team, start_date: date, end_date: date, limit: int = 5) -> list[dict]:
+def _get_top_contributors(team: Team, start_date: date, end_date: date, limit: int = 5) -> list[ContributorInfo]:
     """Get top PR authors with their GitHub usernames for @mentions.
 
     Excludes bot accounts (dependabot, renovate, etc.) from contributor analysis
@@ -436,7 +443,7 @@ def gather_insight_data(
     start_date: date,
     end_date: date,
     repo: str | None = None,
-) -> dict:
+) -> InsightData:
     """Gather all metrics into a single dict for LLM prompt.
 
     Collects data from:
@@ -523,7 +530,9 @@ def gather_insight_data(
             copilot_metrics["waste_per_contributor"] = round(wasted_spend / max(active_contributors, 1), 2)
             copilot_metrics["active_contributors"] = active_contributors
 
-    return {
+    # Type ignore: dashboard_service functions return untyped dicts
+    # TODO: Add types to dashboard_service.py for full type safety
+    return {  # type: ignore[reportReturnType]
         "velocity": velocity,
         "quality": quality,
         "team_health": team_health,
@@ -534,7 +543,7 @@ def gather_insight_data(
     }
 
 
-def build_insight_prompt(data: dict) -> str:
+def build_insight_prompt(data: InsightData) -> str:
     """Build LLM prompt from gathered insight data.
 
     Renders Jinja2 templates with the data to create a structured
@@ -560,7 +569,7 @@ def build_insight_prompt(data: dict) -> str:
     return template.render(**data)
 
 
-def _create_fallback_insight(data: dict) -> dict:
+def _create_fallback_insight(data: InsightData) -> InsightResponse:
     """Create a rule-based fallback insight when LLM fails.
 
     Uses simple rules to generate insights from the data without LLM.
@@ -658,21 +667,23 @@ def _create_fallback_insight(data: dict) -> dict:
     if len(actions) < 2:
         actions.append({"action_type": "view_contributors", "label": "View contributors"})
 
-    return {
+    # Type cast: dict literals satisfy TypedDict at runtime
+    result: InsightResponse = {  # type: ignore[reportAssignmentType]
         "headline": headline,
         "detail": detail,
         "recommendation": recommendation,
-        "metric_cards": metric_cards,
-        "actions": actions[:3],  # Max 3 actions
+        "metric_cards": metric_cards,  # type: ignore[reportAssignmentType]
+        "actions": actions[:3],  # type: ignore[reportAssignmentType]
         "is_fallback": True,
     }
+    return result
 
 
 def generate_insight(
-    data: dict,
+    data: InsightData,
     api_key: str | None = None,
     model: str | None = None,
-) -> dict:
+) -> InsightResponse:
     """Generate insight using GROQ LLM API.
 
     Calls GROQ API with the insight prompt and parses the JSON response.
@@ -773,7 +784,7 @@ def generate_insight(
 
 def cache_insight(
     team: Team,
-    insight: dict,
+    insight: InsightResponse,
     target_date: date,
     days: int = 30,
 ) -> DailyInsight:

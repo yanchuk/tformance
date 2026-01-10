@@ -88,6 +88,7 @@ dev = [
     "pre-commit",
     "ruff>=0.13.1",
     "pegasus-cli>=0.8",
+    "pyright>=1.1.391",  # Static type checking
     "tblib>=3.0.0",  # Required for Django parallel test debugging
     "watchdog>=4.0",  # Auto-reload for Celery during development (make celery-dev)
     # pytest ecosystem
@@ -121,3 +122,42 @@ markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "integration: marks tests as integration tests (require external services or network)",
 ]
+
+[tool.pyright]
+pythonVersion = "3.12"
+typeCheckingMode = "basic"
+include = ["apps/"]
+exclude = ["**/migrations", "**/tests", "dev/", "**/__pycache__"]
+
+# Django-specific settings - relaxed for gradual adoption without django-stubs
+# These are required because Django uses descriptor protocol for model fields
+# which pyright sees as FieldType instead of runtime value type
+reportMissingImports = true
+reportMissingTypeStubs = false
+reportUnusedImport = false                  # Handled by ruff
+reportPrivateUsage = false                  # Django uses private attrs internally
+reportUnknownMemberType = false             # Django QuerySets have dynamic types
+reportUnknownArgumentType = false           # Factory Boy and Django have dynamic typing
+reportGeneralTypeIssues = "warning"         # Start with warnings, not errors
+reportAttributeAccessIssue = false          # Django ForeignKey.field, DateTimeField access
+reportArgumentType = false                  # Django CharField passed as str (runtime correct)
+reportOptionalMemberAccess = false          # PyGithub optional attrs (always present on PRs)
+reportCallIssue = false                     # Django JSONField operations (join, etc.)
+reportIndexIssue = false                    # Django JSONField indexing (field[0], etc.)
+reportReturnType = false                    # Django model field returns (CharField -> str)
+reportAssignmentType = false                # Django field assignments
+reportOperatorIssue = false                 # Django/Stripe field operations
+reportOptionalSubscript = false             # Optional dict access patterns
+reportPrivateImportUsage = false            # Third-party internal imports (waffle.utils)
+reportTypedDictNotRequiredAccess = false    # TypedDict optional key access
+reportInvalidTypeArguments = false          # Generic type argument issues
+reportUnboundVariable = false               # False positives in complex conditionals
+reportOptionalCall = false                  # Optional callable patterns
+
+# Third-party library handling
+useLibraryCodeForTypes = true
+pythonPlatform = "Linux"                    # Match production environment
+
+# Virtual environment
+venvPath = "."
+venv = ".venv"

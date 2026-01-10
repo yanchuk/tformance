@@ -1,12 +1,21 @@
 """GitHub sync service for fetching data from GitHub repositories."""
 
+from __future__ import annotations
+
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from github import Github, GithubException
+from github.PullRequest import PullRequest as GHPullRequest
 
 from apps.integrations.services.github_oauth import GitHubOAuthError
 from apps.integrations.services.github_rate_limit import should_pause_for_rate_limit
 from apps.integrations.services.jira_utils import extract_jira_key
+from apps.integrations.types import PRDict
+
+if TYPE_CHECKING:
+    from apps.integrations.models import TrackedRepository
+    from apps.metrics.models import PullRequest
 
 __all__ = [
     "GitHubOAuthError",
@@ -24,7 +33,7 @@ __all__ = [
 ]
 
 
-def _convert_pr_to_dict(pr) -> dict:
+def _convert_pr_to_dict(pr: GHPullRequest) -> PRDict:
     """Convert PyGithub PullRequest object to dictionary with all required attributes.
 
     Args:
@@ -111,7 +120,8 @@ def get_repository_pull_requests(
         # Yield PRs one at a time (generator pattern for memory efficiency)
         for pr in prs:
             # Stop iteration when hitting PRs older than cutoff
-            if cutoff_date is not None and pr.updated_at < cutoff_date:
+            # PyGithub stubs mark updated_at as Optional but PRs always have it
+            if cutoff_date is not None and pr.updated_at and pr.updated_at < cutoff_date:
                 break
             yield _convert_pr_to_dict(pr)
 
@@ -222,7 +232,7 @@ def get_pull_request_reviews(
 
 
 def _sync_pr_reviews(
-    pr: "PullRequest",  # noqa: F821
+    pr: PullRequest,  # noqa: F821
     pr_number: int,
     access_token: str,
     repo_full_name: str,
@@ -298,7 +308,7 @@ def _sync_pr_reviews(
 
 
 def sync_pr_commits(
-    pr: "PullRequest",  # noqa: F821
+    pr: PullRequest,  # noqa: F821
     pr_number: int,
     access_token: str,
     repo_full_name: str,
@@ -375,7 +385,7 @@ def sync_pr_commits(
 
 
 def sync_pr_check_runs(
-    pr: "PullRequest",  # noqa: F821
+    pr: PullRequest,  # noqa: F821
     pr_number: int,
     access_token: str,
     repo_full_name: str,
@@ -454,7 +464,7 @@ def sync_pr_check_runs(
 
 
 def sync_pr_files(
-    pr: "PullRequest",  # noqa: F821
+    pr: PullRequest,  # noqa: F821
     pr_number: int,
     access_token: str,
     repo_full_name: str,
@@ -521,7 +531,7 @@ def sync_pr_files(
 
 def _process_prs(
     prs_data,
-    tracked_repo: "TrackedRepository",  # noqa: F821
+    tracked_repo: TrackedRepository,  # noqa: F821
     access_token: str,
 ) -> dict:
     """Process PR data and sync to database.
@@ -660,7 +670,7 @@ def _process_prs(
 
 
 def sync_repository_history(
-    tracked_repo: "TrackedRepository",  # noqa: F821
+    tracked_repo: TrackedRepository,  # noqa: F821
     days_back: int = 90,
 ) -> dict:
     """Sync historical PR data from a tracked repository.
@@ -698,7 +708,7 @@ def sync_repository_history(
     return result
 
 
-def sync_repository_incremental(tracked_repo: "TrackedRepository") -> dict:  # noqa: F821
+def sync_repository_incremental(tracked_repo: TrackedRepository) -> dict:  # noqa: F821
     """
     Perform incremental sync for a repository.
 
@@ -815,7 +825,7 @@ def sync_repository_deployments(
 
 
 def _sync_pr_comments(
-    pr: "PullRequest",  # noqa: F821
+    pr: PullRequest,  # noqa: F821
     pr_number: int,
     access_token: str,
     repo_full_name: str,
@@ -904,7 +914,7 @@ def _sync_pr_comments(
 
 
 def sync_pr_issue_comments(
-    pr: "PullRequest",  # noqa: F821
+    pr: PullRequest,  # noqa: F821
     pr_number: int,
     access_token: str,
     repo_full_name: str,
@@ -937,7 +947,7 @@ def sync_pr_issue_comments(
 
 
 def sync_pr_review_comments(
-    pr: "PullRequest",  # noqa: F821
+    pr: PullRequest,  # noqa: F821
     pr_number: int,
     access_token: str,
     repo_full_name: str,
@@ -969,7 +979,7 @@ def sync_pr_review_comments(
     )
 
 
-def calculate_pr_iteration_metrics(pr: "PullRequest") -> None:  # noqa: F821
+def calculate_pr_iteration_metrics(pr: PullRequest) -> None:  # noqa: F821
     """Calculate iteration metrics for a pull request from synced data.
 
     Updates the following fields on the PullRequest:
