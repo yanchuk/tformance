@@ -4,7 +4,11 @@ from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect
 from django.template.response import TemplateResponse
 
-from apps.integrations.services.integration_flags import is_cicd_enabled, is_integration_enabled
+from apps.integrations.services.integration_flags import (
+    is_cicd_enabled,
+    is_copilot_feature_active,
+    is_integration_enabled,
+)
 from apps.metrics.models import PullRequest
 from apps.metrics.view_utils import get_extended_date_range
 from apps.teams.decorators import team_admin_required
@@ -141,6 +145,7 @@ def analytics_ai_adoption(request: HttpRequest) -> HttpResponse:
     """AI Adoption analytics page.
 
     Shows AI adoption trends, AI vs non-AI comparison metrics, and tool breakdown.
+    Also includes GitHub Copilot metrics when enabled via feature flags.
     Admin-only view.
     """
     from apps.metrics.services import dashboard_service
@@ -151,6 +156,12 @@ def analytics_ai_adoption(request: HttpRequest) -> HttpResponse:
     context["comparison"] = dashboard_service.get_ai_quality_comparison(
         request.team, context["start_date"], context["end_date"]
     )
+
+    # Copilot feature flags - enables ROI/utilization sections
+    context["copilot_enabled"] = is_copilot_feature_active(request, "copilot_enabled")
+    context["copilot_seat_utilization_enabled"] = is_copilot_feature_active(request, "copilot_seat_utilization")
+    context["copilot_language_insights_enabled"] = is_copilot_feature_active(request, "copilot_language_insights")
+    context["copilot_delivery_impact_enabled"] = is_copilot_feature_active(request, "copilot_delivery_impact")
 
     # Track page view
     track_event(

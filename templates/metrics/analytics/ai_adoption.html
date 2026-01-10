@@ -114,6 +114,129 @@
     </div>
   </div>
 
+  {% if copilot_enabled %}
+  <!-- Copilot Seat Utilization & ROI -->
+  {% if copilot_seat_utilization_enabled %}
+  <div class="card bg-base-100 shadow-md mb-6">
+    <div class="card-body">
+      <h2 class="card-title text-base">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+        </svg>
+        {% trans "Seat Utilization & ROI" %}
+      </h2>
+      <p class="text-sm text-base-content/80 mb-2">{% trans "License usage and cost efficiency" %}</p>
+      <div id="copilot-seats-container"
+           hx-get="{% url 'metrics:cards_copilot_seats' %}?days={{ days }}{% if selected_repo %}&repo={{ selected_repo }}{% endif %}"
+           hx-trigger="load"
+           hx-swap="innerHTML">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {% for i in "1234" %}
+          <div class="skeleton h-24 w-full rounded-lg"></div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Copilot Trend + Language Breakdown Grid -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+    <!-- Copilot Acceptance Rate Trend -->
+    <div class="card bg-base-100 shadow-md">
+      <div class="card-body">
+        <h2 class="card-title text-base">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+          </svg>
+          {% trans "Acceptance Rate Trend" %}
+        </h2>
+        <p class="text-sm text-base-content/80 mb-2">{% trans "Copilot suggestion acceptance over time" %}</p>
+        <div id="copilot-trend-container"
+             hx-get="{% url 'metrics:chart_copilot_trend' %}?days={{ days }}{% if selected_repo %}&repo={{ selected_repo }}{% endif %}"
+             hx-trigger="load"
+             hx-swap="innerHTML">
+          <div class="flex justify-center items-center h-56">
+            <span class="loading loading-spinner loading-lg"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {% if copilot_language_insights_enabled %}
+    <!-- Copilot Language Breakdown -->
+    <div class="card bg-base-100 shadow-md">
+      <div class="card-body">
+        <h2 class="card-title text-base">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+          </svg>
+          {% trans "By Language" %}
+        </h2>
+        <p class="text-sm text-base-content/80 mb-2">{% trans "Copilot acceptance by programming language" %}</p>
+        <div id="copilot-languages-container"
+             hx-get="{% url 'metrics:cards_copilot_languages' %}?days={{ days }}{% if selected_repo %}&repo={{ selected_repo }}{% endif %}"
+             hx-trigger="load"
+             hx-swap="innerHTML">
+          <div class="flex justify-center items-center h-56">
+            <span class="loading loading-spinner loading-lg"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Copilot Editor Breakdown + Delivery Impact Grid -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+    {% if copilot_language_insights_enabled %}
+    <!-- Copilot Editor Breakdown -->
+    <div class="card bg-base-100 shadow-md">
+      <div class="card-body">
+        <h2 class="card-title text-base">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-info" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+          </svg>
+          {% trans "By Editor" %}
+        </h2>
+        <p class="text-sm text-base-content/80 mb-2">{% trans "Copilot acceptance by IDE" %}</p>
+        <div id="copilot-editors-container"
+             hx-get="{% url 'metrics:cards_copilot_editors' %}?days={{ days }}{% if selected_repo %}&repo={{ selected_repo }}{% endif %}"
+             hx-trigger="load"
+             hx-swap="innerHTML">
+          <div class="flex justify-center items-center h-56">
+            <span class="loading loading-spinner loading-lg"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if copilot_delivery_impact_enabled %}
+    <!-- Copilot Delivery Impact -->
+    <div class="card bg-base-100 shadow-md">
+      <div class="card-body">
+        <h2 class="card-title text-base">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+          </svg>
+          {% trans "Delivery Impact" %}
+        </h2>
+        <p class="text-sm text-base-content/80 mb-2">{% trans "Compare Copilot users vs non-users" %}</p>
+        <div id="copilot-delivery-container"
+             hx-get="{% url 'metrics:cards_copilot_delivery' %}?days={{ days }}{% if selected_repo %}&repo={{ selected_repo }}{% endif %}"
+             hx-trigger="load"
+             hx-swap="innerHTML">
+          <div class="flex justify-center items-center h-56">
+            <span class="loading loading-spinner loading-lg"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
   <!-- Quick Links Section -->
   <div class="card bg-base-100 shadow-md">
     <div class="card-body">

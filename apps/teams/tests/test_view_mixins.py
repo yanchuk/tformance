@@ -42,15 +42,16 @@ class TeamMixinTest(TestCase):
         cls.yanks.members.add(cls.yanks_admin, through_defaults={"role": ROLE_ADMIN})
         cls.yanks.members.add(cls.yanks_member, through_defaults={"role": ROLE_MEMBER})
 
-    def _get_request(self, user=None):
-        request = self.factory.get("/team/")  # the url here is ignored
+        # User with no team membership
+        cls.teamless_user = CustomUser.objects.create(username="no.team@example.com")
+
+    def _call_view(self, view_cls, user, team=None):
+        """Call view with team selected via ?team= query parameter."""
+        url = f"/team/?team={team.id}" if team else "/team/"
+        request = self.factory.get(url)
         request.user = user or AnonymousUser()
         request.session = {}
-        return request
-
-    def _call_view(self, view_cls, user, team_slug):
-        request = self._get_request(user=user)
-        view_kwargs = {"team_slug": team_slug}
+        view_kwargs = {}
 
         def get_response(req):
             return view_cls.as_view()(req, **view_kwargs)
@@ -59,35 +60,76 @@ class TeamMixinTest(TestCase):
         middleware.process_view(request, None, None, view_kwargs)
         return middleware(request)
 
-    def assertSuccessfulRequest(self, view_cls, user, team_slug):
-        response = self._call_view(view_cls, user, team_slug)
+    def assertSuccessfulRequest(self, view_cls, user, team):
+        response = self._call_view(view_cls, user, team)
         self.assertEqual(200, response.status_code)
-        self.assertEqual(f"Go {team_slug}", response.content.decode("utf-8"))
+        self.assertEqual(f"Go {team.slug}", response.content.decode("utf-8"))
 
-    def assertRedirectToLogin(self, view_cls, user, team_slug):
-        response = self._call_view(view_cls, user, team_slug)
+    def assertRedirectToLogin(self, view_cls, user, team=None):
+        response = self._call_view(view_cls, user, team)
         self.assertEqual(302, response.status_code)
         self.assertTrue("/login/" in response.url)
 
-    def assertNotFound(self, view_cls, user, team_slug):
+    def assertNotFound(self, view_cls, user, team=None):
         with self.assertRaises(Http404):
-            self._call_view(view_cls, user, team_slug)
+            self._call_view(view_cls, user, team)
 
     def test_anonymous_user_redirect_to_login(self):
+        """Anonymous users should redirect to login regardless of team requested."""
         for view_cls in [MemberView, AdminView]:
-            self.assertRedirectToLogin(view_cls, AnonymousUser(), "sox")
-            self.assertRedirectToLogin(view_cls, AnonymousUser(), "yanks")
+            self.assertRedirectToLogin(view_cls, AnonymousUser(), self.sox)
+            self.assertRedirectToLogin(view_cls, AnonymousUser(), self.yanks)
+            self.assertRedirectToLogin(view_cls, AnonymousUser())  # No team param
 
     def test_member_view_logged_in(self):
-        for user in [self.sox_member, self.sox_member]:
-            self.assertSuccessfulRequest(MemberView, user, "sox")
-            self.assertNotFound(MemberView, user, "yanks")
+        """Members can access views for their own team."""
+        # Sox members can access Sox team
+        for user in [self.sox_member, self.sox_admin]:
+            self.assertSuccessfulRequest(MemberView, user, self.sox)
+
+        # Yankees members can access Yankees team
         for user in [self.yanks_member, self.yanks_admin]:
-            self.assertSuccessfulRequest(MemberView, user, "yanks")
-            self.assertNotFound(MemberView, user, "sox")
+            self.assertSuccessfulRequest(MemberView, user, self.yanks)
+
+    def test_invalid_team_falls_back_to_default(self):
+        """
+        When user requests team they're not member of via ?team= param,
+        they get their default team (first team they belong to).
+        """
+        # Sox member requests Yankees → falls back to Sox (their default team)
+        response = self._call_view(MemberView, self.sox_member, self.yanks)
+        self.assertEqual(200, response.status_code)
+        self.assertEqual("Go sox", response.content.decode("utf-8"))
+
+        # Yankees member requests Sox → falls back to Yankees (their default team)
+        response = self._call_view(MemberView, self.yanks_member, self.sox)
+        self.assertEqual(200, response.status_code)
+        self.assertEqual("Go yanks", response.content.decode("utf-8"))
+
+    def test_user_without_team_gets_404(self):
+        """Users with no team membership get 404."""
+        self.assertNotFound(MemberView, self.teamless_user, self.sox)
+        self.assertNotFound(MemberView, self.teamless_user)  # No team param either
 
     def test_admin_only_views(self):
-        self.assertSuccessfulRequest(AdminView, self.sox_admin, "sox")
-        self.assertNotFound(AdminView, self.sox_member, "sox")
-        self.assertNotFound(AdminView, self.yanks_admin, "sox")
-        self.assertNotFound(AdminView, self.yanks_member, "sox")
+        """Admin views only accessible by team admins, not regular members."""
+        # Admin can access admin view
+        self.assertSuccessfulRequest(AdminView, self.sox_admin, self.sox)
+        self.assertSuccessfulRequest(AdminView, self.yanks_admin, self.yanks)
+
+        # Member cannot access admin view (gets 404)
+        self.assertNotFound(AdminView, self.sox_member, self.sox)
+        self.assertNotFound(AdminView, self.yanks_member, self.yanks)
+
+    def test_admin_cross_team_falls_back(self):
+        """
+        Admin from one team requesting another team via ?team= falls back
+        to their default team. They succeed only if they're admin of default team.
+        """
+        # Yankees admin requests Sox → falls back to Yankees → succeeds (is admin)
+        response = self._call_view(AdminView, self.yanks_admin, self.sox)
+        self.assertEqual(200, response.status_code)
+        self.assertEqual("Go yanks", response.content.decode("utf-8"))
+
+        # Yankees member requests Sox → falls back to Yankees → 404 (not admin)
+        self.assertNotFound(AdminView, self.yanks_member, self.sox)

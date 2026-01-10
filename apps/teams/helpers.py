@@ -1,7 +1,6 @@
 from allauth.account.models import EmailAddress
 from django.db.models import F
 from django.http import HttpRequest
-from django.shortcuts import get_object_or_404
 from django.utils.translation import gettext as _
 
 from apps.users.models import CustomUser
@@ -30,18 +29,12 @@ def get_team_for_request(request, view_kwargs):
     Get the team for a request.
 
     Team resolution order:
-    1. team_slug in view_kwargs (legacy URL support / redirects)
-    2. ?team= query parameter (for direct team switching via URL)
-    3. team ID in session (from previous requests)
-    4. User's default (first) team
+    1. ?team= query parameter (for direct team switching via URL)
+    2. team ID in session (from previous requests)
+    3. User's default (first) team
 
     Returns None if user is not authenticated or has no teams.
     """
-    # Legacy: support team_slug in URL for backwards compatibility
-    team_slug = view_kwargs.get("team_slug", None)
-    if team_slug:
-        return get_object_or_404(Team, slug=team_slug)
-
     # For non-authenticated users, no team
     if not request.user.is_authenticated:
         return None
