@@ -379,6 +379,45 @@ class TestGenerateInsight(TestCase):
         self.assertIn("is_fallback", result)
         self.assertTrue(result["is_fallback"])
 
+    @patch("apps.metrics.services.insight_llm.Groq")
+    def test_falls_back_on_invalid_schema(self, mock_groq_class):
+        """Test that generate_insight falls back when LLM returns valid JSON that doesn't match schema.
+
+        This is a critical test - the LLM might return valid JSON that parses successfully
+        but doesn't conform to the expected INSIGHT_RESPONSE_SCHEMA (e.g., missing required
+        fields, wrong types, invalid enum values). We should validate and fall back gracefully.
+        """
+        import json
+
+        from apps.metrics.services.insight_llm import generate_insight
+
+        # Valid JSON but MISSING required fields (headline, detail, recommendation)
+        # and has wrong structure for metric_cards
+        invalid_schema_response = {
+            "title": "Wrong field name",  # Should be 'headline'
+            "body": "Wrong field name",  # Should be 'detail'
+            "suggestion": "Wrong field name",  # Should be 'recommendation'
+            "cards": [],  # Wrong field name and wrong count (should be 'metric_cards' with exactly 4 items)
+        }
+
+        # Configure mock to return valid JSON that doesn't match schema
+        mock_client = mock_groq_class.return_value
+        mock_client.chat.completions.create.return_value.choices = [
+            type(
+                "Choice",
+                (),
+                {"message": type("Message", (), {"content": json.dumps(invalid_schema_response)})()},
+            )()
+        ]
+
+        # Call function - should not raise
+        result = generate_insight(self.sample_data)
+
+        # Verify fallback response is returned due to schema validation failure
+        self.assertIsInstance(result, dict)
+        self.assertIn("is_fallback", result)
+        self.assertTrue(result["is_fallback"], "Expected fallback due to invalid schema, but got LLM response")
+
 
 class TestCacheInsight(TestCase):
     """Tests for cache_insight function."""

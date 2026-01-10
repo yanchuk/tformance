@@ -18,6 +18,8 @@ from urllib.parse import urlencode
 
 from groq import Groq
 
+from apps.integrations.services.copilot_metrics_prompt import get_copilot_metrics_for_prompt
+from apps.metrics.prompts.schemas import validate_insight_response
 from apps.metrics.services.dashboard_service import (
     get_ai_impact_stats,
     get_jira_sprint_metrics,
@@ -454,12 +456,22 @@ def gather_insight_data(
             "velocity_trend": get_velocity_trend(team, start_date, end_date),
         }
 
+    # Add Copilot metrics for teams with Copilot data
+    # Use include_copilot=True since Celery tasks don't have request context
+    copilot_metrics = get_copilot_metrics_for_prompt(
+        team=team,
+        start_date=start_date,
+        end_date=end_date,
+        include_copilot=True,
+    )
+
     return {
         "velocity": velocity,
         "quality": quality,
         "team_health": team_health,
         "ai_impact": ai_impact,
         "jira": jira_data,
+        "copilot_metrics": copilot_metrics if copilot_metrics else None,
         "metadata": metadata,
     }
 
@@ -479,13 +491,14 @@ def build_insight_prompt(data: dict) -> str:
     """
     from jinja2 import Environment, PackageLoader
 
-    # Load templates from apps/metrics/prompts/templates/insight/
+    # Load templates from apps/metrics/prompts/templates/
+    # Using parent directory so includes like '../sections/...' work correctly
     env = Environment(
-        loader=PackageLoader("apps.metrics.prompts", "templates/insight"),
+        loader=PackageLoader("apps.metrics.prompts", "templates"),
         autoescape=False,
     )
 
-    template = env.get_template("user.jinja2")
+    template = env.get_template("insight/user.jinja2")
     return template.render(**data)
 
 
@@ -640,7 +653,7 @@ def generate_insight(
         try:
             # Build API call parameters
             # - temperature 0.2: Low variance for consistent structured output
-            # - max_tokens 1000: Prose only, some teams need more headroom
+            # - max_tokens 1500: Increased for Copilot metrics section in prompts
             api_params = {
                 "model": current_model,
                 "messages": [
@@ -648,7 +661,7 @@ def generate_insight(
                     {"role": "user", "content": user_prompt},
                 ],
                 "temperature": 0.2,
-                "max_tokens": 1000,
+                "max_tokens": 1500,
             }
 
             # Use json_schema for models that support it, json_object for others
@@ -673,6 +686,12 @@ def generate_insight(
             # Parse JSON response
             content = response.choices[0].message.content
             result = json.loads(content)
+
+            # Validate response against schema
+            is_valid, errors = validate_insight_response(result)
+            if not is_valid:
+                logger.warning(f"Invalid insight schema from {current_model}: {errors}")
+                continue  # Try next model
 
             # Merge pre-computed metric_cards into result
             result["metric_cards"] = metric_cards
