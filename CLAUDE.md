@@ -358,10 +358,43 @@ prs = PullRequest.for_team.select_related("author").prefetch_related("reviews")
 - Follow PEP 8 with **120 character line limit**
 - Use **double quotes** for strings (ruff enforced)
 - Sort imports with isort (via ruff)
-- Use type hints in new code (not strictly enforced)
+- Use type hints in new code (enforced by pyright in pre-commit)
 - Use Django signals sparingly and document them well
 - Always validate user input server-side
 - Handle errors explicitly, avoid silent failures
+
+### Type Checking (Pyright)
+
+**Pyright is configured for gradual adoption without django-stubs.**
+
+```bash
+# Run type checker manually
+.venv/bin/pyright apps/metrics/services/insight_llm.py
+
+# Pre-commit runs automatically on staged files
+pre-commit run pyright --all-files
+```
+
+**Type Definition Files:**
+- `apps/metrics/types.py` - InsightData, InsightResponse, MetricCard, etc.
+- `apps/integrations/types.py` - PRDict, SyncResult, GitHubUserInfo, etc.
+
+**When Adding Types:**
+1. Use `TypedDict` for structured dicts (with `total=False` for optional fields)
+2. Use `TYPE_CHECKING` imports to avoid circular imports
+3. For Django model fields, pyright sees descriptors not runtime types - suppressions are configured in `pyproject.toml`
+
+**Example:**
+```python
+from typing import TYPE_CHECKING
+from apps.metrics.types import InsightData, InsightResponse
+
+if TYPE_CHECKING:
+    from apps.teams.models import Team
+
+def generate_insight(data: InsightData, team: "Team") -> InsightResponse:
+    ...
+```
 
 ### JavaScript
 

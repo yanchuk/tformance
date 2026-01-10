@@ -12,6 +12,13 @@ repos:
         args: ["--fix"]
       - id: ruff-format
 
+  - repo: https://github.com/RobertCraigie/pyright-python
+    rev: v1.1.391
+    hooks:
+      - id: pyright
+        name: pyright (type checking)
+        additional_dependencies: [pyright==1.1.391]
+
   - repo: local
     hooks:
       - id: team-isolation-lint
