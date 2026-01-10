@@ -23,6 +23,10 @@
 - Utilization rate: {{ copilot_metrics.seat_data.utilization_rate }}%
 {% if copilot_metrics.seat_data.wasted_spend > 0 %}
 - Wasted spend: ${{ copilot_metrics.seat_data.wasted_spend }}/month on unused seats
+{% if copilot_metrics.waste_per_contributor %}
+- Waste per active contributor: ${{ copilot_metrics.waste_per_contributor }}/month{% if copilot_metrics.waste_per_contributor > 100 %} [HIGH - >$100/contributor]{% elif copilot_metrics.waste_per_contributor > 50 %} [MODERATE]{% endif %}
+
+{% endif %}
 {% endif %}
 {% if copilot_metrics.seat_data.cost_per_active_user %}
 - Cost per active user: ${{ copilot_metrics.seat_data.cost_per_active_user }}/month

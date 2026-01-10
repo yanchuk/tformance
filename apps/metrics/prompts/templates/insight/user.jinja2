@@ -1,6 +1,36 @@
 <metrics_context team="{{ metadata.team_name }}" period="{{ metadata.days }} days">
 # Period: {{ metadata.start_date }} to {{ metadata.end_date }}
 
+## PRIORITY ISSUES
+{% set has_priority = false %}
+{% if copilot_metrics and copilot_metrics.waste_per_contributor and copilot_metrics.waste_per_contributor > 100 %}
+{% set has_priority = true %}
+- 🔴 COPILOT WASTE: ${{ copilot_metrics.waste_per_contributor }}/contributor/month (major cost issue)
+{% endif %}
+{% if copilot_metrics and copilot_metrics.avg_acceptance_rate and copilot_metrics.avg_acceptance_rate < 20 %}
+{% set has_priority = true %}
+- 🔴 COPILOT ADOPTION: {{ "%.0f"|format(copilot_metrics.avg_acceptance_rate) }}% acceptance (very low, training needed)
+{% endif %}
+{% if team_health.bottleneck %}
+{% set has_priority = true %}
+- 🔴 REVIEW BOTTLENECK: @@{{ team_health.bottleneck.github_username }} has {{ team_health.bottleneck.pending_count }} pending reviews
+{% endif %}
+{% if quality.revert_rate > 5 %}
+{% set has_priority = true %}
+- 🟡 QUALITY: {{ "%.1f"|format(quality.revert_rate) }}% revert rate (high)
+{% endif %}
+{% if quality.large_pr_pct > 30 %}
+{% set has_priority = true %}
+- 🟡 PR SIZE: {{ "%.0f"|format(quality.large_pr_pct) }}% large PRs (>500 lines)
+{% endif %}
+{% if team_health.pr_distribution.top_contributor_pct > 50 %}
+{% set has_priority = true %}
+- 🟡 BUS FACTOR: Top contributor at {{ "%.0f"|format(team_health.pr_distribution.top_contributor_pct) }}% of work
+{% endif %}
+{% if not has_priority %}
+- ✅ No critical issues detected
+{% endif %}
+
 ## METRICS DATA
 
 ### Velocity
@@ -85,15 +115,13 @@
 - Linked PRs avg cycle time: {% if jira.pr_correlation.linked_avg_cycle_time is not none %}{{ "%.1f"|format(jira.pr_correlation.linked_avg_cycle_time) }}h{% else %}N/A{% endif %}
 - Unlinked PRs avg cycle time: {% if jira.pr_correlation.unlinked_avg_cycle_time is not none %}{{ "%.1f"|format(jira.pr_correlation.unlinked_avg_cycle_time) }}h{% else %}N/A{% endif %}
 {% endif %}
+{% if copilot_metrics %}
+
+### GitHub Copilot Usage
+
+{% include 'sections/copilot_metrics.jinja2' %}
+{% endif %}
 
 </metrics_context>
 
-<task>
-Analyze this data and return JSON with:
-1. headline: The ROOT CAUSE (not symptom) in 8-12 words, NO numbers
-2. detail: 2-4 bullet points (• ) using QUALITATIVE language, include mentions where relevant:
-   - Use @username for authors/contributors (links to their PRs)
-   - Use @@username for reviewers/bottlenecks (links to PRs they review)
-3. recommendation: ONE specific action with @username or @@username target
-4. actions: 2-3 buttons matching the issues you discussed
-</task>
+<task>Analyze metrics and generate insight JSON.</task>

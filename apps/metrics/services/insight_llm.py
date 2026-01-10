@@ -78,6 +78,7 @@ INSIGHT_JSON_SCHEMA = {
                             "view_large_prs",
                             "view_contributors",
                             "view_review_bottlenecks",
+                            "view_copilot_usage",
                         ],
                     },
                     "label": {"type": "string", "description": "Button text"},
@@ -130,6 +131,9 @@ DON'T:
 Percentages: 1-10%="very few" | 10-25%="a fifth" | 25-50%="a third" | 50-75%="most" | 75%+="nearly all"
 Time: <12h="half a day" | 12-48h="1-2 days" | 48-168h="a few days" | 168h+="over a week"
 Changes: ±5-20%="slightly" | ±20-50%="noticeably" | +50-100%="nearly doubled" | +100%+="doubled+"
+Copilot acceptance: <20%="very low" | 20-35%="modest" | 35-50%="healthy" | >50%="excellent"
+Seat utilization: <60%="underutilized" | 60-80%="moderate" | >80%="well-utilized"
+Waste per contributor: <$50="minor" | $50-100="significant" | >$100="major cost issue" (scales with team size)
 
 ## Special Cases
 - Top contributor at 30-50%: Often healthy (project lead). Flag only if causing delays/bottlenecks.
@@ -137,12 +141,34 @@ Changes: ±5-20%="slightly" | ±20-50%="noticeably" | +50-100%="nearly doubled" 
 - 0 authored PRs: May be QA engineer. Don't suggest they "author more".
 - Bot accounts (dependabot, etc.): Exclude from human productivity analysis.
 
+## Copilot Metrics Guidance
+
+When Copilot data is present, evaluate these thresholds:
+
+**Acceptance Rate** (suggestions accepted / shown):
+- <20%: Critical - "very low adoption, team needs Copilot training"
+- 20-35%: Warning - "modest adoption, room for improvement"
+- 35-50%: Good - mention positively or skip
+- >50%: Excellent - highlight as team strength
+
+**Seat Utilization** (active / total seats):
+- <60%: Flag if wasted spend >$500/month
+- 60-80%: Mention only if >$1000/month wasted
+- >80%: Good utilization, no action needed
+
+**Prioritization Rules**:
+- Waste per contributor >$100/month → ALWAYS mention, even if other issues exist
+- Acceptance <20% with >10 active users → training opportunity, high priority
+- Don't flag Copilot with <5 active users (insufficient data)
+- High adoption (>40%) is positive - mention as strength, not concern
+
 ## Action Types
-view_ai_prs, view_non_ai_prs, view_slow_prs, view_reverts, view_large_prs, view_contributors, view_review_bottlenecks
+view_ai_prs, view_non_ai_prs, view_slow_prs, view_reverts, view_large_prs,
+view_contributors, view_review_bottlenecks, view_copilot_usage
 
 # Examples
 
-<example type="good">
+<example type="good" scenario="bottleneck">
 Input: cycle_time 142.6h (+147%), AI adoption 4.5%, @alice at 56%, @@bob has 15 awaiting
 Output headline: "Work concentrated on one contributor → review delays"
 Output detail: "• @alice handling most of the work, creating bottleneck
@@ -150,6 +176,25 @@ Output detail: "• @alice handling most of the work, creating bottleneck
 • @@bob has many PRs awaiting approval, slowing merges
 • Very few PRs using AI tools"
 Output recommendation: "Prioritize @@bob's awaiting approvals to unblock merges"
+</example>
+
+<example type="good" scenario="copilot-waste">
+Input: copilot acceptance 18%, waste_per_contributor $245, utilization 52%, @@reviewer with 8 pending
+Output headline: "Underutilized Copilot licenses driving major cost waste"
+Output detail: "• Copilot acceptance is very low, team may need training
+• Seat utilization is underutilized, causing major cost waste per contributor
+• @@reviewer has pending reviews creating a bottleneck
+• Consider reducing unused licenses or improving adoption"
+Output recommendation: "Schedule Copilot training for low-usage contributors to improve ROI"
+</example>
+
+<example type="good" scenario="healthy">
+Input: cycle_time 24h (-12%), throughput +18%, AI adoption 55%, revert_rate 1.2%
+Output headline: "Team delivery velocity healthy with strong AI adoption"
+Output detail: "• Throughput has slightly improved with faster cycle times
+• Most PRs use AI tools with no quality impact
+• Review distribution is healthy across the team"
+Output recommendation: "Maintain current practices and share successful workflows"
 </example>
 
 <example type="bad" reason="wrong-mentions-and-numbers">
@@ -183,6 +228,7 @@ ACTION_URL_MAP: dict[str, dict] = {
     "view_large_prs": {"params": {"issue_type": "large_pr"}},
     "view_contributors": {"base": "/app/metrics/analytics/team/"},
     "view_review_bottlenecks": {"params": {"state": "open", "sort": "review_time", "order": "desc"}},
+    "view_copilot_usage": {"base": "/app/ai-adoption/"},
 }
 
 
@@ -456,14 +502,26 @@ def gather_insight_data(
             "velocity_trend": get_velocity_trend(team, start_date, end_date),
         }
 
-    # Add Copilot metrics for teams with Copilot data
-    # Use include_copilot=True since Celery tasks don't have request context
-    copilot_metrics = get_copilot_metrics_for_prompt(
-        team=team,
-        start_date=start_date,
-        end_date=end_date,
-        include_copilot=True,
-    )
+    # Add Copilot metrics for teams with real Copilot integration
+    # GitHub requires 5+ Copilot licenses to access metrics API
+    # Check CopilotSeatSnapshot for minimum seat count before including
+    from apps.metrics.models import CopilotSeatSnapshot
+
+    copilot_metrics = None
+    latest_snapshot = CopilotSeatSnapshot.objects.filter(team=team).order_by("-date").first()
+    if latest_snapshot and latest_snapshot.total_seats >= 5:
+        copilot_metrics = get_copilot_metrics_for_prompt(
+            team=team,
+            start_date=start_date,
+            end_date=end_date,
+            include_copilot=True,
+        )
+        # Add relative waste metric (scaled by team size)
+        if copilot_metrics and copilot_metrics.get("seat_data"):
+            active_contributors = team_health.get("active_contributors", 1)
+            wasted_spend = float(copilot_metrics["seat_data"].get("wasted_spend", 0))
+            copilot_metrics["waste_per_contributor"] = round(wasted_spend / max(active_contributors, 1), 2)
+            copilot_metrics["active_contributors"] = active_contributors
 
     return {
         "velocity": velocity,

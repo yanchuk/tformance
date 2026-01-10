@@ -294,13 +294,43 @@ METRIC_CARD_SCHEMA = {
     "additionalProperties": False,
 }
 
+# Schema for action button in insight response
+INSIGHT_ACTION_SCHEMA = {
+    "type": "object",
+    "required": ["action_type", "label"],
+    "properties": {
+        "action_type": {
+            "type": "string",
+            "enum": [
+                "view_ai_prs",
+                "view_non_ai_prs",
+                "view_slow_prs",
+                "view_reverts",
+                "view_large_prs",
+                "view_contributors",
+                "view_review_bottlenecks",
+                "view_copilot_usage",
+            ],
+            "description": "Action type for the button",
+        },
+        "label": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 50,
+            "description": "Button text",
+        },
+    },
+    "additionalProperties": False,
+}
+
 # Complete schema for dashboard insight response
+# Note: metric_cards is NOT required as it's computed in Python, not returned by LLM
 INSIGHT_RESPONSE_SCHEMA = {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "title": "Dashboard Insight Response",
     "description": "LLM response schema for dashboard insights",
     "type": "object",
-    "required": ["headline", "detail", "recommendation", "metric_cards"],
+    "required": ["headline", "detail", "recommendation"],
     "properties": {
         "headline": {
             "type": "string",
@@ -326,6 +356,13 @@ INSIGHT_RESPONSE_SCHEMA = {
             "minItems": 4,
             "maxItems": 4,
             "description": "Exactly 4 metric cards",
+        },
+        "actions": {
+            "type": "array",
+            "items": INSIGHT_ACTION_SCHEMA,
+            "minItems": 2,
+            "maxItems": 3,
+            "description": "2-3 action buttons",
         },
         "is_fallback": {
             "type": "boolean",

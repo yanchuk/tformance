@@ -27,7 +27,7 @@ from django.core.management.base import BaseCommand, CommandError
 
 from apps.integrations.services.copilot_mock_data import CopilotMockDataGenerator, CopilotScenario
 from apps.integrations.services.copilot_pr_correlation import correlate_prs_with_copilot_usage
-from apps.metrics.models import AIUsageDaily, TeamMember
+from apps.metrics.models import AIUsageDaily, CopilotSeatSnapshot, TeamMember
 from apps.metrics.seeding.deterministic import DeterministicRandom
 from apps.teams.models import Team
 
@@ -73,6 +73,12 @@ class Command(BaseCommand):
             dest="correlate_prs",
             help="After seeding, correlate existing PRs with Copilot usage",
         )
+        parser.add_argument(
+            "--no-seats",
+            action="store_true",
+            dest="no_seats",
+            help="Skip seeding seat utilization data (CopilotSeatSnapshot)",
+        )
 
     def handle(self, *args, **options):
         team_slug = options["team"]
@@ -95,8 +101,9 @@ class Command(BaseCommand):
 
         # Clear existing Copilot data if requested
         if clear_existing:
-            deleted_count, _ = AIUsageDaily.objects.filter(team=team, source="copilot").delete()
-            self.stdout.write(f"Deleted {deleted_count} existing Copilot records")
+            deleted_usage, _ = AIUsageDaily.objects.filter(team=team, source="copilot").delete()
+            deleted_seats, _ = CopilotSeatSnapshot.objects.filter(team=team).delete()
+            self.stdout.write(f"Deleted {deleted_usage} usage records, {deleted_seats} seat snapshots")
 
         # Calculate date range
         end_date = date.today()
@@ -112,13 +119,21 @@ class Command(BaseCommand):
 
         # Create AIUsageDaily records for each member for each day
         records_created = 0
+
+        # The mock generator produces totals for ~20-30 users. Scale based on actual team size.
+        # This ensures large teams get proportionally more completions.
+        expected_generator_users = 25  # Approximate midpoint of generator's active_users_range
+        scale_factor = max(1, len(members) / expected_generator_users)
+
         for day_data in daily_metrics:
             day_date = date.fromisoformat(day_data["date"])
             completions_data = day_data["copilot_ide_code_completions"]
 
-            # Distribute daily totals across members
-            total_completions = completions_data["total_completions"]
-            total_acceptances = completions_data["total_acceptances"]
+            # Distribute daily totals across members (scaled for team size)
+            raw_completions = completions_data["total_completions"]
+            raw_acceptances = completions_data["total_acceptances"]
+            total_completions = int(raw_completions * scale_factor)
+            total_acceptances = int(raw_acceptances * scale_factor)
 
             # Calculate per-member allocation (deterministic distribution)
             member_seed = seed + day_date.toordinal()
@@ -164,7 +179,72 @@ class Command(BaseCommand):
             )
         )
 
+        # Seed seat utilization data (unless disabled)
+        if not options.get("no_seats"):
+            seat_records = self._seed_seat_snapshots(team, members, start_date, end_date, scenario, seed)
+            self.stdout.write(self.style.SUCCESS(f"Created {seat_records} CopilotSeatSnapshot records"))
+
         # Correlate PRs with Copilot usage if requested
         if correlate_prs:
             prs_updated = correlate_prs_with_copilot_usage(team=team)
             self.stdout.write(self.style.SUCCESS(f"Correlated {prs_updated} PRs with Copilot usage"))
+
+    def _seed_seat_snapshots(self, team, members, start_date, end_date, scenario, seed):
+        """Create CopilotSeatSnapshot records matching the scenario.
+
+        Args:
+            team: Team instance
+            members: List of TeamMember instances
+            start_date: Start date for seeding
+            end_date: End date for seeding
+            scenario: Copilot scenario name (affects utilization rates)
+            seed: Random seed for reproducibility
+
+        Returns:
+            Number of records created
+        """
+        total_seats = len(members) + 2  # Slightly more seats than members
+        rng = DeterministicRandom(seed + 1000)  # Different seed offset from usage data
+        records_created = 0
+
+        current_date = start_date
+        while current_date <= end_date:
+            # Calculate active rate based on scenario
+            if scenario == "high_adoption":
+                active_rate = rng.uniform(0.85, 0.95)
+            elif scenario == "low_adoption":
+                active_rate = rng.uniform(0.40, 0.60)
+            elif scenario == "inactive_licenses":
+                active_rate = rng.uniform(0.30, 0.50)
+            elif scenario == "growth":
+                # Grows from 50% to 90% over time
+                days_elapsed = (current_date - start_date).days
+                total_days = (end_date - start_date).days or 1
+                progress = days_elapsed / total_days
+                active_rate = 0.50 + (0.40 * progress)
+            elif scenario == "decline":
+                # Declines from 90% to 50%
+                days_elapsed = (current_date - start_date).days
+                total_days = (end_date - start_date).days or 1
+                progress = days_elapsed / total_days
+                active_rate = 0.90 - (0.40 * progress)
+            else:  # mixed_usage
+                active_rate = rng.uniform(0.50, 0.80)
+
+            active = int(total_seats * active_rate)
+            inactive = total_seats - active
+
+            CopilotSeatSnapshot.objects.update_or_create(
+                team=team,
+                date=current_date,
+                defaults={
+                    "total_seats": total_seats,
+                    "active_this_cycle": active,
+                    "inactive_this_cycle": inactive,
+                    "pending_cancellation": rng.choice([0, 0, 0, 1]) if inactive > 0 else 0,
+                },
+            )
+            records_created += 1
+            current_date += timedelta(days=1)
+
+        return records_created
