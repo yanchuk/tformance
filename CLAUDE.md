@@ -300,13 +300,13 @@ class GlobalConfig(BaseModel):
 from apps.teams.decorators import login_and_team_required, team_admin_required
 
 @login_and_team_required
-def dashboard(request, team_slug):
-    team = request.team  # Set by decorator
+def dashboard(request):
+    team = request.team  # Set by middleware via get_team_for_request()
     data = MyModel.for_team.filter(...)
     return render(request, "app/dashboard.html", {"data": data})
 
 @team_admin_required  # Admin-only access
-def settings(request, team_slug):
+def settings(request):
     pass
 ```
 
@@ -316,7 +316,8 @@ def settings(request, team_slug):
 # apps/myapp/urls.py
 urlpatterns = []  # Non-team URLs (rare)
 
-# Team-scoped → /a/<team_slug>/myapp/...
+# Team-scoped → /app/myapp/...
+# Team context resolved via ?team={id} query param or session
 team_urlpatterns = [
     path("", views.dashboard, name="dashboard"),
 ]
