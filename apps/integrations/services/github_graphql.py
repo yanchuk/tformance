@@ -1,5 +1,6 @@
 """GitHub GraphQL API client service."""
 
+import asyncio
 import logging
 import time
 from datetime import datetime
@@ -9,6 +10,12 @@ from gql import Client, gql
 from gql.transport.aiohttp import AIOHTTPTransport
 
 logger = logging.getLogger(__name__)
+
+# Configuration constants
+DEFAULT_TIMEOUT_SECONDS = 90
+DEFAULT_MAX_RETRIES = 3
+DEFAULT_MAX_WAIT_SECONDS = 3600
+GRAPHQL_RATE_LIMIT_POINTS = 5000
 
 
 def _get_sync_logger():
@@ -489,9 +496,9 @@ class GitHubGraphQLClient:
     def __init__(
         self,
         access_token: str,
-        timeout: int = 90,
+        timeout: int = DEFAULT_TIMEOUT_SECONDS,
         wait_for_reset: bool = True,
-        max_wait_seconds: int = 3600,
+        max_wait_seconds: int = DEFAULT_MAX_WAIT_SECONDS,
     ) -> None:
         """Initialize GitHub GraphQL client with access token.
 
@@ -581,7 +588,70 @@ class GitHubGraphQLClient:
 
         logger.debug(f"{operation}: {remaining} rate limit points remaining")
 
-    async def fetch_prs_bulk(self, owner: str, repo: str, cursor: str | None = None, max_retries: int = 3) -> dict:
+    async def _execute_with_retry(
+        self,
+        query,
+        variables: dict,
+        operation_name: str,
+        max_retries: int = DEFAULT_MAX_RETRIES,
+    ) -> dict:
+        """Execute GraphQL query with retry logic and rate limit checking.
+
+        Centralizes the retry pattern used across all fetch methods:
+        - Exponential backoff on timeout (1s, 2s, 4s)
+        - Rate limit check after successful execution
+        - Proper exception handling and logging
+
+        Args:
+            query: GraphQL query object
+            variables: Variables to pass to the query
+            operation_name: Human-readable name for logging (e.g., "fetch_prs_bulk(owner/repo)")
+            max_retries: Maximum retry attempts on timeout (default: 3)
+
+        Returns:
+            dict: Query result
+
+        Raises:
+            GitHubGraphQLRateLimitError: When rate limit is exceeded (passed through)
+            GitHubGraphQLTimeoutError: After max_retries timeout failures
+            GitHubGraphQLError: On other query failures
+        """
+        last_error = None
+        for attempt in range(max_retries):
+            try:
+                result = await self._execute(query, variable_values=variables)
+                await self._check_rate_limit(result, operation_name)
+                return result
+
+            except GitHubGraphQLRateLimitError:
+                # Rate limit errors should not be retried - pass through immediately
+                raise
+            except TimeoutError as e:
+                last_error = e
+                if attempt < max_retries - 1:
+                    wait_time = 2**attempt  # Exponential backoff: 1s, 2s, 4s
+                    logger.warning(
+                        f"Timeout during {operation_name}, attempt {attempt + 1}/{max_retries}. "
+                        f"Retrying in {wait_time}s..."
+                    )
+                    await asyncio.sleep(wait_time)
+                else:
+                    error_msg = f"GraphQL request timed out for {operation_name} after {max_retries} attempts"
+                    logger.error(error_msg)
+                    raise GitHubGraphQLTimeoutError(error_msg) from e
+            except Exception as e:
+                error_msg = f"GraphQL query failed for {operation_name}: {type(e).__name__}: {e}"
+                logger.error(error_msg)
+                raise GitHubGraphQLError(error_msg) from e
+
+        # Should not reach here, but handle edge case
+        raise GitHubGraphQLTimeoutError(
+            f"GraphQL request timed out for {operation_name} after {max_retries} attempts"
+        ) from last_error
+
+    async def fetch_prs_bulk(
+        self, owner: str, repo: str, cursor: str | None = None, max_retries: int = DEFAULT_MAX_RETRIES
+    ) -> dict:
         """Fetch pull requests in bulk with pagination support and retry logic.
 
         Args:
@@ -601,78 +671,50 @@ class GitHubGraphQLClient:
             GitHubGraphQLTimeoutError: When request times out after max retries
             GitHubGraphQLError: On any other GraphQL query errors
         """
-        import asyncio
-
         logger.debug(f"Fetching PRs for {owner}/{repo} (cursor: {cursor})")
 
-        last_error = None
-        for attempt in range(max_retries):
-            try:
-                start_time = time.time()
-                result = await self._execute(
-                    FETCH_PRS_BULK_QUERY, variable_values={"owner": owner, "repo": repo, "cursor": cursor}
-                )
-                duration_ms = (time.time() - start_time) * 1000
+        start_time = time.time()
+        result = await self._execute_with_retry(
+            query=FETCH_PRS_BULK_QUERY,
+            variables={"owner": owner, "repo": repo, "cursor": cursor},
+            operation_name=f"fetch_prs_bulk({owner}/{repo})",
+            max_retries=max_retries,
+        )
+        duration_ms = (time.time() - start_time) * 1000
 
-                # Log GraphQL query timing
-                rate_limit = result.get("rateLimit", {})
-                points_cost = rate_limit.get("cost", 0)
-                _get_sync_logger().info(
-                    "sync.api.graphql",
-                    extra={
-                        "query_name": "fetch_prs_bulk",
-                        "duration_ms": duration_ms,
-                        "status": "success",
-                        "points_cost": points_cost,
-                    },
-                )
+        # Log GraphQL query timing
+        rate_limit = result.get("rateLimit", {})
+        points_cost = rate_limit.get("cost", 0)
+        _get_sync_logger().info(
+            "sync.api.graphql",
+            extra={
+                "query_name": "fetch_prs_bulk",
+                "duration_ms": duration_ms,
+                "status": "success",
+                "points_cost": points_cost,
+            },
+        )
 
-                await self._check_rate_limit(result, f"fetch_prs_bulk({owner}/{repo})")
+        pr_nodes = result.get("repository", {}).get("pullRequests", {}).get("nodes", [])
+        pr_count = len(pr_nodes)
+        logger.info(f"Fetched {pr_count} PRs from {owner}/{repo}")
 
-                pr_nodes = result.get("repository", {}).get("pullRequests", {}).get("nodes", [])
-                pr_count = len(pr_nodes)
-                logger.info(f"Fetched {pr_count} PRs from {owner}/{repo}")
+        # Log detailed info about each PR's nested data for debugging
+        for pr_data in pr_nodes:
+            pr_number = pr_data.get("number")
+            files = pr_data.get("files", {}).get("nodes", [])
+            commits = pr_data.get("commits", {}).get("nodes", [])
+            reviews = pr_data.get("reviews", {}).get("nodes", [])
+            logger.info(
+                f"[SYNC_DEBUG] GraphQL Response PR #{pr_number}: "
+                f"files={len(files)}, commits={len(commits)}, reviews={len(reviews)}"
+            )
 
-                # Log detailed info about each PR's nested data for debugging
-                for pr_data in pr_nodes:
-                    pr_number = pr_data.get("number")
-                    files = pr_data.get("files", {}).get("nodes", [])
-                    commits = pr_data.get("commits", {}).get("nodes", [])
-                    reviews = pr_data.get("reviews", {}).get("nodes", [])
-                    logger.info(
-                        f"[SYNC_DEBUG] GraphQL Response PR #{pr_number}: "
-                        f"files={len(files)}, commits={len(commits)}, reviews={len(reviews)}"
-                    )
+        return result
 
-                return result
-
-            except GitHubGraphQLRateLimitError:
-                raise
-            except TimeoutError as e:
-                last_error = e
-                if attempt < max_retries - 1:
-                    wait_time = 2**attempt  # Exponential backoff: 1s, 2s, 4s
-                    print(f"⏳ Timeout, retrying in {wait_time}s (attempt {attempt + 1}/{max_retries})...", flush=True)
-                    logger.warning(
-                        f"Timeout fetching PRs for {owner}/{repo}, attempt {attempt + 1}/{max_retries}. "
-                        f"Retrying in {wait_time}s..."
-                    )
-                    await asyncio.sleep(wait_time)
-                else:
-                    error_msg = f"GraphQL request timed out for {owner}/{repo} after {max_retries} attempts"
-                    logger.error(error_msg)
-                    raise GitHubGraphQLTimeoutError(error_msg) from e
-            except Exception as e:
-                error_msg = f"GraphQL query failed for {owner}/{repo}: {type(e).__name__}: {str(e)}"
-                logger.error(error_msg)
-                raise GitHubGraphQLError(error_msg) from e
-
-        # Should not reach here, but just in case
-        raise GitHubGraphQLTimeoutError(
-            f"GraphQL request timed out for {owner}/{repo} after {max_retries} attempts"
-        ) from last_error
-
-    async def fetch_single_pr(self, owner: str, repo: str, pr_number: int, max_retries: int = 3) -> dict:
+    async def fetch_single_pr(
+        self, owner: str, repo: str, pr_number: int, max_retries: int = DEFAULT_MAX_RETRIES
+    ) -> dict:
         """Fetch a single pull request by number with retry logic.
 
         Args:
@@ -691,43 +733,21 @@ class GitHubGraphQLClient:
             GitHubGraphQLTimeoutError: When request times out after max retries
             GitHubGraphQLError: On any other GraphQL query errors
         """
-        import asyncio
-
         logger.debug(f"Fetching PR #{pr_number} from {owner}/{repo}")
 
-        for attempt in range(max_retries):
-            try:
-                result = await self._execute(
-                    FETCH_SINGLE_PR_QUERY, variable_values={"owner": owner, "repo": repo, "number": pr_number}
-                )
-
-                await self._check_rate_limit(result, f"fetch_single_pr({owner}/{repo}#{pr_number})")
-
-                logger.info(f"Fetched PR #{pr_number} from {owner}/{repo}")
-
-                return result
-
-            except GitHubGraphQLRateLimitError:
-                raise
-            except TimeoutError as e:
-                if attempt < max_retries - 1:
-                    wait_time = 2**attempt
-                    logger.warning(f"Timeout fetching PR #{pr_number}, attempt {attempt + 1}/{max_retries}")
-                    await asyncio.sleep(wait_time)
-                else:
-                    error_msg = f"GraphQL request timed out for {owner}/{repo}#{pr_number} after {max_retries} attempts"
-                    raise GitHubGraphQLTimeoutError(error_msg) from e
-            except Exception as e:
-                error_msg = f"GraphQL query failed for {owner}/{repo}#{pr_number}: {type(e).__name__}: {str(e)}"
-                logger.error(error_msg)
-                raise GitHubGraphQLError(error_msg) from e
-
-        # Should not reach here
-        raise GitHubGraphQLTimeoutError(
-            f"GraphQL request timed out for {owner}/{repo}#{pr_number} after {max_retries} attempts"
+        result = await self._execute_with_retry(
+            query=FETCH_SINGLE_PR_QUERY,
+            variables={"owner": owner, "repo": repo, "number": pr_number},
+            operation_name=f"fetch_single_pr({owner}/{repo}#{pr_number})",
+            max_retries=max_retries,
         )
 
-    async def fetch_org_members(self, org: str, cursor: str | None = None, max_retries: int = 3) -> dict:
+        logger.info(f"Fetched PR #{pr_number} from {owner}/{repo}")
+        return result
+
+    async def fetch_org_members(
+        self, org: str, cursor: str | None = None, max_retries: int = DEFAULT_MAX_RETRIES
+    ) -> dict:
         """Fetch organization members with pagination support and retry logic.
 
         Args:
@@ -746,39 +766,19 @@ class GitHubGraphQLClient:
             GitHubGraphQLTimeoutError: When request times out after max retries
             GitHubGraphQLError: On any other GraphQL query errors
         """
-        import asyncio
-
         logger.debug(f"Fetching members for org {org} (cursor: {cursor})")
 
-        for attempt in range(max_retries):
-            try:
-                result = await self._execute(FETCH_ORG_MEMBERS_QUERY, variable_values={"org": org, "cursor": cursor})
+        result = await self._execute_with_retry(
+            query=FETCH_ORG_MEMBERS_QUERY,
+            variables={"org": org, "cursor": cursor},
+            operation_name=f"fetch_org_members({org})",
+            max_retries=max_retries,
+        )
 
-                await self._check_rate_limit(result, f"fetch_org_members({org})")
+        member_count = len(result.get("organization", {}).get("membersWithRole", {}).get("nodes", []))
+        logger.info(f"Fetched {member_count} members from org {org}")
 
-                member_count = len(result.get("organization", {}).get("membersWithRole", {}).get("nodes", []))
-                logger.info(f"Fetched {member_count} members from org {org}")
-
-                return result
-
-            except GitHubGraphQLRateLimitError:
-                raise
-            except TimeoutError as e:
-                if attempt < max_retries - 1:
-                    wait_time = 2**attempt
-                    logger.warning(f"Timeout fetching members for {org}, attempt {attempt + 1}/{max_retries}")
-                    await asyncio.sleep(wait_time)
-                else:
-                    error_msg = f"GraphQL request timed out for org {org} after {max_retries} attempts"
-                    logger.error(error_msg)
-                    raise GitHubGraphQLTimeoutError(error_msg) from e
-            except Exception as e:
-                error_msg = f"GraphQL query failed for org {org}: {type(e).__name__}: {str(e)}"
-                logger.error(error_msg)
-                raise GitHubGraphQLError(error_msg) from e
-
-        # Should not reach here
-        raise GitHubGraphQLTimeoutError(f"GraphQL request timed out for org {org} after {max_retries} attempts")
+        return result
 
     async def fetch_prs_updated_since(
         self,
@@ -786,7 +786,7 @@ class GitHubGraphQLClient:
         repo: str,
         since,  # datetime object
         cursor: str | None = None,
-        max_retries: int = 3,
+        max_retries: int = DEFAULT_MAX_RETRIES,
     ) -> dict:
         """Fetch pull requests updated since a given datetime.
 
@@ -811,48 +811,19 @@ class GitHubGraphQLClient:
             GitHubGraphQLTimeoutError: When request times out after max retries
             GitHubGraphQLError: On any other GraphQL query errors
         """
-        import asyncio
-
         logger.debug(f"Fetching PRs updated since {since} for {owner}/{repo} (cursor: {cursor})")
 
-        last_error = None
-        for attempt in range(max_retries):
-            try:
-                result = await self._execute(
-                    FETCH_PRS_UPDATED_QUERY, variable_values={"owner": owner, "repo": repo, "cursor": cursor}
-                )
+        result = await self._execute_with_retry(
+            query=FETCH_PRS_UPDATED_QUERY,
+            variables={"owner": owner, "repo": repo, "cursor": cursor},
+            operation_name=f"fetch_prs_updated_since({owner}/{repo})",
+            max_retries=max_retries,
+        )
 
-                await self._check_rate_limit(result, f"fetch_prs_updated_since({owner}/{repo})")
+        pr_count = len(result.get("repository", {}).get("pullRequests", {}).get("nodes", []))
+        logger.info(f"Fetched {pr_count} updated PRs from {owner}/{repo}")
 
-                pr_count = len(result.get("repository", {}).get("pullRequests", {}).get("nodes", []))
-                logger.info(f"Fetched {pr_count} updated PRs from {owner}/{repo}")
-
-                return result
-
-            except GitHubGraphQLRateLimitError:
-                raise
-            except TimeoutError as e:
-                last_error = e
-                if attempt < max_retries - 1:
-                    wait_time = 2**attempt
-                    logger.warning(
-                        f"Timeout fetching updated PRs for {owner}/{repo}, attempt {attempt + 1}/{max_retries}. "
-                        f"Retrying in {wait_time}s..."
-                    )
-                    await asyncio.sleep(wait_time)
-                else:
-                    error_msg = f"GraphQL request timed out for {owner}/{repo} after {max_retries} attempts"
-                    logger.error(error_msg)
-                    raise GitHubGraphQLTimeoutError(error_msg) from e
-            except Exception as e:
-                error_msg = f"GraphQL query failed for {owner}/{repo}: {type(e).__name__}: {str(e)}"
-                logger.error(error_msg)
-                raise GitHubGraphQLError(error_msg) from e
-
-        # Should not reach here, but just in case
-        raise GitHubGraphQLTimeoutError(
-            f"GraphQL request timed out for {owner}/{repo} after {max_retries} attempts"
-        ) from last_error
+        return result
 
     async def fetch_repo_metadata(self, owner: str, repo: str) -> dict:
         """Fetch repository metadata for cache validation.
@@ -960,7 +931,7 @@ class GitHubGraphQLClient:
         since: datetime | None = None,
         until: datetime | None = None,
         cursor: str | None = None,
-        max_retries: int = 3,
+        max_retries: int = DEFAULT_MAX_RETRIES,
     ) -> dict:
         """Search for PRs in a repository within a date range.
 
@@ -990,8 +961,6 @@ class GitHubGraphQLClient:
             GitHubGraphQLTimeoutError: When request times out after max retries
             GitHubGraphQLError: On any other GraphQL query errors
         """
-        import asyncio
-
         # Build search query based on date parameters
         search_parts = [f"repo:{owner}/{repo}", "is:pr"]
 
@@ -1015,51 +984,23 @@ class GitHubGraphQLClient:
         search_query = " ".join(search_parts)
         logger.info(f"Search PRs query: {search_query}")
 
-        last_error = None
-        for attempt in range(max_retries):
-            try:
-                result = await self._execute(
-                    SEARCH_PRS_BY_DATE_QUERY,
-                    variable_values={"searchQuery": search_query, "cursor": cursor},
-                )
+        result = await self._execute_with_retry(
+            query=SEARCH_PRS_BY_DATE_QUERY,
+            variables={"searchQuery": search_query, "cursor": cursor},
+            operation_name=f"search_prs_by_date_range({owner}/{repo})",
+            max_retries=max_retries,
+        )
 
-                await self._check_rate_limit(result, f"search_prs_by_date_range({owner}/{repo})")
+        search_data = result.get("search", {})
+        issue_count = search_data.get("issueCount", 0)
+        page_info = search_data.get("pageInfo", {})
+        nodes = search_data.get("nodes", [])
 
-                search_data = result.get("search", {})
-                issue_count = search_data.get("issueCount", 0)
-                page_info = search_data.get("pageInfo", {})
-                nodes = search_data.get("nodes", [])
+        logger.info(f"Found {issue_count} total PRs, fetched {len(nodes)} this page for {owner}/{repo}")
 
-                logger.info(f"Found {issue_count} total PRs, fetched {len(nodes)} this page for {owner}/{repo}")
-
-                return {
-                    "issue_count": issue_count,
-                    "prs": nodes,
-                    "has_next_page": page_info.get("hasNextPage", False),
-                    "end_cursor": page_info.get("endCursor"),
-                }
-
-            except GitHubGraphQLRateLimitError:
-                raise
-            except TimeoutError as e:
-                last_error = e
-                if attempt < max_retries - 1:
-                    wait_time = 2**attempt
-                    logger.warning(
-                        f"Timeout searching PRs for {owner}/{repo}, attempt {attempt + 1}/{max_retries}. "
-                        f"Retrying in {wait_time}s..."
-                    )
-                    await asyncio.sleep(wait_time)
-                else:
-                    error_msg = f"GraphQL search request timed out for {owner}/{repo} after {max_retries} attempts"
-                    logger.error(error_msg)
-                    raise GitHubGraphQLTimeoutError(error_msg) from e
-            except Exception as e:
-                error_msg = f"GraphQL search query failed for {owner}/{repo}: {type(e).__name__}: {str(e)}"
-                logger.error(error_msg)
-                raise GitHubGraphQLError(error_msg) from e
-
-        # Should not reach here, but just in case
-        raise GitHubGraphQLTimeoutError(
-            f"GraphQL search request timed out for {owner}/{repo} after {max_retries} attempts"
-        ) from last_error
+        return {
+            "issue_count": issue_count,
+            "prs": nodes,
+            "has_next_page": page_info.get("hasNextPage", False),
+            "end_cursor": page_info.get("endCursor"),
+        }

@@ -1623,3 +1623,294 @@ class TestSearchPRsByDateRange(TestCase):
         # Assert
         self.assertEqual(mock_session.execute.call_count, 2)
         self.assertEqual(result["issue_count"], 5)
+
+
+class TestExecuteWithRetry(TestCase):
+    """TDD tests for _execute_with_retry() helper method.
+
+    This class provides comprehensive unit tests for the centralized retry logic,
+    testing all code paths including success, timeout, rate limit, and error cases.
+    """
+
+    @patch("apps.integrations.services.github_graphql.Client")
+    @patch("apps.integrations.services.github_graphql.AIOHTTPTransport")
+    def test_execute_with_retry_returns_result_on_success(self, mock_transport_class, mock_client_class):
+        """Test that _execute_with_retry returns result on successful execution."""
+        import asyncio
+
+        # Arrange
+        mock_transport = MagicMock()
+        mock_transport_class.return_value = mock_transport
+
+        expected_result = {
+            "data": {"test": "value"},
+            "rateLimit": {"remaining": 5000, "resetAt": "2024-01-01T00:00:00Z"},
+        }
+        mock_client, mock_session = create_mock_client_context_manager(expected_result)
+        mock_client_class.return_value = mock_client
+
+        client = GitHubGraphQLClient("test_token")
+        mock_query = MagicMock()
+
+        # Act
+        result = asyncio.run(
+            client._execute_with_retry(
+                query=mock_query,
+                variables={"key": "value"},
+                operation_name="test_operation",
+            )
+        )
+
+        # Assert
+        self.assertEqual(result, expected_result)
+        mock_session.execute.assert_called_once()
+
+    @patch("apps.integrations.services.github_graphql.Client")
+    @patch("apps.integrations.services.github_graphql.AIOHTTPTransport")
+    def test_execute_with_retry_passes_rate_limit_error_through_immediately(
+        self, mock_transport_class, mock_client_class
+    ):
+        """Test that _execute_with_retry does not retry on rate limit error - passes through immediately."""
+        import asyncio
+
+        # Arrange
+        mock_transport = MagicMock()
+        mock_transport_class.return_value = mock_transport
+
+        # Return low rate limit (triggers error after execution)
+        low_rate_limit_result = {
+            "data": {"test": "value"},
+            "rateLimit": {"remaining": 50, "resetAt": "2024-01-01T00:00:00Z"},  # Below threshold
+        }
+        mock_client, mock_session = create_mock_client_context_manager(low_rate_limit_result)
+        mock_client_class.return_value = mock_client
+
+        client = GitHubGraphQLClient("test_token", wait_for_reset=False)
+        mock_query = MagicMock()
+
+        # Act & Assert
+        with self.assertRaises(GitHubGraphQLRateLimitError):
+            asyncio.run(
+                client._execute_with_retry(
+                    query=mock_query,
+                    variables={},
+                    operation_name="test_operation",
+                )
+            )
+
+        # Should only call once - no retry on rate limit
+        self.assertEqual(mock_session.execute.call_count, 1)
+
+    @patch("asyncio.sleep", new_callable=AsyncMock)
+    @patch("apps.integrations.services.github_graphql.Client")
+    @patch("apps.integrations.services.github_graphql.AIOHTTPTransport")
+    def test_execute_with_retry_retries_on_timeout_then_succeeds(
+        self, mock_transport_class, mock_client_class, mock_sleep
+    ):
+        """Test that _execute_with_retry retries on timeout and eventually succeeds."""
+        import asyncio
+
+        # Arrange
+        mock_transport = MagicMock()
+        mock_transport_class.return_value = mock_transport
+
+        success_response = {
+            "data": {"success": True},
+            "rateLimit": {"remaining": 5000, "resetAt": "2024-01-01T00:00:00Z"},
+        }
+
+        # Fail twice with timeout, then succeed
+        mock_client, mock_session = create_mock_client_context_manager()
+        mock_session.execute = AsyncMock(side_effect=[TimeoutError(), TimeoutError(), success_response])
+        mock_client_class.return_value = mock_client
+
+        client = GitHubGraphQLClient("test_token")
+        mock_query = MagicMock()
+
+        # Act
+        result = asyncio.run(
+            client._execute_with_retry(
+                query=mock_query,
+                variables={},
+                operation_name="test_operation",
+                max_retries=3,
+            )
+        )
+
+        # Assert
+        self.assertEqual(result, success_response)
+        self.assertEqual(mock_session.execute.call_count, 3)
+        # Verify exponential backoff was used: sleep(1), sleep(2)
+        self.assertEqual(mock_sleep.call_count, 2)
+        mock_sleep.assert_any_call(1)  # 2^0
+        mock_sleep.assert_any_call(2)  # 2^1
+
+    @patch("asyncio.sleep", new_callable=AsyncMock)
+    @patch("apps.integrations.services.github_graphql.Client")
+    @patch("apps.integrations.services.github_graphql.AIOHTTPTransport")
+    def test_execute_with_retry_raises_timeout_error_after_max_retries(
+        self, mock_transport_class, mock_client_class, mock_sleep
+    ):
+        """Test that _execute_with_retry raises GitHubGraphQLTimeoutError after max retries exhausted."""
+        import asyncio
+
+        # Arrange
+        mock_transport = MagicMock()
+        mock_transport_class.return_value = mock_transport
+
+        # Always timeout
+        mock_client, mock_session = create_mock_client_context_manager(execute_side_effect=TimeoutError())
+        mock_client_class.return_value = mock_client
+
+        client = GitHubGraphQLClient("test_token")
+        mock_query = MagicMock()
+
+        # Act & Assert
+        with self.assertRaises(GitHubGraphQLTimeoutError) as context:
+            asyncio.run(
+                client._execute_with_retry(
+                    query=mock_query,
+                    variables={},
+                    operation_name="test_operation(context)",
+                    max_retries=3,
+                )
+            )
+
+        # Verify error message contains operation name and retry count
+        self.assertIn("test_operation(context)", str(context.exception))
+        self.assertIn("3", str(context.exception))
+        self.assertEqual(mock_session.execute.call_count, 3)
+
+    @patch("apps.integrations.services.github_graphql.Client")
+    @patch("apps.integrations.services.github_graphql.AIOHTTPTransport")
+    def test_execute_with_retry_converts_generic_exception_to_graphql_error(
+        self, mock_transport_class, mock_client_class
+    ):
+        """Test that _execute_with_retry converts generic exceptions to GitHubGraphQLError without retry."""
+        import asyncio
+
+        # Arrange
+        mock_transport = MagicMock()
+        mock_transport_class.return_value = mock_transport
+
+        # Raise a generic exception (should not retry)
+        mock_client, mock_session = create_mock_client_context_manager(execute_side_effect=ValueError("Invalid query"))
+        mock_client_class.return_value = mock_client
+
+        client = GitHubGraphQLClient("test_token")
+        mock_query = MagicMock()
+
+        # Act & Assert
+        with self.assertRaises(GitHubGraphQLError) as context:
+            asyncio.run(
+                client._execute_with_retry(
+                    query=mock_query,
+                    variables={},
+                    operation_name="test_operation",
+                )
+            )
+
+        # Verify error message contains operation name and original error type
+        self.assertIn("test_operation", str(context.exception))
+        self.assertIn("ValueError", str(context.exception))
+        # Should only call once - no retry on generic exceptions
+        self.assertEqual(mock_session.execute.call_count, 1)
+
+    @patch("asyncio.sleep", new_callable=AsyncMock)
+    @patch("apps.integrations.services.github_graphql.Client")
+    @patch("apps.integrations.services.github_graphql.AIOHTTPTransport")
+    def test_execute_with_retry_uses_exponential_backoff(self, mock_transport_class, mock_client_class, mock_sleep):
+        """Test that _execute_with_retry uses exponential backoff timing (1s, 2s, 4s)."""
+        import asyncio
+
+        # Arrange
+        mock_transport = MagicMock()
+        mock_transport_class.return_value = mock_transport
+
+        success_response = {
+            "data": {},
+            "rateLimit": {"remaining": 5000},
+        }
+
+        # Fail 3 times, succeed on 4th attempt
+        mock_client, mock_session = create_mock_client_context_manager()
+        mock_session.execute = AsyncMock(side_effect=[TimeoutError(), TimeoutError(), TimeoutError(), success_response])
+        mock_client_class.return_value = mock_client
+
+        client = GitHubGraphQLClient("test_token")
+        mock_query = MagicMock()
+
+        # Act
+        asyncio.run(
+            client._execute_with_retry(
+                query=mock_query,
+                variables={},
+                operation_name="test_backoff",
+                max_retries=4,
+            )
+        )
+
+        # Assert - verify exponential backoff: 2^0=1, 2^1=2, 2^2=4
+        self.assertEqual(mock_sleep.call_count, 3)
+        calls = [call[0][0] for call in mock_sleep.call_args_list]
+        self.assertEqual(calls, [1, 2, 4])
+
+    @patch("apps.integrations.services.github_graphql.Client")
+    @patch("apps.integrations.services.github_graphql.AIOHTTPTransport")
+    def test_execute_with_retry_respects_max_retries_parameter(self, mock_transport_class, mock_client_class):
+        """Test that _execute_with_retry respects the max_retries parameter."""
+        import asyncio
+
+        # Arrange
+        mock_transport = MagicMock()
+        mock_transport_class.return_value = mock_transport
+
+        mock_client, mock_session = create_mock_client_context_manager(execute_side_effect=TimeoutError())
+        mock_client_class.return_value = mock_client
+
+        client = GitHubGraphQLClient("test_token")
+        mock_query = MagicMock()
+
+        # Act & Assert - with max_retries=1, should only try once
+        with self.assertRaises(GitHubGraphQLTimeoutError):
+            asyncio.run(
+                client._execute_with_retry(
+                    query=mock_query,
+                    variables={},
+                    operation_name="test_max_1",
+                    max_retries=1,
+                )
+            )
+
+        self.assertEqual(mock_session.execute.call_count, 1)
+
+    @patch("apps.integrations.services.github_graphql.Client")
+    @patch("apps.integrations.services.github_graphql.AIOHTTPTransport")
+    def test_execute_with_retry_preserves_original_exception_as_cause(self, mock_transport_class, mock_client_class):
+        """Test that _execute_with_retry preserves the original exception as __cause__."""
+        import asyncio
+
+        # Arrange
+        mock_transport = MagicMock()
+        mock_transport_class.return_value = mock_transport
+
+        original_error = ValueError("Original error message")
+        mock_client, mock_session = create_mock_client_context_manager(execute_side_effect=original_error)
+        mock_client_class.return_value = mock_client
+
+        client = GitHubGraphQLClient("test_token")
+        mock_query = MagicMock()
+
+        # Act & Assert
+        with self.assertRaises(GitHubGraphQLError) as context:
+            asyncio.run(
+                client._execute_with_retry(
+                    query=mock_query,
+                    variables={},
+                    operation_name="test_operation",
+                )
+            )
+
+        # Verify original exception is preserved as cause
+        self.assertIsInstance(context.exception.__cause__, ValueError)
+        self.assertEqual(str(context.exception.__cause__), "Original error message")
