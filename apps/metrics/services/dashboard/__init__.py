@@ -49,6 +49,8 @@ from apps.metrics.services.dashboard.copilot_metrics import (
     get_copilot_delivery_comparison,
     get_copilot_metrics,
     get_copilot_trend,
+    get_monthly_copilot_acceptance_trend,
+    get_weekly_copilot_acceptance_trend,
 )
 
 # Phase 4: Jira metrics
@@ -192,6 +194,8 @@ __all__ = [
     "get_copilot_delivery_comparison",
     "get_copilot_metrics",
     "get_copilot_trend",
+    "get_monthly_copilot_acceptance_trend",
+    "get_weekly_copilot_acceptance_trend",
     # Phase 4: CI/CD metrics
     "get_cicd_pass_rate",
     "get_deployment_metrics",

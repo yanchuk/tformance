@@ -35,6 +35,12 @@ METRIC_CONFIG = {
         "color": "#FDA4AF",  # secondary - rose
         "yAxisID": "y2",
     },
+    "copilot_acceptance": {
+        "name": "Copilot Acceptance",
+        "unit": "%",
+        "color": "#10B981",  # emerald green - distinct from AI Adoption rose
+        "yAxisID": "y2",
+    },
 }
 
 
@@ -140,6 +146,7 @@ def trend_chart_data(request: HttpRequest) -> HttpResponse:
         "review_time": dashboard_service.get_monthly_review_time_trend,
         "pr_count": dashboard_service.get_monthly_pr_count,
         "ai_adoption": dashboard_service.get_monthly_ai_adoption,
+        "copilot_acceptance": dashboard_service.get_monthly_copilot_acceptance_trend,
     }
 
     # Use weekly functions for shorter ranges
@@ -148,6 +155,7 @@ def trend_chart_data(request: HttpRequest) -> HttpResponse:
         "review_time": dashboard_service.get_review_time_trend,
         "pr_count": dashboard_service.get_weekly_pr_count,
         "ai_adoption": dashboard_service.get_ai_adoption_trend,
+        "copilot_acceptance": dashboard_service.get_weekly_copilot_acceptance_trend,
     }
 
     # Determine granularity and get appropriate function
@@ -225,6 +233,7 @@ def _get_metric_display_name(metric: str) -> str:
         "review_time": "Review Time (hours)",
         "pr_count": "PRs Merged",
         "ai_adoption": "AI Adoption (%)",
+        "copilot_acceptance": "Copilot Acceptance (%)",
     }
     return names.get(metric, metric)
 
@@ -260,6 +269,7 @@ def wide_trend_chart(request: HttpRequest) -> HttpResponse:
             "review_time": dashboard_service.get_review_time_trend,
             "pr_count": dashboard_service.get_weekly_pr_count,
             "ai_adoption": dashboard_service.get_ai_adoption_trend,
+            "copilot_acceptance": dashboard_service.get_weekly_copilot_acceptance_trend,
         }
     else:  # monthly
         metric_functions = {
@@ -267,6 +277,7 @@ def wide_trend_chart(request: HttpRequest) -> HttpResponse:
             "review_time": dashboard_service.get_monthly_review_time_trend,
             "pr_count": dashboard_service.get_monthly_pr_count,
             "ai_adoption": dashboard_service.get_monthly_ai_adoption,
+            "copilot_acceptance": dashboard_service.get_monthly_copilot_acceptance_trend,
         }
 
     # Get repo filter

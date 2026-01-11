@@ -762,3 +762,78 @@ class TestGranularityToggleIntegration(TestCase):
                     monthly_label,
                     f"{url_name}: Monthly label '{monthly_label}' should NOT contain '-W'",
                 )
+
+
+class TestCopilotAcceptanceMetric(TestCase):
+    """Tests for Copilot Acceptance metric in Trends tab.
+
+    Verifies that copilot_acceptance is properly integrated as a selectable
+    metric in the Trends tab alongside cycle_time, review_time, etc.
+    """
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.team = TeamFactory(onboarding_pipeline_status="complete")
+        self.admin_user = UserFactory()
+        self.team.members.add(self.admin_user, through_defaults={"role": ROLE_ADMIN})
+        self.client = Client()
+
+    def test_metric_config_includes_copilot_acceptance(self):
+        """Test that METRIC_CONFIG includes copilot_acceptance entry."""
+        from apps.metrics.views.trends_views import METRIC_CONFIG
+
+        self.assertIn("copilot_acceptance", METRIC_CONFIG)
+        config = METRIC_CONFIG["copilot_acceptance"]
+        self.assertIn("name", config)
+        self.assertIn("unit", config)
+        self.assertIn("color", config)
+        self.assertIn("yAxisID", config)
+
+    def test_copilot_acceptance_uses_emerald_color(self):
+        """Test that copilot_acceptance uses emerald green color."""
+        from apps.metrics.views.trends_views import METRIC_CONFIG
+
+        config = METRIC_CONFIG["copilot_acceptance"]
+        # Emerald green: #10B981
+        self.assertEqual(config["color"], "#10B981")
+
+    def test_copilot_acceptance_uses_percentage_unit(self):
+        """Test that copilot_acceptance uses % unit."""
+        from apps.metrics.views.trends_views import METRIC_CONFIG
+
+        config = METRIC_CONFIG["copilot_acceptance"]
+        self.assertEqual(config["unit"], "%")
+
+    def test_trend_chart_data_accepts_copilot_acceptance_metric(self):
+        """Test that trend_chart_data endpoint accepts copilot_acceptance metric."""
+        self.client.force_login(self.admin_user)
+        url = reverse("metrics:chart_trend")
+        response = self.client.get(f"{url}?metric=copilot_acceptance")
+        self.assertEqual(response.status_code, 200)
+
+    def test_wide_trend_chart_accepts_copilot_acceptance_metric(self):
+        """Test that wide_trend_chart endpoint accepts copilot_acceptance metric."""
+        self.client.force_login(self.admin_user)
+        url = reverse("metrics:chart_wide_trend")
+        response = self.client.get(f"{url}?metric=copilot_acceptance")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["metric"], "copilot_acceptance")
+
+    def test_trends_overview_includes_copilot_acceptance_in_available_metrics(self):
+        """Test that trends overview includes copilot_acceptance in available metrics."""
+        self.client.force_login(self.admin_user)
+        url = reverse("metrics:trends_overview")
+        response = self.client.get(url)
+
+        available_metrics = response.context["available_metrics"]
+        metric_ids = [m["id"] for m in available_metrics]
+        self.assertIn("copilot_acceptance", metric_ids)
+
+    def test_copilot_acceptance_can_be_selected_with_other_metrics(self):
+        """Test that copilot_acceptance can be selected alongside other metrics."""
+        self.client.force_login(self.admin_user)
+        url = reverse("metrics:trends_overview")
+        response = self.client.get(f"{url}?metrics=cycle_time,copilot_acceptance")
+
+        self.assertIn("cycle_time", response.context["selected_metrics"])
+        self.assertIn("copilot_acceptance", response.context["selected_metrics"])

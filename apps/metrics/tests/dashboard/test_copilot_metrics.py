@@ -199,3 +199,210 @@ class TestCopilotDashboardService(TestCase):
         self.assertEqual(bob_data["suggestions"], 150)
         self.assertEqual(bob_data["accepted"], 90)
         self.assertEqual(bob_data["acceptance_rate"], Decimal("60.00"))
+
+
+class TestCopilotTrendsFunctions(TestCase):
+    """Tests for Copilot acceptance trend functions for Trends tab.
+
+    These functions provide monthly and weekly aggregations of Copilot acceptance
+    rates for display in the Trends tab with YoY comparison support.
+    """
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.team = TeamFactory()
+        self.member1 = TeamMemberFactory(team=self.team, display_name="Alice")
+        self.member2 = TeamMemberFactory(team=self.team, display_name="Bob")
+
+    def test_get_monthly_copilot_acceptance_trend_returns_monthly_data(self):
+        """Monthly trend aggregates daily data into months."""
+        from apps.metrics.factories import AIUsageDailyFactory
+
+        # January data: 2000 shown, 800 accepted = 40%
+        AIUsageDailyFactory(
+            team=self.team,
+            member=self.member1,
+            date=date(2025, 1, 10),
+            source="copilot",
+            suggestions_shown=1000,
+            suggestions_accepted=400,
+            acceptance_rate=Decimal("40.00"),
+        )
+        AIUsageDailyFactory(
+            team=self.team,
+            member=self.member1,
+            date=date(2025, 1, 20),
+            source="copilot",
+            suggestions_shown=1000,
+            suggestions_accepted=400,
+            acceptance_rate=Decimal("40.00"),
+        )
+
+        # February data: 1500 shown, 450 accepted = 30%
+        AIUsageDailyFactory(
+            team=self.team,
+            member=self.member1,
+            date=date(2025, 2, 15),
+            source="copilot",
+            suggestions_shown=1500,
+            suggestions_accepted=450,
+            acceptance_rate=Decimal("30.00"),
+        )
+
+        result = dashboard_service.get_monthly_copilot_acceptance_trend(self.team, date(2025, 1, 1), date(2025, 2, 28))
+
+        # Should return 2 months
+        self.assertEqual(len(result), 2)
+
+        # Check format: {month: "YYYY-MM", value: float}
+        self.assertIn("month", result[0])
+        self.assertIn("value", result[0])
+
+        # January: 40%
+        self.assertEqual(result[0]["month"], "2025-01")
+        self.assertAlmostEqual(result[0]["value"], 40.0, places=1)
+
+        # February: 30%
+        self.assertEqual(result[1]["month"], "2025-02")
+        self.assertAlmostEqual(result[1]["value"], 30.0, places=1)
+
+    def test_get_monthly_copilot_acceptance_trend_empty_data_returns_empty_list(self):
+        """No data returns empty list, not error."""
+        result = dashboard_service.get_monthly_copilot_acceptance_trend(self.team, date(2025, 1, 1), date(2025, 12, 31))
+
+        self.assertEqual(result, [])
+
+    def test_get_monthly_copilot_acceptance_trend_calculates_rate_correctly(self):
+        """Acceptance rate = (accepted / shown) * 100."""
+        from apps.metrics.factories import AIUsageDailyFactory
+
+        # 2500 shown, 750 accepted = 30%
+        AIUsageDailyFactory(
+            team=self.team,
+            member=self.member1,
+            date=date(2025, 3, 15),
+            source="copilot",
+            suggestions_shown=2500,
+            suggestions_accepted=750,
+            acceptance_rate=Decimal("30.00"),
+        )
+
+        result = dashboard_service.get_monthly_copilot_acceptance_trend(self.team, date(2025, 3, 1), date(2025, 3, 31))
+
+        self.assertEqual(len(result), 1)
+        self.assertAlmostEqual(result[0]["value"], 30.0, places=1)
+
+    def test_get_monthly_copilot_acceptance_trend_zero_suggestions_returns_zero(self):
+        """Month with 0 suggestions returns 0.0 (no division error)."""
+        from apps.metrics.factories import AIUsageDailyFactory
+
+        # Edge case: 0 suggestions shown
+        AIUsageDailyFactory(
+            team=self.team,
+            member=self.member1,
+            date=date(2025, 4, 10),
+            source="copilot",
+            suggestions_shown=0,
+            suggestions_accepted=0,
+            acceptance_rate=Decimal("0.00"),
+        )
+
+        result = dashboard_service.get_monthly_copilot_acceptance_trend(self.team, date(2025, 4, 1), date(2025, 4, 30))
+
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["value"], 0.0)
+
+    def test_get_monthly_copilot_acceptance_trend_aggregates_multiple_members(self):
+        """Data from multiple members aggregates into single month value."""
+        from apps.metrics.factories import AIUsageDailyFactory
+
+        # Alice: 1000 shown, 400 accepted (40%)
+        AIUsageDailyFactory(
+            team=self.team,
+            member=self.member1,
+            date=date(2025, 5, 10),
+            source="copilot",
+            suggestions_shown=1000,
+            suggestions_accepted=400,
+            acceptance_rate=Decimal("40.00"),
+        )
+
+        # Bob: 1000 shown, 200 accepted (20%)
+        AIUsageDailyFactory(
+            team=self.team,
+            member=self.member2,
+            date=date(2025, 5, 15),
+            source="copilot",
+            suggestions_shown=1000,
+            suggestions_accepted=200,
+            acceptance_rate=Decimal("20.00"),
+        )
+
+        # Combined: 2000 shown, 600 accepted = 30%
+        result = dashboard_service.get_monthly_copilot_acceptance_trend(self.team, date(2025, 5, 1), date(2025, 5, 31))
+
+        self.assertEqual(len(result), 1)
+        self.assertAlmostEqual(result[0]["value"], 30.0, places=1)
+
+    def test_get_monthly_copilot_acceptance_trend_excludes_cursor_source(self):
+        """Only 'copilot' source included, 'cursor' excluded."""
+        from apps.metrics.factories import AIUsageDailyFactory
+
+        # Copilot data: 1000 shown, 400 accepted = 40%
+        AIUsageDailyFactory(
+            team=self.team,
+            member=self.member1,
+            date=date(2025, 6, 10),
+            source="copilot",
+            suggestions_shown=1000,
+            suggestions_accepted=400,
+            acceptance_rate=Decimal("40.00"),
+        )
+
+        # Cursor data (should be excluded)
+        AIUsageDailyFactory(
+            team=self.team,
+            member=self.member1,
+            date=date(2025, 6, 15),
+            source="cursor",
+            suggestions_shown=5000,
+            suggestions_accepted=4000,
+            acceptance_rate=Decimal("80.00"),
+        )
+
+        result = dashboard_service.get_monthly_copilot_acceptance_trend(self.team, date(2025, 6, 1), date(2025, 6, 30))
+
+        # Should only include Copilot data
+        self.assertEqual(len(result), 1)
+        self.assertAlmostEqual(result[0]["value"], 40.0, places=1)
+
+    def test_get_weekly_copilot_acceptance_trend_returns_trends_format(self):
+        """Weekly wrapper returns {week: "YYYY-MM-DD", value: float} format."""
+        from apps.metrics.factories import AIUsageDailyFactory
+
+        # Week starting 2025-01-06 (Monday)
+        AIUsageDailyFactory(
+            team=self.team,
+            member=self.member1,
+            date=date(2025, 1, 8),  # Wednesday of week 2
+            source="copilot",
+            suggestions_shown=1000,
+            suggestions_accepted=350,
+            acceptance_rate=Decimal("35.00"),
+        )
+
+        result = dashboard_service.get_weekly_copilot_acceptance_trend(self.team, date(2025, 1, 1), date(2025, 1, 14))
+
+        self.assertEqual(len(result), 1)
+
+        # Check format matches Trends tab expectations
+        self.assertIn("week", result[0])
+        self.assertIn("value", result[0])
+
+        # Week should be ISO format string YYYY-MM-DD
+        self.assertIsInstance(result[0]["week"], str)
+        self.assertRegex(result[0]["week"], r"^\d{4}-\d{2}-\d{2}$")
+
+        # Value should be float percentage
+        self.assertIsInstance(result[0]["value"], float)
+        self.assertAlmostEqual(result[0]["value"], 35.0, places=1)

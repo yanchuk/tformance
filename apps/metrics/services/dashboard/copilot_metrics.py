@@ -7,7 +7,7 @@ from datetime import date
 from decimal import Decimal
 
 from django.db.models import Count, Sum
-from django.db.models.functions import TruncWeek
+from django.db.models.functions import TruncMonth, TruncWeek
 from django.utils import timezone
 
 from apps.metrics.models import AIUsageDaily, PullRequest
@@ -122,6 +122,94 @@ def get_copilot_trend(team: Team, start_date: date, end_date: date, repo: str | 
         )
 
     return result
+
+
+def get_monthly_copilot_acceptance_trend(
+    team: Team, start_date: date, end_date: date, repo: str | None = None
+) -> list[dict]:
+    """Get Copilot acceptance rate trend by month.
+
+    Args:
+        team: Team instance
+        start_date: Start date (inclusive)
+        end_date: End date (inclusive)
+        repo: Optional repository filter (not applicable - Copilot data is not repo-specific)
+
+    Returns:
+        list of dicts with keys:
+            - month (str): Month in "YYYY-MM" format
+            - value (float): Acceptance rate percentage for that month
+
+    Note:
+        repo parameter is accepted for API consistency but has no effect since
+        Copilot usage is tracked at the member level, not per-repository.
+    """
+    copilot_usage = AIUsageDaily.objects.filter(
+        team=team,
+        source="copilot",
+        date__gte=start_date,
+        date__lte=end_date,
+    )
+
+    monthly_data = (
+        copilot_usage.annotate(month=TruncMonth("date"))
+        .values("month")
+        .annotate(
+            total_suggestions=Sum("suggestions_shown"),
+            total_accepted=Sum("suggestions_accepted"),
+        )
+        .order_by("month")
+    )
+
+    result = []
+    for entry in monthly_data:
+        total_suggestions = entry["total_suggestions"] or 0
+        total_accepted = entry["total_accepted"] or 0
+
+        rate = round(total_accepted / total_suggestions * 100, 2) if total_suggestions > 0 else 0.0
+
+        result.append(
+            {
+                "month": entry["month"].strftime("%Y-%m"),
+                "value": rate,
+            }
+        )
+
+    return result
+
+
+def get_weekly_copilot_acceptance_trend(
+    team: Team, start_date: date, end_date: date, repo: str | None = None
+) -> list[dict]:
+    """Get Copilot acceptance rate trend by week in Trends-compatible format.
+
+    This is a wrapper around get_copilot_trend() that returns data in the
+    format expected by the Trends tab ({week: "YYYY-MM-DD", value: float}).
+
+    Args:
+        team: Team instance
+        start_date: Start date (inclusive)
+        end_date: End date (inclusive)
+        repo: Optional repository filter (not applicable - Copilot data is not repo-specific)
+
+    Returns:
+        list of dicts with keys:
+            - week (str): Week start date in "YYYY-MM-DD" format
+            - value (float): Acceptance rate percentage for that week
+
+    Note:
+        repo parameter is accepted for API consistency but has no effect since
+        Copilot usage is tracked at the member level, not per-repository.
+    """
+    raw_data = get_copilot_trend(team, start_date, end_date, repo)
+
+    return [
+        {
+            "week": entry["week"].strftime("%Y-%m-%d"),
+            "value": float(entry["acceptance_rate"]),
+        }
+        for entry in raw_data
+    ]
 
 
 def get_copilot_delivery_comparison(team: Team, start_date: date, end_date: date) -> dict:
