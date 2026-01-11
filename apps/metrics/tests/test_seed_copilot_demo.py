@@ -12,7 +12,7 @@ from django.core.management.base import CommandError
 from django.test import TestCase
 
 from apps.metrics.factories import AIUsageDailyFactory, TeamFactory, TeamMemberFactory
-from apps.metrics.models import AIUsageDaily
+from apps.metrics.models import AIUsageDaily, CopilotEditorDaily, CopilotLanguageDaily
 
 
 class TestSeedCopilotDemoCommand(TestCase):
@@ -270,4 +270,84 @@ class TestSeedCopilotDemoCommand(TestCase):
         self.assertTrue(
             any(word in output.lower() for word in ["created", "records", "seeded", "success"]),
             f"Expected summary in output, got: {output}",
+        )
+
+    def test_command_creates_language_data(self):
+        """Test that command creates CopilotLanguageDaily records.
+
+        This is essential for the "By Language" card on the AI Adoption dashboard.
+        Without this, the card shows "No language data available".
+        """
+        # Act
+        out = StringIO()
+        call_command("seed_copilot_demo", team=self.team.slug, weeks=1, stdout=out)
+
+        # Assert - CopilotLanguageDaily records should be created
+        language_records = CopilotLanguageDaily.objects.filter(team=self.team)
+        self.assertGreater(
+            language_records.count(),
+            0,
+            "seed_copilot_demo should create CopilotLanguageDaily records for dashboard",
+        )
+
+        # Should have multiple languages (python, typescript, etc.)
+        languages = set(language_records.values_list("language", flat=True))
+        self.assertGreater(
+            len(languages),
+            1,
+            f"Expected multiple languages, got: {languages}",
+        )
+
+    def test_command_creates_editor_data(self):
+        """Test that command creates CopilotEditorDaily records.
+
+        This is essential for the "By Editor" card on the AI Adoption dashboard.
+        Without this, the card shows "No editor data available".
+        """
+        # Act
+        out = StringIO()
+        call_command("seed_copilot_demo", team=self.team.slug, weeks=1, stdout=out)
+
+        # Assert - CopilotEditorDaily records should be created
+        editor_records = CopilotEditorDaily.objects.filter(team=self.team)
+        self.assertGreater(
+            editor_records.count(),
+            0,
+            "seed_copilot_demo should create CopilotEditorDaily records for dashboard",
+        )
+
+        # Should have multiple editors (vscode, jetbrains, etc.)
+        editors = set(editor_records.values_list("editor", flat=True))
+        self.assertGreater(
+            len(editors),
+            1,
+            f"Expected multiple editors, got: {editors}",
+        )
+
+    def test_clear_existing_removes_language_and_editor_data(self):
+        """Test that --clear-existing removes language/editor data before reseeding."""
+        # Arrange - seed initial data
+        call_command("seed_copilot_demo", team=self.team.slug, weeks=1)
+
+        initial_lang_count = CopilotLanguageDaily.objects.filter(team=self.team).count()
+        initial_editor_count = CopilotEditorDaily.objects.filter(team=self.team).count()
+
+        # Act - reseed with clear-existing
+        out = StringIO()
+        call_command("seed_copilot_demo", team=self.team.slug, weeks=1, clear_existing=True, stdout=out)
+
+        # Assert - should have fresh data (counts should be similar, not doubled)
+        new_lang_count = CopilotLanguageDaily.objects.filter(team=self.team).count()
+        new_editor_count = CopilotEditorDaily.objects.filter(team=self.team).count()
+
+        # The counts should be roughly the same (not doubled from two seeds)
+        self.assertLessEqual(
+            new_lang_count,
+            initial_lang_count * 1.5,  # Allow some variance
+            "Language data should be cleared and reseeded, not appended",
+        )
+        self.assertLessEqual(
+            new_editor_count,
+            initial_editor_count * 1.5,  # Allow some variance
+            "Editor data should be cleared and reseeded, not appended",
         )

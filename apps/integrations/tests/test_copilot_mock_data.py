@@ -160,6 +160,45 @@ class TestCopilotMockDataLanguages(TestCase):
             self.assertIsInstance(lang["total_completions"], int)
             self.assertIsInstance(lang["total_acceptances"], int)
 
+    def test_languages_include_lines_fields(self):
+        """Test that each language entry has total_lines_suggested and total_lines_accepted.
+
+        These fields are required by parse_metrics_response() for the sync functions
+        to properly populate CopilotLanguageDaily records.
+        """
+        # Arrange
+        generator = CopilotMockDataGenerator()
+
+        # Act
+        data = generator.generate(since="2025-01-01", until="2025-01-01")
+
+        # Assert
+        languages = data[0]["copilot_ide_code_completions"]["languages"]
+
+        for lang in languages:
+            # Verify lines fields exist
+            self.assertIn(
+                "total_lines_suggested",
+                lang,
+                f"Language {lang['name']} missing total_lines_suggested",
+            )
+            self.assertIn(
+                "total_lines_accepted",
+                lang,
+                f"Language {lang['name']} missing total_lines_accepted",
+            )
+
+            # Verify types
+            self.assertIsInstance(lang["total_lines_suggested"], int)
+            self.assertIsInstance(lang["total_lines_accepted"], int)
+
+            # Verify logical constraints
+            self.assertLessEqual(
+                lang["total_lines_accepted"],
+                lang["total_lines_suggested"],
+                f"Language {lang['name']}: lines_accepted should not exceed lines_suggested",
+            )
+
 
 class TestCopilotMockDataEditors(TestCase):
     """Tests for editors array structure."""
@@ -188,6 +227,45 @@ class TestCopilotMockDataEditors(TestCase):
             self.assertIsInstance(editor["name"], str)
             self.assertIsInstance(editor["total_completions"], int)
             self.assertIsInstance(editor["total_acceptances"], int)
+
+    def test_editors_include_lines_fields(self):
+        """Test that each editor entry has total_lines_suggested and total_lines_accepted.
+
+        These fields are required by parse_metrics_response() for the sync functions
+        to properly populate CopilotEditorDaily records.
+        """
+        # Arrange
+        generator = CopilotMockDataGenerator()
+
+        # Act
+        data = generator.generate(since="2025-01-01", until="2025-01-01")
+
+        # Assert
+        editors = data[0]["copilot_ide_code_completions"]["editors"]
+
+        for editor in editors:
+            # Verify lines fields exist
+            self.assertIn(
+                "total_lines_suggested",
+                editor,
+                f"Editor {editor['name']} missing total_lines_suggested",
+            )
+            self.assertIn(
+                "total_lines_accepted",
+                editor,
+                f"Editor {editor['name']} missing total_lines_accepted",
+            )
+
+            # Verify types
+            self.assertIsInstance(editor["total_lines_suggested"], int)
+            self.assertIsInstance(editor["total_lines_accepted"], int)
+
+            # Verify logical constraints
+            self.assertLessEqual(
+                editor["total_lines_accepted"],
+                editor["total_lines_suggested"],
+                f"Editor {editor['name']}: lines_accepted should not exceed lines_suggested",
+            )
 
 
 class TestCopilotMockDataAcceptanceRates(TestCase):

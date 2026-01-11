@@ -14,14 +14,14 @@
   <!-- Cycle Time Improvement -->
   <div class="stat bg-base-200 rounded-lg p-4">
     <div class="stat-title text-xs">{% trans "Cycle Time Impact" %}</div>
-    <div class="stat-value text-2xl {% if comparison_data.improvement.cycle_time_percent < 0 %}text-success{% elif comparison_data.improvement.cycle_time_percent > 0 %}text-error{% endif %}">
+    <div class="stat-value text-2xl tabular-nums {% if comparison_data.improvement.cycle_time_percent < 0 %}text-success{% elif comparison_data.improvement.cycle_time_percent > 0 %}text-error{% endif %}">
       {{ comparison_data.improvement.cycle_time_percent }}%
     </div>
   </div>
   <!-- Review Time Improvement -->
   <div class="stat bg-base-200 rounded-lg p-4">
     <div class="stat-title text-xs">{% trans "Review Time Impact" %}</div>
-    <div class="stat-value text-2xl {% if comparison_data.improvement.review_time_percent < 0 %}text-success{% elif comparison_data.improvement.review_time_percent > 0 %}text-error{% endif %}">
+    <div class="stat-value text-2xl tabular-nums {% if comparison_data.improvement.review_time_percent < 0 %}text-success{% elif comparison_data.improvement.review_time_percent > 0 %}text-error{% endif %}">
       {{ comparison_data.improvement.review_time_percent }}%
     </div>
   </div>

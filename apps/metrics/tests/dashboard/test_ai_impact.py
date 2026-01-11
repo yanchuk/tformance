@@ -398,3 +398,38 @@ class TestGetAiImpactStats(TestCase):
 
         # Only target team PR should be counted
         self.assertEqual(result["total_prs"], 1)
+
+    def test_filters_by_repo(self):
+        """Test that repo parameter filters PRs by repository."""
+        # PR in target repo
+        PullRequestFactory(
+            team=self.team,
+            author=self.member,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 15, 12, 0)),
+            is_ai_assisted=True,
+            cycle_time_hours=Decimal("10.0"),
+            github_repo="org/target-repo",
+        )
+
+        # PR in different repo (should be excluded when filtering)
+        PullRequestFactory(
+            team=self.team,
+            author=self.member,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 16, 12, 0)),
+            is_ai_assisted=False,
+            cycle_time_hours=Decimal("20.0"),
+            github_repo="org/other-repo",
+        )
+
+        # With repo filter - only target repo PRs
+        result = dashboard_service.get_ai_impact_stats(
+            self.team, self.start_date, self.end_date, repo="org/target-repo"
+        )
+        self.assertEqual(result["total_prs"], 1)
+        self.assertEqual(result["ai_prs"], 1)
+
+        # Without repo filter - all PRs
+        result_all = dashboard_service.get_ai_impact_stats(self.team, self.start_date, self.end_date)
+        self.assertEqual(result_all["total_prs"], 2)

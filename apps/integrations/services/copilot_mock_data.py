@@ -197,6 +197,8 @@ class CopilotMockDataGenerator:
         Returns:
             Tuple of (min_rate, max_rate) with small variance around target.
         """
+        assert config.start_acceptance_rate is not None, "start_acceptance_rate required for interpolation"
+        assert config.end_acceptance_rate is not None, "end_acceptance_rate required for interpolation"
         progress = day_index / max(total_days - 1, 1)
         target_rate = (
             config.start_acceptance_rate + (config.end_acceptance_rate - config.start_acceptance_rate) * progress
@@ -281,7 +283,8 @@ class CopilotMockDataGenerator:
             total_completions: Total completions to distribute.
 
         Returns:
-            List of dictionaries with name, total_completions, and total_acceptances.
+            List of dictionaries with name, total_completions, total_acceptances,
+            total_lines_suggested, and total_lines_accepted.
         """
         result = []
         remaining_completions = total_completions
@@ -297,11 +300,16 @@ class CopilotMockDataGenerator:
             if item_completions > 0:
                 item_acceptance_rate = self.rng.uniform(0.25, 0.50)
                 item_acceptances = int(item_completions * item_acceptance_rate)
+                # Generate lines suggested/accepted proportional to completions
+                item_lines_suggested = int(item_completions * self.rng.uniform(1.2, 2.0))
+                item_lines_accepted = int(item_lines_suggested * item_acceptance_rate)
                 result.append(
                     {
                         "name": item_name,
                         "total_completions": item_completions,
                         "total_acceptances": item_acceptances,
+                        "total_lines_suggested": item_lines_suggested,
+                        "total_lines_accepted": item_lines_accepted,
                     }
                 )
 

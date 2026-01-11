@@ -176,14 +176,14 @@ class TestAIQualityChart(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "metrics/partials/ai_quality_chart.html")
 
-    def test_ai_quality_chart_context_has_chart_data(self):
-        """Test that ai_quality_chart context contains chart_data."""
+    def test_ai_quality_chart_context_has_impact_data(self):
+        """Test that ai_quality_chart context contains impact_data."""
         self.client.force_login(self.admin_user)
 
         response = self.client.get(reverse("metrics:chart_ai_quality"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertIn("chart_data", response.context)
+        self.assertIn("impact_data", response.context)
 
     def test_ai_quality_chart_default_days_is_30(self):
         """Test that ai_quality_chart defaults to 30 days if no query param provided."""
@@ -192,8 +192,8 @@ class TestAIQualityChart(TestCase):
         response = self.client.get(reverse("metrics:chart_ai_quality"))
 
         self.assertEqual(response.status_code, 200)
-        # chart_data should be a dict with ai_avg and non_ai_avg
-        self.assertIsInstance(response.context["chart_data"], dict)
+        # impact_data should be a dict with cycle time metrics
+        self.assertIsInstance(response.context["impact_data"], dict)
 
     def test_ai_quality_chart_accepts_days_query_param_7(self):
         """Test that ai_quality_chart accepts days=7 query parameter."""
@@ -202,7 +202,7 @@ class TestAIQualityChart(TestCase):
         response = self.client.get(reverse("metrics:chart_ai_quality"), {"days": "7"})
 
         self.assertEqual(response.status_code, 200)
-        self.assertIn("chart_data", response.context)
+        self.assertIn("impact_data", response.context)
 
     def test_ai_quality_chart_accepts_days_query_param_90(self):
         """Test that ai_quality_chart accepts days=90 query parameter."""
@@ -211,18 +211,20 @@ class TestAIQualityChart(TestCase):
         response = self.client.get(reverse("metrics:chart_ai_quality"), {"days": "90"})
 
         self.assertEqual(response.status_code, 200)
-        self.assertIn("chart_data", response.context)
+        self.assertIn("impact_data", response.context)
 
     def test_ai_quality_chart_data_has_required_keys(self):
-        """Test that ai_quality_chart data contains ai_avg and non_ai_avg."""
+        """Test that ai_quality_chart data contains objective cycle time metrics."""
         self.client.force_login(self.admin_user)
 
         response = self.client.get(reverse("metrics:chart_ai_quality"))
 
         self.assertEqual(response.status_code, 200)
-        chart_data = response.context["chart_data"]
-        self.assertIn("ai_avg", chart_data)
-        self.assertIn("non_ai_avg", chart_data)
+        impact_data = response.context["impact_data"]
+        self.assertIn("avg_cycle_with_ai", impact_data)
+        self.assertIn("avg_cycle_without_ai", impact_data)
+        self.assertIn("ai_prs", impact_data)
+        self.assertIn("non_ai_prs", impact_data)
 
 
 class TestCycleTimeChart(TestCase):

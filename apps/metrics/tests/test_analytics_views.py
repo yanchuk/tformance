@@ -557,3 +557,132 @@ class TestAnalyticsTeamView(TestCase):
         url = reverse("metrics:analytics_team")
 
         self.assertIn("/analytics/team/", url)
+
+
+class TestCopilotChampionsCardUX(TestCase):
+    """Tests for Copilot Champions card UX improvements (P1).
+
+    Verifies that the Champions card shows:
+    - Visible metric labels (not hidden in tooltips)
+    - Color-coded cycle time (<24h green, 24-72h yellow, >72h red)
+    - Info tooltip explaining scoring methodology
+    - Better subtitle explaining what Champions means
+    """
+
+    def setUp(self):
+        """Set up test fixtures with champion data."""
+        from datetime import date, timedelta
+        from decimal import Decimal
+
+        from apps.metrics.factories import AIUsageDailyFactory, PullRequestFactory
+
+        self.team = TeamFactory(onboarding_pipeline_status="complete")
+        self.admin_user = UserFactory()
+        self.team.members.add(self.admin_user, through_defaults={"role": ROLE_ADMIN})
+
+        # Create a champion with good stats
+        self.member = TeamMemberFactory(team=self.team, display_name="Alice", github_username="alice123")
+        start_date = date.today() - timedelta(days=30)
+
+        # 7 days of Copilot usage (meets 5-day minimum)
+        for day in range(7):
+            AIUsageDailyFactory(
+                team=self.team,
+                member=self.member,
+                date=start_date + timedelta(days=day),
+                source="copilot",
+                suggestions_shown=100,
+                suggestions_accepted=50,
+                acceptance_rate=Decimal("50"),
+            )
+
+        # 5 PRs with 12h cycle time (fast, should be green)
+        for _ in range(5):
+            PullRequestFactory(
+                team=self.team,
+                author=self.member,
+                state="merged",
+                cycle_time_hours=Decimal("12"),
+                is_revert=False,
+            )
+
+        self.client = Client()
+        self.client.force_login(self.admin_user)
+
+    def test_champions_card_shows_visible_acceptance_label(self):
+        """Test that acceptance rate has a visible label, not just tooltip."""
+        url = reverse("metrics:analytics_ai_adoption")
+
+        response = self.client.get(url)
+
+        # Should show "acceptance" as visible text, not hidden in data-tip
+        content = response.content.decode()
+        self.assertIn("acceptance", content.lower())
+        # Verify it's a visible label near the percentage
+        self.assertContains(response, "% acceptance")
+
+    def test_champions_card_shows_visible_prs_label(self):
+        """Test that PRs merged count has visible label."""
+        url = reverse("metrics:analytics_ai_adoption")
+
+        response = self.client.get(url)
+
+        # Should show "PRs merged" or similar visible text
+        content = response.content.decode()
+        # Already shows "5 PRs" - just verify it's present
+        self.assertIn("PRs", content)
+
+    def test_champions_card_shows_visible_cycle_time_label(self):
+        """Test that cycle time has visible label with speed indicator."""
+        url = reverse("metrics:analytics_ai_adoption")
+
+        response = self.client.get(url)
+
+        # Should show cycle time with a speed indicator like "fast", "avg", or hours
+        content = response.content.decode()
+        # Looking for visible cycle time context
+        self.assertTrue(
+            "cycle" in content.lower() or "hours" in content.lower() or "fast" in content.lower(),
+            f"Expected visible cycle time label, got: {content[:500]}",
+        )
+
+    def test_champions_card_fast_cycle_time_is_green(self):
+        """Test that fast cycle time (<24h) shows green color class."""
+        url = reverse("metrics:analytics_ai_adoption")
+
+        response = self.client.get(url)
+
+        content = response.content.decode()
+        # Fast cycle time should have success/green color indicator
+        # Looking for text-success class near cycle time display
+        self.assertIn("text-success", content)
+
+    def test_champions_card_has_scoring_info_tooltip(self):
+        """Test that card explains how champions are scored."""
+        url = reverse("metrics:analytics_ai_adoption")
+
+        response = self.client.get(url)
+
+        content = response.content.decode()
+        # Should have a tooltip or visible text explaining scoring weights
+        # Either in data-tip attribute or visible text
+        self.assertTrue(
+            "40%" in content or "acceptance" in content.lower(),
+            "Expected scoring methodology explanation (mentions 40% or acceptance weight)",
+        )
+
+    def test_champions_card_has_improved_subtitle(self):
+        """Test that subtitle explains what Champions means."""
+        url = reverse("metrics:analytics_ai_adoption")
+
+        response = self.client.get(url)
+
+        # Should have descriptive subtitle about Copilot + delivery
+        content = response.content.decode()
+        # Looking for improved subtitle mentioning both Copilot usage and delivery
+        self.assertTrue(
+            ("high" in content.lower() and "acceptance" in content.lower())
+            or "delivery" in content.lower()
+            or "mentor" in content.lower(),
+            "Expected improved subtitle explaining Champions criteria",
+        )

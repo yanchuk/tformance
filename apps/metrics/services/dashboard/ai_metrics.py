@@ -411,6 +411,7 @@ def get_ai_impact_stats(
     start_date: date,
     end_date: date,
     use_survey_data: bool | None = None,
+    repo: str | None = None,
 ) -> dict:
     """Get AI impact statistics comparing AI-assisted vs non-AI PRs.
 
@@ -421,6 +422,7 @@ def get_ai_impact_stats(
         use_survey_data: If True, use survey data (PRSurvey.author_ai_assisted) with
             detection fallback. If False/None (default), use only detection data
             (effective_is_ai_assisted which prioritizes LLM > pattern detection).
+        repo: Optional repository to filter by (owner/repo format)
 
     Returns:
         dict with keys:
@@ -435,7 +437,9 @@ def get_ai_impact_stats(
     use_surveys = use_survey_data if use_survey_data is not None else False
 
     # Get all merged PRs in range with survey data prefetched
-    prs = list(_get_merged_prs_in_range(team, start_date, end_date).prefetch_related("survey"))
+    prs_qs = _get_merged_prs_in_range(team, start_date, end_date)
+    prs_qs = _apply_repo_filter(prs_qs, repo)
+    prs = list(prs_qs.prefetch_related("survey"))
 
     total_prs = len(prs)
 

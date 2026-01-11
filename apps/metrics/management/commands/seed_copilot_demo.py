@@ -25,9 +25,14 @@ from decimal import Decimal
 
 from django.core.management.base import BaseCommand, CommandError
 
+from apps.integrations.services.copilot_metrics import (
+    parse_metrics_response,
+    sync_copilot_editor_data,
+    sync_copilot_language_data,
+)
 from apps.integrations.services.copilot_mock_data import CopilotMockDataGenerator, CopilotScenario
 from apps.integrations.services.copilot_pr_correlation import correlate_prs_with_copilot_usage
-from apps.metrics.models import AIUsageDaily, CopilotSeatSnapshot, TeamMember
+from apps.metrics.models import AIUsageDaily, CopilotEditorDaily, CopilotLanguageDaily, CopilotSeatSnapshot, TeamMember
 from apps.metrics.seeding.deterministic import DeterministicRandom
 from apps.teams.models import Team
 
@@ -103,7 +108,12 @@ class Command(BaseCommand):
         if clear_existing:
             deleted_usage, _ = AIUsageDaily.objects.filter(team=team, source="copilot").delete()
             deleted_seats, _ = CopilotSeatSnapshot.objects.filter(team=team).delete()
-            self.stdout.write(f"Deleted {deleted_usage} usage records, {deleted_seats} seat snapshots")
+            deleted_lang, _ = CopilotLanguageDaily.objects.filter(team=team).delete()
+            deleted_editor, _ = CopilotEditorDaily.objects.filter(team=team).delete()
+            self.stdout.write(
+                f"Deleted {deleted_usage} usage records, {deleted_seats} seat snapshots, "
+                f"{deleted_lang} language records, {deleted_editor} editor records"
+            )
 
         # Calculate date range
         end_date = date.today()
@@ -116,6 +126,13 @@ class Command(BaseCommand):
             until=end_date.isoformat(),
             scenario=scenario,
         )
+
+        # Sync language and editor data to CopilotLanguageDaily/CopilotEditorDaily
+        # This populates the "By Language" and "By Editor" cards on the AI Adoption dashboard
+        parsed_metrics = parse_metrics_response(daily_metrics)
+        lang_records = sync_copilot_language_data(team, parsed_metrics)
+        editor_records = sync_copilot_editor_data(team, parsed_metrics)
+        self.stdout.write(f"Synced {lang_records} language records, {editor_records} editor records")
 
         # Create AIUsageDaily records for each member for each day
         records_created = 0

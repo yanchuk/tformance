@@ -41,15 +41,22 @@ def ai_adoption_chart(request: HttpRequest) -> HttpResponse:
 
 @team_admin_required
 def ai_quality_chart(request: HttpRequest) -> HttpResponse:
-    """AI vs non-AI quality comparison (admin only)."""
+    """AI vs non-AI impact comparison (admin only).
+
+    Shows objective metrics: cycle time comparison between AI-assisted
+    and non-AI-assisted PRs.
+    """
     start_date, end_date = get_date_range_from_request(request)
     repo = _get_repo_filter(request)
-    chart_data = dashboard_service.get_ai_quality_comparison(request.team, start_date, end_date, repo=repo)
+    # Use objective metrics (cycle time) instead of subjective quality ratings
+    impact_data = dashboard_service.get_ai_impact_stats(request.team, start_date, end_date, repo=repo)
+    # Add non_ai_prs for template convenience (Django templates don't do math well)
+    impact_data["non_ai_prs"] = impact_data["total_prs"] - impact_data["ai_prs"]
     return TemplateResponse(
         request,
         "metrics/partials/ai_quality_chart.html",
         {
-            "chart_data": chart_data,
+            "impact_data": impact_data,
         },
     )
 
