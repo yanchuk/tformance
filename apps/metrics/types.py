@@ -333,3 +333,99 @@ class InsightData(TypedDict, total=False):
     jira: JiraMetrics | None
     copilot_metrics: CopilotMetrics | None
     metadata: InsightMetadata
+
+
+# =============================================================================
+# PR Context Types (for LLM prompt generation)
+# =============================================================================
+class PRContext(TypedDict, total=False):
+    """PR context for LLM prompt generation.
+
+    Replaces 26 individual parameters in get_user_prompt() with a single typed dict.
+    All fields are optional except pr_body which is the minimum required content.
+
+    Usage:
+        context: PRContext = {
+            "pr_body": "Add new feature...",
+            "pr_title": "feat: add dark mode",
+            "author_name": "johndoe",
+        }
+        prompt = get_user_prompt_v2(context)
+
+    Attributes:
+        # === Basic Info ===
+        pr_body: The PR description text (primary content for analysis)
+        pr_title: The PR title
+        repo_name: Full repository path (e.g., "anthropics/cookbook")
+        author_name: PR author's display name
+
+        # === Code Changes ===
+        file_count: Number of files changed
+        additions: Lines added
+        deletions: Lines deleted
+        file_paths: List of changed file paths (for tech detection)
+        repo_languages: Top languages from repository (e.g., ["Python", "TypeScript"])
+
+        # === State & Flags ===
+        state: PR state (open, merged, closed)
+        is_draft: Whether PR is a draft
+        is_hotfix: Whether PR is marked as hotfix
+        is_revert: Whether PR is a revert
+        labels: List of label names
+
+        # === Timing Metrics ===
+        cycle_time_hours: Time from open to merge
+        review_time_hours: Time from open to first review
+
+        # === Collaboration ===
+        comment_count: Number of comments
+        commits_after_first_review: Number of commits after first review
+        review_rounds: Number of review cycles
+        commit_messages: List of commit messages (for AI co-author detection)
+        reviewers: List of reviewer names
+        review_comments: List of review comment bodies (sample)
+
+        # === Project Management ===
+        milestone: Milestone title (e.g., "Q1 2025 Release")
+        assignees: List of assignee usernames
+        linked_issues: List of linked issue references (e.g., ["#123", "#456"])
+        jira_key: Jira issue key (e.g., "PROJ-1234")
+    """
+
+    # === Basic Info ===
+    pr_body: str  # Primary content - effectively required for meaningful analysis
+    pr_title: str
+    repo_name: str
+    author_name: str
+
+    # === Code Changes ===
+    file_count: int
+    additions: int
+    deletions: int
+    file_paths: list[str]
+    repo_languages: list[str]
+
+    # === State & Flags ===
+    state: str
+    is_draft: bool
+    is_hotfix: bool
+    is_revert: bool
+    labels: list[str]
+
+    # === Timing Metrics ===
+    cycle_time_hours: float
+    review_time_hours: float
+
+    # === Collaboration ===
+    comment_count: int
+    commits_after_first_review: int
+    review_rounds: int
+    commit_messages: list[str]
+    reviewers: list[str]
+    review_comments: list[str]
+
+    # === Project Management ===
+    milestone: str
+    assignees: list[str]
+    linked_issues: list[str]
+    jira_key: str

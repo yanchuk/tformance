@@ -27,6 +27,7 @@ from typing import TYPE_CHECKING
 # Re-export PROMPT_VERSION for backward compatibility
 # The source of truth is apps/metrics/prompts/constants.py
 from apps.metrics.prompts.constants import PROMPT_VERSION  # noqa: F401
+from apps.metrics.types import PRContext
 
 if TYPE_CHECKING:
     from apps.metrics.models import PullRequest
@@ -315,6 +316,221 @@ def get_user_prompt(
     sections.append(f"Description:\n{pr_body}")
 
     return "Analyze this pull request:\n\n" + "\n\n".join(sections)
+
+
+def get_user_prompt_v2(context: PRContext) -> str:
+    """Generate user prompt from a PRContext dictionary.
+
+    This is the new API replacing get_user_prompt() with 26 individual parameters.
+    All fields are accessed via .get() to handle optional/missing fields gracefully.
+
+    Args:
+        context: A PRContext TypedDict containing PR data for analysis.
+                 Only pr_body is effectively required for meaningful analysis.
+
+    Returns:
+        Formatted user prompt string for LLM analysis.
+
+    Example:
+        from apps.metrics.types import PRContext
+
+        context: PRContext = {
+            "pr_body": "Add new feature...",
+            "pr_title": "feat: add dark mode",
+            "author_name": "johndoe",
+            "additions": 150,
+            "deletions": 20,
+        }
+        prompt = get_user_prompt_v2(context)
+    """
+    sections = []
+
+    # === Basic Info ===
+    basic_info = []
+    if context.get("repo_name"):
+        basic_info.append(f"Repository: {context['repo_name']}")
+    if context.get("pr_title"):
+        basic_info.append(f"Title: {context['pr_title']}")
+    if context.get("author_name"):
+        basic_info.append(f"Author: {context['author_name']}")
+    if context.get("state"):
+        basic_info.append(f"State: {context['state']}")
+    if context.get("labels"):
+        basic_info.append(f"Labels: {', '.join(context['labels'])}")
+    if context.get("is_draft"):
+        basic_info.append("Draft: Yes")
+    if context.get("is_hotfix"):
+        basic_info.append("Hotfix: Yes")
+    if context.get("is_revert"):
+        basic_info.append("Revert: Yes")
+    if basic_info:
+        sections.append("\n".join(basic_info))
+
+    # === Metadata ===
+    metadata = []
+    if context.get("milestone"):
+        metadata.append(f"Milestone: {context['milestone']}")
+    if context.get("jira_key"):
+        metadata.append(f"Jira: {context['jira_key']}")
+    if context.get("assignees"):
+        assignees = context["assignees"]
+        names_str = ", ".join(assignees[:10])
+        if len(assignees) > 10:
+            names_str += f" (+{len(assignees) - 10} more)"
+        metadata.append(f"Assignees: {names_str}")
+    if context.get("linked_issues"):
+        metadata.append(f"Linked issues: {', '.join(context['linked_issues'])}")
+    if metadata:
+        sections.append("\n".join(metadata))
+
+    # === Code Changes ===
+    changes = []
+    file_count = context.get("file_count", 0)
+    additions = context.get("additions", 0)
+    deletions = context.get("deletions", 0)
+    if file_count > 0:
+        changes.append(f"Files changed: {file_count}")
+    if additions > 0 or deletions > 0:
+        changes.append(f"Lines: +{additions}/-{deletions}")
+    if context.get("file_paths"):
+        file_paths = context["file_paths"]
+        if len(file_paths) <= 10:
+            paths_str = ", ".join(file_paths)
+        else:
+            paths_str = ", ".join(file_paths[:20])
+            if len(file_paths) > 20:
+                paths_str += f" (+{len(file_paths) - 20} more)"
+        changes.append(f"Files: {paths_str}")
+    if changes:
+        sections.append("\n".join(changes))
+
+    # === Timing & Review ===
+    timing = []
+    cycle_time = context.get("cycle_time_hours")
+    review_time = context.get("review_time_hours")
+    comment_count = context.get("comment_count", 0)
+    commits_after = context.get("commits_after_first_review")
+    review_rounds = context.get("review_rounds")
+
+    if cycle_time is not None:
+        timing.append(f"Cycle time: {cycle_time:.1f} hours")
+    if review_time is not None:
+        timing.append(f"Time to first review: {review_time:.1f} hours")
+    if comment_count > 0:
+        timing.append(f"Comments: {comment_count}")
+    if commits_after is not None and commits_after > 0:
+        timing.append(f"Commits after first review: {commits_after}")
+    if review_rounds is not None and review_rounds > 0:
+        timing.append(f"Review rounds: {review_rounds}")
+    if timing:
+        sections.append("\n".join(timing))
+
+    # === Repository Context ===
+    if context.get("repo_languages"):
+        sections.append(f"Repository languages: {', '.join(context['repo_languages'])}")
+
+    # === Commit Messages (for AI co-author detection) ===
+    if context.get("commit_messages"):
+        commit_messages = context["commit_messages"]
+        msgs = commit_messages[:5]
+        if len(commit_messages) > 5:
+            msgs.append(f"... and {len(commit_messages) - 5} more commits")
+        sections.append("Recent commits:\n" + "\n".join(f"- {m}" for m in msgs))
+
+    # === Reviewers ===
+    if context.get("reviewers"):
+        reviewers = context["reviewers"]
+        names_str = ", ".join(reviewers[:5])
+        if len(reviewers) > 5:
+            names_str += f" (+{len(reviewers) - 5} more)"
+        sections.append(f"Reviewers: {names_str}")
+
+    # === Review Comments ===
+    if context.get("review_comments"):
+        review_comments = context["review_comments"]
+        truncated = []
+        for comment in review_comments[:3]:
+            if len(comment) > 200:
+                truncated.append(comment[:200] + "...")
+            else:
+                truncated.append(comment)
+        sections.append("Review comments:\n" + "\n".join(f"- {c}" for c in truncated))
+
+    # === Description ===
+    pr_body = context.get("pr_body", "")
+    sections.append(f"Description:\n{pr_body}")
+
+    return "Analyze this pull request:\n\n" + "\n\n".join(sections)
+
+
+def build_pr_context(pr: PullRequest) -> PRContext:
+    """Build a PRContext dictionary from a PullRequest model.
+
+    This bridges the gap between the PullRequest model and the new PRContext type,
+    enabling gradual migration from build_llm_pr_context() to get_user_prompt_v2().
+
+    Args:
+        pr: A PullRequest instance. For best performance, prefetch relations:
+            pr = PullRequest.objects.select_related("author").prefetch_related(
+                "files", "commits", "reviews__reviewer", "comments__author"
+            ).get(id=pr_id)
+
+    Returns:
+        A PRContext dictionary with fields extracted from the PR model.
+    """
+    context: PRContext = {
+        "pr_body": pr.body or "",
+        "pr_title": pr.title or "",
+        "repo_name": pr.github_repo or "",
+        "author_name": _get_member_display_name(pr.author) if pr.author else "",
+        "file_count": pr.files_changed or 0,
+        "additions": pr.additions or 0,
+        "deletions": pr.deletions or 0,
+        "state": pr.state or "",
+        "is_draft": pr.is_draft or False,
+        "is_hotfix": pr.is_hotfix or False,
+        "is_revert": pr.is_revert or False,
+        "comment_count": pr.comments_count or 0,
+    }
+
+    # Optional timing metrics
+    if pr.cycle_time_hours is not None:
+        context["cycle_time_hours"] = pr.cycle_time_hours
+    if pr.review_time_hours is not None:
+        context["review_time_hours"] = pr.review_time_hours
+    if pr.commits_after_first_review is not None:
+        context["commits_after_first_review"] = pr.commits_after_first_review
+    if pr.review_rounds is not None:
+        context["review_rounds"] = pr.review_rounds
+
+    # File paths from prefetched files relation
+    if hasattr(pr, "files") and pr.files.exists():
+        context["file_paths"] = list(pr.files.values_list("file_path", flat=True))
+
+    # Commit messages from prefetched commits relation
+    if hasattr(pr, "commits") and pr.commits.exists():
+        context["commit_messages"] = list(pr.commits.values_list("message", flat=True))
+
+    # Labels from JSON field
+    if pr.labels:
+        context["labels"] = pr.labels if isinstance(pr.labels, list) else []
+
+    # Jira key
+    if pr.jira_key:
+        context["jira_key"] = pr.jira_key
+
+    # Reviewers from prefetched reviews relation
+    if hasattr(pr, "reviews") and pr.reviews.exists():
+        reviewer_names = []
+        for review in pr.reviews.all():
+            if review.reviewer:
+                name = _get_member_display_name(review.reviewer)
+                if name and name not in reviewer_names:
+                    reviewer_names.append(name)
+        if reviewer_names:
+            context["reviewers"] = reviewer_names
+
+    return context
 
 
 def build_llm_pr_context(pr: PullRequest) -> str:

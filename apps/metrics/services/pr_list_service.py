@@ -16,6 +16,7 @@ from apps.metrics.services.ai_categories import (
     MIXED_TOOLS,
     REVIEW_TOOLS,
 )
+from apps.metrics.services.pr_filters import apply_date_range_filter, apply_issue_type_filter
 from apps.teams.models import Team
 
 # PR size buckets: (min_lines, max_lines) - max is inclusive, None means no upper limit
@@ -279,85 +280,16 @@ def get_prs_queryset(team: Team, filters: dict[str, Any]) -> QuerySet[PullReques
     if filters.get("review_friction"):
         qs = qs.filter(llm_summary__health__review_friction=filters["review_friction"])
 
-    # Filter by date range
-    # For open PRs (no merged_at), filter by pr_created_at instead
-    # For merged/closed PRs, filter by merged_at for consistency with dashboard
-    # For "All States", use appropriate date field based on each PR's state
+    # Filter by date range (extracted to pr_filters.py)
     state_filter = filters.get("state")
     date_from = _parse_date(filters.get("date_from")) if filters.get("date_from") else None
     date_to = _parse_date(filters.get("date_to")) if filters.get("date_to") else None
+    qs = apply_date_range_filter(qs, state_filter=state_filter, date_from=date_from, date_to=date_to)
 
-    if date_from or date_to:
-        if state_filter == "open":
-            # Open PRs: filter by pr_created_at
-            if date_from:
-                qs = qs.filter(pr_created_at__date__gte=date_from)
-            if date_to:
-                qs = qs.filter(pr_created_at__date__lte=date_to)
-        elif state_filter in ("merged", "closed"):
-            # Merged/closed PRs: filter by merged_at
-            if date_from:
-                qs = qs.filter(merged_at__date__gte=date_from)
-            if date_to:
-                qs = qs.filter(merged_at__date__lte=date_to)
-        else:
-            # "All States" (state_filter is None):
-            # Use appropriate date field based on PR state
-            # Open PRs filtered by pr_created_at, merged/closed by merged_at
-            open_q = Q(state="open")
-            merged_q = Q(state__in=["merged", "closed"])
-
-            if date_from:
-                open_q &= Q(pr_created_at__date__gte=date_from)
-                merged_q &= Q(merged_at__date__gte=date_from)
-            if date_to:
-                open_q &= Q(pr_created_at__date__lte=date_to)
-                merged_q &= Q(merged_at__date__lte=date_to)
-
-            qs = qs.filter(open_q | merged_q)
-
-    # Filter by issue type (for "needs attention" filters)
-    # Uses priority-based exclusion to match dashboard counts:
-    # Priority 1: Reverts (highest)
-    # Priority 2: Hotfixes (excludes reverts)
-    # Priority 3: Long cycle (excludes reverts, hotfixes) - uses 2x team avg threshold
-    # Priority 4: Large PRs (excludes reverts, hotfixes, long cycle)
-    # Priority 5: Missing Jira (excludes all above)
+    # Filter by issue type (extracted to pr_filters.py)
+    # Uses priority-based exclusion: revert > hotfix > long_cycle > large_pr > missing_jira
     issue_type = filters.get("issue_type")
-    if issue_type:
-        # Calculate dynamic "long cycle" threshold: 2x team average cycle time
-        # This matches the dashboard's get_needs_attention_prs logic
-        avg_result = qs.filter(cycle_time_hours__isnull=False).aggregate(avg_cycle=Avg("cycle_time_hours"))
-        team_avg_cycle = avg_result["avg_cycle"] or 0
-        long_cycle_threshold = float(team_avg_cycle) * 2 if team_avg_cycle else 999999  # High default if no data
-
-    if issue_type == "revert":
-        qs = qs.filter(is_revert=True)
-    elif issue_type == "hotfix":
-        # Hotfixes that are NOT reverts
-        qs = qs.filter(is_hotfix=True, is_revert=False)
-    elif issue_type == "long_cycle":
-        # Long cycle time (>2x team avg) that are NOT reverts or hotfixes
-        qs = qs.filter(cycle_time_hours__gt=long_cycle_threshold, is_revert=False, is_hotfix=False)
-    elif issue_type == "large_pr":
-        # Large PR (>500 lines) that are NOT reverts, hotfixes, or long cycle
-        # Note: NULL cycle_time_hours is NOT considered "slow"
-        qs = qs.annotate(total_lines_issue=F("additions") + F("deletions"))
-        qs = qs.filter(
-            total_lines_issue__gt=500,
-            is_revert=False,
-            is_hotfix=False,
-        ).filter(Q(cycle_time_hours__lte=long_cycle_threshold) | Q(cycle_time_hours__isnull=True))
-    elif issue_type == "missing_jira":
-        # Missing Jira that doesn't have any higher priority issue
-        # Note: NULL cycle_time_hours is NOT considered "slow"
-        qs = qs.annotate(total_lines_missing=F("additions") + F("deletions"))
-        qs = qs.filter(
-            jira_key="",
-            is_revert=False,
-            is_hotfix=False,
-            total_lines_missing__lte=500,
-        ).filter(Q(cycle_time_hours__lte=long_cycle_threshold) | Q(cycle_time_hours__isnull=True))
+    qs = apply_issue_type_filter(qs, issue_type=issue_type)
 
     return qs
 
