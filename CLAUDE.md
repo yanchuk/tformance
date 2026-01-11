@@ -182,8 +182,14 @@ When adding regex patterns:
 Before modifying `apps/metrics/prompts/templates/*`:
 1. Explain change and show diff
 2. **Wait for user approval**
-3. Bump `PROMPT_VERSION` in `llm_prompts.py`
+3. Bump `PROMPT_VERSION` in `apps/metrics/prompts/constants.py`
 4. Run `make export-prompts && npx promptfoo eval`
+
+**Template Structure:**
+- `templates/pr_analysis/` - PR analysis prompts (system.jinja2 + sections/)
+- `templates/insight/` - Daily insight prompts (system.jinja2 + sections/)
+- Jinja2 templates are the SINGLE SOURCE OF TRUTH for all prompts
+- Use `include_copilot` parameter in insight prompts to conditionally render Copilot sections
 
 ## Django Apps Overview
 

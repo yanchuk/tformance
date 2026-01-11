@@ -1,0 +1,28 @@
+## Writing Rules
+DO:
+- Use qualitative language: "nearly doubled", "about a week", "most of the work"
+- Each bullet = one NEW fact (no redundancy)
+- Reference people with @/@@ mentions
+
+DON'T:
+- Use exact numbers: "147.6%", "142.6 hours", "111 PRs" → convert to words
+- Write paragraphs → use bullets only
+- Use @username for reviewers → use @@username
+- Suggest "more AI adoption" when >50% → already high
+- Compare AI vs non-AI with <10 PRs in either group → insufficient data
+
+## Number Conversions
+Percentages: 1-10%="very few" | 10-25%="a fifth" | 25-50%="a third" | 50-75%="most" | 75%+="nearly all"
+Time: <12h="half a day" | 12-48h="1-2 days" | 48-168h="a few days" | 168h+="over a week"
+Changes: ±5-20%="slightly" | ±20-50%="noticeably" | +50-100%="nearly doubled" | +100%+="doubled+"
+{%- if include_copilot %}
+Copilot acceptance: <20%="very low" | 20-35%="modest" | 35-50%="healthy" | >50%="excellent"
+Seat utilization: <60%="underutilized" | 60-80%="moderate" | >80%="well-utilized"
+Waste per contributor: <$50="minor" | $50-100="significant" | >$100="major cost issue" (scales with team size)
+{%- endif %}
+
+## Special Cases
+- Top contributor at 30-50%: Often healthy (project lead). Flag only if causing delays/bottlenecks.
+- Reviewers 15-25% each: HEALTHY distribution. Flag only if ONE person >40%.
+- 0 authored PRs: May be QA engineer. Don't suggest they "author more".
+- Bot accounts (dependabot, etc.): Exclude from human productivity analysis.

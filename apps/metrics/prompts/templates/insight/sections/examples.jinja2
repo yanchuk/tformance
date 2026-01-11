@@ -1,0 +1,51 @@
+# Examples
+
+<example type="good" scenario="bottleneck">
+Input: cycle_time 142.6h (+147%), AI adoption 4.5%, @alice at 56%, @@bob has 15 awaiting
+Output headline: "Work concentrated on one contributor → review delays"
+Output detail: "• @alice handling most of the work, creating bottleneck
+• Cycle time grown to nearly a week
+• @@bob has many PRs awaiting approval, slowing merges
+• Very few PRs using AI tools"
+Output recommendation: "Prioritize @@bob's awaiting approvals to unblock merges"
+</example>
+{% if include_copilot %}
+
+<example type="good" scenario="copilot-waste">
+Input: copilot acceptance 18%, waste_per_contributor $245, utilization 52%, @@reviewer with 8 pending
+Output headline: "Underutilized Copilot licenses driving major cost waste"
+Output detail: "• Copilot acceptance is very low, team may need training
+• Seat utilization is underutilized, causing major cost waste per contributor
+• @@reviewer has pending reviews creating a bottleneck
+• Consider reducing unused licenses or improving adoption"
+Output recommendation: "Schedule Copilot training for low-usage contributors to improve ROI"
+</example>
+{% endif %}
+
+<example type="good" scenario="healthy">
+Input: cycle_time 24h (-12%), throughput +18%, AI adoption 55%, revert_rate 1.2%
+Output headline: "Team delivery velocity healthy with strong AI adoption"
+Output detail: "• Throughput has slightly improved with faster cycle times
+• Most PRs use AI tools with no quality impact
+• Review distribution is healthy across the team"
+Output recommendation: "Maintain current practices and share successful workflows"
+</example>
+
+<example type="bad" reason="wrong-mentions-and-numbers">
+Output: "• @bob has PRs awaiting approval" ← Should be @@bob (reviewer)
+Output: "Cycle time increased by 147.6% to 142.6 hours" ← Use words, not numbers
+</example>
+
+<example type="bad" reason="redundancy">
+Input: AI adoption 92%
+Output: "• Nearly all PRs use AI tools
+• Very few PRs are not using AI" ← Same fact twice! Keep only first.
+</example>
+
+<example type="bad" reason="small-sample">
+Input: 1 AI PR out of 189
+Output: "• AI-assisted PRs are noticeably slower" ← Can't conclude from n=1
+Correct: "• AI adoption is very low with insufficient data for comparison"
+</example>
+
+Return ONLY valid JSON.

@@ -339,6 +339,89 @@ class TestAIDetectionRules(TestCase):
         self.assertIn("any AI involvement = is_assisted: true", result)
 
 
+class TestInsightSystemPromptSections(TestCase):
+    """Tests for insight system prompt sections and conditional Copilot logic.
+
+    TDD RED phase: These tests should FAIL until sections are implemented.
+    """
+
+    def test_insight_sections_directory_exists(self):
+        """insight/sections/ directory should exist with expected files."""
+        sections = list_template_sections("insight")
+        self.assertGreater(len(sections), 0, "insight/sections/ should have section files")
+
+        expected_sections = [
+            "identity.jinja2",
+            "output_format.jinja2",
+            "mention_syntax.jinja2",
+            "writing_rules.jinja2",
+            "copilot_guidance.jinja2",
+            "action_types.jinja2",
+            "examples.jinja2",
+        ]
+        for section in expected_sections:
+            with self.subTest(section=section):
+                self.assertIn(section, sections)
+
+    def test_insight_system_prompt_with_copilot_includes_guidance(self):
+        """With include_copilot=True, prompt should contain Copilot guidance."""
+        from apps.metrics.prompts.render import render_insight_system_prompt
+
+        result = render_insight_system_prompt(include_copilot=True)
+
+        self.assertIn("Copilot Metrics Guidance", result)
+        self.assertIn("Acceptance Rate", result)
+        self.assertIn("Seat Utilization", result)
+
+    def test_insight_system_prompt_without_copilot_excludes_guidance(self):
+        """With include_copilot=False, prompt should NOT contain Copilot."""
+        from apps.metrics.prompts.render import render_insight_system_prompt
+
+        result = render_insight_system_prompt(include_copilot=False)
+
+        self.assertNotIn("Copilot", result)
+        self.assertNotIn("copilot", result.lower())
+
+    def test_insight_system_prompt_without_copilot_is_shorter(self):
+        """Without Copilot, prompt should be ~800 chars shorter."""
+        from apps.metrics.prompts.render import render_insight_system_prompt
+
+        with_copilot = render_insight_system_prompt(include_copilot=True)
+        without_copilot = render_insight_system_prompt(include_copilot=False)
+
+        difference = len(with_copilot) - len(without_copilot)
+        self.assertGreater(difference, 700, f"Expected ~800 char difference, got {difference}")
+
+    def test_insight_system_prompt_contains_all_sections(self):
+        """Should contain all major sections regardless of Copilot setting."""
+        from apps.metrics.prompts.render import render_insight_system_prompt
+
+        result = render_insight_system_prompt(include_copilot=True)
+
+        expected_sections = [
+            "# Identity",
+            "## Output Format",
+            "## Mention Syntax",
+            "## Writing Rules",
+            "## Action Types",
+            "# Examples",
+        ]
+
+        for section in expected_sections:
+            with self.subTest(section=section):
+                self.assertIn(section, result)
+
+    def test_insight_system_prompt_examples_exclude_copilot_when_disabled(self):
+        """Copilot-specific examples should be excluded when Copilot is disabled."""
+        from apps.metrics.prompts.render import render_insight_system_prompt
+
+        result = render_insight_system_prompt(include_copilot=False)
+
+        # The copilot-waste example should be excluded
+        self.assertNotIn("copilot-waste", result)
+        self.assertNotIn("Copilot licenses", result)
+
+
 class TestUserPromptTemplate(TestCase):
     """Tests for user.jinja2 template existence and structure."""
 

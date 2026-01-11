@@ -20,11 +20,10 @@ import json
 import logging
 import os
 from datetime import date
-from functools import lru_cache
 from typing import TYPE_CHECKING
 from urllib.parse import urlencode
 
-from groq import Groq
+from groq import APIConnectionError, APITimeoutError, AuthenticationError, Groq, RateLimitError
 
 from apps.integrations.services.copilot_metrics_prompt import get_copilot_metrics_for_prompt
 from apps.metrics.prompts.schemas import validate_insight_response
@@ -113,12 +112,18 @@ INSIGHT_JSON_SCHEMA = {
 MODELS_WITH_JSON_SCHEMA = {"openai/gpt-oss-20b", "openai/gpt-oss-120b"}
 
 
-@lru_cache(maxsize=1)
-def get_insight_system_prompt() -> str:
+def get_insight_system_prompt(include_copilot: bool = True) -> str:
     """Get the insight generation system prompt from Jinja2 templates.
 
     This is the SINGLE SOURCE OF TRUTH for insight system prompts.
     Edit templates/insight/system.jinja2 to modify.
+
+    Note: Caching is handled by render_insight_system_prompt() with
+    lru_cache(maxsize=2) to cache both Copilot on/off variants.
+
+    Args:
+        include_copilot: If True, includes Copilot metrics guidance section.
+            Set to False for teams without Copilot integration to save ~800 tokens.
 
     Returns:
         The fully rendered system prompt string.
@@ -126,7 +131,7 @@ def get_insight_system_prompt() -> str:
     # Import inside function to avoid circular imports
     from apps.metrics.prompts.render import render_insight_system_prompt
 
-    return render_insight_system_prompt()
+    return render_insight_system_prompt(include_copilot=include_copilot)
 
 
 class _LazyInsightPrompt:
@@ -659,6 +664,10 @@ def generate_insight(
     # Build the user prompt from data
     user_prompt = build_insight_prompt(data)
 
+    # Detect if Copilot data is present to conditionally include Copilot guidance
+    # This saves ~800 tokens for teams without Copilot integration
+    has_copilot = data.get("copilot_metrics") is not None
+
     # Try primary model first, then fallback
     models_to_try = [model or INSIGHT_MODEL, INSIGHT_FALLBACK_MODEL]
 
@@ -670,7 +679,7 @@ def generate_insight(
             api_params = {
                 "model": current_model,
                 "messages": [
-                    {"role": "system", "content": get_insight_system_prompt()},
+                    {"role": "system", "content": get_insight_system_prompt(include_copilot=has_copilot)},
                     {"role": "user", "content": user_prompt},
                 ],
                 "temperature": 0.2,
@@ -717,8 +726,29 @@ def generate_insight(
             logger.warning(f"Failed to parse JSON from {current_model}: {e}")
             continue  # Try next model
 
+        except AuthenticationError as e:
+            # Bad API key - fail immediately, no point trying other models
+            logger.error(f"GROQ authentication failed: {e}")
+            break  # Don't try other models, go to fallback
+
+        except RateLimitError as e:
+            # Rate limited - try next model
+            logger.warning(f"GROQ rate limit hit with {current_model}: {e}")
+            continue
+
+        except APITimeoutError as e:
+            # Request timed out - try next model
+            logger.warning(f"GROQ timeout with {current_model}: {e}")
+            continue
+
+        except APIConnectionError as e:
+            # Network issue - try next model
+            logger.warning(f"GROQ connection error with {current_model}: {e}")
+            continue
+
         except Exception as e:
-            logger.warning(f"LLM insight generation failed with {current_model}: {e}")
+            # Unexpected error - log with full traceback and continue
+            logger.exception(f"Unexpected error with {current_model}: {e}")
             continue  # Try next model
 
     # All models failed, use rule-based fallback

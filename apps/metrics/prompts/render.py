@@ -197,18 +197,22 @@ def render_pr_user_prompt(
 # =============================================================================
 
 
-@lru_cache(maxsize=1)
-def render_insight_system_prompt() -> str:
+@lru_cache(maxsize=2)  # Cache both True and False variants
+def render_insight_system_prompt(include_copilot: bool = True) -> str:
     """Render the insight generation system prompt from Jinja2 templates.
 
     This is the SINGLE SOURCE OF TRUTH for insight system prompts.
     Edit templates/insight/system.jinja2 to modify.
 
+    Args:
+        include_copilot: If True, include Copilot metrics guidance section.
+            Set to False for teams without Copilot to save ~800 chars.
+
     Returns:
         The fully rendered system prompt string.
     """
     template = _env.get_template("insight/system.jinja2")
-    rendered = template.render()
+    rendered = template.render(include_copilot=include_copilot)
     return _normalize_whitespace(rendered)
 
 
@@ -316,9 +320,16 @@ def get_template_dir() -> Path:
     return _TEMPLATE_DIR
 
 
-def list_template_sections() -> list[str]:
-    """List all available PR analysis template section files."""
-    sections_dir = _TEMPLATE_DIR / "pr_analysis" / "sections"
+def list_template_sections(template_type: str = "pr_analysis") -> list[str]:
+    """List all available template section files for a given template type.
+
+    Args:
+        template_type: Either "pr_analysis" or "insight". Defaults to "pr_analysis".
+
+    Returns:
+        Sorted list of section file names (e.g., ["intro.jinja2", "ai_detection.jinja2"])
+    """
+    sections_dir = _TEMPLATE_DIR / template_type / "sections"
     if not sections_dir.exists():
         return []
     return sorted(f.name for f in sections_dir.glob("*.jinja2"))
