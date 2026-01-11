@@ -41,10 +41,13 @@ class TestSyncCopilotMetricsTask(TestCase):
             display_name="Bob Engineer",
         )
 
-    @patch("apps.integrations.tasks.map_copilot_to_ai_usage")
-    @patch("apps.integrations.tasks.parse_metrics_response")
-    @patch("apps.integrations.tasks.fetch_copilot_metrics")
-    def test_sync_copilot_metrics_task_fetches_and_stores_metrics(self, mock_fetch, mock_parse, mock_map):
+    @patch("apps.integrations._task_modules.copilot.is_copilot_sync_enabled", return_value=True)
+    @patch("apps.integrations._task_modules.copilot.map_copilot_to_ai_usage")
+    @patch("apps.integrations._task_modules.copilot.parse_metrics_response")
+    @patch("apps.integrations._task_modules.copilot.fetch_copilot_metrics")
+    def test_sync_copilot_metrics_task_fetches_and_stores_metrics(
+        self, mock_fetch, mock_parse, mock_map, mock_flag_check
+    ):
         """Test that sync_copilot_metrics_task fetches metrics and stores them in AIUsageDaily."""
         from apps.integrations.tasks import sync_copilot_metrics_task
 
@@ -96,11 +99,12 @@ class TestSyncCopilotMetricsTask(TestCase):
         self.assertEqual(record.suggestions_shown, 5000)
         self.assertEqual(record.suggestions_accepted, 3000)
 
-    @patch("apps.integrations.tasks.fetch_copilot_metrics")
-    def test_sync_copilot_metrics_task_handles_unavailable_copilot(self, mock_fetch):
+    @patch("apps.integrations._task_modules.copilot.is_copilot_sync_enabled", return_value=True)
+    @patch("apps.integrations._task_modules.copilot.fetch_copilot_metrics")
+    def test_sync_copilot_metrics_task_handles_unavailable_copilot(self, mock_fetch, mock_flag_check):
         """Test that task gracefully handles 403 error when Copilot is not available."""
+        from apps.integrations._task_modules.copilot import sync_copilot_metrics_task
         from apps.integrations.services.copilot_metrics import CopilotMetricsError
-        from apps.integrations.tasks import sync_copilot_metrics_task
 
         # Arrange - Mock fetch to raise 403 error
         mock_fetch.side_effect = CopilotMetricsError(
@@ -122,12 +126,15 @@ class TestSyncCopilotMetricsTask(TestCase):
         # Verify no AIUsageDaily records were created
         self.assertEqual(AIUsageDaily.objects.filter(team=self.team, source="copilot").count(), 0)
 
-    @patch("apps.integrations.tasks.map_copilot_to_ai_usage")
-    @patch("apps.integrations.tasks.parse_metrics_response")
-    @patch("apps.integrations.tasks.fetch_copilot_metrics")
-    def test_sync_copilot_metrics_task_matches_users_by_github_username(self, mock_fetch, mock_parse, mock_map):
+    @patch("apps.integrations._task_modules.copilot.is_copilot_sync_enabled", return_value=True)
+    @patch("apps.integrations._task_modules.copilot.map_copilot_to_ai_usage")
+    @patch("apps.integrations._task_modules.copilot.parse_metrics_response")
+    @patch("apps.integrations._task_modules.copilot.fetch_copilot_metrics")
+    def test_sync_copilot_metrics_task_matches_users_by_github_username(
+        self, mock_fetch, mock_parse, mock_map, mock_flag_check
+    ):
         """Test that task correctly matches Copilot users to TeamMembers by GitHub username."""
-        from apps.integrations.tasks import sync_copilot_metrics_task
+        from apps.integrations._task_modules.copilot import sync_copilot_metrics_task
 
         # Arrange - Mock API response with per_user_data
         mock_fetch.return_value = [
@@ -192,7 +199,8 @@ class TestSyncCopilotMetricsTask(TestCase):
         self.assertIn("metrics_synced", result)
         self.assertEqual(result["metrics_synced"], 2)
 
-    def test_sync_copilot_metrics_task_skips_team_without_github_integration(self):
+    @patch("apps.integrations._task_modules.copilot.is_copilot_sync_enabled", return_value=True)
+    def test_sync_copilot_metrics_task_skips_team_without_github_integration(self, mock_flag_check):
         """Test that task skips teams without GitHub integration setup."""
         from apps.integrations.tasks import sync_copilot_metrics_task
 
@@ -209,15 +217,16 @@ class TestSyncCopilotMetricsTask(TestCase):
         self.assertIn("reason", result)
         self.assertIn("no github integration", result["reason"].lower())
 
-    @patch("apps.integrations.tasks.fetch_copilot_metrics")
-    def test_sync_copilot_metrics_task_retries_on_error(self, mock_fetch):
+    @patch("apps.integrations._task_modules.copilot.is_copilot_sync_enabled", return_value=True)
+    @patch("apps.integrations._task_modules.copilot.fetch_copilot_metrics")
+    def test_sync_copilot_metrics_task_retries_on_error(self, mock_fetch, mock_flag_check):
         """Test that task retries up to 3 times on transient errors."""
-        from apps.integrations.tasks import sync_copilot_metrics_task
+        from apps.integrations._task_modules.copilot import sync_copilot_metrics_task
 
         # Arrange - Mock fetch to raise network error
         mock_fetch.side_effect = Exception("Network timeout")
 
-        # Mock the task's retry method
+        # Mock the task's retry method on the actual task from _task_modules
         with patch.object(sync_copilot_metrics_task, "retry") as mock_retry:
             mock_retry.side_effect = Retry()
 
@@ -228,11 +237,12 @@ class TestSyncCopilotMetricsTask(TestCase):
             # Verify retry was called
             mock_retry.assert_called_once()
 
+    @patch("apps.integrations._task_modules.copilot.is_copilot_sync_enabled", return_value=True)
     @patch("sentry_sdk.capture_exception")
-    @patch("apps.integrations.tasks.fetch_copilot_metrics")
-    def test_sync_copilot_metrics_task_logs_to_sentry_on_final_failure(self, mock_fetch, mock_sentry):
+    @patch("apps.integrations._task_modules.copilot.fetch_copilot_metrics")
+    def test_sync_copilot_metrics_task_logs_to_sentry_on_final_failure(self, mock_fetch, mock_sentry, mock_flag_check):
         """Test that task logs errors to Sentry after max retries exhausted."""
-        from apps.integrations.tasks import sync_copilot_metrics_task
+        from apps.integrations._task_modules.copilot import sync_copilot_metrics_task
 
         # Arrange
         test_exception = Exception("Permanent API failure")
@@ -291,9 +301,10 @@ class TestSyncAllCopilotMetrics(TestCase):
         mock_manager.exclude.return_value.exclude.return_value = self.isolated_qs
         return mock_manager
 
-    @patch("apps.integrations.tasks.sync_copilot_metrics_task")
-    @patch("apps.integrations.tasks.GitHubIntegration.objects")
-    def test_sync_all_copilot_metrics_dispatches_tasks_for_each_team(self, mock_objects, mock_task):
+    @patch("apps.integrations._task_modules.copilot.is_copilot_sync_globally_enabled", return_value=True)
+    @patch("apps.integrations._task_modules.copilot.sync_copilot_metrics_task")
+    @patch("apps.integrations._task_modules.copilot.GitHubIntegration.objects")
+    def test_sync_all_copilot_metrics_dispatches_tasks_for_each_team(self, mock_objects, mock_task, mock_global_flag):
         """Test that sync_all_copilot_metrics dispatches individual tasks for all teams with GitHub."""
         from apps.integrations.tasks import sync_all_copilot_metrics
 
@@ -323,9 +334,10 @@ class TestSyncAllCopilotMetrics(TestCase):
         self.assertIn("teams_dispatched", result)
         self.assertEqual(result["teams_dispatched"], 2)
 
-    @patch("apps.integrations.tasks.sync_copilot_metrics_task")
-    @patch("apps.integrations.tasks.GitHubIntegration.objects")
-    def test_sync_all_copilot_metrics_handles_empty_team_list(self, mock_objects, mock_task):
+    @patch("apps.integrations._task_modules.copilot.is_copilot_sync_globally_enabled", return_value=True)
+    @patch("apps.integrations._task_modules.copilot.sync_copilot_metrics_task")
+    @patch("apps.integrations._task_modules.copilot.GitHubIntegration.objects")
+    def test_sync_all_copilot_metrics_handles_empty_team_list(self, mock_objects, mock_task, mock_global_flag):
         """Test that task handles case where no teams have GitHub integration."""
         from apps.integrations.models import GitHubIntegration
         from apps.integrations.tasks import sync_all_copilot_metrics
@@ -348,9 +360,12 @@ class TestSyncAllCopilotMetrics(TestCase):
         self.assertIn("teams_dispatched", result)
         self.assertEqual(result["teams_dispatched"], 0)
 
-    @patch("apps.integrations.tasks.sync_copilot_metrics_task")
-    @patch("apps.integrations.tasks.GitHubIntegration.objects")
-    def test_sync_all_copilot_metrics_continues_on_individual_dispatch_error(self, mock_objects, mock_task):
+    @patch("apps.integrations._task_modules.copilot.is_copilot_sync_globally_enabled", return_value=True)
+    @patch("apps.integrations._task_modules.copilot.sync_copilot_metrics_task")
+    @patch("apps.integrations._task_modules.copilot.GitHubIntegration.objects")
+    def test_sync_all_copilot_metrics_continues_on_individual_dispatch_error(
+        self, mock_objects, mock_task, mock_global_flag
+    ):
         """Test that task continues dispatching even if one dispatch fails."""
         from apps.integrations.tasks import sync_all_copilot_metrics
 
@@ -380,9 +395,10 @@ class TestSyncAllCopilotMetrics(TestCase):
         # Should count only successful dispatch (team2)
         self.assertEqual(result["teams_dispatched"], 1)
 
-    @patch("apps.integrations.tasks.sync_copilot_metrics_task")
-    @patch("apps.integrations.tasks.GitHubIntegration.objects")
-    def test_sync_all_copilot_metrics_returns_correct_counts(self, mock_objects, mock_task):
+    @patch("apps.integrations._task_modules.copilot.is_copilot_sync_globally_enabled", return_value=True)
+    @patch("apps.integrations._task_modules.copilot.sync_copilot_metrics_task")
+    @patch("apps.integrations._task_modules.copilot.GitHubIntegration.objects")
+    def test_sync_all_copilot_metrics_returns_correct_counts(self, mock_objects, mock_task, mock_global_flag):
         """Test that task returns dict with teams_dispatched count."""
         from apps.integrations.tasks import sync_all_copilot_metrics
 
@@ -428,12 +444,13 @@ class TestSyncCopilotMetricsQueryCount(TestCase):
             )
             self.members.append(member)
 
-    @patch("apps.integrations.tasks.map_copilot_to_ai_usage")
-    @patch("apps.integrations.tasks.parse_metrics_response")
-    @patch("apps.integrations.tasks.fetch_copilot_metrics")
-    def test_sync_copilot_metrics_query_count_is_constant(self, mock_fetch, mock_parse, mock_map):
+    @patch("apps.integrations._task_modules.copilot.is_copilot_sync_enabled", return_value=True)
+    @patch("apps.integrations._task_modules.copilot.map_copilot_to_ai_usage")
+    @patch("apps.integrations._task_modules.copilot.parse_metrics_response")
+    @patch("apps.integrations._task_modules.copilot.fetch_copilot_metrics")
+    def test_sync_copilot_metrics_query_count_is_constant(self, mock_fetch, mock_parse, mock_map, mock_flag_check):
         """Test that TeamMember lookups use batch query (no N+1)."""
-        from apps.integrations.tasks import sync_copilot_metrics_task
+        from apps.integrations._task_modules.copilot import sync_copilot_metrics_task
 
         # Arrange - Mock API response with 10 users
         per_user_data = [

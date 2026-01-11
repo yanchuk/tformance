@@ -4,7 +4,6 @@ This module generates mock data in the exact GitHub Copilot metrics API format
 for testing purposes.
 """
 
-import math
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum
@@ -209,14 +208,19 @@ class CopilotMockDataGenerator:
         return (rate_min, rate_max)
 
     def _generate_day(self, current_date, params: ScenarioParams | None = None) -> dict:
-        """Generate metrics for a single day.
+        """Generate metrics for a single day in official GitHub API format.
+
+        The official GitHub Copilot Metrics API uses a nested structure:
+        - copilot_ide_code_completions.editors[].models[].languages[] contains metrics
+        - copilot_ide_code_completions.languages[] only has name and total_engaged_users
+        - No top-level totals in copilot_ide_code_completions
 
         Args:
             current_date: The date to generate metrics for.
             params: Scenario parameters controlling generation ranges.
 
         Returns:
-            Dictionary with day's metrics.
+            Dictionary with day's metrics in official GitHub API format.
         """
         # Use default params if not provided (for backward compatibility)
         if params is None:
@@ -236,28 +240,22 @@ class CopilotMockDataGenerator:
 
         rate_min, rate_max = params["acceptance_rate_range"]
         acceptance_rate = self.rng.uniform(rate_min, rate_max)
-        total_acceptances = int(total_completions * acceptance_rate)
-        # Ensure we stay within the specified rate range (use ceil for min to avoid truncation below range)
-        if total_completions > 0:
-            min_acceptances = math.ceil(total_completions * rate_min)
-            max_acceptances = int(total_completions * rate_max)
-            total_acceptances = max(min_acceptances, min(max_acceptances, total_acceptances))
 
-        total_lines_suggested = self.rng.randint(200, 5000) if total_completions > 0 else 0
-        lines_acceptance_rate = self.rng.uniform(rate_min, rate_max)
-        total_lines_accepted = int(total_lines_suggested * lines_acceptance_rate)
+        # Generate editors with nested models > languages (official schema)
+        editors = self._generate_editors_official(total_completions, acceptance_rate, total_engaged_users)
+
+        # Top-level languages only has name and total_engaged_users (official schema)
+        top_level_languages = self._generate_top_level_languages(total_engaged_users)
 
         return {
             "date": current_date.isoformat(),
             "total_active_users": total_active_users,
             "total_engaged_users": total_engaged_users,
             "copilot_ide_code_completions": {
-                "total_completions": total_completions,
-                "total_acceptances": total_acceptances,
-                "total_lines_suggested": total_lines_suggested,
-                "total_lines_accepted": total_lines_accepted,
-                "languages": self._generate_languages(total_completions, acceptance_rate),
-                "editors": self._generate_editors(total_completions, acceptance_rate),
+                # Official API has total_engaged_users but NO completion totals at this level
+                "total_engaged_users": total_engaged_users,
+                "languages": top_level_languages,
+                "editors": editors,
             },
             "copilot_ide_chat": {
                 "total_chats": self.rng.randint(0, 100) if total_active_users > 0 else 0,
@@ -328,7 +326,7 @@ class CopilotMockDataGenerator:
         return self._generate_breakdown(self.LANGUAGES, total_completions)
 
     def _generate_editors(self, total_completions: int, acceptance_rate: float) -> list[dict]:
-        """Generate editor breakdown for completions.
+        """Generate editor breakdown for completions (legacy flat format).
 
         Args:
             total_completions: Total completions for the day.
@@ -338,3 +336,139 @@ class CopilotMockDataGenerator:
             List of editor dictionaries.
         """
         return self._generate_breakdown(self.EDITORS, total_completions)
+
+    def _generate_top_level_languages(self, total_engaged_users: int) -> list[dict]:
+        """Generate top-level languages array (official schema).
+
+        In the official GitHub API, the top-level languages array only contains
+        name and total_engaged_users. Completion metrics are nested inside
+        editors > models > languages.
+
+        Args:
+            total_engaged_users: Total engaged users for the day.
+
+        Returns:
+            List of language dictionaries with only name and total_engaged_users.
+        """
+        result = []
+        remaining_users = total_engaged_users
+
+        for i, lang_name in enumerate(self.LANGUAGES):
+            if remaining_users <= 0:
+                break
+
+            # Last language gets all remaining users
+            if i == len(self.LANGUAGES) - 1:
+                lang_users = remaining_users
+            else:
+                lang_users = self.rng.randint(0, max(1, remaining_users // 2))
+                remaining_users -= lang_users
+
+            if lang_users > 0:
+                result.append(
+                    {
+                        "name": lang_name,
+                        "total_engaged_users": lang_users,
+                    }
+                )
+
+        return result
+
+    def _generate_editors_official(
+        self, total_completions: int, acceptance_rate: float, total_engaged_users: int
+    ) -> list[dict]:
+        """Generate editors with nested models > languages (official schema).
+
+        The official GitHub Copilot Metrics API nests completion metrics inside:
+        editors[].models[].languages[]
+
+        Args:
+            total_completions: Total completions for the day.
+            acceptance_rate: Base acceptance rate for calculations.
+            total_engaged_users: Total engaged users for the day.
+
+        Returns:
+            List of editor dictionaries with nested models and languages.
+        """
+        result = []
+        remaining_completions = total_completions
+        remaining_users = total_engaged_users
+
+        for i, editor_name in enumerate(self.EDITORS):
+            # Last editor gets all remaining completions
+            if i == len(self.EDITORS) - 1:
+                editor_completions = remaining_completions
+                editor_users = remaining_users
+            else:
+                editor_completions = self.rng.randint(0, max(1, remaining_completions // 2))
+                remaining_completions -= editor_completions
+                editor_users = self.rng.randint(0, max(1, remaining_users // 2))
+                remaining_users -= editor_users
+
+            if editor_completions > 0 or editor_users > 0:
+                # Generate model with languages (official structure)
+                model_languages = self._generate_model_languages(editor_completions, acceptance_rate)
+
+                result.append(
+                    {
+                        "name": editor_name,
+                        "total_engaged_users": max(1, editor_users) if editor_completions > 0 else editor_users,
+                        "models": [
+                            {
+                                "name": "default",
+                                "is_custom_model": False,
+                                "custom_model_training_date": None,
+                                "total_engaged_users": max(1, editor_users) if editor_completions > 0 else editor_users,
+                                "languages": model_languages,
+                            }
+                        ],
+                    }
+                )
+
+        return result
+
+    def _generate_model_languages(self, total_completions: int, acceptance_rate: float) -> list[dict]:
+        """Generate language breakdown for a model with official API field names.
+
+        This is used inside editors[].models[].languages[] and uses the official
+        GitHub API field names: total_code_suggestions, total_code_acceptances, etc.
+
+        Args:
+            total_completions: Total completions to distribute across languages.
+            acceptance_rate: Base acceptance rate for calculations (from scenario config).
+
+        Returns:
+            List of language dictionaries with official API field names.
+        """
+        result = []
+        remaining_completions = total_completions
+
+        for i, lang_name in enumerate(self.LANGUAGES):
+            # Last language gets all remaining completions
+            if i == len(self.LANGUAGES) - 1:
+                lang_completions = remaining_completions
+            else:
+                lang_completions = self.rng.randint(0, max(1, remaining_completions // 2))
+                remaining_completions -= lang_completions
+
+            if lang_completions > 0:
+                # Use passed acceptance rate with small variance (±5%) for per-language variation
+                rate_variance = self.rng.uniform(-0.05, 0.05)
+                lang_acceptance_rate = max(0.0, min(1.0, acceptance_rate + rate_variance))
+                lang_acceptances = int(lang_completions * lang_acceptance_rate)
+                lang_lines_suggested = int(lang_completions * self.rng.uniform(1.2, 2.0))
+                lang_lines_accepted = int(lang_lines_suggested * lang_acceptance_rate)
+
+                result.append(
+                    {
+                        "name": lang_name,
+                        "total_engaged_users": self.rng.randint(1, 10),
+                        # Official API field names
+                        "total_code_suggestions": lang_completions,
+                        "total_code_acceptances": lang_acceptances,
+                        "total_code_lines_suggested": lang_lines_suggested,
+                        "total_code_lines_accepted": lang_lines_accepted,
+                    }
+                )
+
+        return result

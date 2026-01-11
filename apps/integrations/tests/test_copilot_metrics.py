@@ -328,35 +328,73 @@ class TestFetchCopilotMetrics(TestCase):
 class TestParseMetricsResponse(TestCase):
     """Tests for parsing and normalizing Copilot metrics API response."""
 
+    def _make_official_fixture(
+        self,
+        *,
+        date: str = "2025-12-17",
+        total_active_users: int = 15,
+        total_engaged_users: int = 12,
+        suggestions: int = 5432,
+        acceptances: int = 3210,
+        lines_suggested: int = 8765,
+        lines_accepted: int = 4321,
+        chat_total: int = 234,
+        dotcom_chat_total: int = 123,
+        dotcom_prs_total: int = 45,
+    ) -> dict:
+        """Create test fixture in official GitHub Copilot Metrics API format.
+
+        Official schema has editors > models > languages (nested metrics).
+        """
+        return {
+            "date": date,
+            "total_active_users": total_active_users,
+            "total_engaged_users": total_engaged_users,
+            "copilot_ide_code_completions": {
+                "total_engaged_users": 10,
+                "editors": [
+                    {
+                        "name": "vscode",
+                        "total_engaged_users": 10,
+                        "models": [
+                            {
+                                "name": "default",
+                                "is_custom_model": False,
+                                "custom_model_training_date": None,
+                                "total_engaged_users": 10,
+                                "languages": [
+                                    {
+                                        "name": "python",
+                                        "total_engaged_users": 5,
+                                        "total_code_suggestions": suggestions,
+                                        "total_code_acceptances": acceptances,
+                                        "total_code_lines_suggested": lines_suggested,
+                                        "total_code_lines_accepted": lines_accepted,
+                                    }
+                                ],
+                            }
+                        ],
+                    }
+                ],
+            },
+            "copilot_ide_chat": {
+                "total_engaged_users": 8,
+                "total_chats": chat_total,
+            },
+            "copilot_dotcom_chat": {
+                "total_engaged_users": 5,
+                "total_chats": dotcom_chat_total,
+            },
+            "copilot_dotcom_pull_requests": {
+                "total_engaged_users": 3,
+                "total_prs": dotcom_prs_total,
+            },
+        }
+
     def test_parse_metrics_response_extracts_correct_fields(self):
         """Test that parse_metrics_response extracts and normalizes all required fields."""
-        # Arrange
-        raw_data = [
-            {
-                "date": "2025-12-17",
-                "total_active_users": 15,
-                "total_engaged_users": 12,
-                "copilot_ide_code_completions": {
-                    "total_engaged_users": 10,
-                    "total_completions": 5432,
-                    "total_acceptances": 3210,
-                    "total_lines_suggested": 8765,
-                    "total_lines_accepted": 4321,
-                },
-                "copilot_ide_chat": {
-                    "total_engaged_users": 8,
-                    "total_chats": 234,
-                },
-                "copilot_dotcom_chat": {
-                    "total_engaged_users": 5,
-                    "total_chats": 123,
-                },
-                "copilot_dotcom_pull_requests": {
-                    "total_engaged_users": 3,
-                    "total_prs": 45,
-                },
-            }
-        ]
+        # Arrange - Official API format with nested editors > models > languages
+        raw_data = [self._make_official_fixture()]
 
         # Act
         result = parse_metrics_response(raw_data)
@@ -369,6 +407,7 @@ class TestParseMetricsResponse(TestCase):
         self.assertEqual(metric["date"], "2025-12-17")
         self.assertEqual(metric["total_active_users"], 15)
         self.assertEqual(metric["total_engaged_users"], 12)
+        # Totals are aggregated from nested editors > models > languages
         self.assertEqual(metric["code_completions_total"], 5432)
         self.assertEqual(metric["code_completions_accepted"], 3210)
         self.assertEqual(metric["lines_suggested"], 8765)
@@ -379,56 +418,22 @@ class TestParseMetricsResponse(TestCase):
 
     def test_parse_metrics_response_handles_multiple_days(self):
         """Test that parse_metrics_response correctly processes multiple daily entries."""
-        # Arrange
+        # Arrange - Using official schema with nested editors > models > languages
         raw_data = [
-            {
-                "date": "2025-12-17",
-                "total_active_users": 15,
-                "total_engaged_users": 12,
-                "copilot_ide_code_completions": {
-                    "total_engaged_users": 10,
-                    "total_completions": 5432,
-                    "total_acceptances": 3210,
-                    "total_lines_suggested": 8765,
-                    "total_lines_accepted": 4321,
-                },
-                "copilot_ide_chat": {
-                    "total_engaged_users": 8,
-                    "total_chats": 234,
-                },
-                "copilot_dotcom_chat": {
-                    "total_engaged_users": 5,
-                    "total_chats": 123,
-                },
-                "copilot_dotcom_pull_requests": {
-                    "total_engaged_users": 3,
-                    "total_prs": 45,
-                },
-            },
-            {
-                "date": "2025-12-16",
-                "total_active_users": 14,
-                "total_engaged_users": 11,
-                "copilot_ide_code_completions": {
-                    "total_engaged_users": 9,
-                    "total_completions": 4567,
-                    "total_acceptances": 2890,
-                    "total_lines_suggested": 7654,
-                    "total_lines_accepted": 3890,
-                },
-                "copilot_ide_chat": {
-                    "total_engaged_users": 7,
-                    "total_chats": 198,
-                },
-                "copilot_dotcom_chat": {
-                    "total_engaged_users": 4,
-                    "total_chats": 98,
-                },
-                "copilot_dotcom_pull_requests": {
-                    "total_engaged_users": 2,
-                    "total_prs": 32,
-                },
-            },
+            self._make_official_fixture(
+                date="2025-12-17",
+                total_active_users=15,
+                total_engaged_users=12,
+                suggestions=5432,
+                acceptances=3210,
+            ),
+            self._make_official_fixture(
+                date="2025-12-16",
+                total_active_users=14,
+                total_engaged_users=11,
+                suggestions=4567,
+                acceptances=2890,
+            ),
         ]
 
         # Act
@@ -443,7 +448,7 @@ class TestParseMetricsResponse(TestCase):
 
     def test_parse_metrics_response_handles_missing_optional_fields(self):
         """Test that parse_metrics_response handles missing optional fields gracefully."""
-        # Arrange - Some fields might be missing in real API responses
+        # Arrange - Official schema but without chat/dotcom fields
         raw_data = [
             {
                 "date": "2025-12-17",
@@ -451,11 +456,32 @@ class TestParseMetricsResponse(TestCase):
                 "total_engaged_users": 12,
                 "copilot_ide_code_completions": {
                     "total_engaged_users": 10,
-                    "total_completions": 5432,
-                    "total_acceptances": 3210,
-                    "total_lines_suggested": 8765,
-                    "total_lines_accepted": 4321,
+                    "editors": [
+                        {
+                            "name": "vscode",
+                            "total_engaged_users": 10,
+                            "models": [
+                                {
+                                    "name": "default",
+                                    "is_custom_model": False,
+                                    "custom_model_training_date": None,
+                                    "total_engaged_users": 10,
+                                    "languages": [
+                                        {
+                                            "name": "python",
+                                            "total_engaged_users": 5,
+                                            "total_code_suggestions": 5432,
+                                            "total_code_acceptances": 3210,
+                                            "total_code_lines_suggested": 8765,
+                                            "total_code_lines_accepted": 4321,
+                                        }
+                                    ],
+                                }
+                            ],
+                        }
+                    ],
                 },
+                # No chat fields - optional
             }
         ]
 
@@ -465,6 +491,7 @@ class TestParseMetricsResponse(TestCase):
         # Assert
         metric = result[0]
         self.assertEqual(metric["date"], "2025-12-17")
+        # Totals aggregated from nested editors > models > languages
         self.assertEqual(metric["code_completions_total"], 5432)
         # Optional fields should default to 0 or None
         self.assertIn("chat_total", metric)

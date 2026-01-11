@@ -223,39 +223,24 @@ def parse_metrics_response(data):
         dotcom_chat_data = day_data.get("copilot_dotcom_chat", {})
         dotcom_prs_data = day_data.get("copilot_dotcom_pull_requests", {})
 
-        # Extract and transform languages array
-        languages = []
-        for lang in code_completions.get("languages", []):
-            languages.append(
-                {
-                    "name": lang.get("name"),
-                    "suggestions_shown": lang.get("total_completions", 0),
-                    "suggestions_accepted": lang.get("total_acceptances", 0),
-                    "lines_suggested": lang.get("total_lines_suggested", 0),
-                    "lines_accepted": lang.get("total_lines_accepted", 0),
-                }
-            )
+        # Aggregate languages from nested editors > models > languages structure
+        # Official GitHub API has metrics nested; top-level languages only has name/engaged_users
+        languages = _aggregate_languages_from_editors(code_completions.get("editors", []))
 
-        # Extract and transform editors array
-        editors = []
-        for editor in code_completions.get("editors", []):
-            editors.append(
-                {
-                    "name": editor.get("name"),
-                    "suggestions_shown": editor.get("total_completions", 0),
-                    "suggestions_accepted": editor.get("total_acceptances", 0),
-                    "active_users": editor.get("total_active_users", 0),
-                }
-            )
+        # Aggregate editors with totals from nested models > languages
+        editors = _aggregate_editors_from_nested(code_completions.get("editors", []))
+
+        # Aggregate top-level totals from nested structure
+        totals = _aggregate_totals_from_editors(code_completions.get("editors", []))
 
         normalized = {
             "date": day_data.get("date"),
             "total_active_users": day_data.get("total_active_users"),
             "total_engaged_users": day_data.get("total_engaged_users"),
-            "code_completions_total": code_completions.get("total_completions", 0),
-            "code_completions_accepted": code_completions.get("total_acceptances", 0),
-            "lines_suggested": code_completions.get("total_lines_suggested", 0),
-            "lines_accepted": code_completions.get("total_lines_accepted", 0),
+            "code_completions_total": totals["total_suggestions"],
+            "code_completions_accepted": totals["total_acceptances"],
+            "lines_suggested": totals["total_lines_suggested"],
+            "lines_accepted": totals["total_lines_accepted"],
             "chat_total": chat_data.get("total_chats", 0),
             "dotcom_chat_total": dotcom_chat_data.get("total_chats", 0),
             "dotcom_prs_total": dotcom_prs_data.get("total_prs", 0),
@@ -264,6 +249,118 @@ def parse_metrics_response(data):
         }
 
         result.append(normalized)
+
+    return result
+
+
+def _aggregate_totals_from_editors(editors: list[dict]) -> dict:
+    """Aggregate totals from nested editors > models > languages structure.
+
+    Official GitHub Copilot Metrics API doesn't have top-level totals.
+    This function aggregates from the nested structure.
+
+    Args:
+        editors: List of editor dicts with nested models > languages.
+
+    Returns:
+        dict with aggregated totals:
+            - total_suggestions
+            - total_acceptances
+            - total_lines_suggested
+            - total_lines_accepted
+    """
+    total_suggestions = 0
+    total_acceptances = 0
+    total_lines_suggested = 0
+    total_lines_accepted = 0
+
+    for editor in editors:
+        for model in editor.get("models", []):
+            for lang in model.get("languages", []):
+                total_suggestions += lang.get("total_code_suggestions", 0)
+                total_acceptances += lang.get("total_code_acceptances", 0)
+                total_lines_suggested += lang.get("total_code_lines_suggested", 0)
+                total_lines_accepted += lang.get("total_code_lines_accepted", 0)
+
+    return {
+        "total_suggestions": total_suggestions,
+        "total_acceptances": total_acceptances,
+        "total_lines_suggested": total_lines_suggested,
+        "total_lines_accepted": total_lines_accepted,
+    }
+
+
+def _aggregate_languages_from_editors(editors: list[dict]) -> list[dict]:
+    """Aggregate per-language metrics from nested editors > models > languages.
+
+    Combines metrics across all editors/models for each language.
+
+    Args:
+        editors: List of editor dicts with nested models > languages.
+
+    Returns:
+        list of language dicts with combined metrics:
+            - name: Language name
+            - suggestions_shown: Total suggestions across all editors
+            - suggestions_accepted: Total acceptances
+            - lines_suggested: Total lines suggested
+            - lines_accepted: Total lines accepted
+    """
+    # Use dict to aggregate by language name
+    lang_totals: dict[str, dict] = {}
+
+    for editor in editors:
+        for model in editor.get("models", []):
+            for lang in model.get("languages", []):
+                name = lang.get("name", "unknown")
+                if name not in lang_totals:
+                    lang_totals[name] = {
+                        "name": name,
+                        "suggestions_shown": 0,
+                        "suggestions_accepted": 0,
+                        "lines_suggested": 0,
+                        "lines_accepted": 0,
+                    }
+                lang_totals[name]["suggestions_shown"] += lang.get("total_code_suggestions", 0)
+                lang_totals[name]["suggestions_accepted"] += lang.get("total_code_acceptances", 0)
+                lang_totals[name]["lines_suggested"] += lang.get("total_code_lines_suggested", 0)
+                lang_totals[name]["lines_accepted"] += lang.get("total_code_lines_accepted", 0)
+
+    return list(lang_totals.values())
+
+
+def _aggregate_editors_from_nested(editors: list[dict]) -> list[dict]:
+    """Aggregate per-editor metrics from nested models > languages.
+
+    Args:
+        editors: List of editor dicts with nested models > languages.
+
+    Returns:
+        list of editor dicts with aggregated metrics:
+            - name: Editor name
+            - suggestions_shown: Total suggestions for this editor
+            - suggestions_accepted: Total acceptances
+            - active_users: Users active in this editor
+    """
+    result = []
+
+    for editor in editors:
+        total_suggestions = 0
+        total_acceptances = 0
+
+        for model in editor.get("models", []):
+            for lang in model.get("languages", []):
+                total_suggestions += lang.get("total_code_suggestions", 0)
+                total_acceptances += lang.get("total_code_acceptances", 0)
+
+        result.append(
+            {
+                "name": editor.get("name"),
+                "suggestions_shown": total_suggestions,
+                "suggestions_accepted": total_acceptances,
+                "active_users": editor.get("total_engaged_users", 0),
+            }
+        )
 
     return result
 
