@@ -6,14 +6,12 @@ from pathlib import Path
 import yaml
 from django.test import TestCase
 
+from apps.metrics.prompts.constants import PROMPT_VERSION
 from apps.metrics.prompts.export import (
     export_promptfoo_config,
     get_promptfoo_config,
 )
-from apps.metrics.services.llm_prompts import (
-    PR_ANALYSIS_SYSTEM_PROMPT,
-    PROMPT_VERSION,
-)
+from apps.metrics.services.llm_prompts import get_system_prompt
 
 
 class TestGetPromptfooConfig(TestCase):
@@ -99,11 +97,11 @@ class TestExportPromptfooConfig(TestCase):
             self.assertIn("Response Format", content)
 
     def test_prompt_file_matches_source(self):
-        """Prompt file should exactly match source of truth."""
+        """Prompt file should exactly match source of truth (Jinja2 template)."""
         with tempfile.TemporaryDirectory() as tmpdir:
             result = export_promptfoo_config(Path(tmpdir))
             content = result["prompt"].read_text()
-            self.assertEqual(content, PR_ANALYSIS_SYSTEM_PROMPT)
+            self.assertEqual(content, get_system_prompt())
 
     def test_config_file_is_valid_yaml(self):
         """Config file should be valid YAML."""

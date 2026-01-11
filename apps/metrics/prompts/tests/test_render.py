@@ -9,9 +9,7 @@ from apps.metrics.prompts.render import (
     list_template_sections,
     render_system_prompt,
 )
-from apps.metrics.services.llm_prompts import (
-    PR_ANALYSIS_SYSTEM_PROMPT,
-)
+from apps.metrics.services.llm_prompts import get_system_prompt
 
 
 class TestRenderSystemPrompt(TestCase):
@@ -23,14 +21,15 @@ class TestRenderSystemPrompt(TestCase):
         self.assertIsInstance(result, str)
         self.assertGreater(len(result), 0)
 
-    def test_matches_original_prompt(self):
-        """Rendered output should exactly match the original hardcoded prompt.
+    def test_matches_get_system_prompt(self):
+        """render_system_prompt() should match get_system_prompt().
 
-        This is the critical equivalence test that proves templates produce
-        identical output to the original PR_ANALYSIS_SYSTEM_PROMPT.
+        Both functions use the same Jinja2 template as the single source of truth.
+        This test ensures they return identical output.
         """
         rendered = render_system_prompt()
-        self.assertEqual(rendered, PR_ANALYSIS_SYSTEM_PROMPT)
+        from_getter = get_system_prompt()
+        self.assertEqual(rendered, from_getter)
 
     def test_contains_all_major_sections(self):
         """Should contain all major section headers."""
@@ -103,9 +102,9 @@ class TestGetTemplateDir(TestCase):
         self.assertTrue(result.is_dir())
 
     def test_contains_system_template(self):
-        """Should contain system.jinja2 template."""
+        """Should contain system.jinja2 template in pr_analysis subdirectory."""
         result = get_template_dir()
-        system_template = result / "system.jinja2"
+        system_template = result / "pr_analysis" / "system.jinja2"
         self.assertTrue(system_template.exists())
 
 
@@ -344,14 +343,14 @@ class TestUserPromptTemplate(TestCase):
     """Tests for user.jinja2 template existence and structure."""
 
     def test_user_template_exists(self):
-        """user.jinja2 template should exist."""
+        """user.jinja2 template should exist in pr_analysis subdirectory."""
         result = get_template_dir()
-        user_template = result / "user.jinja2"
+        user_template = result / "pr_analysis" / "user.jinja2"
         self.assertTrue(user_template.exists(), "user.jinja2 template should exist")
 
     def test_user_template_is_readable(self):
         """user.jinja2 template should be readable."""
         result = get_template_dir()
-        user_template = result / "user.jinja2"
+        user_template = result / "pr_analysis" / "user.jinja2"
         content = user_template.read_text()
         self.assertGreater(len(content), 0)

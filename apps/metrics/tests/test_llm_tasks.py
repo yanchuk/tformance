@@ -12,7 +12,7 @@ from apps.metrics.factories import (
     TeamFactory,
     TeamMemberFactory,
 )
-from apps.metrics.services.llm_prompts import PROMPT_VERSION
+from apps.metrics.prompts.constants import PROMPT_VERSION
 
 # Import tasks at module level for cleaner mocking
 from apps.metrics.tasks import run_all_teams_llm_analysis, run_llm_analysis_batch

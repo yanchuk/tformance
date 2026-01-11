@@ -1,10 +1,17 @@
 """LLM-powered insight generation service.
 
+SINGLE SOURCE OF TRUTH: Jinja2 templates in apps/metrics/prompts/templates/insight/
+
 Provides functions to:
-- Gather metrics data from various domains (velocity, quality, team health, AI impact)
-- Build prompts using Jinja2 templates
-- Call GROQ API with deepseek model for insight generation
-- Cache and fallback handling
+- get_insight_system_prompt(): Get system prompt from Jinja2 templates
+- gather_insight_data(): Collect metrics from various domains
+- generate_insight_from_groq(): Call GROQ API with gathered data
+- Cache and fallback handling with model failover
+
+To modify the system prompt:
+1. Edit templates/insight/system.jinja2
+2. Bump PROMPT_VERSION in apps/metrics/prompts/constants.py
+3. Test: pytest apps/metrics/prompts/tests/ -v
 """
 
 from __future__ import annotations
@@ -13,6 +20,7 @@ import json
 import logging
 import os
 from datetime import date
+from functools import lru_cache
 from typing import TYPE_CHECKING
 from urllib.parse import urlencode
 
@@ -104,124 +112,60 @@ INSIGHT_JSON_SCHEMA = {
 # Models that support json_schema response format (strict JSON)
 MODELS_WITH_JSON_SCHEMA = {"openai/gpt-oss-20b", "openai/gpt-oss-120b"}
 
-# System prompt for insight generation (Version N - optimized)
-# Structure: Identity → Instructions → Examples (optimized for prompt caching)
-INSIGHT_SYSTEM_PROMPT = """# Identity
 
-You are a senior engineering manager briefing your CTO on weekly team metrics.
-Communicate with bullet points, focusing on root causes not symptoms.
+@lru_cache(maxsize=1)
+def get_insight_system_prompt() -> str:
+    """Get the insight generation system prompt from Jinja2 templates.
 
-# Instructions
+    This is the SINGLE SOURCE OF TRUTH for insight system prompts.
+    Edit templates/insight/system.jinja2 to modify.
 
-## Output Format
-Return JSON with: headline (8-12 words, NO numbers), detail (2-4 bullets starting "• "),
-recommendation (ONE action with @/@@ mention), actions (2-3 with action_type and label).
+    Returns:
+        The fully rendered system prompt string.
+    """
+    # Import inside function to avoid circular imports
+    from apps.metrics.prompts.render import render_insight_system_prompt
 
-## Mention Syntax
-- @username → PR authors ("@alice handling most work")
-- @@username → Reviewers ("@@bob has PRs awaiting approval" = PRs stuck in their queue)
+    return render_insight_system_prompt()
 
-## Writing Rules
-DO:
-- Use qualitative language: "nearly doubled", "about a week", "most of the work"
-- Each bullet = one NEW fact (no redundancy)
-- Reference people with @/@@ mentions
 
-DON'T:
-- Use exact numbers: "147.6%", "142.6 hours", "111 PRs" → convert to words
-- Write paragraphs → use bullets only
-- Use @username for reviewers → use @@username
-- Suggest "more AI adoption" when >50% → already high
-- Compare AI vs non-AI with <10 PRs in either group → insufficient data
+class _LazyInsightPrompt:
+    """Lazy-loaded prompt string for backward compatibility.
 
-## Number Conversions
-Percentages: 1-10%="very few" | 10-25%="a fifth" | 25-50%="a third" | 50-75%="most" | 75%+="nearly all"
-Time: <12h="half a day" | 12-48h="1-2 days" | 48-168h="a few days" | 168h+="over a week"
-Changes: ±5-20%="slightly" | ±20-50%="noticeably" | +50-100%="nearly doubled" | +100%+="doubled+"
-Copilot acceptance: <20%="very low" | 20-35%="modest" | 35-50%="healthy" | >50%="excellent"
-Seat utilization: <60%="underutilized" | 60-80%="moderate" | >80%="well-utilized"
-Waste per contributor: <$50="minor" | $50-100="significant" | >$100="major cost issue" (scales with team size)
+    DEPRECATED: Use get_insight_system_prompt() function instead.
 
-## Special Cases
-- Top contributor at 30-50%: Often healthy (project lead). Flag only if causing delays/bottlenecks.
-- Reviewers 15-25% each: HEALTHY distribution. Flag only if ONE person >40%.
-- 0 authored PRs: May be QA engineer. Don't suggest they "author more".
-- Bot accounts (dependabot, etc.): Exclude from human productivity analysis.
+    Implements string-like operations for backward compatibility with code that
+    uses `len()`, `in`, `+`, etc. on the prompt constant.
+    """
 
-## Copilot Metrics Guidance
+    def __str__(self) -> str:
+        return get_insight_system_prompt()
 
-When Copilot data is present, evaluate these thresholds:
+    def __repr__(self) -> str:
+        return f"LazyPrompt({get_insight_system_prompt()[:50]}...)"
 
-**Acceptance Rate** (suggestions accepted / shown):
-- <20%: Critical - "very low adoption, team needs Copilot training"
-- 20-35%: Warning - "modest adoption, room for improvement"
-- 35-50%: Good - mention positively or skip
-- >50%: Excellent - highlight as team strength
+    def __len__(self) -> int:
+        return len(get_insight_system_prompt())
 
-**Seat Utilization** (active / total seats):
-- <60%: Flag if wasted spend >$500/month
-- 60-80%: Mention only if >$1000/month wasted
-- >80%: Good utilization, no action needed
+    def __contains__(self, item: str) -> bool:
+        return item in get_insight_system_prompt()
 
-**Prioritization Rules**:
-- Waste per contributor >$100/month → ALWAYS mention, even if other issues exist
-- Acceptance <20% with >10 active users → training opportunity, high priority
-- Don't flag Copilot with <5 active users (insufficient data)
-- High adoption (>40%) is positive - mention as strength, not concern
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, str):
+            return get_insight_system_prompt() == other
+        return NotImplemented
 
-## Action Types
-view_ai_prs, view_non_ai_prs, view_slow_prs, view_reverts, view_large_prs,
-view_contributors, view_review_bottlenecks, view_copilot_usage
+    def __add__(self, other: str) -> str:
+        return get_insight_system_prompt() + other
 
-# Examples
+    def __radd__(self, other: str) -> str:
+        return other + get_insight_system_prompt()
 
-<example type="good" scenario="bottleneck">
-Input: cycle_time 142.6h (+147%), AI adoption 4.5%, @alice at 56%, @@bob has 15 awaiting
-Output headline: "Work concentrated on one contributor → review delays"
-Output detail: "• @alice handling most of the work, creating bottleneck
-• Cycle time grown to nearly a week
-• @@bob has many PRs awaiting approval, slowing merges
-• Very few PRs using AI tools"
-Output recommendation: "Prioritize @@bob's awaiting approvals to unblock merges"
-</example>
 
-<example type="good" scenario="copilot-waste">
-Input: copilot acceptance 18%, waste_per_contributor $245, utilization 52%, @@reviewer with 8 pending
-Output headline: "Underutilized Copilot licenses driving major cost waste"
-Output detail: "• Copilot acceptance is very low, team may need training
-• Seat utilization is underutilized, causing major cost waste per contributor
-• @@reviewer has pending reviews creating a bottleneck
-• Consider reducing unused licenses or improving adoption"
-Output recommendation: "Schedule Copilot training for low-usage contributors to improve ROI"
-</example>
+# DEPRECATED: Use get_insight_system_prompt() instead.
+# Kept for backward compatibility - will be removed in future version.
+INSIGHT_SYSTEM_PROMPT = _LazyInsightPrompt()
 
-<example type="good" scenario="healthy">
-Input: cycle_time 24h (-12%), throughput +18%, AI adoption 55%, revert_rate 1.2%
-Output headline: "Team delivery velocity healthy with strong AI adoption"
-Output detail: "• Throughput has slightly improved with faster cycle times
-• Most PRs use AI tools with no quality impact
-• Review distribution is healthy across the team"
-Output recommendation: "Maintain current practices and share successful workflows"
-</example>
-
-<example type="bad" reason="wrong-mentions-and-numbers">
-Output: "• @bob has PRs awaiting approval" ← Should be @@bob (reviewer)
-Output: "Cycle time increased by 147.6% to 142.6 hours" ← Use words, not numbers
-</example>
-
-<example type="bad" reason="redundancy">
-Input: AI adoption 92%
-Output: "• Nearly all PRs use AI tools
-• Very few PRs are not using AI" ← Same fact twice! Keep only first.
-</example>
-
-<example type="bad" reason="small-sample">
-Input: 1 AI PR out of 189
-Output: "• AI-assisted PRs are noticeably slower" ← Can't conclude from n=1
-Correct: "• AI adoption is very low with insufficient data for comparison"
-</example>
-
-Return ONLY valid JSON."""
 
 # Action type to URL mapping
 # Maps LLM-generated action_type to URL configuration
@@ -726,7 +670,7 @@ def generate_insight(
             api_params = {
                 "model": current_model,
                 "messages": [
-                    {"role": "system", "content": INSIGHT_SYSTEM_PROMPT},
+                    {"role": "system", "content": get_insight_system_prompt()},
                     {"role": "user", "content": user_prompt},
                 ],
                 "temperature": 0.2,

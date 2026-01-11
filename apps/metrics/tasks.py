@@ -19,6 +19,7 @@ from apps.metrics.insights.rules import (
     UnlinkedPRsRule,
 )
 from apps.metrics.models import PullRequest
+from apps.metrics.prompts.constants import PROMPT_VERSION
 from apps.metrics.services.insight_llm import (
     cache_insight,
     gather_insight_data,
@@ -26,7 +27,6 @@ from apps.metrics.services.insight_llm import (
 )
 from apps.metrics.services.llm_prompts import (
     PR_ANALYSIS_SYSTEM_PROMPT,
-    PROMPT_VERSION,
     get_user_prompt,
 )
 from apps.teams.models import Team

@@ -2,9 +2,9 @@
 
 from django.test import TestCase
 
+from apps.metrics.prompts.constants import PROMPT_VERSION
 from apps.metrics.services.llm_prompts import (
     PR_ANALYSIS_SYSTEM_PROMPT,
-    PROMPT_VERSION,
     get_user_prompt,
 )
 

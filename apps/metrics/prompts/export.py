@@ -21,9 +21,9 @@ from typing import Any
 
 import yaml
 
+from apps.metrics.prompts.constants import PROMPT_VERSION
 from apps.metrics.prompts.golden_tests import GOLDEN_TESTS, GoldenTest
 from apps.metrics.prompts.render import render_system_prompt, render_user_prompt
-from apps.metrics.services.llm_prompts import PROMPT_VERSION
 
 
 def get_promptfoo_config(prompt_filename: str) -> dict[str, Any]:

@@ -32,7 +32,7 @@ from django.core.management.base import BaseCommand
 
 from apps.integrations.services.groq_batch import GroqBatchProcessor
 from apps.metrics.models import PullRequest
-from apps.metrics.services.llm_prompts import PROMPT_VERSION
+from apps.metrics.prompts.constants import PROMPT_VERSION
 from apps.teams.models import Team
 
 

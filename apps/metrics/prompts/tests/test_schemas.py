@@ -396,16 +396,15 @@ class TestInsightSchemaValidation(TestCase):
         self.assertFalse(is_valid)
         self.assertTrue(any("headline" in e for e in errors))
 
-    def test_missing_metric_cards_fails(self):
-        """Response missing 'metric_cards' should fail."""
+    def test_without_metric_cards_still_valid(self):
+        """Response without 'metric_cards' should still be valid (computed in Python)."""
         response = {
             "headline": "Test headline with enough length",
             "detail": "Some detail with enough characters.",
-            "recommendation": "Some recommendation",
+            "recommendation": "Some recommendation that helps",
         }
         is_valid, errors = validate_insight_response(response)
-        self.assertFalse(is_valid)
-        self.assertTrue(any("metric_cards" in e for e in errors))
+        self.assertTrue(is_valid, f"Response without metric_cards should be valid: {errors}")
 
     def test_wrong_metric_cards_count_fails(self):
         """Response with wrong number of metric cards should fail."""
@@ -472,9 +471,13 @@ class TestInsightSchemaValidation(TestCase):
         self.assertTrue(is_valid, f"Response without is_fallback should be valid: {errors}")
 
     def test_insight_schema_has_required_fields(self):
-        """Insight schema should require headline, detail, recommendation, metric_cards."""
+        """Insight schema should require headline, detail, recommendation.
+
+        Note: metric_cards is NOT required as it's computed in Python, not by LLM.
+        """
         required = INSIGHT_RESPONSE_SCHEMA["required"]
         self.assertIn("headline", required)
         self.assertIn("detail", required)
         self.assertIn("recommendation", required)
-        self.assertIn("metric_cards", required)
+        # metric_cards NOT required - computed in Python, not returned by LLM
+        self.assertNotIn("metric_cards", required)

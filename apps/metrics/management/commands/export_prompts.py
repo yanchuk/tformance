@@ -17,8 +17,8 @@ from pathlib import Path
 
 from django.core.management.base import BaseCommand
 
+from apps.metrics.prompts.constants import PROMPT_VERSION
 from apps.metrics.prompts.export import export_promptfoo_config
-from apps.metrics.services.llm_prompts import PROMPT_VERSION
 
 
 class Command(BaseCommand):
