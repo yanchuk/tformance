@@ -21,6 +21,33 @@ from apps.metrics.services.dashboard._helpers import (
 from apps.teams.models import Team
 from apps.utils.date_utils import end_of_day, start_of_day
 
+# Known bot username patterns to exclude from review distribution/bottleneck analysis
+# These are automated tools, not human reviewers
+BOT_REVIEWER_PATTERNS = (
+    "bot",
+    "dependabot",
+    "renovate",
+    "coderabbit",  # AI code review bot (coderabbitai)
+    "github-actions",
+    "codecov",
+    "snyk",
+)
+
+
+def _is_bot_reviewer(username: str | None) -> bool:
+    """Check if a reviewer username appears to be a bot.
+
+    Args:
+        username: GitHub username to check
+
+    Returns:
+        True if username matches bot patterns
+    """
+    if not username:
+        return False
+    username_lower = username.lower()
+    return any(pattern in username_lower for pattern in BOT_REVIEWER_PATTERNS)
+
 
 def get_review_distribution(
     team: Team, start_date: date, end_date: date, repo: str | None = None, limit: int | None = None
@@ -59,14 +86,15 @@ def get_review_distribution(
     reviews = (
         PRReview.objects.filter(**filters)  # noqa: TEAM001 - team in filters
         .exclude(reviewer__isnull=True)  # Filter out reviews without matched reviewer
-        .values("reviewer__id", "reviewer__display_name", "reviewer__github_id")
+        .values("reviewer__id", "reviewer__display_name", "reviewer__github_id", "reviewer__github_username")
         .annotate(count=Count("pull_request", distinct=True))  # Count unique PRs, not review submissions
         .order_by("-count")
     )
 
-    # Apply limit if specified
+    # Filter out bot reviewers and apply limit
+    human_reviews = [r for r in reviews if not _is_bot_reviewer(r["reviewer__github_username"])]
     if limit is not None:
-        reviews = reviews[:limit]
+        human_reviews = human_reviews[:limit]
 
     return [
         {
@@ -76,7 +104,7 @@ def get_review_distribution(
             "initials": _compute_initials(r["reviewer__display_name"]),
             "count": r["count"],
         }
-        for r in reviews
+        for r in human_reviews
     ]
 
 
@@ -421,8 +449,10 @@ def detect_review_bottleneck(
             pending_counts[reviewer_id]["github_username"] = review["reviewer__github_username"] or "unknown"
             pending_counts[reviewer_id]["pending_count"] += 1
 
-    # Filter out reviewers with 0 pending (all their reviews were approved)
-    reviewer_counts = [r for r in pending_counts.values() if r["pending_count"] > 0]
+    # Filter out reviewers with 0 pending (all their reviews were approved) and bot reviewers
+    reviewer_counts = [
+        r for r in pending_counts.values() if r["pending_count"] > 0 and not _is_bot_reviewer(r["github_username"])
+    ]
 
     if len(reviewer_counts) < 2:
         # Can't have a bottleneck with only 1 reviewer (no comparison)

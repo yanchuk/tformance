@@ -319,6 +319,7 @@ BOT_USERNAME_PATTERNS = (
     "release-please",
     "auto-merge",
     "mergify",
+    "coderabbit",  # AI code review bot (coderabbitai)
 )
 
 

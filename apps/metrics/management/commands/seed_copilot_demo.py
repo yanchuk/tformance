@@ -26,6 +26,7 @@ from decimal import Decimal
 from django.core.management.base import BaseCommand, CommandError
 
 from apps.integrations.services.copilot_metrics import (
+    _aggregate_totals_from_editors,
     parse_metrics_response,
     sync_copilot_editor_data,
     sync_copilot_language_data,
@@ -146,9 +147,13 @@ class Command(BaseCommand):
             day_date = date.fromisoformat(day_data["date"])
             completions_data = day_data["copilot_ide_code_completions"]
 
+            # Aggregate totals from nested editors > models > languages structure
+            # (official GitHub API schema doesn't have top-level totals)
+            aggregated = _aggregate_totals_from_editors(completions_data.get("editors", []))
+
             # Distribute daily totals across members (scaled for team size)
-            raw_completions = completions_data["total_completions"]
-            raw_acceptances = completions_data["total_acceptances"]
+            raw_completions = aggregated["total_suggestions"]
+            raw_acceptances = aggregated["total_acceptances"]
             total_completions = int(raw_completions * scale_factor)
             total_acceptances = int(raw_acceptances * scale_factor)
 

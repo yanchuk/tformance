@@ -1,23 +1,23 @@
-{% load i18n %}
+{% load i18n number_filters %}
 <div class="grid grid-cols-3 gap-4 mb-4">
   <!-- Bot Review Rate - Primary metric -->
-  <div class="stat bg-base-200 rounded-lg p-4">
+  <div class="stat bg-base-200 rounded-lg p-4 overflow-hidden">
     <div class="stat-title text-xs">{% trans "Bot Rate" %}</div>
-    <div class="stat-value text-2xl text-primary">
+    <div class="stat-value text-lg tabular-nums text-primary">
       {% if metrics.ai_review_pct %}{{ metrics.ai_review_pct|floatformat:0 }}%{% else %}0%{% endif %}
     </div>
   </div>
 
   <!-- AI Bot Reviews -->
-  <div class="stat bg-base-200 rounded-lg p-4">
+  <div class="stat bg-base-200 rounded-lg p-4 overflow-hidden">
     <div class="stat-title text-xs">{% trans "Bot Reviews" %}</div>
-    <div class="stat-value text-2xl text-base-content/80">{{ metrics.ai_reviews|default:0 }}</div>
+    <div class="stat-value text-lg tabular-nums text-base-content/80">{{ metrics.ai_reviews|default:0|format_compact }}</div>
   </div>
 
   <!-- Total Reviews -->
-  <div class="stat bg-base-200 rounded-lg p-4">
+  <div class="stat bg-base-200 rounded-lg p-4 overflow-hidden">
     <div class="stat-title text-xs">{% trans "Total" %}</div>
-    <div class="stat-value text-2xl text-base-content/80">{{ metrics.total_reviews|default:0 }}</div>
+    <div class="stat-value text-lg tabular-nums text-base-content/80">{{ metrics.total_reviews|default:0|format_compact }}</div>
   </div>
 </div>
 

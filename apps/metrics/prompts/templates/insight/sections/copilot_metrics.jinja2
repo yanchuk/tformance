@@ -1,0 +1,67 @@
+## Copilot Usage Metrics
+{% if copilot_metrics %}
+- Active users (this period): {{ copilot_metrics.active_users }}
+{% if copilot_metrics.inactive_count > 0 %}
+- Inactive licenses: {{ copilot_metrics.inactive_count }} (users with Copilot access but zero usage)
+{% endif %}
+- Team acceptance rate: {{ "%.1f"|format(copilot_metrics.avg_acceptance_rate) }}%{% if copilot_metrics.avg_acceptance_rate < 20 %} [LOW - team may need training]{% elif copilot_metrics.avg_acceptance_rate > 40 %} [GOOD - healthy adoption]{% endif %}
+
+- Total suggestions shown: {{ copilot_metrics.total_suggestions }}
+- Total suggestions accepted: {{ copilot_metrics.total_acceptances }}
+{% if copilot_metrics.top_users %}
+- Top performers:
+{% for user in copilot_metrics.top_users %}
+  - {{ user.name }}: {{ user.suggestions }} suggestions, {{ user.acceptances }} accepted
+{% endfor %}
+{% endif %}
+{% if copilot_metrics.seat_data %}
+
+### Seat Utilization
+- Total licensed seats: {{ copilot_metrics.seat_data.total_seats }}
+- Active seats: {{ copilot_metrics.seat_data.active_seats }}
+- Inactive seats: {{ copilot_metrics.seat_data.inactive_seats }}
+- Utilization rate: {{ copilot_metrics.seat_data.utilization_rate }}%
+{% if copilot_metrics.seat_data.wasted_spend > 0 %}
+- Wasted spend: ${{ copilot_metrics.seat_data.wasted_spend }}/month on unused seats
+{% if copilot_metrics.waste_per_contributor %}
+- Waste per active contributor: ${{ copilot_metrics.waste_per_contributor }}/month{% if copilot_metrics.waste_per_contributor > 100 %} [HIGH - >$100/contributor]{% elif copilot_metrics.waste_per_contributor > 50 %} [MODERATE]{% endif %}
+
+{% endif %}
+{% endif %}
+{% if copilot_metrics.seat_data.cost_per_active_user %}
+- Cost per active user: ${{ copilot_metrics.seat_data.cost_per_active_user }}/month
+{% endif %}
+{% endif %}
+{% if copilot_metrics.delivery_impact %}
+
+### Delivery Impact
+- Copilot PRs: {{ copilot_metrics.delivery_impact.copilot_prs_count }}
+- Non-Copilot PRs: {{ copilot_metrics.delivery_impact.non_copilot_prs_count }}
+{% if copilot_metrics.delivery_impact.cycle_time_improvement_percent > 0 %}
+- Cycle time: {{ copilot_metrics.delivery_impact.cycle_time_improvement_percent }}% faster with Copilot
+{% elif copilot_metrics.delivery_impact.cycle_time_improvement_percent < 0 %}
+- Cycle time: {{ -copilot_metrics.delivery_impact.cycle_time_improvement_percent }}% slower with Copilot
+{% else %}
+- Cycle time: No difference
+{% endif %}
+{% if copilot_metrics.delivery_impact.review_time_improvement_percent > 0 %}
+- Review time: {{ copilot_metrics.delivery_impact.review_time_improvement_percent }}% faster with Copilot
+{% elif copilot_metrics.delivery_impact.review_time_improvement_percent < 0 %}
+- Review time: {{ -copilot_metrics.delivery_impact.review_time_improvement_percent }}% slower with Copilot
+{% else %}
+- Review time: No difference
+{% endif %}
+{% if not copilot_metrics.delivery_impact.sample_sufficient %}
+- Note: Limited data - small sample size, results may not be statistically significant
+{% endif %}
+{% endif %}
+{% if copilot_metrics.champions %}
+
+### Copilot Champions (potential mentors)
+{% for champion in copilot_metrics.champions %}
+- @{{ champion.github_username }}: {{ "%.0f"|format(champion.acceptance_rate) }}% acceptance, {{ champion.prs_merged }} PRs merged, {{ "%.1f"|format(champion.avg_cycle_time) }}h avg cycle time
+{% endfor %}
+{% endif %}
+{% else %}
+- No Copilot usage data available for this period
+{% endif %}

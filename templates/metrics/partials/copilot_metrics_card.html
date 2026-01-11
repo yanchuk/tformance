@@ -2,29 +2,29 @@
 {% if metrics.total_suggestions or metrics.active_users %}
 <div class="grid grid-cols-2 gap-4">
   <!-- Acceptance Rate - Primary metric -->
-  <div class="stat bg-base-200 rounded-lg p-4">
+  <div class="stat bg-base-200 rounded-lg p-4 overflow-hidden">
     <div class="stat-title text-xs">{% trans "Acceptance Rate" %}</div>
-    <div class="stat-value text-2xl text-primary">
+    <div class="stat-value text-2xl tabular-nums text-primary">
       {% if metrics.acceptance_rate %}{{ metrics.acceptance_rate|floatformat:0 }}%{% else %}–{% endif %}
     </div>
   </div>
 
   <!-- Active Users -->
-  <div class="stat bg-base-200 rounded-lg p-4">
+  <div class="stat bg-base-200 rounded-lg p-4 overflow-hidden">
     <div class="stat-title text-xs">{% trans "Active Users" %}</div>
-    <div class="stat-value text-2xl">{{ metrics.active_users|default:0 }}</div>
+    <div class="stat-value text-2xl tabular-nums">{{ metrics.active_users|default:0|format_compact }}</div>
   </div>
 
   <!-- Total Suggestions -->
-  <div class="stat bg-base-200 rounded-lg p-4">
+  <div class="stat bg-base-200 rounded-lg p-4 overflow-hidden">
     <div class="stat-title text-xs">{% trans "Suggestions" %}</div>
-    <div class="stat-value text-2xl text-base-content/80 tabular-nums">{{ metrics.total_suggestions|default:0|format_compact }}</div>
+    <div class="stat-value text-xl tabular-nums text-base-content/80">{{ metrics.total_suggestions|default:0|format_compact }}</div>
   </div>
 
   <!-- Total Accepted -->
-  <div class="stat bg-base-200 rounded-lg p-4">
+  <div class="stat bg-base-200 rounded-lg p-4 overflow-hidden">
     <div class="stat-title text-xs">{% trans "Accepted" %}</div>
-    <div class="stat-value text-2xl text-base-content/80 tabular-nums">{{ metrics.total_accepted|default:0|format_compact }}</div>
+    <div class="stat-value text-xl tabular-nums text-base-content/80">{{ metrics.total_accepted|default:0|format_compact }}</div>
   </div>
 </div>
 {% else %}

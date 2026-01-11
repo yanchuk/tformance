@@ -1,27 +1,27 @@
-{% load i18n %}
+{% load i18n number_filters %}
 {% if comparison_data %}
 <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
   <!-- Copilot PRs Count -->
-  <div class="stat bg-base-200 rounded-lg p-4">
+  <div class="stat bg-base-200 rounded-lg p-4 overflow-hidden">
     <div class="stat-title text-xs">{% trans "Copilot PRs" %}</div>
-    <div class="stat-value text-2xl">{{ comparison_data.copilot_prs.count }}</div>
+    <div class="stat-value text-xl tabular-nums">{{ comparison_data.copilot_prs.count|format_compact }}</div>
   </div>
   <!-- Non-Copilot PRs Count -->
-  <div class="stat bg-base-200 rounded-lg p-4">
+  <div class="stat bg-base-200 rounded-lg p-4 overflow-hidden">
     <div class="stat-title text-xs">{% trans "Non-Copilot PRs" %}</div>
-    <div class="stat-value text-2xl">{{ comparison_data.non_copilot_prs.count }}</div>
+    <div class="stat-value text-xl tabular-nums">{{ comparison_data.non_copilot_prs.count|format_compact }}</div>
   </div>
   <!-- Cycle Time Improvement -->
-  <div class="stat bg-base-200 rounded-lg p-4">
-    <div class="stat-title text-xs">{% trans "Cycle Time Impact" %}</div>
-    <div class="stat-value text-2xl tabular-nums {% if comparison_data.improvement.cycle_time_percent < 0 %}text-success{% elif comparison_data.improvement.cycle_time_percent > 0 %}text-error{% endif %}">
+  <div class="stat bg-base-200 rounded-lg p-4 overflow-hidden">
+    <div class="stat-title text-xs">{% trans "Cycle Time Imp." %}</div>
+    <div class="stat-value text-xl tabular-nums {% if comparison_data.improvement.cycle_time_percent < 0 %}text-success{% elif comparison_data.improvement.cycle_time_percent > 0 %}text-error{% endif %}">
       {{ comparison_data.improvement.cycle_time_percent }}%
     </div>
   </div>
   <!-- Review Time Improvement -->
-  <div class="stat bg-base-200 rounded-lg p-4">
-    <div class="stat-title text-xs">{% trans "Review Time Impact" %}</div>
-    <div class="stat-value text-2xl tabular-nums {% if comparison_data.improvement.review_time_percent < 0 %}text-success{% elif comparison_data.improvement.review_time_percent > 0 %}text-error{% endif %}">
+  <div class="stat bg-base-200 rounded-lg p-4 overflow-hidden">
+    <div class="stat-title text-xs">{% trans "Review Time Imp." %}</div>
+    <div class="stat-value text-xl tabular-nums {% if comparison_data.improvement.review_time_percent < 0 %}text-success{% elif comparison_data.improvement.review_time_percent > 0 %}text-error{% endif %}">
       {{ comparison_data.improvement.review_time_percent }}%
     </div>
   </div>
