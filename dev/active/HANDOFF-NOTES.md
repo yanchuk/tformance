@@ -1,77 +1,143 @@
 # Session Handoff Notes
 
-**Last Updated: 2025-12-31**
+**Last Updated: 2026-01-11 (Session 3)**
 
-## Current Status: Performance Optimization - IN PROGRESS
+## Current Status: Team Tab Copilot Integration - STARTING
 
-Branch: `perf-optimization`
-Worktree: `/Users/yanchuk/Documents/GitHub/tformance-perf-optimization`
-
-**IMPORTANT**: Worktree was recreated fresh this session. All changes are uncommitted.
+Branch: `main`
+Working Directory: `/Users/yanchuk/Documents/GitHub/tformance`
 
 ---
 
-## What Was Completed ✅
+## What Was Committed ✅
 
-### 1. Generator Pattern for PR Fetching
-Modified `apps/integrations/services/github_sync.py`:
-- `get_repository_pull_requests()` now returns generator (not list)
-- Added `days_back` parameter for filtering PRs by updated_at
-- Memory stays constant for repos with 100k+ PRs
+### Commit `0e1ce67` - AI Adoption Dashboard P0/P1
 
-### 2. Test Updates
-- Created `apps/integrations/tests/test_github_sync_days_back.py` (3 tests)
-- Updated `apps/integrations/tests/github_sync/test_pr_fetch.py` (6 tests fixed)
-- All 15 tests pass
+```
+feat(copilot): improve AI Adoption dashboard UX and metrics
+```
 
-### 3. GIN Indexes Migration (Partial)
-Created `apps/metrics/migrations/0033_add_jsonb_gin_indexes.py`
+**17 files changed:**
+- P0: Layout overflow fix (format_compact)
+- P0: Language/Editor data pipeline
+- P1: Champions card UX (visible labels, color-coded cycle time)
+- P1: AI Quality objective metrics (cycle time comparison)
+
+All tests passing.
 
 ---
 
-## What Was In Progress 🔄
+## What Is Starting 🔄
 
-### Add GIN indexes to PullRequest model
+### P2: Team Tab Copilot Integration (Issues 7 & 8)
 
-**File:** `apps/metrics/models/github.py`
+**Task Documentation:** `dev/active/team-tab-copilot-integration/`
 
-**Goal:** Add GinIndex imports and indexes to model Meta class
+**Two Features:**
+1. **Issue 7:** Add "Copilot %" column to Team Breakdown table
+2. **Issue 8:** Add 🏆 Champion badges to Team members
+
+**Status:** Plan approved, TDD tests NOT YET WRITTEN
 
 ---
 
 ## Commands to Run on Restart
 
 ```bash
-# 1. Navigate to worktree
-cd /Users/yanchuk/Documents/GitHub/tformance-perf-optimization
+# 1. Verify recent commit
+git log --oneline -3
 
-# 2. Run tests
-/Users/yanchuk/Documents/GitHub/tformance/.venv/bin/pytest apps/integrations/tests/test_github_sync_days_back.py apps/integrations/tests/github_sync/test_pr_fetch.py -v
-
-# 3. Check status
+# 2. Check no uncommitted changes from implementation
 git status
 
-# 4. Commit if tests pass
-git add -A && git commit -m "feat(perf): add days_back filter and generator pattern for memory-efficient PR sync"
+# 3. Run team breakdown tests (baseline before changes)
+.venv/bin/pytest apps/metrics/tests/test_chart_views.py -k table_breakdown -v
+
+# 4. Start dev server for visual reference
+make dev
+# Navigate to: http://localhost:8000/a/{team}/metrics/analytics/team/
 ```
 
 ---
 
-## Remaining Tasks
+## Next Steps (TDD Workflow)
 
-1. Add GinIndex to PullRequest model Meta
-2. Run migration
-3. Add CELERY_RESULT_EXPIRES to settings
-4. Document Celery worker split for production
+### Issue 7: Copilot Acceptance Column
+
+**Start with RED phase:**
+
+1. Read existing tests:
+   ```bash
+   cat apps/metrics/tests/dashboard/test_team_metrics.py
+   ```
+
+2. Write failing test `test_get_team_breakdown_includes_copilot_acceptance`:
+   - Create TeamMember with AIUsageDaily records
+   - Call `get_team_breakdown()`
+   - Assert `copilot_pct` in result rows
+
+3. Run test to confirm it fails (RED)
+
+**Then GREEN phase:**
+
+4. Modify `apps/metrics/services/dashboard/team_metrics.py`:
+   - Add Copilot aggregation from AIUsageDaily
+   - Add `copilot_pct` to SORT_FIELDS
+
+5. Update `templates/metrics/partials/team_breakdown_table.html`:
+   - Add column header with tooltip
+   - Add data cell
 
 ---
 
-## Files with Uncommitted Changes
+## Key Files to Modify
 
+| File | Purpose |
+|------|---------|
+| `apps/metrics/services/dashboard/team_metrics.py` | Add Copilot aggregation |
+| `apps/metrics/views/chart_views.py` | Add champion_ids to context |
+| `templates/metrics/partials/team_breakdown_table.html` | Add column + badge |
+
+---
+
+## Key Context
+
+### Data Sources
+
+**For Copilot % (per-member):**
+```python
+# apps/metrics/models/aggregations.py:12
+class AIUsageDaily(BaseTeamModel):
+    member = ForeignKey(TeamMember)
+    acceptance_rate = DecimalField()  # THIS
+    source = ["copilot", "cursor"]
 ```
-apps/integrations/services/github_sync.py
-apps/integrations/tests/github_sync/test_pr_fetch.py
-apps/integrations/tests/test_github_sync_days_back.py  # NEW
-apps/metrics/migrations/0033_add_jsonb_gin_indexes.py  # NEW
-dev/active/performance-optimization/*  # NEW docs
+
+**For Champion Badges:**
+```python
+# apps/metrics/services/dashboard/ai_metrics.py
+def get_copilot_champions(team, start_date, end_date) -> list[dict]:
+    # Returns member_id, acceptance_rate, cycle_time, score
 ```
+
+### Plan Reviewer Recommendations (MUST FOLLOW)
+
+1. Add tooltips distinguishing "AI %" vs "Copilot %"
+2. Handle members without Copilot data (show "-")
+3. Add `copilot_pct` to SORT_FIELDS
+4. Use set for O(1) champion lookup
+5. Ensure date range consistency between functions
+
+---
+
+## Full Documentation
+
+- **Plan file:** `/Users/yanchuk/.claude/plans/snappy-floating-eich.md`
+- **New task:** `dev/active/team-tab-copilot-integration/`
+- **Parent task:** `dev/active/ai-adoption-dashboard-improvements/`
+
+---
+
+## No Migrations Needed
+
+All changes are in Python services, views, and templates.
