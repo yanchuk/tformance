@@ -220,15 +220,20 @@ def get_enabled_onboarding_steps(request: HttpRequest) -> list[str]:
     """Get list of enabled optional onboarding steps.
 
     Only returns steps that have their feature flag enabled.
-    Jira and Slack are the optional steps controlled by flags.
+    Copilot, Jira, and Slack are optional steps controlled by flags.
+
+    Flow order: copilot → jira → slack (all optional)
 
     Args:
         request: The HTTP request object
 
     Returns:
-        List of enabled step names (e.g., ["jira", "slack"])
+        List of enabled step names (e.g., ["copilot", "jira", "slack"])
     """
     steps = []
+
+    if is_integration_enabled(request, "copilot"):
+        steps.append("copilot")
 
     if is_integration_enabled(request, "jira"):
         steps.append("jira")
@@ -242,7 +247,7 @@ def get_enabled_onboarding_steps(request: HttpRequest) -> list[str]:
 def get_next_onboarding_step(request: HttpRequest, current_step: str) -> str:
     """Get the next onboarding step based on current step and enabled flags.
 
-    Flow: sync_progress → [jira if enabled] → [slack if enabled] → complete
+    Flow: sync_progress → [copilot if enabled] → [jira if enabled] → [slack if enabled] → complete
 
     Args:
         request: The HTTP request object
@@ -254,6 +259,16 @@ def get_next_onboarding_step(request: HttpRequest, current_step: str) -> str:
     enabled_steps = get_enabled_onboarding_steps(request)
 
     if current_step == "sync_progress":
+        if "copilot" in enabled_steps:
+            return "copilot"
+        elif "jira" in enabled_steps:
+            return "jira"
+        elif "slack" in enabled_steps:
+            return "slack"
+        else:
+            return "complete"
+
+    if current_step == "copilot":
         if "jira" in enabled_steps:
             return "jira"
         elif "slack" in enabled_steps:

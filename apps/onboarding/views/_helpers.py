@@ -18,10 +18,11 @@ ONBOARDING_SELECTED_ORG_KEY = "onboarding_selected_org"
 def _get_onboarding_flags_context(request) -> dict:
     """Get feature flag context for onboarding templates.
 
-    Returns dict with jira_enabled and slack_enabled for conditional stepper rendering.
-    Used by A-002: Hide Jira/Slack steps when flags are disabled.
+    Returns dict with integration flags for conditional stepper rendering.
+    Used by A-002: Hide Jira/Slack/Copilot steps when flags are disabled.
     """
     return {
         "jira_enabled": is_integration_enabled(request, "jira"),
         "slack_enabled": is_integration_enabled(request, "slack"),
+        "copilot_enabled": is_integration_enabled(request, "copilot"),
     }

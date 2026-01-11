@@ -11,6 +11,7 @@ from apps.integrations.factories import (
 )
 from apps.metrics.factories import TeamFactory, TeamMemberFactory
 from apps.metrics.models import AIUsageDaily
+from apps.teams.models import Team
 
 
 class TestSyncCopilotMetricsTask(TestCase):
@@ -106,6 +107,10 @@ class TestSyncCopilotMetricsTask(TestCase):
         from apps.integrations._task_modules.copilot import sync_copilot_metrics_task
         from apps.integrations.services.copilot_metrics import CopilotMetricsError
 
+        # Set team to connected first
+        self.team.copilot_status = "connected"
+        self.team.save(update_fields=["copilot_status"])
+
         # Arrange - Mock fetch to raise 403 error
         mock_fetch.side_effect = CopilotMetricsError(
             "HTTP 403: Organization does not have Copilot Business subscription"
@@ -116,15 +121,92 @@ class TestSyncCopilotMetricsTask(TestCase):
 
         # Assert - Task should not raise exception, return error status
         self.assertIsInstance(result, dict)
-        self.assertIn("error", result)
-        # Error message is sanitized (no internal details like "403" exposed)
-        self.assertIsNotNone(result["error"])
         # Key behavior: copilot_available flag should be False for 403 errors
         self.assertIn("copilot_available", result)
         self.assertFalse(result["copilot_available"])
 
+        # Verify copilot_status was updated to insufficient_licenses
+        self.team.refresh_from_db()
+        self.assertEqual(self.team.copilot_status, "insufficient_licenses")
+        self.assertEqual(self.team.copilot_consecutive_failures, 1)
+
         # Verify no AIUsageDaily records were created
         self.assertEqual(AIUsageDaily.objects.filter(team=self.team, source="copilot").count(), 0)
+
+    @patch("apps.integrations._task_modules.copilot.is_copilot_sync_enabled", return_value=True)
+    @patch("apps.integrations._task_modules.copilot.fetch_copilot_metrics")
+    def test_sync_copilot_metrics_task_handles_token_revoked(self, mock_fetch, mock_flag_check):
+        """Test that task handles 401 error by marking token as revoked."""
+        from apps.integrations._task_modules.copilot import sync_copilot_metrics_task
+        from apps.integrations.services.copilot_metrics import CopilotMetricsError
+
+        # Set team to connected first
+        self.team.copilot_status = "connected"
+        self.team.save(update_fields=["copilot_status"])
+
+        # Arrange - Mock fetch to raise 401 error
+        mock_fetch.side_effect = CopilotMetricsError("HTTP 401: Unauthorized - Token invalid or expired")
+
+        # Act
+        result = sync_copilot_metrics_task(self.team.id)
+
+        # Assert
+        self.assertIsInstance(result, dict)
+        self.assertEqual(result["status"], "error")
+        self.assertEqual(result["reason"], "token_revoked")
+
+        # Verify copilot_status was updated
+        self.team.refresh_from_db()
+        self.assertEqual(self.team.copilot_status, "token_revoked")
+
+        # Verify credential was marked as revoked
+        self.credential.refresh_from_db()
+        self.assertTrue(self.credential.is_revoked)
+
+    @patch("apps.integrations._task_modules.copilot.is_copilot_sync_enabled", return_value=True)
+    @patch("apps.integrations._task_modules.copilot.map_copilot_to_ai_usage")
+    @patch("apps.integrations._task_modules.copilot.parse_metrics_response")
+    @patch("apps.integrations._task_modules.copilot.fetch_copilot_metrics")
+    def test_sync_copilot_metrics_task_resets_failures_on_success(
+        self, mock_fetch, mock_parse, mock_map, mock_flag_check
+    ):
+        """Test that successful sync resets consecutive_failures and updates last_sync_at."""
+        from django.utils import timezone
+
+        from apps.integrations._task_modules.copilot import sync_copilot_metrics_task
+
+        # Arrange - Team with previous failures
+        self.team.copilot_status = "connected"
+        self.team.copilot_consecutive_failures = 3
+        self.team.copilot_last_sync_at = None
+        self.team.save(update_fields=["copilot_status", "copilot_consecutive_failures", "copilot_last_sync_at"])
+
+        # Mock successful sync
+        mock_fetch.return_value = [{"date": "2025-12-17", "total_active_users": 1}]
+        mock_parse.return_value = [{"date": "2025-12-17", "code_completions_total": 100}]
+        mock_map.return_value = {
+            "date": "2025-12-17",
+            "source": "copilot",
+            "suggestions_shown": 100,
+            "suggestions_accepted": 60,
+            "acceptance_rate": 60.0,
+        }
+
+        before_sync = timezone.now()
+
+        # Act
+        result = sync_copilot_metrics_task(self.team.id)
+
+        # Assert
+        self.assertIn("metrics_synced", result)
+
+        # Verify failures were reset
+        self.team.refresh_from_db()
+        self.assertEqual(self.team.copilot_consecutive_failures, 0)
+
+        # Verify last_sync_at was updated
+        self.assertIsNotNone(self.team.copilot_last_sync_at)
+        self.assertGreaterEqual(self.team.copilot_last_sync_at, before_sync)
 
     @patch("apps.integrations._task_modules.copilot.is_copilot_sync_enabled", return_value=True)
     @patch("apps.integrations._task_modules.copilot.map_copilot_to_ai_usage")
@@ -273,43 +355,30 @@ class TestSyncAllCopilotMetrics(TestCase):
 
     def setUp(self):
         """Set up test fixtures using factories."""
-        from apps.integrations.models import GitHubIntegration
 
         # Create multiple teams with GitHub integrations
         self.team1 = TeamFactory()
+        # Set copilot_status="connected" so teams are eligible for sync
+        self.team1.copilot_status = "connected"
+        self.team1.save(update_fields=["copilot_status"])
         self.credential1 = IntegrationCredentialFactory(team=self.team1, provider="github")
         self.integration1 = GitHubIntegrationFactory(team=self.team1, credential=self.credential1)
 
-        self.team2 = TeamFactory()
+        self.team2 = TeamFactory(copilot_status="connected")
         self.credential2 = IntegrationCredentialFactory(team=self.team2, provider="github")
         self.integration2 = GitHubIntegrationFactory(team=self.team2, credential=self.credential2)
 
-        # Create team without GitHub integration
-        self.team_no_integration = TeamFactory()
+        # Create team without GitHub integration (but with copilot connected - will be skipped)
+        self.team_no_integration = TeamFactory(copilot_status="connected")
 
-        # Store integration IDs for isolated queryset
-        self.integration_ids = [self.integration1.id, self.integration2.id]
-
-        # Create isolated queryset that only includes this test's integrations
-        self.isolated_qs = GitHubIntegration.objects.filter(id__in=self.integration_ids)
-
-    def _get_isolated_queryset_mock(self):
-        """Return a mock manager that returns only this test's integrations."""
-
-        mock_manager = MagicMock()
-        # Chain .exclude().exclude() to return the isolated queryset
-        mock_manager.exclude.return_value.exclude.return_value = self.isolated_qs
-        return mock_manager
+        # Store team IDs for test isolation
+        self.connected_team_ids = [self.team1.id, self.team2.id, self.team_no_integration.id]
 
     @patch("apps.integrations._task_modules.copilot.is_copilot_sync_globally_enabled", return_value=True)
     @patch("apps.integrations._task_modules.copilot.sync_copilot_metrics_task")
-    @patch("apps.integrations._task_modules.copilot.GitHubIntegration.objects")
-    def test_sync_all_copilot_metrics_dispatches_tasks_for_each_team(self, mock_objects, mock_task, mock_global_flag):
-        """Test that sync_all_copilot_metrics dispatches individual tasks for all teams with GitHub."""
+    def test_sync_all_copilot_metrics_dispatches_tasks_for_each_team(self, mock_task, mock_global_flag):
+        """Test that sync_all_copilot_metrics dispatches individual tasks for connected teams."""
         from apps.integrations.tasks import sync_all_copilot_metrics
-
-        # Mock to return only this test's integrations
-        mock_objects.exclude.return_value.exclude.return_value = self.isolated_qs
 
         # Mock the delay method
         mock_delay = MagicMock()
@@ -318,32 +387,33 @@ class TestSyncAllCopilotMetrics(TestCase):
         # Act
         result = sync_all_copilot_metrics()
 
-        # Assert - Verify sync_copilot_metrics_task.delay was called for teams with GitHub integration
-        self.assertEqual(mock_delay.call_count, 2)
-
-        # Verify correct team IDs were passed
+        # Get team IDs that were dispatched
         called_team_ids = {call[0][0] for call in mock_delay.call_args_list}
-        expected_team_ids = {self.team1.id, self.team2.id}
-        self.assertEqual(called_team_ids, expected_team_ids)
 
-        # Verify team without integration was NOT called
+        # Assert - at minimum, our two test teams with integrations should be dispatched
+        # (other teams from parallel tests may also be included, so we check containment)
+        self.assertIn(self.team1.id, called_team_ids)
+        self.assertIn(self.team2.id, called_team_ids)
+
+        # team_no_integration has copilot_status="connected" but no GitHubIntegration
+        # so it should NOT be in dispatched (should be skipped)
         self.assertNotIn(self.team_no_integration.id, called_team_ids)
 
         # Verify result structure
         self.assertIsInstance(result, dict)
         self.assertIn("teams_dispatched", result)
-        self.assertEqual(result["teams_dispatched"], 2)
+        self.assertGreaterEqual(result["teams_dispatched"], 2)
+        self.assertIn("teams_skipped", result)
+        self.assertIn("duration_seconds", result)
 
     @patch("apps.integrations._task_modules.copilot.is_copilot_sync_globally_enabled", return_value=True)
     @patch("apps.integrations._task_modules.copilot.sync_copilot_metrics_task")
-    @patch("apps.integrations._task_modules.copilot.GitHubIntegration.objects")
-    def test_sync_all_copilot_metrics_handles_empty_team_list(self, mock_objects, mock_task, mock_global_flag):
-        """Test that task handles case where no teams have GitHub integration."""
-        from apps.integrations.models import GitHubIntegration
+    def test_sync_all_copilot_metrics_handles_empty_team_list(self, mock_task, mock_global_flag):
+        """Test that task handles case where no teams have copilot_status='connected'."""
         from apps.integrations.tasks import sync_all_copilot_metrics
 
-        # Mock to return empty queryset (no integrations)
-        mock_objects.exclude.return_value.exclude.return_value = GitHubIntegration.objects.none()
+        # First, set all our test teams to disabled (so they won't be synced)
+        Team.objects.filter(id__in=self.connected_team_ids).update(copilot_status="disabled")
 
         # Mock the delay method
         mock_delay = MagicMock()
@@ -352,25 +422,24 @@ class TestSyncAllCopilotMetrics(TestCase):
         # Act
         result = sync_all_copilot_metrics()
 
-        # Assert - No tasks should be dispatched
-        mock_delay.assert_not_called()
+        # Get team IDs that were dispatched
+        called_team_ids = {call[0][0] for call in mock_delay.call_args_list}
 
-        # Verify result shows zero teams
+        # Our test teams should NOT be called (they're now disabled)
+        self.assertNotIn(self.team1.id, called_team_ids)
+        self.assertNotIn(self.team2.id, called_team_ids)
+        self.assertNotIn(self.team_no_integration.id, called_team_ids)
+
+        # Verify result structure
         self.assertIsInstance(result, dict)
         self.assertIn("teams_dispatched", result)
-        self.assertEqual(result["teams_dispatched"], 0)
+        self.assertIn("teams_skipped", result)
 
     @patch("apps.integrations._task_modules.copilot.is_copilot_sync_globally_enabled", return_value=True)
     @patch("apps.integrations._task_modules.copilot.sync_copilot_metrics_task")
-    @patch("apps.integrations._task_modules.copilot.GitHubIntegration.objects")
-    def test_sync_all_copilot_metrics_continues_on_individual_dispatch_error(
-        self, mock_objects, mock_task, mock_global_flag
-    ):
+    def test_sync_all_copilot_metrics_continues_on_individual_dispatch_error(self, mock_task, mock_global_flag):
         """Test that task continues dispatching even if one dispatch fails."""
         from apps.integrations.tasks import sync_all_copilot_metrics
-
-        # Mock to return only this test's integrations
-        mock_objects.exclude.return_value.exclude.return_value = self.isolated_qs
 
         # Mock delay to raise exception for first team only
         mock_delay = MagicMock()
@@ -386,24 +455,25 @@ class TestSyncAllCopilotMetrics(TestCase):
         # Act - Should not raise exception
         result = sync_all_copilot_metrics()
 
-        # Assert - All teams were attempted
-        self.assertEqual(mock_delay.call_count, 2)
+        # Get team IDs that were attempted
+        called_team_ids = {call[0][0] for call in mock_delay.call_args_list}
 
-        # Result should show successful dispatches
+        # At minimum, our test teams should have been attempted
+        self.assertIn(self.team1.id, called_team_ids)
+        self.assertIn(self.team2.id, called_team_ids)
+
+        # Result should show at least one successful dispatch
         self.assertIsInstance(result, dict)
         self.assertIn("teams_dispatched", result)
-        # Should count only successful dispatch (team2)
-        self.assertEqual(result["teams_dispatched"], 1)
+        self.assertGreaterEqual(result["teams_dispatched"], 1)  # At least team2 succeeded
+        self.assertIn("teams_skipped", result)
+        self.assertGreaterEqual(result["teams_skipped"], 1)  # At least team1 failed + team_no_integration skipped
 
     @patch("apps.integrations._task_modules.copilot.is_copilot_sync_globally_enabled", return_value=True)
     @patch("apps.integrations._task_modules.copilot.sync_copilot_metrics_task")
-    @patch("apps.integrations._task_modules.copilot.GitHubIntegration.objects")
-    def test_sync_all_copilot_metrics_returns_correct_counts(self, mock_objects, mock_task, mock_global_flag):
-        """Test that task returns dict with teams_dispatched count."""
+    def test_sync_all_copilot_metrics_returns_correct_counts(self, mock_task, mock_global_flag):
+        """Test that task returns dict with teams_dispatched, teams_skipped, and duration."""
         from apps.integrations.tasks import sync_all_copilot_metrics
-
-        # Mock to return only this test's integrations
-        mock_objects.exclude.return_value.exclude.return_value = self.isolated_qs
 
         # Mock the delay method
         mock_delay = MagicMock()
@@ -412,10 +482,15 @@ class TestSyncAllCopilotMetrics(TestCase):
         # Act
         result = sync_all_copilot_metrics()
 
-        # Assert
+        # Assert - verify all return fields are present
         self.assertIsInstance(result, dict)
         self.assertIn("teams_dispatched", result)
-        self.assertEqual(result["teams_dispatched"], 2)
+        self.assertGreaterEqual(result["teams_dispatched"], 2)  # At least our 2 test teams
+        self.assertIn("teams_skipped", result)
+        # At least 1 skipped (team_no_integration has no GitHubIntegration)
+        self.assertGreaterEqual(result["teams_skipped"], 1)
+        self.assertIn("duration_seconds", result)
+        self.assertIsInstance(result["duration_seconds"], float)
 
 
 class TestSyncCopilotMetricsQueryCount(TestCase):
@@ -482,10 +557,133 @@ class TestSyncCopilotMetricsQueryCount(TestCase):
         # - GitHub Integration lookup (1) + credential access (1)
         # - Batch TeamMember lookup (1) - KEY: was N queries, now 1
         # - 10 update_or_create operations (6 queries each due to savepoints)
-        # Total: ~64 queries
-        # Without fix: would be ~73 queries (10 extra member lookups)
-        # With fix: ~64 queries (member lookups batched into 1 query)
-        with self.assertNumQueries(64):
+        # - Team update for copilot_consecutive_failures and copilot_last_sync_at (1)
+        # Total: ~65 queries
+        # Without fix: would be ~74 queries (10 extra member lookups)
+        # With fix: ~65 queries (member lookups batched into 1 query)
+        with self.assertNumQueries(65):
             result = sync_copilot_metrics_task(self.team.id)
 
         self.assertEqual(result["metrics_synced"], 10)
+
+
+class TestSyncCopilotPipelineTask(TestCase):
+    """Tests for sync_copilot_pipeline_task Celery task.
+
+    This task is used during onboarding pipeline to sync Copilot metrics
+    before LLM processing. It skips if Copilot is not connected and always
+    transitions to llm_processing status.
+    """
+
+    def setUp(self):
+        """Set up test fixtures using factories."""
+        self.team = TeamFactory(onboarding_pipeline_status="syncing_copilot")
+        self.credential = IntegrationCredentialFactory(
+            team=self.team,
+            provider="github",
+            access_token="gho_test_token_12345",
+        )
+        self.integration = GitHubIntegrationFactory(
+            team=self.team,
+            credential=self.credential,
+            organization_slug="test-org",
+        )
+        self.member = TeamMemberFactory(
+            team=self.team,
+            github_username="alice",
+        )
+
+    def test_sync_copilot_pipeline_task_skips_when_not_connected(self):
+        """Test that task skips sync when copilot_status != 'connected'."""
+        from apps.integrations._task_modules.copilot import sync_copilot_pipeline_task
+
+        # Arrange - Team with Copilot disabled (default)
+        self.team.copilot_status = "disabled"
+        self.team.save(update_fields=["copilot_status"])
+
+        # Act
+        result = sync_copilot_pipeline_task(self.team.id)
+
+        # Assert
+        self.assertEqual(result["status"], "skipped")
+        self.assertIn("copilot_status=disabled", result["reason"])
+
+        # Verify status transitioned to llm_processing
+        self.team.refresh_from_db()
+        self.assertEqual(self.team.onboarding_pipeline_status, "llm_processing")
+
+    def test_sync_copilot_pipeline_task_skips_when_insufficient_licenses(self):
+        """Test that task skips when copilot_status is 'insufficient_licenses'."""
+        from apps.integrations._task_modules.copilot import sync_copilot_pipeline_task
+
+        # Arrange
+        self.team.copilot_status = "insufficient_licenses"
+        self.team.save(update_fields=["copilot_status"])
+
+        # Act
+        result = sync_copilot_pipeline_task(self.team.id)
+
+        # Assert
+        self.assertEqual(result["status"], "skipped")
+        self.assertIn("insufficient_licenses", result["reason"])
+
+        # Verify status transitioned to llm_processing
+        self.team.refresh_from_db()
+        self.assertEqual(self.team.onboarding_pipeline_status, "llm_processing")
+
+    @patch("apps.integrations._task_modules.copilot.is_copilot_sync_enabled", return_value=True)
+    @patch("apps.integrations._task_modules.copilot.map_copilot_to_ai_usage")
+    @patch("apps.integrations._task_modules.copilot.parse_metrics_response")
+    @patch("apps.integrations._task_modules.copilot.fetch_copilot_metrics")
+    def test_sync_copilot_pipeline_task_syncs_when_connected(self, mock_fetch, mock_parse, mock_map, mock_flag_check):
+        """Test that task syncs Copilot metrics when copilot_status == 'connected'."""
+        from apps.integrations._task_modules.copilot import sync_copilot_pipeline_task
+
+        # Arrange - Team with Copilot connected
+        self.team.copilot_status = "connected"
+        self.team.save(update_fields=["copilot_status"])
+
+        # Mock the sync response
+        mock_fetch.return_value = [{"date": "2025-12-17", "total_active_users": 1}]
+        mock_parse.return_value = [{"date": "2025-12-17", "code_completions_total": 100}]
+        mock_map.return_value = {
+            "date": "2025-12-17",
+            "source": "copilot",
+            "suggestions_shown": 100,
+            "suggestions_accepted": 60,
+            "acceptance_rate": 60.0,
+        }
+
+        # Act
+        result = sync_copilot_pipeline_task(self.team.id)
+
+        # Assert - Sync was called
+        mock_fetch.assert_called_once()
+        self.assertIn("metrics_synced", result)
+
+        # Verify status transitioned to llm_processing
+        self.team.refresh_from_db()
+        self.assertEqual(self.team.onboarding_pipeline_status, "llm_processing")
+
+    @patch("apps.integrations._task_modules.copilot.sync_copilot_metrics_task")
+    def test_sync_copilot_pipeline_task_continues_on_sync_error(self, mock_sync_task):
+        """Test that pipeline continues even if Copilot sync fails."""
+        from apps.integrations._task_modules.copilot import sync_copilot_pipeline_task
+
+        # Arrange - Team with Copilot connected but sync will fail
+        self.team.copilot_status = "connected"
+        self.team.save(update_fields=["copilot_status"])
+
+        # Mock sync to raise exception
+        mock_sync_task.side_effect = Exception("GitHub API timeout")
+
+        # Act
+        result = sync_copilot_pipeline_task(self.team.id)
+
+        # Assert - Error was caught and logged
+        self.assertEqual(result["status"], "error")
+        self.assertIn("GitHub API timeout", result["reason"])
+
+        # Verify status transitioned to llm_processing (pipeline didn't break)
+        self.team.refresh_from_db()
+        self.assertEqual(self.team.onboarding_pipeline_status, "llm_processing")

@@ -71,7 +71,8 @@ def integrations_home(request):
         slack_integration = None
         slack_connected = False
 
-    # Check Copilot availability and last sync
+    # Check Copilot status and last sync
+    # copilot_available is True if GitHub is connected (can potentially use Copilot)
     copilot_available = github_connected
     copilot_last_sync = None
     if copilot_available:
@@ -92,6 +93,7 @@ def integrations_home(request):
         "slack_integration": slack_integration,
         "copilot_available": copilot_available,
         "copilot_last_sync": copilot_last_sync,
+        "copilot_status": team.copilot_status,  # NEW: Pass team's Copilot status
         "active_tab": "integrations",
         "integration_statuses": integration_statuses,
     }
@@ -130,6 +132,58 @@ def copilot_sync(request):
     sync_copilot_metrics_task.delay(team.id)
 
     messages.success(request, "Copilot metrics sync started")
+    return redirect("integrations:integrations_home")
+
+
+@login_and_team_required
+@require_POST
+def activate_copilot(request):
+    """Activate Copilot integration for the team.
+
+    Sets team.copilot_status to 'connected' and dispatches sync task.
+
+    Args:
+        request: The HTTP request object.
+
+    Returns:
+        HttpResponse redirecting to integrations home with success message.
+    """
+    from apps.integrations.services.copilot_activation import activate_copilot_for_team
+
+    team = request.team
+    result = activate_copilot_for_team(team)
+
+    if result["status"] == "activated":
+        messages.success(request, "Copilot connected! Syncing metrics...")
+    elif result["status"] == "already_connected":
+        messages.info(request, "Copilot is already connected.")
+
+    return redirect("integrations:integrations_home")
+
+
+@login_and_team_required
+@require_POST
+def deactivate_copilot(request):
+    """Deactivate (disconnect) Copilot integration for the team.
+
+    Sets team.copilot_status to 'disabled'.
+
+    Args:
+        request: The HTTP request object.
+
+    Returns:
+        HttpResponse redirecting to integrations home with success message.
+    """
+    from apps.integrations.services.copilot_activation import deactivate_copilot_for_team
+
+    team = request.team
+    result = deactivate_copilot_for_team(team)
+
+    if result["status"] == "deactivated":
+        messages.success(request, "Copilot disconnected.")
+    elif result["status"] == "already_disabled":
+        messages.info(request, "Copilot is already disconnected.")
+
     return redirect("integrations:integrations_home")
 
 

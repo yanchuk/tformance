@@ -32,12 +32,15 @@ class Team(SubscriptionModelBase, BaseModel):
     )
 
     # Onboarding pipeline tracking (Two-Phase)
-    # Phase 1: Quick Start (30 days) → syncing_members → syncing → llm_processing → metrics → insights → phase1_complete
-    # Phase 2: Background (31-90 days) → background_syncing → background_llm → complete
+    # Phase 1: Quick Start (30 days)
+    #   syncing_members → syncing → syncing_copilot → llm_processing → phase1_complete
+    # Phase 2: Background (31-90 days)
+    #   background_syncing → background_llm → complete
     PIPELINE_STATUS_CHOICES = [
         ("not_started", "Not Started"),
         ("syncing_members", "Syncing Team Members"),  # A-025: sync members before PRs
         ("syncing", "Syncing PRs"),
+        ("syncing_copilot", "Syncing Copilot Metrics"),  # Optional: only if copilot_status="connected"
         ("llm_processing", "Analyzing with AI"),
         ("computing_metrics", "Computing Metrics"),
         ("computing_insights", "Computing Insights"),
@@ -46,6 +49,14 @@ class Team(SubscriptionModelBase, BaseModel):
         ("background_llm", "Background: Analyzing"),  # Phase 2: LLM on older data
         ("complete", "Complete"),
         ("failed", "Failed"),
+    ]
+
+    # Copilot integration status tracking
+    COPILOT_STATUS_CHOICES = [
+        ("disabled", "Not Connected"),
+        ("connected", "Connected"),
+        ("insufficient_licenses", "Awaiting Data"),
+        ("token_revoked", "Reconnection Required"),
     ]
 
     onboarding_pipeline_status = models.CharField(
@@ -78,6 +89,23 @@ class Team(SubscriptionModelBase, BaseModel):
     background_llm_progress = models.IntegerField(
         default=0,
         help_text="Progress of Phase 2 background LLM analysis (0-100%).",
+    )
+
+    # Copilot integration fields
+    copilot_status = models.CharField(
+        max_length=30,
+        choices=COPILOT_STATUS_CHOICES,
+        default="disabled",
+        help_text="Current Copilot integration status",
+    )
+    copilot_last_sync_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Last successful Copilot data sync",
+    )
+    copilot_consecutive_failures = models.PositiveIntegerField(
+        default=0,
+        help_text="Count of consecutive sync failures (reset on success)",
     )
 
     # your team customizations go here.
@@ -119,6 +147,7 @@ class Team(SubscriptionModelBase, BaseModel):
         return self.onboarding_pipeline_status in [
             "syncing_members",
             "syncing",
+            "syncing_copilot",
             "llm_processing",
             "computing_metrics",
             "computing_insights",
@@ -142,6 +171,15 @@ class Team(SubscriptionModelBase, BaseModel):
             "background_llm",
             "complete",
         ]
+
+    @property
+    def copilot_enabled(self) -> bool:
+        """Backward-compatible property for checking Copilot connectivity.
+
+        Returns True only when copilot_status is 'connected'.
+        Other states (disabled, insufficient_licenses, token_revoked) return False.
+        """
+        return self.copilot_status == "connected"
 
     @property
     def background_in_progress(self) -> bool:

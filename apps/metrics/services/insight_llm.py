@@ -460,25 +460,27 @@ def gather_insight_data(
         }
 
     # Add Copilot metrics for teams with real Copilot integration
-    # GitHub requires 5+ Copilot licenses to access metrics API
-    # Check CopilotSeatSnapshot for minimum seat count before including
+    # Requirements:
+    # 1. team.copilot_enabled (copilot_status == "connected")
+    # 2. CopilotSeatSnapshot exists with 5+ seats (GitHub API requirement)
     from apps.metrics.models import CopilotSeatSnapshot
 
     copilot_metrics = None
-    latest_snapshot = CopilotSeatSnapshot.objects.filter(team=team).order_by("-date").first()
-    if latest_snapshot and latest_snapshot.total_seats >= 5:
-        copilot_metrics = get_copilot_metrics_for_prompt(
-            team=team,
-            start_date=start_date,
-            end_date=end_date,
-            include_copilot=True,
-        )
-        # Add relative waste metric (scaled by team size)
-        if copilot_metrics and copilot_metrics.get("seat_data"):
-            active_contributors = team_health.get("active_contributors", 1)
-            wasted_spend = float(copilot_metrics["seat_data"].get("wasted_spend", 0))
-            copilot_metrics["waste_per_contributor"] = round(wasted_spend / max(active_contributors, 1), 2)
-            copilot_metrics["active_contributors"] = active_contributors
+    if team.copilot_enabled:
+        latest_snapshot = CopilotSeatSnapshot.objects.filter(team=team).order_by("-date").first()
+        if latest_snapshot and latest_snapshot.total_seats >= 5:
+            copilot_metrics = get_copilot_metrics_for_prompt(
+                team=team,
+                start_date=start_date,
+                end_date=end_date,
+                include_copilot=True,
+            )
+            # Add relative waste metric (scaled by team size)
+            if copilot_metrics and copilot_metrics.get("seat_data"):
+                active_contributors = team_health.get("active_contributors", 1)
+                wasted_spend = float(copilot_metrics["seat_data"].get("wasted_spend", 0))
+                copilot_metrics["waste_per_contributor"] = round(wasted_spend / max(active_contributors, 1), 2)
+                copilot_metrics["active_contributors"] = active_contributors
 
     # Type ignore: dashboard_service functions return untyped dicts
     # TODO: Add types to dashboard_service.py for full type safety

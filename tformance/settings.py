@@ -691,6 +691,11 @@ SCHEDULED_TASKS = {
         "schedule": timedelta(minutes=10),  # Every 10 minutes
         "expire_seconds": 60 * 5,  # 5 minute expiry
     },
+    "sync-copilot-metrics-daily": {
+        "task": "apps.integrations.tasks.sync_all_copilot_metrics",
+        "schedule": schedules.crontab(minute=45, hour=4),  # 4:45 AM UTC (after GitHub, before LLM)
+        "options": {"expire_seconds": 60 * 60 * 2},  # 2 hour expiry
+    },
 }
 
 # Channels / Daphne setup

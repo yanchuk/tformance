@@ -367,7 +367,7 @@
     {% endwith %}
 
     <!-- GitHub Copilot Card -->
-    {% with copilot_status=integration_statuses.2 %}
+    {% with copilot_flag_status=integration_statuses.2 %}
     <div class="app-card">
       <div class="flex items-center gap-3 mb-4">
         <svg class="w-10 h-10 text-violet-500" viewBox="0 0 24 24" fill="currentColor">
@@ -376,7 +376,7 @@
         <div class="flex-1">
           <div class="flex items-center gap-2">
             <h2 class="font-semibold text-base-content">GitHub Copilot</h2>
-            {% if not copilot_status.enabled and not copilot_available %}
+            {% if not copilot_flag_status.enabled %}
               <span class="badge badge-warning text-xs font-semibold px-2 py-0.5">Coming Soon</span>
             {% endif %}
           </div>
@@ -384,12 +384,14 @@
         </div>
       </div>
 
-      {% if copilot_available %}
-        <div class="app-status-pill-available mb-4">
+      {# Status-based rendering using team.copilot_status field #}
+      {% if copilot_status == "connected" %}
+        {# CONNECTED: Show Connected badge, sync info, and disconnect button #}
+        <div class="app-status-pill-connected mb-4">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
           </svg>
-          <span>{% translate "Available" %}</span>
+          <span>{% translate "Connected" %}</span>
         </div>
 
         <div class="space-y-2 mb-4">
@@ -410,7 +412,7 @@
           {% endif %}
         </div>
 
-        <div class="flex justify-end">
+        <div class="flex justify-between">
           <form method="post" action="{% url 'integrations:copilot_sync' %}">
             {% csrf_token %}
             <button type="submit" class="app-btn-primary app-btn-sm gap-1">
@@ -420,9 +422,113 @@
               {% translate "Sync Now" %}
             </button>
           </form>
+
+          <form method="post"
+                action="{% url 'integrations:deactivate_copilot' %}"
+                x-data="{ confirming: false }">
+            {% csrf_token %}
+            <button type="button"
+                    x-show="!confirming"
+                    @click="confirming = true"
+                    class="app-btn-danger app-btn-sm">
+              {% translate "Disconnect" %}
+            </button>
+            <div x-show="confirming" x-transition class="flex gap-2">
+              <button type="submit" class="app-btn-danger app-btn-sm">
+                {% translate "Confirm" %}
+              </button>
+              <button type="button" @click="confirming = false" class="app-btn-ghost app-btn-sm">
+                {% translate "Cancel" %}
+              </button>
+            </div>
+          </form>
         </div>
-      {% elif copilot_status.enabled %}
-        {# Flag enabled but not available - show requirement message #}
+
+      {% elif copilot_status == "insufficient_licenses" %}
+        {# INSUFFICIENT LICENSES: Show Awaiting Data status with explanation #}
+        <div class="app-status-pill-warning mb-4">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+          </svg>
+          <span>{% translate "Awaiting Data" %}</span>
+        </div>
+
+        <p class="text-sm text-base-content/80 mb-4">
+          {% translate "Your organization has fewer than 5 Copilot licenses. GitHub requires 5+ licenses to access usage metrics." %}
+        </p>
+
+        <div class="flex justify-end">
+          <form method="post" action="{% url 'integrations:copilot_sync' %}">
+            {% csrf_token %}
+            <button type="submit" class="app-btn-primary app-btn-sm gap-1">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+              </svg>
+              {% translate "Check Again" %}
+            </button>
+          </form>
+        </div>
+
+      {% elif copilot_status == "token_revoked" %}
+        {# TOKEN REVOKED: Show error state with reconnect option #}
+        <div class="app-status-pill-error mb-4">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+          <span>{% translate "Reconnection Required" %}</span>
+        </div>
+
+        <p class="text-sm text-base-content/80 mb-4">
+          {% translate "Your GitHub token was revoked. Please reconnect GitHub to resume Copilot metrics." %}
+        </p>
+
+        <div class="flex justify-end">
+          <a href="{% url 'integrations:github_connect' %}"
+             class="app-btn-primary app-btn-sm gap-1">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+            </svg>
+            {% translate "Reconnect GitHub" %}
+          </a>
+        </div>
+
+      {% elif copilot_flag_status.enabled and github_connected %}
+        {# FLAG ENABLED + GITHUB CONNECTED + STATUS=DISABLED: Show Connect button #}
+        <div class="flex items-center gap-2 mb-4 p-3 bg-base-300 rounded-lg">
+          <svg class="w-5 h-5 text-base-content/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+          </svg>
+          <span class="text-base-content/80">{% translate "Not connected" %}</span>
+        </div>
+
+        <div class="space-y-2 mb-4">
+          {% for benefit in copilot_flag_status.benefits %}
+            <div class="flex items-start gap-2 text-sm">
+              <svg class="w-4 h-4 text-primary mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+              </svg>
+              <div>
+                <span class="font-medium text-base-content">{{ benefit.title }}</span>
+                <span class="text-base-content/70"> - {{ benefit.description }}</span>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+
+        <div class="flex justify-end">
+          <form method="post" action="{% url 'integrations:activate_copilot' %}">
+            {% csrf_token %}
+            <button type="submit" class="app-btn-primary app-btn-sm gap-1">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+              </svg>
+              {% translate "Connect Copilot" %}
+            </button>
+          </form>
+        </div>
+
+      {% elif copilot_flag_status.enabled %}
+        {# FLAG ENABLED but GitHub NOT connected - show requirement message #}
         <div class="flex items-center gap-2 mb-4 p-3 bg-base-300 rounded-lg">
           <svg class="w-5 h-5 text-base-content/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
@@ -433,10 +539,11 @@
         <p class="text-sm text-base-content/80 mb-4">
           {% translate "Connect GitHub first to access Copilot metrics. Requires an organization with 5+ Copilot licenses." %}
         </p>
+
       {% else %}
         {# Flag disabled - show Coming Soon with benefits #}
         <div class="space-y-2 mb-4">
-          {% for benefit in copilot_status.benefits %}
+          {% for benefit in copilot_flag_status.benefits %}
             <div class="flex items-start gap-2 text-sm">
               <svg class="w-4 h-4 text-primary mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>

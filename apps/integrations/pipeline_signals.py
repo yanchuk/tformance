@@ -47,6 +47,10 @@ PHASE1_STATE_MACHINE = {
         "task_path": "apps.integrations.tasks.sync_historical_data_task",
         "kwargs_builder": lambda team: {"repo_ids": get_repo_ids(team), "days_back": 30},
     },
+    "syncing_copilot": {
+        "task_path": "apps.integrations._task_modules.copilot.sync_copilot_pipeline_task",
+        "kwargs_builder": lambda team: {},
+    },
     "llm_processing": {
         "task_path": "apps.integrations._task_modules.metrics.queue_llm_analysis_batch_task",
         "kwargs_builder": lambda team: {"batch_size": 500},

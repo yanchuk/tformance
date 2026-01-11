@@ -428,6 +428,11 @@
   @apply bg-blue-500/10 border border-blue-500/30 text-blue-600 dark:text-blue-400;
 }
 
+.app-status-pill-error {
+  @apply inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium;
+  @apply bg-error/10 border border-error/30 text-error;
+}
+
 /* -----------------------------------------------------------------------------
    TABLES
    ----------------------------------------------------------------------------- */

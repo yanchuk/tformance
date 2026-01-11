@@ -20,6 +20,7 @@ All public views are re-exported here for backward compatibility.
 from apps.integrations.onboarding_pipeline import start_onboarding_pipeline
 from apps.integrations.services import github_oauth
 
+from .copilot import connect_copilot
 from .github import (
     _create_team_from_org,
     fetch_repos,
@@ -66,4 +67,6 @@ __all__ = [
     "jira_sync_status",
     # Slack views
     "connect_slack",
+    # Copilot views
+    "connect_copilot",
 ]

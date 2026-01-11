@@ -197,13 +197,37 @@ def sync_copilot_metrics_task(self, team_id: int) -> dict:
                 metrics_synced += 1
 
         logger.info(f"Successfully synced {metrics_synced} Copilot metrics for team {team.name}")
+
+        # Update team status on successful sync
+        from django.utils import timezone
+
+        team.copilot_consecutive_failures = 0
+        team.copilot_last_sync_at = timezone.now()
+        team.save(update_fields=["copilot_consecutive_failures", "copilot_last_sync_at"])
+
         return {"metrics_synced": metrics_synced}
 
     except CopilotMetricsError as exc:
-        # Check if it's a 403 error (Copilot not available)
+        # Check if it's a 403 error (Copilot not available / insufficient licenses)
         if "403" in str(exc):
             logger.info(f"Copilot not available for team {team.name}: {exc}")
-            return {"error": sanitize_error(exc), "copilot_available": False}
+            # Update status to indicate insufficient licenses
+            team.copilot_status = "insufficient_licenses"
+            team.copilot_consecutive_failures += 1
+            team.save(update_fields=["copilot_status", "copilot_consecutive_failures"])
+            return {"status": "skipped", "reason": "insufficient_licenses", "copilot_available": False}
+
+        # Check if it's a 401 error (token revoked/expired)
+        if "401" in str(exc):
+            logger.warning(f"Copilot token revoked for team {team.name}: {exc}")
+            # Update status to indicate token revoked
+            team.copilot_status = "token_revoked"
+            team.save(update_fields=["copilot_status"])
+            # Mark the credential as revoked
+            github_integration.credential.is_revoked = True
+            github_integration.credential.save(update_fields=["is_revoked"])
+            return {"status": "error", "reason": "token_revoked"}
+
         # For other CopilotMetricsError, treat as transient and retry
         countdown = self.default_retry_delay * (2**self.request.retries)
         try:
@@ -239,38 +263,105 @@ def sync_copilot_metrics_task(self, team_id: int) -> dict:
 
 
 @shared_task
-def sync_all_copilot_metrics() -> dict:
-    """Dispatch Copilot sync tasks for all teams with GitHub integration.
+def sync_copilot_pipeline_task(team_id: int) -> dict:
+    """Copilot sync step in the onboarding pipeline.
+
+    This task is called during onboarding after PR sync completes.
+    If the team has Copilot connected, it syncs metrics.
+    If not, it skips directly to the next pipeline step.
+
+    The task always transitions to llm_processing regardless of whether
+    Copilot sync ran, ensuring the pipeline continues.
+
+    Args:
+        team_id: ID of the Team to process
 
     Returns:
-        Dict with count of dispatched tasks: teams_dispatched
+        Dict with sync results or skip status
     """
+    team = Team.objects.get(id=team_id)
+
+    # Check if team has Copilot connected
+    if team.copilot_status != "connected":
+        logger.info(f"Copilot pipeline: skipping for team {team.name} (status: {team.copilot_status})")
+        # Update status to proceed to LLM processing
+        team.update_pipeline_status("llm_processing")
+        return {"status": "skipped", "reason": f"copilot_status={team.copilot_status}"}
+
+    # Run Copilot sync
+    logger.info(f"Copilot pipeline: syncing for team {team.name}")
+    try:
+        result = sync_copilot_metrics_task(team_id)
+        logger.info(f"Copilot pipeline: sync complete for team {team.name}")
+    except Exception as e:
+        # Log error but don't fail pipeline - Copilot is optional
+        logger.warning(f"Copilot pipeline: sync failed for team {team.name}: {e}")
+        result = {"status": "error", "reason": str(e)}
+
+    # Always proceed to LLM processing (Copilot failure shouldn't block pipeline)
+    team.refresh_from_db()  # Refresh in case sync modified the team
+    team.update_pipeline_status("llm_processing")
+
+    return result
+
+
+@shared_task
+def sync_all_copilot_metrics() -> dict:
+    """Dispatch Copilot sync tasks for all teams with Copilot enabled.
+
+    Only syncs teams where:
+    1. copilot_status == "connected" (team has active Copilot connection)
+    2. Has GitHubIntegration with valid organization_slug
+
+    Returns:
+        Dict with counts and duration:
+        - teams_dispatched: Number of sync tasks dispatched
+        - teams_skipped: Number of teams skipped (no org slug or not connected)
+        - duration_seconds: Time taken to dispatch all tasks
+    """
+    import time
+
+    start_time = time.time()
+
     # Check global feature flag before dispatching any tasks
     if not is_copilot_sync_globally_enabled():
         logger.info("Copilot sync skipped - global flag disabled")
         return {"status": "skipped", "reason": "flag_disabled"}
 
-    logger.info("Starting Copilot metrics sync for all teams")
+    logger.info("Starting Copilot metrics sync for connected teams")
 
-    # Query all teams with GitHub integrations
-    integrations = GitHubIntegration.objects.exclude(organization_slug__isnull=True).exclude(  # noqa: TEAM001 - System job iterating all integrations
-        organization_slug=""
-    )
+    # Only sync teams with copilot_status="connected"
+    teams = Team.objects.filter(copilot_status="connected")  # noqa: TEAM001 - System job iterating all teams
 
     teams_dispatched = 0
+    teams_skipped = 0
 
-    # Dispatch sync task for each team
-    for integration in integrations:
+    # Dispatch sync task for each connected team
+    for team in teams:
         try:
-            sync_copilot_metrics_task.delay(integration.team_id)
-            teams_dispatched += 1
+            integration = GitHubIntegration.objects.get(team=team)  # noqa: TEAM001 - System job
+            if integration.organization_slug:
+                sync_copilot_metrics_task.delay(team.id)
+                teams_dispatched += 1
+            else:
+                teams_skipped += 1
+                logger.debug(f"Skipping team {team.name}: no organization_slug")
+        except GitHubIntegration.DoesNotExist:
+            teams_skipped += 1
+            logger.debug(f"Skipping team {team.name}: no GitHubIntegration")
         except Exception as e:
             # Log dispatch errors and continue with remaining teams
-            logger.error(f"Failed to dispatch Copilot sync task for team {integration.team_id}: {e}")
+            logger.error(f"Failed to dispatch Copilot sync task for team {team.id}: {e}")
+            teams_skipped += 1
             continue
 
-    logger.info(f"Finished dispatching Copilot sync tasks. Dispatched: {teams_dispatched}")
+    duration = time.time() - start_time
+    logger.info(
+        f"Copilot sync complete: dispatched={teams_dispatched}, skipped={teams_skipped}, duration={duration:.1f}s"
+    )
 
     return {
         "teams_dispatched": teams_dispatched,
+        "teams_skipped": teams_skipped,
+        "duration_seconds": round(duration, 2),
     }
