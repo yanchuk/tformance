@@ -9,4 +9,5 @@ Both modules import PROMPT_VERSION from here.
 # v8.0.0: Enhanced tech detection (mapping tables, framework signals) + summary guidelines (PR type decision tree)
 # v8.1.0: Added @@ mention syntax for reviewers (@@username links to PRs they review vs @username for authors)
 # v8.2.0: Added anti-bias rules for tech detection (do NOT infer from org/repo names, require file evidence)
-PROMPT_VERSION = "8.2.0"
+# v8.3.0: Added Copilot Champions section to prompts - identifies top performers as potential mentors
+PROMPT_VERSION = "8.3.0"

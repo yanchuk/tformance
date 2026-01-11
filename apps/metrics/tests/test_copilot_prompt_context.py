@@ -2,10 +2,10 @@
 Tests for extended Copilot metrics context for LLM prompts.
 
 This module tests the extended get_copilot_metrics_for_prompt function that
-includes seat utilization data and delivery impact comparison.
+includes seat utilization data, delivery impact comparison, and Copilot champions.
 """
 
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 
 from django.test import TestCase
@@ -19,6 +19,11 @@ from apps.metrics.factories import (
     TeamMemberFactory,
 )
 from apps.metrics.models import CopilotSeatSnapshot
+
+
+def make_aware_datetime(d: date) -> datetime:
+    """Convert a date to a timezone-aware datetime at midnight."""
+    return timezone.make_aware(datetime.combine(d, datetime.min.time()))
 
 
 class TestCopilotPromptContextExistingMetrics(TestCase):
@@ -522,3 +527,146 @@ class TestCopilotPromptContextTeamIsolation(TestCase):
         # Assert - seat_data should be None (no snapshot for our team)
         self.assertIn("seat_data", result)
         self.assertIsNone(result["seat_data"])
+
+
+class TestCopilotPromptContextChampions(TestCase):
+    """Tests for Copilot champions in prompt context."""
+
+    def setUp(self):
+        """Set up test fixtures using factories."""
+        self.team = TeamFactory()
+        self.today = date.today()
+        self.start_date = self.today - timedelta(days=30)
+        self.end_date = self.today
+
+    def test_includes_champions_data(self):
+        """Test that champions list is included in prompt context.
+
+        Champions should include:
+        - name (display_name)
+        - github_username
+        - acceptance_rate
+        - prs_merged
+        - avg_cycle_time
+        """
+        # Arrange - create a qualified champion
+        member = TeamMemberFactory(team=self.team, display_name="Alice", github_username="alice")
+
+        # Create 7 days of Copilot usage (meets 5-day threshold)
+        for day in range(7):
+            AIUsageDailyFactory(
+                team=self.team,
+                member=member,
+                date=self.start_date + timedelta(days=day),
+                source="copilot",
+                suggestions_shown=100,
+                suggestions_accepted=50,
+                acceptance_rate=Decimal("50"),
+            )
+
+        # Create 5 merged PRs (meets 3-PR threshold)
+        for _ in range(5):
+            PullRequestFactory(
+                team=self.team,
+                author=member,
+                state="merged",
+                merged_at=make_aware_datetime(self.start_date + timedelta(days=5)),
+                cycle_time_hours=Decimal("24"),
+                is_revert=False,
+            )
+
+        # Act
+        result = get_copilot_metrics_for_prompt(
+            team=self.team,
+            start_date=self.start_date,
+            end_date=self.end_date,
+            include_copilot=True,
+        )
+
+        # Assert - champions should be present
+        self.assertIn("champions", result)
+        self.assertIsNotNone(result["champions"])
+        self.assertEqual(len(result["champions"]), 1)
+
+        champion = result["champions"][0]
+        self.assertEqual(champion["name"], "Alice")
+        self.assertEqual(champion["github_username"], "alice")
+        self.assertIn("acceptance_rate", champion)
+        self.assertIn("prs_merged", champion)
+        self.assertIn("avg_cycle_time", champion)
+
+    def test_champions_returns_top_3(self):
+        """Test that champions list returns at most 3 members."""
+        # Arrange - create 5 qualified members
+        members = TeamMemberFactory.create_batch(5, team=self.team)
+
+        for i, member in enumerate(members):
+            # Create 7 days of Copilot usage with varying acceptance rates
+            for day in range(7):
+                AIUsageDailyFactory(
+                    team=self.team,
+                    member=member,
+                    date=self.start_date + timedelta(days=day),
+                    source="copilot",
+                    suggestions_shown=100,
+                    suggestions_accepted=30 + i * 10,
+                    acceptance_rate=Decimal(str(30 + i * 10)),
+                )
+
+            # Create 5 merged PRs
+            for _ in range(5):
+                PullRequestFactory(
+                    team=self.team,
+                    author=member,
+                    state="merged",
+                    merged_at=make_aware_datetime(self.start_date + timedelta(days=5)),
+                    cycle_time_hours=Decimal("24"),
+                    is_revert=False,
+                )
+
+        # Act
+        result = get_copilot_metrics_for_prompt(
+            team=self.team,
+            start_date=self.start_date,
+            end_date=self.end_date,
+            include_copilot=True,
+        )
+
+        # Assert - should return exactly 3 champions
+        self.assertIn("champions", result)
+        self.assertEqual(len(result["champions"]), 3)
+
+    def test_champions_empty_when_no_qualified_members(self):
+        """Test that champions is empty when no members meet thresholds."""
+        # Arrange - create member with only 2 days of activity (below 5-day threshold)
+        member = TeamMemberFactory(team=self.team)
+
+        for day in range(2):
+            AIUsageDailyFactory(
+                team=self.team,
+                member=member,
+                date=self.start_date + timedelta(days=day),
+                source="copilot",
+                suggestions_shown=100,
+                suggestions_accepted=50,
+                acceptance_rate=Decimal("50"),
+            )
+
+        PullRequestFactory.create_batch(
+            5,
+            team=self.team,
+            author=member,
+            state="merged",
+        )
+
+        # Act
+        result = get_copilot_metrics_for_prompt(
+            team=self.team,
+            start_date=self.start_date,
+            end_date=self.end_date,
+            include_copilot=True,
+        )
+
+        # Assert - champions should be empty
+        self.assertIn("champions", result)
+        self.assertEqual(result["champions"], [])

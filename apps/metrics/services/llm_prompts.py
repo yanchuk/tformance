@@ -24,6 +24,10 @@ from datetime import datetime
 from functools import lru_cache
 from typing import TYPE_CHECKING
 
+# Re-export PROMPT_VERSION for backward compatibility
+# The source of truth is apps/metrics/prompts/constants.py
+from apps.metrics.prompts.constants import PROMPT_VERSION  # noqa: F401
+
 if TYPE_CHECKING:
     from apps.metrics.models import PullRequest
 

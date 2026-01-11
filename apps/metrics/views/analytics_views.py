@@ -149,6 +149,7 @@ def analytics_ai_adoption(request: HttpRequest) -> HttpResponse:
     Admin-only view.
     """
     from apps.metrics.services import dashboard_service
+    from apps.metrics.services.copilot_champions import get_copilot_champions
 
     context = _get_analytics_context(request, "ai_adoption")
 
@@ -156,6 +157,9 @@ def analytics_ai_adoption(request: HttpRequest) -> HttpResponse:
     context["comparison"] = dashboard_service.get_ai_quality_comparison(
         request.team, context["start_date"], context["end_date"]
     )
+
+    # Get Copilot Champions (potential mentors)
+    context["champions"] = get_copilot_champions(request.team, context["start_date"], context["end_date"], top_n=3)
 
     # Copilot feature flags - enables ROI/utilization sections
     context["copilot_enabled"] = is_copilot_feature_active(request, "copilot_enabled")

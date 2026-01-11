@@ -55,6 +55,13 @@
 - Note: Limited data - small sample size, results may not be statistically significant
 {% endif %}
 {% endif %}
+{% if copilot_metrics.champions %}
+
+### Copilot Champions (potential mentors)
+{% for champion in copilot_metrics.champions %}
+- @{{ champion.github_username }}: {{ "%.0f"|format(champion.acceptance_rate) }}% acceptance, {{ champion.prs_merged }} PRs merged, {{ "%.1f"|format(champion.avg_cycle_time) }}h avg cycle time
+{% endfor %}
+{% endif %}
 {% else %}
 - No Copilot usage data available for this period
 {% endif %}

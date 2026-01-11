@@ -12,6 +12,7 @@ from django.http import HttpRequest
 
 from apps.integrations.services.integration_flags import is_copilot_feature_active
 from apps.metrics.models import AIUsageDaily, CopilotSeatSnapshot
+from apps.metrics.services.copilot_champions import get_copilot_champions
 from apps.metrics.services.dashboard.copilot_metrics import get_copilot_delivery_comparison
 from apps.teams.models import Team
 
@@ -119,6 +120,9 @@ def get_copilot_metrics_for_prompt(
     # Get delivery impact comparison
     delivery_impact = _get_delivery_impact(team, start_date, end_date)
 
+    # Get Copilot champions (potential mentors)
+    champions = _get_champions_for_prompt(team, start_date, end_date)
+
     return {
         "active_users": active_users,
         "inactive_count": inactive_count,
@@ -128,6 +132,7 @@ def get_copilot_metrics_for_prompt(
         "top_users": top_users,
         "seat_data": seat_data,
         "delivery_impact": delivery_impact,
+        "champions": champions,
     }
 
 
@@ -199,3 +204,40 @@ def _get_delivery_impact(team: Team, start_date: date, end_date: date) -> dict |
         "review_time_improvement_percent": comparison["improvement"]["review_time_percent"],
         "sample_sufficient": comparison["sample_sufficient"],
     }
+
+
+def _get_champions_for_prompt(team: Team, start_date: date, end_date: date) -> list[dict]:
+    """Get Copilot champions formatted for LLM prompt context.
+
+    Returns simplified champion data for inclusion in prompts.
+
+    Args:
+        team: The team to get champions for.
+        start_date: Start date of the period (inclusive).
+        end_date: End date of the period (inclusive).
+
+    Returns:
+        List of champion dictionaries:
+        [
+            {
+                "name": str,           # Display name
+                "github_username": str,
+                "acceptance_rate": float,
+                "prs_merged": int,
+                "avg_cycle_time": float,
+            },
+            ...
+        ]
+    """
+    champions = get_copilot_champions(team, start_date, end_date, top_n=3)
+
+    return [
+        {
+            "name": c["display_name"],
+            "github_username": c["github_username"],
+            "acceptance_rate": c["stats"]["acceptance_rate"],
+            "prs_merged": c["stats"]["prs_merged"],
+            "avg_cycle_time": c["stats"]["avg_cycle_time_hours"],
+        }
+        for c in champions
+    ]
