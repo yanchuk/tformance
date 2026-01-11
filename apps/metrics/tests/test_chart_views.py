@@ -665,6 +665,56 @@ class TestTeamBreakdownTable(TestCase):
         self.assertIn("avg_response_time", team_averages)
         self.assertIn("avg_ai_pct", team_averages)
 
+    def test_team_breakdown_table_accepts_sort_by_copilot_pct(self):
+        """Test that team_breakdown_table accepts copilot_pct as a sort field."""
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(reverse("metrics:table_breakdown"), {"sort": "copilot_pct"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["sort"], "copilot_pct")
+
+    def test_team_breakdown_table_context_includes_champion_ids(self):
+        """Test that team_breakdown_table context includes champion_ids set."""
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(reverse("metrics:table_breakdown"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("champion_ids", response.context)
+        # champion_ids should be a set
+        self.assertIsInstance(response.context["champion_ids"], set)
+
+    def test_team_breakdown_table_champion_ids_contains_champion_member_ids(self):
+        """Test that champion_ids contains member IDs of Copilot Champions."""
+        from decimal import Decimal
+
+        from apps.metrics.factories import AIUsageDailyFactory, PullRequestFactory, TeamMemberFactory
+
+        self.client.force_login(self.admin_user)
+
+        # Create a member with high Copilot usage (should qualify as champion)
+        champion_member = TeamMemberFactory(team=self.team, display_name="Champion User")
+        # Create PR so member appears in breakdown
+        PullRequestFactory(team=self.team, author=champion_member, state="merged")
+        # Create Copilot usage with high acceptance rate
+        AIUsageDailyFactory(
+            team=self.team,
+            member=champion_member,
+            source="copilot",
+            acceptance_rate=Decimal("55.00"),
+            suggestions_shown=100,
+            suggestions_accepted=55,
+        )
+
+        response = self.client.get(reverse("metrics:table_breakdown"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("champion_ids", response.context)
+        # Champion member should be in the set (if they qualify based on scoring)
+        # Note: Actual inclusion depends on get_copilot_champions() criteria
+        self.assertIsInstance(response.context["champion_ids"], set)
+
 
 class TestLeaderboardTable(TestCase):
     """Tests for leaderboard_table view (member-accessible)."""

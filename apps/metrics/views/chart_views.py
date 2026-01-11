@@ -116,7 +116,16 @@ def team_breakdown_table(request: HttpRequest) -> HttpResponse:
     order = request.GET.get("order", "desc")
 
     # Validate sort field (must match dashboard_service.get_team_breakdown SORT_FIELDS)
-    ALLOWED_SORT_FIELDS = {"prs_merged", "cycle_time", "ai_pct", "name", "pr_size", "reviews", "response_time"}
+    ALLOWED_SORT_FIELDS = {
+        "prs_merged",
+        "cycle_time",
+        "ai_pct",
+        "name",
+        "pr_size",
+        "reviews",
+        "response_time",
+        "copilot_pct",
+    }
     if sort not in ALLOWED_SORT_FIELDS:
         sort = "prs_merged"
 
@@ -128,6 +137,13 @@ def team_breakdown_table(request: HttpRequest) -> HttpResponse:
         request.team, start_date, end_date, sort_by=sort, order=order, repo=repo
     )
     team_averages = dashboard_service.get_team_averages(request.team, start_date, end_date, repo=repo)
+
+    # Get Copilot Champions for badge display (uses same date range for consistency)
+    from apps.metrics.services.copilot_champions import get_copilot_champions
+
+    champions = get_copilot_champions(request.team, start_date, end_date)
+    champion_ids = {c["member_id"] for c in champions}
+
     return TemplateResponse(
         request,
         "metrics/partials/team_breakdown_table.html",
@@ -138,6 +154,7 @@ def team_breakdown_table(request: HttpRequest) -> HttpResponse:
             "days": days,
             "selected_repo": repo or "",
             "team_averages": team_averages,
+            "champion_ids": champion_ids,
         },
     )
 

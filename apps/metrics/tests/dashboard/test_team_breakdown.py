@@ -11,6 +11,7 @@ from django.test import TestCase
 from django.utils import timezone
 
 from apps.metrics.factories import (
+    AIUsageDailyFactory,
     PRReviewFactory,
     PullRequestFactory,
     TeamFactory,
@@ -170,11 +171,12 @@ class TestGetTeamBreakdown(TestCase):
             )
 
         # Should use constant number of queries (not N+1)
-        # Expected: 3 queries:
+        # Expected: 4 queries:
         #   1. PR aggregates with JOIN (prs_merged, cycle_time, pr_size, ai_pct)
         #   2. Reviews given aggregate
         #   3. Review response time aggregate
-        with self.assertNumQueries(3):
+        #   4. Copilot acceptance rate aggregate (AIUsageDaily)
+        with self.assertNumQueries(4):
             result = dashboard_service.get_team_breakdown(self.team, self.start_date, self.end_date)
 
         self.assertEqual(len(result), 10)
@@ -609,6 +611,180 @@ class TestGetTeamBreakdown(TestCase):
         self.assertIsNotNone(member_data)
         # Should still calculate 50% from is_ai_assisted field (not 0%)
         self.assertAlmostEqual(float(member_data["ai_pct"]), 50.0, places=1)
+
+    # ========================================================================
+    # COPILOT ACCEPTANCE RATE TESTS - Issue 7: Team Tab Copilot Integration
+    # ========================================================================
+
+    def test_get_team_breakdown_includes_copilot_pct(self):
+        """Test that get_team_breakdown includes copilot_pct from AIUsageDaily."""
+        member = TeamMemberFactory(team=self.team, display_name="Copilot User")
+
+        # Create merged PR so member appears in breakdown
+        PullRequestFactory(
+            team=self.team,
+            author=member,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 10, 12, 0)),
+        )
+
+        # Create Copilot usage data for this member
+        AIUsageDailyFactory(
+            team=self.team,
+            member=member,
+            date=date(2024, 1, 10),
+            source="copilot",
+            suggestions_shown=100,
+            suggestions_accepted=45,
+            acceptance_rate=Decimal("45.00"),
+        )
+
+        result = dashboard_service.get_team_breakdown(self.team, self.start_date, self.end_date)
+
+        member_data = next((m for m in result if m["member_name"] == "Copilot User"), None)
+        self.assertIsNotNone(member_data)
+        self.assertIn("copilot_pct", member_data)
+        self.assertAlmostEqual(float(member_data["copilot_pct"]), 45.0, places=1)
+
+    def test_get_team_breakdown_copilot_pct_averages_multiple_days(self):
+        """Test that copilot_pct averages across multiple days of usage."""
+        member = TeamMemberFactory(team=self.team, display_name="Daily Copilot User")
+
+        PullRequestFactory(
+            team=self.team,
+            author=member,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 15, 12, 0)),
+        )
+
+        # Day 1: 40% acceptance
+        AIUsageDailyFactory(
+            team=self.team,
+            member=member,
+            date=date(2024, 1, 10),
+            source="copilot",
+            suggestions_shown=100,
+            suggestions_accepted=40,
+            acceptance_rate=Decimal("40.00"),
+        )
+        # Day 2: 60% acceptance
+        AIUsageDailyFactory(
+            team=self.team,
+            member=member,
+            date=date(2024, 1, 11),
+            source="copilot",
+            suggestions_shown=100,
+            suggestions_accepted=60,
+            acceptance_rate=Decimal("60.00"),
+        )
+
+        result = dashboard_service.get_team_breakdown(self.team, self.start_date, self.end_date)
+
+        member_data = next((m for m in result if m["member_name"] == "Daily Copilot User"), None)
+        self.assertIsNotNone(member_data)
+        # Average should be (40 + 60) / 2 = 50%
+        self.assertAlmostEqual(float(member_data["copilot_pct"]), 50.0, places=1)
+
+    def test_get_team_breakdown_copilot_pct_none_for_no_data(self):
+        """Test that copilot_pct is None for members without Copilot data."""
+        member = TeamMemberFactory(team=self.team, display_name="No Copilot User")
+
+        PullRequestFactory(
+            team=self.team,
+            author=member,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 10, 12, 0)),
+        )
+        # No AIUsageDaily records for this member
+
+        result = dashboard_service.get_team_breakdown(self.team, self.start_date, self.end_date)
+
+        member_data = next((m for m in result if m["member_name"] == "No Copilot User"), None)
+        self.assertIsNotNone(member_data)
+        self.assertIn("copilot_pct", member_data)
+        self.assertIsNone(member_data["copilot_pct"])
+
+    def test_get_team_breakdown_copilot_pct_excludes_cursor_data(self):
+        """Test that copilot_pct only uses source='copilot', not 'cursor'."""
+        member = TeamMemberFactory(team=self.team, display_name="Multi Tool User")
+
+        PullRequestFactory(
+            team=self.team,
+            author=member,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 10, 12, 0)),
+        )
+
+        # Copilot data: 50% acceptance
+        AIUsageDailyFactory(
+            team=self.team,
+            member=member,
+            date=date(2024, 1, 10),
+            source="copilot",
+            suggestions_shown=100,
+            suggestions_accepted=50,
+            acceptance_rate=Decimal("50.00"),
+        )
+        # Cursor data: 80% acceptance (should be ignored)
+        AIUsageDailyFactory(
+            team=self.team,
+            member=member,
+            date=date(2024, 1, 10),
+            source="cursor",
+            suggestions_shown=100,
+            suggestions_accepted=80,
+            acceptance_rate=Decimal("80.00"),
+        )
+
+        result = dashboard_service.get_team_breakdown(self.team, self.start_date, self.end_date)
+
+        member_data = next((m for m in result if m["member_name"] == "Multi Tool User"), None)
+        self.assertIsNotNone(member_data)
+        # Should be 50% from Copilot only, not affected by Cursor
+        self.assertAlmostEqual(float(member_data["copilot_pct"]), 50.0, places=1)
+
+    def test_get_team_breakdown_sort_by_copilot_pct_desc(self):
+        """Test that sorting by copilot_pct descending works correctly."""
+        member_low = TeamMemberFactory(team=self.team, display_name="Low Copilot")
+        member_high = TeamMemberFactory(team=self.team, display_name="High Copilot")
+        member_none = TeamMemberFactory(team=self.team, display_name="No Copilot")
+
+        # Create PRs for all members
+        for member in [member_low, member_high, member_none]:
+            PullRequestFactory(
+                team=self.team,
+                author=member,
+                state="merged",
+                merged_at=timezone.make_aware(timezone.datetime(2024, 1, 10, 12, 0)),
+            )
+
+        # Low: 25% acceptance
+        AIUsageDailyFactory(
+            team=self.team,
+            member=member_low,
+            date=date(2024, 1, 10),
+            source="copilot",
+            acceptance_rate=Decimal("25.00"),
+        )
+        # High: 75% acceptance
+        AIUsageDailyFactory(
+            team=self.team,
+            member=member_high,
+            date=date(2024, 1, 10),
+            source="copilot",
+            acceptance_rate=Decimal("75.00"),
+        )
+        # member_none has no Copilot data
+
+        result = dashboard_service.get_team_breakdown(
+            self.team, self.start_date, self.end_date, sort_by="copilot_pct", order="desc"
+        )
+
+        # Should be: High (75%), Low (25%), None (null at end)
+        self.assertEqual(len(result), 3)
+        self.assertEqual(result[0]["member_name"], "High Copilot")
+        self.assertEqual(result[1]["member_name"], "Low Copilot")
+        self.assertEqual(result[2]["member_name"], "No Copilot")
 
 
 class TestGetTeamAverages(TestCase):

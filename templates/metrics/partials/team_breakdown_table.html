@@ -51,9 +51,18 @@
         <th class="text-right cursor-pointer hover:bg-base-300 select-none"
             hx-get="{% url 'metrics:table_breakdown' %}?sort=ai_pct&order={% if sort == 'ai_pct' and order == 'desc' %}asc{% else %}desc{% endif %}&days={{ days|default:30 }}{% if selected_repo %}&repo={{ selected_repo }}{% endif %}"
             hx-target="#team-breakdown-container"
-            hx-swap="innerHTML">
+            hx-swap="innerHTML"
+            title="{% trans 'Percentage of PRs using AI tools (detected from PR content)' %}">
           {% trans "AI %" %}
           {% if sort == 'ai_pct' %}<span class="ml-1">{% if order == 'asc' %}▲{% else %}▼{% endif %}</span>{% endif %}
+        </th>
+        <th class="text-right cursor-pointer hover:bg-base-300 select-none"
+            hx-get="{% url 'metrics:table_breakdown' %}?sort=copilot_pct&order={% if sort == 'copilot_pct' and order == 'desc' %}asc{% else %}desc{% endif %}&days={{ days|default:30 }}{% if selected_repo %}&repo={{ selected_repo }}{% endif %}"
+            hx-target="#team-breakdown-container"
+            hx-swap="innerHTML"
+            title="{% trans 'Copilot suggestion acceptance rate (from GitHub API)' %}">
+          {% trans "Copilot %" %}
+          {% if sort == 'copilot_pct' %}<span class="ml-1">{% if order == 'asc' %}▲{% else %}▼{% endif %}</span>{% endif %}
         </th>
       </tr>
     </thead>
@@ -71,6 +80,9 @@
                 {% endif %}
               </div>
             </div>
+            {% if row.member_id in champion_ids %}
+            <span class="mr-1" title="{% trans 'Copilot Champion - High acceptance + fast delivery' %}">🏆</span>
+            {% endif %}
             <a href="{% url 'pullrequests:pr_list' %}?author={{ row.member_id }}{% if selected_repo %}&repo={{ selected_repo }}{% endif %}"
                target="_blank"
                rel="noopener"
@@ -98,6 +110,13 @@
           <span class="text-base-content/70">-</span>
           {% endif %}
         </td>
+        <td class="text-right">
+          {% if row.copilot_pct is not None %}
+          <span class="badge badge-success badge-sm">{{ row.copilot_pct|floatformat:0 }}%</span>
+          {% else %}
+          <span class="text-base-content/70" title="{% trans 'No Copilot usage data' %}">-</span>
+          {% endif %}
+        </td>
       </tr>
       {% endfor %}
     </tbody>
@@ -115,6 +134,13 @@
           <span class="badge badge-info badge-sm">{{ team_averages.avg_ai_pct|floatformat:0 }}%</span>
           {% else %}
           <span class="text-base-content/70">-</span>
+          {% endif %}
+        </td>
+        <td class="text-right">
+          {% if team_averages.avg_copilot_pct is not None %}
+          <span class="badge badge-success badge-sm">{{ team_averages.avg_copilot_pct|floatformat:0 }}%</span>
+          {% else %}
+          <span class="text-base-content/70" title="{% trans 'No Copilot usage data' %}">-</span>
           {% endif %}
         </td>
       </tr>

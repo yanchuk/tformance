@@ -33,7 +33,7 @@ def get_team_breakdown(
         team: Team instance
         start_date: Start date (inclusive)
         end_date: End date (inclusive)
-        sort_by: Field to sort by (prs_merged, cycle_time, ai_pct, name, pr_size, reviews, response_time)
+        sort_by: Field to sort by (prs_merged, cycle_time, ai_pct, name, pr_size, reviews, response_time, copilot_pct)
         order: Sort order (asc or desc)
         repo: Optional repository to filter by (owner/repo format)
 
@@ -47,6 +47,7 @@ def get_team_breakdown(
             - reviews_given (int): Count of reviews given as reviewer
             - avg_review_response_hours (Decimal): Avg time to first review (as reviewer)
             - ai_pct (float): AI adoption percentage (0.0 to 100.0) from effective_is_ai_assisted
+            - copilot_pct (float | None): Copilot suggestion acceptance rate (0.0 to 100.0), None if no data
     """
     prs = _get_merged_prs_in_range(team, start_date, end_date)
     prs = _apply_repo_filter(prs, repo)
@@ -60,6 +61,7 @@ def get_team_breakdown(
         "pr_size": "avg_pr_size",
         "reviews": None,  # Sort in Python (requires separate query)
         "response_time": None,  # Sort in Python (requires separate query)
+        "copilot_pct": None,  # Sort in Python (requires separate AIUsageDaily query)
     }
 
     # Determine database sort field
@@ -149,6 +151,21 @@ def get_team_breakdown(
         if times:
             avg_response_by_member[reviewer_id] = Decimal(str(round(sum(times) / len(times), 2)))
 
+    # Get Copilot acceptance rate per member from AIUsageDaily
+    # Only includes source="copilot" data, excludes cursor/other AI tools
+    copilot_aggregates = (
+        AIUsageDaily.objects.filter(
+            team=team,
+            member_id__in=author_ids,
+            date__gte=start_date,
+            date__lte=end_date,
+            source="copilot",
+        )
+        .values("member_id")
+        .annotate(avg_acceptance_rate=Avg("acceptance_rate"))
+    )
+    copilot_by_member = {row["member_id"]: row["avg_acceptance_rate"] for row in copilot_aggregates}
+
     # Build result list from aggregated data
     result = []
     for row in pr_aggregates:
@@ -165,6 +182,10 @@ def get_team_breakdown(
         ai_count = row["ai_assisted_count"]
         ai_pct = round(ai_count * 100.0 / total_prs, 2) if total_prs > 0 else 0.0
 
+        # Get Copilot acceptance rate (None if no data, preserving 0% for actual 0 acceptance)
+        copilot_rate = copilot_by_member.get(author_id)
+        copilot_pct = float(copilot_rate) if copilot_rate is not None else None
+
         result.append(
             {
                 "member_id": author_id,
@@ -177,6 +198,7 @@ def get_team_breakdown(
                 "reviews_given": reviews_by_member.get(author_id, 0),
                 "avg_review_response_hours": avg_response_by_member.get(author_id, Decimal("0.00")),
                 "ai_pct": ai_pct,
+                "copilot_pct": copilot_pct,
             }
         )
 
@@ -187,6 +209,9 @@ def get_team_breakdown(
         result.sort(key=lambda x: x["reviews_given"], reverse=(order == "desc"))
     elif sort_by == "response_time":
         result.sort(key=lambda x: x["avg_review_response_hours"], reverse=(order == "desc"))
+    elif sort_by == "copilot_pct":
+        # Sort by copilot_pct, treating None as -1 (lowest) for consistent ordering
+        result.sort(key=lambda x: x["copilot_pct"] if x["copilot_pct"] is not None else -1, reverse=(order == "desc"))
 
     return result
 
@@ -213,6 +238,7 @@ def get_team_averages(
             - avg_reviews (float): Average reviews given per member
             - avg_response_time (float): Average review response time in hours
             - avg_ai_pct (float): Average AI adoption percentage
+            - avg_copilot_pct (float | None): Average Copilot acceptance rate (None if no data)
     """
     # Get breakdown data for all members
     breakdown = get_team_breakdown(team, start_date, end_date, repo=repo)
@@ -225,6 +251,7 @@ def get_team_averages(
             "avg_reviews": 0.0,
             "avg_response_time": 0.0,
             "avg_ai_pct": 0.0,
+            "avg_copilot_pct": None,
         }
 
     num_members = len(breakdown)
@@ -237,6 +264,10 @@ def get_team_averages(
     total_response_time = sum(float(m["avg_review_response_hours"]) for m in breakdown)
     total_ai_pct = sum(m["ai_pct"] for m in breakdown)
 
+    # Calculate Copilot average only for members with Copilot data
+    copilot_values = [m["copilot_pct"] for m in breakdown if m["copilot_pct"] is not None]
+    avg_copilot_pct = round(sum(copilot_values) / len(copilot_values), 2) if copilot_values else None
+
     return {
         "avg_prs": round(total_prs / num_members, 1),
         "avg_cycle_time": round(total_cycle_time / num_members, 2),
@@ -244,6 +275,7 @@ def get_team_averages(
         "avg_reviews": round(total_reviews / num_members, 1),
         "avg_response_time": round(total_response_time / num_members, 2),
         "avg_ai_pct": round(total_ai_pct / num_members, 2),
+        "avg_copilot_pct": avg_copilot_pct,
     }
 
 
