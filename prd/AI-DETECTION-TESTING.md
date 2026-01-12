@@ -222,6 +222,27 @@ python manage.py backfill_ai_detection --force
 | `llm_summary` | JSONField | Full LLM analysis (ai, tech, summary, health) |
 | `llm_summary_version` | CharField | Prompt version used |
 
+## LLM Data Priority Rule
+
+**Always prioritize LLM-detected data over pattern/regex detection.** Use `effective_*` properties on PullRequest model:
+
+| Property | LLM Source | Fallback |
+|----------|------------|----------|
+| `pr.effective_is_ai_assisted` | `llm_summary.ai.is_assisted` (≥0.5 confidence) | `is_ai_assisted` |
+| `pr.effective_ai_tools` | `llm_summary.ai.tools` | `ai_tools_detected` |
+| `pr.effective_tech_categories` | `llm_summary.tech.categories` | `PRFile.file_category` |
+
+**Example usage:**
+```python
+# CORRECT - uses LLM when available, falls back to regex
+if pr.effective_is_ai_assisted:
+    tools = pr.effective_ai_tools
+
+# WRONG - ignores LLM analysis
+if pr.is_ai_assisted:
+    tools = pr.ai_tools_detected
+```
+
 ## Current Detection Rates (Dec 2024)
 
 | Team              | PRs | AI Detected | Rate  |
