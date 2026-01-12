@@ -19,7 +19,7 @@ class AIFeedbackFactory(DjangoModelFactory):
     team = factory.SubFactory(TeamFactory)
     category = factory.Iterator([choice[0] for choice in CATEGORY_CHOICES])
     description = factory.Faker("paragraph")
-    reported_by = factory.LazyAttribute(lambda obj: TeamMemberFactory(team=obj.team))
+    reported_by = factory.SubFactory(TeamMemberFactory, team=factory.SelfAttribute("..team"))
     status = "open"
 
 
