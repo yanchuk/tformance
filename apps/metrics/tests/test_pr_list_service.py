@@ -19,16 +19,11 @@ from apps.metrics.services.pr_list_service import (
     get_pr_stats,
     get_prs_queryset,
 )
+from apps.utils.tests.mixins import TeamWithMembersMixin
 
 
-class TestGetPrsQueryset(TestCase):
+class TestGetPrsQueryset(TeamWithMembersMixin, TestCase):
     """Tests for get_prs_queryset function."""
-
-    def setUp(self):
-        """Set up test fixtures."""
-        self.team = TeamFactory()
-        self.member1 = TeamMemberFactory(team=self.team, display_name="Alice")
-        self.member2 = TeamMemberFactory(team=self.team, display_name="Bob")
 
     def test_returns_prs_for_team(self):
         """Test that only PRs for the specified team are returned."""
@@ -530,13 +525,8 @@ class TestGetPrsQueryset(TestCase):
         _ = pr.author.display_name
 
 
-class TestGetPrStats(TestCase):
+class TestGetPrStats(TeamWithMembersMixin, TestCase):
     """Tests for get_pr_stats function."""
-
-    def setUp(self):
-        """Set up test fixtures."""
-        self.team = TeamFactory()
-        self.member = TeamMemberFactory(team=self.team)
 
     def test_returns_total_count(self):
         """Test that stats include total PR count."""
@@ -610,14 +600,8 @@ class TestGetPrStats(TestCase):
         self.assertEqual(stats["avg_cycle_time"], Decimal("10.0"))
 
 
-class TestGetFilterOptions(TestCase):
+class TestGetFilterOptions(TeamWithMembersMixin, TestCase):
     """Tests for get_filter_options function."""
-
-    def setUp(self):
-        """Set up test fixtures."""
-        self.team = TeamFactory()
-        self.member1 = TeamMemberFactory(team=self.team, display_name="Alice")
-        self.member2 = TeamMemberFactory(team=self.team, display_name="Bob")
 
     def test_returns_repos_list(self):
         """Test that filter options include list of repositories."""
@@ -713,18 +697,13 @@ class TestPrSizeBuckets(TestCase):
         self.assertEqual(PR_SIZE_BUCKETS["XL"], (501, None))
 
 
-class TestTechCategoriesFilter(TestCase):
+class TestTechCategoriesFilter(TeamWithMembersMixin, TestCase):
     """Tests for technology category filter."""
-
-    def setUp(self):
-        """Set up test fixtures."""
-        self.team = TeamFactory()
-        self.member = TeamMemberFactory(team=self.team)
 
     def test_filter_by_single_tech_category(self):
         """Test filtering by a single technology category."""
-        pr1 = PullRequestFactory(team=self.team, author=self.member)
-        pr2 = PullRequestFactory(team=self.team, author=self.member)
+        pr1 = PullRequestFactory(team=self.team, author=self.member1)
+        pr2 = PullRequestFactory(team=self.team, author=self.member1)
 
         # Add frontend file to pr1
         PRFileFactory(pull_request=pr1, team=self.team, file_category="frontend")
@@ -738,9 +717,9 @@ class TestTechCategoriesFilter(TestCase):
 
     def test_filter_by_multiple_tech_categories(self):
         """Test filtering by multiple technology categories (OR logic)."""
-        pr1 = PullRequestFactory(team=self.team, author=self.member)
-        pr2 = PullRequestFactory(team=self.team, author=self.member)
-        pr3 = PullRequestFactory(team=self.team, author=self.member)
+        pr1 = PullRequestFactory(team=self.team, author=self.member1)
+        pr2 = PullRequestFactory(team=self.team, author=self.member1)
+        pr3 = PullRequestFactory(team=self.team, author=self.member1)
 
         PRFileFactory(pull_request=pr1, team=self.team, file_category="frontend")
         PRFileFactory(pull_request=pr2, team=self.team, file_category="backend")
@@ -754,8 +733,8 @@ class TestTechCategoriesFilter(TestCase):
 
     def test_empty_tech_filter_returns_all_prs(self):
         """Test that empty tech filter returns all PRs."""
-        pr1 = PullRequestFactory(team=self.team, author=self.member)
-        pr2 = PullRequestFactory(team=self.team, author=self.member)
+        pr1 = PullRequestFactory(team=self.team, author=self.member1)
+        pr2 = PullRequestFactory(team=self.team, author=self.member1)
 
         PRFileFactory(pull_request=pr1, team=self.team, file_category="frontend")
         PRFileFactory(pull_request=pr2, team=self.team, file_category="backend")
@@ -766,7 +745,7 @@ class TestTechCategoriesFilter(TestCase):
 
     def test_pr_with_multiple_categories_appears_once(self):
         """Test that PR with files in multiple categories appears only once."""
-        pr = PullRequestFactory(team=self.team, author=self.member)
+        pr = PullRequestFactory(team=self.team, author=self.member1)
 
         PRFileFactory(pull_request=pr, team=self.team, file_category="frontend", filename="app.tsx")
         PRFileFactory(pull_request=pr, team=self.team, file_category="backend", filename="views.py")
@@ -779,7 +758,7 @@ class TestTechCategoriesFilter(TestCase):
 
     def test_tech_categories_annotation_returns_categories(self):
         """Test that tech_categories annotation returns list of categories."""
-        pr = PullRequestFactory(team=self.team, author=self.member)
+        pr = PullRequestFactory(team=self.team, author=self.member1)
 
         PRFileFactory(pull_request=pr, team=self.team, file_category="frontend", filename="app.tsx")
         PRFileFactory(pull_request=pr, team=self.team, file_category="backend", filename="views.py")
@@ -793,7 +772,7 @@ class TestTechCategoriesFilter(TestCase):
 
     def test_pr_without_files_has_empty_tech_categories(self):
         """Test that PR without files has empty tech_categories."""
-        PullRequestFactory(team=self.team, author=self.member)
+        PullRequestFactory(team=self.team, author=self.member1)
 
         result = get_prs_queryset(self.team, {}).first()
 
@@ -802,7 +781,7 @@ class TestTechCategoriesFilter(TestCase):
 
     def test_filter_options_includes_tech_categories(self):
         """Test that get_filter_options returns tech_categories."""
-        PullRequestFactory(team=self.team, author=self.member)
+        PullRequestFactory(team=self.team, author=self.member1)
 
         options = get_filter_options(self.team)
 
@@ -815,7 +794,7 @@ class TestTechCategoriesFilter(TestCase):
 
     def test_filter_options_includes_llm_categories(self):
         """Test that get_filter_options includes LLM-specific categories."""
-        PullRequestFactory(team=self.team, author=self.member)
+        PullRequestFactory(team=self.team, author=self.member1)
 
         options = get_filter_options(self.team)
 
@@ -829,12 +808,12 @@ class TestTechCategoriesFilter(TestCase):
         """Test filtering by LLM-only category 'devops'."""
         pr_devops = PullRequestFactory(
             team=self.team,
-            author=self.member,
+            author=self.member1,
             llm_summary={"tech": {"categories": ["devops"], "languages": [], "frameworks": []}},
         )
         PullRequestFactory(
             team=self.team,
-            author=self.member,
+            author=self.member1,
             llm_summary={"tech": {"categories": ["backend"], "languages": [], "frameworks": []}},
         )
 
@@ -847,10 +826,10 @@ class TestTechCategoriesFilter(TestCase):
         """Test filtering by LLM-only category 'mobile'."""
         pr_mobile = PullRequestFactory(
             team=self.team,
-            author=self.member,
+            author=self.member1,
             llm_summary={"tech": {"categories": ["mobile", "frontend"], "languages": [], "frameworks": []}},
         )
-        PullRequestFactory(team=self.team, author=self.member)
+        PullRequestFactory(team=self.team, author=self.member1)
 
         result = get_prs_queryset(self.team, {"tech": ["mobile"]})
 
@@ -861,10 +840,10 @@ class TestTechCategoriesFilter(TestCase):
         """Test filtering by LLM-only category 'data'."""
         pr_data = PullRequestFactory(
             team=self.team,
-            author=self.member,
+            author=self.member1,
             llm_summary={"tech": {"categories": ["data"], "languages": ["python"], "frameworks": ["pandas"]}},
         )
-        PullRequestFactory(team=self.team, author=self.member)
+        PullRequestFactory(team=self.team, author=self.member1)
 
         result = get_prs_queryset(self.team, {"tech": ["data"]})
 
@@ -876,14 +855,14 @@ class TestTechCategoriesFilter(TestCase):
         # PR with LLM frontend category
         pr_llm = PullRequestFactory(
             team=self.team,
-            author=self.member,
+            author=self.member1,
             llm_summary={"tech": {"categories": ["frontend"], "languages": [], "frameworks": []}},
         )
         # PR with pattern frontend category (no LLM)
-        pr_pattern = PullRequestFactory(team=self.team, author=self.member)
+        pr_pattern = PullRequestFactory(team=self.team, author=self.member1)
         PRFileFactory(pull_request=pr_pattern, team=self.team, file_category="frontend", filename="app.tsx")
         # PR with neither
-        PullRequestFactory(team=self.team, author=self.member)
+        PullRequestFactory(team=self.team, author=self.member1)
 
         result = get_prs_queryset(self.team, {"tech": ["frontend"]})
 
@@ -893,19 +872,14 @@ class TestTechCategoriesFilter(TestCase):
         self.assertIn(pr_pattern.id, result_ids)
 
 
-class TestEffectiveTechCategories(TestCase):
+class TestEffectiveTechCategories(TeamWithMembersMixin, TestCase):
     """Tests for PullRequest.effective_tech_categories model property."""
-
-    def setUp(self):
-        """Set up test fixtures."""
-        self.team = TeamFactory()
-        self.member = TeamMemberFactory(team=self.team)
 
     def test_returns_llm_categories_when_available(self):
         """Test that LLM categories are prioritized over pattern categories."""
         pr = PullRequestFactory(
             team=self.team,
-            author=self.member,
+            author=self.member1,
             llm_summary={"tech": {"categories": ["backend", "devops"], "languages": [], "frameworks": []}},
         )
         # Add pattern-based file (should be ignored due to LLM priority)
@@ -918,7 +892,7 @@ class TestEffectiveTechCategories(TestCase):
 
     def test_returns_pattern_categories_when_no_llm(self):
         """Test fallback to pattern-based categories when no LLM summary."""
-        pr = PullRequestFactory(team=self.team, author=self.member, llm_summary=None)
+        pr = PullRequestFactory(team=self.team, author=self.member1, llm_summary=None)
         PRFileFactory(pull_request=pr, team=self.team, file_category="frontend", filename="app.tsx")
         PRFileFactory(pull_request=pr, team=self.team, file_category="backend", filename="views.py")
 
@@ -930,7 +904,7 @@ class TestEffectiveTechCategories(TestCase):
         """Test fallback when LLM summary exists but tech.categories is empty."""
         pr = PullRequestFactory(
             team=self.team,
-            author=self.member,
+            author=self.member1,
             llm_summary={"tech": {"categories": [], "languages": ["python"], "frameworks": []}},
         )
         PRFileFactory(pull_request=pr, team=self.team, file_category="backend", filename="views.py")
@@ -941,7 +915,7 @@ class TestEffectiveTechCategories(TestCase):
 
     def test_returns_empty_list_when_no_data(self):
         """Test returns empty list when no LLM or pattern categories."""
-        pr = PullRequestFactory(team=self.team, author=self.member, llm_summary=None)
+        pr = PullRequestFactory(team=self.team, author=self.member1, llm_summary=None)
 
         result = pr.effective_tech_categories
 
@@ -949,7 +923,7 @@ class TestEffectiveTechCategories(TestCase):
 
     def test_uses_annotated_tech_categories_when_available(self):
         """Test uses annotated tech_categories if present (from service layer)."""
-        pr = PullRequestFactory(team=self.team, author=self.member, llm_summary=None)
+        pr = PullRequestFactory(team=self.team, author=self.member1, llm_summary=None)
         PRFileFactory(pull_request=pr, team=self.team, file_category="frontend", filename="app.tsx")
 
         # Simulate annotation from get_prs_queryset
@@ -964,7 +938,7 @@ class TestEffectiveTechCategories(TestCase):
         """Test LLM-only categories (devops, mobile, data) are returned correctly."""
         pr = PullRequestFactory(
             team=self.team,
-            author=self.member,
+            author=self.member1,
             llm_summary={"tech": {"categories": ["devops", "mobile", "data"], "languages": [], "frameworks": []}},
         )
 
@@ -973,19 +947,14 @@ class TestEffectiveTechCategories(TestCase):
         self.assertEqual(result, ["devops", "mobile", "data"])
 
 
-class TestEffectiveAIDetection(TestCase):
+class TestEffectiveAIDetection(TeamWithMembersMixin, TestCase):
     """Tests for PullRequest.effective_is_ai_assisted and effective_ai_tools properties."""
-
-    def setUp(self):
-        """Set up test fixtures."""
-        self.team = TeamFactory()
-        self.member = TeamMemberFactory(team=self.team)
 
     def test_effective_is_ai_assisted_prioritizes_llm(self):
         """Test that LLM AI detection is prioritized over regex."""
         pr = PullRequestFactory(
             team=self.team,
-            author=self.member,
+            author=self.member1,
             is_ai_assisted=False,  # Regex says no
             llm_summary={"ai": {"is_assisted": True, "tools": ["cursor"], "confidence": 0.9}},
         )
@@ -996,7 +965,7 @@ class TestEffectiveAIDetection(TestCase):
         """Test that LLM can override regex false positive."""
         pr = PullRequestFactory(
             team=self.team,
-            author=self.member,
+            author=self.member1,
             is_ai_assisted=True,  # Regex false positive
             llm_summary={"ai": {"is_assisted": False, "tools": [], "confidence": 0.8}},
         )
@@ -1007,7 +976,7 @@ class TestEffectiveAIDetection(TestCase):
         """Test fallback to regex when no LLM summary."""
         pr = PullRequestFactory(
             team=self.team,
-            author=self.member,
+            author=self.member1,
             is_ai_assisted=True,
             ai_tools_detected=["copilot"],
             llm_summary=None,
@@ -1019,7 +988,7 @@ class TestEffectiveAIDetection(TestCase):
         """Test that low LLM confidence falls back to regex."""
         pr = PullRequestFactory(
             team=self.team,
-            author=self.member,
+            author=self.member1,
             is_ai_assisted=True,  # Regex says yes
             llm_summary={"ai": {"is_assisted": False, "tools": [], "confidence": 0.3}},  # Low confidence
         )
@@ -1031,7 +1000,7 @@ class TestEffectiveAIDetection(TestCase):
         """Test that LLM tools are prioritized over regex detected tools."""
         pr = PullRequestFactory(
             team=self.team,
-            author=self.member,
+            author=self.member1,
             ai_tools_detected=["copilot"],  # Regex detected
             llm_summary={"ai": {"is_assisted": True, "tools": ["cursor", "claude"], "confidence": 0.9}},
         )
@@ -1045,7 +1014,7 @@ class TestEffectiveAIDetection(TestCase):
         """Test fallback to regex detected tools when no LLM."""
         pr = PullRequestFactory(
             team=self.team,
-            author=self.member,
+            author=self.member1,
             is_ai_assisted=True,
             ai_tools_detected=["copilot", "claude_code"],
             llm_summary=None,
@@ -1059,7 +1028,7 @@ class TestEffectiveAIDetection(TestCase):
         """Test fallback when LLM tools list is empty."""
         pr = PullRequestFactory(
             team=self.team,
-            author=self.member,
+            author=self.member1,
             ai_tools_detected=["copilot"],
             llm_summary={"ai": {"is_assisted": True, "tools": [], "confidence": 0.9}},
         )
@@ -1073,7 +1042,7 @@ class TestEffectiveAIDetection(TestCase):
         """Test returns empty list when no AI tools detected anywhere."""
         pr = PullRequestFactory(
             team=self.team,
-            author=self.member,
+            author=self.member1,
             is_ai_assisted=False,
             ai_tools_detected=[],
             llm_summary=None,
@@ -1084,32 +1053,27 @@ class TestEffectiveAIDetection(TestCase):
         self.assertEqual(result, [])
 
 
-class TestAICategoryFilter(TestCase):
+class TestAICategoryFilter(TeamWithMembersMixin, TestCase):
     """Tests for AI category filter in PR list."""
-
-    def setUp(self):
-        """Set up test fixtures."""
-        self.team = TeamFactory()
-        self.member = TeamMemberFactory(team=self.team)
 
     def test_filter_by_ai_category_code(self):
         """Test filtering for PRs with code AI tools only."""
         # PR with code tool
         pr_code = PullRequestFactory(
             team=self.team,
-            author=self.member,
+            author=self.member1,
             is_ai_assisted=True,
             ai_tools_detected=["cursor", "copilot"],
         )
         # PR with review tool
         PullRequestFactory(
             team=self.team,
-            author=self.member,
+            author=self.member1,
             is_ai_assisted=True,
             ai_tools_detected=["coderabbit"],
         )
         # PR with no AI
-        PullRequestFactory(team=self.team, author=self.member, is_ai_assisted=False)
+        PullRequestFactory(team=self.team, author=self.member1, is_ai_assisted=False)
 
         result = get_prs_queryset(self.team, {"ai_category": "code"})
 
@@ -1121,19 +1085,19 @@ class TestAICategoryFilter(TestCase):
         # PR with code tool
         PullRequestFactory(
             team=self.team,
-            author=self.member,
+            author=self.member1,
             is_ai_assisted=True,
             ai_tools_detected=["cursor"],
         )
         # PR with review tool
         pr_review = PullRequestFactory(
             team=self.team,
-            author=self.member,
+            author=self.member1,
             is_ai_assisted=True,
             ai_tools_detected=["coderabbit", "greptile"],
         )
         # PR with no AI
-        PullRequestFactory(team=self.team, author=self.member, is_ai_assisted=False)
+        PullRequestFactory(team=self.team, author=self.member1, is_ai_assisted=False)
 
         result = get_prs_queryset(self.team, {"ai_category": "review"})
 
@@ -1145,21 +1109,21 @@ class TestAICategoryFilter(TestCase):
         # PR with code only
         PullRequestFactory(
             team=self.team,
-            author=self.member,
+            author=self.member1,
             is_ai_assisted=True,
             ai_tools_detected=["cursor"],
         )
         # PR with review only
         PullRequestFactory(
             team=self.team,
-            author=self.member,
+            author=self.member1,
             is_ai_assisted=True,
             ai_tools_detected=["coderabbit"],
         )
         # PR with both
         pr_both = PullRequestFactory(
             team=self.team,
-            author=self.member,
+            author=self.member1,
             is_ai_assisted=True,
             ai_tools_detected=["cursor", "coderabbit"],
         )
@@ -1174,14 +1138,14 @@ class TestAICategoryFilter(TestCase):
         # PR with only excluded tools
         PullRequestFactory(
             team=self.team,
-            author=self.member,
+            author=self.member1,
             is_ai_assisted=True,
             ai_tools_detected=["snyk", "mintlify"],
         )
         # PR with code tool
         pr_code = PullRequestFactory(
             team=self.team,
-            author=self.member,
+            author=self.member1,
             is_ai_assisted=True,
             ai_tools_detected=["cursor"],
         )
@@ -1196,7 +1160,7 @@ class TestAICategoryFilter(TestCase):
         # PR with regex=coderabbit but LLM=cursor (LLM should win)
         pr = PullRequestFactory(
             team=self.team,
-            author=self.member,
+            author=self.member1,
             is_ai_assisted=True,
             ai_tools_detected=["coderabbit"],  # Review tool from regex
             llm_summary={"ai": {"is_assisted": True, "tools": ["cursor"], "confidence": 0.9}},
@@ -1213,7 +1177,7 @@ class TestAICategoryFilter(TestCase):
         # PR with code tool in repo-a
         pr1 = PullRequestFactory(
             team=self.team,
-            author=self.member,
+            author=self.member1,
             github_repo="org/repo-a",
             is_ai_assisted=True,
             ai_tools_detected=["cursor"],
@@ -1222,7 +1186,7 @@ class TestAICategoryFilter(TestCase):
         # PR with code tool in repo-b
         PullRequestFactory(
             team=self.team,
-            author=self.member,
+            author=self.member1,
             github_repo="org/repo-b",
             is_ai_assisted=True,
             ai_tools_detected=["copilot"],
@@ -1238,12 +1202,8 @@ class TestAICategoryFilter(TestCase):
         self.assertEqual(result.first().id, pr1.id)
 
 
-class TestAICategoryFilterOptions(TestCase):
+class TestAICategoryFilterOptions(TeamWithMembersMixin, TestCase):
     """Tests for ai_categories in get_filter_options."""
-
-    def setUp(self):
-        """Set up test fixtures."""
-        self.team = TeamFactory()
 
     def test_filter_options_includes_ai_categories(self):
         """Test that get_filter_options returns ai_categories."""
@@ -1282,13 +1242,16 @@ class TestReviewerNameFilterPendingState(TestCase):
     - INCLUDE PRs where reviewer's latest review is 'changes_requested' (still in review process)
     - INCLUDE PRs where reviewer's latest review is 'dismissed' (needs re-review)
     - When multiple reviews exist, only the LATEST review state matters
+
+    Note: Uses setUpTestData but needs specific github_username values for reviewer filtering tests.
     """
 
-    def setUp(self):
-        """Set up test fixtures."""
-        self.team = TeamFactory()
-        self.author = TeamMemberFactory(team=self.team, github_username="pr-author")
-        self.reviewer = TeamMemberFactory(team=self.team, github_username="alice-reviewer")
+    @classmethod
+    def setUpTestData(cls):
+        """Set up test fixtures with specific github usernames for reviewer filter tests."""
+        cls.team = TeamFactory()
+        cls.author = TeamMemberFactory(team=cls.team, github_username="pr-author")
+        cls.reviewer = TeamMemberFactory(team=cls.team, github_username="alice-reviewer")
 
     def test_excludes_prs_with_approved_latest_review(self):
         """Test that PRs with an approved review should NOT appear in pending reviews."""
@@ -1448,13 +1411,8 @@ class TestReviewerNameFilterPendingState(TestCase):
         self.assertEqual(result_ids, expected_ids)
 
 
-class TestAICategoryStats(TestCase):
+class TestAICategoryStats(TeamWithMembersMixin, TestCase):
     """Tests for AI category counts in get_pr_stats."""
-
-    def setUp(self):
-        """Set up test fixtures."""
-        self.team = TeamFactory()
-        self.member = TeamMemberFactory(team=self.team)
 
     def test_stats_includes_code_ai_count(self):
         """Test that stats include code AI PR count."""

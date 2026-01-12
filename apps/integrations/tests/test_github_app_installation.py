@@ -15,9 +15,10 @@ from apps.teams.context import set_current_team, unset_current_team
 class TestGitHubAppInstallationModelCreation(TestCase):
     """Tests for basic GitHubAppInstallation model creation."""
 
-    def setUp(self):
+    @classmethod
+    def setUpTestData(cls):
         """Set up test fixtures using factories."""
-        self.team = TeamFactory()
+        cls.team = TeamFactory()
 
     def tearDown(self):
         """Clean up team context."""
@@ -48,9 +49,10 @@ class TestGitHubAppInstallationModelCreation(TestCase):
 class TestGitHubAppInstallationUniqueConstraint(TestCase):
     """Tests for GitHubAppInstallation uniqueness constraints."""
 
-    def setUp(self):
+    @classmethod
+    def setUpTestData(cls):
         """Set up test fixtures using factories."""
-        self.team = TeamFactory()
+        cls.team = TeamFactory()
 
     def tearDown(self):
         """Clean up team context."""
@@ -84,9 +86,10 @@ class TestGitHubAppInstallationUniqueConstraint(TestCase):
 class TestGitHubAppInstallationTeamRelationship(TestCase):
     """Tests for GitHubAppInstallation team relationship from BaseTeamModel."""
 
-    def setUp(self):
+    @classmethod
+    def setUpTestData(cls):
         """Set up test fixtures using factories."""
-        self.team = TeamFactory()
+        cls.team = TeamFactory()
 
     def tearDown(self):
         """Clean up team context."""
@@ -158,9 +161,10 @@ class TestGitHubAppInstallationTeamRelationship(TestCase):
 class TestGitHubAppInstallationDefaults(TestCase):
     """Tests for GitHubAppInstallation default field values."""
 
-    def setUp(self):
+    @classmethod
+    def setUpTestData(cls):
         """Set up test fixtures using factories."""
-        self.team = TeamFactory()
+        cls.team = TeamFactory()
 
     def tearDown(self):
         """Clean up team context."""
@@ -249,9 +253,10 @@ class TestGitHubAppInstallationDefaults(TestCase):
 class TestGitHubAppInstallationEncryptedToken(TestCase):
     """Tests for GitHubAppInstallation encrypted token field."""
 
-    def setUp(self):
+    @classmethod
+    def setUpTestData(cls):
         """Set up test fixtures using factories."""
-        self.team = TeamFactory()
+        cls.team = TeamFactory()
 
     def tearDown(self):
         """Clean up team context."""
@@ -331,9 +336,10 @@ class TestGitHubAppInstallationEncryptedToken(TestCase):
 class TestGitHubAppInstallationAdditionalFields(TestCase):
     """Tests for additional GitHubAppInstallation fields."""
 
-    def setUp(self):
+    @classmethod
+    def setUpTestData(cls):
         """Set up test fixtures using factories."""
-        self.team = TeamFactory()
+        cls.team = TeamFactory()
 
     def tearDown(self):
         """Clean up team context."""
@@ -470,9 +476,10 @@ class TestGitHubAppInstallationAdditionalFields(TestCase):
 class TestGitHubAppInstallationDbTable(TestCase):
     """Tests for GitHubAppInstallation database table configuration."""
 
-    def setUp(self):
+    @classmethod
+    def setUpTestData(cls):
         """Set up test fixtures using factories."""
-        self.team = TeamFactory()
+        cls.team = TeamFactory()
 
     def tearDown(self):
         """Clean up team context."""
@@ -491,13 +498,14 @@ class TestGitHubAppInstallationDbTable(TestCase):
 class TestGitHubAppInstallationGetAccessToken(TestCase):
     """Tests for GitHubAppInstallation.get_access_token() method."""
 
-    def setUp(self):
+    @classmethod
+    def setUpTestData(cls):
         """Set up test fixtures using factories."""
         from apps.integrations.models import GitHubAppInstallation
 
-        self.team = TeamFactory()
-        self.installation = GitHubAppInstallation.objects.create(
-            team=self.team,
+        cls.team = TeamFactory()
+        cls.installation = GitHubAppInstallation.objects.create(
+            team=cls.team,
             installation_id=12345678,
             account_type="Organization",
             account_login="acme-corp",
@@ -606,13 +614,14 @@ class TestGetAccessTokenRaceCondition(TestCase):
     The actual concurrent behavior is tested via the locking mechanism.
     """
 
-    def setUp(self):
+    @classmethod
+    def setUpTestData(cls):
         """Set up test fixtures using factories."""
         from apps.integrations.models import GitHubAppInstallation
 
-        self.team = TeamFactory()
-        self.installation = GitHubAppInstallation.objects.create(
-            team=self.team,
+        cls.team = TeamFactory()
+        cls.installation = GitHubAppInstallation.objects.create(
+            team=cls.team,
             installation_id=12345678,
             account_type="Organization",
             account_login="acme-corp",
@@ -715,15 +724,16 @@ class TestGetAccessTokenIsActiveCheck(TestCase):
     the installation has been deleted/deactivated.
     """
 
-    def setUp(self):
+    @classmethod
+    def setUpTestData(cls):
         """Set up test fixtures using factories."""
         from datetime import timedelta
 
         from apps.integrations.models import GitHubAppInstallation
 
-        self.team = TeamFactory()
-        self.installation = GitHubAppInstallation.objects.create(
-            team=self.team,
+        cls.team = TeamFactory()
+        cls.installation = GitHubAppInstallation.objects.create(
+            team=cls.team,
             installation_id=12345678,
             account_type="Organization",
             account_login="acme-corp",

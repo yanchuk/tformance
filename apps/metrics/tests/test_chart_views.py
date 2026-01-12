@@ -9,6 +9,9 @@ This test module covers:
 - leaderboard_table: Member-accessible AI detective leaderboard
 
 All views return HTML partials for HTMX updates.
+
+Performance Note: These tests use TeamWithAdminMemberMixin which creates
+fixtures once per class using setUpTestData(), rather than per test method.
 """
 
 from django.test import Client, TestCase
@@ -16,20 +19,12 @@ from django.urls import reverse
 
 from apps.integrations.factories import UserFactory
 from apps.metrics.factories import TeamFactory
-from apps.teams.roles import ROLE_ADMIN, ROLE_MEMBER
+from apps.teams.roles import ROLE_ADMIN
+from apps.utils.tests.mixins import TeamWithAdminMemberMixin
 
 
-class TestAIAdoptionChart(TestCase):
+class TestAIAdoptionChart(TeamWithAdminMemberMixin, TestCase):
     """Tests for ai_adoption_chart view (admin-only)."""
-
-    def setUp(self):
-        """Set up test fixtures using factories."""
-        self.team = TeamFactory()
-        self.admin_user = UserFactory()
-        self.member_user = UserFactory()
-        self.team.members.add(self.admin_user, through_defaults={"role": ROLE_ADMIN})
-        self.team.members.add(self.member_user, through_defaults={"role": ROLE_MEMBER})
-        self.client = Client()
 
     def test_ai_adoption_chart_requires_login(self):
         """Test that ai_adoption_chart redirects to login page if user is not authenticated."""
@@ -123,17 +118,8 @@ class TestAIAdoptionChart(TestCase):
             self.assertIn("count", chart_data[0])
 
 
-class TestAIQualityChart(TestCase):
+class TestAIQualityChart(TeamWithAdminMemberMixin, TestCase):
     """Tests for ai_quality_chart view (admin-only)."""
-
-    def setUp(self):
-        """Set up test fixtures using factories."""
-        self.team = TeamFactory()
-        self.admin_user = UserFactory()
-        self.member_user = UserFactory()
-        self.team.members.add(self.admin_user, through_defaults={"role": ROLE_ADMIN})
-        self.team.members.add(self.member_user, through_defaults={"role": ROLE_MEMBER})
-        self.client = Client()
 
     def test_ai_quality_chart_requires_login(self):
         """Test that ai_quality_chart redirects to login page if user is not authenticated."""
@@ -227,17 +213,8 @@ class TestAIQualityChart(TestCase):
         self.assertIn("non_ai_prs", impact_data)
 
 
-class TestCycleTimeChart(TestCase):
+class TestCycleTimeChart(TeamWithAdminMemberMixin, TestCase):
     """Tests for cycle_time_chart view (member-accessible)."""
-
-    def setUp(self):
-        """Set up test fixtures using factories."""
-        self.team = TeamFactory()
-        self.admin_user = UserFactory()
-        self.member_user = UserFactory()
-        self.team.members.add(self.admin_user, through_defaults={"role": ROLE_ADMIN})
-        self.team.members.add(self.member_user, through_defaults={"role": ROLE_MEMBER})
-        self.client = Client()
 
     def test_cycle_time_chart_requires_login(self):
         """Test that cycle_time_chart redirects to login page if user is not authenticated."""
@@ -331,17 +308,8 @@ class TestCycleTimeChart(TestCase):
             self.assertIn("count", chart_data[0])
 
 
-class TestKeyMetricsCards(TestCase):
+class TestKeyMetricsCards(TeamWithAdminMemberMixin, TestCase):
     """Tests for key_metrics_cards view (all team members)."""
-
-    def setUp(self):
-        """Set up test fixtures using factories."""
-        self.team = TeamFactory()
-        self.admin_user = UserFactory()
-        self.member_user = UserFactory()
-        self.team.members.add(self.admin_user, through_defaults={"role": ROLE_ADMIN})
-        self.team.members.add(self.member_user, through_defaults={"role": ROLE_MEMBER})
-        self.client = Client()
 
     def test_key_metrics_cards_requires_login(self):
         """Test that key_metrics_cards redirects to login page if user is not authenticated."""
@@ -444,17 +412,8 @@ class TestKeyMetricsCards(TestCase):
         self.assertIn("ai_assisted_pct", metrics)
 
 
-class TestTeamBreakdownTable(TestCase):
+class TestTeamBreakdownTable(TeamWithAdminMemberMixin, TestCase):
     """Tests for team_breakdown_table view (admin-only)."""
-
-    def setUp(self):
-        """Set up test fixtures using factories."""
-        self.team = TeamFactory()
-        self.admin_user = UserFactory()
-        self.member_user = UserFactory()
-        self.team.members.add(self.admin_user, through_defaults={"role": ROLE_ADMIN})
-        self.team.members.add(self.member_user, through_defaults={"role": ROLE_MEMBER})
-        self.client = Client()
 
     def test_team_breakdown_table_requires_login(self):
         """Test that team_breakdown_table redirects to login page if user is not authenticated."""
@@ -716,17 +675,8 @@ class TestTeamBreakdownTable(TestCase):
         self.assertIsInstance(response.context["champion_ids"], set)
 
 
-class TestLeaderboardTable(TestCase):
+class TestLeaderboardTable(TeamWithAdminMemberMixin, TestCase):
     """Tests for leaderboard_table view (member-accessible)."""
-
-    def setUp(self):
-        """Set up test fixtures using factories."""
-        self.team = TeamFactory()
-        self.admin_user = UserFactory()
-        self.member_user = UserFactory()
-        self.team.members.add(self.admin_user, through_defaults={"role": ROLE_ADMIN})
-        self.team.members.add(self.member_user, through_defaults={"role": ROLE_MEMBER})
-        self.client = Client()
 
     def test_leaderboard_table_requires_login(self):
         """Test that leaderboard_table redirects to login page if user is not authenticated."""
@@ -823,17 +773,8 @@ class TestLeaderboardTable(TestCase):
             self.assertIn("percentage", rows[0])
 
 
-class TestCopilotMetricsCard(TestCase):
+class TestCopilotMetricsCard(TeamWithAdminMemberMixin, TestCase):
     """Tests for copilot_metrics_card view (admin-only)."""
-
-    def setUp(self):
-        """Set up test fixtures using factories."""
-        self.team = TeamFactory()
-        self.admin_user = UserFactory()
-        self.member_user = UserFactory()
-        self.team.members.add(self.admin_user, through_defaults={"role": ROLE_ADMIN})
-        self.team.members.add(self.member_user, through_defaults={"role": ROLE_MEMBER})
-        self.client = Client()
 
     def test_copilot_metrics_card_requires_login(self):
         """Test that copilot_metrics_card redirects to login page if user is not authenticated."""
@@ -924,17 +865,8 @@ class TestCopilotMetricsCard(TestCase):
         self.assertIsInstance(response.context["metrics"], dict)
 
 
-class TestCopilotTrendChart(TestCase):
+class TestCopilotTrendChart(TeamWithAdminMemberMixin, TestCase):
     """Tests for copilot_trend_chart view (admin-only)."""
-
-    def setUp(self):
-        """Set up test fixtures using factories."""
-        self.team = TeamFactory()
-        self.admin_user = UserFactory()
-        self.member_user = UserFactory()
-        self.team.members.add(self.admin_user, through_defaults={"role": ROLE_ADMIN})
-        self.team.members.add(self.member_user, through_defaults={"role": ROLE_MEMBER})
-        self.client = Client()
 
     def test_copilot_trend_chart_requires_login(self):
         """Test that copilot_trend_chart redirects to login page if user is not authenticated."""
@@ -1025,17 +957,8 @@ class TestCopilotTrendChart(TestCase):
         self.assertIsInstance(response.context["chart_data"], list)
 
 
-class TestCopilotMembersTable(TestCase):
+class TestCopilotMembersTable(TeamWithAdminMemberMixin, TestCase):
     """Tests for copilot_members_table view (admin-only)."""
-
-    def setUp(self):
-        """Set up test fixtures using factories."""
-        self.team = TeamFactory()
-        self.admin_user = UserFactory()
-        self.member_user = UserFactory()
-        self.team.members.add(self.admin_user, through_defaults={"role": ROLE_ADMIN})
-        self.team.members.add(self.member_user, through_defaults={"role": ROLE_MEMBER})
-        self.client = Client()
 
     def test_copilot_members_table_requires_login(self):
         """Test that copilot_members_table redirects to login page if user is not authenticated."""
@@ -1134,12 +1057,8 @@ class TestCopilotMembersTable(TestCase):
 class TestChartViewsRepoFilter(TestCase):
     """Tests for repository filtering in chart views.
 
-    🔴 RED Phase: Tests should FAIL until repo param is added to views.
-
-    These tests verify that chart views:
-    1. Accept the 'repo' query parameter
-    2. Pass repo to service layer functions
-    3. Return filtered data when repo is specified
+    Note: This test class keeps setUp() because it creates test-specific PR data
+    that varies per test method, unlike the standard admin/member pattern.
     """
 
     def setUp(self):

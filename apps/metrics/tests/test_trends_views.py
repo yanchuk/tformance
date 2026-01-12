@@ -2,26 +2,26 @@
 
 from datetime import date
 
-from django.test import Client, TestCase
+from django.test import TestCase
 from django.urls import reverse
 
-from apps.integrations.factories import UserFactory
-from apps.metrics.factories import PullRequestFactory, TeamFactory, TeamMemberFactory
-from apps.teams.roles import ROLE_ADMIN, ROLE_MEMBER
+from apps.metrics.factories import PullRequestFactory, TeamMemberFactory
+from apps.utils.tests.mixins import TeamWithAdminMemberMixin
 
 
-class TestTrendsOverviewView(TestCase):
+class TestTrendsOverviewView(TeamWithAdminMemberMixin, TestCase):
     """Tests for trends_overview view."""
 
-    def setUp(self):
-        """Set up test fixtures."""
-        self.team = TeamFactory(onboarding_pipeline_status="complete")
-        self.admin_user = UserFactory()
-        self.member_user = UserFactory()
-        self.team.members.add(self.admin_user, through_defaults={"role": ROLE_ADMIN})
-        self.team.members.add(self.member_user, through_defaults={"role": ROLE_MEMBER})
-        self.member = TeamMemberFactory(team=self.team)
-        self.client = Client()
+    # Uses TeamWithAdminMemberMixin: self.team, self.admin_user, self.member_user, self.client
+
+    @classmethod
+    def setUpTestData(cls):
+        """Set up read-only fixtures (extends mixin)."""
+        super().setUpTestData()
+        # Override team to have complete onboarding status
+        cls.team.onboarding_pipeline_status = "complete"
+        cls.team.save()
+        cls.member = TeamMemberFactory(team=cls.team)
 
     def test_trends_overview_requires_login(self):
         """Test that trends overview requires authentication."""
@@ -92,16 +92,18 @@ class TestTrendsOverviewView(TestCase):
         self.assertNotContains(response, "<html")
 
 
-class TestTrendChartDataView(TestCase):
+class TestTrendChartDataView(TeamWithAdminMemberMixin, TestCase):
     """Tests for trend chart data endpoint."""
 
-    def setUp(self):
-        """Set up test fixtures."""
-        self.team = TeamFactory(onboarding_pipeline_status="complete")
-        self.admin_user = UserFactory()
-        self.team.members.add(self.admin_user, through_defaults={"role": ROLE_ADMIN})
-        self.member = TeamMemberFactory(team=self.team)
-        self.client = Client()
+    # Uses TeamWithAdminMemberMixin: self.team, self.admin_user, self.member_user, self.client
+
+    @classmethod
+    def setUpTestData(cls):
+        """Set up read-only fixtures (extends mixin)."""
+        super().setUpTestData()
+        cls.team.onboarding_pipeline_status = "complete"
+        cls.team.save()
+        cls.member = TeamMemberFactory(team=cls.team)
 
     def test_trend_chart_data_returns_200(self):
         """Test that trend chart data endpoint returns 200."""
@@ -164,16 +166,18 @@ class TestTrendChartDataView(TestCase):
         self.assertIn("granularity", data)
 
 
-class TestWideTrendChartView(TestCase):
+class TestWideTrendChartView(TeamWithAdminMemberMixin, TestCase):
     """Tests for wide trend chart partial view."""
 
-    def setUp(self):
-        """Set up test fixtures."""
-        self.team = TeamFactory(onboarding_pipeline_status="complete")
-        self.admin_user = UserFactory()
-        self.team.members.add(self.admin_user, through_defaults={"role": ROLE_ADMIN})
-        self.member = TeamMemberFactory(team=self.team)
-        self.client = Client()
+    # Uses TeamWithAdminMemberMixin: self.team, self.admin_user, self.member_user, self.client
+
+    @classmethod
+    def setUpTestData(cls):
+        """Set up read-only fixtures (extends mixin)."""
+        super().setUpTestData()
+        cls.team.onboarding_pipeline_status = "complete"
+        cls.team.save()
+        cls.member = TeamMemberFactory(team=cls.team)
 
     def test_wide_chart_partial_returns_200(self):
         """Test that wide chart partial returns 200."""
@@ -209,15 +213,17 @@ class TestWideTrendChartView(TestCase):
         self.assertEqual(response.context["metric"], "ai_adoption")
 
 
-class TestTrendsTabNavigation(TestCase):
+class TestTrendsTabNavigation(TeamWithAdminMemberMixin, TestCase):
     """Tests for trends tab integration in analytics navigation."""
 
-    def setUp(self):
-        """Set up test fixtures."""
-        self.team = TeamFactory(onboarding_pipeline_status="complete")
-        self.admin_user = UserFactory()
-        self.team.members.add(self.admin_user, through_defaults={"role": ROLE_ADMIN})
-        self.client = Client()
+    # Uses TeamWithAdminMemberMixin: self.team, self.admin_user, self.member_user, self.client
+
+    @classmethod
+    def setUpTestData(cls):
+        """Set up read-only fixtures (extends mixin)."""
+        super().setUpTestData()
+        cls.team.onboarding_pipeline_status = "complete"
+        cls.team.save()
 
     def test_trends_link_in_analytics_navigation(self):
         """Test that Trends tab appears in analytics navigation."""
@@ -239,15 +245,17 @@ class TestTrendsTabNavigation(TestCase):
         self.assertEqual(response.context["active_page"], "trends")
 
 
-class TestTrendsURLParameters(TestCase):
+class TestTrendsURLParameters(TeamWithAdminMemberMixin, TestCase):
     """Tests for URL parameter handling in trends views."""
 
-    def setUp(self):
-        """Set up test fixtures."""
-        self.team = TeamFactory(onboarding_pipeline_status="complete")
-        self.admin_user = UserFactory()
-        self.team.members.add(self.admin_user, through_defaults={"role": ROLE_ADMIN})
-        self.client = Client()
+    # Uses TeamWithAdminMemberMixin: self.team, self.admin_user, self.member_user, self.client
+
+    @classmethod
+    def setUpTestData(cls):
+        """Set up read-only fixtures (extends mixin)."""
+        super().setUpTestData()
+        cls.team.onboarding_pipeline_status = "complete"
+        cls.team.save()
 
     def test_granularity_parameter_in_context(self):
         """Test that granularity parameter is passed to context."""
@@ -329,15 +337,17 @@ class TestTrendsURLParameters(TestCase):
         self.assertEqual(response.context["days"], 30)
 
 
-class TestTrendsDefaultBehavior(TestCase):
+class TestTrendsDefaultBehavior(TeamWithAdminMemberMixin, TestCase):
     """Tests for default behavior when no parameters are provided."""
 
-    def setUp(self):
-        """Set up test fixtures."""
-        self.team = TeamFactory(onboarding_pipeline_status="complete")
-        self.admin_user = UserFactory()
-        self.team.members.add(self.admin_user, through_defaults={"role": ROLE_ADMIN})
-        self.client = Client()
+    # Uses TeamWithAdminMemberMixin: self.team, self.admin_user, self.member_user, self.client
+
+    @classmethod
+    def setUpTestData(cls):
+        """Set up read-only fixtures (extends mixin)."""
+        super().setUpTestData()
+        cls.team.onboarding_pipeline_status = "complete"
+        cls.team.save()
 
     def test_trends_defaults_to_365_days_when_no_params(self):
         """Test that trends page defaults to 365 days (12 months) when no params."""
@@ -412,15 +422,17 @@ class TestTechConfig(TestCase):
             self.assertIn(category, TECH_CONFIG, f"Missing category: {category}")
 
 
-class TestTechBreakdownChartAIFilter(TestCase):
+class TestTechBreakdownChartAIFilter(TeamWithAdminMemberMixin, TestCase):
     """Tests for AI Assisted filter on tech breakdown chart view."""
 
-    def setUp(self):
-        """Set up test fixtures."""
-        self.team = TeamFactory(onboarding_pipeline_status="complete")
-        self.admin_user = UserFactory()
-        self.team.members.add(self.admin_user, through_defaults={"role": ROLE_ADMIN})
-        self.client = Client()
+    # Uses TeamWithAdminMemberMixin: self.team, self.admin_user, self.member_user, self.client
+
+    @classmethod
+    def setUpTestData(cls):
+        """Set up read-only fixtures (extends mixin)."""
+        super().setUpTestData()
+        cls.team.onboarding_pipeline_status = "complete"
+        cls.team.save()
 
     def test_tech_chart_accepts_ai_filter_parameter(self):
         """Test that tech chart view accepts ai_filter query parameter."""
@@ -455,36 +467,38 @@ class TestTechBreakdownChartAIFilter(TestCase):
         self.assertEqual(response.context["ai_filter"], "all")
 
 
-class TestTechBreakdownChartGranularity(TestCase):
+class TestTechBreakdownChartGranularity(TeamWithAdminMemberMixin, TestCase):
     """Tests for granularity handling in tech breakdown chart view."""
 
-    def setUp(self):
-        """Set up test fixtures using factories."""
-        self.team = TeamFactory(onboarding_pipeline_status="complete")
-        self.admin_user = UserFactory()
-        self.team.members.add(self.admin_user, through_defaults={"role": ROLE_ADMIN})
-        self.member = TeamMemberFactory(team=self.team)
-        self.client = Client()
+    # Uses TeamWithAdminMemberMixin: self.team, self.admin_user, self.member_user, self.client
 
-        # Create some merged PRs with tech categories for the test data
-        # Use dates within last 30 days for weekly granularity
+    @classmethod
+    def setUpTestData(cls):
+        """Set up read-only fixtures (extends mixin)."""
         from datetime import timedelta
 
         from django.utils import timezone
 
         from apps.metrics.factories import PRFileFactory
 
+        super().setUpTestData()
+        cls.team.onboarding_pipeline_status = "complete"
+        cls.team.save()
+        cls.member = TeamMemberFactory(team=cls.team)
+
+        # Create some merged PRs with tech categories for the test data
+        # Use dates within last 30 days for weekly granularity
         now = timezone.now()
         for i in range(5):
             pr = PullRequestFactory(
-                team=self.team,
-                author=self.member,
+                team=cls.team,
+                author=cls.member,
                 state="merged",
                 pr_created_at=now - timedelta(days=i + 1),
                 merged_at=now - timedelta(days=i),
             )
             # Add a file to each PR so tech categories are populated
-            PRFileFactory(team=self.team, pull_request=pr, filename=f"src/components/Component{i}.tsx")
+            PRFileFactory(team=cls.team, pull_request=pr, filename=f"src/components/Component{i}.tsx")
 
     def test_tech_chart_accepts_granularity_parameter(self):
         """Test that tech chart view accepts granularity query parameter."""
@@ -557,27 +571,29 @@ class TestTechBreakdownChartGranularity(TestCase):
             )
 
 
-class TestPRTypeBreakdownChartGranularity(TestCase):
+class TestPRTypeBreakdownChartGranularity(TeamWithAdminMemberMixin, TestCase):
     """Tests for granularity handling in PR type breakdown chart view."""
 
-    def setUp(self):
-        """Set up test fixtures using factories."""
-        self.team = TeamFactory(onboarding_pipeline_status="complete")
-        self.admin_user = UserFactory()
-        self.team.members.add(self.admin_user, through_defaults={"role": ROLE_ADMIN})
-        self.member = TeamMemberFactory(team=self.team)
-        self.client = Client()
+    # Uses TeamWithAdminMemberMixin: self.team, self.admin_user, self.member_user, self.client
 
-        # Create some merged PRs for the test data
+    @classmethod
+    def setUpTestData(cls):
+        """Set up read-only fixtures (extends mixin)."""
         from datetime import timedelta
 
         from django.utils import timezone
 
+        super().setUpTestData()
+        cls.team.onboarding_pipeline_status = "complete"
+        cls.team.save()
+        cls.member = TeamMemberFactory(team=cls.team)
+
+        # Create some merged PRs for the test data
         now = timezone.now()
         for i in range(5):
             PullRequestFactory(
-                team=self.team,
-                author=self.member,
+                team=cls.team,
+                author=cls.member,
                 state="merged",
                 pr_created_at=now - timedelta(days=i + 1),
                 merged_at=now - timedelta(days=i),
@@ -654,7 +670,7 @@ class TestPRTypeBreakdownChartGranularity(TestCase):
             )
 
 
-class TestGranularityToggleIntegration(TestCase):
+class TestGranularityToggleIntegration(TeamWithAdminMemberMixin, TestCase):
     """Integration tests verifying granularity toggle works across all trend chart endpoints.
 
     These tests document the expected API contract for the granularity toggle feature.
@@ -666,31 +682,33 @@ class TestGranularityToggleIntegration(TestCase):
     correctly handles granularity and returns different data for each setting.
     """
 
-    def setUp(self):
-        """Set up test fixtures using factories."""
-        self.team = TeamFactory(onboarding_pipeline_status="complete")
-        self.admin_user = UserFactory()
-        self.team.members.add(self.admin_user, through_defaults={"role": ROLE_ADMIN})
-        self.member = TeamMemberFactory(team=self.team)
-        self.client = Client()
+    # Uses TeamWithAdminMemberMixin: self.team, self.admin_user, self.member_user, self.client
 
-        # Create merged PRs with files for testing
+    @classmethod
+    def setUpTestData(cls):
+        """Set up read-only fixtures (extends mixin)."""
         from datetime import timedelta
 
         from django.utils import timezone
 
         from apps.metrics.factories import PRFileFactory
 
+        super().setUpTestData()
+        cls.team.onboarding_pipeline_status = "complete"
+        cls.team.save()
+        cls.member = TeamMemberFactory(team=cls.team)
+
+        # Create merged PRs with files for testing
         now = timezone.now()
         for i in range(5):
             pr = PullRequestFactory(
-                team=self.team,
-                author=self.member,
+                team=cls.team,
+                author=cls.member,
                 state="merged",
                 pr_created_at=now - timedelta(days=i + 1),
                 merged_at=now - timedelta(days=i),
             )
-            PRFileFactory(team=self.team, pull_request=pr, filename=f"src/app{i}.py")
+            PRFileFactory(team=cls.team, pull_request=pr, filename=f"src/app{i}.py")
 
     def test_all_chart_endpoints_support_granularity_parameter(self):
         """Test that all trend chart endpoints accept and use granularity parameter.
@@ -764,19 +782,21 @@ class TestGranularityToggleIntegration(TestCase):
                 )
 
 
-class TestCopilotAcceptanceMetric(TestCase):
+class TestCopilotAcceptanceMetric(TeamWithAdminMemberMixin, TestCase):
     """Tests for Copilot Acceptance metric in Trends tab.
 
     Verifies that copilot_acceptance is properly integrated as a selectable
     metric in the Trends tab alongside cycle_time, review_time, etc.
     """
 
-    def setUp(self):
-        """Set up test fixtures."""
-        self.team = TeamFactory(onboarding_pipeline_status="complete")
-        self.admin_user = UserFactory()
-        self.team.members.add(self.admin_user, through_defaults={"role": ROLE_ADMIN})
-        self.client = Client()
+    # Uses TeamWithAdminMemberMixin: self.team, self.admin_user, self.member_user, self.client
+
+    @classmethod
+    def setUpTestData(cls):
+        """Set up read-only fixtures (extends mixin)."""
+        super().setUpTestData()
+        cls.team.onboarding_pipeline_status = "complete"
+        cls.team.save()
 
     def test_metric_config_includes_copilot_acceptance(self):
         """Test that METRIC_CONFIG includes copilot_acceptance entry."""

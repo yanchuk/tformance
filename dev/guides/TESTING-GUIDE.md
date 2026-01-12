@@ -45,28 +45,100 @@ Pattern: `apps/<app_name>/tests/test_<feature>.py`
 
 ## Test Structure (Django TestCase with Factories)
 
+### Performance: setUpTestData vs setUp
+
+**IMPORTANT**: Use `setUpTestData()` for read-only fixtures to improve test performance.
+
+| Method | Runs | Use When |
+|--------|------|----------|
+| `setUpTestData()` | Once per class | Tests only READ fixture data |
+| `setUp()` | Every test method | Tests MODIFY fixtures or need fresh state |
+
+**When to use setUpTestData (PREFERRED)**:
+- Tests checking response codes, templates, context
+- Tests using `assertEqual`, `assertIn`, `assertQuerysetEqual`
+- View tests that make GET requests
+- Any test that doesn't modify the created objects
+
+**When to use setUp (REQUIRED)**:
+- Tests that MODIFY fixture data (`.save()`, `.delete()`, `.update()`)
+- Tests manipulating team context (`set_current_team`)
+- Tests with per-test mock requirements
+- Async tests (use `TransactionTestCase`)
+
+### Recommended Pattern: Use Test Mixins
+
+For common test patterns, use the provided mixins in `apps/utils/tests/mixins.py`:
+
 ```python
 from django.test import TestCase
-from apps.metrics.factories import TeamMemberFactory, PullRequestFactory
-from apps.teams.factories import TeamFactory
+from apps.utils.tests.mixins import TeamWithAdminMemberMixin
+
+
+class TestMyView(TeamWithAdminMemberMixin, TestCase):
+    """Tests for my_view - using mixin for common fixtures."""
+
+    def test_admin_can_access(self):
+        """Test that admin users can access the view."""
+        self.client.force_login(self.admin_user)
+        response = self.client.get("/my-url/")
+        self.assertEqual(response.status_code, 200)
+
+    def test_member_is_denied(self):
+        """Test that member users cannot access admin-only view."""
+        self.client.force_login(self.member_user)
+        response = self.client.get("/my-url/")
+        self.assertEqual(response.status_code, 404)
+```
+
+**Available Mixins** (`apps/utils/tests/mixins.py`):
+- `TeamWithAdminMemberMixin` - team + admin_user + member_user + client
+- `TeamWithGitHubMixin` - extends above with integration + repo
+- `TeamWithMembersMixin` - team + member1/member2/member3 (TeamMembers)
+- `TeamWithPRDataMixin` - extends above with 5 PRs and reviews
+
+### Manual setUpTestData Pattern
+
+When mixins don't fit your needs, use `setUpTestData()` directly:
+
+```python
+from django.test import TestCase, Client
+from apps.metrics.factories import TeamMemberFactory, PullRequestFactory, TeamFactory
 
 
 class TestFeatureName(TestCase):
     """Tests for <feature description>."""
 
+    @classmethod
+    def setUpTestData(cls):
+        """Set up non-modified data for all test methods (runs ONCE)."""
+        cls.team = TeamFactory()
+        cls.member = TeamMemberFactory(team=cls.team)
+        # Create any other fixtures that tests will READ but not modify
+
     def setUp(self):
-        """Set up test fixtures using factories."""
-        self.team = TeamFactory()
-        self.member = TeamMemberFactory(team=self.team)
+        """Set up fresh client for each test (stateful)."""
+        self.client = Client()
 
     def test_describes_expected_behavior(self):
         """Test that <specific behavior> works correctly."""
-        # Arrange - use factories for test data
+        # Arrange - use factories for test-specific data
         pr = PullRequestFactory(team=self.team, author=self.member)
 
         # Act - perform the action
         # Assert - verify the outcome
         self.assertEqual(pr.author, self.member)
+```
+
+### Legacy Pattern (Avoid for New Tests)
+
+The old `setUp()` pattern is slower but still works. Avoid for new tests:
+
+```python
+# AVOID: This runs for EVERY test method
+def setUp(self):
+    self.team = TeamFactory()  # Created N times for N tests
+    self.member = TeamMemberFactory(team=self.team)
 ```
 
 ## Factory Guidelines
