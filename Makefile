@@ -53,19 +53,19 @@ dbshell: ## Get a Database shell
 	@docker compose exec db psql -U postgres tformance
 
 test: ## Run tests with pytest (parallel by default)
-	@pytest ${ARGS}
+	@.venv/bin/pytest ${ARGS}
 
 test-serial: ## Run tests without parallelization
-	@pytest -n 0 ${ARGS}
+	@.venv/bin/pytest -n 0 ${ARGS}
 
 test-slow: ## Show slowest 20 tests
-	@pytest --durations=20 ${ARGS}
+	@.venv/bin/pytest --durations=20 ${ARGS}
 
 test-coverage: ## Run tests with coverage report
-	@pytest --cov=apps --cov-report=term-missing ${ARGS}
+	@.venv/bin/pytest --cov=apps --cov-report=term-missing ${ARGS}
 
 test-fresh: ## Run tests with fresh database (use when models change)
-	@pytest --create-db ${ARGS}
+	@.venv/bin/pytest --create-db ${ARGS}
 
 test-django: ## Fallback to Django test runner
 	@uv run manage.py test --keepdb ${ARGS}
@@ -74,7 +74,7 @@ test-django-parallel: ## Fallback to Django parallel tests
 	@uv run manage.py test --parallel --keepdb ${ARGS}
 
 test-quick: ## Run fast tests only (excludes @pytest.mark.slow)
-	@pytest -m "not slow" --reuse-db ${ARGS}
+	@.venv/bin/pytest -m "not slow" --reuse-db ${ARGS}
 
 init: setup-env start-bg migrations migrate npm-install-all bootstrap_content install-hooks  ## Quickly get up and running (start containers and bootstrap DB)
 
