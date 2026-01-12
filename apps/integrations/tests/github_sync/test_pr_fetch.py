@@ -71,7 +71,7 @@ class TestGetRepositoryPullRequests(TestCase):
 
         return mock_pr
 
-    @patch("apps.integrations.services.github_sync.Github")
+    @patch("apps.integrations.services.github_sync.client.Github")
     def test_get_repository_pull_requests_returns_prs(self, mock_github_class):
         """Test that get_repository_pull_requests returns list of PRs from GitHub API."""
         # Create mock PRs
@@ -127,7 +127,7 @@ class TestGetRepositoryPullRequests(TestCase):
         mock_github.get_repo.assert_called_once_with(repo_full_name)
         mock_repo.get_pulls.assert_called_once_with(state="all", sort="updated", direction="desc")
 
-    @patch("apps.integrations.services.github_sync.Github")
+    @patch("apps.integrations.services.github_sync.client.Github")
     def test_get_repository_pull_requests_handles_empty_list(self, mock_github_class):
         """Test that get_repository_pull_requests returns empty list when no PRs exist."""
         # Mock PyGithub to return empty list
@@ -151,7 +151,7 @@ class TestGetRepositoryPullRequests(TestCase):
         mock_github.get_repo.assert_called_once_with(repo_full_name)
         mock_repo.get_pulls.assert_called_once_with(state="all", sort="updated", direction="desc")
 
-    @patch("apps.integrations.services.github_sync.Github")
+    @patch("apps.integrations.services.github_sync.client.Github")
     def test_get_repository_pull_requests_handles_pagination(self, mock_github_class):
         """Test that PyGithub handles pagination automatically (no manual pagination needed)."""
         # Create multiple mock PRs (PyGithub handles pagination internally)
@@ -188,7 +188,7 @@ class TestGetRepositoryPullRequests(TestCase):
         # Verify only one call was made to get_pulls (PyGithub handles pagination internally)
         mock_repo.get_pulls.assert_called_once_with(state="all", sort="updated", direction="desc")
 
-    @patch("apps.integrations.services.github_sync.Github")
+    @patch("apps.integrations.services.github_sync.client.Github")
     def test_get_repository_pull_requests_filters_by_state(self, mock_github_class):
         """Test that get_repository_pull_requests passes state parameter to PyGithub correctly."""
         # Mock PyGithub chain
@@ -219,7 +219,7 @@ class TestGetRepositoryPullRequests(TestCase):
         list(get_repository_pull_requests(access_token, repo_full_name, state="all"))
         mock_repo.get_pulls.assert_called_with(state="all", sort="updated", direction="desc")
 
-    @patch("apps.integrations.services.github_sync.Github")
+    @patch("apps.integrations.services.github_sync.client.Github")
     def test_get_repository_pull_requests_raises_on_api_error(self, mock_github_class):
         """Test that get_repository_pull_requests raises GitHubOAuthError on API errors."""
         from github import GithubException
@@ -240,7 +240,7 @@ class TestGetRepositoryPullRequests(TestCase):
 
         self.assertIn("404", str(context.exception))
 
-    @patch("apps.integrations.services.github_sync.Github")
+    @patch("apps.integrations.services.github_sync.client.Github")
     def test_get_repository_pull_requests_returns_all_pr_attributes(self, mock_github_class):
         """Test that get_repository_pull_requests returns all required PR attributes."""
         # Create mock PR with all attributes
@@ -383,7 +383,7 @@ class TestGetUpdatedPullRequests(TestCase):
 
         return mock_issue
 
-    @patch("apps.integrations.services.github_sync.Github")
+    @patch("apps.integrations.services.github_sync.client.Github")
     def test_get_updated_pull_requests_returns_prs_updated_since_datetime(self, mock_github_class):
         """Test that get_updated_pull_requests returns PRs updated since the given datetime."""
         # Create mock issues - mix of PRs and regular issues
@@ -456,7 +456,7 @@ class TestGetUpdatedPullRequests(TestCase):
         mock_repo.get_pull.assert_any_call(101)
         mock_repo.get_pull.assert_any_call(102)
 
-    @patch("apps.integrations.services.github_sync.Github")
+    @patch("apps.integrations.services.github_sync.client.Github")
     def test_get_updated_pull_requests_filters_out_regular_issues(self, mock_github_class):
         """Test that get_updated_pull_requests filters out regular issues (only returns PRs)."""
         # Create mock issues - all regular issues, no PRs
@@ -484,7 +484,7 @@ class TestGetUpdatedPullRequests(TestCase):
         # Verify get_pull was never called (no PR issues found)
         mock_repo.get_pull.assert_not_called()
 
-    @patch("apps.integrations.services.github_sync.Github")
+    @patch("apps.integrations.services.github_sync.client.Github")
     def test_get_updated_pull_requests_returns_empty_list_when_no_updates(self, mock_github_class):
         """Test that get_updated_pull_requests returns empty list if no PRs updated since datetime."""
         # Mock PyGithub to return empty list
@@ -509,7 +509,7 @@ class TestGetUpdatedPullRequests(TestCase):
         mock_github.get_repo.assert_called_once_with(repo_full_name)
         mock_repo.get_issues.assert_called_once()
 
-    @patch("apps.integrations.services.github_sync.Github")
+    @patch("apps.integrations.services.github_sync.client.Github")
     def test_get_updated_pull_requests_raises_on_api_error(self, mock_github_class):
         """Test that get_updated_pull_requests raises GitHubOAuthError on API errors."""
         from github import GithubException
@@ -530,7 +530,7 @@ class TestGetUpdatedPullRequests(TestCase):
 
         self.assertIn("404", str(context.exception))
 
-    @patch("apps.integrations.services.github_sync.Github")
+    @patch("apps.integrations.services.github_sync.client.Github")
     def test_get_updated_pull_requests_passes_since_parameter_correctly(self, mock_github_class):
         """Test that get_updated_pull_requests passes the since parameter to GitHub API correctly."""
         # Mock PyGithub chain
@@ -549,7 +549,7 @@ class TestGetUpdatedPullRequests(TestCase):
         # Verify get_issues was called with correct since parameter
         mock_repo.get_issues.assert_called_once_with(since=since, state="all")
 
-    @patch("apps.integrations.services.github_sync.Github")
+    @patch("apps.integrations.services.github_sync.client.Github")
     def test_get_updated_pull_requests_returns_same_format_as_get_repository_pull_requests(self, mock_github_class):
         """Test that get_updated_pull_requests returns PRs in same dict format as get_repository_pull_requests."""
         # Create mock issue and PR

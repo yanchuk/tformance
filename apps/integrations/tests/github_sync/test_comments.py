@@ -14,7 +14,7 @@ from apps.integrations.services.github_sync import (
 class TestSyncPRIssueComments(TestCase):
     """Tests for sync_pr_issue_comments function (general PR comments)."""
 
-    @patch("apps.integrations.services.github_sync.Github")
+    @patch("apps.integrations.services.github_sync.processors.Github")
     def test_sync_pr_issue_comments_creates_records(self, mock_github_class):
         """Test that sync_pr_issue_comments creates PRComment records from GitHub API."""
         from apps.metrics.factories import PullRequestFactory, TeamFactory, TeamMemberFactory
@@ -86,7 +86,7 @@ class TestSyncPRIssueComments(TestCase):
         # Verify no errors
         self.assertEqual(len(errors), 0)
 
-    @patch("apps.integrations.services.github_sync.Github")
+    @patch("apps.integrations.services.github_sync.processors.Github")
     def test_sync_pr_issue_comments_maps_author(self, mock_github_class):
         """Test that sync_pr_issue_comments maps comment author to TeamMember by github_id."""
         from apps.metrics.factories import PullRequestFactory, TeamFactory, TeamMemberFactory
@@ -134,7 +134,7 @@ class TestSyncPRIssueComments(TestCase):
         self.assertEqual(comment.author, known_member)
         self.assertEqual(comment.author.display_name, "Known User")
 
-    @patch("apps.integrations.services.github_sync.Github")
+    @patch("apps.integrations.services.github_sync.processors.Github")
     def test_sync_pr_issue_comments_updates_existing(self, mock_github_class):
         """Test that sync_pr_issue_comments updates existing comment if already synced."""
         from apps.metrics.factories import PRCommentFactory, PullRequestFactory, TeamFactory, TeamMemberFactory
@@ -194,7 +194,7 @@ class TestSyncPRIssueComments(TestCase):
         self.assertEqual(comment.body, "Updated comment text")
         self.assertEqual(comment.author, member)
 
-    @patch("apps.integrations.services.github_sync.Github")
+    @patch("apps.integrations.services.github_sync.processors.Github")
     def test_sync_pr_issue_comments_handles_api_error(self, mock_github_class):
         """Test that sync_pr_issue_comments accumulates errors on GitHub API failure."""
         from github import GithubException
@@ -240,7 +240,7 @@ class TestSyncPRIssueComments(TestCase):
 class TestSyncPRReviewComments(TestCase):
     """Tests for sync_pr_review_comments function (inline code review comments)."""
 
-    @patch("apps.integrations.services.github_sync.Github")
+    @patch("apps.integrations.services.github_sync.processors.Github")
     def test_sync_pr_review_comments_creates_records(self, mock_github_class):
         """Test that sync_pr_review_comments creates PRComment records from GitHub API."""
         from apps.metrics.factories import PullRequestFactory, TeamFactory, TeamMemberFactory
@@ -318,7 +318,7 @@ class TestSyncPRReviewComments(TestCase):
         # Verify no errors
         self.assertEqual(len(errors), 0)
 
-    @patch("apps.integrations.services.github_sync.Github")
+    @patch("apps.integrations.services.github_sync.processors.Github")
     def test_sync_pr_review_comments_includes_path_and_line(self, mock_github_class):
         """Test that sync_pr_review_comments stores path and line for inline comments."""
         from apps.metrics.factories import PullRequestFactory, TeamFactory, TeamMemberFactory
@@ -370,7 +370,7 @@ class TestSyncPRReviewComments(TestCase):
         self.assertEqual(comment.line, 256)
         self.assertEqual(comment.comment_type, "review")
 
-    @patch("apps.integrations.services.github_sync.Github")
+    @patch("apps.integrations.services.github_sync.processors.Github")
     def test_sync_pr_review_comments_handles_reply_thread(self, mock_github_class):
         """Test that sync_pr_review_comments handles threaded reply comments."""
         from apps.metrics.factories import PullRequestFactory, TeamFactory, TeamMemberFactory
@@ -440,7 +440,7 @@ class TestSyncPRReviewComments(TestCase):
         self.assertEqual(reply.author, author)
         self.assertEqual(reply.in_reply_to_id, 888888)
 
-    @patch("apps.integrations.services.github_sync.Github")
+    @patch("apps.integrations.services.github_sync.processors.Github")
     def test_sync_pr_review_comments_handles_api_error(self, mock_github_class):
         """Test that sync_pr_review_comments accumulates errors on GitHub API failure."""
         from github import GithubException

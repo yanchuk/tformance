@@ -38,7 +38,7 @@ class TestGetPullRequestReviews(TestCase):
 
         return mock_review
 
-    @patch("apps.integrations.services.github_sync.Github")
+    @patch("apps.integrations.services.github_sync.client.Github")
     def test_get_pull_request_reviews_returns_reviews(self, mock_github_class):
         """Test that get_pull_request_reviews returns list of reviews from GitHub API."""
         # Create mock reviews
@@ -89,7 +89,7 @@ class TestGetPullRequestReviews(TestCase):
         mock_repo.get_pull.assert_called_once_with(pr_number)
         mock_pr.get_reviews.assert_called_once()
 
-    @patch("apps.integrations.services.github_sync.Github")
+    @patch("apps.integrations.services.github_sync.client.Github")
     def test_get_pull_request_reviews_handles_empty_reviews(self, mock_github_class):
         """Test that get_pull_request_reviews returns empty list when no reviews exist."""
         # Mock PyGithub chain to return empty list
@@ -116,7 +116,7 @@ class TestGetPullRequestReviews(TestCase):
         mock_github.get_repo.assert_called_once_with(repo_full_name)
         mock_repo.get_pull.assert_called_once_with(pr_number)
 
-    @patch("apps.integrations.services.github_sync.Github")
+    @patch("apps.integrations.services.github_sync.client.Github")
     def test_get_pull_request_reviews_handles_pagination(self, mock_github_class):
         """Test that PyGithub handles pagination automatically (no manual pagination needed)."""
         # Create multiple mock reviews (PyGithub handles pagination internally)
@@ -156,7 +156,7 @@ class TestGetPullRequestReviews(TestCase):
         # Verify only one call was made to get_reviews (PyGithub handles pagination internally)
         mock_pr.get_reviews.assert_called_once()
 
-    @patch("apps.integrations.services.github_sync.Github")
+    @patch("apps.integrations.services.github_sync.client.Github")
     def test_get_pull_request_reviews_raises_on_api_error(self, mock_github_class):
         """Test that get_pull_request_reviews raises GitHubOAuthError on API errors."""
         from github import GithubException

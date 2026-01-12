@@ -90,14 +90,14 @@ class TestProcessPRsRateLimitIntegration(TestCase):
 
         return mock_github
 
-    @patch("apps.integrations.services.github_sync.sync_pr_review_comments")
-    @patch("apps.integrations.services.github_sync.sync_pr_issue_comments")
-    @patch("apps.integrations.services.github_sync.sync_pr_files")
-    @patch("apps.integrations.services.github_sync.sync_pr_check_runs")
-    @patch("apps.integrations.services.github_sync.sync_pr_commits")
-    @patch("apps.integrations.services.github_sync._sync_pr_reviews")
-    @patch("apps.integrations.services.github_sync.calculate_pr_iteration_metrics")
-    @patch("apps.integrations.services.github_sync.Github")
+    @patch("apps.integrations.services.github_sync.sync.sync_pr_review_comments")
+    @patch("apps.integrations.services.github_sync.sync.sync_pr_issue_comments")
+    @patch("apps.integrations.services.github_sync.sync.sync_pr_files")
+    @patch("apps.integrations.services.github_sync.sync.sync_pr_check_runs")
+    @patch("apps.integrations.services.github_sync.sync.sync_pr_commits")
+    @patch("apps.integrations.services.github_sync.sync.sync_pr_reviews")
+    @patch("apps.integrations.services.github_sync.sync.calculate_pr_iteration_metrics")
+    @patch("apps.integrations.services.github_sync.sync.Github")
     def test_process_prs_updates_rate_limit_remaining(
         self,
         mock_github_class,
@@ -133,14 +133,14 @@ class TestProcessPRsRateLimitIntegration(TestCase):
         tracked_repo.refresh_from_db()
         self.assertEqual(tracked_repo.rate_limit_remaining, 300)
 
-    @patch("apps.integrations.services.github_sync.sync_pr_review_comments")
-    @patch("apps.integrations.services.github_sync.sync_pr_issue_comments")
-    @patch("apps.integrations.services.github_sync.sync_pr_files")
-    @patch("apps.integrations.services.github_sync.sync_pr_check_runs")
-    @patch("apps.integrations.services.github_sync.sync_pr_commits")
-    @patch("apps.integrations.services.github_sync._sync_pr_reviews")
-    @patch("apps.integrations.services.github_sync.calculate_pr_iteration_metrics")
-    @patch("apps.integrations.services.github_sync.Github")
+    @patch("apps.integrations.services.github_sync.sync.sync_pr_review_comments")
+    @patch("apps.integrations.services.github_sync.sync.sync_pr_issue_comments")
+    @patch("apps.integrations.services.github_sync.sync.sync_pr_files")
+    @patch("apps.integrations.services.github_sync.sync.sync_pr_check_runs")
+    @patch("apps.integrations.services.github_sync.sync.sync_pr_commits")
+    @patch("apps.integrations.services.github_sync.sync.sync_pr_reviews")
+    @patch("apps.integrations.services.github_sync.sync.calculate_pr_iteration_metrics")
+    @patch("apps.integrations.services.github_sync.sync.Github")
     def test_process_prs_updates_rate_limit_reset_at(
         self,
         mock_github_class,
@@ -178,14 +178,14 @@ class TestProcessPRsRateLimitIntegration(TestCase):
         tracked_repo.refresh_from_db()
         self.assertEqual(tracked_repo.rate_limit_reset_at, reset_time)
 
-    @patch("apps.integrations.services.github_sync.sync_pr_review_comments")
-    @patch("apps.integrations.services.github_sync.sync_pr_issue_comments")
-    @patch("apps.integrations.services.github_sync.sync_pr_files")
-    @patch("apps.integrations.services.github_sync.sync_pr_check_runs")
-    @patch("apps.integrations.services.github_sync.sync_pr_commits")
-    @patch("apps.integrations.services.github_sync._sync_pr_reviews")
-    @patch("apps.integrations.services.github_sync.calculate_pr_iteration_metrics")
-    @patch("apps.integrations.services.github_sync.Github")
+    @patch("apps.integrations.services.github_sync.sync.sync_pr_review_comments")
+    @patch("apps.integrations.services.github_sync.sync.sync_pr_issue_comments")
+    @patch("apps.integrations.services.github_sync.sync.sync_pr_files")
+    @patch("apps.integrations.services.github_sync.sync.sync_pr_check_runs")
+    @patch("apps.integrations.services.github_sync.sync.sync_pr_commits")
+    @patch("apps.integrations.services.github_sync.sync.sync_pr_reviews")
+    @patch("apps.integrations.services.github_sync.sync.calculate_pr_iteration_metrics")
+    @patch("apps.integrations.services.github_sync.sync.Github")
     def test_process_prs_stops_when_rate_limited(
         self,
         mock_github_class,
@@ -224,14 +224,14 @@ class TestProcessPRsRateLimitIntegration(TestCase):
         self.assertEqual(mock_sync_reviews.call_count, 3)
         self.assertEqual(mock_sync_commits.call_count, 3)
 
-    @patch("apps.integrations.services.github_sync.sync_pr_review_comments")
-    @patch("apps.integrations.services.github_sync.sync_pr_issue_comments")
-    @patch("apps.integrations.services.github_sync.sync_pr_files")
-    @patch("apps.integrations.services.github_sync.sync_pr_check_runs")
-    @patch("apps.integrations.services.github_sync.sync_pr_commits")
-    @patch("apps.integrations.services.github_sync._sync_pr_reviews")
-    @patch("apps.integrations.services.github_sync.calculate_pr_iteration_metrics")
-    @patch("apps.integrations.services.github_sync.Github")
+    @patch("apps.integrations.services.github_sync.sync.sync_pr_review_comments")
+    @patch("apps.integrations.services.github_sync.sync.sync_pr_issue_comments")
+    @patch("apps.integrations.services.github_sync.sync.sync_pr_files")
+    @patch("apps.integrations.services.github_sync.sync.sync_pr_check_runs")
+    @patch("apps.integrations.services.github_sync.sync.sync_pr_commits")
+    @patch("apps.integrations.services.github_sync.sync.sync_pr_reviews")
+    @patch("apps.integrations.services.github_sync.sync.calculate_pr_iteration_metrics")
+    @patch("apps.integrations.services.github_sync.sync.Github")
     def test_process_prs_returns_rate_limited_false_normally(
         self,
         mock_github_class,
@@ -267,14 +267,14 @@ class TestProcessPRsRateLimitIntegration(TestCase):
         self.assertIn("rate_limited", result)
         self.assertFalse(result["rate_limited"])
 
-    @patch("apps.integrations.services.github_sync.sync_pr_review_comments")
-    @patch("apps.integrations.services.github_sync.sync_pr_issue_comments")
-    @patch("apps.integrations.services.github_sync.sync_pr_files")
-    @patch("apps.integrations.services.github_sync.sync_pr_check_runs")
-    @patch("apps.integrations.services.github_sync.sync_pr_commits")
-    @patch("apps.integrations.services.github_sync._sync_pr_reviews")
-    @patch("apps.integrations.services.github_sync.calculate_pr_iteration_metrics")
-    @patch("apps.integrations.services.github_sync.Github")
+    @patch("apps.integrations.services.github_sync.sync.sync_pr_review_comments")
+    @patch("apps.integrations.services.github_sync.sync.sync_pr_issue_comments")
+    @patch("apps.integrations.services.github_sync.sync.sync_pr_files")
+    @patch("apps.integrations.services.github_sync.sync.sync_pr_check_runs")
+    @patch("apps.integrations.services.github_sync.sync.sync_pr_commits")
+    @patch("apps.integrations.services.github_sync.sync.sync_pr_reviews")
+    @patch("apps.integrations.services.github_sync.sync.calculate_pr_iteration_metrics")
+    @patch("apps.integrations.services.github_sync.sync.Github")
     def test_process_prs_returns_rate_limited_true_when_stopped(
         self,
         mock_github_class,

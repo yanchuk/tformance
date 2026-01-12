@@ -34,7 +34,7 @@ class TestSyncPRCheckRuns(TestCase):
         )
         return mock_check_run
 
-    @patch("apps.integrations.services.github_sync.Github")
+    @patch("apps.integrations.services.github_sync.processors.Github")
     def test_sync_pr_check_runs_creates_records(self, mock_github_class):
         """Test that sync_pr_check_runs creates PRCheckRun records from GitHub check runs."""
         from apps.metrics.factories import PullRequestFactory, TeamFactory, TeamMemberFactory
@@ -120,7 +120,7 @@ class TestSyncPRCheckRuns(TestCase):
         self.assertEqual(check_run2.name, "eslint")
         self.assertEqual(check_run2.conclusion, "failure")
 
-    @patch("apps.integrations.services.github_sync.Github")
+    @patch("apps.integrations.services.github_sync.processors.Github")
     def test_sync_pr_check_runs_calculates_duration(self, mock_github_class):
         """Test that sync_pr_check_runs calculates duration_seconds from started_at and completed_at."""
         from apps.metrics.factories import PullRequestFactory, TeamFactory, TeamMemberFactory
@@ -176,7 +176,7 @@ class TestSyncPRCheckRuns(TestCase):
         check_run = PRCheckRun.objects.get(team=team, github_check_run_id=33333)
         self.assertEqual(check_run.duration_seconds, 300)  # 5 minutes = 300 seconds
 
-    @patch("apps.integrations.services.github_sync.Github")
+    @patch("apps.integrations.services.github_sync.processors.Github")
     def test_sync_pr_check_runs_handles_pending_check(self, mock_github_class):
         """Test that sync_pr_check_runs handles in_progress check runs with no conclusion."""
         from apps.metrics.factories import PullRequestFactory, TeamFactory, TeamMemberFactory
@@ -235,7 +235,7 @@ class TestSyncPRCheckRuns(TestCase):
         self.assertIsNone(check_run.completed_at)
         self.assertIsNone(check_run.duration_seconds)  # No duration if not completed
 
-    @patch("apps.integrations.services.github_sync.Github")
+    @patch("apps.integrations.services.github_sync.processors.Github")
     def test_sync_pr_check_runs_updates_existing(self, mock_github_class):
         """Test that sync_pr_check_runs updates existing check runs (idempotent)."""
         from apps.metrics.factories import PRCheckRunFactory, PullRequestFactory, TeamFactory, TeamMemberFactory

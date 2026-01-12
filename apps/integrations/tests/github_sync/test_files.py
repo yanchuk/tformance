@@ -29,7 +29,7 @@ class TestSyncPRFiles(TestCase):
         mock_file.changes = changes
         return mock_file
 
-    @patch("apps.integrations.services.github_sync.Github")
+    @patch("apps.integrations.services.github_sync.processors.Github")
     def test_sync_pr_files_creates_records(self, mock_github_class):
         """Test that sync_pr_files creates PRFile records for each file changed in a PR."""
         from apps.metrics.factories import PullRequestFactory, TeamFactory, TeamMemberFactory
@@ -125,7 +125,7 @@ class TestSyncPRFiles(TestCase):
         mock_repo.get_pull.assert_called_once_with(101)
         mock_github_pr.get_files.assert_called_once()
 
-    @patch("apps.integrations.services.github_sync.Github")
+    @patch("apps.integrations.services.github_sync.processors.Github")
     def test_sync_pr_files_categorizes_files(self, mock_github_class):
         """Test that sync_pr_files uses categorize_file() to set file_category."""
         from apps.metrics.factories import PullRequestFactory, TeamFactory, TeamMemberFactory
@@ -191,7 +191,7 @@ class TestSyncPRFiles(TestCase):
         other_file = files.get(filename="data.csv")
         self.assertEqual(other_file.file_category, "other")
 
-    @patch("apps.integrations.services.github_sync.Github")
+    @patch("apps.integrations.services.github_sync.processors.Github")
     def test_sync_pr_files_updates_existing(self, mock_github_class):
         """Test that sync_pr_files updates existing PRFile records on re-sync."""
         from apps.integrations.factories import PRFileFactory
@@ -258,7 +258,7 @@ class TestSyncPRFiles(TestCase):
         self.assertEqual(file.changes, 40)
         self.assertEqual(file.file_category, "backend")  # Category still correct
 
-    @patch("apps.integrations.services.github_sync.Github")
+    @patch("apps.integrations.services.github_sync.processors.Github")
     def test_sync_pr_files_handles_api_error(self, mock_github_class):
         """Test that sync_pr_files accumulates errors on API failure."""
         from github import GithubException

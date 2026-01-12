@@ -32,7 +32,7 @@ class TestSyncRepositoryHistoryDaysBack(TestCase):
             full_name="test-org/test-repo",
         )
 
-    @patch("apps.integrations.services.github_sync.get_repository_pull_requests")
+    @patch("apps.integrations.services.github_sync.sync.get_repository_pull_requests")
     def test_sync_repository_history_passes_days_back_to_fetcher(self, mock_get_prs):
         """Test that days_back is passed to the PR fetching function.
 
@@ -51,8 +51,8 @@ class TestSyncRepositoryHistoryDaysBack(TestCase):
         self.assertIn("days_back", call_kwargs.kwargs)
         self.assertEqual(call_kwargs.kwargs["days_back"], 30)
 
-    @patch("apps.integrations.services.github_sync._convert_pr_to_dict")
-    @patch("apps.integrations.services.github_sync.Github")
+    @patch("apps.integrations.services.github_sync.client.convert_pr_to_dict")
+    @patch("apps.integrations.services.github_sync.client.Github")
     def test_get_repository_pull_requests_supports_days_back(self, mock_github_class, mock_convert):
         """Test that get_repository_pull_requests can filter by days_back.
 
@@ -102,8 +102,8 @@ class TestSyncRepositoryHistoryDaysBack(TestCase):
 class TestGetRepositoryPullRequestsMemoryEfficiency(TestCase):
     """Tests for memory-efficient PR fetching."""
 
-    @patch("apps.integrations.services.github_sync._convert_pr_to_dict")
-    @patch("apps.integrations.services.github_sync.Github")
+    @patch("apps.integrations.services.github_sync.client.convert_pr_to_dict")
+    @patch("apps.integrations.services.github_sync.client.Github")
     def test_returns_generator_not_list_for_large_repos(self, mock_github_class, mock_convert):
         """Test that function returns a generator for memory efficiency.
 

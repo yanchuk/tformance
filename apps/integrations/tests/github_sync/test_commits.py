@@ -48,7 +48,7 @@ class TestSyncPRCommits(TestCase):
 
         return mock_commit
 
-    @patch("apps.integrations.services.github_sync.Github")
+    @patch("apps.integrations.services.github_sync.processors.Github")
     def test_sync_pr_commits_creates_commit_records(self, mock_github_class):
         """Test that sync_pr_commits creates Commit records from GitHub PR commits."""
         from apps.metrics.factories import PullRequestFactory, TeamFactory, TeamMemberFactory
@@ -121,7 +121,7 @@ class TestSyncPRCommits(TestCase):
         self.assertEqual(commit2.github_sha, "def456abc123789012345678901234567890abcd")
         self.assertEqual(commit2.message, "Fix typo")
 
-    @patch("apps.integrations.services.github_sync.Github")
+    @patch("apps.integrations.services.github_sync.processors.Github")
     def test_sync_pr_commits_links_to_pull_request(self, mock_github_class):
         """Test that sync_pr_commits correctly links commits to the pull request."""
         from apps.metrics.factories import PullRequestFactory, TeamFactory, TeamMemberFactory
@@ -170,7 +170,7 @@ class TestSyncPRCommits(TestCase):
         self.assertEqual(commit.pull_request, pr)
         self.assertEqual(commit.pull_request.github_pr_id, 102)
 
-    @patch("apps.integrations.services.github_sync.Github")
+    @patch("apps.integrations.services.github_sync.processors.Github")
     def test_sync_pr_commits_maps_author_by_github_id(self, mock_github_class):
         """Test that sync_pr_commits maps commit author to TeamMember via github_id."""
         from apps.metrics.factories import PullRequestFactory, TeamFactory, TeamMemberFactory
@@ -220,7 +220,7 @@ class TestSyncPRCommits(TestCase):
         self.assertEqual(commit.author.github_id, "99999")
         self.assertEqual(commit.author.display_name, "Jane Developer")
 
-    @patch("apps.integrations.services.github_sync.Github")
+    @patch("apps.integrations.services.github_sync.processors.Github")
     def test_sync_pr_commits_handles_unknown_author(self, mock_github_class):
         """Test that sync_pr_commits sets author=None if GitHub user not found in team."""
         from apps.metrics.factories import PullRequestFactory, TeamFactory, TeamMemberFactory
@@ -269,7 +269,7 @@ class TestSyncPRCommits(TestCase):
         self.assertIsNone(commit.author)
         self.assertEqual(commit.message, "External contribution")
 
-    @patch("apps.integrations.services.github_sync.Github")
+    @patch("apps.integrations.services.github_sync.processors.Github")
     def test_sync_pr_commits_handles_null_author(self, mock_github_class):
         """Test that sync_pr_commits handles commits with no author (e.g., deleted accounts)."""
         from apps.metrics.factories import PullRequestFactory, TeamFactory, TeamMemberFactory
@@ -317,7 +317,7 @@ class TestSyncPRCommits(TestCase):
         commit = Commit.objects.get(team=team, github_sha="abc123def456789012345678901234567890abcd")
         self.assertIsNone(commit.author)
 
-    @patch("apps.integrations.services.github_sync.Github")
+    @patch("apps.integrations.services.github_sync.processors.Github")
     def test_sync_pr_commits_updates_existing_commits(self, mock_github_class):
         """Test that sync_pr_commits is idempotent - updates existing commits."""
         from apps.metrics.factories import CommitFactory, PullRequestFactory, TeamFactory, TeamMemberFactory

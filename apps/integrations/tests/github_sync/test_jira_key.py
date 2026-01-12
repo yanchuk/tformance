@@ -176,7 +176,7 @@ class TestJiraKeyExtraction(TestCase):
 
         # Mock the API to return PR with Jira key in title
         # EncryptedTextField auto-decrypts access_token
-        with patch("apps.integrations.services.github_sync.get_repository_pull_requests") as mock_get_prs:
+        with patch("apps.integrations.services.github_sync.sync.get_repository_pull_requests") as mock_get_prs:
             mock_get_prs.return_value = [
                 {
                     "id": 123456789,
@@ -235,7 +235,7 @@ class TestJiraKeyExtraction(TestCase):
 
         # Mock the API to return PR with Jira key in branch
         # EncryptedTextField auto-decrypts access_token
-        with patch("apps.integrations.services.github_sync.get_repository_pull_requests") as mock_get_prs:
+        with patch("apps.integrations.services.github_sync.sync.get_repository_pull_requests") as mock_get_prs:
             mock_get_prs.return_value = [
                 {
                     "id": 123456789,
@@ -297,7 +297,7 @@ class TestJiraKeyExtraction(TestCase):
 
         # Mock the API to return PR with Jira key in title
         # EncryptedTextField auto-decrypts access_token
-        with patch("apps.integrations.services.github_sync.get_updated_pull_requests") as mock_get_updated_prs:
+        with patch("apps.integrations.services.github_sync.sync.get_updated_pull_requests") as mock_get_updated_prs:
             mock_get_updated_prs.return_value = [
                 {
                     "id": 987654321,

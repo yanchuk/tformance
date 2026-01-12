@@ -49,7 +49,7 @@ class TestSyncRepositoryDeployments(TestCase):
         mock_status.created_at = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
         return mock_status
 
-    @patch("apps.integrations.services.github_sync.Github")
+    @patch("apps.integrations.services.github_sync.processors.Github")
     def test_sync_repository_deployments_creates_records(self, mock_github_class):
         """Test that sync_repository_deployments creates Deployment records from GitHub deployments."""
         from apps.metrics.factories import TeamFactory, TeamMemberFactory
@@ -122,7 +122,7 @@ class TestSyncRepositoryDeployments(TestCase):
         mock_deployment1.get_statuses.assert_called_once()
         mock_deployment2.get_statuses.assert_called_once()
 
-    @patch("apps.integrations.services.github_sync.Github")
+    @patch("apps.integrations.services.github_sync.processors.Github")
     def test_sync_repository_deployments_gets_latest_status(self, mock_github_class):
         """Test that sync_repository_deployments uses the first status from get_statuses()."""
         from apps.metrics.factories import TeamFactory
@@ -164,7 +164,7 @@ class TestSyncRepositoryDeployments(TestCase):
         deployment = Deployment.objects.get(team=team, github_deployment_id=2001)
         self.assertEqual(deployment.status, "success")  # Not "pending"
 
-    @patch("apps.integrations.services.github_sync.Github")
+    @patch("apps.integrations.services.github_sync.processors.Github")
     def test_sync_repository_deployments_maps_creator(self, mock_github_class):
         """Test that sync_repository_deployments links deployment creator to TeamMember."""
         from apps.metrics.factories import TeamFactory, TeamMemberFactory
@@ -208,7 +208,7 @@ class TestSyncRepositoryDeployments(TestCase):
         self.assertEqual(deployment.creator, creator)
         self.assertEqual(deployment.creator.display_name, "Jane Deployer")
 
-    @patch("apps.integrations.services.github_sync.Github")
+    @patch("apps.integrations.services.github_sync.processors.Github")
     def test_sync_repository_deployments_maps_creator_handles_missing_member(self, mock_github_class):
         """Test that sync_repository_deployments handles deployments when creator is not a TeamMember."""
         from apps.metrics.factories import TeamFactory
@@ -250,7 +250,7 @@ class TestSyncRepositoryDeployments(TestCase):
         deployment = Deployment.objects.get(team=team, github_deployment_id=4001)
         self.assertIsNone(deployment.creator)
 
-    @patch("apps.integrations.services.github_sync.Github")
+    @patch("apps.integrations.services.github_sync.processors.Github")
     def test_sync_repository_deployments_updates_existing(self, mock_github_class):
         """Test that sync_repository_deployments updates existing records on re-sync."""
         from apps.metrics.factories import TeamFactory
@@ -309,7 +309,7 @@ class TestSyncRepositoryDeployments(TestCase):
         updated_deployment = Deployment.objects.get(team=team, github_deployment_id=5001)
         self.assertEqual(updated_deployment.status, "success")  # Updated from "pending"
 
-    @patch("apps.integrations.services.github_sync.Github")
+    @patch("apps.integrations.services.github_sync.processors.Github")
     def test_sync_repository_deployments_handles_api_error(self, mock_github_class):
         """Test that sync_repository_deployments accumulates errors on API failure."""
         from github import GithubException
