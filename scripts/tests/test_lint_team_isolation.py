@@ -145,6 +145,19 @@ class TestTeamIsolationVisitor(TestCase):
             "TrackedJiraProject",
             "SlackIntegration",
             "Player",
+            # Added 2026-01-12:
+            "PRFile",
+            "PRComment",
+            "PRCheckRun",
+            "CopilotLanguageDaily",
+            "CopilotEditorDaily",
+            "CopilotSeatSnapshot",
+            "ReviewerCorrelation",
+            "Deployment",
+            "AIFeedback",
+            "DailyInsight",
+            "LLMFeedback",
+            "GitHubAppInstallation",
         }
         self.assertEqual(TEAM_MODELS, expected_models)
 

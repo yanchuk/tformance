@@ -129,7 +129,8 @@ class StartSyncTeamContextTests(TestCase):
             from unittest.mock import patch
 
             with patch("apps.onboarding.views.start_onboarding_pipeline") as mock_pipeline:
-                mock_pipeline.return_value.id = "test-task-id"
+                # Pipeline returns dict with status (signal-based architecture)
+                mock_pipeline.return_value = {"status": "started"}
 
                 response = self.client.post(reverse("onboarding:start_sync"))
 
@@ -148,7 +149,8 @@ class StartSyncTeamContextTests(TestCase):
             from unittest.mock import patch
 
             with patch("apps.onboarding.views.start_onboarding_pipeline") as mock_pipeline:
-                mock_pipeline.return_value.id = "test-task-id"
+                # Pipeline returns dict with status (signal-based architecture)
+                mock_pipeline.return_value = {"status": "started"}
 
                 response = self.client.post(reverse("onboarding:start_sync"))
 

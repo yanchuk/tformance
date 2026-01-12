@@ -72,7 +72,8 @@ class TestSyncAllCopilotMetricsFlagGating(TestCase):
 
     def setUp(self):
         """Set up test fixtures."""
-        self.team1 = TeamFactory()
+        # Teams must have copilot_status="connected" to be included in sync
+        self.team1 = TeamFactory(copilot_status="connected")
         self.credential1 = IntegrationCredentialFactory(
             team=self.team1,
             provider="github",
@@ -84,7 +85,7 @@ class TestSyncAllCopilotMetricsFlagGating(TestCase):
             organization_slug="test-org-1",
         )
 
-        self.team2 = TeamFactory()
+        self.team2 = TeamFactory(copilot_status="connected")
         self.credential2 = IntegrationCredentialFactory(
             team=self.team2,
             provider="github",

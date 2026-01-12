@@ -137,7 +137,11 @@ class TestSyncProgressAccessibleAfterRepoSelection(TestCase):
 
 
 class TestSyncTaskIdStoredInSession(TestCase):
-    """Tests that sync_task_id is stored in session for progress polling."""
+    """Tests for signal-based pipeline tracking after repo selection.
+
+    Note: Signal-based architecture uses team.onboarding_pipeline_status
+    instead of session task_id for progress tracking.
+    """
 
     def setUp(self):
         """Set up test fixtures using factories."""
@@ -151,14 +155,15 @@ class TestSyncTaskIdStoredInSession(TestCase):
         self.integration = GitHubIntegrationFactory(team=self.team)
 
     def test_sync_task_id_stored_in_session_after_repo_selection(self):
-        """Test that sync_task_id is stored in session when repos are selected.
+        """Test that pipeline returns signal-based execution status.
 
-        The sync_task_id is needed for the sync progress page to poll for
-        the background task's progress.
+        Signal-based architecture uses team.onboarding_pipeline_status
+        for progress tracking instead of session task_id.
+        The view explicitly clears sync_task_id from session.
         """
         self.client.login(username="tasktest@example.com", password="testpassword123")
 
-        # Mock the GitHub API call and Celery task
+        # Mock the GitHub API call and pipeline function
         with (
             patch("apps.onboarding.views.github_oauth.get_organization_repositories") as mock_repos,
             patch("apps.onboarding.views.start_onboarding_pipeline") as mock_pipeline,
@@ -166,17 +171,22 @@ class TestSyncTaskIdStoredInSession(TestCase):
             mock_repos.return_value = [
                 {"id": 789012, "full_name": "org/repo", "name": "repo"},
             ]
-            mock_pipeline.return_value.id = "celery-task-uuid-456"
+            # Signal-based pipeline returns a dict, not AsyncResult
+            mock_pipeline.return_value = {
+                "status": "started",
+                "execution_mode": "signal_based",
+                "initial_status": "syncing_members",
+            }
 
             self.client.post(
                 reverse("onboarding:select_repos"),
                 {"repos": ["789012"]},
             )
 
-        # Verify the task_id is stored in session
+        # Signal-based architecture clears sync_task_id from session
+        # Progress is tracked via team.onboarding_pipeline_status instead
         session = self.client.session
-        self.assertIn("sync_task_id", session)
-        self.assertEqual(session["sync_task_id"], "celery-task-uuid-456")
+        self.assertNotIn("sync_task_id", session)
 
     def test_sync_progress_page_has_access_to_task_id(self):
         """Test that sync progress page can access the task_id from session.

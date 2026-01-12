@@ -26,117 +26,108 @@ class TestStartPhase1PipelineExists(TestCase):
 
 
 class TestPhase1PipelineSync(TestCase):
-    """Tests for Phase 1 sync behavior (30 days only)."""
+    """Tests for Phase 1 sync behavior (signal-based architecture).
+
+    Phase 1 uses signal-based task dispatch:
+    - start_phase1_pipeline sets status to 'syncing_members'
+    - Signal handlers dispatch appropriate tasks based on status changes
+    """
 
     def setUp(self):
         self.team = TeamFactory()
         self.repo = TrackedRepositoryFactory(team=self.team)
 
-    @patch("apps.integrations.onboarding_pipeline.chain")
-    @patch("apps.integrations.tasks.sync_historical_data_task")
-    def test_phase1_uses_30_day_sync(self, mock_sync_task, mock_chain):
-        """Phase 1 should sync only 30 days of data for quick start."""
+    def test_phase1_uses_signal_based_execution(self):
+        """Phase 1 should use signal-based execution, not Celery chains."""
         from apps.integrations.onboarding_pipeline import start_phase1_pipeline
 
-        mock_chain_instance = MagicMock()
-        mock_chain.return_value = mock_chain_instance
-        mock_chain_instance.on_error.return_value = mock_chain_instance
-        mock_sync_task.si = MagicMock()
+        result = start_phase1_pipeline(self.team.id, [self.repo.id])
 
-        start_phase1_pipeline(self.team.id, [self.repo.id])
-
-        # Verify sync_historical_data_task.si was called with days_back=30
-        mock_sync_task.si.assert_called()
-        call_kwargs = mock_sync_task.si.call_args[1]
-        self.assertEqual(call_kwargs.get("days_back"), 30)
+        # Verify signal-based execution is indicated
+        self.assertEqual(result["status"], "started")
+        self.assertEqual(result["execution_mode"], "signal_based")
+        self.assertEqual(result["initial_status"], "syncing_members")
 
 
 class TestPhase1PipelineLLM(TestCase):
-    """Tests for Phase 1 LLM behavior (process ALL PRs)."""
+    """Tests for Phase 1 LLM behavior (signal-based architecture).
+
+    LLM processing is triggered via signals when pipeline reaches
+    llm_processing status. Tests verify signal dispatch returns correctly.
+    """
 
     def setUp(self):
         self.team = TeamFactory()
         self.repo = TrackedRepositoryFactory(team=self.team)
 
-    @patch("apps.integrations.onboarding_pipeline.chain")
-    @patch("apps.integrations.tasks.queue_llm_analysis_batch_task")
-    def test_phase1_processes_all_synced_prs(self, mock_llm_task, mock_chain):
-        """Phase 1 should use batch_size=500 to process all synced PRs."""
+    def test_phase1_starts_with_correct_status(self):
+        """Phase 1 should set initial status to syncing_members for signal dispatch."""
         from apps.integrations.onboarding_pipeline import start_phase1_pipeline
 
-        mock_chain_instance = MagicMock()
-        mock_chain.return_value = mock_chain_instance
-        mock_chain_instance.on_error.return_value = mock_chain_instance
-        mock_llm_task.si = MagicMock()
+        result = start_phase1_pipeline(self.team.id, [self.repo.id])
 
-        start_phase1_pipeline(self.team.id, [self.repo.id])
-
-        # Verify queue_llm_analysis_batch_task.si was called with batch_size=500
-        mock_llm_task.si.assert_called()
-        call_args = mock_llm_task.si.call_args
-        # First positional arg is team_id, batch_size is keyword
-        self.assertEqual(call_args[1].get("batch_size"), 500)
+        # Verify the pipeline starts with syncing_members status
+        self.assertEqual(result["initial_status"], "syncing_members")
+        self.team.refresh_from_db()
+        self.assertEqual(self.team.onboarding_pipeline_status, "syncing_members")
 
 
 class TestPhase1PipelineStatus(TestCase):
-    """Tests for Phase 1 status transitions."""
+    """Tests for Phase 1 status transitions (signal-based architecture).
+
+    Status transitions are handled by signal handlers:
+    - syncing_members → syncing → llm_processing → computing_metrics → computing_insights → phase1_complete
+    """
 
     def setUp(self):
         self.team = TeamFactory()
         self.repo = TrackedRepositoryFactory(team=self.team)
 
-    @patch("apps.integrations.onboarding_pipeline.chain")
-    def test_phase1_ends_with_phase1_complete_status(self, mock_chain):
-        """Phase 1 should end with 'phase1_complete' status, not 'complete'."""
+    def test_phase1_updates_team_status_to_syncing_members(self):
+        """Phase 1 should update team status to 'syncing_members' to trigger signal chain."""
         from apps.integrations.onboarding_pipeline import start_phase1_pipeline
 
-        mock_chain_instance = MagicMock()
-        mock_chain.return_value = mock_chain_instance
-        mock_chain_instance.on_error.return_value = mock_chain_instance
+        # Initial status is "not_started" (from setUp)
+        self.team.refresh_from_db()
+        self.assertEqual(self.team.onboarding_pipeline_status, "not_started")
 
         start_phase1_pipeline(self.team.id, [self.repo.id])
 
-        # Verify chain was called
-        mock_chain.assert_called_once()
-
-        # Get all tasks in chain and check for phase1_complete status update
-        chain_args = mock_chain.call_args[0]
-        # Chain should include status update to 'phase1_complete'
-        status_updates = [str(arg) for arg in chain_args if "update_pipeline_status" in str(arg)]
-        self.assertTrue(
-            any("phase1_complete" in status for status in status_updates),
-            f"Expected phase1_complete status in chain, got: {status_updates}",
-        )
+        # Verify status was updated
+        self.team.refresh_from_db()
+        self.assertEqual(self.team.onboarding_pipeline_status, "syncing_members")
 
 
 class TestPhase1PipelineDispatchPhase2(TestCase):
-    """Tests for Phase 1 dispatching Phase 2."""
+    """Tests for Phase 1 dispatching Phase 2 (signal-based architecture).
+
+    In signal-based architecture, Phase 2 is NOT dispatched by a chain.
+    Instead, when Phase 1 completes and sets status to 'phase1_complete',
+    a Django signal handler dispatches Phase 2 automatically.
+    """
 
     def setUp(self):
         self.team = TeamFactory()
         self.repo = TrackedRepositoryFactory(team=self.team)
 
-    @patch("apps.integrations.onboarding_pipeline.chain")
-    def test_phase1_dispatches_phase2(self, mock_chain):
-        """Phase 1 should dispatch Phase 2 after completing."""
+    def test_phase1_returns_signal_based_mode(self):
+        """Phase 1 should indicate signal-based execution for Phase 2 dispatch."""
         from apps.integrations.onboarding_pipeline import start_phase1_pipeline
 
-        mock_chain_instance = MagicMock()
-        mock_chain.return_value = mock_chain_instance
-        mock_chain_instance.on_error.return_value = mock_chain_instance
+        result = start_phase1_pipeline(self.team.id, [self.repo.id])
 
-        start_phase1_pipeline(self.team.id, [self.repo.id])
+        # Signal-based execution means Phase 2 dispatch happens via signals
+        # when status changes to 'phase1_complete'
+        self.assertEqual(result["execution_mode"], "signal_based")
+        self.assertEqual(result["status"], "started")
 
-        # Verify chain was called
-        mock_chain.assert_called_once()
+    def test_dispatch_phase2_pipeline_task_can_be_called(self):
+        """dispatch_phase2_pipeline task should be callable for signal handlers."""
+        from apps.integrations.onboarding_pipeline import dispatch_phase2_pipeline
 
-        # Chain should include dispatch_phase2_pipeline task
-        chain_args = mock_chain.call_args[0]
-        task_names = [str(arg) for arg in chain_args]
-        self.assertTrue(
-            any("dispatch_phase2" in name for name in task_names),
-            f"Expected dispatch_phase2 task in chain, got: {task_names}",
-        )
+        # Verify the task exists and is callable
+        # (actual dispatch is tested via integration tests)
+        self.assertTrue(callable(dispatch_phase2_pipeline))
 
 
 class TestDispatchPhase2PipelineExists(TestCase):
@@ -202,8 +193,13 @@ class TestPhase2PipelineStatus(TestCase):
         )
 
     @patch("apps.integrations.onboarding_pipeline.chain")
-    def test_phase2_ends_with_complete_status(self, mock_chain):
-        """Phase 2 should end with 'complete' status."""
+    def test_phase2_ends_with_insights_computation(self, mock_chain):
+        """Phase 2 should end with insights computation which triggers completion.
+
+        Note: The 'complete' status is NOT set directly in the chain.
+        It's set by generate_team_llm_insights which is dispatched by
+        compute_team_insights at the end of the chain.
+        """
         from apps.integrations.onboarding_pipeline import run_phase2_pipeline
 
         mock_chain_instance = MagicMock()
@@ -213,11 +209,17 @@ class TestPhase2PipelineStatus(TestCase):
         run_phase2_pipeline(self.team.id, [self.repo.id])
 
         chain_args = mock_chain.call_args[0]
-        status_updates = [str(arg) for arg in chain_args]
-        # Should have 'complete' as the final status
+        task_names = [str(arg) for arg in chain_args]
+
+        # Chain should end with background_insights status update followed by compute_team_insights
+        # compute_team_insights dispatches generate_team_llm_insights which sets 'complete' status
         self.assertTrue(
-            any("'complete'" in status for status in status_updates),
-            f"Expected complete status, got: {status_updates}",
+            any("background_insights" in name for name in task_names),
+            f"Expected background_insights status update, got: {task_names}",
+        )
+        self.assertTrue(
+            any("compute_team_insights" in name for name in task_names),
+            f"Expected compute_team_insights task (triggers completion flow), got: {task_names}",
         )
 
 

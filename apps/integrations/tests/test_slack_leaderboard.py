@@ -307,10 +307,10 @@ class TestPostWeeklyLeaderboardsTask(TestCase):
         """Set up test fixtures."""
         self.team = TeamFactory()
 
-    @patch("apps.integrations.tasks.send_channel_message")
-    @patch("apps.integrations.tasks.get_slack_client")
-    @patch("apps.integrations.tasks.should_post_leaderboard")
-    @patch("apps.integrations.tasks.compute_weekly_leaderboard")
+    @patch("apps.integrations._task_modules.slack.send_channel_message")
+    @patch("apps.integrations._task_modules.slack.get_slack_client")
+    @patch("apps.integrations._task_modules.slack.should_post_leaderboard")
+    @patch("apps.integrations._task_modules.slack.compute_weekly_leaderboard")
     def test_posts_leaderboards_and_returns_counts(
         self, mock_compute, mock_should_post, mock_get_client, mock_send_message
     ):

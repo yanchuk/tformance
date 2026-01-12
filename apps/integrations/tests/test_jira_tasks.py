@@ -68,7 +68,7 @@ class TestSyncJiraProjectTask(TestCase):
         self.assertIn("reason", result)
         self.assertIn("not active", result["reason"].lower())
 
-    @patch("apps.integrations.tasks.sync_project_issues")
+    @patch("apps.integrations._task_modules.jira_sync.sync_project_issues")
     def test_sync_jira_project_task_sets_status_to_syncing_before_sync(self, mock_sync):
         """Test that sync_jira_project_task sets sync_status to 'syncing' before starting sync."""
         from apps.integrations.tasks import sync_jira_project_task
@@ -91,7 +91,7 @@ class TestSyncJiraProjectTask(TestCase):
 
         # Verify status was set to 'syncing' (checked by the mock)
 
-    @patch("apps.integrations.tasks.sync_project_issues")
+    @patch("apps.integrations._task_modules.jira_sync.sync_project_issues")
     def test_sync_jira_project_task_calls_sync_project_issues_with_correct_project(self, mock_sync):
         """Test that sync_jira_project_task calls sync_project_issues with the correct project."""
         from apps.integrations.tasks import sync_jira_project_task
@@ -113,7 +113,7 @@ class TestSyncJiraProjectTask(TestCase):
         # Verify result is returned from sync
         self.assertEqual(result["issues_synced"], 15)
 
-    @patch("apps.integrations.tasks.sync_project_issues")
+    @patch("apps.integrations._task_modules.jira_sync.sync_project_issues")
     def test_sync_jira_project_task_returns_sync_results_on_success(self, mock_sync):
         """Test that sync_jira_project_task returns the result dict from sync_project_issues."""
         from apps.integrations.tasks import sync_jira_project_task
@@ -130,7 +130,7 @@ class TestSyncJiraProjectTask(TestCase):
         # Verify result matches sync output
         self.assertEqual(result, expected_result)
 
-    @patch("apps.integrations.tasks.sync_project_issues")
+    @patch("apps.integrations._task_modules.jira_sync.sync_project_issues")
     def test_sync_jira_project_task_sets_status_to_complete_on_success(self, mock_sync):
         """Test that sync_jira_project_task sets sync_status to 'complete' on successful sync."""
         from apps.integrations.models import TrackedJiraProject
@@ -151,7 +151,7 @@ class TestSyncJiraProjectTask(TestCase):
         project = TrackedJiraProject.objects.get(id=self.tracked_project.id)
         self.assertEqual(project.sync_status, "complete")
 
-    @patch("apps.integrations.tasks.sync_project_issues")
+    @patch("apps.integrations._task_modules.jira_sync.sync_project_issues")
     def test_sync_jira_project_task_retries_with_exponential_backoff_on_failure(self, mock_sync):
         """Test that sync_jira_project_task retries with exponential backoff on failure."""
         from apps.integrations.tasks import sync_jira_project_task
@@ -173,7 +173,7 @@ class TestSyncJiraProjectTask(TestCase):
             # (the actual retry logic is tested by checking the decorator config)
 
     @patch("sentry_sdk.capture_exception")
-    @patch("apps.integrations.tasks.sync_project_issues")
+    @patch("apps.integrations._task_modules.jira_sync.sync_project_issues")
     def test_sync_jira_project_task_sets_status_to_error_after_max_retries(self, mock_sync, mock_sentry):
         """Test that sync_jira_project_task sets sync_status to 'error' after max retries exhausted."""
         from apps.integrations.models import TrackedJiraProject
@@ -217,7 +217,7 @@ class TestSyncAllJiraProjectsTask(TestCase):
             credential=self.credential,
         )
 
-    @patch("apps.integrations.tasks.sync_jira_project_task")
+    @patch("apps.integrations._task_modules.jira_sync.sync_jira_project_task")
     def test_sync_all_jira_projects_task_dispatches_task_for_each_active_project(self, mock_task):
         """Test that sync_all_jira_projects_task dispatches sync_jira_project_task for all active projects."""
         from apps.integrations.tasks import sync_all_jira_projects_task
@@ -262,7 +262,7 @@ class TestSyncAllJiraProjectsTask(TestCase):
         self.assertEqual(result["projects_dispatched"], 3)
         self.assertEqual(result["projects_skipped"], 0)
 
-    @patch("apps.integrations.tasks.sync_jira_project_task")
+    @patch("apps.integrations._task_modules.jira_sync.sync_jira_project_task")
     def test_sync_all_jira_projects_task_skips_inactive_projects(self, mock_task):
         """Test that sync_all_jira_projects_task only dispatches tasks for active projects (is_active=True)."""
         from apps.integrations.tasks import sync_all_jira_projects_task
@@ -302,7 +302,7 @@ class TestSyncAllJiraProjectsTask(TestCase):
         self.assertEqual(result["projects_dispatched"], 1)
         self.assertEqual(result["projects_skipped"], 2)
 
-    @patch("apps.integrations.tasks.sync_jira_project_task")
+    @patch("apps.integrations._task_modules.jira_sync.sync_jira_project_task")
     def test_sync_all_jira_projects_task_returns_correct_counts(self, mock_task):
         """Test that sync_all_jira_projects_task returns dict with projects_dispatched and projects_skipped counts."""
         from apps.integrations.tasks import sync_all_jira_projects_task
@@ -338,7 +338,7 @@ class TestSyncAllJiraProjectsTask(TestCase):
         self.assertEqual(result["projects_dispatched"], 2)
         self.assertEqual(result["projects_skipped"], 1)
 
-    @patch("apps.integrations.tasks.sync_jira_project_task")
+    @patch("apps.integrations._task_modules.jira_sync.sync_jira_project_task")
     def test_sync_all_jira_projects_task_continues_on_dispatch_errors(self, mock_task):
         """Test that sync_all_jira_projects_task continues dispatching even if one dispatch fails."""
         from apps.integrations.tasks import sync_all_jira_projects_task
@@ -429,7 +429,7 @@ class TestSyncJiraUsersTask(TestCase):
         self.assertIn("error", result)
         self.assertIn("jira", result["error"].lower())
 
-    @patch("apps.integrations.tasks.sync_jira_users")
+    @patch("apps.integrations._task_modules.jira_sync.sync_jira_users")
     def test_sync_jira_users_task_calls_sync_jira_users_and_returns_results(self, mock_sync):
         """Test that sync_jira_users_task calls sync_jira_users and returns matching results."""
         from apps.integrations.tasks import sync_jira_users_task

@@ -27,7 +27,7 @@ class TestCopilotJinja2TemplateSeatData(TestCase):
             trim_blocks=True,
             lstrip_blocks=True,
         )
-        self.template = self.env.get_template("sections/copilot_metrics.jinja2")
+        self.template = self.env.get_template("insight/sections/copilot_metrics.jinja2")
 
     def test_renders_seat_data_section(self):
         """Test that template renders seat utilization data section.
@@ -170,7 +170,7 @@ class TestCopilotJinja2TemplateDeliveryImpact(TestCase):
             trim_blocks=True,
             lstrip_blocks=True,
         )
-        self.template = self.env.get_template("sections/copilot_metrics.jinja2")
+        self.template = self.env.get_template("insight/sections/copilot_metrics.jinja2")
 
     def test_renders_delivery_impact_section(self):
         """Test that template renders delivery impact comparison section.
@@ -344,7 +344,7 @@ class TestCopilotJinja2TemplateFullContext(TestCase):
             trim_blocks=True,
             lstrip_blocks=True,
         )
-        self.template = self.env.get_template("sections/copilot_metrics.jinja2")
+        self.template = self.env.get_template("insight/sections/copilot_metrics.jinja2")
 
     def test_renders_all_sections_together(self):
         """Test that template renders all sections when all data is present.

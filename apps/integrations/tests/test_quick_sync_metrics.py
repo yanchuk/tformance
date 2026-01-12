@@ -49,9 +49,9 @@ class TestSyncQuickDataTaskDispatchesMetricsAggregation(TestCase):
             is_active=True,
         )
 
-    @patch("apps.integrations.tasks.aggregate_team_weekly_metrics_task")
-    @patch("apps.integrations.tasks.sync_full_history_task")
-    @patch("apps.integrations.tasks._sync_with_graphql_or_rest")
+    @patch("apps.integrations._task_modules.metrics.aggregate_team_weekly_metrics_task")
+    @patch("apps.integrations._task_modules.github_sync.sync_full_history_task")
+    @patch("apps.integrations._task_modules.github_sync._sync_with_graphql_or_rest")
     def test_dispatches_metrics_aggregation_after_quick_sync_success(
         self, mock_sync, mock_full_sync_task, mock_metrics_task
     ):
@@ -70,9 +70,9 @@ class TestSyncQuickDataTaskDispatchesMetricsAggregation(TestCase):
         # Verify aggregate_team_weekly_metrics_task.delay was called
         mock_metrics_delay.assert_called_once()
 
-    @patch("apps.integrations.tasks.aggregate_team_weekly_metrics_task")
-    @patch("apps.integrations.tasks.sync_full_history_task")
-    @patch("apps.integrations.tasks._sync_with_graphql_or_rest")
+    @patch("apps.integrations._task_modules.metrics.aggregate_team_weekly_metrics_task")
+    @patch("apps.integrations._task_modules.github_sync.sync_full_history_task")
+    @patch("apps.integrations._task_modules.github_sync._sync_with_graphql_or_rest")
     def test_dispatches_metrics_aggregation_with_correct_team_id(
         self, mock_sync, mock_full_sync_task, mock_metrics_task
     ):
@@ -114,9 +114,9 @@ class TestSyncQuickDataTaskDoesNotDispatchMetricsOnFailure(TestCase):
             is_active=True,
         )
 
-    @patch("apps.integrations.tasks.aggregate_team_weekly_metrics_task")
-    @patch("apps.integrations.tasks.sync_full_history_task")
-    @patch("apps.integrations.tasks._sync_with_graphql_or_rest")
+    @patch("apps.integrations._task_modules.metrics.aggregate_team_weekly_metrics_task")
+    @patch("apps.integrations._task_modules.github_sync.sync_full_history_task")
+    @patch("apps.integrations._task_modules.github_sync._sync_with_graphql_or_rest")
     def test_does_not_dispatch_metrics_aggregation_on_sync_error(
         self, mock_sync, mock_full_sync_task, mock_metrics_task
     ):
@@ -140,9 +140,9 @@ class TestSyncQuickDataTaskDoesNotDispatchMetricsOnFailure(TestCase):
         # Verify aggregate_team_weekly_metrics_task.delay was NOT called
         mock_metrics_delay.assert_not_called()
 
-    @patch("apps.integrations.tasks.aggregate_team_weekly_metrics_task")
-    @patch("apps.integrations.tasks.sync_full_history_task")
-    @patch("apps.integrations.tasks._sync_with_graphql_or_rest")
+    @patch("apps.integrations._task_modules.metrics.aggregate_team_weekly_metrics_task")
+    @patch("apps.integrations._task_modules.github_sync.sync_full_history_task")
+    @patch("apps.integrations._task_modules.github_sync._sync_with_graphql_or_rest")
     def test_does_not_dispatch_metrics_aggregation_for_inactive_repo(
         self, mock_sync, mock_full_sync_task, mock_metrics_task
     ):
@@ -165,8 +165,8 @@ class TestSyncQuickDataTaskDoesNotDispatchMetricsOnFailure(TestCase):
         # Verify aggregate_team_weekly_metrics_task.delay was NOT called
         mock_metrics_delay.assert_not_called()
 
-    @patch("apps.integrations.tasks.aggregate_team_weekly_metrics_task")
-    @patch("apps.integrations.tasks.sync_full_history_task")
+    @patch("apps.integrations._task_modules.metrics.aggregate_team_weekly_metrics_task")
+    @patch("apps.integrations._task_modules.github_sync.sync_full_history_task")
     def test_does_not_dispatch_metrics_aggregation_for_nonexistent_repo(self, mock_full_sync_task, mock_metrics_task):
         """Test that metrics aggregation is NOT dispatched for non-existent repo ID."""
         from apps.integrations.tasks import sync_quick_data_task
@@ -227,9 +227,9 @@ class TestSyncQuickDataTaskMetricsAggregationUsesCorrectTeamId(TestCase):
             is_active=True,
         )
 
-    @patch("apps.integrations.tasks.aggregate_team_weekly_metrics_task")
-    @patch("apps.integrations.tasks.sync_full_history_task")
-    @patch("apps.integrations.tasks._sync_with_graphql_or_rest")
+    @patch("apps.integrations._task_modules.metrics.aggregate_team_weekly_metrics_task")
+    @patch("apps.integrations._task_modules.github_sync.sync_full_history_task")
+    @patch("apps.integrations._task_modules.github_sync._sync_with_graphql_or_rest")
     def test_dispatches_metrics_with_team1_id_for_team1_repo(self, mock_sync, mock_full_sync_task, mock_metrics_task):
         """Test that syncing team1's repo dispatches metrics for team1, not team2."""
         from apps.integrations.tasks import sync_quick_data_task
@@ -246,9 +246,9 @@ class TestSyncQuickDataTaskMetricsAggregationUsesCorrectTeamId(TestCase):
         # Verify metrics task was called with team1's ID specifically
         mock_metrics_delay.assert_called_once_with(self.team1.id)
 
-    @patch("apps.integrations.tasks.aggregate_team_weekly_metrics_task")
-    @patch("apps.integrations.tasks.sync_full_history_task")
-    @patch("apps.integrations.tasks._sync_with_graphql_or_rest")
+    @patch("apps.integrations._task_modules.metrics.aggregate_team_weekly_metrics_task")
+    @patch("apps.integrations._task_modules.github_sync.sync_full_history_task")
+    @patch("apps.integrations._task_modules.github_sync._sync_with_graphql_or_rest")
     def test_dispatches_metrics_with_team2_id_for_team2_repo(self, mock_sync, mock_full_sync_task, mock_metrics_task):
         """Test that syncing team2's repo dispatches metrics for team2, not team1."""
         from apps.integrations.tasks import sync_quick_data_task

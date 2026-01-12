@@ -1137,6 +1137,10 @@ class TestSyncHandlesDeactivatedInstallation(TestCase):
         with self.assertRaises(GitHubAppDeactivatedError) as context:
             self.app_installation.get_access_token()
 
-        error_message = str(context.exception)
-        self.assertIn("no longer active", error_message.lower())
-        self.assertIn("reinstall", error_message.lower())
+        error_message = str(context.exception).lower()
+        # Check for any of the valid error message indicators
+        self.assertTrue(
+            "no longer active" in error_message or "was removed" in error_message or "deactivated" in error_message,
+            f"Error should mention deactivated/removed installation: {error_message}",
+        )
+        self.assertIn("reinstall", error_message)

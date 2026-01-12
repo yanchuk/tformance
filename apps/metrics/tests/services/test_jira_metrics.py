@@ -303,11 +303,12 @@ class TestLinkageTrend(TestCase):
         """Each item should have week_start, linkage_rate, linked_count, total_prs."""
         from apps.metrics.services.dashboard_service import get_linkage_trend
 
-        # Create PRs in the last week
+        # Create PRs in the last week - use week_start + 1 hour to ensure it's in the past
+        # (days=2 would be Wednesday which is in the future if today is Monday)
         week_start = self._get_week_start(0)
         merged_at = timezone.make_aware(
-            timezone.datetime.combine(week_start + timedelta(days=2), timezone.datetime.min.time())
-        )
+            timezone.datetime.combine(week_start, timezone.datetime.min.time())
+        ) + timedelta(hours=1)
         PullRequestFactory(
             team=self.team,
             author=self.member,
@@ -330,10 +331,11 @@ class TestLinkageTrend(TestCase):
         from apps.metrics.services.dashboard_service import get_linkage_trend
 
         # Week 1 (most recent): 2 linked, 2 unlinked = 50%
+        # Use hours=1 instead of days=2 to ensure it's in the past on all days
         week1_start = self._get_week_start(0)
         week1_merged = timezone.make_aware(
-            timezone.datetime.combine(week1_start + timedelta(days=2), timezone.datetime.min.time())
-        )
+            timezone.datetime.combine(week1_start, timezone.datetime.min.time())
+        ) + timedelta(hours=1)
         PullRequestFactory.create_batch(
             2,
             team=self.team,
@@ -352,6 +354,7 @@ class TestLinkageTrend(TestCase):
         )
 
         # Week 2: 3 linked, 1 unlinked = 75%
+        # Past weeks can use days=2 safely since Wednesday of last week is always past
         week2_start = self._get_week_start(1)
         week2_merged = timezone.make_aware(
             timezone.datetime.combine(week2_start + timedelta(days=2), timezone.datetime.min.time())
@@ -400,9 +403,15 @@ class TestLinkageTrend(TestCase):
         # Create PRs in weeks 0, 1, 2, 3 (4 weeks)
         for weeks_ago in range(4):
             week_start = self._get_week_start(weeks_ago)
-            merged_at = timezone.make_aware(
-                timezone.datetime.combine(week_start + timedelta(days=2), timezone.datetime.min.time())
-            )
+            # For week 0, use hours=1; for past weeks, days=2 is safe
+            if weeks_ago == 0:
+                merged_at = timezone.make_aware(
+                    timezone.datetime.combine(week_start, timezone.datetime.min.time())
+                ) + timedelta(hours=1)
+            else:
+                merged_at = timezone.make_aware(
+                    timezone.datetime.combine(week_start + timedelta(days=2), timezone.datetime.min.time())
+                )
             PullRequestFactory(
                 team=self.team,
                 author=self.member,
@@ -679,10 +688,11 @@ class TestVelocityTrend(TestCase):
         from apps.metrics.services.dashboard_service import get_velocity_trend
 
         # Create issues resolved in week 0 (this week)
+        # Use hours=1 instead of days=2 to ensure date is in the past on all days
         week0_start = self._get_week_start(0)
         week0_resolved = timezone.make_aware(
-            timezone.datetime.combine(week0_start + timedelta(days=2), timezone.datetime.min.time())
-        )
+            timezone.datetime.combine(week0_start, timezone.datetime.min.time())
+        ) + timedelta(hours=1)
         JiraIssueFactory.create_batch(
             2,
             team=self.team,
@@ -694,7 +704,7 @@ class TestVelocityTrend(TestCase):
             sprint_name="",
         )
 
-        # Create issues resolved in week 1 (last week)
+        # Create issues resolved in week 1 (last week) - days=3 is safe for past weeks
         week1_start = self._get_week_start(1)
         week1_resolved = timezone.make_aware(
             timezone.datetime.combine(week1_start + timedelta(days=3), timezone.datetime.min.time())
@@ -728,10 +738,11 @@ class TestVelocityTrend(TestCase):
         from apps.metrics.services.dashboard_service import get_velocity_trend
 
         # Create issues in a single week with known story points
+        # Use hours=1 to ensure it's in the past (days=1 would be Tuesday, which is future on Monday)
         week_start = self._get_week_start(0)
         resolved_at = timezone.make_aware(
-            timezone.datetime.combine(week_start + timedelta(days=1), timezone.datetime.min.time())
-        )
+            timezone.datetime.combine(week_start, timezone.datetime.min.time())
+        ) + timedelta(hours=1)
 
         # Issue with 5 SP
         JiraIssueFactory(
@@ -776,10 +787,11 @@ class TestVelocityTrend(TestCase):
         from apps.metrics.services.dashboard_service import get_velocity_trend
 
         # Create 4 issues resolved in this week
+        # Use hours=1 to ensure it's in the past on all days (days=2 would be Wednesday)
         week_start = self._get_week_start(0)
         resolved_at = timezone.make_aware(
-            timezone.datetime.combine(week_start + timedelta(days=2), timezone.datetime.min.time())
-        )
+            timezone.datetime.combine(week_start, timezone.datetime.min.time())
+        ) + timedelta(hours=1)
         JiraIssueFactory.create_batch(
             4,
             team=self.team,

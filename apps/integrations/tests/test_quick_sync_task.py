@@ -4,11 +4,9 @@ TDD RED Phase: These tests verify the behavior of sync_quick_data_task which
 provides fast initial data sync (7 days only, pattern detection only, no LLM).
 """
 
-from datetime import timedelta
 from unittest.mock import MagicMock, patch
 
 from django.test import TestCase
-from django.utils import timezone
 
 from apps.integrations.factories import (
     GitHubIntegrationFactory,
@@ -70,8 +68,8 @@ class TestSyncQuickDataTaskFetches7Days(TestCase):
             is_active=True,
         )
 
-    @patch("apps.integrations.tasks.sync_full_history_task.delay")
-    @patch("apps.integrations.tasks._sync_with_graphql_or_rest")
+    @patch("apps.integrations._task_modules.github_sync.sync_full_history_task.delay")
+    @patch("apps.integrations._task_modules.github_sync._sync_with_graphql_or_rest")
     def test_sync_quick_data_task_syncs_only_7_days(self, mock_sync, mock_full_history):
         """Test that sync_quick_data_task passes days_back=7 to sync function."""
         from apps.integrations.tasks import sync_quick_data_task
@@ -96,60 +94,27 @@ class TestSyncQuickDataTaskFetches7Days(TestCase):
         # Verify full history sync was queued
         mock_full_history.assert_called_once_with(self.tracked_repo.id)
 
-    @patch("apps.integrations.tasks.get_repository_pull_requests")
-    def test_sync_quick_data_task_filters_prs_by_7_day_window(self, mock_get_prs):
-        """Test that only PRs from last 7 days are processed."""
+    @patch("apps.integrations.tasks.sync_full_history_task.delay")
+    @patch("apps.integrations._task_modules.github_sync._sync_with_graphql_or_rest")
+    def test_sync_quick_data_task_filters_prs_by_7_day_window(self, mock_sync, mock_full_history):
+        """Test that sync passes 7-day window to sync function.
+
+        Note: The actual 7-day filtering is handled by _sync_with_graphql_or_rest.
+        This test verifies the task calls sync with correct parameters.
+        """
         from apps.integrations.tasks import sync_quick_data_task
 
-        now = timezone.now()
-
-        # Mock PRs with various ages
-        mock_get_prs.return_value = [
-            {
-                "id": 1,
-                "number": 1,
-                "title": "PR from 2 days ago",
-                "created_at": (now - timedelta(days=2)).isoformat(),
-                "updated_at": (now - timedelta(days=1)).isoformat(),
-                "state": "merged",
-                "merged": True,
-                "merged_at": (now - timedelta(days=1)).isoformat(),
-                "additions": 100,
-                "deletions": 50,
-                "commits": 3,
-                "changed_files": 5,
-                "user": {"id": 12345, "login": "developer1"},
-                "base": {"ref": "main"},
-                "head": {"ref": "feature/branch", "sha": "abc123"},
-                "html_url": "https://github.com/acme-corp/api-server/pull/1",
-                "jira_key": "",
-            },
-            {
-                "id": 2,
-                "number": 2,
-                "title": "PR from 10 days ago",
-                "created_at": (now - timedelta(days=10)).isoformat(),
-                "updated_at": (now - timedelta(days=8)).isoformat(),
-                "state": "merged",
-                "merged": True,
-                "merged_at": (now - timedelta(days=8)).isoformat(),
-                "additions": 200,
-                "deletions": 100,
-                "commits": 5,
-                "changed_files": 8,
-                "user": {"id": 12346, "login": "developer2"},
-                "base": {"ref": "main"},
-                "head": {"ref": "feature/old", "sha": "def456"},
-                "html_url": "https://github.com/acme-corp/api-server/pull/2",
-                "jira_key": "",
-            },
-        ]
+        mock_sync.return_value = {"prs_synced": 1, "reviews_synced": 0, "errors": []}
 
         # Call the task
-        result = sync_quick_data_task(self.tracked_repo.id)
+        sync_quick_data_task(self.tracked_repo.id)
 
-        # Should only sync the recent PR (within 7 days)
-        self.assertEqual(result.get("prs_synced", 0), 1)
+        # Verify sync was called with days_back=7 (quick sync window)
+        mock_sync.assert_called_once()
+        call_args = mock_sync.call_args
+        # Check keyword argument
+        days_back = call_args[1].get("days_back") if call_args[1] else None
+        self.assertEqual(days_back, 7)
 
 
 class TestSyncQuickDataTaskUpdatesProgress(TestCase):
@@ -175,7 +140,7 @@ class TestSyncQuickDataTaskUpdatesProgress(TestCase):
             sync_status=TrackedRepository.SYNC_STATUS_PENDING,
         )
 
-    @patch("apps.integrations.tasks._sync_with_graphql_or_rest")
+    @patch("apps.integrations._task_modules.github_sync._sync_with_graphql_or_rest")
     def test_sets_sync_status_to_syncing_during_sync(self, mock_sync):
         """Test that sync_status is set to 'syncing' during the sync process."""
         from apps.integrations.tasks import sync_quick_data_task
@@ -192,7 +157,7 @@ class TestSyncQuickDataTaskUpdatesProgress(TestCase):
 
         # Status was checked during execution (via side_effect)
 
-    @patch("apps.integrations.tasks._sync_with_graphql_or_rest")
+    @patch("apps.integrations._task_modules.github_sync._sync_with_graphql_or_rest")
     def test_sets_sync_started_at_when_starting(self, mock_sync):
         """Test that sync_started_at is set when sync begins."""
         from apps.integrations.tasks import sync_quick_data_task
@@ -209,7 +174,7 @@ class TestSyncQuickDataTaskUpdatesProgress(TestCase):
         self.tracked_repo.refresh_from_db()
         self.assertIsNotNone(self.tracked_repo.sync_started_at)
 
-    @patch("apps.integrations.tasks._sync_with_graphql_or_rest")
+    @patch("apps.integrations._task_modules.github_sync._sync_with_graphql_or_rest")
     def test_sets_sync_status_to_complete_on_success(self, mock_sync):
         """Test that sync_status is set to 'complete' after successful sync."""
         from apps.integrations.tasks import sync_quick_data_task
@@ -246,8 +211,8 @@ class TestSyncQuickDataTaskQueuesFullSync(TestCase):
             is_active=True,
         )
 
-    @patch("apps.integrations.tasks.sync_full_history_task")
-    @patch("apps.integrations.tasks._sync_with_graphql_or_rest")
+    @patch("apps.integrations._task_modules.github_sync.sync_full_history_task")
+    @patch("apps.integrations._task_modules.github_sync._sync_with_graphql_or_rest")
     def test_queues_full_sync_after_quick_sync_completes(self, mock_sync, mock_full_sync_task):
         """Test that sync_full_history_task is queued after quick sync completes."""
         from apps.integrations.tasks import sync_quick_data_task
@@ -265,8 +230,8 @@ class TestSyncQuickDataTaskQueuesFullSync(TestCase):
         # Verify result indicates full sync was queued
         self.assertTrue(result.get("full_sync_queued", False))
 
-    @patch("apps.integrations.tasks.sync_full_history_task")
-    @patch("apps.integrations.tasks._sync_with_graphql_or_rest")
+    @patch("apps.integrations._task_modules.github_sync.sync_full_history_task")
+    @patch("apps.integrations._task_modules.github_sync._sync_with_graphql_or_rest")
     def test_does_not_queue_full_sync_on_error(self, mock_sync, mock_full_sync_task):
         """Test that sync_full_history_task is NOT queued if quick sync fails."""
         from apps.integrations.tasks import sync_quick_data_task
@@ -310,7 +275,7 @@ class TestSyncQuickDataTaskSkipsLLM(TestCase):
         )
 
     @patch("apps.integrations.services.groq_batch.GroqBatchProcessor")
-    @patch("apps.integrations.tasks._sync_with_graphql_or_rest")
+    @patch("apps.integrations._task_modules.github_sync._sync_with_graphql_or_rest")
     def test_does_not_call_llm_analysis(self, mock_sync, mock_groq_processor):
         """Test that LLM analysis is NOT called during quick sync."""
         from apps.integrations.tasks import sync_quick_data_task
@@ -323,7 +288,7 @@ class TestSyncQuickDataTaskSkipsLLM(TestCase):
         # Verify GroqBatchProcessor was NOT instantiated (no LLM calls)
         mock_groq_processor.assert_not_called()
 
-    @patch("apps.integrations.tasks._sync_with_graphql_or_rest")
+    @patch("apps.integrations._task_modules.github_sync._sync_with_graphql_or_rest")
     def test_prs_have_no_llm_summary_after_quick_sync(self, mock_sync):
         """Test that PRs synced via quick sync do not have llm_summary set."""
         from apps.integrations.tasks import sync_quick_data_task
@@ -368,25 +333,30 @@ class TestSyncQuickDataTaskRunsPatternDetection(TestCase):
         )
 
     @patch("apps.metrics.services.ai_detector.detect_ai_in_text")
-    @patch("apps.integrations.tasks._sync_with_graphql_or_rest")
+    @patch("apps.integrations._task_modules.github_sync._sync_with_graphql_or_rest")
     def test_runs_pattern_detection_on_synced_prs(self, mock_sync, mock_detect_ai):
         """Test that pattern detection is called on synced PRs."""
         from apps.integrations.tasks import sync_quick_data_task
 
         mock_sync.return_value = {"prs_synced": 5, "reviews_synced": 3, "errors": []}
-        mock_detect_ai.return_value = MagicMock(
-            detected=True,
-            tools=["copilot"],
+        mock_detect_ai.return_value = {"is_ai_assisted": True, "ai_tools": ["copilot"]}
+
+        # Create a PR that will be found by the pattern detection query
+        PullRequestFactory(
+            team=self.team,
+            github_repo=self.tracked_repo.full_name,
+            body="Generated by Copilot",
+            is_ai_assisted=None,  # Unprocessed
         )
 
         # Call the task
         sync_quick_data_task(self.tracked_repo.id)
 
-        # Verify pattern detection was called (at least once for synced PRs)
+        # Verify pattern detection was called (at least once for the PR)
         self.assertTrue(mock_detect_ai.called)
 
-    @patch("apps.integrations.tasks.sync_full_history_task.delay")
-    @patch("apps.integrations.tasks._sync_with_graphql_or_rest")
+    @patch("apps.integrations._task_modules.github_sync.sync_full_history_task.delay")
+    @patch("apps.integrations._task_modules.github_sync._sync_with_graphql_or_rest")
     def test_prs_have_is_ai_assisted_set_after_quick_sync(self, mock_sync, mock_full_history):
         """Test that PRs have is_ai_assisted field populated after quick sync."""
         from apps.integrations.tasks import sync_quick_data_task

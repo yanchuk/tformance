@@ -304,7 +304,8 @@ class TestWebhookCreationTask(TestCase):
         webhook_url = "https://app.example.com/webhooks/github/"
 
         # Run the task with logging captured
-        with self.assertLogs("apps.integrations.tasks", level="ERROR") as log_context:
+        # Logs go to the actual task module location
+        with self.assertLogs("apps.integrations._task_modules.github_sync", level="ERROR") as log_context:
             create_repository_webhook_task(self.tracked_repo.id, webhook_url)
 
         # KEY ASSERTION: Error should be logged

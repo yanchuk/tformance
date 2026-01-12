@@ -693,6 +693,7 @@ class TestInsightJsonSchemaActions(TestCase):
             "view_large_prs",
             "view_contributors",
             "view_review_bottlenecks",
+            "view_copilot_usage",
         }
         self.assertEqual(set(action_type_schema["enum"]), expected_types)
 

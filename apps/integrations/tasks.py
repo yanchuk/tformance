@@ -74,11 +74,33 @@ from apps.integrations._task_modules.slack import (  # noqa: E402
     sync_slack_users_task,
 )
 
+# GitHub PR description module (for patch targets like github_pr_description.update_pr_description_with_survey)
+from apps.integrations.services import github_pr_description  # noqa: E402, F401
+
 # =============================================================================
 # Service re-imports for backward compatibility with test patches
 # =============================================================================
 from apps.integrations.services.github_sync import sync_repository_incremental  # noqa: E402, F401
+
+# Jira-related services
+from apps.integrations.services.jira_sync import sync_project_issues  # noqa: E402, F401
+from apps.integrations.services.jira_user_matching import sync_jira_users  # noqa: E402, F401
+
+# Slack-related services
+from apps.integrations.services.slack_client import get_slack_client, send_dm  # noqa: E402, F401
+from apps.integrations.services.slack_surveys import (  # noqa: E402, F401
+    build_author_survey_blocks,
+    build_reviewer_survey_blocks,
+)
+from apps.integrations.services.slack_user_matching import sync_slack_users  # noqa: E402, F401
 from apps.metrics.services.aggregation_service import aggregate_team_weekly_metrics  # noqa: E402, F401
+
+# Survey services
+from apps.metrics.services.survey_service import (  # noqa: E402, F401
+    create_pr_survey,
+    create_reviewer_survey,
+    get_reviewer_accuracy_stats,
+)
 
 # =============================================================================
 # Exports

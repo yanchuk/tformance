@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Tformance is a SaaS platform helping CTOs understand if AI coding tools are improving team performance. Connects to GitHub, Jira, and Slack to correlate AI usage with delivery metrics.
+Tformance.com is a SaaS platform helping CTOs understand team performance, including AI coding tools impact on it. Connects to GitHub, Jira, and Slack to correlate AI usage with delivery metrics.
 
 **Built on [Pegasus SaaS](https://www.saaspegasus.com/)** Django boilerplate.
 

@@ -133,13 +133,13 @@ class TestSyncRepositoryInitialTask(TestCase):
         repo = TrackedRepository.objects.get(id=self.tracked_repo.id)
         self.assertEqual(repo.sync_status, "complete")
 
-    @patch("apps.integrations.tasks.aggregate_team_weekly_metrics_task")
-    @patch("apps.integrations.services.github_sync.sync_repository_history")
-    def test_sync_initial_triggers_weekly_metrics_aggregation(self, mock_sync_history, mock_aggregate_task):
+    @patch("apps.integrations._task_modules.metrics.aggregate_team_weekly_metrics_task")
+    @patch("apps.integrations._task_modules.github_sync._sync_with_graphql_or_rest")
+    def test_sync_initial_triggers_weekly_metrics_aggregation(self, mock_sync, mock_aggregate_task):
         """Test that sync_repository_initial_task triggers aggregate_team_weekly_metrics_task.delay."""
         from apps.integrations.tasks import sync_repository_initial_task
 
-        mock_sync_history.return_value = {
+        mock_sync.return_value = {
             "prs_synced": 10,
             "reviews_synced": 5,
             "errors": [],

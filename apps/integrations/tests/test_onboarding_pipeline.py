@@ -138,12 +138,14 @@ class TestStartOnboardingPipeline(TestCase):
 
     @patch("apps.integrations.pipeline_signals.dispatch_pipeline_task")
     def test_start_onboarding_pipeline_triggers_signal(self, mock_dispatch):
-        """Test that updating status triggers signal dispatch."""
+        """Test that updating status triggers signal dispatch via on_commit callback."""
         from apps.integrations.onboarding_pipeline import start_onboarding_pipeline
 
-        start_onboarding_pipeline(self.team.id, [self.repo.id])
+        # Use captureOnCommitCallbacks to execute the deferred task dispatch
+        with self.captureOnCommitCallbacks(execute=True):
+            start_onboarding_pipeline(self.team.id, [self.repo.id])
 
-        # Signal should have dispatched the first task
+        # Signal should have dispatched the first task via on_commit callback
         mock_dispatch.assert_called_once()
         call_args = mock_dispatch.call_args
         self.assertEqual(call_args[0][0], self.team.id)

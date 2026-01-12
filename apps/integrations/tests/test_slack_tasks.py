@@ -40,8 +40,8 @@ class TestSendPRSurveysTask(TestCase):
         SlackIntegrationFactory(team=self.team, surveys_enabled=True)
 
         with (
-            patch("apps.integrations.tasks.create_pr_survey") as mock_create_survey,
-            patch("apps.integrations.tasks.send_dm") as mock_send_dm,
+            patch("apps.integrations._task_modules.slack.create_pr_survey") as mock_create_survey,
+            patch("apps.integrations._task_modules.slack.send_dm") as mock_send_dm,
         ):
             mock_survey = MagicMock(id=1)
             mock_create_survey.return_value = mock_survey
@@ -92,7 +92,7 @@ class TestSendPRSurveysTask(TestCase):
         self.assertIn("skipped", result)
         self.assertTrue(result["skipped"])
 
-    @patch("apps.integrations.tasks.create_pr_survey")
+    @patch("apps.integrations._task_modules.slack.create_pr_survey")
     def test_creates_pr_survey(self, mock_create_survey):
         """Test that the task creates a PRSurvey."""
         from apps.integrations.tasks import send_pr_surveys_task
@@ -102,7 +102,7 @@ class TestSendPRSurveysTask(TestCase):
         mock_survey = MagicMock(id=1)
         mock_create_survey.return_value = mock_survey
 
-        with patch("apps.integrations.tasks.send_dm") as mock_send_dm:
+        with patch("apps.integrations._task_modules.slack.send_dm") as mock_send_dm:
             mock_send_dm.return_value = {"ok": True, "ts": "123.456", "channel": "D001"}
 
             send_pr_surveys_task(self.pr.id)
@@ -112,10 +112,10 @@ class TestSendPRSurveysTask(TestCase):
         called_pr = mock_create_survey.call_args[0][0]
         self.assertEqual(called_pr.id, self.pr.id)
 
-    @patch("apps.integrations.tasks.create_pr_survey")
-    @patch("apps.integrations.tasks.send_dm")
-    @patch("apps.integrations.tasks.get_slack_client")
-    @patch("apps.integrations.tasks.build_author_survey_blocks")
+    @patch("apps.integrations._task_modules.slack.create_pr_survey")
+    @patch("apps.integrations._task_modules.slack.send_dm")
+    @patch("apps.integrations._task_modules.slack.get_slack_client")
+    @patch("apps.integrations._task_modules.slack.build_author_survey_blocks")
     def test_sends_author_dm_when_author_has_slack_user_id(
         self, mock_build_blocks, mock_get_client, mock_send_dm, mock_create_survey
     ):
@@ -141,9 +141,9 @@ class TestSendPRSurveysTask(TestCase):
         author_dm_call = [call for call in call_args if call[0][1] == self.author.slack_user_id]
         self.assertTrue(len(author_dm_call) > 0)
 
-    @patch("apps.integrations.tasks.create_pr_survey")
-    @patch("apps.integrations.tasks.send_dm")
-    @patch("apps.integrations.tasks.get_slack_client")
+    @patch("apps.integrations._task_modules.slack.create_pr_survey")
+    @patch("apps.integrations._task_modules.slack.send_dm")
+    @patch("apps.integrations._task_modules.slack.get_slack_client")
     def test_skips_author_if_no_slack_user_id(self, mock_get_client, mock_send_dm, mock_create_survey):
         """Test that the task skips author DM if author has no slack_user_id."""
         from apps.integrations.tasks import send_pr_surveys_task
@@ -167,11 +167,11 @@ class TestSendPRSurveysTask(TestCase):
         self.assertIn("author_sent", result)
         self.assertFalse(result["author_sent"])
 
-    @patch("apps.integrations.tasks.create_pr_survey")
-    @patch("apps.integrations.tasks.create_reviewer_survey")
-    @patch("apps.integrations.tasks.send_dm")
-    @patch("apps.integrations.tasks.get_slack_client")
-    @patch("apps.integrations.tasks.build_reviewer_survey_blocks")
+    @patch("apps.integrations._task_modules.slack.create_pr_survey")
+    @patch("apps.integrations._task_modules.slack.create_reviewer_survey")
+    @patch("apps.integrations._task_modules.slack.send_dm")
+    @patch("apps.integrations._task_modules.slack.get_slack_client")
+    @patch("apps.integrations._task_modules.slack.build_reviewer_survey_blocks")
     def test_sends_reviewer_dms(
         self, mock_build_reviewer_blocks, mock_get_client, mock_send_dm, mock_create_reviewer_survey, mock_create_survey
     ):
@@ -194,9 +194,9 @@ class TestSendPRSurveysTask(TestCase):
         # Should be called at least twice for our two reviewers
         self.assertGreaterEqual(mock_send_dm.call_count, 2)
 
-    @patch("apps.integrations.tasks.create_pr_survey")
-    @patch("apps.integrations.tasks.send_dm")
-    @patch("apps.integrations.tasks.get_slack_client")
+    @patch("apps.integrations._task_modules.slack.create_pr_survey")
+    @patch("apps.integrations._task_modules.slack.send_dm")
+    @patch("apps.integrations._task_modules.slack.get_slack_client")
     def test_returns_correct_counts(self, mock_get_client, mock_send_dm, mock_create_survey):
         """Test that the task returns correct counts in result dict."""
         from apps.integrations.tasks import send_pr_surveys_task
@@ -210,7 +210,7 @@ class TestSendPRSurveysTask(TestCase):
         mock_get_client.return_value = mock_client
         mock_send_dm.return_value = {"ok": True, "ts": "123.456", "channel": "D001"}
 
-        with patch("apps.integrations.tasks.create_reviewer_survey") as mock_create_reviewer_survey:
+        with patch("apps.integrations._task_modules.slack.create_reviewer_survey") as mock_create_reviewer_survey:
             mock_create_reviewer_survey.return_value = MagicMock(id=2)
             result = send_pr_surveys_task(self.pr.id)
 
@@ -245,9 +245,9 @@ class TestSendRevealTask(TestCase):
             guess_correct=True,
         )
 
-    @patch("apps.integrations.tasks.get_slack_client")
-    @patch("apps.integrations.tasks.send_dm")
-    @patch("apps.integrations.tasks.get_reviewer_accuracy_stats")
+    @patch("apps.integrations._task_modules.slack.get_slack_client")
+    @patch("apps.integrations._task_modules.slack.send_dm")
+    @patch("apps.integrations._task_modules.slack.get_reviewer_accuracy_stats")
     def test_sends_reveal_when_conditions_met(self, mock_get_stats, mock_send_dm, mock_get_client):
         """Test that send_reveal_task sends reveal when all conditions are met."""
         from apps.integrations.tasks import send_reveal_task
@@ -288,7 +288,7 @@ class TestSyncSlackUsersTask(TestCase):
         self.team = TeamFactory()
         self.slack_integration = SlackIntegrationFactory(team=self.team)
 
-    @patch("apps.integrations.tasks.sync_slack_users")
+    @patch("apps.integrations._task_modules.slack.sync_slack_users")
     def test_syncs_users_and_returns_report(self, mock_sync_slack_users):
         """Test that sync_slack_users_task calls sync_slack_users and returns report."""
         from apps.integrations.tasks import sync_slack_users_task
@@ -395,8 +395,8 @@ class TestSendPRSurveysTaskSkipLogic(TestCase):
         self.pr = PullRequestFactory(team=self.team, author=self.author, state="merged")
         PRReviewFactory(team=self.team, pull_request=self.pr, reviewer=self.reviewer)
 
-    @patch("apps.integrations.tasks.send_dm")
-    @patch("apps.integrations.tasks.get_slack_client")
+    @patch("apps.integrations._task_modules.slack.send_dm")
+    @patch("apps.integrations._task_modules.slack.get_slack_client")
     def test_skips_author_dm_when_already_responded_via_github(self, mock_get_client, mock_send_dm):
         """Test that author DM is skipped if author already responded via GitHub."""
         from apps.integrations.tasks import send_pr_surveys_task
@@ -424,8 +424,8 @@ class TestSendPRSurveysTaskSkipLogic(TestCase):
         self.assertFalse(result.get("author_sent", True))
         self.assertTrue(result.get("author_skipped", False))
 
-    @patch("apps.integrations.tasks.send_dm")
-    @patch("apps.integrations.tasks.get_slack_client")
+    @patch("apps.integrations._task_modules.slack.send_dm")
+    @patch("apps.integrations._task_modules.slack.get_slack_client")
     def test_skips_author_dm_when_auto_detected(self, mock_get_client, mock_send_dm):
         """Test that author DM is skipped if AI was auto-detected."""
         from apps.integrations.tasks import send_pr_surveys_task
@@ -453,9 +453,9 @@ class TestSendPRSurveysTaskSkipLogic(TestCase):
         self.assertFalse(result.get("author_sent", True))
         self.assertTrue(result.get("author_skipped", False))
 
-    @patch("apps.integrations.tasks.send_dm")
-    @patch("apps.integrations.tasks.get_slack_client")
-    @patch("apps.integrations.tasks.create_pr_survey")
+    @patch("apps.integrations._task_modules.slack.send_dm")
+    @patch("apps.integrations._task_modules.slack.get_slack_client")
+    @patch("apps.integrations._task_modules.slack.create_pr_survey")
     def test_skips_reviewer_dm_when_already_responded_via_github(
         self, mock_create_survey, mock_get_client, mock_send_dm
     ):

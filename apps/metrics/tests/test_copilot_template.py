@@ -19,7 +19,7 @@ class TestCopilotMetricsTemplate(TestCase):
             trim_blocks=True,
             lstrip_blocks=True,
         )
-        self.template = self.env.get_template("sections/copilot_metrics.jinja2")
+        self.template = self.env.get_template("insight/sections/copilot_metrics.jinja2")
 
     def test_renders_copilot_section_with_data(self):
         """Test that template renders Copilot section when data is present."""

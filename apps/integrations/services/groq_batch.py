@@ -497,7 +497,7 @@ class GroqBatchProcessor:
                     "body": {
                         "model": self.model,
                         "messages": [
-                            {"role": "system", "content": self.system_prompt},
+                            {"role": "system", "content": str(self.system_prompt)},
                             {"role": "user", "content": pr_context},
                         ],
                         "response_format": response_format,

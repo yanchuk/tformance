@@ -1845,7 +1845,7 @@ class GitHubMembersSyncProgressViewTest(TeamWithAdminMemberMixin, TestCase):
         self.assertIn("hx-trigger", content)
 
     def test_github_members_sync_progress_excludes_htmx_polling_when_complete(self):
-        """Test that when status is 'complete', HTML does NOT include HTMX polling attributes."""
+        """Test that when status is 'complete', HTMX polling is disabled (trigger=none)."""
         # Create GitHub integration with complete status
         GitHubIntegrationFactory(team=self.team, member_sync_status="complete")
 
@@ -1856,6 +1856,5 @@ class GitHubMembersSyncProgressViewTest(TeamWithAdminMemberMixin, TestCase):
         self.assertEqual(response.status_code, 200)
         content = response.content.decode()
 
-        # Should NOT include HTMX polling attributes (sync is done)
-        self.assertNotIn("hx-get", content)
-        self.assertNotIn("hx-trigger", content)
+        # HTMX polling should be disabled via trigger="none" (element keeps attributes but no polling)
+        self.assertIn('hx-trigger="none"', content)
