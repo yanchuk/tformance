@@ -133,6 +133,20 @@ All metric tables have a `team_id` foreign key. The Django application enforces 
 
 **Sync Frequency:** Daily
 
+**Code Structure:**
+```
+apps/integrations/services/
+├── github_sync/           # Modular sync package
+│   ├── client.py          # PyGithub API wrapper functions
+│   ├── converters.py      # PR/review data transformation
+│   ├── processors.py      # Per-entity sync (reviews, commits, files)
+│   ├── metrics.py         # Iteration metrics calculation
+│   └── sync.py            # Orchestration (history, incremental)
+├── github_graphql.py      # GraphQL client for bulk operations
+├── github_graphql_sync.py # GraphQL-based sync functions
+└── github_oauth.py        # OAuth token management
+```
+
 ---
 
 ### Jira Integration

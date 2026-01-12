@@ -82,6 +82,30 @@ Model.objects.get(id=id)  # noqa: TEAM001 - ID from Celery task queue
 - Validate user input on client and server side
 - Handle errors explicitly in promises/async functions
 
+## File Splitting Convention
+
+When files exceed 200-300 lines, split into directories:
+
+- `models.py` (>500 lines) → `models/` with domain files
+- `views.py` (>500 lines) → `views/` with feature files
+- `services/large_service.py` (>500 lines) → `services/large_service/` package
+
+**Requirements:**
+- Always include `__init__.py` with re-exports for backward compatibility
+- Original file can become a facade that re-exports from the package
+- Test files should also be granular when possible
+
+**Example:** `github_sync.py` was split into:
+```
+apps/integrations/services/github_sync/
+├── __init__.py      # Re-exports all public functions
+├── client.py        # GitHub API client functions
+├── converters.py    # Data conversion utilities
+├── processors.py    # Per-entity sync operations
+├── metrics.py       # Metrics calculations
+└── sync.py          # Sync orchestration
+```
+
 ## Build System
 
 Code is bundled with Vite and served with `django-vite`.
