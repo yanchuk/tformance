@@ -1,182 +1,242 @@
-# Test Optimization Tasks
+# Test Optimization Tasks - Phase 2 Expansion
 
-**Last Updated:** 2025-12-31
+**Last Updated:** 2026-01-11
+**Previous Work:** 2025-12-31 (seeding tests optimized, 70% improvement achieved)
+**This Phase:** Expand setUpTestData pattern to remaining ~600 test classes
 
 ---
 
-## Phase 1: GraphQL Test Migration (Quick Win)
+## Phase 2.1: Quick Wins
 
-**Effort:** Small | **Risk:** Low | **Impact:** High (~80s savings)
+**Effort:** Small | **Risk:** Low | **Impact:** Foundation for larger changes
 
 ### Tasks
 
-- [ ] **1.1** Baseline measurement of GraphQL test performance
+- [ ] **2.1.1** Baseline measurement
   ```bash
-  pytest apps/integrations/tests/test_github_graphql_sync.py --durations=30 -q
+  time make test
+  make test-slow
   ```
-  - Acceptance: Record total time and per-test times
+  - Acceptance: Record current timing (~53s from previous work)
 
-- [ ] **1.2** Replace TransactionTestCase with TestCase (22 classes)
-  - File: `apps/integrations/tests/test_github_graphql_sync.py`
-  - Change: `from django.test import TransactionTestCase` → `from django.test import TestCase`
-  - Change: All class declarations
-  - Acceptance: All 22 classes updated
+- [ ] **2.1.2** Fix AIFeedbackFactory anti-pattern
+  - File: `apps/feedback/factories.py:22`
+  - Change: `factory.LazyAttribute(lambda obj: TeamMemberFactory(team=obj.team))`
+  - To: `factory.SubFactory(TeamMemberFactory, team=factory.SelfAttribute("..team"))`
+  - Acceptance: No redundant DB writes when creating AIFeedback
 
-- [ ] **1.3** Run tests to verify no failures
+- [ ] **2.1.3** Create TeamTestMixin base class
+  - File: `apps/utils/tests/base.py` (new file)
+  - Content: Shared setUpTestData with team, admin_user, member_user
+  - Acceptance: Mixin can be used by test classes
+
+- [ ] **2.1.4** Run feedback tests to verify factory fix
   ```bash
-  pytest apps/integrations/tests/test_github_graphql_sync.py -v
+  pytest apps/feedback/tests/ -v
+  ```
+  - Acceptance: All feedback tests pass
+
+---
+
+## Phase 2.2: Metrics App Optimization
+
+**Effort:** Large | **Risk:** Low | **Impact:** High (~200 classes)
+
+### Priority Files (by setUp count)
+
+- [ ] **2.2.1** `test_chart_views.py` (10 setUp methods)
+  - Convert 10 identical setUp patterns to setUpTestData
+  - Pattern: team, admin_user, member_user, membership
+  - Acceptance: All tests pass, single DB setup per class
+
+- [ ] **2.2.2** `test_pr_list_service.py` (10 setUp methods)
+  - File: `apps/metrics/tests/test_pr_list_service.py`
+  - Acceptance: Tests use shared class-level fixtures
+
+- [ ] **2.2.3** `test_trends_views.py` (11 setUp methods)
+  - File: `apps/metrics/tests/test_trends_views.py`
+  - Acceptance: Tests use shared class-level fixtures
+
+- [ ] **2.2.4** `test_security_isolation.py` (10 setUp methods)
+  - File: `apps/metrics/tests/test_security_isolation.py`
+  - Note: These tests REQUIRE isolation - verify carefully
+  - Acceptance: Security tests still verify isolation correctly
+
+- [ ] **2.2.5** `test_insight_rules.py` (8 setUp methods)
+  - File: `apps/metrics/tests/test_insight_rules.py`
+  - Acceptance: Tests use shared class-level fixtures
+
+- [ ] **2.2.6** Dashboard tests directory (30+ setUp methods)
+  - Directory: `apps/metrics/tests/dashboard/`
+  - Acceptance: Convert applicable tests
+
+- [ ] **2.2.7** Models tests directory (15+ setUp methods)
+  - Directory: `apps/metrics/tests/models/`
+  - Acceptance: Convert applicable tests
+
+- [ ] **2.2.8** Verify metrics app tests
+  ```bash
+  pytest apps/metrics/tests/ -v --tb=short
   ```
   - Acceptance: All tests pass (0 failures)
 
-- [ ] **1.4** Measure performance improvement
-  ```bash
-  pytest apps/integrations/tests/test_github_graphql_sync.py --durations=30 -q
-  ```
-  - Acceptance: Average test time reduced from ~5s to <1s
-
 ---
 
-## Phase 2: Seeding Test Optimization (High Impact)
+## Phase 2.3: Integrations App Optimization
 
-**Effort:** Medium | **Risk:** Low | **Impact:** Very High (~160s savings)
+**Effort:** Large | **Risk:** Medium | **Impact:** High (~150 classes)
 
-### Tasks
+**Important:** Skip GraphQL tests (require TransactionTestCase for asyncio)
 
-- [ ] **2.1** Baseline measurement of seeding test performance
+### Priority Files
+
+- [ ] **2.3.1** `test_views.py` (15 setUp methods)
+  - File: `apps/integrations/tests/test_views.py`
+  - Acceptance: Non-async tests use setUpTestData
+
+- [ ] **2.3.2** `test_sync_logging.py` (15 setUp methods)
+  - File: `apps/integrations/tests/test_sync_logging.py`
+  - Acceptance: Tests use shared class-level fixtures
+
+- [ ] **2.3.3** `test_github_app_installation.py` (12 setUp methods)
+  - File: `apps/integrations/tests/test_github_app_installation.py`
+  - Acceptance: Tests use shared class-level fixtures
+
+- [ ] **2.3.4** `test_two_phase_pipeline.py` (10 setUp methods)
+  - File: `apps/integrations/tests/test_two_phase_pipeline.py`
+  - Acceptance: Tests use shared class-level fixtures
+
+- [ ] **2.3.5** `test_historical_sync.py` (9 setUp methods)
+  - File: `apps/integrations/tests/test_historical_sync.py`
+  - Acceptance: Tests use shared class-level fixtures
+
+- [ ] **2.3.6** Remaining integration test files
+  - Convert other files with 3+ setUp methods
+  - Skip: `test_github_graphql_sync.py`, `test_github_graphql_sync_utils.py`
+  - Acceptance: All non-async tests converted
+
+- [ ] **2.3.7** Verify integrations app tests
   ```bash
-  pytest apps/metrics/tests/test_seeding/test_data_generator.py --durations=30 -v
-  ```
-  - Acceptance: Record total time (~188s expected)
-
-- [ ] **2.2** Refactor TestScenarioDataGenerator to use setUpTestData
-  - Move team creation to `setUpTestData()`
-  - Move scenario/generator initialization to `setUpTestData()`
-  - Move `generator.generate()` call to `setUpTestData()`
-  - Store stats as class attribute
-  - Remove manual `tearDown()` cleanup
-  - Acceptance: Single `generator.generate()` call for all tests
-
-- [ ] **2.3** Update test methods to use class data
-  - Change assertions to use `self.stats` (pre-computed)
-  - Remove per-test generator calls
-  - Ensure tests are read-only
-  - Acceptance: No test modifies shared data
-
-- [ ] **2.4** Extract reproducibility tests to separate class
-  - Create `TestScenarioDataGeneratorReproducibility` class
-  - Move `test_same_seed_produces_same_counts`
-  - Move `test_different_seed_produces_different_results`
-  - These tests need multiple generator runs
-  - Acceptance: 2 tests in new class with own setup
-
-- [ ] **2.5** Refactor TestScenarioDataGeneratorWithBottleneck
-  - Apply same setUpTestData pattern
-  - Different scenario (review-bottleneck)
-  - Acceptance: Single generate() call for class
-
-- [ ] **2.6** Run all seeding tests to verify
-  ```bash
-  pytest apps/metrics/tests/test_seeding/test_data_generator.py -v
+  pytest apps/integrations/tests/ -v --tb=short
   ```
   - Acceptance: All tests pass (0 failures)
 
-- [ ] **2.7** Measure performance improvement
-  ```bash
-  pytest apps/metrics/tests/test_seeding/test_data_generator.py --durations=30 -v
-  ```
-  - Acceptance: Total time < 40s (was ~188s)
+---
+
+## Phase 2.4: Remaining Apps
+
+**Effort:** Medium | **Risk:** Low | **Impact:** Medium
+
+### Apps to Optimize
+
+- [ ] **2.4.1** `apps/onboarding/tests/` (~40 classes)
+  - Multiple setUp methods in views.py, copilot_step.py, etc.
+  - Acceptance: Applicable tests converted
+
+- [ ] **2.4.2** `apps/web/tests/` (~30 classes)
+  - Multiple setUp methods
+  - Acceptance: Applicable tests converted
+
+- [ ] **2.4.3** `apps/auth/tests/` (~20 classes)
+  - OAuth callback tests, etc.
+  - Acceptance: Applicable tests converted
+
+- [ ] **2.4.4** `apps/feedback/tests/` (~10 classes)
+  - Acceptance: Applicable tests converted
+
+- [ ] **2.4.5** `apps/teams/tests/` (~15 classes)
+  - Acceptance: Applicable tests converted
+
+- [ ] **2.4.6** `apps/users/tests/` (~5 classes)
+  - Acceptance: Applicable tests converted
 
 ---
 
-## Phase 3: Full Suite Verification
+## Phase 2.5: Verification & Documentation
 
-**Effort:** Small | **Risk:** Low | **Impact:** Validation
+**Effort:** Small | **Risk:** Low | **Impact:** Long-term maintainability
 
 ### Tasks
 
-- [ ] **3.1** Run full test suite
+- [ ] **2.5.1** Full test suite verification
   ```bash
   make test
   ```
-  - Acceptance: All tests pass, no regressions
+  - Acceptance: All 4404+ tests pass
 
-- [ ] **3.2** Measure total suite performance
+- [ ] **2.5.2** Performance measurement
   ```bash
-  pytest --durations=30 -q 2>&1 | tail -50
+  time make test
+  make test-slow
   ```
-  - Acceptance: Total time < 80s (was ~180s)
+  - Acceptance: Total time < 40s (down from 53s)
 
-- [ ] **3.3** Document final results
-  - Update context.md with final performance numbers
-  - Acceptance: Before/after comparison documented
+- [ ] **2.5.3** Update TESTING-GUIDE.md
+  - Add setUpTestData patterns and when to use them
+  - Document when to keep setUp (data modification, async)
+  - Acceptance: Guide updated with clear examples
+
+- [ ] **2.5.4** Update dev documentation
+  - Mark this task as complete
+  - Document final metrics
+  - Acceptance: Documentation complete
 
 ---
 
-## Phase 4: Optional Improvements
+## Progress Summary
 
-**Effort:** Small | **Risk:** Low | **Impact:** Medium
+| Phase | Status | Classes Converted | Time Saved |
+|-------|--------|-------------------|------------|
+| 2.1 Quick Wins | Pending | 0 | TBD |
+| 2.2 Metrics | Pending | 0/~200 | TBD |
+| 2.3 Integrations | Pending | 0/~150 | TBD |
+| 2.4 Other Apps | Pending | 0/~100 | TBD |
+| 2.5 Verification | Pending | N/A | TBD |
 
-### Tasks
-
-- [ ] **4.1** Consider excluding slow tests from default runs
-  - Decision needed: Is 60-80s fast enough?
-  - If needed, add `-m "not slow"` to addopts
-  - Acceptance: Decision documented
-
-- [ ] **4.2** Review other TransactionTestCase usage
-  ```bash
-  grep -r "TransactionTestCase" apps/ --include="*.py" | wc -l
-  ```
-  - Acceptance: Identify any other optimization candidates
-
-- [ ] **4.3** Update CLAUDE.md with test performance guidelines
-  - Document setUpTestData pattern
-  - Document when to use TestCase vs TransactionTestCase
-  - Acceptance: Guidelines added to test section
+**Previous Result (Phase 1):** 180s → 53s (70% improvement)
+**Target (Phase 2):** 53s → <40s (additional 25% improvement)
 
 ---
 
 ## Verification Commands
 
 ```bash
-# Quick test of specific files
-pytest apps/integrations/tests/test_github_graphql_sync.py -v --durations=10
-pytest apps/metrics/tests/test_seeding/test_data_generator.py -v --durations=10
+# Baseline
+time make test
+make test-slow
 
-# Full suite with timing
+# Test specific app
+pytest apps/metrics/tests/ -v --tb=short
+pytest apps/integrations/tests/ -v --tb=short
+
+# Single file verification
+pytest apps/metrics/tests/test_chart_views.py -v --durations=10
+
+# Full verification
 make test
-
-# Check slowest tests
-pytest --durations=30 -q 2>&1 | grep -E "^\d+\.\d+s" | head -20
-
-# Run only non-slow tests (if configured)
-pytest -m "not slow"
 ```
 
 ---
 
-## Progress Summary
+## Conversion Pattern Reference
 
-| Phase | Status | Tasks Done | Actual Savings |
-|-------|--------|------------|----------------|
-| Phase 1 | SKIPPED | N/A | Async requires TransactionTestCase |
-| Phase 2 | ✅ COMPLETE | 7/7 | ~173s (92% faster) |
-| Phase 3 | ✅ COMPLETE | 3/3 | Verified - 4404 tests pass |
-| Phase 4 | Not Needed | - | - |
+```python
+# BEFORE: Per-test setup (slow)
+class TestMyView(TestCase):
+    def setUp(self):
+        self.team = TeamFactory()
+        self.admin_user = UserFactory()
+        self.team.members.add(self.admin_user, through_defaults={"role": ROLE_ADMIN})
+        self.client = Client()
 
-**Actual Result:** 180s → 53s (**70% improvement**)
+# AFTER: Class-level setup (fast)
+class TestMyView(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.team = TeamFactory()
+        cls.admin_user = UserFactory()
+        cls.team.members.add(cls.admin_user, through_defaults={"role": ROLE_ADMIN})
 
-## Completed (2025-12-31)
-
-### Phase 2 Changes Made:
-- [x] Refactored `TestScenarioDataGenerator` to use `setUpTestData()`
-- [x] Created `TestScenarioDataGeneratorReproducibility` for multi-run tests
-- [x] Created `TestScenarioDataGeneratorGitHubIntegration` for mock-specific tests
-- [x] Refactored `TestScenarioDataGeneratorWithBottleneck` to use `setUpTestData()`
-- [x] All 12 seeding tests pass
-- [x] Full suite (4404 tests) passes in 53.18s
-
-### Key Learning:
-GraphQL tests using `asyncio.run()` **must** use TransactionTestCase because async
-code runs in a separate thread that cannot see uncommitted transaction data from
-TestCase's wrapped transaction.
+    def setUp(self):
+        self.client = Client()  # Only stateful items
+```
