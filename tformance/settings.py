@@ -694,7 +694,7 @@ SCHEDULED_TASKS = {
     "sync-copilot-metrics-daily": {
         "task": "apps.integrations.tasks.sync_all_copilot_metrics",
         "schedule": schedules.crontab(minute=45, hour=4),  # 4:45 AM UTC (after GitHub, before LLM)
-        "options": {"expire_seconds": 60 * 60 * 2},  # 2 hour expiry
+        "expire_seconds": 60 * 60 * 2,  # 2 hour expiry
     },
 }
 
