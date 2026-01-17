@@ -32,6 +32,7 @@ FLOW_TYPE_SLACK_INTEGRATION = "slack_integration"
 
 # Flow types - GitHub App
 FLOW_TYPE_GITHUB_APP_INSTALL = "github_app_install"
+FLOW_TYPE_GITHUB_APP_TEAM = "github_app_team"  # For existing teams
 
 # All valid flow types
 VALID_FLOW_TYPES = (
@@ -43,6 +44,7 @@ VALID_FLOW_TYPES = (
     FLOW_TYPE_SLACK_ONBOARDING,
     FLOW_TYPE_SLACK_INTEGRATION,
     FLOW_TYPE_GITHUB_APP_INSTALL,
+    FLOW_TYPE_GITHUB_APP_TEAM,
 )
 
 

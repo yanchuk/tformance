@@ -2,11 +2,13 @@
 
 import logging
 
+from django.conf import settings
 from django.contrib import messages
 from django.http import HttpResponseNotAllowed, HttpResponseNotFound
 from django.shortcuts import redirect, render
 from django.urls import reverse
 
+from apps.auth.oauth_state import FLOW_TYPE_GITHUB_APP_TEAM, create_oauth_state
 from apps.integrations.models import GitHubAppInstallation, GitHubIntegration, IntegrationCredential
 from apps.integrations.services import github_oauth
 from apps.integrations.services.github_oauth import GitHubOAuthError
@@ -68,6 +70,35 @@ def github_connect(request):
 
     # Redirect to GitHub
     return redirect(authorization_url)
+
+
+@team_admin_required
+def github_app_connect(request):
+    """Initiate GitHub App installation for an existing team.
+
+    Redirects to GitHub's App installation page with a signed state parameter
+    containing the team_id for callback validation.
+
+    Requires team admin role.
+    """
+    team = request.team
+
+    # Check if already connected via GitHub App
+    if GitHubAppInstallation.objects.filter(team=team, is_active=True).exists():
+        messages.info(request, "GitHub App is already installed for this team.")
+        return redirect("integrations:integrations_home")
+
+    # Check if connected via OAuth (GitHubIntegration)
+    if GitHubIntegration.objects.filter(team=team).exists():
+        messages.info(request, "GitHub is already connected via OAuth. Disconnect first to switch to GitHub App.")
+        return redirect("integrations:integrations_home")
+
+    # Create state with team_id for CSRF protection and callback validation
+    state = create_oauth_state(FLOW_TYPE_GITHUB_APP_TEAM, team_id=team.id)
+
+    # Redirect to GitHub App installation page
+    install_url = f"https://github.com/apps/{settings.GITHUB_APP_NAME}/installations/new?state={state}"
+    return redirect(install_url)
 
 
 @team_admin_required
@@ -461,6 +492,15 @@ def github_repo_toggle(request, repo_id):
             from apps.integrations.tasks import sync_repository_initial_task
 
             sync_repository_initial_task.delay(tracked_repo.id, days_back=days_back)
+
+            # Start onboarding pipeline if not already started
+            # This triggers LLM analysis, metrics aggregation, and insights
+            # after the initial sync completes
+            if team.onboarding_pipeline_status == "not_started":
+                from apps.integrations.onboarding_pipeline import start_onboarding_pipeline
+
+                logger.info(f"Starting onboarding pipeline for team {team.slug} via repo toggle")
+                start_onboarding_pipeline(team.id, [tracked_repo.id])
         else:
             is_tracked = False
 

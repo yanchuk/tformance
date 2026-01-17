@@ -100,14 +100,18 @@ def github_app_install(request):
 def github_app_callback(request):
     """Handle GitHub App installation callback.
 
-    This view processes the callback from GitHub after a user installs the App:
-    1. Validates the state parameter (signature, flow type, user_id match)
-    2. Fetches installation details from GitHub API
-    3. Creates or updates GitHubAppInstallation record
-    4. Creates team if needed, or links to existing team
-    5. Adds user as team admin if not already a member
-    6. Syncs organization members
-    7. Redirects to repository selection
+    This view processes the callback from GitHub after a user installs the App.
+    Supports two flows:
+
+    1. FLOW_TYPE_GITHUB_APP_INSTALL (onboarding):
+       - User has no team, creates one from the GitHub org
+       - Validates user_id from state
+       - Redirects to onboarding:select_repos
+
+    2. FLOW_TYPE_GITHUB_APP_TEAM (existing team):
+       - Team exists, links installation to it
+       - Validates team_id from state
+       - Redirects to integrations:github_repos
 
     Query Parameters:
         installation_id: GitHub App installation ID (required)
@@ -116,7 +120,12 @@ def github_app_callback(request):
     """
     from django.utils.text import slugify
 
-    from apps.auth.oauth_state import FLOW_TYPE_GITHUB_APP_INSTALL, OAuthStateError, verify_oauth_state
+    from apps.auth.oauth_state import (
+        FLOW_TYPE_GITHUB_APP_INSTALL,
+        FLOW_TYPE_GITHUB_APP_TEAM,
+        OAuthStateError,
+        verify_oauth_state,
+    )
     from apps.integrations.models import GitHubAppInstallation
     from apps.integrations.services.github_app import GitHubAppError, get_installation
 
@@ -127,7 +136,7 @@ def github_app_callback(request):
         messages.error(request, _("Installation failed - no installation ID received from GitHub."))
         return redirect("onboarding:start")
 
-    # Validate state parameter - check signature, expiry, flow type, and user match
+    # Validate state parameter - check signature, expiry
     state = request.GET.get("state")
     try:
         state_data = verify_oauth_state(state)
@@ -136,12 +145,48 @@ def github_app_callback(request):
         messages.error(request, _("Invalid or expired state. Please try again."))
         return redirect("onboarding:start")
 
-    # Verify flow type and user match
-    if state_data.get("type") != FLOW_TYPE_GITHUB_APP_INSTALL or state_data.get("user_id") != request.user.id:
-        logger.warning(
-            f"State mismatch in GitHub App callback: type={state_data.get('type')}, "
-            f"state_user={state_data.get('user_id')}, request_user={request.user.id}"
-        )
+    flow_type = state_data.get("type")
+
+    # Validate flow type and associated data
+    if flow_type == FLOW_TYPE_GITHUB_APP_INSTALL:
+        # Onboarding flow - verify user_id matches
+        if state_data.get("user_id") != request.user.id:
+            logger.warning(
+                f"User mismatch in GitHub App callback: state_user={state_data.get('user_id')}, "
+                f"request_user={request.user.id}"
+            )
+            messages.error(request, _("Invalid state. Please try again."))
+            return redirect("onboarding:start")
+        is_team_flow = False
+        team = None  # Will be created/found later
+        redirect_url = "onboarding:select_repos"
+
+    elif flow_type == FLOW_TYPE_GITHUB_APP_TEAM:
+        # Existing team flow - verify team_id and user membership
+        team_id = state_data.get("team_id")
+        if not team_id:
+            logger.warning("Missing team_id in FLOW_TYPE_GITHUB_APP_TEAM state")
+            messages.error(request, _("Invalid state. Please try again."))
+            return redirect("web:home")
+
+        # Verify user is a member of this team
+        try:
+            team = Team.objects.get(id=team_id)
+        except Team.DoesNotExist:
+            logger.warning(f"Team {team_id} not found in GitHub App callback")
+            messages.error(request, _("Team not found. Please try again."))
+            return redirect("web:home")
+
+        if not team.members.filter(id=request.user.id).exists():
+            logger.warning(f"User {request.user.id} is not a member of team {team_id}")
+            messages.error(request, _("You are not a member of this team."))
+            return redirect("web:home")
+
+        is_team_flow = True
+        redirect_url = "integrations:github_repos"
+
+    else:
+        logger.warning(f"Unexpected flow type in GitHub App callback: {flow_type}")
         messages.error(request, _("Invalid state. Please try again."))
         return redirect("onboarding:start")
 
@@ -151,7 +196,7 @@ def github_app_callback(request):
     except GitHubAppError as e:
         logger.error(f"Failed to fetch GitHub App installation {installation_id}: {e}")
         messages.error(request, _("Failed to fetch installation details from GitHub. Please try again."))
-        return redirect("onboarding:start")
+        return redirect("onboarding:start" if not is_team_flow else "integrations:integrations_home")
 
     # Check if installation already exists (update scenario)
     existing_installation = GitHubAppInstallation.objects.filter(  # noqa: TEAM001 - OAuth callback lookup
@@ -161,8 +206,19 @@ def github_app_callback(request):
     account_login = installation_data["account"]["login"]
 
     if existing_installation:
-        # Update existing installation - use its existing team
-        team = existing_installation.team
+        # Update existing installation
+        if is_team_flow and existing_installation.team_id != team.id:
+            # Installation exists for a different team
+            messages.error(
+                request,
+                _("This GitHub organization is already connected to another team."),
+            )
+            return redirect("integrations:integrations_home")
+
+        # Use existing team for onboarding flow
+        if not is_team_flow:
+            team = existing_installation.team
+
         existing_installation.account_type = installation_data["account"]["type"]
         existing_installation.account_login = account_login
         existing_installation.account_id = installation_data["account"]["id"]
@@ -172,9 +228,11 @@ def github_app_callback(request):
         existing_installation.is_active = True
         existing_installation.save()
     else:
-        # Find or create team for new installation
-        team_slug = slugify(account_login)
-        team, created = Team.objects.get_or_create(slug=team_slug, defaults={"name": account_login})
+        # Create new installation
+        if not is_team_flow:
+            # Onboarding flow - find or create team from org name
+            team_slug = slugify(account_login)
+            team, created = Team.objects.get_or_create(slug=team_slug, defaults={"name": account_login})
 
         # Create GitHubAppInstallation
         GitHubAppInstallation.objects.create(
@@ -189,14 +247,18 @@ def github_app_callback(request):
             is_active=True,
         )
 
-    # Add user to team if not already
+    # Add user to team if not already (primarily for onboarding flow)
     if not team.members.filter(id=request.user.id).exists():
         Membership.objects.create(team=team, user=request.user, role=ROLE_ADMIN)
 
-    # Queue async member sync (A-007: fix missing arguments bug)
+    # Queue async member sync
     _sync_github_members_after_connection(team)
 
-    return redirect("onboarding:select_repos")
+    # Success message for team flow
+    if is_team_flow:
+        messages.success(request, _("GitHub App installed successfully! Now select repositories to track."))
+
+    return redirect(redirect_url)
 
 
 @login_required
