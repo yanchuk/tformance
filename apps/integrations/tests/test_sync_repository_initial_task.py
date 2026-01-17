@@ -210,58 +210,7 @@ class TestSyncRepositoryInitialTask(TestCase):
         self.assertIn("days_back", call_args[1])
         self.assertEqual(call_args[1]["days_back"], 30)
 
-    @patch("apps.integrations.services.sync_notifications.send_sync_complete_notification")
-    @patch("apps.integrations.services.github_sync.sync_repository_history")
-    def test_sync_initial_sends_notification_on_success(self, mock_sync_history, mock_send_notification):
-        """Test that sync_repository_initial_task sends notification after successful sync."""
-        from apps.integrations.tasks import sync_repository_initial_task
-
-        sync_result = {
-            "prs_synced": 15,
-            "reviews_synced": 8,
-            "commits_synced": 25,
-            "errors": [],
-        }
-        mock_sync_history.return_value = sync_result
-
-        # Call the task
-        sync_repository_initial_task(self.tracked_repo.id, days_back=30)
-
-        # Verify send_sync_complete_notification was called with tracked_repo and result
-        mock_send_notification.assert_called_once()
-        call_args = mock_send_notification.call_args
-
-        # Verify first argument is tracked_repo
-        called_repo = call_args[0][0]
-        self.assertEqual(called_repo.id, self.tracked_repo.id)
-
-        # Verify second argument is the sync result
-        called_stats = call_args[0][1]
-        self.assertEqual(called_stats, sync_result)
-
-    @patch("apps.integrations.services.sync_notifications.send_sync_complete_notification")
-    @patch("apps.integrations.services.github_sync.sync_repository_history")
-    def test_sync_initial_passes_stats_to_notification(self, mock_sync_history, mock_send_notification):
-        """Test that sync_repository_initial_task passes stats dict from sync_repository_history to notification."""
-        from apps.integrations.tasks import sync_repository_initial_task
-
-        # Create specific stats to verify they're passed through
-        expected_stats = {
-            "prs_synced": 42,
-            "reviews_synced": 18,
-            "commits_synced": 95,
-            "errors": [],
-        }
-        mock_sync_history.return_value = expected_stats
-
-        # Call the task
-        sync_repository_initial_task(self.tracked_repo.id, days_back=60)
-
-        # Verify send_sync_complete_notification received the exact stats
-        mock_send_notification.assert_called_once()
-        _, actual_stats = mock_send_notification.call_args[0]
-
-        self.assertEqual(actual_stats["prs_synced"], 42)
-        self.assertEqual(actual_stats["reviews_synced"], 18)
-        self.assertEqual(actual_stats["commits_synced"], 95)
-        self.assertIn("errors", actual_stats)
+    # Note: Notification tests were removed because sync_repository_initial_task
+    # no longer sends notifications directly. Notifications are sent by the
+    # onboarding pipeline after LLM analysis completes (see send_onboarding_complete_email).
+    # The send_sync_complete_notification function is tested in test_sync_notifications.py.
