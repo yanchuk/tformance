@@ -62,7 +62,11 @@ def _delete_repository_webhook(access_token, repo_full_name, webhook_id):
 
 
 def _create_integration_credential(team, access_token, provider, user):
-    """Create an encrypted integration credential for a team.
+    """Create or update an encrypted integration credential for a team.
+
+    Uses update_or_create to handle re-connection attempts gracefully.
+    This prevents IntegrityError when a credential already exists from
+    a previous (possibly failed) OAuth attempt.
 
     Args:
         team: The team to create the credential for.
@@ -71,15 +75,18 @@ def _create_integration_credential(team, access_token, provider, user):
         user: The user who connected the integration.
 
     Returns:
-        IntegrationCredential: The created credential object.
+        IntegrationCredential: The created or updated credential object.
     """
     # EncryptedTextField handles encryption automatically
-    return IntegrationCredential.objects.create(
+    credential, _created = IntegrationCredential.objects.update_or_create(
         team=team,
         provider=provider,
-        access_token=access_token,
-        connected_by=user,
+        defaults={
+            "access_token": access_token,
+            "connected_by": user,
+        },
     )
+    return credential
 
 
 def _validate_oauth_callback(request, team, verify_state_func, oauth_error_class, provider_name):
