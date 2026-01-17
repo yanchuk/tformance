@@ -1,10 +1,13 @@
 """Tests for LLM prompts module."""
 
+import json
+
 from django.test import TestCase
 
 from apps.metrics.prompts.constants import PROMPT_VERSION
 from apps.metrics.services.llm_prompts import (
     PR_ANALYSIS_SYSTEM_PROMPT,
+    get_system_prompt,
     get_user_prompt,
 )
 
@@ -28,6 +31,46 @@ class TestPromptVersion(TestCase):
         self.assertIn("AI Detection", PR_ANALYSIS_SYSTEM_PROMPT)
         self.assertIn("Technology Detection", PR_ANALYSIS_SYSTEM_PROMPT)
         self.assertIn("Response Format", PR_ANALYSIS_SYSTEM_PROMPT)
+
+
+class TestGetSystemPrompt(TestCase):
+    """Tests for get_system_prompt() function.
+
+    The get_system_prompt() function returns the PR analysis system prompt
+    as a proper Python string. This is important for JSON serialization
+    when sending to LLM APIs.
+    """
+
+    def test_get_system_prompt_returns_string(self):
+        """get_system_prompt() should return a Python str, not a LazyPrompt object."""
+        prompt = get_system_prompt()
+        self.assertIsInstance(prompt, str)
+
+    def test_get_system_prompt_is_json_serializable(self):
+        """System prompt must be JSON-serializable for LLM API calls.
+
+        This test ensures we don't accidentally pass _LazyPrompt objects
+        to LLM APIs, which would cause 'Object of type _LazyPrompt is not
+        JSON serializable' errors.
+        """
+        prompt = get_system_prompt()
+        messages = [{"role": "system", "content": prompt}]
+
+        # Should not raise TypeError
+        serialized = json.dumps(messages)
+        self.assertIsInstance(serialized, str)
+
+    def test_get_system_prompt_not_empty(self):
+        """System prompt should have content."""
+        prompt = get_system_prompt()
+        self.assertGreater(len(prompt), 100)
+
+    def test_get_system_prompt_contains_key_sections(self):
+        """System prompt should have required sections."""
+        prompt = get_system_prompt()
+        self.assertIn("AI Detection", prompt)
+        self.assertIn("Technology Detection", prompt)
+        self.assertIn("Response Format", prompt)
 
 
 class TestGetUserPrompt(TestCase):

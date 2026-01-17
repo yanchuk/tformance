@@ -26,7 +26,7 @@ from apps.metrics.services.insight_llm import (
     generate_insight,
 )
 from apps.metrics.services.llm_prompts import (
-    PR_ANALYSIS_SYSTEM_PROMPT,
+    get_system_prompt,
     get_user_prompt,
 )
 from apps.teams.models import Team
@@ -338,7 +338,7 @@ def run_llm_analysis_batch(self, team_id: int, limit: int | None = 50, rate_limi
             response = client.chat.completions.create(
                 model="llama-3.3-70b-versatile",
                 messages=[
-                    {"role": "system", "content": PR_ANALYSIS_SYSTEM_PROMPT},
+                    {"role": "system", "content": get_system_prompt()},
                     {"role": "user", "content": user_prompt},
                 ],
                 response_format={"type": "json_object"},
