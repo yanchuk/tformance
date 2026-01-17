@@ -9,18 +9,18 @@ setup:
     DEBUG: false
 build:
   docker:
-    django: Dockerfile.web
+    web: Dockerfile.web
 release:
-  image: django
+  image: web
   command:
     - python manage.py migrate --noinput
 run:
   web:
     command:
       - gunicorn --bind 0.0.0.0:$PORT --workers 1 --threads 8 --timeout 0 tformance.asgi:application -k uvicorn.workers.UvicornWorker
-    image: django
+    image: web
   worker:
     command:
       # -B flag embeds beat scheduler in worker (safe for single-worker setup)
       - celery -A tformance worker -l INFO --pool threads --concurrency 20 -Q celery,sync,llm,compute -B
-    image: django
+    image: web
