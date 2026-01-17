@@ -438,13 +438,18 @@ def create_repository_webhook_task(self, tracked_repo_id: int, webhook_url: str)
         logger.error(f"TrackedRepository with id {tracked_repo_id} not found for webhook creation")
         return {"error": f"TrackedRepository with id {tracked_repo_id} not found"}
 
-    # Get access token and webhook secret from integration
-    try:
-        access_token = tracked_repo.integration.credential.access_token
-        webhook_secret = tracked_repo.integration.webhook_secret
-    except AttributeError as e:
-        logger.error(f"Failed to get credentials for webhook creation: {e}")
-        return {"error": "Failed to get integration credentials"}
+    # Get access token and webhook secret from integration (OAuth only)
+    # GitHub App installations don't need webhooks - they're handled at app level
+    if tracked_repo.app_installation:
+        logger.info(f"Skipping webhook creation for GitHub App repo: {tracked_repo.full_name}")
+        return {"skipped": True, "reason": "GitHub App handles webhooks at installation level"}
+
+    if not tracked_repo.integration or not tracked_repo.integration.credential:
+        logger.error(f"No OAuth integration for webhook creation: {tracked_repo.full_name}")
+        return {"error": "No OAuth integration credentials available"}
+
+    access_token = tracked_repo.integration.credential.access_token
+    webhook_secret = tracked_repo.integration.webhook_secret
 
     # Create the webhook
     try:
@@ -516,10 +521,8 @@ def sync_repository_initial_task(self, repo_id: int, days_back: int = 30) -> dic
         # Dispatch weekly metrics aggregation for the team
         aggregate_team_weekly_metrics_task.delay(tracked_repo.team_id)
 
-        # Send email notification
-        from apps.integrations.services.sync_notifications import send_sync_complete_notification
-
-        send_sync_complete_notification(tracked_repo, result)
+        # Note: Email notification is sent by the onboarding pipeline AFTER
+        # LLM analysis completes (see send_onboarding_complete_email task)
 
         return result
     except Exception as exc:
@@ -906,11 +909,10 @@ def sync_quick_data_task(self, repo_id: int) -> dict:
         except Exception:
             # Max retries exhausted - try direct PR fetch as fallback
             try:
-                # Prefer App installation token over OAuth
-                if tracked_repo.app_installation:
-                    access_token = tracked_repo.app_installation.get_access_token()
-                else:
-                    access_token = tracked_repo.integration.credential.access_token
+                # Get access token (handles both App and OAuth)
+                from apps.integrations.services.github_sync.auth import get_access_token
+
+                access_token = get_access_token(tracked_repo)
                 all_prs = get_repository_pull_requests(access_token, tracked_repo.full_name)
                 filtered_prs = _filter_prs_by_days(all_prs, days_back=7)
                 prs_synced = len(filtered_prs)

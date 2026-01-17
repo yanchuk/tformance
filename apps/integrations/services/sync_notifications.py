@@ -16,8 +16,23 @@ def send_sync_complete_notification(tracked_repo: TrackedRepository, stats: dict
     Returns:
         True if email was sent, False if skipped (no user/email)
     """
+    from apps.teams.models import Membership
+    from apps.teams.roles import ROLE_ADMIN
+
     # Get user who connected the integration
-    user = tracked_repo.integration.credential.connected_by
+    # For GitHub App: get from team's first admin
+    # For OAuth: get from credential's connected_by
+    user = None
+
+    if tracked_repo.app_installation:
+        # Get the first admin of the team
+        admin_membership = (
+            Membership.objects.filter(team=tracked_repo.team, role=ROLE_ADMIN).select_related("user").first()
+        )
+        if admin_membership:
+            user = admin_membership.user
+    elif tracked_repo.integration and tracked_repo.integration.credential:
+        user = tracked_repo.integration.credential.connected_by
 
     if not user or not user.email:
         return False
