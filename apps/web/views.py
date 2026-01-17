@@ -19,6 +19,7 @@ from health_check.views import MainView
 
 from apps.integrations.models import TrackedRepository
 from apps.integrations.services.github_webhooks import validate_webhook_signature
+from apps.integrations.services.integration_flags import is_integration_enabled
 from apps.integrations.services.status import get_team_integration_status, get_team_sync_status
 from apps.integrations.webhooks.github_app import (
     handle_installation_event,
@@ -127,6 +128,9 @@ def team_home(request):
         "active_tab": "dashboard",
         "page_title": _("{team} Dashboard").format(team=team),
         "integration_status": integration_status,
+        # Feature flags for setup wizard
+        "jira_enabled": is_integration_enabled(request, "jira"),
+        "slack_enabled": is_integration_enabled(request, "slack"),
         **sync_status,  # Unpacks sync_in_progress, sync_progress_percent, repos_syncing, repos_total, repos_synced
     }
 

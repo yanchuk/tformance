@@ -4,6 +4,8 @@ Shows step-by-step integration setup for new users.
 
 Required context:
 - integration_status: dict with github, jira, slack status
+- jira_enabled: bool - whether Jira feature flag is active
+- slack_enabled: bool - whether Slack feature flag is active
 
 Usage:
   {% include "web/components/setup_wizard.html" %}
@@ -34,6 +36,7 @@ Usage:
         </div>
       </li>
 
+      {% if jira_enabled %}
       <!-- Step 2: Jira -->
       <li class="step {% if integration_status.jira.connected %}step-primary{% endif %}">
         <div class="text-left lg:text-center">
@@ -45,7 +48,9 @@ Usage:
           {% endif %}
         </div>
       </li>
+      {% endif %}
 
+      {% if slack_enabled %}
       <!-- Step 3: Slack -->
       <li class="step {% if integration_status.slack.connected %}step-primary{% endif %}">
         <div class="text-left lg:text-center">
@@ -57,6 +62,7 @@ Usage:
           {% endif %}
         </div>
       </li>
+      {% endif %}
     </ul>
 
     <!-- Action Cards -->
@@ -81,12 +87,13 @@ Usage:
             {% if integration_status.github.connected %}
               <a href="{% url 'integrations:github_repos' %}" class="btn btn-sm btn-ghost">{% trans "Manage" %}</a>
             {% else %}
-              <a href="{% url 'integrations:github_connect' %}" class="btn btn-sm btn-primary">{% trans "Connect" %}</a>
+              <a href="{% url 'integrations:github_app_connect' %}" class="btn btn-sm btn-primary">{% trans "Connect" %}</a>
             {% endif %}
           </div>
         </div>
       </div>
 
+      {% if jira_enabled %}
       <!-- Jira Card -->
       <div class="card bg-base-200">
         <div class="card-body p-4">
@@ -112,7 +119,9 @@ Usage:
           </div>
         </div>
       </div>
+      {% endif %}
 
+      {% if slack_enabled %}
       <!-- Slack Card -->
       <div class="card bg-base-200">
         <div class="card-body p-4">
@@ -138,6 +147,7 @@ Usage:
           </div>
         </div>
       </div>
+      {% endif %}
     </div>
 
     {% if not integration_status.github.connected %}
