@@ -126,7 +126,7 @@ Dynamic data specific to each request.
 # Context
 
 <codebase_info>
-Framework: Django 4.2
+Framework: Django 5.29
 Python: 3.12
 Key Models: Team, PullRequest, TeamMember
 </codebase_info>
