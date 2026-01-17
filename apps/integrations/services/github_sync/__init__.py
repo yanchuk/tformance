@@ -18,6 +18,9 @@ from github import Github
 
 from apps.integrations.services.github_oauth import GitHubOAuthError
 
+# Auth helpers
+from apps.integrations.services.github_sync.auth import get_access_token
+
 # Client functions - data fetching from GitHub API
 from apps.integrations.services.github_sync.client import (
     get_pull_request_reviews,
@@ -61,6 +64,8 @@ __all__ = [
     "Github",
     # Exceptions
     "GitHubOAuthError",
+    # Auth helpers
+    "get_access_token",
     # Client functions
     "get_repository_pull_requests",
     "get_pull_request_reviews",

@@ -1,17 +1,22 @@
 {% load i18n %}
 {# Partial for member sync status - used by HTMX polling #}
 {# Note: hx-* attributes always present to prevent flickering; trigger controls polling #}
+{# Supports both OAuth (integration) and App (app_installation) #}
+{% with sync_status=integration.member_sync_status|default:"" %}
 <div id="member-sync-status" class="flex flex-wrap gap-1 items-center"
      hx-get="{% url 'integrations:github_members_sync_progress' %}"
-     hx-trigger="{% if integration.member_sync_status == 'syncing' %}every 3s{% else %}none{% endif %}"
+     hx-trigger="{% if sync_status == 'syncing' %}every 3s{% else %}none{% endif %}"
      hx-swap="outerHTML">
-  {% if integration.member_sync_status == 'syncing' %}
+  {% if sync_status == 'syncing' %}
     <span class="app-badge app-badge-warning">{% translate "Syncing" %}</span>
-  {% elif integration.member_sync_status == 'complete' %}
+  {% elif sync_status == 'complete' %}
     <span class="app-badge app-badge-success">{% translate "Complete" %}</span>
-  {% elif integration.member_sync_status == 'error' %}
+  {% elif sync_status == 'error' %}
     <span class="app-badge app-badge-error">{% translate "Error" %}</span>
+  {% elif not integration and app_installation %}
+    {# App-only: no sync status tracking yet, show ready state #}
   {% else %}
     <span class="app-badge app-badge-default">{% translate "Pending" %}</span>
   {% endif %}
 </div>
+{% endwith %}

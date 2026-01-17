@@ -1,12 +1,13 @@
 """Integration status and overview views."""
 
 from django.contrib import messages
-from django.http import Http404, HttpResponseBadRequest
+from django.http import HttpResponseBadRequest
 from django.shortcuts import redirect
 from django.template.response import TemplateResponse
 from django.views.decorators.http import require_POST
 
 from apps.integrations.models import (
+    GitHubAppInstallation,
     GitHubIntegration,
     JiraIntegration,
     SlackIntegration,
@@ -38,17 +39,22 @@ def integrations_home(request):
     """
     team = request.team
 
-    # Check if GitHub integration exists
-    try:
-        github_integration = GitHubIntegration.objects.get(team=team)
-        github_connected = True
+    # Check if GitHub integration exists (OAuth or App installation)
+    github_integration = GitHubIntegration.objects.filter(team=team).first()
+    app_installation = GitHubAppInstallation.objects.filter(team=team, is_active=True).first()
+
+    # Connected if either OAuth or App installation exists
+    github_connected = github_integration is not None or app_installation is not None
+
+    # For Copilot, we need OAuth specifically (App doesn't have billing API access)
+    github_oauth_connected = github_integration is not None
+
+    if github_connected:
         # Count members with GitHub IDs
         member_count = TeamMember.objects.filter(team=team).exclude(github_id="").count()
         # Count tracked repositories
         tracked_repo_count = TrackedRepository.objects.filter(team=team).count()
-    except GitHubIntegration.DoesNotExist:
-        github_integration = None
-        github_connected = False
+    else:
         member_count = 0
         tracked_repo_count = 0
 
@@ -72,8 +78,8 @@ def integrations_home(request):
         slack_connected = False
 
     # Check Copilot status and last sync
-    # copilot_available is True if GitHub is connected (can potentially use Copilot)
-    copilot_available = github_connected
+    # copilot_available requires OAuth specifically (App doesn't have billing API access)
+    copilot_available = github_oauth_connected
     copilot_last_sync = None
     if copilot_available:
         copilot_last_sync = AIUsageDaily.objects.filter(team=team, source="copilot").order_by("-created_at").first()
@@ -84,6 +90,8 @@ def integrations_home(request):
     context = {
         "github_connected": github_connected,
         "github_integration": github_integration,
+        "github_oauth_connected": github_oauth_connected,
+        "app_installation": app_installation,
         "member_count": member_count,
         "tracked_repo_count": tracked_repo_count,
         "jira_connected": jira_connected,
@@ -109,7 +117,8 @@ def copilot_sync(request):
 
     Triggers a background task to sync Copilot usage metrics from GitHub.
 
-    Requires team with GitHub integration and POST method.
+    Requires team with GitHub OAuth integration (not just App) because
+    Copilot metrics require access to the billing API.
 
     Args:
         request: The HTTP request object.
@@ -120,11 +129,15 @@ def copilot_sync(request):
     """
     team = request.team
 
-    # Check if GitHub integration exists
-    try:
-        GitHubIntegration.objects.get(team=team)
-    except GitHubIntegration.DoesNotExist:
-        raise Http404("GitHub integration not found") from None
+    # Check if GitHub OAuth integration exists (required for Copilot billing API)
+    github_integration = GitHubIntegration.objects.filter(team=team).first()
+    if not github_integration:
+        messages.error(
+            request,
+            "Copilot metrics require GitHub OAuth connection. "
+            "Please connect GitHub via OAuth to access Copilot metrics.",
+        )
+        return redirect("integrations:integrations_home")
 
     # Trigger sync task
     from apps.integrations.tasks import sync_copilot_metrics_task

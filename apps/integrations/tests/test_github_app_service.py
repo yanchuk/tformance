@@ -273,26 +273,29 @@ class TestGetInstallationClient(TestCase):
 class TestGetInstallation(TestCase):
     """Tests for get_installation() function."""
 
-    @patch("apps.integrations.services.github_app.GithubIntegration")
-    def test_get_installation_returns_dict(self, mock_github_integration_class):
+    @patch("apps.integrations.services.github_app.get_jwt")
+    @patch("requests.get")
+    def test_get_installation_returns_dict(self, mock_requests_get, mock_get_jwt):
         """Test that get_installation returns a dictionary with installation details."""
         from apps.integrations.services.github_app import get_installation
 
-        # Mock GithubIntegration
-        mock_integration = MagicMock()
-        mock_github_integration_class.return_value = mock_integration
+        # Mock JWT
+        mock_get_jwt.return_value = "test_jwt_token"
 
-        # Mock installation object
-        mock_installation = MagicMock()
-        mock_installation.id = 12345678
-        mock_installation.account.login = "acme-corp"
-        mock_installation.account.id = 87654321
-        mock_installation.account.type = "Organization"
-        mock_installation.permissions = {"contents": "read", "pull_requests": "write"}
-        mock_installation.events = ["push", "pull_request"]
-        mock_installation.repository_selection = "selected"
-
-        mock_integration.get_installation.return_value = mock_installation
+        # Mock requests response
+        mock_response = MagicMock()
+        mock_response.json.return_value = {
+            "id": 12345678,
+            "account": {
+                "login": "acme-corp",
+                "id": 87654321,
+                "type": "Organization",
+            },
+            "permissions": {"contents": "read", "pull_requests": "write"},
+            "events": ["push", "pull_request"],
+            "repository_selection": "selected",
+        }
+        mock_requests_get.return_value = mock_response
 
         installation_id = 12345678
 
@@ -306,22 +309,30 @@ class TestGetInstallation(TestCase):
         self.assertIn("permissions", result)
         self.assertIn("events", result)
 
-        # Verify GithubIntegration was called
-        mock_integration.get_installation.assert_called_once_with(installation_id)
+        # Verify account details
+        self.assertEqual(result["account"]["login"], "acme-corp")
+        self.assertEqual(result["account"]["type"], "Organization")
 
-    @patch("apps.integrations.services.github_app.GithubIntegration")
-    def test_get_installation_not_found_raises_error(self, mock_github_integration_class):
+        # Verify requests was called with correct URL
+        mock_requests_get.assert_called_once()
+        call_args = mock_requests_get.call_args
+        self.assertIn("/app/installations/12345678", call_args[0][0])
+
+    @patch("apps.integrations.services.github_app.get_jwt")
+    @patch("requests.get")
+    def test_get_installation_not_found_raises_error(self, mock_requests_get, mock_get_jwt):
         """Test that get_installation raises GitHubAppError when installation not found."""
-        from github import GithubException
+        import requests
 
         from apps.integrations.services.github_app import GitHubAppError, get_installation
 
-        # Mock GithubIntegration
-        mock_integration = MagicMock()
-        mock_github_integration_class.return_value = mock_integration
+        # Mock JWT
+        mock_get_jwt.return_value = "test_jwt_token"
 
-        # Mock get_installation to raise exception
-        mock_integration.get_installation.side_effect = GithubException(status=404, data={"message": "Not Found"})
+        # Mock requests to raise HTTPError
+        mock_response = MagicMock()
+        mock_response.raise_for_status.side_effect = requests.HTTPError("404 Not Found")
+        mock_requests_get.return_value = mock_response
 
         installation_id = 99999999
 
@@ -336,33 +347,37 @@ class TestGetInstallation(TestCase):
 class TestGetInstallationRepositories(TestCase):
     """Tests for get_installation_repositories() function."""
 
-    @patch("apps.integrations.services.github_app.get_installation_client")
-    def test_get_installation_repositories_returns_list(self, mock_get_client):
+    @patch("apps.integrations.services.github_app.get_installation_token")
+    @patch("requests.get")
+    def test_get_installation_repositories_returns_list(self, mock_requests_get, mock_get_token):
         """Test that get_installation_repositories returns a list of repository dicts."""
         from apps.integrations.services.github_app import get_installation_repositories
 
-        # Mock Github client
-        mock_github = MagicMock()
-        mock_get_client.return_value = mock_github
+        # Mock installation token
+        mock_get_token.return_value = "ghs_test_token"
 
-        # Mock installation object with repositories
-        mock_installation = MagicMock()
-
-        # Create mock repo objects
-        mock_repo1 = MagicMock()
-        mock_repo1.id = 123456
-        mock_repo1.full_name = "acme-corp/backend"
-        mock_repo1.name = "backend"
-        mock_repo1.private = False
-
-        mock_repo2 = MagicMock()
-        mock_repo2.id = 123457
-        mock_repo2.full_name = "acme-corp/frontend"
-        mock_repo2.name = "frontend"
-        mock_repo2.private = True
-
-        mock_installation.get_repos.return_value = [mock_repo1, mock_repo2]
-        mock_github.get_installation.return_value = mock_installation
+        # Mock requests response
+        mock_response = MagicMock()
+        mock_response.json.return_value = {
+            "repositories": [
+                {
+                    "id": 123456,
+                    "full_name": "acme-corp/backend",
+                    "name": "backend",
+                    "private": False,
+                    "updated_at": "2026-01-15T10:00:00Z",
+                },
+                {
+                    "id": 123457,
+                    "full_name": "acme-corp/frontend",
+                    "name": "frontend",
+                    "private": True,
+                    "updated_at": "2026-01-16T12:30:00Z",
+                },
+            ]
+        }
+        mock_response.headers = {}  # No Link header (no pagination)
+        mock_requests_get.return_value = mock_response
 
         installation_id = 12345678
 
@@ -374,26 +389,28 @@ class TestGetInstallationRepositories(TestCase):
         # Should have 2 repos
         self.assertEqual(len(result), 2)
 
-        # Each item should be a dict
+        # Each item should be a dict with expected keys
         self.assertIsInstance(result[0], dict)
-        self.assertIsInstance(result[1], dict)
+        self.assertEqual(result[0]["full_name"], "acme-corp/backend")
+        self.assertEqual(result[1]["full_name"], "acme-corp/frontend")
 
-        # Verify get_installation_client was called
-        mock_get_client.assert_called_once_with(installation_id)
+        # Verify get_installation_token was called
+        mock_get_token.assert_called_once_with(installation_id)
 
-    @patch("apps.integrations.services.github_app.get_installation_client")
-    def test_get_installation_repositories_returns_empty_list_when_no_repos(self, mock_get_client):
+    @patch("apps.integrations.services.github_app.get_installation_token")
+    @patch("requests.get")
+    def test_get_installation_repositories_returns_empty_list_when_no_repos(self, mock_requests_get, mock_get_token):
         """Test that get_installation_repositories returns empty list when no repos accessible."""
         from apps.integrations.services.github_app import get_installation_repositories
 
-        # Mock Github client
-        mock_github = MagicMock()
-        mock_get_client.return_value = mock_github
+        # Mock installation token
+        mock_get_token.return_value = "ghs_test_token"
 
-        # Mock installation object with no repositories
-        mock_installation = MagicMock()
-        mock_installation.get_repos.return_value = []
-        mock_github.get_installation.return_value = mock_installation
+        # Mock requests response with empty repositories
+        mock_response = MagicMock()
+        mock_response.json.return_value = {"repositories": []}
+        mock_response.headers = {}
+        mock_requests_get.return_value = mock_response
 
         installation_id = 12345678
 
@@ -403,13 +420,13 @@ class TestGetInstallationRepositories(TestCase):
         self.assertIsInstance(result, list)
         self.assertEqual(len(result), 0)
 
-    @patch("apps.integrations.services.github_app.get_installation_client")
-    def test_get_installation_repositories_propagates_error(self, mock_get_client):
+    @patch("apps.integrations.services.github_app.get_installation_token")
+    def test_get_installation_repositories_propagates_error(self, mock_get_token):
         """Test that get_installation_repositories propagates GitHubAppError."""
         from apps.integrations.services.github_app import GitHubAppError, get_installation_repositories
 
-        # Mock get_installation_client to raise error
-        mock_get_client.side_effect = GitHubAppError("Installation not found")
+        # Mock get_installation_token to raise error
+        mock_get_token.side_effect = GitHubAppError("Installation not found")
 
         installation_id = 99999999
 

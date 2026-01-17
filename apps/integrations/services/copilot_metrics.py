@@ -24,6 +24,17 @@ class CopilotMetricsError(Exception):
     pass
 
 
+class InsufficientLicensesError(CopilotMetricsError):
+    """Exception raised when org has fewer than 5 Copilot licenses.
+
+    GitHub requires 5+ Copilot licenses to access the usage metrics API.
+    This error should NOT trigger task retries - it's a permanent condition
+    until the org purchases more licenses.
+    """
+
+    pass
+
+
 def _build_copilot_metrics_url(org_slug):
     """Build the Copilot metrics API URL for an organization.
 
@@ -91,6 +102,21 @@ def _make_github_api_request(url, headers, params=None, error_prefix="GitHub API
                 logger.warning("Invalid JSON in 403 response from %s", url)
                 error_message = "Forbidden"
             raise CopilotMetricsError(f"{error_prefix} unavailable (403): {error_message}")
+
+        if response.status_code == 422:
+            # 422 Unprocessable Entity - typically means insufficient Copilot licenses
+            # GitHub requires 5+ licenses to access the Copilot metrics API
+            try:
+                error_message = response.json().get("message", "Unprocessable Entity")
+            except json.JSONDecodeError:
+                error_message = "Unprocessable Entity"
+            logger.info(
+                "Copilot metrics unavailable for org (422): %s - likely insufficient licenses",
+                error_message,
+            )
+            raise InsufficientLicensesError(
+                f"Your organization needs 5+ Copilot licenses to access usage metrics. (422: {error_message})"
+            )
 
         response.raise_for_status()
 

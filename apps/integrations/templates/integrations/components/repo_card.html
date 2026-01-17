@@ -15,10 +15,13 @@
          {% endif %}>
       {% if repo.is_tracked %}
         <span class="app-badge app-badge-success">{% translate "Tracked" %}</span>
-        {% if repo.webhook_id %}
-          <span class="app-badge app-badge-success">{% translate "Webhook active" %}</span>
-        {% else %}
-          <span class="app-badge app-badge-warning">{% translate "Webhook pending" %}</span>
+        {# Only show webhook status for OAuth users - App doesn't support webhooks #}
+        {% if github_oauth_connected %}
+          {% if repo.webhook_id %}
+            <span class="app-badge app-badge-success">{% translate "Webhook active" %}</span>
+          {% else %}
+            <span class="app-badge app-badge-warning">{% translate "Webhook pending" %}</span>
+          {% endif %}
         {% endif %}
         {% if repo.sync_status == 'syncing' %}
           <span class="app-badge app-badge-warning">{% translate "Syncing" %}</span>

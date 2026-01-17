@@ -85,16 +85,17 @@ def get_team_integration_status(team: Team) -> TeamIntegrationStatus:
                 'survey_count': int,
             }
     """
-    # GitHub integration status
+    # GitHub integration status - check both OAuth and App installations
     github_integration = GitHubIntegration.objects.filter(team=team).first()
+    app_installation = GitHubAppInstallation.objects.filter(team=team, is_active=True).first()
 
     # EC-18: Check for revocation status
     is_revoked = False
     error = None
 
     # Check if App installation is inactive (uninstalled)
-    app_installation = GitHubAppInstallation.objects.filter(team=team).first()
-    if app_installation and not app_installation.is_active:
+    inactive_app = GitHubAppInstallation.objects.filter(team=team, is_active=False).first()
+    if inactive_app and not app_installation:
         is_revoked = True
         error = "GitHub App was uninstalled. Please reconnect."
 
@@ -103,11 +104,22 @@ def get_team_integration_status(team: Team) -> TeamIntegrationStatus:
         is_revoked = True
         error = "OAuth access was revoked. Please reconnect."
 
+    # Consider GitHub connected if either OAuth OR App installation exists
+    github_connected = github_integration is not None or app_installation is not None
+
+    # Get org name from OAuth integration or App installation
+    if github_integration:
+        org_name = github_integration.organization_slug
+    elif app_installation:
+        org_name = app_installation.account_login
+    else:
+        org_name = None
+
     github_status = {
-        "connected": github_integration is not None,
-        "org_name": github_integration.organization_slug if github_integration else None,
+        "connected": github_connected,
+        "org_name": org_name,
         "member_count": TeamMember.objects.filter(team=team, github_id__isnull=False).exclude(github_id="").count(),
-        "repo_count": TrackedRepository.objects.filter(team=team).count() if github_integration else 0,
+        "repo_count": TrackedRepository.objects.filter(team=team).count() if github_connected else 0,
         "is_revoked": is_revoked,
         "error": error,
     }

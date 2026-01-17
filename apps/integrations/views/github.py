@@ -7,7 +7,7 @@ from django.http import HttpResponseNotAllowed, HttpResponseNotFound
 from django.shortcuts import redirect, render
 from django.urls import reverse
 
-from apps.integrations.models import GitHubIntegration, IntegrationCredential
+from apps.integrations.models import GitHubAppInstallation, GitHubIntegration, IntegrationCredential
 from apps.integrations.services import github_oauth
 from apps.integrations.services.github_oauth import GitHubOAuthError
 from apps.teams.decorators import login_and_team_required, team_admin_required
@@ -193,10 +193,11 @@ def github_members(request):
 
     team = request.team
 
-    # Check if GitHub integration exists
-    try:
-        integration = GitHubIntegration.objects.get(team=team)
-    except GitHubIntegration.DoesNotExist:
+    # Check if GitHub integration exists (OAuth or App installation)
+    integration = GitHubIntegration.objects.filter(team=team).first()
+    app_installation = GitHubAppInstallation.objects.filter(team=team, is_active=True).first()
+
+    if not integration and not app_installation:
         messages.error(request, "Please connect GitHub first.")
         return redirect("integrations:integrations_home")
 
@@ -206,6 +207,7 @@ def github_members(request):
     context = {
         "members": members,
         "integration": integration,
+        "app_installation": app_installation,
     }
 
     return render(request, "integrations/github_members.html", context)
@@ -308,6 +310,8 @@ def github_repos(request):
     Shows all repositories from the connected GitHub organization and marks
     which ones are currently being tracked.
 
+    Supports both OAuth and GitHub App installations.
+
     Args:
         request: The HTTP request object.
         team_slug: The slug of the team to display repos for.
@@ -316,22 +320,29 @@ def github_repos(request):
         HttpResponse with the GitHub repos list or redirect if not connected.
     """
     from apps.integrations.models import TrackedRepository
+    from apps.integrations.services.github_app import GitHubAppError, get_installation_repositories
 
     team = request.team
 
-    # Check if GitHub integration exists
-    try:
-        integration = GitHubIntegration.objects.get(team=team)
-    except GitHubIntegration.DoesNotExist:
+    # Check if GitHub integration exists (OAuth or App installation)
+    integration = GitHubIntegration.objects.filter(team=team).first()
+    app_installation = GitHubAppInstallation.objects.filter(team=team, is_active=True).first()
+
+    if not integration and not app_installation:
         messages.error(request, "Please connect GitHub first.")
         return redirect("integrations:integrations_home")
 
-    # Fetch repos from GitHub API (EncryptedTextField auto-decrypts access_token)
+    # Fetch repos from GitHub API
+    # Prefer App installation if available (more limited, explicit scope)
+    repos = []
     try:
-        repos = github_oauth.get_organization_repositories(
-            integration.credential.access_token, integration.organization_slug
-        )
-    except GitHubOAuthError as e:
+        if app_installation:
+            repos = get_installation_repositories(app_installation.installation_id)
+        elif integration:
+            repos = github_oauth.get_organization_repositories(
+                integration.credential.access_token, integration.organization_slug
+            )
+    except (GitHubOAuthError, GitHubAppError) as e:
         logger.error(f"Failed to fetch GitHub repositories: {e}", exc_info=True)
         messages.error(request, "Failed to fetch repositories from GitHub. Please try again.")
         return redirect("integrations:integrations_home")
@@ -358,6 +369,8 @@ def github_repos(request):
     context = {
         "repos": repos,
         "integration": integration,
+        "app_installation": app_installation,
+        "github_oauth_connected": integration is not None,  # For webhook status display
     }
 
     return render(request, "integrations/github_repos.html", context)
@@ -368,6 +381,7 @@ def github_repo_toggle(request, repo_id):
     """Toggle repository tracking on/off.
 
     Allows admins to track or untrack repositories.
+    Supports both OAuth and GitHub App installations.
 
     Requires team admin role and POST method.
 
@@ -379,8 +393,6 @@ def github_repo_toggle(request, repo_id):
     Returns:
         HttpResponse with partial template for HTMX or redirect for non-HTMX.
     """
-    from django.shortcuts import get_object_or_404
-
     from apps.integrations.models import TrackedRepository
 
     # Require POST method
@@ -389,21 +401,26 @@ def github_repo_toggle(request, repo_id):
 
     team = request.team
 
-    # Get GitHub integration or return 404
-    integration = get_object_or_404(GitHubIntegration, team=team)
+    # Check for GitHub integration (OAuth or App installation)
+    integration = GitHubIntegration.objects.filter(team=team).first()
+    app_installation = GitHubAppInstallation.objects.filter(team=team, is_active=True).first()
+
+    if not integration and not app_installation:
+        messages.error(request, "Please connect GitHub first.")
+        return redirect("integrations:integrations_home")
 
     # Get full_name from POST data
     full_name = request.POST.get("full_name", "")
 
-    # EncryptedTextField auto-decrypts access_token
-    access_token = integration.credential.access_token
+    # Get access token for webhook operations (OAuth only - App doesn't have write permissions)
+    access_token = integration.credential.access_token if integration else None
 
     # Check if repo is already tracked
     webhook_id = None
     try:
         tracked_repo = TrackedRepository.objects.get(team=team, github_repo_id=repo_id)
         # Already tracked - delete webhook and repository
-        if tracked_repo.webhook_id is not None:
+        if tracked_repo.webhook_id is not None and access_token:
             _delete_repository_webhook(access_token, tracked_repo.full_name, tracked_repo.webhook_id)
         tracked_repo.delete()
         is_tracked = False
@@ -413,19 +430,21 @@ def github_repo_toggle(request, repo_id):
             # Create tracked repository first (webhook_id will be set by async task)
             tracked_repo = TrackedRepository.objects.create(
                 team=team,
-                integration=integration,
+                integration=integration,  # May be None for App-only
+                app_installation=app_installation,  # May be None for OAuth-only
                 github_repo_id=repo_id,
                 full_name=full_name,
                 is_active=True,
-                webhook_id=None,  # Set asynchronously by task
+                webhook_id=None,  # Set asynchronously by task (OAuth only)
             )
             is_tracked = True
 
-            # Queue async webhook creation (non-blocking)
-            from apps.integrations.tasks import create_repository_webhook_task
+            # Queue async webhook creation (OAuth only - App doesn't have write permissions)
+            if access_token:
+                from apps.integrations.tasks import create_repository_webhook_task
 
-            webhook_url = request.build_absolute_uri("/webhooks/github/")
-            create_repository_webhook_task.delay(tracked_repo.id, webhook_url)
+                webhook_url = request.build_absolute_uri("/webhooks/github/")
+                create_repository_webhook_task.delay(tracked_repo.id, webhook_url)
 
             # Parse days_back parameter
             days_back_str = request.POST.get("days_back", "")

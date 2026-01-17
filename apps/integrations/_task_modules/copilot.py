@@ -12,6 +12,7 @@ from celery.exceptions import Retry
 from apps.integrations.models import GitHubIntegration
 from apps.integrations.services.copilot_metrics import (
     CopilotMetricsError,
+    InsufficientLicensesError,
     fetch_copilot_metrics,
     map_copilot_to_ai_usage,
     parse_metrics_response,
@@ -206,6 +207,15 @@ def sync_copilot_metrics_task(self, team_id: int) -> dict:
         team.save(update_fields=["copilot_consecutive_failures", "copilot_last_sync_at"])
 
         return {"metrics_synced": metrics_synced}
+
+    except InsufficientLicensesError as exc:
+        # 422 error - org has fewer than 5 Copilot licenses
+        # This is NOT a transient error - don't retry, just set status
+        logger.info(f"Copilot insufficient licenses for team {team.name}: {exc}")
+        team.copilot_status = "insufficient_licenses"
+        team.copilot_consecutive_failures += 1
+        team.save(update_fields=["copilot_status", "copilot_consecutive_failures"])
+        return {"status": "skipped", "reason": "insufficient_licenses", "copilot_available": False}
 
     except CopilotMetricsError as exc:
         # Check if it's a 403 error (Copilot not available / insufficient licenses)

@@ -12,6 +12,7 @@ from django.utils import timezone
 from github import Github
 
 from apps.integrations.services.github_rate_limit import should_pause_for_rate_limit
+from apps.integrations.services.github_sync.auth import get_access_token
 from apps.integrations.services.github_sync.client import (
     get_repository_pull_requests,
     get_updated_pull_requests,
@@ -184,8 +185,8 @@ def sync_repository_history(
     Returns:
         Dict with sync stats for PRs, reviews, commits, check_runs, files, comments, deployments
     """
-    # EncryptedTextField auto-decrypts access_token
-    access_token = tracked_repo.integration.credential.access_token
+    # Get access token (prefers App installation over OAuth)
+    access_token = get_access_token(tracked_repo)
 
     # Fetch PRs from GitHub with days_back filter (generator for memory efficiency)
     prs_data = get_repository_pull_requests(access_token, tracked_repo.full_name, days_back=days_back)
@@ -222,8 +223,8 @@ def sync_repository_incremental(tracked_repo: TrackedRepository) -> dict:
     if tracked_repo.last_sync_at is None:
         return sync_repository_history(tracked_repo)
 
-    # EncryptedTextField auto-decrypts access_token
-    access_token = tracked_repo.integration.credential.access_token
+    # Get access token (prefers App installation over OAuth)
+    access_token = get_access_token(tracked_repo)
 
     # Fetch updated PRs from GitHub since last sync
     prs_data = get_updated_pull_requests(access_token, tracked_repo.full_name, tracked_repo.last_sync_at)

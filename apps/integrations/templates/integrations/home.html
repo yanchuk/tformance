@@ -29,43 +29,58 @@
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
           </svg>
-          <span>{% translate "Connected" %}</span>
+          <span>{% translate "Connected" %}{% if app_installation and not github_oauth_connected %} (App){% endif %}</span>
         </div>
 
-        {% if github_integration %}
-          <div class="space-y-2 mb-4">
+        <div class="space-y-2 mb-4">
+          <div class="flex items-center gap-2 text-sm">
+            <span class="text-base-content/80">{% translate "Organization:" %}</span>
+            <span class="font-medium text-base-content">
+              {% if github_integration %}{{ github_integration.organization_slug }}{% elif app_installation %}{{ app_installation.account_login }}{% endif %}
+            </span>
+          </div>
+          {% if github_integration and github_integration.last_sync_at %}
             <div class="flex items-center gap-2 text-sm">
-              <span class="text-base-content/80">{% translate "Organization:" %}</span>
-              <span class="font-medium text-base-content">{{ github_integration.organization_slug }}</span>
+              <span class="text-base-content/80">{% translate "Last sync:" %}</span>
+              <span class="text-base-content/80">{{ github_integration.last_sync_at|timesince }} {% translate "ago" %}</span>
             </div>
-            {% if github_integration.last_sync_at %}
-              <div class="flex items-center gap-2 text-sm">
-                <span class="text-base-content/80">{% translate "Last sync:" %}</span>
-                <span class="text-base-content/80">{{ github_integration.last_sync_at|timesince }} {% translate "ago" %}</span>
-              </div>
-            {% endif %}
-          </div>
+          {% endif %}
+        </div>
 
-          <!-- Quick Links -->
-          <div class="flex flex-wrap gap-2 mb-4">
-            <a href="{% url 'integrations:github_members' %}"
+        <!-- Quick Links -->
+        <div class="flex flex-wrap gap-2 mb-4">
+          <a href="{% url 'integrations:github_members' %}"
+             class="app-btn-ghost app-btn-sm gap-1">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
+            </svg>
+            {% translate "Members" %}
+            {% if member_count %}<span class="app-badge app-badge-default">{{ member_count }}</span>{% endif %}
+          </a>
+          <a href="{% url 'integrations:github_repos' %}"
+             class="app-btn-ghost app-btn-sm gap-1">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+            </svg>
+            {% translate "Repositories" %}
+            {% if tracked_repo_count %}<span class="app-badge app-badge-default">{{ tracked_repo_count }}</span>{% endif %}
+          </a>
+          {% if app_installation %}
+            <a href="{% if app_installation.account_type == 'Organization' %}https://github.com/organizations/{{ app_installation.account_login }}/settings/installations/{{ app_installation.installation_id }}{% else %}https://github.com/settings/installations/{{ app_installation.installation_id }}{% endif %}"
+               target="_blank"
+               rel="noopener noreferrer"
                class="app-btn-ghost app-btn-sm gap-1">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
               </svg>
-              {% translate "Members" %}
-              {% if member_count %}<span class="app-badge app-badge-default">{{ member_count }}</span>{% endif %}
-            </a>
-            <a href="{% url 'integrations:github_repos' %}"
-               class="app-btn-ghost app-btn-sm gap-1">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+              {% translate "Configure on GitHub" %}
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
               </svg>
-              {% translate "Repositories" %}
-              {% if tracked_repo_count %}<span class="app-badge app-badge-default">{{ tracked_repo_count }}</span>{% endif %}
             </a>
-          </div>
-        {% endif %}
+          {% endif %}
+        </div>
 
         <div class="flex justify-end">
           <form method="post"
@@ -385,8 +400,8 @@
       </div>
 
       {# Status-based rendering using team.copilot_status field #}
-      {% if copilot_status == "connected" %}
-        {# CONNECTED: Show Connected badge, sync info, and disconnect button #}
+      {% if copilot_status == "connected" and github_oauth_connected %}
+        {# FULLY CONNECTED: OAuth available, can sync Copilot metrics #}
         <div class="app-status-pill-connected mb-4">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
@@ -439,6 +454,51 @@
               </button>
               <button type="button" @click="confirming = false" class="app-btn-ghost app-btn-sm">
                 {% translate "Cancel" %}
+              </button>
+            </div>
+          </form>
+        </div>
+
+      {% elif copilot_status == "connected" and not github_oauth_connected %}
+        {# APP-ONLY: Copilot enabled but OAuth required for metrics #}
+        <div class="app-status-pill-warning mb-4">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+          </svg>
+          <span>{% translate "OAuth Required" %}</span>
+        </div>
+
+        <p class="text-sm text-base-content/80 mb-3">
+          {% translate "Copilot metrics require a separate OAuth connection because GitHub's billing API (where Copilot usage data lives) isn't accessible to GitHub Apps." %}
+        </p>
+        <p class="text-xs text-base-content/60 mb-4">
+          {% translate "This OAuth only requests billing access — no code access is granted." %}
+        </p>
+
+        <div class="flex justify-between">
+          <a href="{% url 'integrations:github_connect' %}" class="app-btn-primary app-btn-sm gap-1">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+            </svg>
+            {% translate "Connect GitHub OAuth" %}
+          </a>
+
+          <form method="post"
+                action="{% url 'integrations:deactivate_copilot' %}"
+                x-data="{ confirming: false }">
+            {% csrf_token %}
+            <button type="button"
+                    x-show="!confirming"
+                    @click="confirming = true"
+                    class="app-btn-ghost app-btn-sm">
+              {% translate "Cancel" %}
+            </button>
+            <div x-show="confirming" x-transition class="flex gap-2">
+              <button type="submit" class="app-btn-danger app-btn-sm">
+                {% translate "Confirm" %}
+              </button>
+              <button type="button" @click="confirming = false" class="app-btn-ghost app-btn-sm">
+                {% translate "Back" %}
               </button>
             </div>
           </form>

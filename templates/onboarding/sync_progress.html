@@ -102,9 +102,17 @@
     <p class="text-sm text-base-content/70 mb-4">
       {% translate "You can safely close this page. The sync will continue in the background." %}
     </p>
-    {% if jira_enabled %}
+    {% if next_step == "copilot" %}
+    <a href="{% url 'onboarding:connect_copilot' %}" class="app-btn-secondary mt-4">
+      {% translate "Continue to Copilot" %}
+    </a>
+    {% elif next_step == "jira" %}
     <a href="{% url 'onboarding:connect_jira' %}" class="app-btn-secondary mt-4">
       {% translate "Continue to Jira" %}
+    </a>
+    {% elif next_step == "slack" %}
+    <a href="{% url 'onboarding:connect_slack' %}" class="app-btn-secondary mt-4">
+      {% translate "Continue to Slack" %}
     </a>
     {% else %}
     <a href="{% url 'onboarding:complete' %}" class="app-btn-secondary mt-4">
@@ -122,9 +130,19 @@
     <p class="text-base-content/70 mb-6">
       {% translate "Your data is ready. Let's continue setting up your team." %}
     </p>
-    {% if jira_enabled %}
+    {% if next_step == "copilot" %}
+    <a href="{% url 'onboarding:connect_copilot' %}" class="app-btn-primary">
+      {% translate "Continue to Copilot" %}
+      <i class="fa-solid fa-arrow-right ml-2"></i>
+    </a>
+    {% elif next_step == "jira" %}
     <a href="{% url 'onboarding:connect_jira' %}" class="app-btn-primary">
       {% translate "Continue to Jira" %}
+      <i class="fa-solid fa-arrow-right ml-2"></i>
+    </a>
+    {% elif next_step == "slack" %}
+    <a href="{% url 'onboarding:connect_slack' %}" class="app-btn-primary">
+      {% translate "Continue to Slack" %}
       <i class="fa-solid fa-arrow-right ml-2"></i>
     </a>
     {% else %}
@@ -149,8 +167,18 @@
         <i class="fa-solid fa-redo mr-2"></i>
         {% translate "Retry Sync" %}
       </button>
-      {% if jira_enabled %}
+      {% if next_step == "copilot" %}
+      <a href="{% url 'onboarding:connect_copilot' %}" class="app-btn-secondary">
+        {% translate "Skip for Now" %}
+        <i class="fa-solid fa-arrow-right ml-2"></i>
+      </a>
+      {% elif next_step == "jira" %}
       <a href="{% url 'onboarding:connect_jira' %}" class="app-btn-secondary">
+        {% translate "Skip for Now" %}
+        <i class="fa-solid fa-arrow-right ml-2"></i>
+      </a>
+      {% elif next_step == "slack" %}
+      <a href="{% url 'onboarding:connect_slack' %}" class="app-btn-secondary">
         {% translate "Skip for Now" %}
         <i class="fa-solid fa-arrow-right ml-2"></i>
       </a>
