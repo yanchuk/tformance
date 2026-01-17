@@ -8,8 +8,6 @@ release: python manage.py migrate --noinput && python manage.py bootstrap_celery
 # Web process - serves the Django application via gunicorn + uvicorn
 web: gunicorn --bind 0.0.0.0:$PORT --workers 1 --threads 8 --timeout 0 tformance.asgi:application -k uvicorn.workers.UvicornWorker
 
-# Worker process - handles background Celery tasks
-worker: celery -A tformance worker -l INFO --pool threads --concurrency 20 -Q celery,sync,compute,llm
-
-# Beat process - schedules periodic tasks (only run ONE instance)
-beat: celery -A tformance beat -l INFO
+# Worker process - handles background Celery tasks + embedded beat scheduler
+# The -B flag runs beat inside the worker (safe for single-worker deployments)
+worker: celery -A tformance worker -l INFO --pool threads --concurrency 20 -Q celery,sync,compute,llm -B

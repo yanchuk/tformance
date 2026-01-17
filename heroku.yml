@@ -21,9 +21,6 @@ run:
     image: django
   worker:
     command:
-      - celery -A tformance worker -l INFO --pool threads --concurrency 20 -Q celery,sync,llm,compute
-    image: django
-  beat:
-    command:
-      - celery -A tformance beat -l INFO
+      # -B flag embeds beat scheduler in worker (safe for single-worker setup)
+      - celery -A tformance worker -l INFO --pool threads --concurrency 20 -Q celery,sync,llm,compute -B
     image: django
