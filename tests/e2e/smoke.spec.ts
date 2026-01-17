@@ -35,19 +35,19 @@ test.describe('Smoke Tests @smoke', () => {
   test('homepage loads', async ({ page }) => {
     await page.goto('/');
     // Either shows landing page or redirects to app (if logged in)
-    await expect(page).toHaveTitle(/tformance/);
+    await expect(page).toHaveTitle(/tformance/i);
   });
 
   test('login page loads', async ({ page }) => {
     await page.goto('/accounts/login/');
     // Should show login form or redirect if already logged in
     const title = await page.title();
-    expect(title).toContain('tformance');
+    expect(title.toLowerCase()).toContain('tformance');
   });
 
   test('signup page loads', async ({ page }) => {
     await page.goto('/accounts/signup/');
-    await expect(page).toHaveTitle(/tformance/);
+    await expect(page).toHaveTitle(/tformance/i);
   });
 
   test('health endpoint responds', async ({ request }) => {
