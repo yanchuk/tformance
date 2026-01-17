@@ -102,6 +102,8 @@ See [AI-DETECTION-TESTING.md](prd/AI-DETECTION-TESTING.md#llm-data-priority-rule
 - N+1 queries → use `select_related`/`prefetch_related`
 - Files over 300 lines → split into modules
 - Inline `<script>` in HTMX partials → use Alpine.js
+- `{% trans "..." %}` in templates → use plain strings (i18n disabled)
+- `gettext_lazy`/`_()` in Python → use plain strings
 
 ## Documentation
 
