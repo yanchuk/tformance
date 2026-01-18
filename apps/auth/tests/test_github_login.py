@@ -530,3 +530,175 @@ class TestLoginPrivateEmailHandling(TestCase):
 
         user = CustomUser.objects.get(username="publicemail_user")
         self.assertEqual(user.email, "public@example.com")
+
+
+class TestParseGitHubName(TestCase):
+    """Tests for _parse_github_name() function that splits GitHub name into first/last."""
+
+    def test_two_word_name(self):
+        """Test that two-word name is split into first and last name."""
+        from apps.auth.views.github import _parse_github_name
+
+        first, last = _parse_github_name("Ivan Yanchuk")
+        self.assertEqual(first, "Ivan")
+        self.assertEqual(last, "Yanchuk")
+
+    def test_single_name(self):
+        """Test that single name goes to first_name with empty last_name."""
+        from apps.auth.views.github import _parse_github_name
+
+        first, last = _parse_github_name("Ivan")
+        self.assertEqual(first, "Ivan")
+        self.assertEqual(last, "")
+
+    def test_multi_part_last_name(self):
+        """Test that multi-part names put first word in first_name, rest in last_name."""
+        from apps.auth.views.github import _parse_github_name
+
+        first, last = _parse_github_name("Ivan van Beethoven")
+        self.assertEqual(first, "Ivan")
+        self.assertEqual(last, "van Beethoven")
+
+    def test_none_input(self):
+        """Test that None input returns empty strings."""
+        from apps.auth.views.github import _parse_github_name
+
+        first, last = _parse_github_name(None)
+        self.assertEqual(first, "")
+        self.assertEqual(last, "")
+
+    def test_empty_string(self):
+        """Test that empty string returns empty strings."""
+        from apps.auth.views.github import _parse_github_name
+
+        first, last = _parse_github_name("")
+        self.assertEqual(first, "")
+        self.assertEqual(last, "")
+
+    def test_whitespace_only(self):
+        """Test that whitespace-only input returns empty strings."""
+        from apps.auth.views.github import _parse_github_name
+
+        first, last = _parse_github_name("   ")
+        self.assertEqual(first, "")
+        self.assertEqual(last, "")
+
+    def test_padded_name(self):
+        """Test that padded name is trimmed before splitting."""
+        from apps.auth.views.github import _parse_github_name
+
+        first, last = _parse_github_name("  Ivan  Yanchuk  ")
+        self.assertEqual(first, "Ivan")
+        self.assertEqual(last, "Yanchuk")
+
+    def test_long_name_truncation(self):
+        """Test that very long names are truncated to 150 chars each."""
+        from apps.auth.views.github import _parse_github_name
+
+        # Create a name with 200+ chars in first part
+        long_first = "A" * 200
+        long_last = "B" * 200
+        long_name = f"{long_first} {long_last}"
+
+        first, last = _parse_github_name(long_name)
+
+        self.assertLessEqual(len(first), 150)
+        self.assertLessEqual(len(last), 150)
+        self.assertEqual(first, "A" * 150)
+        self.assertEqual(last, "B" * 150)
+
+
+class TestLoginPopulatesUserNames(TestCase):
+    """Tests for user name population during GitHub login."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.callback_url = reverse("tformance_auth:github_callback")
+
+    def test_login_populates_first_and_last_name(self):
+        """Test that new user has first_name and last_name populated from GitHub name."""
+        if FLOW_TYPE_LOGIN is None:
+            self.fail("FLOW_TYPE_LOGIN does not exist in oauth_state.py")
+
+        state = create_oauth_state(FLOW_TYPE_LOGIN)
+
+        with patch("apps.auth.views.github_oauth") as mock_oauth:
+            mock_oauth.exchange_code_for_token.return_value = {"access_token": "test_token"}
+            mock_oauth.get_github_user.return_value = {
+                "id": 111222,
+                "login": "fullnameuser",
+                "email": "fullname@example.com",
+                "name": "John Doe",
+            }
+
+            response = self.client.get(
+                self.callback_url,
+                {"state": state, "code": "test_code"},
+            )
+
+        self.assertEqual(response.status_code, 302)
+
+        # User should have first_name and last_name populated
+        from apps.users.models import CustomUser
+
+        user = CustomUser.objects.get(email="fullname@example.com")
+        self.assertEqual(user.first_name, "John")
+        self.assertEqual(user.last_name, "Doe")
+
+    def test_login_handles_multi_part_name(self):
+        """Test that multi-part GitHub names are parsed correctly."""
+        if FLOW_TYPE_LOGIN is None:
+            self.fail("FLOW_TYPE_LOGIN does not exist in oauth_state.py")
+
+        state = create_oauth_state(FLOW_TYPE_LOGIN)
+
+        with patch("apps.auth.views.github_oauth") as mock_oauth:
+            mock_oauth.exchange_code_for_token.return_value = {"access_token": "test_token"}
+            mock_oauth.get_github_user.return_value = {
+                "id": 333444,
+                "login": "multipartuser",
+                "email": "multipart@example.com",
+                "name": "Ludwig van Beethoven",
+            }
+
+            response = self.client.get(
+                self.callback_url,
+                {"state": state, "code": "test_code"},
+            )
+
+        self.assertEqual(response.status_code, 302)
+
+        from apps.users.models import CustomUser
+
+        user = CustomUser.objects.get(email="multipart@example.com")
+        self.assertEqual(user.first_name, "Ludwig")
+        self.assertEqual(user.last_name, "van Beethoven")
+
+    def test_login_handles_no_name(self):
+        """Test that user without GitHub name has empty first_name/last_name."""
+        if FLOW_TYPE_LOGIN is None:
+            self.fail("FLOW_TYPE_LOGIN does not exist in oauth_state.py")
+
+        state = create_oauth_state(FLOW_TYPE_LOGIN)
+
+        with patch("apps.auth.views.github_oauth") as mock_oauth:
+            mock_oauth.exchange_code_for_token.return_value = {"access_token": "test_token"}
+            mock_oauth.get_github_user.return_value = {
+                "id": 555666,
+                "login": "nonameuser",
+                "email": "noname@example.com",
+                "name": None,  # No name set on GitHub
+            }
+
+            response = self.client.get(
+                self.callback_url,
+                {"state": state, "code": "test_code"},
+            )
+
+        self.assertEqual(response.status_code, 302)
+
+        from apps.users.models import CustomUser
+
+        user = CustomUser.objects.get(email="noname@example.com")
+        self.assertEqual(user.first_name, "")
+        self.assertEqual(user.last_name, "")

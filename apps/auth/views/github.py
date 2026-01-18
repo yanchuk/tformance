@@ -46,6 +46,24 @@ from ._helpers import (
 logger = logging.getLogger(__name__)
 
 
+def _parse_github_name(full_name: str | None) -> tuple[str, str]:
+    """Split GitHub full name into (first_name, last_name).
+
+    GitHub provides a single 'name' field. We split on first space:
+    - "Ivan" → ("Ivan", "")
+    - "Ivan Yanchuk" → ("Ivan", "Yanchuk")
+    - "Ivan van Yanchuk" → ("Ivan", "van Yanchuk")
+
+    Names are truncated to 150 chars to match Django's AbstractUser field limits.
+    """
+    if not full_name:
+        return ("", "")
+    parts = full_name.strip().split(maxsplit=1)
+    first_name = parts[0][:150] if parts else ""
+    last_name = parts[1][:150] if len(parts) > 1 else ""
+    return (first_name, last_name)
+
+
 def github_login(request):
     """Initiate GitHub OAuth flow for login.
 
@@ -184,9 +202,12 @@ def _handle_login_callback(request, code: str):
 
         # Third: Create new user if not found
         if user is None:
+            first_name, last_name = _parse_github_name(github_name)
             user = CustomUser.objects.create(
                 username=github_login_name,
                 email=github_email or f"{github_login_name}@github.placeholder",
+                first_name=first_name,
+                last_name=last_name,
             )
             # Create SocialAccount
             SocialAccount.objects.create(
