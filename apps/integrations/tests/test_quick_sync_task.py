@@ -6,6 +6,7 @@ provides fast initial data sync (7 days only, pattern detection only, no LLM).
 
 from unittest.mock import MagicMock, patch
 
+import pytest
 from django.test import TestCase
 
 from apps.integrations.factories import (
@@ -15,6 +16,9 @@ from apps.integrations.factories import (
 )
 from apps.integrations.models import TrackedRepository
 from apps.metrics.factories import PullRequestFactory, TeamFactory
+
+# Group tests to run on same worker to avoid cross-test contamination
+pytestmark = pytest.mark.xdist_group(name="integrations_sync")
 
 
 class TestSyncQuickDataTaskExists(TestCase):

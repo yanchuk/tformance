@@ -4,12 +4,16 @@ TDD Phase: These tests are written FIRST before implementation.
 Uses waffle's override_flag for thread-safe flag testing in parallel execution.
 """
 
+import pytest
 from django.test import RequestFactory, TestCase
 from waffle.testutils import override_flag
 
 from apps.integrations.factories import UserFactory
 from apps.metrics.factories import TeamFactory
 from apps.teams.models import Flag
+
+# Group tests to run on same worker to avoid cross-test contamination
+pytestmark = pytest.mark.xdist_group(name="integrations_sync")
 
 
 class TestIntegrationFlagHelpers(TestCase):

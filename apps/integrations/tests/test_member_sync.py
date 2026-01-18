@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 from django.test import TestCase
 
-from apps.integrations.services.member_sync import sync_github_members
+from apps.integrations.services.member_sync import sync_github_members, sync_single_user_as_member
 from apps.metrics.factories import TeamFactory, TeamMemberFactory
 from apps.metrics.models import TeamMember
 
@@ -369,3 +369,157 @@ class TestSyncGitHubMembers(TestCase):
         self.assertTrue(TeamMember.objects.filter(team=self.team, github_username="user1").exists())
         self.assertFalse(TeamMember.objects.filter(team=self.team, github_username="user2").exists())
         self.assertTrue(TeamMember.objects.filter(team=self.team, github_username="user3").exists())
+
+
+class TestSyncSingleUserAsMember(TestCase):
+    """Tests for sync_single_user_as_member service function."""
+
+    def setUp(self):
+        """Set up test fixtures using factories."""
+        self.team = TeamFactory()
+        self.access_token = "gho_test_token_12345"
+        self.username = "johndoe"
+
+    @patch("apps.integrations.services.member_sync.get_user_details")
+    def test_creates_team_member_for_new_user(self, mock_get_user_details):
+        """Test that sync creates a new TeamMember for a GitHub user not in the database."""
+        # Mock GitHub API response
+        mock_get_user_details.return_value = {
+            "login": "johndoe",
+            "id": 12345,
+            "name": "John Doe",
+            "email": "john.doe@example.com",
+            "avatar_url": "https://avatars.githubusercontent.com/u/12345",
+        }
+
+        # Run sync
+        result = sync_single_user_as_member(self.team, self.access_token, self.username)
+
+        # Assert: TeamMember was created
+        self.assertEqual(TeamMember.objects.filter(team=self.team).count(), 1)
+        member = TeamMember.objects.get(team=self.team, github_id="12345")
+        self.assertEqual(member.github_username, "johndoe")
+        self.assertEqual(member.display_name, "John Doe")
+        self.assertEqual(member.email, "john.doe@example.com")
+        self.assertTrue(member.is_active)
+
+        # Assert: Result shows 1 created
+        self.assertEqual(result["created"], 1)
+        self.assertEqual(result["updated"], 0)
+        self.assertEqual(result["unchanged"], 0)
+        self.assertEqual(result["failed"], 0)
+
+        # Assert: get_user_details was called with correct arguments
+        mock_get_user_details.assert_called_once_with(self.access_token, "johndoe")
+
+    @patch("apps.integrations.services.member_sync.get_user_details")
+    def test_updates_existing_member_if_username_changed(self, mock_get_user_details):
+        """Test that sync updates an existing TeamMember if their GitHub username has changed."""
+        # Create existing member with old username
+        existing_member = TeamMemberFactory(
+            team=self.team,
+            github_id="12345",
+            github_username="john_old",
+            display_name="Old Name",
+            email="old@example.com",
+        )
+
+        # Mock GitHub API response with new username
+        mock_get_user_details.return_value = {
+            "login": "johndoe",
+            "id": 12345,
+            "name": "John Doe",
+            "email": "john.doe@example.com",
+            "avatar_url": "https://avatars.githubusercontent.com/u/12345",
+        }
+
+        # Run sync
+        result = sync_single_user_as_member(self.team, self.access_token, "johndoe")
+
+        # Assert: Member was updated, not created
+        self.assertEqual(TeamMember.objects.filter(team=self.team).count(), 1)
+        existing_member.refresh_from_db()
+        self.assertEqual(existing_member.github_username, "johndoe")
+
+        # Assert: Result shows 1 updated
+        self.assertEqual(result["created"], 0)
+        self.assertEqual(result["updated"], 1)
+        self.assertEqual(result["unchanged"], 0)
+        self.assertEqual(result["failed"], 0)
+
+    @patch("apps.integrations.services.member_sync.get_user_details")
+    def test_returns_unchanged_when_no_changes(self, mock_get_user_details):
+        """Test that sync returns unchanged=1 when member exists and has same username."""
+        # Create existing member with matching data
+        TeamMemberFactory(
+            team=self.team,
+            github_id="12345",
+            github_username="johndoe",
+            display_name="John Doe",
+            email="john.doe@example.com",
+        )
+
+        # Mock GitHub API response with same data
+        mock_get_user_details.return_value = {
+            "login": "johndoe",
+            "id": 12345,
+            "name": "John Doe",
+            "email": "john.doe@example.com",
+            "avatar_url": "https://avatars.githubusercontent.com/u/12345",
+        }
+
+        # Run sync
+        result = sync_single_user_as_member(self.team, self.access_token, self.username)
+
+        # Assert: Member count unchanged
+        self.assertEqual(TeamMember.objects.filter(team=self.team).count(), 1)
+
+        # Assert: Result shows 1 unchanged
+        self.assertEqual(result["created"], 0)
+        self.assertEqual(result["updated"], 0)
+        self.assertEqual(result["unchanged"], 1)
+        self.assertEqual(result["failed"], 0)
+
+    @patch("apps.integrations.services.member_sync.get_user_details")
+    def test_handles_api_error_gracefully(self, mock_get_user_details):
+        """Test that sync returns failed=1 when get_user_details raises exception."""
+        # Mock GitHub API to raise exception
+        mock_get_user_details.side_effect = Exception("API rate limit exceeded")
+
+        # Run sync
+        result = sync_single_user_as_member(self.team, self.access_token, self.username)
+
+        # Assert: No member was created
+        self.assertEqual(TeamMember.objects.filter(team=self.team).count(), 0)
+
+        # Assert: Result shows 1 failed
+        self.assertEqual(result["created"], 0)
+        self.assertEqual(result["updated"], 0)
+        self.assertEqual(result["unchanged"], 0)
+        self.assertEqual(result["failed"], 1)
+
+    @patch("apps.integrations.services.member_sync.get_user_details")
+    def test_handles_private_email(self, mock_get_user_details):
+        """Test that sync handles users with private email (None) without error."""
+        # Mock GitHub API response with null email
+        mock_get_user_details.return_value = {
+            "login": "privateuser",
+            "id": 99999,
+            "name": "Private User",
+            "email": None,  # Private email
+            "avatar_url": "https://avatars.githubusercontent.com/u/99999",
+        }
+
+        # Run sync
+        result = sync_single_user_as_member(self.team, self.access_token, "privateuser")
+
+        # Assert: TeamMember created with empty email
+        self.assertEqual(TeamMember.objects.filter(team=self.team).count(), 1)
+        member = TeamMember.objects.get(team=self.team, github_id="99999")
+        self.assertEqual(member.github_username, "privateuser")
+        self.assertEqual(member.display_name, "Private User")
+        self.assertEqual(member.email, "")  # Should be empty string, not None
+
+        # Assert: Result shows 1 created
+        self.assertEqual(result["created"], 1)
+        self.assertEqual(result["failed"], 0)

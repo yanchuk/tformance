@@ -3,6 +3,7 @@
 from datetime import timedelta
 from unittest.mock import MagicMock, patch
 
+import pytest
 from celery.exceptions import Retry
 from django.test import TestCase
 from django.utils import timezone
@@ -13,6 +14,9 @@ from apps.integrations.factories import (
     TrackedRepositoryFactory,
 )
 from apps.metrics.factories import TeamFactory
+
+# Group tests to run on same worker to avoid cross-test contamination
+pytestmark = pytest.mark.xdist_group(name="integrations_sync")
 
 
 class TestSyncRepositoryTask(TestCase):

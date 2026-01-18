@@ -2,6 +2,7 @@
 
 from unittest.mock import MagicMock, patch
 
+import pytest
 from celery.exceptions import Retry
 from django.test import TestCase
 
@@ -11,6 +12,9 @@ from apps.integrations.factories import (
     TrackedJiraProjectFactory,
 )
 from apps.metrics.factories import TeamFactory
+
+# Group tests to run on same worker to avoid cross-test contamination
+pytestmark = pytest.mark.xdist_group(name="integrations_sync")
 
 
 class TestSyncJiraProjectTask(TestCase):

@@ -48,7 +48,7 @@ def sync_github_members(team: Team, access_token: str, org_slug: str) -> SyncRes
             # Existing member - check if username changed
             if member.github_username != github_username:
                 member.github_username = github_username
-                member.save()
+                member.save(update_fields=["github_username"])
                 updated += 1
             else:
                 unchanged += 1
@@ -84,3 +84,48 @@ def sync_github_members(team: Team, access_token: str, org_slug: str) -> SyncRes
         "unchanged": unchanged,
         "failed": failed,
     }
+
+
+def sync_single_user_as_member(team: Team, access_token: str, username: str) -> SyncResult:
+    """Synchronize a single GitHub user as a TeamMember.
+
+    Args:
+        team: The team to sync the member for
+        access_token: GitHub access token
+        username: GitHub username to sync
+
+    Returns:
+        Dictionary with keys: created, updated, unchanged, failed (integers)
+    """
+    try:
+        user_details = get_user_details(access_token, username)
+    except Exception as e:
+        logger.error(f"Failed to fetch user details for {username}: {e}")
+        return {"created": 0, "updated": 0, "unchanged": 0, "failed": 1}
+
+    github_id = str(user_details["id"])
+    github_username = user_details["login"]
+    display_name = user_details.get("name") or github_username
+    email = user_details.get("email") or ""
+
+    # Check if member exists by github_id
+    try:
+        member = TeamMember.objects.get(team=team, github_id=github_id)
+        # Existing member - check if username changed
+        if member.github_username != github_username:
+            member.github_username = github_username
+            member.save(update_fields=["github_username"])
+            return {"created": 0, "updated": 1, "unchanged": 0, "failed": 0}
+        else:
+            return {"created": 0, "updated": 0, "unchanged": 1, "failed": 0}
+    except TeamMember.DoesNotExist:
+        # Create new member
+        TeamMember.objects.create(
+            team=team,
+            github_id=github_id,
+            github_username=github_username,
+            display_name=display_name,
+            email=email,
+            is_active=True,
+        )
+        return {"created": 1, "updated": 0, "unchanged": 0, "failed": 0}

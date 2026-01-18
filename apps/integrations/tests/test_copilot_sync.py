@@ -2,6 +2,7 @@
 
 from unittest.mock import MagicMock, patch
 
+import pytest
 from celery.exceptions import Retry
 from django.test import TestCase
 
@@ -12,6 +13,9 @@ from apps.integrations.factories import (
 from apps.metrics.factories import TeamFactory, TeamMemberFactory
 from apps.metrics.models import AIUsageDaily
 from apps.teams.models import Team
+
+# Group tests to run on same worker to avoid cross-test contamination
+pytestmark = pytest.mark.xdist_group(name="integrations_sync")
 
 
 class TestSyncCopilotMetricsTask(TestCase):

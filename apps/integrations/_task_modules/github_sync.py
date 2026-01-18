@@ -770,7 +770,7 @@ def sync_github_app_members_task(self, installation_id: int) -> dict:
     """
     from apps.integrations.models import GitHubAppInstallation
     from apps.integrations.services.github_app import get_installation_token
-    from apps.integrations.services.member_sync import sync_github_members
+    from apps.integrations.services.member_sync import sync_github_members, sync_single_user_as_member
 
     try:
         installation = GitHubAppInstallation.objects.select_related("team").get(id=installation_id)  # noqa: TEAM001 - ID from Celery task queue
@@ -782,22 +782,34 @@ def sync_github_app_members_task(self, installation_id: int) -> dict:
         logger.info(f"Skipping member sync - no team linked for installation {installation_id}")
         return {"skipped": True, "reason": "No team linked"}
 
-    org_slug = installation.account_login
-    if not org_slug:
-        logger.info(f"Skipping member sync - no org for installation {installation_id}")
-        return {"skipped": True, "reason": "No organization"}
+    account_login = installation.account_login
+    if not account_login:
+        logger.info(f"Skipping member sync - no account_login for installation {installation_id}")
+        return {"skipped": True, "reason": "No account login"}
 
     try:
         access_token = get_installation_token(installation.installation_id)
-        result = sync_github_members(
-            team=installation.team,
-            access_token=access_token,
-            org_slug=org_slug,
-        )
-        logger.info(f"GitHub App member sync completed for {org_slug}: {result}")
+
+        # Route based on account_type: User accounts use single-user sync
+        if installation.account_type == "User":
+            result = sync_single_user_as_member(
+                team=installation.team,
+                access_token=access_token,
+                username=account_login,
+            )
+            logger.info(f"GitHub App single-user sync completed for user '{account_login}': {result}")
+        else:
+            # Organization accounts use org member sync
+            result = sync_github_members(
+                team=installation.team,
+                access_token=access_token,
+                org_slug=account_login,
+            )
+            logger.info(f"GitHub App org member sync completed for org '{account_login}': {result}")
+
         return result
     except Exception as e:
-        logger.error(f"GitHub App member sync failed for {org_slug}: {e}")
+        logger.error(f"GitHub App member sync failed for {account_login}: {e}")
         raise self.retry(exc=e) from e
 
 
