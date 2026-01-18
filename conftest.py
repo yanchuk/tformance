@@ -57,6 +57,62 @@ def clear_cache():
     cache.clear()
 
 
+@pytest.fixture(autouse=True)
+def mock_pipeline_task_dispatch():
+    """Mock pipeline task dispatch for ALL tests to prevent cross-test pollution.
+
+    The pipeline signals dispatch Celery tasks when Team is saved. By mocking
+    at the dispatch level:
+    - Signals still fire (so signal wiring is tested)
+    - Tasks aren't actually invoked
+    - No timing issues with setUp() vs fixture ordering
+
+    This fixture prevents the "51 calls instead of 1" flaky test failures caused
+    by mocks capturing calls from other tests in the same xdist worker.
+    """
+    from unittest.mock import patch
+
+    # Import and store the original function BEFORE patching
+    from apps.integrations.pipeline_signals import (
+        dispatch_pipeline_task as original_dispatch,
+    )
+
+    with patch(
+        "apps.integrations.pipeline_signals.dispatch_pipeline_task",
+        return_value=False,
+    ) as mock:
+        # Store original for enable_pipeline_dispatch fixture
+        mock._original_dispatch = original_dispatch
+        yield mock
+
+
+@pytest.fixture
+def enable_pipeline_dispatch(mock_pipeline_task_dispatch):
+    """Allow real pipeline task dispatch for tests that need it.
+
+    Use this fixture in tests that verify actual task dispatch behavior,
+    such as test_pipeline_signals.py and test_onboarding_pipeline.py.
+
+    This works by setting side_effect to call the original function,
+    so the mock still tracks calls but executes the real dispatch logic.
+
+    Usage:
+        @pytest.mark.usefixtures("enable_pipeline_dispatch")
+        class TestPipelineSignals:
+            def test_signal_dispatches_task(self):
+                # Real dispatch happens here
+                ...
+    """
+    # Set side_effect to call the original function
+    # This makes the mock pass through to real implementation while still tracking calls
+    original = mock_pipeline_task_dispatch._original_dispatch
+    mock_pipeline_task_dispatch.side_effect = original
+    mock_pipeline_task_dispatch.reset_mock()
+    yield
+    # Restore mock behavior after test
+    mock_pipeline_task_dispatch.side_effect = None
+
+
 @pytest.fixture
 def client():
     """Django test client."""

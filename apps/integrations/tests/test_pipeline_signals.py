@@ -6,6 +6,7 @@ when Team.onboarding_pipeline_status changes.
 
 from unittest.mock import patch
 
+import pytest
 from django.test import TestCase
 
 from apps.metrics.factories import TeamFactory
@@ -85,11 +86,15 @@ class TestPipelineSignalDispatch(TestCase):
         mock_dispatch.assert_not_called()
 
 
+@pytest.mark.usefixtures("enable_pipeline_dispatch")
 class TestPipelineStateMachine(TestCase):
     """Tests for state machine task mapping.
 
     These tests mock at the actual task source locations to verify
     the dispatch_pipeline_task function correctly imports and dispatches.
+
+    Uses enable_pipeline_dispatch fixture to allow real dispatch_pipeline_task
+    to run (mocked globally by default), while individual tasks are mocked.
     """
 
     @patch("apps.integrations.onboarding_pipeline.sync_github_members_pipeline_task")
@@ -145,8 +150,13 @@ class TestPipelineStateMachine(TestCase):
         mock_task.apply_async.assert_called_once()
 
 
+@pytest.mark.usefixtures("enable_pipeline_dispatch")
 class TestPhase1ToPhase2Transition(TestCase):
-    """Tests for automatic Phase 2 dispatch after Phase 1."""
+    """Tests for automatic Phase 2 dispatch after Phase 1.
+
+    Uses enable_pipeline_dispatch fixture to allow real dispatch_pipeline_task
+    to run while dispatch_phase2_start is mocked.
+    """
 
     @patch("apps.integrations.pipeline_signals.dispatch_phase2_start")
     def test_phase1_complete_triggers_phase2(self, mock_dispatch):
@@ -159,8 +169,13 @@ class TestPhase1ToPhase2Transition(TestCase):
         mock_dispatch.assert_called_once_with(team.id)
 
 
+@pytest.mark.usefixtures("enable_pipeline_dispatch")
 class TestPhase2StateMachine(TestCase):
-    """Tests for Phase 2 (background) state machine."""
+    """Tests for Phase 2 (background) state machine.
+
+    Uses enable_pipeline_dispatch fixture to allow real dispatch_pipeline_task
+    to run while individual tasks are mocked.
+    """
 
     @patch("apps.integrations.tasks.sync_historical_data_task")
     def test_background_syncing_dispatches_sync(self, mock_task):
