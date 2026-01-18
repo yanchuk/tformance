@@ -359,12 +359,14 @@ def _get_top_contributors(team: Team, start_date: date, end_date: date, limit: i
     from apps.metrics.models import PullRequest
 
     # Get merged PRs grouped by author (fetch more than limit to account for bot filtering)
+    # Exclude PRs without authors (bot PRs like dependabot)
     author_stats = list(
         PullRequest.objects.filter(  # noqa: TEAM001 - team filter present
             team=team,
             state="merged",
             merged_at__date__gte=start_date,
             merged_at__date__lte=end_date,
+            author__isnull=False,  # Exclude bot PRs
         )
         .values("author__github_username", "author__display_name")
         .annotate(pr_count=Count("id"))

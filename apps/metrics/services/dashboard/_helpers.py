@@ -33,7 +33,9 @@ def _apply_repo_filter(qs: QuerySet, repo: str | None) -> QuerySet:
     return qs
 
 
-def _get_merged_prs_in_range(team: Team, start_date: date, end_date: date) -> QuerySet[PullRequest]:
+def _get_merged_prs_in_range(
+    team: Team, start_date: date, end_date: date, exclude_bots: bool = True
+) -> QuerySet[PullRequest]:
     """Get merged PRs for a team within a date range.
 
     Helper function to avoid repeating this common query pattern.
@@ -42,16 +44,21 @@ def _get_merged_prs_in_range(team: Team, start_date: date, end_date: date) -> Qu
         team: Team instance
         start_date: Start date (inclusive)
         end_date: End date (inclusive)
+        exclude_bots: If True (default), exclude PRs without authors (bot PRs)
 
     Returns:
         QuerySet of merged PullRequest objects
     """
-    return PullRequest.objects.filter(
+    qs = PullRequest.objects.filter(
         team=team,
         state="merged",
         merged_at__gte=start_of_day(start_date),
         merged_at__lte=end_of_day(end_date),
     )
+    # Exclude bot PRs (those without linked authors like dependabot)
+    if exclude_bots:
+        qs = qs.filter(author__isnull=False)
+    return qs
 
 
 def _calculate_ai_percentage(surveys: QuerySet) -> Decimal:

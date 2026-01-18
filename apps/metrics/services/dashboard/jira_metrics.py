@@ -127,13 +127,14 @@ def get_linkage_trend(team: Team, weeks: int = 4) -> list[dict]:
     end_date = timezone.now()
     start_date = end_date - timedelta(weeks=weeks)
 
-    # Query merged PRs, group by week
+    # Query merged PRs, group by week (exclude bot PRs)
     weekly_data = (
         PullRequest.objects.filter(
             team=team,
             state="merged",
             merged_at__gte=start_date,
             merged_at__lte=end_date,
+            author__isnull=False,  # Exclude bot PRs
         )
         .annotate(week=TruncWeek("merged_at"))
         .values("week")

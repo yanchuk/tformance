@@ -236,6 +236,7 @@ def get_copilot_delivery_comparison(team: Team, start_date: date, end_date: date
     end_datetime = timezone.make_aware(timezone.datetime.combine(end_date, timezone.datetime.max.time()))
 
     # Query merged PRs in date range for team with valid cycle/review times
+    # Exclude bot PRs (those without linked authors)
     prs = PullRequest.objects.filter(
         team=team,
         state="merged",
@@ -243,6 +244,7 @@ def get_copilot_delivery_comparison(team: Team, start_date: date, end_date: date
         pr_created_at__lte=end_datetime,
         cycle_time_hours__isnull=False,
         review_time_hours__isnull=False,
+        author__isnull=False,  # Exclude bot PRs
     ).select_related("author")
 
     # Separate PRs into copilot and non-copilot groups based on author's recent activity

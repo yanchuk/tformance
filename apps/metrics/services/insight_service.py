@@ -257,9 +257,9 @@ def generate_achievement_insights(team, insight_date):
     """
     insights = []
 
-    # Get all-time stats
-    total_prs = PullRequest.objects.filter(team=team, state="merged").count()
-    ai_prs = PullRequest.objects.filter(team=team, state="merged", is_ai_assisted=True).count()
+    # Get all-time stats (exclude bot PRs without authors)
+    total_prs = PullRequest.objects.filter(team=team, state="merged", author__isnull=False).count()
+    ai_prs = PullRequest.objects.filter(team=team, state="merged", is_ai_assisted=True, author__isnull=False).count()
 
     if total_prs == 0:
         return insights
