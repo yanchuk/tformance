@@ -41,6 +41,4 @@ USE_HTTPS_IN_ABSOLUTE_URLS = True
 #     "MAILGUN_SENDER_DOMAIN": env("MAILGUN_SENDER_DOMAIN", default=None),
 # }
 
-ADMINS = [
-    ("Your Name", "oleksii.ianchuk@gmail.com"),
-]
+ADMINS = ["oleksii.ianchuk@gmail.com"]

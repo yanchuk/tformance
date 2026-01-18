@@ -44,6 +44,7 @@ DJANGO_APPS = [
     "django.contrib.sessions",
     "django.contrib.sitemaps",
     "django.contrib.messages",
+    "django.contrib.postgres",
     "django.contrib.staticfiles",
     "django.contrib.sites",
     "django.forms",
@@ -74,7 +75,6 @@ THIRD_PARTY_APPS = [
     "health_check.contrib.celery",
     "health_check.contrib.redis",
     "django_celery_beat",
-    "template_partials.apps.SimpleAppConfig",
 ]
 
 WAGTAIL_APPS = [
@@ -144,30 +144,12 @@ ROOT_URLCONF = "tformance.urls"
 
 # used to disable the cache in dev, but turn it on in production.
 # more here: https://nickjanetakis.com/blog/django-4-1-html-templates-are-cached-by-default-with-debug-true
-_LOW_LEVEL_LOADERS = [
+_DEFAULT_LOADERS = [
     "django.template.loaders.filesystem.Loader",
     "django.template.loaders.app_directories.Loader",
 ]
 
-# Manually load template partials to allow for easier integration with other templating systems
-# like django-cotton.
-# https://github.com/carltongibson/django-template-partials?tab=readme-ov-file#advanced-configuration
-
-_DEFAULT_LOADERS = [
-    (
-        "template_partials.loader.Loader",
-        _LOW_LEVEL_LOADERS,
-    ),
-]
-
-_CACHED_LOADERS = [
-    (
-        "template_partials.loader.Loader",
-        [
-            ("django.template.loaders.cached.Loader", _LOW_LEVEL_LOADERS),
-        ],
-    ),
-]
+_CACHED_LOADERS = [("django.template.loaders.cached.Loader", _DEFAULT_LOADERS)]
 
 TEMPLATES = [
     {
@@ -188,9 +170,6 @@ TEMPLATES = [
                 "apps.web.context_processors.google_analytics_id",
             ],
             "loaders": _DEFAULT_LOADERS if DEBUG else _CACHED_LOADERS,
-            "builtins": [
-                "template_partials.templatetags.partials",
-            ],
         },
     },
 ]
@@ -536,7 +515,7 @@ PROJECT_METADATA = {
 # set this to True in production to have URLs generated with https instead of http
 USE_HTTPS_IN_ABSOLUTE_URLS = env.bool("USE_HTTPS_IN_ABSOLUTE_URLS", default=False)
 
-ADMINS = [("Oleksii", "oleksii.ianchuk@gmail.com")]
+ADMINS = ["oleksii.ianchuk@gmail.com"]
 
 # Add your google analytics ID to the environment to connect to Google Analytics
 GOOGLE_ANALYTICS_ID = env("GOOGLE_ANALYTICS_ID", default="")
