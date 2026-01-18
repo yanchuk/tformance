@@ -92,7 +92,7 @@ test.describe('HTMX Error Handling', () => {
     console.log('Error alert count:', errorCount);
 
     // Debug: Check if our htmx.js module loaded
-    const moduleLoaded = await page.evaluate(() => window.__htmxErrorHandlerLoaded);
+    const moduleLoaded = await page.evaluate(() => (window as any).__htmxErrorHandlerLoaded);
     console.log('htmx.js module loaded:', moduleLoaded);
 
     // Debug: Check what elements exist in chart containers

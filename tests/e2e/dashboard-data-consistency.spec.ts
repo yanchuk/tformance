@@ -82,7 +82,7 @@ test.describe('Dashboard Data Consistency Tests @data-consistency', () => {
       const totalRows = page.locator('tbody tr');
 
       let prListCount: number;
-      const showingText = await prListTotal.textContent().catch(() => null);
+      const showingText = await prListTotal.textContent().catch((): null => null);
       if (showingText) {
         const match = showingText.match(/of (\d+)/);
         prListCount = match ? parseInt(match[1], 10) : await totalRows.count();
@@ -163,7 +163,7 @@ test.describe('Dashboard Data Consistency Tests @data-consistency', () => {
       const totalRows = page.locator('tbody tr');
 
       let prListCount: number;
-      const showingText = await prListTotal.textContent().catch(() => null);
+      const showingText = await prListTotal.textContent().catch((): null => null);
       if (showingText) {
         const match = showingText.match(/of (\d+)/);
         prListCount = match ? parseInt(match[1], 10) : await totalRows.count();
@@ -185,7 +185,7 @@ test.describe('Dashboard Data Consistency Tests @data-consistency', () => {
       await waitForHtmxComplete(page);
 
       // Get total count from the section
-      const totalText = await needsAttentionSection.locator('text=/Total[:\\s]*\\d+/').textContent().catch(() => null);
+      const totalText = await needsAttentionSection.locator('text=/Total[:\\s]*\\d+/').textContent().catch((): null => null);
       if (!totalText) {
         test.skip(true, 'No total count in Needs Attention section');
         return;
@@ -245,7 +245,7 @@ test.describe('Dashboard Data Consistency Tests @data-consistency', () => {
       const totalRows = page.locator('tbody tr');
 
       let prListCount: number;
-      const showingText = await prListTotal.textContent().catch(() => null);
+      const showingText = await prListTotal.textContent().catch((): null => null);
       if (showingText) {
         const match = showingText.match(/of (\d+)/);
         prListCount = match ? parseInt(match[1], 10) : await totalRows.count();
@@ -280,7 +280,7 @@ test.describe('Dashboard Data Consistency Tests @data-consistency', () => {
       await waitForHtmxComplete(page);
 
       // Wait for the PR list to load
-      await page.waitForSelector('tbody', { timeout: 10000 }).catch(() => null);
+      await page.waitForSelector('tbody', { timeout: 10000 }).catch((): null => null);
 
       // Get total from PR list - look for "Total PRs" stat
       // The page shows a stat card with "Total PRs" label and a number value
