@@ -1,4 +1,5 @@
 from allauth.account.models import EmailAddress
+from django.contrib.auth.models import AnonymousUser
 from django.db.models import F
 from django.http import HttpRequest
 from django.utils.translation import gettext as _
@@ -10,7 +11,7 @@ from . import roles
 from .models import Invitation, Team
 
 
-def get_default_team_name_for_user(user: CustomUser):
+def get_default_team_name_for_user(user: CustomUser) -> str:
     return (user.get_display_name().split("@")[0] or _("My Team")).title()
 
 
@@ -24,7 +25,7 @@ def get_next_unique_team_slug(team_name: str) -> str:
     return get_next_unique_slug(Team, team_name[:40], "slug")
 
 
-def get_team_for_request(request, view_kwargs):
+def get_team_for_request(request, view_kwargs) -> Team | None:
     """
     Get the team for a request.
 
@@ -63,7 +64,9 @@ def get_team_for_request(request, view_kwargs):
     return request.user.teams.first()
 
 
-def get_default_team_from_request(request: HttpRequest) -> Team:
+def get_default_team_from_request(request: HttpRequest) -> Team | None:
+    if isinstance(request.user, AnonymousUser):
+        return None
     if "team" in request.session:
         try:
             return request.user.teams.get(id=request.session["team"])
@@ -75,14 +78,13 @@ def get_default_team_from_request(request: HttpRequest) -> Team:
     return get_default_team_for_user(request.user)
 
 
-def get_default_team_for_user(user: CustomUser):
+def get_default_team_for_user(user: CustomUser) -> Team | None:
     if user.teams.exists():
         return user.teams.first()
-    else:
-        return None
+    return None
 
 
-def create_default_team_for_user(user: CustomUser, team_name: str = None):
+def create_default_team_for_user(user: CustomUser, team_name: str | None = None):
     team_name = team_name or get_default_team_name_for_user(user)
     slug = get_next_unique_team_slug(team_name)
     # unicode characters aren't allowed
