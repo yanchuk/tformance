@@ -529,3 +529,46 @@ def generate_monthly_insights() -> dict:
 
     logger.info(f"Monthly insights complete: {teams_processed} processed, {errors} errors")
     return {"teams_processed": teams_processed, "errors": errors}
+
+
+@shared_task
+def send_weekly_insight_emails() -> dict:
+    """Send weekly insight emails to all team admins.
+
+    Scheduled for Monday 9 AM UTC (3 hours after insight generation at 6 AM).
+    Iterates over all teams with completed onboarding and sends personalized
+    emails to team admins summarizing their weekly engineering insights.
+
+    Returns:
+        Dict with teams_processed, emails_sent, skipped, and errors counts
+    """
+    from apps.insights.services.weekly_email import send_weekly_insight_email
+
+    teams = Team.objects.filter(onboarding_complete=True)  # noqa: TEAM001 - system job
+    results = {
+        "teams_processed": 0,
+        "emails_sent": 0,
+        "skipped": 0,
+        "errors": 0,
+    }
+
+    for team in teams:
+        try:
+            result = send_weekly_insight_email(team)
+            results["teams_processed"] += 1
+
+            if result["sent_to"]:
+                results["emails_sent"] += result["sent_to"]
+            else:
+                results["skipped"] += 1
+
+        except Exception as e:
+            logger.exception(f"Failed to send weekly email for team {team.name}: {e}")
+            results["errors"] += 1
+
+    logger.info(
+        f"Weekly insight emails: {results['teams_processed']} teams, "
+        f"{results['emails_sent']} emails sent, {results['skipped']} skipped, "
+        f"{results['errors']} errors"
+    )
+    return results

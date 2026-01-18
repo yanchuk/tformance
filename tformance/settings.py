@@ -614,6 +614,7 @@ CELERY_TASK_ROUTES = {
     "apps.integrations.tasks.sync_jira_project_task": {"queue": "sync"},
     "apps.integrations.tasks.sync_copilot_metrics_task": {"queue": "sync"},
     "apps.integrations.tasks.fetch_pr_complete_data_task": {"queue": "sync"},
+    "apps.metrics.tasks.send_weekly_insight_emails": {"queue": "sync"},
     # LLM tasks (rate limited) -> 'llm' queue
     "apps.metrics.tasks.run_llm_analysis_batch": {"queue": "llm"},
     "apps.metrics.tasks.run_all_teams_llm_analysis": {"queue": "llm"},
@@ -685,6 +686,11 @@ SCHEDULED_TASKS = {
         "task": "apps.metrics.tasks.generate_monthly_insights",
         "schedule": schedules.crontab(minute=0, hour=6, day_of_month=1),  # 1st of month 6 AM UTC
         "expire_seconds": 60 * 60 * 2,  # 2 hour expiry
+    },
+    "send-weekly-insights-email": {
+        "task": "apps.metrics.tasks.send_weekly_insight_emails",
+        "schedule": schedules.crontab(minute=0, hour=9, day_of_week=1),  # Monday 9 AM UTC
+        "expire_seconds": 60 * 60,  # 1 hour expiry
     },
     "recover-stuck-pipelines": {
         "task": "apps.integrations.onboarding_pipeline.check_and_recover_stuck_pipelines",
