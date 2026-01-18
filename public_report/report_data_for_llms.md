@@ -738,7 +738,7 @@ Based on this analysis:
 
 **Oleksii Ianchuk** — Technical Product Manager
 
-8 years building developer tools. Technical Product Lead at **Mailtrap** — shipped Email API/SMTP, ran pricing experiments, onboarded enterprise accounts.
+8 years in tech products, 4 years in developer tools. Technical Product Lead at **Mailtrap** — shipped Email API/SMTP, ran pricing experiments, onboarded enterprise accounts.
 
 *"We used Copilot, Cursor, and every AI tool we could get. But I couldn't answer: 'Is this actually helping us ship faster?'"*
 
