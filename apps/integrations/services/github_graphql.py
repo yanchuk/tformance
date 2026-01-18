@@ -482,6 +482,42 @@ class GitHubGraphQLTimeoutError(GitHubGraphQLError):
     pass
 
 
+class GitHubGraphQLPermissionError(GitHubGraphQLError):
+    """Exception raised when GitHub App lacks permission to access a resource.
+
+    This occurs when the GitHub App installation doesn't have required permissions,
+    or the repository has restricted access to certain data (e.g., commits).
+
+    Common error: "Resource not accessible by integration"
+
+    This error should NOT be retried - it requires user action to fix permissions.
+    """
+
+    pass
+
+
+def _is_permission_error(error: Exception) -> bool:
+    """Check if an exception indicates a GitHub permission/access error.
+
+    These errors should not be retried as they require user action to fix.
+
+    Args:
+        error: The exception to check
+
+    Returns:
+        True if this is a permission error, False otherwise
+    """
+    error_str = str(error).lower()
+    permission_indicators = [
+        "resource not accessible by integration",
+        "forbidden",
+        "must have push access",
+        "requires authentication",
+        "saml_failure",
+    ]
+    return any(indicator in error_str for indicator in permission_indicators)
+
+
 class GitHubGraphQLClient:
     """Client for interacting with GitHub GraphQL API.
 
@@ -641,6 +677,13 @@ class GitHubGraphQLClient:
                     raise GitHubGraphQLTimeoutError(error_msg) from e
             except Exception as e:
                 error_msg = f"GraphQL query failed for {operation_name}: {type(e).__name__}: {e}"
+                # Check if this is a permission error - don't retry, raise specific exception
+                if _is_permission_error(e):
+                    logger.warning(
+                        f"Permission error during {operation_name}: {e}. "
+                        "The GitHub App may need additional permissions."
+                    )
+                    raise GitHubGraphQLPermissionError(error_msg) from e
                 logger.error(error_msg)
                 raise GitHubGraphQLError(error_msg) from e
 

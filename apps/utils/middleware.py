@@ -53,8 +53,10 @@ class SecurityHeadersMiddleware:
         ws_src = "ws://localhost:5173" if settings.DEBUG else ""
 
         script_src = (
-            f"script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com "
-            f"https://*.posthog.com https://*.i.posthog.com {vite_src}"
+            f"script-src 'self' 'unsafe-inline' 'unsafe-eval' "
+            f"https://cdn.jsdelivr.net https://unpkg.com "
+            f"https://*.posthog.com https://*.i.posthog.com "
+            f"https://www.googletagmanager.com https://www.google-analytics.com {vite_src}"
         )
         style_src = (
             f"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com "
@@ -62,7 +64,9 @@ class SecurityHeadersMiddleware:
         )
         connect_src = (
             f"connect-src 'self' https://api.github.com https://api.atlassian.com "
-            f"https://slack.com https://*.posthog.com https://*.i.posthog.com wss: {vite_src} {ws_src}"
+            f"https://slack.com https://*.posthog.com https://*.i.posthog.com "
+            f"https://*.google-analytics.com https://*.analytics.google.com "
+            f"https://*.googletagmanager.com wss: {vite_src} {ws_src}"
         )
 
         csp_directives = [

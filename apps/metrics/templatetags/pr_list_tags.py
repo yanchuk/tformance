@@ -871,8 +871,11 @@ def has_llm_summary(pr) -> bool:
 def user_note_for_pr(context, pr):
     """Get the current user's note for a PR.
 
+    Uses prefetched user_notes dict from context when available (PR list views)
+    to prevent N+1 queries. Falls back to individual query for other contexts.
+
     Args:
-        context: Template context with request
+        context: Template context with request and optional user_notes dict
         pr: PullRequest instance
 
     Returns:
@@ -886,7 +889,12 @@ def user_note_for_pr(context, pr):
     if not request or not hasattr(request, "user") or not request.user.is_authenticated:
         return None
 
-    # Import here to avoid circular imports
+    # Use prefetched notes if available (prevents N+1 queries in list views)
+    user_notes = context.get("user_notes")
+    if user_notes is not None:
+        return user_notes.get(pr.id)
+
+    # Fallback to individual query for contexts without prefetch
     from apps.notes.models import PRNote
 
     try:

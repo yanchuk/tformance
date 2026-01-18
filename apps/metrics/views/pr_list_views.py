@@ -16,6 +16,28 @@ from apps.metrics.services.pr_list_service import (
 from apps.teams.decorators import login_and_team_required
 from apps.utils.analytics import track_event
 
+
+def _get_user_notes_for_prs(user, pr_ids: list[int]) -> dict:
+    """Fetch all user notes for a list of PRs in a single query.
+
+    This prevents N+1 queries when displaying notes in the PR list.
+
+    Args:
+        user: The authenticated user
+        pr_ids: List of PullRequest IDs to fetch notes for
+
+    Returns:
+        Dictionary mapping PR ID to PRNote instance
+    """
+    if not user or not user.is_authenticated or not pr_ids:
+        return {}
+
+    from apps.notes.models import PRNote
+
+    notes = PRNote.objects.filter(user=user, pull_request_id__in=pr_ids)
+    return {note.pull_request_id: note for note in notes}
+
+
 # Default page size for PR list
 PAGE_SIZE = 50
 
@@ -123,7 +145,9 @@ def _get_sort_from_request(request: HttpRequest) -> tuple[str, str]:
     return sort, order
 
 
-def _get_pr_list_context(team, filters: dict, page_number: int = 1, sort: str = "merged", order: str = "desc") -> dict:
+def _get_pr_list_context(
+    team, filters: dict, page_number: int = 1, sort: str = "merged", order: str = "desc", user=None
+) -> dict:
     """Get common context data for PR list views.
 
     Args:
@@ -132,9 +156,10 @@ def _get_pr_list_context(team, filters: dict, page_number: int = 1, sort: str = 
         page_number: Page number for pagination
         sort: Field to sort by
         order: Sort order ('asc' or 'desc')
+        user: The authenticated user (for prefetching notes)
 
     Returns:
-        Dictionary with prs, page_obj, stats, filters, sort, and order
+        Dictionary with prs, page_obj, stats, filters, sort, order, and user_notes
     """
     # Get filtered queryset
     prs = get_prs_queryset(team, filters)
@@ -153,6 +178,11 @@ def _get_pr_list_context(team, filters: dict, page_number: int = 1, sort: str = 
     paginator = Paginator(prs, PAGE_SIZE)
     page_obj = paginator.get_page(page_number)
 
+    # Prefetch user notes for all PRs on this page (prevents N+1 queries)
+    # The template tag user_note_for_pr will use this dict instead of querying
+    pr_ids = [pr.id for pr in page_obj]
+    user_notes = _get_user_notes_for_prs(user, pr_ids)
+
     return {
         "prs": page_obj,
         "page_obj": page_obj,
@@ -160,6 +190,7 @@ def _get_pr_list_context(team, filters: dict, page_number: int = 1, sort: str = 
         "filters": filters,
         "sort": sort,
         "order": order,
+        "user_notes": user_notes,  # Dict mapping PR ID -> PRNote
     }
 
 
@@ -178,8 +209,8 @@ def pr_list(request: HttpRequest) -> HttpResponse:
     page_number = request.GET.get("page", 1)
     sort, order = _get_sort_from_request(request)
 
-    # Get common context
-    context = _get_pr_list_context(team, filters, page_number, sort, order)
+    # Get common context (pass user for note prefetching)
+    context = _get_pr_list_context(team, filters, page_number, sort, order, user=request.user)
 
     # Add page-specific context
     context["active_tab"] = "pull_requests"  # For sidebar highlighting
@@ -229,8 +260,8 @@ def pr_list_table(request: HttpRequest) -> HttpResponse:
     page_number = request.GET.get("page", 1)
     sort, order = _get_sort_from_request(request)
 
-    # Get common context
-    context = _get_pr_list_context(team, filters, page_number, sort, order)
+    # Get common context (pass user for note prefetching)
+    context = _get_pr_list_context(team, filters, page_number, sort, order, user=request.user)
 
     return TemplateResponse(
         request,

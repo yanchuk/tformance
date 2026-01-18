@@ -820,7 +820,7 @@ POSTHOG_HOST = env("POSTHOG_HOST", default="https://us.i.posthog.com")
 if POSTHOG_API_KEY:
     import posthog
 
-    posthog.project_api_key = POSTHOG_API_KEY
+    posthog.api_key = POSTHOG_API_KEY
     posthog.host = POSTHOG_HOST
     # Enable exception autocapture for error tracking
     posthog.exception_autocapture = True

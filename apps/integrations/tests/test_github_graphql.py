@@ -8,8 +8,10 @@ from django.test import TestCase
 from apps.integrations.services.github_graphql import (
     GitHubGraphQLClient,
     GitHubGraphQLError,
+    GitHubGraphQLPermissionError,
     GitHubGraphQLRateLimitError,
     GitHubGraphQLTimeoutError,
+    _is_permission_error,
 )
 
 
@@ -569,6 +571,61 @@ class TestGitHubGraphQLTimeoutError(TestCase):
             raise GitHubGraphQLTimeoutError(error_message)
         except GitHubGraphQLTimeoutError as e:
             self.assertEqual(str(e), error_message)
+
+
+class TestGitHubGraphQLPermissionError(TestCase):
+    """Tests for GitHubGraphQLPermissionError exception."""
+
+    def test_permission_error_can_be_raised(self):
+        """Test that GitHubGraphQLPermissionError can be raised and caught."""
+        with self.assertRaises(GitHubGraphQLPermissionError):
+            raise GitHubGraphQLPermissionError("Resource not accessible by integration")
+
+    def test_permission_error_inherits_from_base_error(self):
+        """Test that GitHubGraphQLPermissionError inherits from GitHubGraphQLError."""
+        self.assertTrue(issubclass(GitHubGraphQLPermissionError, GitHubGraphQLError))
+
+    def test_permission_error_message(self):
+        """Test that GitHubGraphQLPermissionError preserves error message."""
+        error_message = "Resource not accessible by integration"
+        try:
+            raise GitHubGraphQLPermissionError(error_message)
+        except GitHubGraphQLPermissionError as e:
+            self.assertEqual(str(e), error_message)
+
+
+class TestIsPermissionError(TestCase):
+    """Tests for _is_permission_error helper function."""
+
+    def test_detects_resource_not_accessible(self):
+        """Test detection of 'resource not accessible by integration' error."""
+        error = Exception("Resource not accessible by integration")
+        self.assertTrue(_is_permission_error(error))
+
+    def test_detects_forbidden_error(self):
+        """Test detection of FORBIDDEN error."""
+        error = Exception("FORBIDDEN: Access denied")
+        self.assertTrue(_is_permission_error(error))
+
+    def test_detects_push_access_error(self):
+        """Test detection of 'must have push access' error."""
+        error = Exception("You must have push access to this repository")
+        self.assertTrue(_is_permission_error(error))
+
+    def test_detects_saml_failure(self):
+        """Test detection of SAML authentication failure."""
+        error = Exception("saml_failure: SSO required")
+        self.assertTrue(_is_permission_error(error))
+
+    def test_does_not_match_unrelated_errors(self):
+        """Test that unrelated errors are not detected as permission errors."""
+        error = Exception("Network timeout")
+        self.assertFalse(_is_permission_error(error))
+
+    def test_case_insensitive_matching(self):
+        """Test that matching is case-insensitive."""
+        error = Exception("RESOURCE NOT ACCESSIBLE BY INTEGRATION")
+        self.assertTrue(_is_permission_error(error))
 
 
 @patch("asyncio.sleep", new_callable=AsyncMock)

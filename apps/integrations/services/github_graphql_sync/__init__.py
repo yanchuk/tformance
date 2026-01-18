@@ -19,6 +19,7 @@ All public functions are re-exported here for backward compatibility.
 from apps.integrations.services.github_graphql import (
     GitHubGraphQLClient,
     GitHubGraphQLError,
+    GitHubGraphQLPermissionError,
     GitHubGraphQLRateLimitError,
 )
 
@@ -42,5 +43,6 @@ __all__ = [
     # Re-exported for test mocking compatibility
     "GitHubGraphQLClient",
     "GitHubGraphQLError",
+    "GitHubGraphQLPermissionError",
     "GitHubGraphQLRateLimitError",
 ]

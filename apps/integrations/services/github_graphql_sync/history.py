@@ -122,6 +122,18 @@ async def sync_repository_history_graphql(
                 result.errors.append(f"Rate limit exceeded: {e}")
                 await _update_sync_status(tracked_repo_id, "error")
                 return result.to_dict()
+            except _pkg.GitHubGraphQLPermissionError as e:
+                # Permission errors indicate the GitHub App lacks required permissions
+                result.errors.append(
+                    f"Permission error: The GitHub App may need 'Contents: Read' permission "
+                    f"to access commit data for this repository. {e}"
+                )
+                logger.warning(
+                    f"Permission error during sync for {owner}/{repo}: {e}. "
+                    "User may need to update GitHub App permissions."
+                )
+                await _update_sync_status(tracked_repo_id, "error")
+                return result.to_dict()
             except _pkg.GitHubGraphQLError as e:
                 result.errors.append(f"GraphQL error: {e}")
                 await _update_sync_status(tracked_repo_id, "error")
@@ -265,6 +277,18 @@ async def sync_repository_history_by_search(
                 )
             except _pkg.GitHubGraphQLRateLimitError as e:
                 result.errors.append(f"Rate limit exceeded: {e}")
+                await _update_sync_status(tracked_repo_id, "error")
+                return result.to_dict()
+            except _pkg.GitHubGraphQLPermissionError as e:
+                # Permission errors indicate the GitHub App lacks required permissions
+                result.errors.append(
+                    f"Permission error: The GitHub App may need 'Contents: Read' permission "
+                    f"to access commit data for this repository. {e}"
+                )
+                logger.warning(
+                    f"Permission error during sync for {full_name}: {e}. "
+                    "User may need to update GitHub App permissions."
+                )
                 await _update_sync_status(tracked_repo_id, "error")
                 return result.to_dict()
             except _pkg.GitHubGraphQLError as e:

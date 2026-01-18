@@ -44,3 +44,19 @@ class TokenRevokedError(Exception):
     """
 
     pass
+
+
+class GitHubPermissionError(Exception):
+    """Raised when the GitHub App lacks permission to access a resource.
+
+    This occurs when:
+    - GitHub App installation doesn't have required permissions
+    - Repository has restricted access to certain data (e.g., commits)
+    - Organization has SAML/SSO requirements not met
+
+    Common error: "Resource not accessible by integration"
+
+    The error message should guide the user to update GitHub App permissions.
+    """
+
+    pass

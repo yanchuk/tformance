@@ -635,3 +635,120 @@ class TestPrListSelfReviewedBadge(TestCase):
         self.assertContains(response, "Multi Review")
         # But should NOT have the Self badge (since there are multiple reviewers)
         self.assertNotContains(response, 'title="Self-reviewed: Author is the only reviewer"')
+
+
+class TestUserNotesPrefetch(TestCase):
+    """Tests for user notes prefetching optimization (N+1 fix)."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.team = TeamFactory()
+        self.user = UserFactory()
+        self.team.members.add(self.user, through_defaults={"role": ROLE_ADMIN})
+        self.member = TeamMemberFactory(team=self.team)
+        self.client = Client()
+        self.client.force_login(self.user)
+
+    def test_user_notes_in_context(self):
+        """Test that user_notes dict is passed to template context."""
+        now = timezone.now()
+        PullRequestFactory(team=self.team, title="Test PR", state="merged", merged_at=now - timedelta(days=5))
+        url = reverse("metrics:pr_list")
+
+        response = self.client.get(url)
+
+        self.assertIn("user_notes", response.context)
+        self.assertIsInstance(response.context["user_notes"], dict)
+
+    def test_user_notes_prefetched_for_existing_notes(self):
+        """Test that existing user notes are prefetched and in context."""
+        from apps.notes.models import PRNote
+
+        now = timezone.now()
+        pr = PullRequestFactory(team=self.team, title="PR with Note", state="merged", merged_at=now - timedelta(days=5))
+        # Create a note for this PR
+        PRNote.objects.create(user=self.user, pull_request=pr, content="My note")
+        url = reverse("metrics:pr_list")
+
+        response = self.client.get(url)
+
+        user_notes = response.context["user_notes"]
+        self.assertIn(pr.id, user_notes)
+        self.assertEqual(user_notes[pr.id].content, "My note")
+
+    def test_user_notes_empty_when_no_notes(self):
+        """Test that user_notes dict is empty when user has no notes."""
+        now = timezone.now()
+        PullRequestFactory(team=self.team, title="PR without Note", state="merged", merged_at=now - timedelta(days=5))
+        url = reverse("metrics:pr_list")
+
+        response = self.client.get(url)
+
+        user_notes = response.context["user_notes"]
+        self.assertEqual(user_notes, {})
+
+    def test_user_notes_query_optimization(self):
+        """Test that notes are fetched in a single query (no N+1).
+
+        We verify that the _get_user_notes_for_prs helper only runs 1 query
+        regardless of how many PRs there are (not N queries for N PRs).
+        """
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+
+        from apps.metrics.views.pr_list_views import _get_user_notes_for_prs
+        from apps.notes.models import PRNote
+
+        now = timezone.now()
+        # Create 10 PRs with notes
+        prs = []
+        for i in range(10):
+            pr = PullRequestFactory(
+                team=self.team, title=f"PR {i}", state="merged", merged_at=now - timedelta(days=i + 1)
+            )
+            PRNote.objects.create(user=self.user, pull_request=pr, content=f"Note {i}")
+            prs.append(pr)
+
+        pr_ids = [pr.id for pr in prs]
+
+        # Test that fetching notes for 10 PRs takes only 1 query
+        with CaptureQueriesContext(connection) as context:
+            notes = _get_user_notes_for_prs(self.user, pr_ids)
+
+        # Should fetch all 10 notes in a single query
+        self.assertEqual(len(notes), 10)
+        self.assertEqual(len(context), 1, f"Expected 1 query, got {len(context)}")
+
+    def test_user_notes_only_for_authenticated_user(self):
+        """Test that notes are only fetched for the authenticated user."""
+        from apps.notes.models import PRNote
+
+        other_user = UserFactory()
+        self.team.members.add(other_user, through_defaults={"role": ROLE_ADMIN})
+
+        now = timezone.now()
+        pr = PullRequestFactory(team=self.team, title="Shared PR", state="merged", merged_at=now - timedelta(days=5))
+        # Create notes from both users
+        PRNote.objects.create(user=self.user, pull_request=pr, content="My note")
+        PRNote.objects.create(user=other_user, pull_request=pr, content="Other user's note")
+
+        url = reverse("metrics:pr_list")
+        response = self.client.get(url)
+
+        user_notes = response.context["user_notes"]
+        # Should only contain current user's note
+        self.assertEqual(user_notes[pr.id].content, "My note")
+
+    def test_table_partial_also_has_user_notes(self):
+        """Test that table partial view also includes user_notes in context."""
+        from apps.notes.models import PRNote
+
+        now = timezone.now()
+        pr = PullRequestFactory(team=self.team, title="Test PR", state="merged", merged_at=now - timedelta(days=5))
+        PRNote.objects.create(user=self.user, pull_request=pr, content="Table note")
+
+        url = reverse("metrics:pr_list_table")
+        response = self.client.get(url, HTTP_HX_REQUEST="true")
+
+        self.assertIn("user_notes", response.context)
+        self.assertIn(pr.id, response.context["user_notes"])
