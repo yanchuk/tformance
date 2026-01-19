@@ -35,9 +35,11 @@ def connect_copilot(request):
 
     # Check if Copilot integration is enabled via feature flag
     if not is_integration_enabled(request, "copilot"):
-        # Skip to next step (complete for now, since Copilot is after sync_progress)
+        # Skip to next step - map slug to URL name
+        slug_to_url = {"jira": "connect_jira", "slack": "connect_slack", "complete": "complete"}
         next_step = get_next_onboarding_step(request, "copilot")
-        return redirect(f"onboarding:{next_step}")
+        url_name = slug_to_url.get(next_step, "complete")
+        return redirect(f"onboarding:{url_name}")
 
     if request.method == "POST":
         action = request.POST.get("action")
@@ -54,9 +56,11 @@ def connect_copilot(request):
                 {"team_slug": team.slug, "result": result.get("status")},
             )
 
-            # Redirect to next step
+            # Redirect to next step - map slug to URL name
+            slug_to_url = {"jira": "connect_jira", "slack": "connect_slack", "complete": "complete"}
             next_step = get_next_onboarding_step(request, "copilot")
-            return redirect(f"onboarding:{next_step}")
+            url_name = slug_to_url.get(next_step, "complete")
+            return redirect(f"onboarding:{url_name}")
 
         elif action == "skip":
             # Track skip event
@@ -66,9 +70,11 @@ def connect_copilot(request):
                 {"step": "copilot", "team_slug": team.slug},
             )
 
-            # Redirect to next step
+            # Redirect to next step - map slug to URL name
+            slug_to_url = {"jira": "connect_jira", "slack": "connect_slack", "complete": "complete"}
             next_step = get_next_onboarding_step(request, "copilot")
-            return redirect(f"onboarding:{next_step}")
+            url_name = slug_to_url.get(next_step, "complete")
+            return redirect(f"onboarding:{url_name}")
 
     return render(
         request,

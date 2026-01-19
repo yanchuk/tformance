@@ -254,7 +254,8 @@ def get_next_onboarding_step(request: HttpRequest, current_step: str) -> str:
         current_step: The current step name
 
     Returns:
-        The next step name
+        The next step slug (e.g., "copilot", "jira", "slack", "complete")
+        Callers should map slugs to URL names if needed.
     """
     enabled_steps = get_enabled_onboarding_steps(request)
 

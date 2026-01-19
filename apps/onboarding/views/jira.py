@@ -43,11 +43,11 @@ def connect_jira(request):
     # Check if Jira integration is enabled via feature flag
     if not is_integration_enabled(request, "jira"):
         # Skip to next step (slack if enabled, otherwise complete)
+        # Map slug to URL name
+        slug_to_url = {"slack": "connect_slack", "complete": "complete"}
         next_step = get_next_onboarding_step(request, "jira")
-        if next_step == "slack":
-            return redirect("onboarding:connect_slack")
-        else:
-            return redirect("onboarding:complete")
+        url_name = slug_to_url.get(next_step, "complete")
+        return redirect(f"onboarding:{url_name}")
 
     # Check if Jira is already connected
     jira_connected = JiraIntegration.objects.filter(team=team).exists()

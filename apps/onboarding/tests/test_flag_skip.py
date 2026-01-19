@@ -133,7 +133,7 @@ class TestSyncProgressNavigation(TestCase):
             response = self.client.get(reverse("onboarding:sync_progress"))
 
             self.assertEqual(response.status_code, 200)
-            # Check that the next_step context variable is set correctly
+            # Check that the next_step context variable is set correctly (slug)
             self.assertEqual(response.context.get("next_step"), "jira")
 
     def test_sync_progress_continue_links_to_slack_when_jira_disabled(self):
@@ -145,6 +145,7 @@ class TestSyncProgressNavigation(TestCase):
             response = self.client.get(reverse("onboarding:sync_progress"))
 
             self.assertEqual(response.status_code, 200)
+            # Slug, not URL name
             self.assertEqual(response.context.get("next_step"), "slack")
 
     def test_sync_progress_continue_links_to_complete_when_both_disabled(self):
