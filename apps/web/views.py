@@ -107,6 +107,64 @@ def report_llms_data(request):
         return HttpResponse("Report data not found", status=404)
 
 
+def report_data_file(request, filename):
+    """Serve data files from public_report/data/ directory.
+
+    Only allows specific file extensions for security.
+    """
+    import os
+
+    from django.http import FileResponse, HttpResponse
+
+    # Security: only allow specific extensions
+    allowed_extensions = {".csv", ".txt", ".json"}
+    ext = os.path.splitext(filename)[1].lower()
+    if ext not in allowed_extensions:
+        return HttpResponse("File type not allowed", status=403)
+
+    # Security: prevent directory traversal
+    if ".." in filename or "/" in filename:
+        return HttpResponse("Invalid filename", status=400)
+
+    file_path = os.path.join(settings.BASE_DIR, "public_report", "data", filename)
+
+    if os.path.exists(file_path):
+        content_types = {
+            ".csv": "text/csv; charset=utf-8",
+            ".txt": "text/plain; charset=utf-8",
+            ".json": "application/json; charset=utf-8",
+        }
+        content_type = content_types.get(ext, "application/octet-stream")
+        return FileResponse(open(file_path, "rb"), content_type=content_type)
+    else:
+        return HttpResponse("File not found", status=404)
+
+
+def report_static_file(request, filename):
+    """Serve static files from public_report/ root (favicon, etc)."""
+    import os
+
+    from django.http import FileResponse, HttpResponse
+
+    # Security: only allow specific files
+    allowed_files = {"favicon.ico", "favicon.svg", "report_data_for_llms.md"}
+    if filename not in allowed_files:
+        return HttpResponse("File not found", status=404)
+
+    file_path = os.path.join(settings.BASE_DIR, "public_report", filename)
+
+    if os.path.exists(file_path):
+        content_types = {
+            "favicon.ico": "image/x-icon",
+            "favicon.svg": "image/svg+xml",
+            "report_data_for_llms.md": "text/markdown; charset=utf-8",
+        }
+        content_type = content_types.get(filename, "application/octet-stream")
+        return FileResponse(open(file_path, "rb"), content_type=content_type)
+    else:
+        return HttpResponse("File not found", status=404)
+
+
 @login_and_team_required
 def team_home(request):
     """Team home page with conditional content based on integration status.
