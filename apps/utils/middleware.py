@@ -66,7 +66,7 @@ class SecurityHeadersMiddleware:
             f"connect-src 'self' https://api.github.com https://api.atlassian.com "
             f"https://slack.com https://*.posthog.com https://*.i.posthog.com "
             f"https://*.google-analytics.com https://*.analytics.google.com "
-            f"https://*.googletagmanager.com wss: {vite_src} {ws_src}"
+            f"https://*.googletagmanager.com https://cdn.jsdelivr.net wss: {vite_src} {ws_src}"
         )
 
         csp_directives = [
