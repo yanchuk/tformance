@@ -1,12 +1,62 @@
 {% load i18n %}
 {% load static %}
-<section class="bg-base-100 min-h-[90vh] flex items-center relative overflow-hidden">
+<section class="bg-base-100 flex items-center relative overflow-hidden">
   <!-- Subtle grid background -->
   <div class="absolute inset-0 bg-[linear-gradient(rgba(249,115,22,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(249,115,22,0.03)_1px,transparent_1px)] bg-[size:60px_60px]"></div>
 
   <div class="relative z-10 w-full max-w-6xl mx-auto px-4 py-12 md:py-16">
-    <!-- Terminal Window -->
-    <div class="terminal-window max-w-4xl mx-auto"
+    <!-- Main Headline (moved above terminal) -->
+    <div class="text-center">
+      <!-- Category label -->
+      <span class="inline-block px-3 py-1 text-sm font-mono text-accent-primary bg-accent-primary/10 rounded-full mb-6">
+        Engineering Analytics + AI Impact
+      </span>
+
+      <h1 class="text-3xl md:text-5xl lg:text-6xl font-bold text-base-content leading-tight">
+        Understand your team's velocity.<br class="hidden md:block"> See if AI tools are actually helping.
+      </h1>
+
+      <p class="mt-6 text-lg md:text-xl text-base-content/80 max-w-3xl mx-auto leading-relaxed">
+        Connect GitHub. Get instant dashboards showing PR metrics, cycle time, and review load. Compare AI-assisted work vs traditional—with data, not gut feelings.
+      </p>
+
+      <!-- CTAs -->
+      <div class="flex flex-col sm:flex-row justify-center gap-4 mt-8">
+        <a href="{% url 'account_signup' %}"
+           class="btn btn-lg bg-accent-primary hover:bg-orange-600 text-white font-semibold px-8 border-0">
+          Start Free
+        </a>
+        <a href="#how-it-works"
+           class="btn btn-lg btn-outline border-base-content/30 text-base-content/90 hover:bg-base-200 hover:border-base-content/50 px-8">
+          See How It Works
+        </a>
+      </div>
+
+      <!-- Trust indicators -->
+      <div class="mt-6 flex flex-wrap justify-center items-center gap-6 text-sm text-base-content/80">
+        <div class="flex items-center gap-2">
+          <svg class="w-5 h-5 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+          </svg>
+          <span>Free during Alpha</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <svg class="w-5 h-5 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+          </svg>
+          <span>No credit card</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <svg class="w-5 h-5 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+          </svg>
+          <span>5 min setup</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Terminal Window (now below headline) -->
+    <div class="terminal-window max-w-4xl mx-auto mt-10"
          x-data="{
            lines: [],
            currentScenario: 0,
@@ -80,7 +130,7 @@
       </div>
 
       <!-- Terminal Body -->
-      <div class="terminal-body min-h-[280px] md:min-h-[320px]">
+      <div class="terminal-body h-[240px] md:h-[260px] overflow-hidden">
         <template x-for="(line, index) in lines" :key="index">
           <div class="mb-1">
             <template x-if="line.type === 'command'">
@@ -101,56 +151,6 @@
           </div>
         </template>
         <span x-show="showCursor && lines.length < scenarios[currentScenario].length" class="terminal-cursor"></span>
-      </div>
-    </div>
-
-    <!-- Main Headline -->
-    <div class="text-center mt-12 md:mt-16">
-      <!-- Category label -->
-      <span class="inline-block px-3 py-1 text-sm font-mono text-accent-primary bg-accent-primary/10 rounded-full mb-6">
-        Engineering Analytics + AI Impact
-      </span>
-
-      <h1 class="text-3xl md:text-5xl lg:text-6xl font-bold text-base-content leading-tight">
-        Understand your team's velocity.<br class="hidden md:block"> See if AI tools are actually helping.
-      </h1>
-
-      <p class="mt-6 text-lg md:text-xl text-base-content/80 max-w-3xl mx-auto leading-relaxed">
-        Connect GitHub. Get instant dashboards showing PR metrics, cycle time, and review load. Compare AI-assisted work vs traditional—with data, not gut feelings.
-      </p>
-
-      <!-- CTAs -->
-      <div class="flex flex-col sm:flex-row justify-center gap-4 mt-10">
-        <a href="{% url 'account_signup' %}"
-           class="btn btn-lg bg-accent-primary hover:bg-orange-600 text-white font-semibold px-8 border-0">
-          Start Free
-        </a>
-        <a href="#how-it-works"
-           class="btn btn-lg btn-outline border-base-content/30 text-base-content/90 hover:bg-base-200 hover:border-base-content/50 px-8">
-          See How It Works
-        </a>
-      </div>
-
-      <!-- Trust indicators -->
-      <div class="mt-12 flex flex-wrap justify-center items-center gap-6 text-sm text-base-content/80">
-        <div class="flex items-center gap-2">
-          <svg class="w-5 h-5 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-          </svg>
-          <span>Free during Alpha</span>
-        </div>
-        <div class="flex items-center gap-2">
-          <svg class="w-5 h-5 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-          </svg>
-          <span>No credit card</span>
-        </div>
-        <div class="flex items-center gap-2">
-          <svg class="w-5 h-5 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-          </svg>
-          <span>5 min setup</span>
-        </div>
       </div>
     </div>
   </div>
