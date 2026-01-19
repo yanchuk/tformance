@@ -2,7 +2,7 @@
 
 > **Quick Copy for LLMs:**
 > ```
-> https://raw.githubusercontent.com/yanchuk/tformance/main/docs/report_data_for_llms.md
+> https://tformance.com/report/report_data_for_llms.md
 > ```
 >
 > Paste this URL into ChatGPT, Claude, or any LLM with web access and ask: *"Read this document and summarize the key findings about AI tool impact on software engineering."*
@@ -685,15 +685,15 @@ Why do our category metrics show 125k PRs instead of 167k? Here's the data funne
 ### Raw Data URLs
 
 ```
-https://raw.githubusercontent.com/yanchuk/tformance/main/docs/data/overall_stats.txt
-https://raw.githubusercontent.com/yanchuk/tformance/main/docs/data/ai_categories.csv
-https://raw.githubusercontent.com/yanchuk/tformance/main/docs/data/category_metrics.csv
-https://raw.githubusercontent.com/yanchuk/tformance/main/docs/data/ai_tools_with_categories.csv
-https://raw.githubusercontent.com/yanchuk/tformance/main/docs/data/team_summary.csv
-https://raw.githubusercontent.com/yanchuk/tformance/main/docs/data/monthly_trends.csv
-https://raw.githubusercontent.com/yanchuk/tformance/main/docs/data/ai_tools_monthly.csv
-https://raw.githubusercontent.com/yanchuk/tformance/main/docs/data/normalized_metrics.csv
-https://raw.githubusercontent.com/yanchuk/tformance/main/docs/data/within_team_comparison.csv
+https://tformance.com/report/data/overall_stats.txt
+https://tformance.com/report/data/ai_categories.csv
+https://tformance.com/report/data/category_metrics.csv
+https://tformance.com/report/data/ai_tools_with_categories.csv
+https://tformance.com/report/data/team_summary.csv
+https://tformance.com/report/data/monthly_trends.csv
+https://tformance.com/report/data/ai_tools_monthly.csv
+https://tformance.com/report/data/normalized_metrics.csv
+https://tformance.com/report/data/within_team_comparison.csv
 ```
 
 ### Data Schema
