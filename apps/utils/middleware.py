@@ -54,7 +54,7 @@ class SecurityHeadersMiddleware:
 
         script_src = (
             f"script-src 'self' 'unsafe-inline' 'unsafe-eval' "
-            f"https://cdn.jsdelivr.net https://unpkg.com "
+            f"https://cdn.jsdelivr.net https://unpkg.com https://cdn.tailwindcss.com "
             f"https://*.posthog.com https://*.i.posthog.com "
             f"https://www.googletagmanager.com https://www.google-analytics.com {vite_src}"
         )
