@@ -12,17 +12,17 @@
         Platform Features
       </span>
       <h2 class="text-2xl md:text-4xl font-bold text-base-content">
-        Everything you need to understand your team
+        What you get
       </h2>
       <p class="mt-4 text-base-content/80 max-w-2xl mx-auto">
-        From individual performance to AI adoption metrics—all in one place.
+        PR metrics, team load, AI adoption tracking. One dashboard.
       </p>
     </div>
 
     <!-- Feature Slider Component -->
     <div x-data="featureSlider"
          x-init="$nextTick(() => init())"
-         data-slides='[{"id": "performance", "title": "Team Performance & Load", "description": "Track each contributor&apos;s throughput, cycle time, and review load. See who&apos;s overloaded and who has capacity.", "icon": "chart-bar", "image": "{% static "images/features/team-performance.webp" %}"}, {"id": "insights", "title": "Insights", "description": "Surface key trends and catch anomalies before they become problems. AI-powered analysis of your engineering data.", "icon": "lightbulb", "image": "{% static "images/features/insights.webp" %}"}, {"id": "ai-adoption", "title": "AI Adoption", "description": "Track AI tool usage and measure its impact on delivery. Compare AI-assisted vs traditional development.", "icon": "sparkles", "image": "{% static "images/features/ai-adoption.webp" %}"}, {"id": "integrations", "title": "Integrations", "description": "Connect Slack, Google Calendar, and Jira. See meeting time, messaging load, and the full picture.", "icon": "puzzle", "image": "{% static "images/features/integrations.webp" %}", "comingSoon": true}]'
+         data-slides='[{"id": "performance", "title": "Team Performance & Load", "description": "Throughput, cycle time, review load per contributor. Spot who&apos;s overloaded.", "icon": "chart-bar", "image": "{% static "images/features/team-performance.webp" %}"}, {"id": "insights", "title": "Insights", "description": "Spot trends and anomalies in your PR data. LLM analysis surfaces what you&apos;d miss in spreadsheets.", "icon": "lightbulb", "image": "{% static "images/features/insights.webp" %}"}, {"id": "ai-adoption", "title": "AI Adoption", "description": "Which PRs used Copilot, Cursor, Claude? Compare cycle time and review load: AI vs traditional.", "icon": "sparkles", "image": "{% static "images/features/ai-adoption.webp" %}"}, {"id": "integrations", "title": "Integrations", "description": "GitHub live. Slack, Calendar, Jira coming. Correlate meetings with delivery.", "icon": "puzzle", "image": "{% static "images/features/integrations.webp" %}", "comingSoon": true}]'
          @mouseenter="pauseAutoplay()"
          @mouseleave="resumeAutoplay()"
          @keydown="handleKeydown($event)"
