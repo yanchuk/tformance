@@ -1,0 +1,273 @@
+{% extends 'web/compare/base_compare.html' %}
+{% load static %}
+{% load number_filters %}
+
+{% block breadcrumb_items %}
+,{
+  "@type": "ListItem",
+  "position": 3,
+  "name": "vs {{ competitor.name }}",
+  "item": "{{ request.scheme }}://{{ request.get_host }}{% url 'web:compare_competitor' competitor=competitor.slug %}"
+}
+{% endblock breadcrumb_items %}
+
+{% block schema_markup %}
+{{ block.super }}
+{# FAQPage schema #}
+{% if competitor.faqs %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {% for faq in competitor.faqs %}
+    {
+      "@type": "Question",
+      "name": "{{ faq.question }}",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "{{ faq.answer }}"
+      }
+    }{% if not forloop.last %},{% endif %}
+    {% endfor %}
+  ]
+}
+</script>
+{% endif %}
+{% endblock schema_markup %}
+
+{% block compare_content %}
+{# Hero Section #}
+<section class="bg-base-200 py-16 md:py-20">
+  <div class="max-w-4xl mx-auto px-4 text-center">
+    <h1 class="text-3xl md:text-4xl font-bold text-base-content mb-4">
+      Tformance vs {{ competitor.name }}
+    </h1>
+    <p class="text-lg text-base-content/80 mb-6">
+      {{ competitor.our_angle }}
+    </p>
+    <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-warning/20 text-warning text-sm mb-8">
+      <span class="font-medium">Alpha</span>
+      <span class="text-warning/80">We're building fast. Some features {{ competitor.name }} has, we're adding.</span>
+    </div>
+    <div class="flex flex-col sm:flex-row gap-4 justify-center">
+      <a href="{% url 'account_signup' %}" class="btn btn-primary">Start Free Trial</a>
+      <a href="/" class="btn btn-outline">See How It Works</a>
+    </div>
+  </div>
+</section>
+
+{# TL;DR Box #}
+<section class="py-12 max-w-3xl mx-auto px-4">
+  <div class="bg-primary/10 rounded-xl p-6">
+    <h2 class="text-lg font-semibold mb-4">Why teams switch to Tformance:</h2>
+    <ul class="space-y-3">
+      {% for advantage in competitor.our_advantages|slice:":3" %}
+      <li class="flex items-start gap-3">
+        <span class="text-primary mt-1">&#10003;</span>
+        <span>{{ advantage }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+</section>
+
+{# At a Glance Table #}
+<section class="py-12 bg-base-200">
+  <div class="max-w-4xl mx-auto px-4">
+    <h2 class="text-2xl font-bold text-base-content mb-8 text-center">At a Glance</h2>
+
+    <div class="overflow-x-auto">
+      <table class="table w-full bg-base-100 rounded-lg">
+        <thead>
+          <tr>
+            <th class="bg-base-200">Feature</th>
+            <th class="bg-primary/10 text-primary">Tformance</th>
+            <th>{{ competitor.name }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="font-medium">AI Code Detection</td>
+            <td class="text-center"><span class="text-success">&#10003; Automatic</span></td>
+            <td class="text-center">
+              {% if competitor.features.ai_code_detection == True %}
+              <span class="text-success">&#10003;</span>
+              {% elif competitor.features.ai_code_detection == 'partial' %}
+              <span class="text-warning">Partial</span>
+              {% else %}
+              <span class="text-base-content/40">&#10005;</span>
+              {% endif %}
+            </td>
+          </tr>
+          <tr>
+            <td class="font-medium">GitHub Integration</td>
+            <td class="text-center"><span class="text-success">&#10003;</span></td>
+            <td class="text-center">
+              {% if competitor.features.github %}<span class="text-success">&#10003;</span>{% else %}<span class="text-base-content/40">&#10005;</span>{% endif %}
+            </td>
+          </tr>
+          <tr>
+            <td class="font-medium">Jira Integration</td>
+            <td class="text-center"><span class="text-warning">Coming Soon</span></td>
+            <td class="text-center">
+              {% if competitor.features.jira %}<span class="text-success">&#10003;</span>{% else %}<span class="text-base-content/40">&#10005;</span>{% endif %}
+            </td>
+          </tr>
+          <tr>
+            <td class="font-medium">DORA Metrics</td>
+            <td class="text-center"><span class="text-warning">Partial (cycle time)</span></td>
+            <td class="text-center">
+              {% if competitor.features.dora_metrics == True %}<span class="text-success">&#10003; Full</span>
+              {% elif competitor.features.dora_metrics == 'partial' %}<span class="text-warning">Partial</span>
+              {% else %}<span class="text-base-content/40">&#10005;</span>{% endif %}
+            </td>
+          </tr>
+          <tr>
+            <td class="font-medium">Developer Surveys</td>
+            <td class="text-center"><span class="text-warning">Coming Soon</span></td>
+            <td class="text-center">
+              {% if competitor.features.developer_surveys %}<span class="text-success">&#10003;</span>{% else %}<span class="text-base-content/40">&#10005;</span>{% endif %}
+            </td>
+          </tr>
+          <tr>
+            <td class="font-medium">SOC 2</td>
+            <td class="text-center"><span class="text-info text-sm">In process</span></td>
+            <td class="text-center">
+              {% if competitor.features.soc2 %}<span class="text-success">&#10003;</span>{% else %}<span class="text-base-content/40">&#10005;</span>{% endif %}
+            </td>
+          </tr>
+          <tr>
+            <td class="font-medium">Pricing</td>
+            <td class="text-center text-primary font-semibold">$99-699/mo flat</td>
+            <td class="text-center">{{ competitor.pricing_range }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+{# The Honest Take #}
+<section class="py-16 max-w-4xl mx-auto px-4">
+  <h2 class="text-2xl font-bold text-base-content mb-8 text-center">The Honest Take</h2>
+
+  <div class="grid md:grid-cols-2 gap-8">
+    <div class="bg-base-200 rounded-xl p-6">
+      <h3 class="font-semibold mb-4">Choose {{ competitor.name }} if:</h3>
+      <ul class="space-y-2 text-base-content/80">
+        {% for strength in competitor.their_strengths|slice:":5" %}
+        <li class="flex items-start gap-2">
+          <span class="text-base-content/50">&#x2022;</span>
+          <span>{{ strength }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    <div class="bg-primary/10 rounded-xl p-6">
+      <h3 class="font-semibold mb-4 text-primary">Choose Tformance if:</h3>
+      <ul class="space-y-2">
+        {% for advantage in competitor.our_advantages %}
+        <li class="flex items-start gap-2">
+          <span class="text-primary">&#10003;</span>
+          <span>{{ advantage }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+</section>
+
+{# Pricing Comparison #}
+{% if savings_table %}
+<section class="py-16 bg-base-200">
+  <div class="max-w-4xl mx-auto px-4">
+    <h2 class="text-2xl font-bold text-base-content mb-4 text-center">Pricing Comparison</h2>
+    <p class="text-base-content/70 text-center mb-8">Annual cost by team size</p>
+
+    <div class="overflow-x-auto">
+      <table class="table w-full bg-base-100 rounded-lg">
+        <thead>
+          <tr>
+            <th>Team Size</th>
+            <th>{{ competitor.name }} (annual)</th>
+            <th class="text-primary">Tformance (annual)</th>
+            <th>You Save</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in savings_table %}
+          <tr>
+            <td class="font-medium">{{ row.team_size }} devs</td>
+            <td>${{ row.their_cost|intcomma }}</td>
+            <td class="text-primary">${{ row.our_cost|intcomma }} <span class="text-xs text-base-content/60">({{ row.our_tier }})</span></td>
+            <td class="text-success font-semibold">${{ row.savings|intcomma }} <span class="text-xs">({{ row.percent_savings }}%)</span></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <p class="text-xs text-base-content/60 mt-4 text-center">
+      {{ competitor.name }} pricing: {{ competitor.pricing_range }}.
+      Tformance: flat-rate tiers.
+    </p>
+  </div>
+</section>
+{% endif %}
+
+{# Where They're Ahead #}
+{% if competitor.honest_gaps %}
+<section class="py-16 max-w-3xl mx-auto px-4">
+  <h2 class="text-2xl font-bold text-base-content mb-6 text-center">Where They're Ahead (For Now)</h2>
+
+  <div class="bg-warning/10 border border-warning/30 rounded-xl p-6">
+    <p class="text-base-content/80 mb-4">We believe in honesty. Here's where {{ competitor.name }} beats us today:</p>
+    <ul class="space-y-2">
+      {% for gap in competitor.honest_gaps %}
+      <li class="flex items-start gap-2 text-base-content/80">
+        <span class="text-warning">&#x2022;</span>
+        <span>{{ gap }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+    <p class="text-sm text-base-content/60 mt-4">We ship weekly. Check back.</p>
+  </div>
+</section>
+{% endif %}
+
+{# FAQ #}
+{% if competitor.faqs %}
+<section class="py-16 bg-base-200">
+  <div class="max-w-3xl mx-auto px-4">
+    <h2 class="text-2xl font-bold text-base-content mb-8 text-center">Frequently Asked Questions</h2>
+
+    <div class="space-y-4">
+      {% for faq in competitor.faqs %}
+      <div class="collapse collapse-arrow bg-base-100 rounded-lg">
+        <input type="checkbox" {% if forloop.first %}checked{% endif %} />
+        <div class="collapse-title font-medium">{{ faq.question }}</div>
+        <div class="collapse-content">
+          <p class="text-base-content/80">{{ faq.answer }}</p>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+{# Final CTA #}
+<section class="py-16 bg-primary/10">
+  <div class="max-w-2xl mx-auto px-4 text-center">
+    <h2 class="text-2xl font-bold text-base-content mb-4">See the difference yourself</h2>
+    <p class="text-base-content/80 mb-8">
+      30-day free trial. No credit card. No sales calls.
+    </p>
+    <div class="flex flex-col sm:flex-row gap-4 justify-center">
+      <a href="{% url 'account_signup' %}" class="btn btn-primary">Start Free Trial</a>
+      <a href="{% url 'web:compare' %}" class="btn btn-outline">Compare All Tools &rarr;</a>
+    </div>
+  </div>
+</section>
+{% endblock compare_content %}

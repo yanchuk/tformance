@@ -1,8 +1,23 @@
 """Custom template filters for number formatting."""
 
 from django import template
+from django.contrib.humanize.templatetags.humanize import intcomma as django_intcomma
 
 register = template.Library()
+
+# Re-export intcomma from django.contrib.humanize
+register.filter("intcomma", django_intcomma)
+
+
+@register.filter
+def get_item(dictionary, key):
+    """Get an item from a dictionary by key.
+
+    Usage: {{ mydict|get_item:key }}
+    """
+    if dictionary is None:
+        return None
+    return dictionary.get(key)
 
 
 @register.filter

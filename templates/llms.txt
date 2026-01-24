@@ -37,6 +37,39 @@ Coming soon: Copilot metrics API, Jira integration, Slack surveys.
 - Privacy Policy: https://tformance.com/privacy/
 - Terms of Service: https://tformance.com/terms/
 
+## Comparison Pages
+
+We provide honest comparisons to help you choose the right engineering analytics tool:
+
+- Compare All Tools: https://tformance.com/compare/
+- Tformance vs LinearB: https://tformance.com/compare/linearb/
+- Tformance vs Jellyfish: https://tformance.com/compare/jellyfish/
+- Tformance vs Swarmia: https://tformance.com/compare/swarmia/
+- Tformance vs Span: https://tformance.com/compare/span/
+- Tformance vs Workweave: https://tformance.com/compare/workweave/
+- Tformance vs Mesmer: https://tformance.com/compare/mesmer/
+- Tformance vs Nivara: https://tformance.com/compare/nivara/
+
+### How We Compare
+
+Our comparison pages include:
+- Honest feature-by-feature comparison (we show where competitors are ahead)
+- Pricing comparison with annual cost calculator
+- "When to choose them" and "When to choose us" guidance
+- We're transparent about features that are "coming soon" vs "live now"
+
+### Competitors We Compare Against
+
+- LinearB: Workflow automation + DORA metrics ($35-46/seat/mo)
+- Jellyfish: Enterprise engineering intelligence (~$50/seat/mo)
+- Swarmia: DevEx surveys + productivity (€22-42/dev/mo)
+- Span: AI code detection specialist (enterprise pricing)
+- Workweave: AI-focused PR analytics ($50/seat/mo)
+- Mesmer: Engineering visibility/status automation (custom pricing)
+- Nivara: AI engineering manager (YC F25, early stage)
+
+Our positioning: AI impact focus at 70% less cost than enterprise alternatives.
+
 ## Contact
 
 - Email: hello@tformance.com
