@@ -11,6 +11,10 @@
 
 @config "../../tailwind.config.js";
 
+/* Tailwind v4 safelist - ensure these dynamic classes are always generated
+   Note: alert-* classes are provided by DaisyUI, this ensures they're not tree-shaken */
+@source inline("alert-{success,info,error,warning}");
+
 @plugin "@tailwindcss/typography";
 @plugin "daisyui";
 

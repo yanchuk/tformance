@@ -462,10 +462,10 @@ STORAGES = {
         "BACKEND": "django.core.files.storage.FileSystemStorage",
     },
     "staticfiles": {
-        # swap these to use manifest storage to bust cache when files change
-        # note: this may break image references in sass/css files which is why it is not enabled by default
-        # "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
-        "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
+        # Manifest storage adds content hashes for immutable caching (e.g., site-tailwind.abc123.css)
+        # This enables Cloudflare edge caching and Cache-Control: max-age=31536000, immutable
+        # Note: May break relative image references in CSS - verify after enabling
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
     },
 }
 

@@ -1,14 +1,7 @@
 module.exports = {
   darkMode: ["class", '[data-theme="dark"]'],
-  content: [],
-  safelist: [
-    'alert-success',
-    'alert-info',
-    'alert-error',
-    'alert-warning',
-    'pg-bg-danger',
-    'pg-bg-success',
-  ],
+  // Note: Tailwind v4 ignores 'content' and 'safelist' options (uses automatic detection)
+  // Safelist classes are defined via @source inline() in site-tailwind.css
   theme: {
     extend: {
       fontFamily: {
