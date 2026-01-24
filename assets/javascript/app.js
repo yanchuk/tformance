@@ -1,5 +1,9 @@
 import * as JsCookie from "js-cookie";
 import Chart from 'chart.js/auto';
+
+// lite-youtube-embed for performant YouTube embeds
+import 'lite-youtube-embed';
+import 'lite-youtube-embed/src/lite-yt-embed.css';
 import { DashboardCharts as AppDashboardCharts } from './dashboard/dashboard-charts';
 import { createWideTrendChart, resetChartZoom, initTrendCharts } from './dashboard/trend-charts';
 import { createSparkline, initSparklines, reinitSparklines } from './dashboard/sparkline';

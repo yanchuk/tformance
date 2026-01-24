@@ -76,6 +76,7 @@ class SecurityHeadersMiddleware:
             "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com",
             "img-src 'self' data: https: blob:",
             connect_src.strip(),
+            "frame-src 'self' https://www.youtube-nocookie.com https://www.youtube.com",
             "frame-ancestors 'none'",
             "form-action 'self' https://github.com https://accounts.google.com",
             "base-uri 'self'",
