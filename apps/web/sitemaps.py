@@ -21,3 +21,30 @@ class StaticViewSitemap(sitemaps.Sitemap):
 
     def location(self, item):
         return reverse(item)
+
+
+class ComparisonSitemap(sitemaps.Sitemap):
+    """Sitemap for comparison pages (hub + individual competitor pages)."""
+
+    changefreq = "monthly"
+
+    @property
+    def protocol(self):
+        return get_protocol()
+
+    def items(self):
+        """Return list of comparison page identifiers."""
+        # Hub page + all competitor slugs
+        from apps.web.compare_data import COMPETITORS
+
+        return ["hub"] + list(COMPETITORS.keys())
+
+    def location(self, item):
+        """Return URL for each item."""
+        if item == "hub":
+            return reverse("web:compare")
+        return reverse("web:compare_competitor", kwargs={"competitor": item})
+
+    def priority(self, item):
+        """Hub page gets slightly higher priority."""
+        return 0.8 if item == "hub" else 0.7

@@ -6,6 +6,9 @@ from . import views
 app_name = "web"
 urlpatterns = [
     path("", views.home, name="home"),
+    # Comparison pages (public, SEO)
+    path("compare/", views.compare_hub, name="compare"),
+    path("compare/<slug:competitor>/", views.compare_competitor, name="compare_competitor"),
     path("report/", views.ai_impact_report, name="ai_impact_report"),
     path("report/llms.md", views.report_llms_data, name="report_llms_data"),
     path("report/data/<str:filename>", views.report_data_file, name="report_data_file"),

@@ -1,0 +1,36 @@
+{% extends 'web/base.html' %}
+{% load static %}
+
+{% block page_head %}
+{{ block.super }}
+{% block schema_markup %}
+{# BreadcrumbList schema - override in child templates #}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "{{ request.scheme }}://{{ request.get_host }}/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Compare",
+      "item": "{{ request.scheme }}://{{ request.get_host }}{% url 'web:compare' %}"
+    }
+    {% block breadcrumb_items %}{% endblock %}
+  ]
+}
+</script>
+{% endblock schema_markup %}
+{% endblock page_head %}
+
+{% block body %}
+<main class="min-h-screen">
+  {% block compare_content %}{% endblock %}
+</main>
+{% endblock body %}

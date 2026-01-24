@@ -625,3 +625,88 @@ def github_app_webhook(request):
         cache.set(cache_key, True, WEBHOOK_REPLAY_CACHE_TIMEOUT)
 
     return JsonResponse({"status": "processed", "event": event_type}, status=200)
+
+
+# =============================================================================
+# Comparison Pages (Public)
+# =============================================================================
+
+
+def compare_hub(request):
+    """Comparison hub page - overview of all competitors."""
+    from apps.web.compare_data import (
+        COMPETITORS,
+        FEATURE_MATRIX,
+        OUR_FEATURES,
+        OUR_PRICING,
+        get_feature_status_display,
+    )
+
+    # Build pricing comparison data for different team sizes
+    team_sizes = [10, 25, 50, 100]
+    pricing_comparison = []
+    for size in team_sizes:
+        row = {"team_size": size, "competitors": {}}
+        for slug, comp in COMPETITORS.items():
+            if comp.get("price_per_seat_low"):
+                avg_price = (
+                    comp["price_per_seat_low"] + (comp.get("price_per_seat_high") or comp["price_per_seat_low"])
+                ) / 2
+                row["competitors"][slug] = int(avg_price * size * 12)
+            else:
+                row["competitors"][slug] = None
+        pricing_comparison.append(row)
+
+    context = {
+        "competitors": COMPETITORS,
+        "our_features": OUR_FEATURES,
+        "our_pricing": OUR_PRICING,
+        "feature_matrix": FEATURE_MATRIX,
+        "pricing_comparison": pricing_comparison,
+        "get_feature_status_display": get_feature_status_display,
+        # SEO
+        "page_title": "Compare Tformance to Top Engineering Analytics Tools (2026)",
+        "page_description": (
+            "Compare Tformance to LinearB, Jellyfish, Swarmia & more. "
+            "Side-by-side features, honest pricing. Save 70%+ on AI engineering analytics."
+        ),
+    }
+    return render(request, "web/compare/hub.html", context)
+
+
+def compare_competitor(request, competitor: str):
+    """Individual competitor comparison page."""
+    from apps.web.compare_data import (
+        OUR_FEATURES,
+        calculate_savings,
+        get_competitor,
+        get_feature_status_display,
+    )
+
+    comp = get_competitor(competitor)
+    if not comp:
+        raise Http404("Competitor not found")
+
+    # Calculate savings at different team sizes
+    team_sizes = [10, 25, 50, 100]
+    savings_table = []
+    for size in team_sizes:
+        savings = calculate_savings(size, competitor)
+        if savings:
+            savings_table.append(
+                {
+                    "team_size": size,
+                    **savings,
+                }
+            )
+
+    context = {
+        "competitor": comp,
+        "our_features": OUR_FEATURES,
+        "savings_table": savings_table,
+        "get_feature_status_display": get_feature_status_display,
+        # SEO from competitor data
+        "page_title": comp["seo"]["title"],
+        "page_description": comp["seo"]["description"],
+    }
+    return render(request, "web/compare/competitor.html", context)

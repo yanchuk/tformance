@@ -1,0 +1,297 @@
+{% extends 'web/compare/base_compare.html' %}
+{% load static %}
+{% load number_filters %}
+
+{% block schema_markup %}
+{{ block.super }}
+{# Product schema for Tformance #}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Product",
+  "name": "Tformance",
+  "description": "AI Impact Analytics for Engineering Teams",
+  "brand": {
+    "@type": "Brand",
+    "name": "Tformance"
+  },
+  "offers": {
+    "@type": "AggregateOffer",
+    "lowPrice": "99",
+    "highPrice": "699",
+    "priceCurrency": "USD",
+    "offerCount": "4"
+  }
+}
+</script>
+{% endblock schema_markup %}
+
+{% block compare_content %}
+{# Hero Section #}
+<section class="bg-base-200 py-16 md:py-24">
+  <div class="max-w-5xl mx-auto px-4 text-center">
+    <h1 class="text-3xl md:text-4xl font-bold text-base-content mb-4">
+      Compare Tformance
+    </h1>
+    <p class="text-lg text-base-content/80 mb-6 max-w-2xl mx-auto">
+      Honest comparisons. Real pricing. No sales pitch.
+    </p>
+    <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-warning/20 text-warning text-sm">
+      <span class="font-medium">Alpha</span>
+      <span class="text-warning/80">We're early stage. Some features competitors have, we don't&mdash;yet.</span>
+    </div>
+  </div>
+</section>
+
+{# Intro #}
+<section class="py-12 max-w-3xl mx-auto px-4">
+  <p class="text-lg text-base-content/80 leading-relaxed">
+    Engineering analytics tools promise clarity. Most deliver complexity and enterprise pricing.
+  </p>
+  <p class="text-lg text-base-content mt-4">
+    We built Tformance for one question: <strong>Is AI making your team better?</strong>
+  </p>
+  <p class="text-base-content/70 mt-4">Here's how we stack up. Honestly.</p>
+</section>
+
+{# Competitor Grid #}
+<section class="py-12 bg-base-200">
+  <div class="max-w-6xl mx-auto px-4">
+    <h2 class="text-2xl font-bold text-base-content mb-8 text-center">Compare By Tool</h2>
+
+    <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {% for slug, comp in competitors.items %}
+      <a href="{% url 'web:compare_competitor' competitor=slug %}"
+         class="card bg-base-100 shadow-md hover:shadow-lg transition-shadow">
+        <div class="card-body">
+          <h3 class="card-title text-lg">{{ comp.name }}</h3>
+          <p class="text-sm text-base-content/70">{{ comp.one_liner }}</p>
+          <div class="card-actions justify-end mt-4">
+            <span class="text-primary text-sm font-medium">Compare &rarr;</span>
+          </div>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+{# Feature Matrix #}
+<section class="py-16 max-w-6xl mx-auto px-4">
+  <h2 class="text-2xl font-bold text-base-content mb-8 text-center">Feature Comparison</h2>
+
+  <div class="overflow-x-auto">
+    <table class="table table-zebra w-full">
+      <thead>
+        <tr>
+          <th class="bg-base-200">Feature</th>
+          <th class="bg-primary/10 text-primary">Tformance</th>
+          {% for slug, comp in competitors.items %}
+          {% if comp.priority == 'high' %}
+          <th>{{ comp.name }}</th>
+          {% endif %}
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {# AI Detection #}
+        <tr>
+          <td class="font-medium">AI Code Detection</td>
+          <td class="text-center"><span class="text-success">&#10003;</span></td>
+          {% for slug, comp in competitors.items %}
+          {% if comp.priority == 'high' %}
+          <td class="text-center">
+            {% if comp.features.ai_code_detection == True %}
+            <span class="text-success">&#10003;</span>
+            {% elif comp.features.ai_code_detection == 'partial' %}
+            <span class="text-warning">&#9680;</span>
+            {% else %}
+            <span class="text-base-content/40">&#10005;</span>
+            {% endif %}
+          </td>
+          {% endif %}
+          {% endfor %}
+        </tr>
+        {# GitHub #}
+        <tr>
+          <td class="font-medium">GitHub Integration</td>
+          <td class="text-center"><span class="text-success">&#10003;</span></td>
+          {% for slug, comp in competitors.items %}
+          {% if comp.priority == 'high' %}
+          <td class="text-center">
+            {% if comp.features.github %}
+            <span class="text-success">&#10003;</span>
+            {% else %}
+            <span class="text-base-content/40">&#10005;</span>
+            {% endif %}
+          </td>
+          {% endif %}
+          {% endfor %}
+        </tr>
+        {# Jira #}
+        <tr>
+          <td class="font-medium">Jira Integration</td>
+          <td class="text-center"><span class="text-warning">Soon</span></td>
+          {% for slug, comp in competitors.items %}
+          {% if comp.priority == 'high' %}
+          <td class="text-center">
+            {% if comp.features.jira %}
+            <span class="text-success">&#10003;</span>
+            {% else %}
+            <span class="text-base-content/40">&#10005;</span>
+            {% endif %}
+          </td>
+          {% endif %}
+          {% endfor %}
+        </tr>
+        {# DORA #}
+        <tr>
+          <td class="font-medium">DORA Metrics</td>
+          <td class="text-center"><span class="text-warning">Partial</span></td>
+          {% for slug, comp in competitors.items %}
+          {% if comp.priority == 'high' %}
+          <td class="text-center">
+            {% if comp.features.dora_metrics == True %}
+            <span class="text-success">&#10003;</span>
+            {% elif comp.features.dora_metrics == 'partial' %}
+            <span class="text-warning">&#9680;</span>
+            {% else %}
+            <span class="text-base-content/40">&#10005;</span>
+            {% endif %}
+          </td>
+          {% endif %}
+          {% endfor %}
+        </tr>
+        {# Surveys #}
+        <tr>
+          <td class="font-medium">Developer Surveys</td>
+          <td class="text-center"><span class="text-warning">Soon</span></td>
+          {% for slug, comp in competitors.items %}
+          {% if comp.priority == 'high' %}
+          <td class="text-center">
+            {% if comp.features.developer_surveys %}
+            <span class="text-success">&#10003;</span>
+            {% else %}
+            <span class="text-base-content/40">&#10005;</span>
+            {% endif %}
+          </td>
+          {% endif %}
+          {% endfor %}
+        </tr>
+        {# SOC 2 #}
+        <tr>
+          <td class="font-medium">SOC 2</td>
+          <td class="text-center"><span class="text-info text-xs">Planned</span></td>
+          {% for slug, comp in competitors.items %}
+          {% if comp.priority == 'high' %}
+          <td class="text-center">
+            {% if comp.features.soc2 %}
+            <span class="text-success">&#10003;</span>
+            {% else %}
+            <span class="text-base-content/40">&#10005;</span>
+            {% endif %}
+          </td>
+          {% endif %}
+          {% endfor %}
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p class="text-sm text-base-content/60 mt-4 text-center">
+    Legend: <span class="text-success">&#10003;</span> Available &nbsp;
+    <span class="text-warning">&#9680;</span> Partial &nbsp;
+    <span class="text-warning">Soon</span> Coming Soon &nbsp;
+    <span class="text-base-content/40">&#10005;</span> Not Available
+  </p>
+</section>
+
+{# Pricing Overview #}
+<section class="py-16 bg-base-200">
+  <div class="max-w-5xl mx-auto px-4">
+    <h2 class="text-2xl font-bold text-base-content mb-4 text-center">Pricing Comparison</h2>
+    <p class="text-base-content/70 text-center mb-8">Annual cost at different team sizes</p>
+
+    <div class="overflow-x-auto">
+      <table class="table w-full bg-base-100 rounded-lg">
+        <thead>
+          <tr>
+            <th>Team Size</th>
+            <th class="text-primary">Tformance</th>
+            {% for slug, comp in competitors.items %}
+            {% if comp.priority == 'high' %}
+            <th>{{ comp.name }}</th>
+            {% endif %}
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in pricing_comparison %}
+          <tr>
+            <td class="font-medium">{{ row.team_size }} devs</td>
+            <td class="text-primary font-semibold">
+              {% if row.team_size <= 10 %}$1,188{% elif row.team_size <= 50 %}$3,588{% else %}$8,388{% endif %}
+            </td>
+            {% for slug, comp in competitors.items %}
+            {% if comp.priority == 'high' %}
+            <td>
+              {% if row.competitors|get_item:slug %}
+                ${{ row.competitors|get_item:slug|intcomma }}
+              {% else %}
+                <span class="text-base-content/50">Custom</span>
+              {% endif %}
+            </td>
+            {% endif %}
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <p class="text-xs text-base-content/60 mt-4 text-center">
+      Tformance: Starter $99/mo, Team $299/mo, Business $699/mo (flat rate).
+      Competitor pricing estimated from public sources.
+    </p>
+  </div>
+</section>
+
+{# We're Different #}
+<section class="py-16 max-w-4xl mx-auto px-4">
+  <h2 class="text-2xl font-bold text-base-content mb-8 text-center">What We Focus On</h2>
+
+  <div class="grid md:grid-cols-2 gap-8">
+    <div>
+      <h3 class="text-lg font-semibold mb-3 text-primary">AI Impact Measurement</h3>
+      <p class="text-base-content/80">
+        We track how AI tools affect your delivery. GitHub Copilot, Cursor, Claude&mdash;we detect usage
+        and correlate with metrics.
+      </p>
+    </div>
+    <div>
+      <h3 class="text-lg font-semibold mb-3 text-base-content/70">What We're Not (Yet)</h3>
+      <ul class="text-base-content/70 space-y-2 text-sm">
+        <li>&#x2022; Full DORA suite (we have cycle time, more coming)</li>
+        <li>&#x2022; Jira deep integration (shipping soon)</li>
+        <li>&#x2022; SOC 2 certified (in process)</li>
+        <li>&#x2022; Slack surveys (on the roadmap)</li>
+      </ul>
+      <p class="text-sm text-base-content/60 mt-3">We ship weekly. Things change fast.</p>
+    </div>
+  </div>
+</section>
+
+{# CTA #}
+<section class="py-16 bg-primary/10">
+  <div class="max-w-2xl mx-auto px-4 text-center">
+    <h2 class="text-2xl font-bold text-base-content mb-4">See for yourself</h2>
+    <p class="text-base-content/80 mb-8">
+      30-day free trial. 5-minute setup. No sales calls.
+    </p>
+    <div class="flex flex-col sm:flex-row gap-4 justify-center">
+      <a href="{% url 'account_signup' %}" class="btn btn-primary">Start Free Trial</a>
+      <a href="/" class="btn btn-outline">Learn More</a>
+    </div>
+  </div>
+</section>
+{% endblock compare_content %}
