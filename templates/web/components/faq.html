@@ -54,7 +54,7 @@
         </button>
         <div x-show="open === 3" x-transition class="px-4 pb-4">
           <p class="text-base-content/90">
-            No SOC 2 yet—we know it's important to you. Plan to start certification as early as possible. We never see your code—only PR metadata like titles, timestamps, and file paths. Data encrypted at rest.
+            No SOC 2 yet—certification planned. We never see your code—only PR metadata like titles, timestamps, and file paths. Data encrypted at rest.
           </p>
         </div>
       </div>
@@ -63,14 +63,14 @@
       <div class="bg-base-200 rounded-xl border border-base-300 overflow-hidden">
         <button @click="open = open === 4 ? null : 4"
                 class="w-full p-4 text-left flex items-center justify-between hover:bg-base-300/50 transition-colors">
-          <span class="font-semibold text-base-content">Will you disappear in 6 months?</span>
+          <span class="font-semibold text-base-content">Why should I spend time on this vs competitors?</span>
           <svg class="w-5 h-5 text-base-content/80 transition-transform" :class="{ 'rotate-180': open === 4 }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
           </svg>
         </button>
         <div x-show="open === 4" x-transition class="px-4 pb-4">
           <p class="text-base-content/90">
-            I have a day job. Building this nights and weekends because I believe in it. Goal is sustainable growth, not VC burn.
+            Try both. Then tell me what I'm missing or need to add. Vote on features in GitHub Discussions. Your feedback shapes what I build next.
           </p>
         </div>
       </div>
@@ -79,14 +79,14 @@
       <div class="bg-base-200 rounded-xl border border-base-300 overflow-hidden">
         <button @click="open = open === 5 ? null : 5"
                 class="w-full p-4 text-left flex items-center justify-between hover:bg-base-300/50 transition-colors">
-          <span class="font-semibold text-base-content">Why should I spend time on this vs competitors?</span>
+          <span class="font-semibold text-base-content">What do you want from early users?</span>
           <svg class="w-5 h-5 text-base-content/80 transition-transform" :class="{ 'rotate-180': open === 5 }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
           </svg>
         </button>
         <div x-show="open === 5" x-transition class="px-4 pb-4">
           <p class="text-base-content/90">
-            Try both. Then tell me what I'm missing or need to add. Vote on features in GitHub Discussions. Your feedback shapes what I build next.
+            Honest feedback. Tell me what sucks. Tell your CTO friends if it helps. Zero pressure until you decide it's worth it.
           </p>
         </div>
       </div>
@@ -95,14 +95,14 @@
       <div class="bg-base-200 rounded-xl border border-base-300 overflow-hidden">
         <button @click="open = open === 6 ? null : 6"
                 class="w-full p-4 text-left flex items-center justify-between hover:bg-base-300/50 transition-colors">
-          <span class="font-semibold text-base-content">What do you actually want from early users?</span>
+          <span class="font-semibold text-base-content">What can you tell me about AI impact?</span>
           <svg class="w-5 h-5 text-base-content/80 transition-transform" :class="{ 'rotate-180': open === 6 }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
           </svg>
         </button>
         <div x-show="open === 6" x-transition class="px-4 pb-4">
           <p class="text-base-content/90">
-            Honest feedback. Tell me what sucks. Tell your CTO friends if it helps. Zero pressure until you decide it's worth it.
+            We detect AI-assisted PRs through LLM analysis and pattern matching. You see which PRs used AI, cycle time comparisons, and adoption by team member. Coming soon: Copilot metrics and Jira correlation.
           </p>
         </div>
       </div>
@@ -111,60 +111,12 @@
       <div class="bg-base-200 rounded-xl border border-base-300 overflow-hidden">
         <button @click="open = open === 7 ? null : 7"
                 class="w-full p-4 text-left flex items-center justify-between hover:bg-base-300/50 transition-colors">
-          <span class="font-semibold text-base-content">Why does this site have colors? Most dev tools are black/white.</span>
+          <span class="font-semibold text-base-content">What features are live right now?</span>
           <svg class="w-5 h-5 text-base-content/80 transition-transform" :class="{ 'rotate-180': open === 7 }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
           </svg>
         </button>
         <div x-show="open === 7" x-transition class="px-4 pb-4">
-          <p class="text-base-content/90">
-            I like some warmth. Dashboards don't have to feel cold. Will work on proper branding later, but for now—this is how I see it.
-          </p>
-        </div>
-      </div>
-
-      <!-- FAQ 8 -->
-      <div class="bg-base-200 rounded-xl border border-base-300 overflow-hidden">
-        <button @click="open = open === 8 ? null : 8"
-                class="w-full p-4 text-left flex items-center justify-between hover:bg-base-300/50 transition-colors">
-          <span class="font-semibold text-base-content">Do you provide a CLI?</span>
-          <svg class="w-5 h-5 text-base-content/80 transition-transform" :class="{ 'rotate-180': open === 8 }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-          </svg>
-        </button>
-        <div x-show="open === 8" x-transition class="px-4 pb-4">
-          <p class="text-base-content/90">
-            We wish, but not yet. As soon as we can and demand is high—we'll do it earlier rather than later.
-          </p>
-        </div>
-      </div>
-
-      <!-- FAQ 9 -->
-      <div class="bg-base-200 rounded-xl border border-base-300 overflow-hidden">
-        <button @click="open = open === 9 ? null : 9"
-                class="w-full p-4 text-left flex items-center justify-between hover:bg-base-300/50 transition-colors">
-          <span class="font-semibold text-base-content">What can you actually tell me about AI impact?</span>
-          <svg class="w-5 h-5 text-base-content/80 transition-transform" :class="{ 'rotate-180': open === 9 }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-          </svg>
-        </button>
-        <div x-show="open === 9" x-transition class="px-4 pb-4">
-          <p class="text-base-content/90">
-            We detect AI-assisted PRs through LLM analysis and pattern matching. You'll see: which PRs used AI tools, how they compare on cycle time and review rounds, and adoption rates by team member. Coming soon: Copilot usage metrics and Jira correlation.
-          </p>
-        </div>
-      </div>
-
-      <!-- FAQ 10 -->
-      <div class="bg-base-200 rounded-xl border border-base-300 overflow-hidden">
-        <button @click="open = open === 10 ? null : 10"
-                class="w-full p-4 text-left flex items-center justify-between hover:bg-base-300/50 transition-colors">
-          <span class="font-semibold text-base-content">What features are live right now?</span>
-          <svg class="w-5 h-5 text-base-content/80 transition-transform" :class="{ 'rotate-180': open === 10 }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-          </svg>
-        </button>
-        <div x-show="open === 10" x-transition class="px-4 pb-4">
           <p class="text-base-content/90">
             Live: GitHub integration, PR metrics, AI detection, team dashboards. Coming soon: Copilot metrics API, Jira integration, Slack surveys. We ship weekly.
           </p>

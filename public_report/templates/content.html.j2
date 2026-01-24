@@ -58,6 +58,30 @@
     </nav>
     <button class="toc-toggle" id="toc-toggle" onclick="toggleToc()" title="Table of Contents">☰</button>
 
+    <!-- Reading Progress Bar -->
+    <div id="progress-container" style="position: fixed; top: 0; left: 0; width: 100%; height: 4px; background: var(--bg-deep); z-index: 9999;">
+        <div id="progress-bar" style="height: 100%; width: 0%; background: linear-gradient(90deg, var(--primary), var(--secondary)); transition: width 0.1s ease-out;"></div>
+    </div>
+
+    <!-- Back to Top Button -->
+    <button id="back-to-top" onclick="window.scrollTo({top: 0, behavior: 'smooth'})" title="Back to top" style="position: fixed; bottom: 2rem; right: 2rem; width: 44px; height: 44px; border-radius: 50%; background: var(--primary); color: white; border: none; cursor: pointer; font-size: 1.25rem; display: none; z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.3); transition: opacity 0.3s, transform 0.3s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">↑</button>
+    <script>
+    window.addEventListener('scroll', function() {
+        // Back to top button
+        var btn = document.getElementById('back-to-top');
+        if (window.scrollY > 500) {
+            btn.style.display = 'block';
+        } else {
+            btn.style.display = 'none';
+        }
+        // Reading progress bar
+        var winScroll = document.body.scrollTop || document.documentElement.scrollTop;
+        var height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+        var scrolled = (winScroll / height) * 100;
+        document.getElementById('progress-bar').style.width = scrolled + '%';
+    });
+    </script>
+
     <div class="report-content">
         <header>
             <div class="logo">tformance</div>
@@ -350,8 +374,11 @@
         </section>
         <section id="stats" class="statistical-confidence" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 2rem; margin-bottom: 2rem;">
             <h2>📊 Statistical Confidence</h2>
+            <div style="background: rgba(90, 153, 151, 0.15); border-left: 3px solid var(--secondary); padding: 0.5rem 1rem; margin-bottom: 1rem; font-size: 0.85rem; border-radius: 0 6px 6px 0;">
+                <strong>TL;DR:</strong> 167K PRs analyzed. High confidence on aggregates. Individual team results vary wildly (0–86%).
+            </div>
             <p style="color: var(--text-muted); margin-bottom: 1.5rem;">
-                How confident can we be in these findings? Here's a transparency breakdown of our statistical validity.
+                Transparency breakdown of our statistical validity.
             </p>
 
             <div class="stat-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
@@ -514,7 +541,10 @@
         </section>
         <section id="tools">
             <h2>AI Tool Evolution (2025)</h2>
-            <p style="color: var(--text-muted); margin-bottom: 1rem;">Monthly trend of AI tool usage across all teams. Shows dramatic market shift throughout the year.</p>
+            <div style="background: rgba(90, 153, 151, 0.1); border-left: 3px solid var(--secondary); padding: 0.5rem 1rem; margin-bottom: 1rem; font-size: 0.85rem; border-radius: 0 6px 6px 0;">
+                <strong>TL;DR:</strong> CodeRabbit dominated early 2025 (95%). By Dec: fragmented—Cubic 21%, Claude 17%. Human-directed tools grew 2% → 35%.
+            </div>
+            <p style="color: var(--text-muted); margin-bottom: 1rem;">Monthly AI tool usage across all teams—showing dramatic market shift.</p>
 
             <div class="chart-container">
                 <div class="chart-wrapper tall">
@@ -554,8 +584,11 @@
         </section>
         <section id="ai-categories" style="background: linear-gradient(135deg, rgba(249, 115, 22, 0.08), rgba(90, 153, 151, 0.08)); border: 1px solid var(--border); border-radius: 16px; padding: 2rem; margin-top: 2rem;">
             <h2>🔀 Code AI vs Review AI: A New Framework</h2>
+            <div style="background: rgba(255,255,255,0.6); border-left: 3px solid var(--secondary); padding: 0.5rem 1rem; margin-bottom: 1rem; font-size: 0.85rem; border-radius: 0 6px 6px 0;">
+                <strong>TL;DR:</strong> Review AI = -11% cycle time, -54% review time. Code AI = +16% cycle time. Very different impacts.
+            </div>
             <p style="color: var(--text-muted); margin-bottom: 1.5rem;">
-                Not all AI tools are equal. We categorize AI coding tools by their <strong>primary function</strong> to reveal different impact patterns.
+                Not all AI tools are equal. We categorize by <strong>primary function</strong> to reveal different impact patterns.
             </p>
 
             <div class="two-col" style="gap: 1.5rem; margin-bottom: 1.5rem;">
@@ -854,6 +887,9 @@
         </section>
         <section id="by-team">
             <h2>AI Adoption by Team</h2>
+            <div style="background: rgba(90, 153, 151, 0.1); border-left: 3px solid var(--secondary); padding: 0.5rem 1rem; margin-bottom: 1rem; font-size: 0.85rem;">
+                <strong>TL;DR:</strong> Massive variance: 0% (GrowthBook) to 86% (Plane). High adopters use review bots heavily.
+            </div>
             <p style="color: var(--text-muted); margin-bottom: 1rem;">74 companies with 500+ analyzed PRs in 2025 (from 100 total), sorted by AI adoption rate.</p>
 
             <div class="chart-container">
@@ -868,7 +904,10 @@
         </section>
         <section id="impact">
             <h2>AI Impact on Metrics</h2>
-            <p style="color: var(--text-muted); margin-bottom: 1rem;">Comparing AI-assisted PRs vs non-AI PRs within each team. Green = AI improved metric, Red = AI increased metric.</p>
+            <div style="background: rgba(90, 153, 151, 0.1); border-left: 3px solid var(--secondary); padding: 0.5rem 1rem; margin-bottom: 1rem; font-size: 0.85rem; border-radius: 0 6px 6px 0;">
+                <strong>TL;DR:</strong> 35/50 teams show faster reviews with AI (-52% avg). Cycle time results are mixed—not universally positive.
+            </div>
+            <p style="color: var(--text-muted); margin-bottom: 1rem;">AI vs non-AI PRs within each team. Green = faster, Red = slower.</p>
 
             <div class="two-col">
                 <div class="chart-container">
@@ -1275,6 +1314,9 @@
         </section>
         <section id="correlations" class="correlations">
             <h2>AI Adoption Correlations</h2>
+            <div style="background: rgba(90, 153, 151, 0.1); border-left: 3px solid var(--secondary); padding: 0.5rem 1rem; margin-bottom: 1rem; font-size: 0.85rem;">
+                <strong>TL;DR:</strong> Refactors show highest AI use (33%). Larger PRs = more AI. Focused teams adopt 52% more than distributed teams.
+            </div>
             <p style="color: var(--text-muted); margin-bottom: 1.5rem;">
                 Analyzing 53,876 LLM-processed PRs to understand where AI tools are used most.
             </p>
@@ -1370,6 +1412,9 @@
         </section>
         <section id="methodology" class="methodology">
             <h2>Methodology</h2>
+            <div style="background: rgba(90, 153, 151, 0.1); border-left: 3px solid var(--secondary); padding: 0.5rem 1rem; margin-bottom: 1rem; font-size: 0.85rem;">
+                <strong>TL;DR:</strong> GitHub API → LLM + regex detection → metric calculation. Metadata only—we never see your code.
+            </div>
 
             <div class="two-col" style="margin: 1.5rem 0;">
                 <div>
@@ -1441,8 +1486,11 @@
         </section>
         <section id="industry" class="industry-context" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 2rem; margin-top: 2rem;">
             <h2>📚 Industry Context</h2>
+            <div style="background: rgba(90, 153, 151, 0.15); border-left: 3px solid var(--secondary); padding: 0.5rem 1rem; margin-bottom: 1rem; font-size: 0.85rem; border-radius: 0 6px 6px 0;">
+                <strong>TL;DR:</strong> Surveys say 85% use AI. We detect 12%. The only RCT found AI made devs 19% slower. Our 12% is a floor, not ceiling.
+            </div>
             <p style="color: var(--text-muted); margin-bottom: 1.5rem;">
-                How do our findings compare to major developer surveys? Understanding the gap helps contextualize our results.
+                How do our findings compare to major developer surveys? Understanding the gap contextualizes our results.
             </p>
 
             <div class="stat-grid" style="grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); margin-bottom: 1.5rem;">
