@@ -750,6 +750,38 @@
   @apply !text-base-content/80;
 }
 
+/* DaisyUI stat overflow fix - prevent large numbers/titles from breaking card layout */
+.stat {
+  @apply min-w-0; /* Allow stat to shrink in flex/grid contexts */
+}
+
+/* Stat titles - prevent long labels from overflowing */
+.stat .stat-title {
+  @apply truncate leading-tight;
+  font-size: 0.7rem !important; /* Slightly smaller for better fit */
+}
+
+/* Force smaller font sizes for stat-value in constrained layouts */
+.stat .stat-value {
+  font-size: clamp(1rem, 4vw, 1.5rem) !important; /* Responsive: 16px min, 24px max */
+  @apply truncate leading-tight;
+}
+
+/* Stat descriptions */
+.stat .stat-desc {
+  @apply truncate;
+}
+
+/* Slightly larger for 2-column layouts */
+@media (min-width: 768px) {
+  .grid-cols-2 .stat .stat-value {
+    font-size: clamp(1.25rem, 3vw, 1.75rem) !important; /* 20px min, 28px max */
+  }
+  .grid-cols-2 .stat .stat-title {
+    font-size: 0.75rem !important;
+  }
+}
+
 /* DaisyUI menu-active override for warm Sunset Dashboard colors */
 .menu li > *:not(ul, .menu-title, details, .btn):active,
 .menu li > *:not(ul, .menu-title, details, .btn).active,
