@@ -27,6 +27,29 @@ class StaticViewSitemap(sitemaps.Sitemap):
         return reverse(item)
 
 
+class FeaturesSitemap(sitemaps.Sitemap):
+    """Sitemap for feature marketing pages."""
+
+    changefreq = "monthly"
+    priority = 0.8
+
+    @property
+    def protocol(self):
+        return get_protocol()
+
+    def items(self):
+        """Return list of feature page URL names."""
+        return [
+            "web:features",
+            "web:features_dashboard",
+            "web:features_analytics",
+            "web:features_pr_explorer",
+        ]
+
+    def location(self, item):
+        return reverse(item)
+
+
 class ComparisonSitemap(sitemaps.Sitemap):
     """Sitemap for comparison pages (hub + individual competitor pages)."""
 

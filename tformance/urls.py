@@ -35,13 +35,14 @@ from apps.notes.urls import team_urlpatterns as notes_team_urls
 from apps.pullrequests.urls import team_urlpatterns as pullrequests_team_urls
 from apps.subscriptions.urls import team_urlpatterns as subscriptions_team_urls
 from apps.teams.urls import team_urlpatterns as single_team_urls
-from apps.web.sitemaps import ComparisonSitemap, StaticViewSitemap
+from apps.web.sitemaps import ComparisonSitemap, FeaturesSitemap, StaticViewSitemap
 from apps.web.urls import team_urlpatterns as web_team_urls
 
 PagesAPIViewSet.schema = None  # hacky workaround for https://github.com/wagtail/wagtail/issues/8583
 
 sitemaps = {
     "static": StaticViewSitemap(),
+    "features": FeaturesSitemap(),
     "comparison": ComparisonSitemap(),
     "wagtail": Sitemap(),
 }

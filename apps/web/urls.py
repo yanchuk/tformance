@@ -8,6 +8,9 @@ urlpatterns = [
     path("", views.home, name="home"),
     path("pricing/", views.pricing, name="pricing"),
     path("features/", views.features, name="features"),
+    path("features/dashboard/", views.features_dashboard, name="features_dashboard"),
+    path("features/analytics/", views.features_analytics, name="features_analytics"),
+    path("features/pr-explorer/", views.features_pr_explorer, name="features_pr_explorer"),
     # Comparison pages (public, SEO)
     path("compare/", views.compare_hub, name="compare"),
     path("compare/<slug:competitor>/", views.compare_competitor, name="compare_competitor"),

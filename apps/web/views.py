@@ -689,7 +689,7 @@ def pricing(request):
 
 
 def features(request):
-    """Features page with anchor sections for navigation dropdown."""
+    """Features hub page with navigation to feature subpages."""
     return render(
         request,
         "web/features.html",
@@ -698,6 +698,51 @@ def features(request):
             "page_description": (
                 "AI impact analytics, team performance metrics, and integrations. "
                 "Everything you need to understand how AI tools affect your engineering team."
+            ),
+        },
+    )
+
+
+def features_dashboard(request):
+    """Dashboard & Insights feature page."""
+    return render(
+        request,
+        "web/features/dashboard.html",
+        {
+            "page_title": "Dashboard & Insights | Tformance",
+            "page_description": (
+                "One dashboard for weekly clarity. See what needs attention, "
+                "what's improving, and what to do next. No context-switching."
+            ),
+        },
+    )
+
+
+def features_analytics(request):
+    """Analytics Deep Dive feature page."""
+    return render(
+        request,
+        "web/features/analytics.html",
+        {
+            "page_title": "Analytics Deep Dive | Tformance",
+            "page_description": (
+                "Cycle time, AI adoption, quality, team load. "
+                "Drill down into the metrics that matter or zoom out for the big picture."
+            ),
+        },
+    )
+
+
+def features_pr_explorer(request):
+    """PR Data Explorer feature page."""
+    return render(
+        request,
+        "web/features/pr_explorer.html",
+        {
+            "page_title": "PR Explorer | Tformance",
+            "page_description": (
+                "Filter PRs by repo, author, AI status, date range. "
+                "Export to CSV. Add your own notes. Your PR data, your way."
             ),
         },
     )
