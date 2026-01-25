@@ -89,6 +89,11 @@
         style="background-image: url('{% static 'images/features/analytics/overview.webp' %}');"
         @click="playing = true">
       </lite-youtube>
+
+      {# Mobile hint - double-tap is intentional YouTube behavior on mobile to respect data costs #}
+      <p x-show="!playing" class="text-center text-sm text-base-content/60 mt-2 sm:hidden">
+        Tap to play
+      </p>
     </div>
   </div>
 </section>

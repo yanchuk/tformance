@@ -3,24 +3,39 @@
 {% slugurl 'blog' as blog_url %}
 <div class="navbar shadow-md px-4 lg:px-6">
   <div class="navbar-start">
-    {# Mobile menu dropdown #}
-    <div class="dropdown">
-      <div class="lg:hidden">
-        <label tabindex="0" class="btn btn-ghost">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="24" height="24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h8m-8 6h16" /></svg>
-        </label>
-      </div>
-      <ul tabindex="0" class="menu menu-compact dropdown-content mt-3 p-2 shadow-2xs bg-base-100 rounded-box w-72 z-10">
+    {# Mobile menu - Alpine.js controlled for reliable touch handling on iOS Safari #}
+    <div class="lg:hidden relative" x-data="{ open: false }">
+      <button @click="open = !open"
+              class="btn btn-ghost"
+              aria-label="Toggle menu"
+              :aria-expanded="open">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="24" height="24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h8m-8 6h16" />
+        </svg>
+      </button>
+
+      <ul x-show="open"
+          x-cloak
+          x-transition:enter="transition ease-out duration-150"
+          x-transition:enter-start="opacity-0 scale-95"
+          x-transition:enter-end="opacity-100 scale-100"
+          x-transition:leave="transition ease-in duration-100"
+          x-transition:leave-start="opacity-100 scale-100"
+          x-transition:leave-end="opacity-0 scale-95"
+          @click.outside="open = false"
+          @touchstart.outside="open = false"
+          @keydown.escape.window="open = false"
+          class="menu menu-compact absolute left-0 top-full mt-3 p-2 shadow-lg bg-base-100 isolate rounded-box w-64 max-w-[calc(100vw_-_2rem)] z-50">
         {% block mobile_nav %}
         <li>
-          <a class="{% if request.path == '/' %}active{% endif %}" href="{% url 'web:home' %}">
+          <a @click="open = false" class="{% if request.path == '/' %}active{% endif %}" href="{% url 'web:home' %}">
             Home
           </a>
         </li>
         {# Dashboard Section #}
         <li class="menu-title text-xs pt-2 text-primary/70">Dashboard</li>
         <li>
-          <a href="{% url 'web:features_dashboard' %}">
+          <a @click="open = false" href="{% url 'web:features_dashboard' %}">
             <i class="fa-solid fa-chart-pie fa-fw text-primary"></i>
             Dashboard & Insights
           </a>
@@ -28,37 +43,37 @@
         {# Analytics Section #}
         <li class="menu-title text-xs pt-2 text-primary/70">Analytics</li>
         <li>
-          <a href="{% url 'web:features_analytics' %}#overview">
+          <a @click="open = false" href="{% url 'web:features_analytics' %}#overview">
             <i class="fa-solid fa-chart-line fa-fw text-primary"></i>
             Overview
           </a>
         </li>
         <li>
-          <a href="{% url 'web:features_analytics' %}#ai-adoption">
+          <a @click="open = false" href="{% url 'web:features_analytics' %}#ai-adoption">
             <i class="fa-solid fa-robot fa-fw text-primary"></i>
             AI Adoption
           </a>
         </li>
         <li>
-          <a href="{% url 'web:features_analytics' %}#delivery">
+          <a @click="open = false" href="{% url 'web:features_analytics' %}#delivery">
             <i class="fa-solid fa-rocket fa-fw text-primary"></i>
             Delivery
           </a>
         </li>
         <li>
-          <a href="{% url 'web:features_analytics' %}#quality">
+          <a @click="open = false" href="{% url 'web:features_analytics' %}#quality">
             <i class="fa-solid fa-check-circle fa-fw text-primary"></i>
             Quality
           </a>
         </li>
         <li>
-          <a href="{% url 'web:features_analytics' %}#team">
+          <a @click="open = false" href="{% url 'web:features_analytics' %}#team">
             <i class="fa-solid fa-users fa-fw text-primary"></i>
             Team
           </a>
         </li>
         <li>
-          <a href="{% url 'web:features_analytics' %}#trends">
+          <a @click="open = false" href="{% url 'web:features_analytics' %}#trends">
             <i class="fa-solid fa-chart-area fa-fw text-primary"></i>
             Trends
           </a>
@@ -66,34 +81,48 @@
         {# Data Section #}
         <li class="menu-title text-xs pt-2 text-primary/70">Data</li>
         <li>
-          <a href="{% url 'web:features_pr_explorer' %}">
+          <a @click="open = false" href="{% url 'web:features_pr_explorer' %}">
             <i class="fa-solid fa-list fa-fw text-primary"></i>
             PR Explorer
           </a>
         </li>
         <li>
-          <a href="{% url 'web:features' %}#integrations">
+          <a @click="open = false" href="{% url 'web:features' %}#integrations">
             <i class="fa-solid fa-plug fa-fw text-primary"></i>
             Integrations
           </a>
         </li>
         <li class="divider my-1"></li>
         <li>
-          <a href="{% url 'web:compare' %}">
+          <a @click="open = false" href="{% url 'web:compare' %}">
             <i class="fa-solid fa-code-compare fa-fw text-primary"></i>
             Compare Tools
           </a>
         </li>
         <li class="menu-title text-xs pt-2">Resources</li>
         <li>
-          <a class="{% if request.path == '/pricing/' %}active{% endif %}" href="{% url 'web:pricing' %}">
+          <a @click="open = false" class="{% if request.path == '/pricing/' %}active{% endif %}" href="{% url 'web:pricing' %}">
             Pricing
           </a>
         </li>
         {% if blog_url %}
         <li>
-          <a class="{% if blog_url in request.path %}active{% endif %}" href="{{ blog_url }}">
+          <a @click="open = false" class="{% if blog_url in request.path %}active{% endif %}" href="{{ blog_url }}">
             Blog
+          </a>
+        </li>
+        {% endif %}
+        {# Auth links for mobile - visible only when logged out #}
+        {% if not user.is_authenticated %}
+        <li class="divider my-1"></li>
+        <li>
+          <a @click="open = false" href="{% url 'account_signup' %}" class="text-primary font-semibold">
+            Sign Up
+          </a>
+        </li>
+        <li>
+          <a @click="open = false" href="{% url 'account_login' %}">
+            Sign In
           </a>
         </li>
         {% endif %}
@@ -255,7 +284,8 @@
     </nav>
   </div>
 
-  <div class="navbar-end gap-2">
+  {# Auth buttons - hidden on mobile (available in mobile menu instead) #}
+  <div class="navbar-end gap-2 hidden sm:flex">
     {% if not user.is_authenticated %}
     <a href="{% url 'account_signup' %}" class="btn btn-primary">
       Sign Up
