@@ -10,35 +10,77 @@
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="24" height="24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h8m-8 6h16" /></svg>
         </label>
       </div>
-      <ul tabindex="0" class="menu menu-compact dropdown-content mt-3 p-2 shadow-2xs bg-base-100 rounded-box w-52 z-10">
+      <ul tabindex="0" class="menu menu-compact dropdown-content mt-3 p-2 shadow-2xs bg-base-100 rounded-box w-72 z-10">
         {% block mobile_nav %}
         <li>
           <a class="{% if request.path == '/' %}active{% endif %}" href="{% url 'web:home' %}">
             Home
           </a>
         </li>
-        <li class="menu-title text-xs pt-2">Features</li>
+        {# Dashboard Section #}
+        <li class="menu-title text-xs pt-2 text-primary/70">Dashboard</li>
         <li>
-          <a href="{% url 'web:features' %}#ai-impact">
-            <i class="fa-solid fa-robot text-primary w-4"></i>
-            AI Impact Analytics
+          <a href="{% url 'web:features_dashboard' %}">
+            <i class="fa-solid fa-chart-pie fa-fw text-primary"></i>
+            Dashboard & Insights
+          </a>
+        </li>
+        {# Analytics Section #}
+        <li class="menu-title text-xs pt-2 text-primary/70">Analytics</li>
+        <li>
+          <a href="{% url 'web:features_analytics' %}#overview">
+            <i class="fa-solid fa-chart-line fa-fw text-primary"></i>
+            Overview
           </a>
         </li>
         <li>
-          <a href="{% url 'web:features' %}#team-performance">
-            <i class="fa-solid fa-chart-line text-primary w-4"></i>
-            Team Performance
+          <a href="{% url 'web:features_analytics' %}#ai-adoption">
+            <i class="fa-solid fa-robot fa-fw text-primary"></i>
+            AI Adoption
+          </a>
+        </li>
+        <li>
+          <a href="{% url 'web:features_analytics' %}#delivery">
+            <i class="fa-solid fa-rocket fa-fw text-primary"></i>
+            Delivery
+          </a>
+        </li>
+        <li>
+          <a href="{% url 'web:features_analytics' %}#quality">
+            <i class="fa-solid fa-check-circle fa-fw text-primary"></i>
+            Quality
+          </a>
+        </li>
+        <li>
+          <a href="{% url 'web:features_analytics' %}#team">
+            <i class="fa-solid fa-users fa-fw text-primary"></i>
+            Team
+          </a>
+        </li>
+        <li>
+          <a href="{% url 'web:features_analytics' %}#trends">
+            <i class="fa-solid fa-chart-area fa-fw text-primary"></i>
+            Trends
+          </a>
+        </li>
+        {# Data Section #}
+        <li class="menu-title text-xs pt-2 text-primary/70">Data</li>
+        <li>
+          <a href="{% url 'web:features_pr_explorer' %}">
+            <i class="fa-solid fa-list fa-fw text-primary"></i>
+            PR Explorer
           </a>
         </li>
         <li>
           <a href="{% url 'web:features' %}#integrations">
-            <i class="fa-solid fa-plug text-primary w-4"></i>
+            <i class="fa-solid fa-plug fa-fw text-primary"></i>
             Integrations
           </a>
         </li>
+        <li class="divider my-1"></li>
         <li>
           <a href="{% url 'web:compare' %}">
-            <i class="fa-solid fa-code-compare text-primary w-4"></i>
+            <i class="fa-solid fa-code-compare fa-fw text-primary"></i>
             Compare Tools
           </a>
         </li>
@@ -96,41 +138,103 @@
              x-transition:leave-start="opacity-100 scale-100"
              x-transition:leave-end="opacity-0 scale-95"
              @click.outside="open = false"
-             class="absolute left-0 mt-1 p-4 shadow-lg bg-base-100 rounded-box w-80 z-50 border border-base-300"
+             class="absolute left-0 mt-1 p-5 shadow-lg bg-base-100 rounded-box w-[520px] z-50 border border-base-300"
              role="menu">
-          <ul class="menu menu-sm p-0 gap-1">
-            <li>
-              <a href="{% url 'web:features' %}#ai-impact" role="menuitem"
-                 class="flex flex-col items-start gap-0 py-3">
-                <span class="flex items-center gap-2 font-medium text-base-content">
-                  <i class="fa-solid fa-robot text-primary w-4"></i>
-                  AI Impact Analytics
+          {# 3-column mega menu #}
+          <div class="grid grid-cols-3 gap-6">
+            {# Column 1: Dashboard #}
+            <div>
+              <h3 class="text-xs font-semibold text-base-content/50 uppercase tracking-wider mb-3">Dashboard</h3>
+              <a href="{% url 'web:features_dashboard' %}" role="menuitem"
+                 class="block py-2 hover:bg-base-200 rounded-lg px-2 -mx-2 transition-colors">
+                <span class="flex items-center gap-2 font-medium text-base-content text-sm">
+                  <i class="fa-solid fa-chart-pie fa-fw text-primary"></i>
+                  Dashboard & Insights
                 </span>
-                <span class="text-xs text-base-content/60 ml-6">Track AI tool adoption & ROI</span>
+                <span class="text-xs text-base-content/60 ml-6">Weekly reports</span>
               </a>
-            </li>
-            <li>
-              <a href="{% url 'web:features' %}#team-performance" role="menuitem"
-                 class="flex flex-col items-start gap-0 py-3">
-                <span class="flex items-center gap-2 font-medium text-base-content">
-                  <i class="fa-solid fa-chart-line text-primary w-4"></i>
-                  Team Performance
-                </span>
-                <span class="text-xs text-base-content/60 ml-6">Cycle time, throughput, load</span>
-              </a>
-            </li>
-            <li>
-              <a href="{% url 'web:features' %}#integrations" role="menuitem"
-                 class="flex flex-col items-start gap-0 py-3">
-                <span class="flex items-center gap-2 font-medium text-base-content">
-                  <i class="fa-solid fa-plug text-primary w-4"></i>
-                  Integrations
-                </span>
-                <span class="text-xs text-base-content/60 ml-6">GitHub &middot; Jira &middot; Slack</span>
-              </a>
-            </li>
-          </ul>
-          <div class="divider my-2"></div>
+            </div>
+
+            {# Column 2: Analytics #}
+            <div>
+              <h3 class="text-xs font-semibold text-base-content/50 uppercase tracking-wider mb-3">Analytics</h3>
+              <div class="space-y-1">
+                <a href="{% url 'web:features_analytics' %}#overview" role="menuitem"
+                   class="block py-1.5 hover:bg-base-200 rounded-lg px-2 -mx-2 transition-colors">
+                  <span class="flex items-center gap-2 text-sm text-base-content">
+                    <i class="fa-solid fa-chart-line fa-fw text-primary text-sm"></i>
+                    Overview
+                  </span>
+                  <span class="text-xs text-base-content/50 ml-6">Team health</span>
+                </a>
+                <a href="{% url 'web:features_analytics' %}#ai-adoption" role="menuitem"
+                   class="block py-1.5 hover:bg-base-200 rounded-lg px-2 -mx-2 transition-colors">
+                  <span class="flex items-center gap-2 text-sm text-base-content">
+                    <i class="fa-solid fa-robot fa-fw text-primary text-sm"></i>
+                    AI Adoption
+                  </span>
+                  <span class="text-xs text-base-content/50 ml-6">AI vs traditional</span>
+                </a>
+                <a href="{% url 'web:features_analytics' %}#delivery" role="menuitem"
+                   class="block py-1.5 hover:bg-base-200 rounded-lg px-2 -mx-2 transition-colors">
+                  <span class="flex items-center gap-2 text-sm text-base-content">
+                    <i class="fa-solid fa-rocket fa-fw text-primary text-sm"></i>
+                    Delivery
+                  </span>
+                  <span class="text-xs text-base-content/50 ml-6">Cycle time</span>
+                </a>
+                <a href="{% url 'web:features_analytics' %}#quality" role="menuitem"
+                   class="block py-1.5 hover:bg-base-200 rounded-lg px-2 -mx-2 transition-colors">
+                  <span class="flex items-center gap-2 text-sm text-base-content">
+                    <i class="fa-solid fa-check-circle fa-fw text-primary text-sm"></i>
+                    Quality
+                  </span>
+                  <span class="text-xs text-base-content/50 ml-6">Revert rate</span>
+                </a>
+                <a href="{% url 'web:features_analytics' %}#team" role="menuitem"
+                   class="block py-1.5 hover:bg-base-200 rounded-lg px-2 -mx-2 transition-colors">
+                  <span class="flex items-center gap-2 text-sm text-base-content">
+                    <i class="fa-solid fa-users fa-fw text-primary text-sm"></i>
+                    Team
+                  </span>
+                  <span class="text-xs text-base-content/50 ml-6">Reviewer load</span>
+                </a>
+                <a href="{% url 'web:features_analytics' %}#trends" role="menuitem"
+                   class="block py-1.5 hover:bg-base-200 rounded-lg px-2 -mx-2 transition-colors">
+                  <span class="flex items-center gap-2 text-sm text-base-content">
+                    <i class="fa-solid fa-chart-area fa-fw text-primary text-sm"></i>
+                    Trends
+                  </span>
+                  <span class="text-xs text-base-content/50 ml-6">Long-term view</span>
+                </a>
+              </div>
+            </div>
+
+            {# Column 3: Data #}
+            <div>
+              <h3 class="text-xs font-semibold text-base-content/50 uppercase tracking-wider mb-3">Data</h3>
+              <div class="space-y-1">
+                <a href="{% url 'web:features_pr_explorer' %}" role="menuitem"
+                   class="block py-2 hover:bg-base-200 rounded-lg px-2 -mx-2 transition-colors">
+                  <span class="flex items-center gap-2 font-medium text-base-content text-sm">
+                    <i class="fa-solid fa-list fa-fw text-primary"></i>
+                    PR Explorer
+                  </span>
+                  <span class="text-xs text-base-content/60 ml-6">Filter, export</span>
+                </a>
+                <a href="{% url 'web:features' %}#integrations" role="menuitem"
+                   class="block py-2 hover:bg-base-200 rounded-lg px-2 -mx-2 transition-colors">
+                  <span class="flex items-center gap-2 font-medium text-base-content text-sm">
+                    <i class="fa-solid fa-plug fa-fw text-primary"></i>
+                    Integrations
+                  </span>
+                  <span class="text-xs text-base-content/60 ml-6">GitHub + more</span>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <div class="divider my-3"></div>
           <a href="{% url 'web:compare' %}" role="menuitem"
              class="btn btn-ghost btn-sm w-full justify-between text-base-content/80 hover:text-base-content">
             Compare Tools
