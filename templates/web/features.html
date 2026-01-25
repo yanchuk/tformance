@@ -1,0 +1,193 @@
+{% extends "web/base.html" %}
+{% load static %}
+
+{% block body %}
+
+<!-- Hero Section -->
+<section class="py-16 bg-base-200 text-center relative overflow-hidden">
+  <!-- Subtle grid background -->
+  <div class="absolute inset-0 bg-[linear-gradient(rgba(249,115,22,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(249,115,22,0.02)_1px,transparent_1px)] bg-[size:40px_40px]"></div>
+
+  <div class="relative z-10 max-w-3xl mx-auto px-4">
+    <span class="inline-block px-3 py-1 text-sm font-mono text-primary bg-primary/10 rounded-full mb-4">
+      Platform Features
+    </span>
+    <h1 class="text-3xl md:text-5xl font-bold mb-4 text-base-content">
+      Everything you need to understand AI impact
+    </h1>
+    <p class="text-lg text-base-content/70 max-w-2xl mx-auto">
+      Track AI tool adoption, measure team performance, and connect your engineering stack.
+      One dashboard for CTOs who need clarity.
+    </p>
+  </div>
+</section>
+
+<!-- AI Impact Section -->
+<section id="ai-impact" class="scroll-mt-20 py-16 bg-base-100">
+  <div class="max-w-4xl mx-auto px-4">
+    <div class="text-center mb-12">
+      <span class="inline-block px-3 py-1 text-sm font-mono text-primary bg-primary/10 rounded-full mb-4">
+        AI Analytics
+      </span>
+      <h2 class="text-2xl md:text-4xl font-bold text-base-content mb-4">
+        See exactly how AI tools affect your team
+      </h2>
+      <p class="text-base-content/70 max-w-xl mx-auto">
+        Track which PRs used Copilot, Cursor, or Claude. Compare cycle time and review patterns between AI-assisted and traditional work.
+      </p>
+    </div>
+
+    <div class="grid md:grid-cols-2 gap-6">
+      <div class="p-6 bg-base-200 rounded-xl border border-base-300">
+        <div class="flex items-center gap-3 mb-3">
+          <div class="w-10 h-10 rounded-lg bg-primary/15 flex items-center justify-center">
+            <i class="fa-solid fa-robot text-primary"></i>
+          </div>
+          <h3 class="font-semibold text-base-content">AI Detection</h3>
+        </div>
+        <p class="text-sm text-base-content/70">Automatically identify AI-assisted commits based on patterns, tool signatures, and optional team surveys.</p>
+      </div>
+
+      <div class="p-6 bg-base-200 rounded-xl border border-base-300">
+        <div class="flex items-center gap-3 mb-3">
+          <div class="w-10 h-10 rounded-lg bg-primary/15 flex items-center justify-center">
+            <i class="fa-solid fa-chart-column text-primary"></i>
+          </div>
+          <h3 class="font-semibold text-base-content">Side-by-Side Comparison</h3>
+        </div>
+        <p class="text-sm text-base-content/70">See AI vs traditional PRs side-by-side. Cycle time, review rounds, time to merge - all compared.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Team Performance Section -->
+<section id="team-performance" class="scroll-mt-20 py-16 bg-base-200">
+  <div class="max-w-4xl mx-auto px-4">
+    <div class="text-center mb-12">
+      <span class="inline-block px-3 py-1 text-sm font-mono text-primary bg-primary/10 rounded-full mb-4">
+        Team Metrics
+      </span>
+      <h2 class="text-2xl md:text-4xl font-bold text-base-content mb-4">
+        Understand your team's delivery patterns
+      </h2>
+      <p class="text-base-content/70 max-w-xl mx-auto">
+        Throughput, cycle time, review load per contributor. Spot who's overloaded before burnout hits.
+      </p>
+    </div>
+
+    <div class="grid md:grid-cols-3 gap-6">
+      <div class="p-6 bg-base-100 rounded-xl border border-base-300 text-center">
+        <div class="w-12 h-12 rounded-full bg-primary/15 flex items-center justify-center mx-auto mb-4">
+          <i class="fa-solid fa-clock text-primary text-xl"></i>
+        </div>
+        <h3 class="font-semibold text-base-content mb-2">Cycle Time</h3>
+        <p class="text-sm text-base-content/70">From first commit to merge. See where PRs get stuck.</p>
+      </div>
+
+      <div class="p-6 bg-base-100 rounded-xl border border-base-300 text-center">
+        <div class="w-12 h-12 rounded-full bg-primary/15 flex items-center justify-center mx-auto mb-4">
+          <i class="fa-solid fa-bolt text-primary text-xl"></i>
+        </div>
+        <h3 class="font-semibold text-base-content mb-2">Throughput</h3>
+        <p class="text-sm text-base-content/70">PRs merged per week. Track team velocity over time.</p>
+      </div>
+
+      <div class="p-6 bg-base-100 rounded-xl border border-base-300 text-center">
+        <div class="w-12 h-12 rounded-full bg-primary/15 flex items-center justify-center mx-auto mb-4">
+          <i class="fa-solid fa-scale-balanced text-primary text-xl"></i>
+        </div>
+        <h3 class="font-semibold text-base-content mb-2">Review Load</h3>
+        <p class="text-sm text-base-content/70">Who's reviewing what. Balance the load across the team.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Integrations Section -->
+<section id="integrations" class="scroll-mt-20 py-16 bg-base-100">
+  <div class="max-w-4xl mx-auto px-4">
+    <div class="text-center mb-12">
+      <span class="inline-block px-3 py-1 text-sm font-mono text-primary bg-primary/10 rounded-full mb-4">
+        Integrations
+      </span>
+      <h2 class="text-2xl md:text-4xl font-bold text-base-content mb-4">
+        Connect your engineering stack
+      </h2>
+      <p class="text-base-content/70 max-w-xl mx-auto">
+        Pull data from the tools your team already uses.
+      </p>
+    </div>
+
+    <div class="grid md:grid-cols-2 gap-6">
+      <!-- GitHub - Live -->
+      <div class="flex items-start gap-4 p-6 bg-base-200 rounded-xl border border-base-300">
+        <div class="w-12 h-12 rounded-lg bg-base-content/10 flex items-center justify-center flex-shrink-0">
+          <svg class="w-7 h-7 text-base-content" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+          </svg>
+        </div>
+        <div class="flex-1">
+          <div class="flex items-center gap-2 mb-1">
+            <h3 class="font-semibold text-base-content text-lg">GitHub</h3>
+            <span class="text-xs px-2 py-0.5 bg-success/20 text-success rounded font-medium">Live</span>
+          </div>
+          <p class="text-sm text-base-content/70">PRs, commits, reviews, cycle time, AI tool detection</p>
+        </div>
+      </div>
+
+      <!-- Slack - Coming Soon -->
+      <div class="flex items-start gap-4 p-6 bg-base-200/50 rounded-xl border border-base-300/50">
+        <div class="w-12 h-12 rounded-lg bg-[#4A154B]/10 flex items-center justify-center flex-shrink-0">
+          <svg class="w-7 h-7 text-[#4A154B]" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zM6.313 15.165a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zM8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zM8.834 6.313a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312zM18.956 8.834a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zM17.688 8.834a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1-2.52-2.521V2.522A2.527 2.527 0 0 1 15.165 0a2.528 2.528 0 0 1 2.523 2.522v6.312zM15.165 18.956a2.528 2.528 0 0 1 2.523 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zM15.165 17.688a2.527 2.527 0 0 1-2.52-2.523 2.526 2.526 0 0 1 2.52-2.52h6.313A2.527 2.527 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.523h-6.313z"/>
+          </svg>
+        </div>
+        <div class="flex-1">
+          <div class="flex items-center gap-2 mb-1">
+            <h3 class="font-semibold text-base-content/80 text-lg">Slack</h3>
+            <span class="text-xs px-2 py-0.5 bg-secondary/20 text-secondary rounded font-medium">Soon</span>
+          </div>
+          <p class="text-sm text-base-content/50">Developer surveys, sentiment, weekly digests</p>
+        </div>
+      </div>
+
+      <!-- Jira - Coming Soon -->
+      <div class="flex items-start gap-4 p-6 bg-base-200/50 rounded-xl border border-base-300/50">
+        <div class="w-12 h-12 rounded-lg bg-[#0052CC]/10 flex items-center justify-center flex-shrink-0">
+          <svg class="w-7 h-7 text-[#0052CC]" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M11.571 11.513H0a5.218 5.218 0 0 0 5.232 5.215h2.13v2.057A5.215 5.215 0 0 0 12.575 24V12.518a1.005 1.005 0 0 0-1.005-1.005zm5.723-5.756H5.736a5.215 5.215 0 0 0 5.215 5.214h2.129v2.058a5.218 5.218 0 0 0 5.215 5.214V6.758a1.001 1.001 0 0 0-1.001-1.001zM23.013 0H11.455a5.215 5.215 0 0 0 5.215 5.215h2.129v2.057A5.215 5.215 0 0 0 24 12.483V1.005A1.001 1.001 0 0 0 23.013 0z"/>
+          </svg>
+        </div>
+        <div class="flex-1">
+          <div class="flex items-center gap-2 mb-1">
+            <h3 class="font-semibold text-base-content/80 text-lg">Jira</h3>
+            <span class="text-xs px-2 py-0.5 bg-secondary/20 text-secondary rounded font-medium">Soon</span>
+          </div>
+          <p class="text-sm text-base-content/50">Ticket linking, sprint velocity, project tracking</p>
+        </div>
+      </div>
+
+      <!-- Calendar - Coming Soon -->
+      <div class="flex items-start gap-4 p-6 bg-base-200/50 rounded-xl border border-base-300/50">
+        <div class="w-12 h-12 rounded-lg bg-[#4285F4]/10 flex items-center justify-center flex-shrink-0">
+          <svg class="w-7 h-7 text-[#4285F4]" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M19.5 4h-3V2.5a.5.5 0 0 0-1 0V4h-7V2.5a.5.5 0 0 0-1 0V4h-3A2.5 2.5 0 0 0 2 6.5v13A2.5 2.5 0 0 0 4.5 22h15a2.5 2.5 0 0 0 2.5-2.5v-13A2.5 2.5 0 0 0 19.5 4zM21 19.5a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 19.5V9h18v10.5zM21 8H3V6.5A1.5 1.5 0 0 1 4.5 5h15A1.5 1.5 0 0 1 21 6.5V8z"/>
+          </svg>
+        </div>
+        <div class="flex-1">
+          <div class="flex items-center gap-2 mb-1">
+            <h3 class="font-semibold text-base-content/80 text-lg">Google Calendar</h3>
+            <span class="text-xs px-2 py-0.5 bg-secondary/20 text-secondary rounded font-medium">Soon</span>
+          </div>
+          <p class="text-sm text-base-content/50">Meeting load, focus time, availability patterns</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+{% include "web/components/cta_terminal.html" %}
+
+{% endblock %}

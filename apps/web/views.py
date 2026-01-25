@@ -628,6 +628,82 @@ def github_app_webhook(request):
 
 
 # =============================================================================
+# Pricing Page (Public)
+# =============================================================================
+
+# FAQ data for pricing page (Writing Well style - tight and direct)
+PRICING_FAQS = [
+    {
+        "question": "Why flat-rate instead of per-seat?",
+        "answer": "Per-seat punishes growth. We don't. Your team grows, your bill stays put.",
+    },
+    {
+        "question": "What happens when my team grows past my tier?",
+        "answer": "You move up a tier. We warn you first. No surprise bills.",
+    },
+    {
+        "question": "What's included in the 30-day trial?",
+        "answer": "Everything. All features, no credit card. Try it, see if it helps.",
+    },
+    {
+        "question": "Do all tiers get all features?",
+        "answer": "Yes. Only difference is team size. Same features everywhere.",
+    },
+    {
+        "question": "How does Enterprise work?",
+        "answer": "150+ devs? Custom pricing, dedicated support. Email us.",
+    },
+]
+
+
+def pricing(request):
+    """Pricing page with tiers, calculator, and FAQs."""
+    from apps.web.compare_data import COMPETITORS, OUR_PRICING
+
+    # Extract calculator data for savings comparison
+    # Only include competitors with per-seat pricing for calculator
+    calculator_competitors = {}
+    for slug in ["linearb", "jellyfish"]:
+        comp = COMPETITORS.get(slug)
+        if comp and comp.get("price_per_seat_low"):
+            avg_price = (
+                comp["price_per_seat_low"] + (comp.get("price_per_seat_high") or comp["price_per_seat_low"])
+            ) / 2
+            calculator_competitors[slug] = {
+                "name": comp["name"],
+                "price_per_seat": avg_price,
+                "pricing_range": comp["pricing_range"],
+            }
+
+    context = {
+        "our_pricing": OUR_PRICING,
+        "calculator_competitors": calculator_competitors,
+        "pricing_faqs": PRICING_FAQS,
+        # SEO
+        "page_title": "Pricing - Flat-Rate AI Analytics | Tformance",
+        "page_description": (
+            "Predictable flat-rate pricing. No per-seat surprises. $99-699/mo based on team size. Free during Alpha."
+        ),
+    }
+    return render(request, "web/pricing.html", context)
+
+
+def features(request):
+    """Features page with anchor sections for navigation dropdown."""
+    return render(
+        request,
+        "web/features.html",
+        {
+            "page_title": "Platform Features",
+            "page_description": (
+                "AI impact analytics, team performance metrics, and integrations. "
+                "Everything you need to understand how AI tools affect your engineering team."
+            ),
+        },
+    )
+
+
+# =============================================================================
 # Comparison Pages (Public)
 # =============================================================================
 

@@ -3,6 +3,7 @@
 {% slugurl 'blog' as blog_url %}
 <div class="navbar shadow-md px-4 lg:px-6">
   <div class="navbar-start">
+    {# Mobile menu dropdown #}
     <div class="dropdown">
       <div class="lg:hidden">
         <label tabindex="0" class="btn btn-ghost">
@@ -13,52 +14,150 @@
         {% block mobile_nav %}
         <li>
           <a class="{% if request.path == '/' %}active{% endif %}" href="{% url 'web:home' %}">
-            <div class="flex items-center gap-2">
-              <div class="w-6 h-6 rounded-md bg-gradient-to-br from-accent-primary to-pink-500
-                          flex items-center justify-center shadow-md shadow-accent-primary/20">
-                <span class="font-bold text-white text-xs">T</span>
-              </div>
-              <span class="font-bold text-lg tracking-tight">{{project_meta.NAME|title}}</span>
-            </div>
+            Home
+          </a>
+        </li>
+        <li class="menu-title text-xs pt-2">Features</li>
+        <li>
+          <a href="{% url 'web:features' %}#ai-impact">
+            <i class="fa-solid fa-robot text-primary w-4"></i>
+            AI Impact Analytics
+          </a>
+        </li>
+        <li>
+          <a href="{% url 'web:features' %}#team-performance">
+            <i class="fa-solid fa-chart-line text-primary w-4"></i>
+            Team Performance
+          </a>
+        </li>
+        <li>
+          <a href="{% url 'web:features' %}#integrations">
+            <i class="fa-solid fa-plug text-primary w-4"></i>
+            Integrations
+          </a>
+        </li>
+        <li>
+          <a href="{% url 'web:compare' %}">
+            <i class="fa-solid fa-code-compare text-primary w-4"></i>
+            Compare Tools
+          </a>
+        </li>
+        <li class="menu-title text-xs pt-2">Resources</li>
+        <li>
+          <a class="{% if request.path == '/pricing/' %}active{% endif %}" href="{% url 'web:pricing' %}">
+            Pricing
           </a>
         </li>
         {% if blog_url %}
         <li>
           <a class="{% if blog_url in request.path %}active{% endif %}" href="{{ blog_url }}">
-            {% translate "Blog" %}
+            Blog
           </a>
         </li>
         {% endif %}
         {% endblock %}
       </ul>
     </div>
+
+    {# Logo - visible on all screen sizes #}
+    <a href="{% url 'web:home' %}" class="flex items-center gap-2 ml-2 lg:ml-0">
+      <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-accent-primary to-pink-500
+                  flex items-center justify-center shadow-lg shadow-accent-primary/20">
+        <span class="font-bold text-white text-sm">T</span>
+      </div>
+      <span class="font-bold text-xl lg:text-2xl tracking-tight font-sans">{{project_meta.NAME|title}}</span>
+    </a>
   </div>
+
+  {# Desktop navigation links #}
   <div class="navbar-center hidden lg:flex">
-    <nav class="tabs p-0 items-center" aria-label="Main navigation">
-      <a class="tab !h-auto py-2 {% if request.path == '/' %}tab-active{% endif %}" href="{% url 'web:home' %}">
-        <div class="flex items-center gap-2">
-           <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-accent-primary to-pink-500
-                       flex items-center justify-center shadow-lg shadow-accent-primary/20">
-             <span class="font-bold text-white text-sm">T</span>
-           </div>
-           <span class="font-bold text-2xl tracking-tight font-sans">{{project_meta.NAME|title}}</span>
+    <nav class="flex items-center gap-1" aria-label="Main navigation">
+      {# Features Dropdown #}
+      <div class="relative"
+           x-data="{ open: false }"
+           @mouseenter="open = true"
+           @mouseleave="open = false"
+           @keydown.escape="open = false">
+        <button @click="open = !open"
+                :aria-expanded="open"
+                aria-haspopup="true"
+                class="btn btn-ghost btn-sm gap-1 {% if '/features/' in request.path %}font-bold{% endif %}">
+          Features
+          <svg class="w-3 h-3 opacity-70 transition-transform" :class="{ 'rotate-180': open }"
+               fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+          </svg>
+        </button>
+        <div x-show="open"
+             x-transition:enter="transition ease-out duration-100"
+             x-transition:enter-start="opacity-0 scale-95"
+             x-transition:enter-end="opacity-100 scale-100"
+             x-transition:leave="transition ease-in duration-75"
+             x-transition:leave-start="opacity-100 scale-100"
+             x-transition:leave-end="opacity-0 scale-95"
+             @click.outside="open = false"
+             class="absolute left-0 mt-1 p-4 shadow-lg bg-base-100 rounded-box w-80 z-50 border border-base-300"
+             role="menu">
+          <ul class="menu menu-sm p-0 gap-1">
+            <li>
+              <a href="{% url 'web:features' %}#ai-impact" role="menuitem"
+                 class="flex flex-col items-start gap-0 py-3">
+                <span class="flex items-center gap-2 font-medium text-base-content">
+                  <i class="fa-solid fa-robot text-primary w-4"></i>
+                  AI Impact Analytics
+                </span>
+                <span class="text-xs text-base-content/60 ml-6">Track AI tool adoption & ROI</span>
+              </a>
+            </li>
+            <li>
+              <a href="{% url 'web:features' %}#team-performance" role="menuitem"
+                 class="flex flex-col items-start gap-0 py-3">
+                <span class="flex items-center gap-2 font-medium text-base-content">
+                  <i class="fa-solid fa-chart-line text-primary w-4"></i>
+                  Team Performance
+                </span>
+                <span class="text-xs text-base-content/60 ml-6">Cycle time, throughput, load</span>
+              </a>
+            </li>
+            <li>
+              <a href="{% url 'web:features' %}#integrations" role="menuitem"
+                 class="flex flex-col items-start gap-0 py-3">
+                <span class="flex items-center gap-2 font-medium text-base-content">
+                  <i class="fa-solid fa-plug text-primary w-4"></i>
+                  Integrations
+                </span>
+                <span class="text-xs text-base-content/60 ml-6">GitHub &middot; Jira &middot; Slack</span>
+              </a>
+            </li>
+          </ul>
+          <div class="divider my-2"></div>
+          <a href="{% url 'web:compare' %}" role="menuitem"
+             class="btn btn-ghost btn-sm w-full justify-between text-base-content/80 hover:text-base-content">
+            Compare Tools
+            <i class="fa-solid fa-arrow-right text-xs"></i>
+          </a>
         </div>
+      </div>
+
+      <a class="btn btn-ghost btn-sm {% if '/pricing/' in request.path %}font-bold{% endif %}" href="{% url 'web:pricing' %}">
+        Pricing
       </a>
+
       {% if blog_url %}
-      <a class="tab {% if blog_url in request.path %}tab-active{% endif %}" href="{{ blog_url }}">
-        {% translate "Blog" %}
+      <a class="btn btn-ghost btn-sm {% if blog_url in request.path %}font-bold{% endif %}" href="{{ blog_url }}">
+        Blog
       </a>
       {% endif %}
     </nav>
   </div>
+
   <div class="navbar-end gap-2">
-    {% include "web/components/dark_mode_selector.html" with light_theme="tformance-light" dark_theme="tformance" %}
     {% if not user.is_authenticated %}
     <a href="{% url 'account_signup' %}" class="btn btn-primary">
-      {% translate "Sign Up" %}
+      Sign Up
     </a>
     <a href="{% url 'account_login' %}" class="btn btn-outline ml-2">
-      {% translate "Sign In" %}
+      Sign In
     </a>
     {% endif %}
   </div>

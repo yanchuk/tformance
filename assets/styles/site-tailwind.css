@@ -147,6 +147,11 @@
   --success: var(--color-success);
 }
 
+/* Smooth scroll for anchor navigation */
+html {
+  scroll-behavior: smooth;
+}
+
 /*
   Light theme accessibility overrides
   Fix DaisyUI component contrast ratios for WCAG AA compliance
