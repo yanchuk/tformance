@@ -24,7 +24,8 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, Spec
 from wagtail import urls as wagtail_urls
 from wagtail.admin import urls as wagtailadmin_urls
 from wagtail.api.v2.views import PagesAPIViewSet
-from wagtail.contrib.sitemaps import Sitemap
+
+# Wagtail sitemap removed - uses Django Sites which defaults to localhost
 from wagtail.documents import urls as wagtaildocs_urls
 
 from apps.feedback.urls import team_urlpatterns as feedback_team_urls
@@ -44,7 +45,6 @@ sitemaps = {
     "static": StaticViewSitemap(),
     "features": FeaturesSitemap(),
     "comparison": ComparisonSitemap(),
-    "wagtail": Sitemap(),
 }
 
 # urls that are unique to using a team should go here
