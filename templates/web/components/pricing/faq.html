@@ -1,0 +1,24 @@
+{# Pricing FAQ section using DaisyUI collapse #}
+<section class="py-16 bg-base-100">
+  <div class="max-w-3xl mx-auto px-4">
+    <div class="text-center mb-10">
+      <h2 class="text-2xl md:text-3xl font-bold text-base-content mb-4">
+        Common questions
+      </h2>
+    </div>
+
+    <div class="space-y-3">
+      {% for faq in pricing_faqs %}
+      <div class="collapse collapse-arrow bg-base-200 rounded-xl">
+        <input type="radio" name="pricing-faq" {% if forloop.first %}checked="checked"{% endif %}>
+        <div class="collapse-title text-base font-medium text-base-content">
+          {{ faq.question }}
+        </div>
+        <div class="collapse-content">
+          <p class="text-base-content/70 pt-2">{{ faq.answer }}</p>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>

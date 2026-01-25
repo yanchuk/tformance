@@ -54,6 +54,25 @@ def get_our_annual_cost(team_size: int) -> tuple[int, str]:
         return None, "Enterprise"
 
 
+def get_our_annual_cost_discounted(team_size: int) -> tuple[int | None, str]:
+    """Calculate annual cost with 17% discount (2 months free).
+
+    Annual billing gives customers 2 months free, which is ~17% off.
+    This is a common SaaS pattern that encourages annual commitments.
+
+    Returns:
+        Tuple of (annual_cost, tier_name)
+    """
+    if team_size <= 10:
+        return 99 * 10, "Starter"  # $990/year (2 months free)
+    elif team_size <= 50:
+        return 299 * 10, "Team"  # $2,990/year (2 months free)
+    elif team_size <= 150:
+        return 699 * 10, "Business"  # $6,990/year (2 months free)
+    else:
+        return None, "Enterprise"
+
+
 # Competitor data
 COMPETITORS = {
     "linearb": {
@@ -71,11 +90,11 @@ COMPETITORS = {
         "our_angle": "AI-focused metrics at 70% less cost",
         "one_liner": "Workflow automation + DORA. $35-46/seat.",
         "their_strengths": [
-            "Strong Dev Interrupted community and content",
-            "Advanced workflow automation (PR routing, approval rules)",
+            "Active Dev Interrupted community (30K+ members)",
+            "PR routing, approval rules, auto-merging",
             "Free tier for 8 contributors",
             "SOC 2 Type II certified",
-            "Mature Jira integration",
+            "Deep Jira integration",
         ],
         "our_advantages": [
             "70% cheaper ($299/mo vs $1,750+/mo for 50 devs)",
@@ -124,17 +143,15 @@ COMPETITORS = {
             {
                 "question": "Is Tformance a good LinearB alternative?",
                 "answer": (
-                    "Yes, if AI impact measurement matters more than workflow automation. "
-                    "We cost 70% less and focus specifically on how AI tools affect "
-                    "your delivery metrics."
+                    "Yes, if AI impact matters more than workflow automation. "
+                    "70% less cost. Focus on how AI tools affect delivery."
                 ),
             },
             {
                 "question": "Does Tformance have all LinearB features?",
                 "answer": (
-                    "No. LinearB has more features (Jira, workflow automation, full DORA). "
-                    "We focus on AI impact metrics at a fraction of the cost. "
-                    "Different tools for different priorities."
+                    "No. LinearB has Jira, workflow automation, full DORA. "
+                    "We focus on AI impact at a fraction of the cost."
                 ),
             },
             {
@@ -147,15 +164,13 @@ COMPETITORS = {
             {
                 "question": "Why is Tformance so much cheaper?",
                 "answer": (
-                    "Flat-rate pricing, not per-seat. Focused feature set, not everything. "
-                    "Early stage, building customer base. Price advantage won't last forever."
+                    "Flat-rate pricing, not per-seat. Focused feature set. Early stage—this price won't last forever."
                 ),
             },
             {
                 "question": "Does LinearB offer a free trial?",
                 "answer": (
-                    "LinearB offers 8 contributors free forever. "
-                    "Tformance offers 30-day free trial for any team size, then flat-rate pricing."
+                    "LinearB: 8 contributors free forever. Tformance: 30-day trial for any size, then flat-rate."
                 ),
             },
         ],
@@ -227,16 +242,14 @@ COMPETITORS = {
             {
                 "question": "Is Tformance a good Jellyfish alternative?",
                 "answer": (
-                    "For smaller teams (10-150 devs) focused on AI impact, yes. "
-                    "For enterprise orgs needing R&D capitalization and deep Jira, "
-                    "Jellyfish is purpose-built."
+                    "For teams under 150 devs focused on AI impact, yes. "
+                    "For enterprise orgs needing R&D capitalization, Jellyfish is purpose-built."
                 ),
             },
             {
                 "question": "Why is Jellyfish so expensive?",
                 "answer": (
-                    "Enterprise features, enterprise sales, enterprise support. "
-                    "If you need all that, it's worth it. If you don't, you're overpaying."
+                    "Enterprise features, sales, support. Worth it if you need all that. Overpaying if you don't."
                 ),
             },
             {
@@ -326,16 +339,11 @@ COMPETITORS = {
             },
             {
                 "question": "Does Swarmia detect AI tool usage?",
-                "answer": (
-                    "Not specifically. Swarmia focuses on overall developer productivity, not AI coding tool impact."
-                ),
+                "answer": "No. Swarmia tracks developer productivity broadly, not AI tool impact.",
             },
             {
                 "question": "Why doesn't Tformance have surveys yet?",
-                "answer": (
-                    "We're building AI impact first. Surveys are coming—with a twist "
-                    "(gamified AI Detective experience). Quality over speed."
-                ),
+                "answer": ("AI impact first. Surveys coming—with a twist (gamified AI Detective)."),
             },
         ],
     },
@@ -395,17 +403,13 @@ COMPETITORS = {
             {
                 "question": "Which has better AI detection, Tformance or Span?",
                 "answer": (
-                    "Different approaches. Span does code-level analysis. "
-                    "Tformance uses PR patterns. Span may be more granular; "
-                    "Tformance is simpler to deploy."
+                    "Different approaches. Span: code-level analysis, more granular. "
+                    "Tformance: PR patterns, simpler to deploy."
                 ),
             },
             {
                 "question": "Is Span expensive?",
-                "answer": (
-                    "Enterprise pricing typically is. Span requires a demo for pricing. "
-                    "Tformance publishes prices: $99-699/mo flat rate."
-                ),
+                "answer": ("Enterprise pricing—demo required. Tformance: $99-699/mo flat, published on site."),
             },
         ],
     },
@@ -458,17 +462,11 @@ COMPETITORS = {
         "faqs": [
             {
                 "question": "Are Tformance and Workweave similar?",
-                "answer": (
-                    "Yes, both focus on AI-assisted development tracking. "
-                    "Main differences: pricing model and current integrations."
-                ),
+                "answer": "Yes, both track AI-assisted development. Differences: pricing model and integrations.",
             },
             {
                 "question": "Which is better for a 50-dev team?",
-                "answer": (
-                    "Financially, Tformance saves ~$26K/year due to flat pricing. "
-                    "Feature-wise, both offer core AI tracking."
-                ),
+                "answer": "Tformance saves ~$26K/year (flat pricing). Features are similar.",
             },
         ],
     },
@@ -522,16 +520,11 @@ COMPETITORS = {
         "faqs": [
             {
                 "question": "Is Tformance a Mesmer alternative?",
-                "answer": (
-                    "Not really. Different focus. Mesmer automates status updates. "
-                    "Tformance measures AI impact. Minimal overlap."
-                ),
+                "answer": "Not really. Mesmer automates status updates. Tformance measures AI impact. Minimal overlap.",
             },
             {
                 "question": "Can I use both Tformance and Mesmer?",
-                "answer": (
-                    "Yes. They solve different problems. Mesmer for status automation, Tformance for AI metrics."
-                ),
+                "answer": "Yes. Different problems. Mesmer: status automation. Tformance: AI metrics.",
             },
         ],
     },
@@ -582,16 +575,13 @@ COMPETITORS = {
         "faqs": [
             {
                 "question": "Is Nivara a Tformance competitor?",
-                "answer": (
-                    "Yes, both build AI engineering analytics. "
-                    "Limited public information about Nivara makes detailed comparison difficult."
-                ),
+                "answer": "Yes, both build AI engineering analytics. Limited public info on Nivara—hard to compare.",
             },
             {
                 "question": "Which is further along?",
                 "answer": (
-                    "Both are early stage. We have live customers in alpha. Nivara is YC F25. "
-                    "Evaluate based on current capabilities, not stage labels."
+                    "Both early stage. We have live alpha customers. "
+                    "Nivara is YC F25. Judge by capabilities, not labels."
                 ),
             },
         ],

@@ -1,0 +1,58 @@
+{% extends "web/base.html" %}
+{% load static %}
+
+{% block page_head %}
+{# Product Schema for SEO #}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Product",
+  "name": "Tformance",
+  "description": "AI Impact Analytics for Engineering Teams",
+  "brand": {
+    "@type": "Brand",
+    "name": "Tformance"
+  },
+  "offers": [
+    {
+      "@type": "Offer",
+      "name": "Starter",
+      "price": "99",
+      "priceCurrency": "USD",
+      "priceValidUntil": "2026-12-31",
+      "availability": "https://schema.org/InStock",
+      "description": "For teams up to 10 developers"
+    },
+    {
+      "@type": "Offer",
+      "name": "Team",
+      "price": "299",
+      "priceCurrency": "USD",
+      "priceValidUntil": "2026-12-31",
+      "availability": "https://schema.org/InStock",
+      "description": "For teams up to 50 developers"
+    },
+    {
+      "@type": "Offer",
+      "name": "Business",
+      "price": "699",
+      "priceCurrency": "USD",
+      "priceValidUntil": "2026-12-31",
+      "availability": "https://schema.org/InStock",
+      "description": "For teams up to 150 developers"
+    }
+  ]
+}
+</script>
+{% endblock %}
+
+{% block body %}
+
+{% include "web/components/pricing/hero.html" %}
+{% include "web/components/pricing/tiers.html" %}
+{% include "web/components/pricing/calculator.html" %}
+{% include "web/components/pricing/features_table.html" %}
+{% include "web/components/pricing/faq.html" %}
+{% include "web/components/pricing/cta.html" %}
+
+{% endblock %}

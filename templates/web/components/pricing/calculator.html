@@ -1,0 +1,145 @@
+{# Savings calculator with team size slider #}
+{{ calculator_competitors|json_script:"pricing-calculator-data" }}
+
+<section class="py-16 bg-base-100">
+  <div class="max-w-4xl mx-auto px-4">
+    <div class="text-center mb-10">
+      <h2 class="text-2xl md:text-3xl font-bold text-base-content mb-4">
+        Do the math
+      </h2>
+      <p class="text-base-content/70">
+        Flat rate vs per-seat. The bigger you are, the more you save.
+      </p>
+    </div>
+
+    {# Calculator card #}
+    <div class="bg-base-200 rounded-2xl p-6 md:p-8" x-data="savingsCalculator()" x-init="init()">
+
+      {# Team size slider #}
+      <div class="mb-8">
+        <div class="flex justify-between items-center mb-3">
+          <label class="text-base-content font-medium">Team size</label>
+          <span class="text-2xl font-bold text-primary" x-text="teamSize + ' developers'"></span>
+        </div>
+        <input
+          type="range"
+          min="5"
+          max="200"
+          step="5"
+          x-model="teamSize"
+          class="range range-primary w-full"
+        >
+        <div class="flex justify-between text-xs text-base-content/50 mt-1">
+          <span>5</span>
+          <span>50</span>
+          <span>100</span>
+          <span>150</span>
+          <span>200+</span>
+        </div>
+      </div>
+
+      {# Comparison results #}
+      <div class="grid md:grid-cols-3 gap-4">
+
+        {# Our cost #}
+        <div class="bg-base-100 rounded-xl p-5 border-2 border-primary">
+          <p class="text-sm text-base-content/60 mb-1">Tformance</p>
+          <p class="text-3xl font-bold text-primary" x-text="ourCostDisplay"></p>
+          <p class="text-xs text-base-content/50 mt-1" x-text="ourTier + ' tier'"></p>
+        </div>
+
+        {# LinearB cost #}
+        <div class="bg-base-100 rounded-xl p-5">
+          <p class="text-sm text-base-content/60 mb-1">LinearB</p>
+          <p class="text-3xl font-bold text-base-content" x-text="linearbCostDisplay"></p>
+          <p class="text-xs text-base-content/50 mt-1">~$40/seat/mo</p>
+        </div>
+
+        {# Jellyfish cost #}
+        <div class="bg-base-100 rounded-xl p-5">
+          <p class="text-sm text-base-content/60 mb-1">Jellyfish</p>
+          <p class="text-3xl font-bold text-base-content" x-text="jellyfishCostDisplay"></p>
+          <p class="text-xs text-base-content/50 mt-1">~$50/seat/mo</p>
+        </div>
+      </div>
+
+      {# Savings summary #}
+      <div class="mt-6 p-4 bg-success/10 border border-success/20 rounded-xl text-center" x-show="savings > 0">
+        <p class="text-success font-semibold">
+          <span class="text-2xl" x-text="'Save $' + savings.toLocaleString()"></span>
+          <span class="text-base">/year vs LinearB</span>
+        </p>
+      </div>
+
+      {# Enterprise note #}
+      <div class="mt-4 text-center text-sm text-base-content/60" x-show="teamSize > 150">
+        <p>150+ developers? <a href="mailto:hello@tformance.com" class="text-primary hover:underline">Contact us</a> for custom pricing.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+function savingsCalculator() {
+  return {
+    teamSize: 30,
+    competitors: {},
+
+    init() {
+      const dataEl = document.getElementById('pricing-calculator-data');
+      if (dataEl) {
+        this.competitors = JSON.parse(dataEl.textContent);
+      }
+    },
+
+    get ourTier() {
+      if (this.teamSize <= 10) return 'Starter';
+      if (this.teamSize <= 50) return 'Team';
+      if (this.teamSize <= 150) return 'Business';
+      return 'Enterprise';
+    },
+
+    get ourMonthlyCost() {
+      if (this.teamSize <= 10) return 99;
+      if (this.teamSize <= 50) return 299;
+      if (this.teamSize <= 150) return 699;
+      return null; // Enterprise
+    },
+
+    get ourAnnualCost() {
+      const monthly = this.ourMonthlyCost;
+      return monthly ? monthly * 12 : null;
+    },
+
+    get ourCostDisplay() {
+      const annual = this.ourAnnualCost;
+      return annual ? '$' + annual.toLocaleString() + '/yr' : 'Custom';
+    },
+
+    get linearbCost() {
+      const comp = this.competitors.linearb;
+      if (!comp) return 0;
+      return Math.round(comp.price_per_seat * this.teamSize * 12);
+    },
+
+    get linearbCostDisplay() {
+      return '$' + this.linearbCost.toLocaleString() + '/yr';
+    },
+
+    get jellyfishCost() {
+      const comp = this.competitors.jellyfish;
+      if (!comp) return 0;
+      return Math.round(comp.price_per_seat * this.teamSize * 12);
+    },
+
+    get jellyfishCostDisplay() {
+      return '$' + this.jellyfishCost.toLocaleString() + '/yr';
+    },
+
+    get savings() {
+      if (!this.ourAnnualCost) return 0;
+      return this.linearbCost - this.ourAnnualCost;
+    }
+  }
+}
+</script>

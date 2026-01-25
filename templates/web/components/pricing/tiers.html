@@ -1,0 +1,127 @@
+{# Pricing tiers with monthly/annual toggle #}
+<section class="py-16 bg-base-200" x-data="{ annual: false }">
+  <div class="max-w-6xl mx-auto px-4">
+
+    {# Billing toggle #}
+    <div class="flex justify-center items-center gap-4 mb-12">
+      <span class="text-base-content/70" :class="{ 'text-base-content font-medium': !annual }">Monthly</span>
+      <input type="checkbox" class="toggle toggle-primary" x-model="annual" aria-label="Toggle annual billing">
+      <span class="text-base-content/70" :class="{ 'text-base-content font-medium': annual }">
+        Annual
+        <span class="ml-1 text-xs text-success font-medium">(2 months free)</span>
+      </span>
+    </div>
+
+    {# Pricing cards grid #}
+    <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+
+      {# Starter tier #}
+      <div class="bg-base-100 rounded-2xl border border-base-300 p-6 flex flex-col">
+        <div class="mb-6">
+          <h3 class="text-lg font-semibold text-base-content">Starter</h3>
+          <p class="text-sm text-base-content/60 mt-1">1-10 devs. Get your metrics.</p>
+        </div>
+
+        {# Alpha pricing display #}
+        <div class="mb-6">
+          <div class="flex items-baseline gap-2">
+            <span class="text-4xl font-bold text-success">$0</span>
+            <span class="text-lg text-base-content/50 line-through" x-show="!annual">$99</span>
+            <span class="text-lg text-base-content/50 line-through" x-show="annual" x-cloak>$83</span>
+            <span class="text-base-content/50">/mo</span>
+          </div>
+          <p class="text-sm text-base-content/70 mt-1">Free during Alpha</p>
+          <p class="text-xs text-base-content/50 mt-1" x-show="annual" x-cloak>$990/year when billed annually</p>
+        </div>
+
+        <p class="text-sm text-base-content/70 mb-6">Up to <strong>10 developers</strong></p>
+
+        <a href="{% url 'account_signup' %}" class="btn btn-primary w-full mt-auto">
+          Start Free
+        </a>
+      </div>
+
+      {# Team tier (Most Popular) #}
+      <div class="bg-base-100 rounded-2xl border-2 border-primary p-6 flex flex-col relative">
+        <div class="absolute -top-3 left-1/2 -translate-x-1/2">
+          <span class="bg-primary text-primary-content text-xs font-bold px-3 py-1 rounded-full">
+            Most Popular
+          </span>
+        </div>
+
+        <div class="mb-6">
+          <h3 class="text-lg font-semibold text-base-content">Team</h3>
+          <p class="text-sm text-base-content/60 mt-1">11-50 devs. See everything.</p>
+        </div>
+
+        {# Alpha pricing display #}
+        <div class="mb-6">
+          <div class="flex items-baseline gap-2">
+            <span class="text-4xl font-bold text-success">$0</span>
+            <span class="text-lg text-base-content/50 line-through" x-show="!annual">$299</span>
+            <span class="text-lg text-base-content/50 line-through" x-show="annual" x-cloak>$249</span>
+            <span class="text-base-content/50">/mo</span>
+          </div>
+          <p class="text-sm text-base-content/70 mt-1">Free during Alpha</p>
+          <p class="text-xs text-base-content/50 mt-1" x-show="annual" x-cloak>$2,990/year when billed annually</p>
+        </div>
+
+        <p class="text-sm text-base-content/70 mb-6">Up to <strong>50 developers</strong></p>
+
+        <a href="{% url 'account_signup' %}" class="btn btn-primary w-full mt-auto">
+          Start Free
+        </a>
+      </div>
+
+      {# Business tier #}
+      <div class="bg-base-100 rounded-2xl border border-base-300 p-6 flex flex-col">
+        <div class="mb-6">
+          <h3 class="text-lg font-semibold text-base-content">Business</h3>
+          <p class="text-sm text-base-content/60 mt-1">51-150 devs. Same price, more devs.</p>
+        </div>
+
+        {# Alpha pricing display #}
+        <div class="mb-6">
+          <div class="flex items-baseline gap-2">
+            <span class="text-4xl font-bold text-success">$0</span>
+            <span class="text-lg text-base-content/50 line-through" x-show="!annual">$699</span>
+            <span class="text-lg text-base-content/50 line-through" x-show="annual" x-cloak>$583</span>
+            <span class="text-base-content/50">/mo</span>
+          </div>
+          <p class="text-sm text-base-content/70 mt-1">Free during Alpha</p>
+          <p class="text-xs text-base-content/50 mt-1" x-show="annual" x-cloak>$6,990/year when billed annually</p>
+        </div>
+
+        <p class="text-sm text-base-content/70 mb-6">Up to <strong>150 developers</strong></p>
+
+        <a href="{% url 'account_signup' %}" class="btn btn-primary w-full mt-auto">
+          Start Free
+        </a>
+      </div>
+
+      {# Enterprise tier #}
+      <div class="bg-base-100 rounded-2xl border border-base-300 p-6 flex flex-col">
+        <div class="mb-6">
+          <h3 class="text-lg font-semibold text-base-content">Enterprise</h3>
+          <p class="text-sm text-base-content/60 mt-1">150+. We'll call you.</p>
+        </div>
+
+        {# Alpha pricing display #}
+        <div class="mb-6">
+          <div class="flex items-baseline gap-2">
+            <span class="text-4xl font-bold text-success">$0</span>
+            <span class="text-lg text-base-content/50 line-through">Custom</span>
+          </div>
+          <p class="text-sm text-base-content/70 mt-1">Free during Alpha</p>
+        </div>
+
+        <p class="text-sm text-base-content/70 mb-6"><strong>150+ developers</strong></p>
+
+        <a href="mailto:hello@tformance.com" class="btn btn-outline w-full mt-auto">
+          Talk to Us
+        </a>
+      </div>
+    </div>
+
+  </div>
+</section>
