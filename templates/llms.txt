@@ -33,9 +33,34 @@ Coming soon: Copilot metrics API, Jira integration, Slack surveys.
 ## Key Pages
 
 - Homepage: https://tformance.com/
+- Pricing: https://tformance.com/pricing/
 - AI Impact Report (167K PRs analyzed): https://tformance.com/report/
 - Privacy Policy: https://tformance.com/privacy/
 - Terms of Service: https://tformance.com/terms/
+
+## Feature Pages
+
+Detailed pages explaining each product capability:
+
+- Features Overview: https://tformance.com/features/
+- Dashboard & Insights: https://tformance.com/features/dashboard/
+- Analytics Deep Dive: https://tformance.com/features/analytics/
+- PR Explorer: https://tformance.com/features/pr-explorer/
+
+### Dashboard & Insights
+Weekly reports delivered to your inbox. AI-powered insights that explain patterns in your data. Health indicators (red/yellow/green) flag what needs attention.
+
+### Analytics Deep Dive
+Six analytics views for comprehensive team analysis:
+- Overview: Team health metrics at a glance
+- AI Adoption: Compare AI-assisted vs traditional PRs
+- Delivery: Cycle time trends and bottleneck detection
+- Quality: Revert rate, review rounds, CI pass rate
+- Team: Reviewer workload distribution
+- Trends: 12-month rolling patterns
+
+### PR Explorer
+Filter PRs by repository, author, AI status, date range. Export to CSV. Add private team notes. Every PR links to detailed metrics.
 
 ## Comparison Pages
 
