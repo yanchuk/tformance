@@ -19,10 +19,10 @@
 | Tier | Team Size | Price | Per-Dev Equiv | vs Competitors |
 |------|-----------|-------|---------------|----------------|
 | **Trial** | Any | $0 | - | 30 days, full features, no card |
-| **Starter** | ≤15 devs | $99/mo | $7-99/dev | Captures inflection point teams |
-| **Team** | 16-50 devs | $249/mo | $5-16/dev | **70-80% cheaper than LinearB/Swarmia** |
-| **Business** | 51-100 devs | $449/mo | $4.5-9/dev | **75% cheaper than enterprise tools** |
-| **Enterprise** | 100+ | Custom | - | SSO, SLA, dedicated support |
+| **Starter** | ≤10 devs | $99/mo | $10-99/dev | Captures small teams |
+| **Team** | 11-50 devs | $299/mo | $6-27/dev | **70-80% cheaper than LinearB/Swarmia** |
+| **Business** | 51-150 devs | $699/mo | $4.7-14/dev | **75% cheaper than enterprise tools** |
+| **Enterprise** | 150+ | Custom | - | SSO, SLA, dedicated support |
 
 **Annual discount:** 2 months free (17% off)
 
@@ -43,15 +43,15 @@
 1. **Captures market:** 70-80% cheaper than LinearB ($35/seat), Swarmia (€42/seat), Workweave ($50/seat)
 2. **No per-seat anxiety:** Flat rate means no friction at tier boundaries
 3. **All features included:** AI detection is our wedge — never gate it
-4. **Room to grow:** Can raise to $149/$349/$649 in 12 months (still 50% cheaper than competitors)
+4. **Sustainable margins:** Higher price points allow for quality support and product investment
 
 ### Price Increase Roadmap
 
 | Phase | Timing | Pricing | Trigger |
 |-------|--------|---------|---------|
-| Launch | Now | $99 / $249 / $449 | Capture market |
-| Traction | 6 months | $129 / $299 / $549 | 50+ paying customers, grandfather existing |
-| Growth | 12 months | $149 / $349 / $649 | Proven value, strong testimonials |
+| Launch | Now | $99 / $299 / $699 | Current pricing |
+| Traction | 6 months | $129 / $349 / $799 | 50+ paying customers, grandfather existing |
+| Growth | 12 months | $149 / $399 / $899 | Proven value, strong testimonials |
 
 ---
 
@@ -68,14 +68,14 @@
 | Team Size | Jellyfish ($50/seat) | LinearB ($40/seat) | Swarmia (€42/seat) | **Tformance (flat tier)** |
 |-----------|----------------------|--------------------|--------------------|---------------------------|
 | **10 devs** | $6,000 | $4,800 | $5,040 | **$1,188** (Starter) |
-| **25 devs** | $15,000 | $12,000 | $12,600 | **$2,988** (Team) |
-| **50 devs** | $30,000 | $24,000 | $25,200 | **$2,988** (Team) |
-| **75 devs** | $45,000 | $36,000 | $37,800 | **$5,388** (Business) |
-| **100 devs** | $60,000 | $48,000 | $50,400 | **$5,388** (Business) |
+| **25 devs** | $15,000 | $12,000 | $12,600 | **$3,588** (Team) |
+| **50 devs** | $30,000 | $24,000 | $25,200 | **$3,588** (Team) |
+| **75 devs** | $45,000 | $36,000 | $37,800 | **$8,388** (Business) |
+| **100 devs** | $60,000 | $48,000 | $50,400 | **$8,388** (Business) |
 
 *Annual pricing with 2 months free discount applied*
 
-**Reality check:** At $30-50/seat, a 100-person team pays **$36,000-$60,000/year** for competitors. Tformance: **$5,388/year** — that's **89% cheaper**.
+**Reality check:** At $30-50/seat, a 100-person team pays **$36,000-$60,000/year** for competitors. Tformance: **$8,388/year** — that's **83% cheaper**.
 
 ---
 
@@ -323,18 +323,17 @@ Competitors use free tiers, but trials can be more effective:
 | Tier | Size | Price | Per-Dev | Features |
 |------|------|-------|---------|----------|
 | **Trial** | Any size | $0 | Free | Full features, 30 days, no card required |
-| **Starter** | ≤15 devs | $99/mo | $7-99 | All features, all integrations |
-| **Team** | 16-50 devs | $249/mo | $5-16 | All features, all integrations |
-| **Business** | 51-100 devs | $449/mo | $4.5-9 | All features, all integrations |
-| **Enterprise** | 100+ | Custom | Negotiated | + SSO, SLA, dedicated support |
+| **Starter** | ≤10 devs | $99/mo | $10-99 | All features, all integrations |
+| **Team** | 11-50 devs | $299/mo | $6-27 | All features, all integrations |
+| **Business** | 51-150 devs | $699/mo | $4.7-14 | All features, all integrations |
+| **Enterprise** | 150+ | Custom | Negotiated | + SSO, SLA, dedicated support |
 
 **Why this was chosen:**
 - Extended trial (30 days) to prove value before commitment
 - No free tier = qualified leads only, reduces support burden
 - Starter tier ($99) captures small teams willing to pay
 - No "per-seat anxiety" - one price per tier
-- **70-80% cheaper than competitors** while still being profitable
-- Room to raise prices later as value is proven
+- **70-85% cheaper than competitors** while maintaining sustainable margins
 - All features included at every tier (AI detection is our wedge)
 
 ---
@@ -388,25 +387,25 @@ Competitors use free tiers, but trials can be more effective:
 
 **Final pricing:**
 - **Trial:** $0 (30 days, full features)
-- **Starter:** $99/mo (≤15 devs)
-- **Team:** $249/mo (16-50 devs)
-- **Business:** $449/mo (51-100 devs)
-- **Enterprise:** Custom (100+)
+- **Starter:** $99/mo (≤10 devs)
+- **Team:** $299/mo (11-50 devs)
+- **Business:** $699/mo (51-150 devs)
+- **Enterprise:** Custom (150+)
 
 **Why this was chosen:**
 1. **Simplicity wins** - Easy to understand, easy to budget
 2. **Extended trial (30 days)** - Prove value before asking for payment
 3. **No free tier** - Qualified leads only, better conversion quality
-4. **No per-seat anxiety** - Team of 25 pays same as team of 16
+4. **No per-seat anxiety** - Team of 25 pays same as team of 11
 5. **Low entry point** - $99/mo Starter tier captures small teams
 6. **Clear upgrade path** - When you hit 51, you need Business tier
-7. **Market capture** - $249/mo for 50 devs vs $2,000+/mo at LinearB
+7. **Market capture** - $299/mo for 50 devs vs $2,000+/mo at LinearB
 
 ### Future Evolution: Raise Prices
 
 Once we have paying customers:
-1. **6 months:** Raise to $129 / $299 / $549 (grandfather existing)
-2. **12 months:** Raise to $149 / $349 / $649 (still 50% cheaper than competitors)
+1. **6 months:** Raise to $129 / $349 / $799 (grandfather existing)
+2. **12 months:** Raise to $149 / $399 / $899 (still 50%+ cheaper than competitors)
 3. **Optional:** Add usage-based AI Insights as premium add-on
 
 ---
@@ -415,11 +414,11 @@ Once we have paying customers:
 
 ### Story 1: Cost vs Value
 
-> "Tformance costs $249/month. Your team's salary costs $200,000/month. If we help you ship 1% faster, that's $2,000/month in value. 8x ROI."
+> "Tformance costs $299/month. Your team's salary costs $200,000/month. If we help you ship 1% faster, that's $2,000/month in value. 7x ROI."
 
 ### Story 2: Per-Developer Math
 
-> "At $249/month for 30 developers, that's $8/dev/month. Less than a Spotify subscription. For visibility into whether your AI investment is working."
+> "At $299/month for 30 developers, that's $10/dev/month. Less than a Spotify subscription. For visibility into whether your AI investment is working."
 
 ### Story 3: Alternative Cost
 
@@ -431,7 +430,7 @@ Once we have paying customers:
 
 ### Story 5: AI ROI Focus
 
-> "You're spending $1,000+/month on Copilot licenses. Tformance costs $249/month and tells you if it's working. Know before your renewal."
+> "You're spending $1,000+/month on Copilot licenses. Tformance costs $299/month and tells you if it's working. Know before your renewal."
 
 ---
 
@@ -439,14 +438,14 @@ Once we have paying customers:
 
 | Question | Answer |
 |----------|--------|
-| **Is $5K/year for 100 engineers expensive?** | No - it's 0.03% of eng payroll. Affordable AND valuable. |
+| **Is $8K/year for 100 engineers expensive?** | No - it's 0.04% of eng payroll. Affordable AND valuable. |
 | **Per-repo pricing?** | Rejected - monorepos game it. No industry precedent. |
 | **Per-PR pricing?** | Future option - consider as paid add-on for AI insights. |
-| **Best model for MVP?** | **Tiered flat rate** - simple, captures market, room to raise. |
-| **How to justify price?** | ROI story: 1% efficiency gain = 8x return on tool cost. |
-| **Target niche?** | Post-pilot AI adopters (15-75 devs) facing Copilot renewal. |
+| **Best model for MVP?** | **Tiered flat rate** - simple, captures market, sustainable margins. |
+| **How to justify price?** | ROI story: 1% efficiency gain = 7x return on tool cost. |
+| **Target niche?** | Post-pilot AI adopters (10-75 devs) facing Copilot renewal. |
 
-**✅ APPROVED:** Launch with **tiered flat rate** (Trial → $99 / $249 / $449 / Custom), raise prices at 6 and 12 month milestones.
+**✅ APPROVED:** Launch with **tiered flat rate** (Trial → $99 / $299 / $699 / Custom), raise prices at 6 and 12 month milestones.
 
 ---
 
