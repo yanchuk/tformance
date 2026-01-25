@@ -47,6 +47,7 @@ from apps.metrics.services.dashboard.cicd_metrics import (
 # Phase 4: Copilot metrics
 from apps.metrics.services.dashboard.copilot_metrics import (
     get_copilot_delivery_comparison,
+    get_copilot_engagement_summary,
     get_copilot_metrics,
     get_copilot_trend,
     get_monthly_copilot_acceptance_trend,
@@ -119,6 +120,7 @@ from apps.metrics.services.dashboard.trend_metrics import (
 # Phase 4: Velocity metrics
 from apps.metrics.services.dashboard.velocity_metrics import (
     get_quality_metrics,
+    get_team_health_indicators,
     get_team_health_metrics,
     get_velocity_comparison,
 )
@@ -192,6 +194,7 @@ __all__ = [
     "get_weekly_pr_type_trend",
     # Phase 4: Copilot metrics
     "get_copilot_delivery_comparison",
+    "get_copilot_engagement_summary",
     "get_copilot_metrics",
     "get_copilot_trend",
     "get_monthly_copilot_acceptance_trend",
@@ -206,6 +209,7 @@ __all__ = [
     "get_weekly_tech_trend",
     # Phase 4: Velocity metrics
     "get_quality_metrics",
+    "get_team_health_indicators",
     "get_team_health_metrics",
     "get_velocity_comparison",
     # Phase 4: Jira metrics

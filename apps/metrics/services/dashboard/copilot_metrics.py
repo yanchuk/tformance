@@ -3,14 +3,14 @@
 Functions for GitHub Copilot usage metrics and trends.
 """
 
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 
 from django.db.models import Count, Sum
 from django.db.models.functions import TruncMonth, TruncWeek
 from django.utils import timezone
 
-from apps.metrics.models import AIUsageDaily, PullRequest
+from apps.metrics.models import AIUsageDaily, CopilotLanguageDaily, PullRequest
 from apps.teams.models import Team
 
 
@@ -307,4 +307,170 @@ def get_copilot_delivery_comparison(team: Team, start_date: date, end_date: date
             "review_time_percent": review_time_improvement,
         },
         "sample_sufficient": sample_sufficient,
+    }
+
+
+def get_copilot_engagement_summary(
+    team: Team,
+    start_date: date,
+    end_date: date,
+) -> dict:
+    """Get comprehensive Copilot engagement summary for dashboard.
+
+    Aggregates Copilot usage metrics and compares delivery times between
+    Copilot and non-Copilot users.
+
+    Args:
+        team: Team instance
+        start_date: Start date (inclusive)
+        end_date: End date (inclusive)
+
+    Returns:
+        dict with keys:
+            - suggestions_accepted: int - SUM from AIUsageDaily.suggestions_accepted
+            - lines_of_code_accepted: int - SUM from CopilotLanguageDaily.lines_accepted
+            - acceptance_rate: Decimal - (accepted/shown)*100, handle zero
+            - active_copilot_users: int - COUNT DISTINCT members with AIUsageDaily data
+            - cycle_time_with_copilot: Decimal | None - AVG for PRs where author has Copilot activity
+            - cycle_time_without_copilot: Decimal | None - AVG for PRs where author lacks Copilot activity
+            - review_time_with_copilot: Decimal | None
+            - review_time_without_copilot: Decimal | None
+            - sample_sufficient: bool - True if BOTH groups have >= 10 PRs
+            - acceptance_rate_trend: str - "up"/"down"/"stable" comparing to previous period
+    """
+    # Query AIUsageDaily for suggestions data and member IDs (single query)
+    ai_usage = AIUsageDaily.objects.filter(
+        team=team,
+        source="copilot",
+        date__gte=start_date,
+        date__lte=end_date,
+    )
+
+    ai_stats = ai_usage.aggregate(
+        suggestions_accepted=Sum("suggestions_accepted"),
+        suggestions_shown=Sum("suggestions_shown"),
+        active_users=Count("member", distinct=True),
+    )
+
+    suggestions_accepted = ai_stats["suggestions_accepted"] or 0
+    suggestions_shown = ai_stats["suggestions_shown"] or 0
+    active_copilot_users = ai_stats["active_users"] or 0
+
+    # Get member IDs from same queryset (reuses cached query)
+    copilot_member_ids = set(ai_usage.values_list("member_id", flat=True))
+
+    # Calculate acceptance rate
+    if suggestions_shown > 0:
+        acceptance_rate = Decimal(str(round((suggestions_accepted / suggestions_shown) * 100, 2)))
+    else:
+        acceptance_rate = Decimal("0.00")
+
+    # Query CopilotLanguageDaily for lines_accepted
+    language_stats = CopilotLanguageDaily.objects.filter(
+        team=team,
+        date__gte=start_date,
+        date__lte=end_date,
+    ).aggregate(
+        lines_accepted=Sum("lines_accepted"),
+    )
+
+    lines_of_code_accepted = language_stats["lines_accepted"] or 0
+
+    # Get cycle/review times using delivery comparison logic
+    start_datetime = timezone.make_aware(timezone.datetime.combine(start_date, timezone.datetime.min.time()))
+    end_datetime = timezone.make_aware(timezone.datetime.combine(end_date, timezone.datetime.max.time()))
+
+    prs = PullRequest.objects.filter(
+        team=team,
+        state="merged",
+        merged_at__gte=start_datetime,
+        merged_at__lte=end_datetime,
+        cycle_time_hours__isnull=False,
+        review_time_hours__isnull=False,
+        author__isnull=False,
+    ).select_related("author")
+
+    copilot_prs_data = []
+    non_copilot_prs_data = []
+
+    for pr in prs:
+        if pr.author_id in copilot_member_ids:
+            copilot_prs_data.append(pr)
+        else:
+            non_copilot_prs_data.append(pr)
+
+    # Calculate cycle/review times for Copilot users
+    copilot_count = len(copilot_prs_data)
+    if copilot_count > 0:
+        copilot_avg_cycle = sum(pr.cycle_time_hours for pr in copilot_prs_data) / copilot_count
+        copilot_avg_review = sum(pr.review_time_hours for pr in copilot_prs_data) / copilot_count
+        cycle_time_with_copilot = Decimal(str(round(copilot_avg_cycle, 2)))
+        review_time_with_copilot = Decimal(str(round(copilot_avg_review, 2)))
+    else:
+        cycle_time_with_copilot = None
+        review_time_with_copilot = None
+
+    # Calculate cycle/review times for non-Copilot users
+    non_copilot_count = len(non_copilot_prs_data)
+    if non_copilot_count > 0:
+        non_copilot_avg_cycle = sum(pr.cycle_time_hours for pr in non_copilot_prs_data) / non_copilot_count
+        non_copilot_avg_review = sum(pr.review_time_hours for pr in non_copilot_prs_data) / non_copilot_count
+        cycle_time_without_copilot = Decimal(str(round(non_copilot_avg_cycle, 2)))
+        review_time_without_copilot = Decimal(str(round(non_copilot_avg_review, 2)))
+    else:
+        cycle_time_without_copilot = None
+        review_time_without_copilot = None
+
+    # Sample is sufficient if both groups have >= 10 PRs
+    sample_sufficient = copilot_count >= 10 and non_copilot_count >= 10
+
+    # Calculate acceptance rate trend (compare to previous period of same length)
+    period_length = (end_date - start_date).days + 1
+    prev_end_date = start_date - timedelta(days=1)
+    prev_start_date = prev_end_date - timedelta(days=period_length - 1)
+
+    prev_ai_usage = AIUsageDaily.objects.filter(
+        team=team,
+        source="copilot",
+        date__gte=prev_start_date,
+        date__lte=prev_end_date,
+    )
+
+    prev_stats = prev_ai_usage.aggregate(
+        suggestions_accepted=Sum("suggestions_accepted"),
+        suggestions_shown=Sum("suggestions_shown"),
+    )
+
+    prev_suggestions_accepted = prev_stats["suggestions_accepted"] or 0
+    prev_suggestions_shown = prev_stats["suggestions_shown"] or 0
+
+    if prev_suggestions_shown > 0:
+        prev_acceptance_rate = Decimal(str(round((prev_suggestions_accepted / prev_suggestions_shown) * 100, 2)))
+    else:
+        prev_acceptance_rate = None
+
+    # Determine trend
+    if prev_acceptance_rate is None:
+        acceptance_rate_trend = "stable"
+    else:
+        diff = acceptance_rate - prev_acceptance_rate
+        # Use 5% threshold for trend detection
+        if diff > 5:
+            acceptance_rate_trend = "up"
+        elif diff < -5:
+            acceptance_rate_trend = "down"
+        else:
+            acceptance_rate_trend = "stable"
+
+    return {
+        "suggestions_accepted": suggestions_accepted,
+        "lines_of_code_accepted": lines_of_code_accepted,
+        "acceptance_rate": acceptance_rate,
+        "active_copilot_users": active_copilot_users,
+        "cycle_time_with_copilot": cycle_time_with_copilot,
+        "cycle_time_without_copilot": cycle_time_without_copilot,
+        "review_time_with_copilot": review_time_with_copilot,
+        "review_time_without_copilot": review_time_without_copilot,
+        "sample_sufficient": sample_sufficient,
+        "acceptance_rate_trend": acceptance_rate_trend,
     }

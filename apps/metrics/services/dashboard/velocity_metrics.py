@@ -16,6 +16,28 @@ from apps.metrics.services.dashboard.pr_metrics import PR_SIZE_L_MAX, get_open_p
 from apps.metrics.services.dashboard.review_metrics import detect_review_bottleneck
 from apps.teams.models import Team
 
+# =============================================================================
+# Team Health Indicator Thresholds
+# =============================================================================
+# Throughput: PRs merged per week
+THROUGHPUT_GREEN_THRESHOLD = 5  # >= 5 PRs/week is healthy
+THROUGHPUT_YELLOW_THRESHOLD = 3  # >= 3 PRs/week is moderate
+
+# Cycle Time: hours from PR open to merge (lower is better)
+CYCLE_TIME_GREEN_THRESHOLD = 24  # <= 24 hours is healthy
+CYCLE_TIME_YELLOW_THRESHOLD = 72  # <= 72 hours is moderate
+
+# Quality: revert rate percentage (lower is better)
+QUALITY_GREEN_THRESHOLD = 2  # <= 2% revert rate is healthy
+QUALITY_YELLOW_THRESHOLD = 5  # <= 5% revert rate is moderate
+
+# AI Adoption: percentage of AI-assisted PRs
+AI_ADOPTION_GREEN_THRESHOLD = 30  # >= 30% is healthy
+AI_ADOPTION_YELLOW_THRESHOLD = 10  # >= 10% is moderate
+
+# Review Bottleneck: percentage of reviews by single reviewer
+BOTTLENECK_THRESHOLD = 50  # > 50% triggers bottleneck warning
+
 
 def get_velocity_comparison(team: Team, start_date: date, end_date: date, repo: str | None = None) -> dict:
     """Compare velocity metrics between current and previous period.
@@ -238,3 +260,228 @@ def get_team_health_metrics(team: Team, start_date: date, end_date: date, repo: 
         "bottleneck": bottleneck,
         "open_prs": open_prs,
     }
+
+
+def get_team_health_indicators(team: Team, start_date: date, end_date: date) -> dict:
+    """Get team health indicators with status and trend for each metric.
+
+    Calculates five key health indicators for the team, each with a value,
+    trend (compared to previous period), and status (green/yellow/red).
+
+    Thresholds (defined as module constants):
+        - Throughput: >= 5 PRs/week (green), >= 3 (yellow), < 3 (red)
+        - Cycle Time: <= 24 hours (green), <= 72 hours (yellow), > 72 (red)
+        - Quality: <= 2% revert rate (green), <= 5% (yellow), > 5% (red)
+        - AI Adoption: >= 30% (green), >= 10% (yellow), < 10% (red)
+        - Review Bottleneck: detected if one reviewer has > 50% of reviews
+
+    Args:
+        team: Team instance
+        start_date: Start of current period
+        end_date: End of current period
+
+    Returns:
+        dict with:
+        - throughput: dict with value (float), trend (str), status (str)
+        - cycle_time: dict with value (float), trend (str), status (str)
+        - quality: dict with value (float), trend (str), status (str)
+        - review_bottleneck: dict with detected (bool), reviewer (str|None), status (str)
+        - ai_adoption: dict with value (float), trend (str), status (str)
+    """
+    # Calculate period length for previous period comparison
+    period_length = (end_date - start_date).days + 1
+    previous_end = start_date - timedelta(days=1)
+    previous_start = previous_end - timedelta(days=period_length - 1)
+
+    # Get PRs for current and previous periods
+    current_prs = _get_merged_prs_in_range(team, start_date, end_date)
+    previous_prs = _get_merged_prs_in_range(team, previous_start, previous_end)
+
+    # Calculate weeks in current period for throughput normalization
+    weeks_in_period = max(period_length / 7.0, 1.0)
+
+    # Aggregate all PR metrics in a single query per period (reduces 4 queries to 1)
+    current_stats = current_prs.aggregate(
+        pr_count=Count("id"),
+        avg_cycle_time=Avg("cycle_time_hours"),
+        revert_count=Count("id", filter=Q(is_revert=True)),
+        ai_assisted_count=Count("id", filter=Q(is_ai_assisted=True)),
+    )
+    previous_stats = previous_prs.aggregate(
+        pr_count=Count("id"),
+        avg_cycle_time=Avg("cycle_time_hours"),
+        revert_count=Count("id", filter=Q(is_revert=True)),
+        ai_assisted_count=Count("id", filter=Q(is_ai_assisted=True)),
+    )
+
+    current_pr_count = current_stats["pr_count"]
+    previous_pr_count = previous_stats["pr_count"]
+
+    # --- Throughput ---
+    throughput_value = current_pr_count / weeks_in_period
+    throughput_status = _get_status_higher_is_better(
+        throughput_value, THROUGHPUT_GREEN_THRESHOLD, THROUGHPUT_YELLOW_THRESHOLD
+    )
+    throughput_trend = _calculate_trend(current_pr_count, previous_pr_count)
+
+    # --- Cycle Time ---
+    current_cycle_time = current_stats["avg_cycle_time"]
+    previous_cycle_time = previous_stats["avg_cycle_time"]
+    cycle_time_value = float(current_cycle_time) if current_cycle_time else 0.0
+
+    cycle_time_status = _get_status_lower_is_better(
+        cycle_time_value, CYCLE_TIME_GREEN_THRESHOLD, CYCLE_TIME_YELLOW_THRESHOLD
+    )
+    cycle_time_trend = _calculate_trend(
+        float(current_cycle_time) if current_cycle_time else 0.0,
+        float(previous_cycle_time) if previous_cycle_time else 0.0,
+    )
+
+    # --- Quality (Revert Rate) ---
+    quality_value = _calc_percentage(current_stats["revert_count"], current_pr_count)
+    previous_quality_value = _calc_percentage(previous_stats["revert_count"], previous_pr_count)
+
+    quality_status = _get_status_lower_is_better(quality_value, QUALITY_GREEN_THRESHOLD, QUALITY_YELLOW_THRESHOLD)
+    quality_trend = _calculate_trend(quality_value, previous_quality_value)
+
+    # --- Review Bottleneck ---
+    bottleneck_detected, bottleneck_reviewer = _detect_bottleneck(team, current_prs)
+    bottleneck_status = "red" if bottleneck_detected else "green"
+
+    # --- AI Adoption ---
+    ai_adoption_value = _calc_percentage(current_stats["ai_assisted_count"], current_pr_count)
+    previous_ai_value = _calc_percentage(previous_stats["ai_assisted_count"], previous_pr_count)
+
+    ai_adoption_status = _get_status_higher_is_better(
+        ai_adoption_value, AI_ADOPTION_GREEN_THRESHOLD, AI_ADOPTION_YELLOW_THRESHOLD
+    )
+    ai_adoption_trend = _calculate_trend(ai_adoption_value, previous_ai_value)
+
+    return {
+        "throughput": {
+            "value": throughput_value,
+            "trend": throughput_trend,
+            "status": throughput_status,
+        },
+        "cycle_time": {
+            "value": cycle_time_value,
+            "trend": cycle_time_trend,
+            "status": cycle_time_status,
+        },
+        "quality": {
+            "value": quality_value,
+            "trend": quality_trend,
+            "status": quality_status,
+        },
+        "review_bottleneck": {
+            "detected": bottleneck_detected,
+            "reviewer": bottleneck_reviewer,
+            "status": bottleneck_status,
+        },
+        "ai_adoption": {
+            "value": ai_adoption_value,
+            "trend": ai_adoption_trend,
+            "status": ai_adoption_status,
+        },
+    }
+
+
+def _get_status_higher_is_better(value: float, green_threshold: float, yellow_threshold: float) -> str:
+    """Determine status for metrics where higher values are better.
+
+    Args:
+        value: The metric value
+        green_threshold: Value at or above this is green
+        yellow_threshold: Value at or above this (but below green) is yellow
+
+    Returns:
+        "green", "yellow", or "red"
+    """
+    if value >= green_threshold:
+        return "green"
+    elif value >= yellow_threshold:
+        return "yellow"
+    return "red"
+
+
+def _get_status_lower_is_better(value: float, green_threshold: float, yellow_threshold: float) -> str:
+    """Determine status for metrics where lower values are better.
+
+    Args:
+        value: The metric value
+        green_threshold: Value at or below this is green
+        yellow_threshold: Value at or below this (but above green) is yellow
+
+    Returns:
+        "green", "yellow", or "red"
+    """
+    if value <= green_threshold:
+        return "green"
+    elif value <= yellow_threshold:
+        return "yellow"
+    return "red"
+
+
+def _calc_percentage(count: int, total: int) -> float:
+    """Calculate percentage, returning 0.0 if total is zero."""
+    return (count / total) * 100 if total > 0 else 0.0
+
+
+def _detect_bottleneck(team: Team, current_prs) -> tuple[bool, str | None]:
+    """Detect if there's a review bottleneck (one reviewer doing > 50% of reviews).
+
+    Args:
+        team: Team instance
+        current_prs: QuerySet of merged PRs in current period
+
+    Returns:
+        Tuple of (bottleneck_detected, bottleneck_reviewer_name)
+    """
+    reviews = PRReview.objects.filter(
+        team=team,
+        pull_request__in=current_prs,
+        reviewer__isnull=False,
+    )  # noqa: TEAM001 - team in filters
+
+    reviewer_counts = list(
+        reviews.values("reviewer", "reviewer__display_name")
+        .annotate(review_count=Count("id"))
+        .order_by("-review_count")
+    )
+
+    total_reviews = sum(r["review_count"] for r in reviewer_counts)
+
+    if total_reviews > 0 and reviewer_counts:
+        top_reviewer = reviewer_counts[0]
+        top_reviewer_pct = (top_reviewer["review_count"] / total_reviews) * 100
+        if top_reviewer_pct > BOTTLENECK_THRESHOLD:
+            return True, top_reviewer["reviewer__display_name"]
+
+    return False, None
+
+
+def _calculate_trend(current: float, previous: float) -> str:
+    """Calculate trend based on percentage change.
+
+    Args:
+        current: Current period value
+        previous: Previous period value
+
+    Returns:
+        "up" if current > previous by > 10%
+        "down" if current < previous by > 10%
+        "stable" if within +/- 10%
+    """
+    if previous == 0:
+        if current > 0:
+            return "up"
+        return "stable"
+
+    pct_change = ((current - previous) / previous) * 100
+
+    if pct_change > 10:
+        return "up"
+    elif pct_change < -10:
+        return "down"
+    else:
+        return "stable"
