@@ -1,0 +1,185 @@
+{% extends "web/base.html" %}
+{% load static %}
+
+{% block body %}
+
+<!-- Hero Section -->
+{% include "web/components/feature_page_hero.html" with badge="PR Data Explorer" headline="Your PR data. Your way." subhead="Filter by repo, author, AI status, date range. Export to CSV. Add your own notes." %}
+
+<!-- Advanced Filters Section -->
+<section class="py-16 bg-base-100">
+  <div class="max-w-6xl mx-auto px-4">
+    <div class="grid md:grid-cols-2 gap-12 items-center">
+      <div>
+        <h2 class="text-2xl md:text-3xl font-bold text-base-content mb-4">
+          Find exactly what you need
+        </h2>
+        <p class="text-base-content/70 text-lg mb-6">
+          Filter by repository, author, AI status, size, date range, technology stack.
+        </p>
+        <div class="flex flex-wrap gap-2 mb-6">
+          <span class="px-3 py-1.5 bg-base-200 rounded-lg text-sm font-medium text-base-content/80">Repository</span>
+          <span class="px-3 py-1.5 bg-base-200 rounded-lg text-sm font-medium text-base-content/80">Author</span>
+          <span class="px-3 py-1.5 bg-base-200 rounded-lg text-sm font-medium text-base-content/80">AI Status</span>
+          <span class="px-3 py-1.5 bg-base-200 rounded-lg text-sm font-medium text-base-content/80">PR Size</span>
+          <span class="px-3 py-1.5 bg-base-200 rounded-lg text-sm font-medium text-base-content/80">Date Range</span>
+          <span class="px-3 py-1.5 bg-base-200 rounded-lg text-sm font-medium text-base-content/80">Tech Stack</span>
+        </div>
+        <p class="text-sm text-base-content/60">
+          Combine filters to drill down to specific PRs. Save filter presets for quick access.
+        </p>
+      </div>
+      <div>
+        {% include "web/components/feature_screenshot.html" with image_url="/static/images/features/pr-explorer/filters.webp" alt="PR Explorer with filters" title="pr-explorer/filters" %}
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- AI Detection Section -->
+<section class="py-16 bg-base-200">
+  <div class="max-w-6xl mx-auto px-4">
+    <div class="grid md:grid-cols-2 gap-12 items-center">
+      <div class="order-2 md:order-1">
+        {% include "web/components/feature_screenshot.html" with image_url="/static/images/features/pr-explorer/ai-status.webp" alt="AI detection column" title="pr-explorer/ai-status" %}
+      </div>
+      <div class="order-1 md:order-2">
+        <h2 class="text-2xl md:text-3xl font-bold text-base-content mb-4">
+          AI-assisted? We'll tell you.
+        </h2>
+        <p class="text-base-content/70 text-lg mb-6">
+          Automatic detection on every PR. No surveys required.
+        </p>
+        <ul class="space-y-3">
+          <li class="flex items-start gap-3">
+            <svg class="w-5 h-5 text-success mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+            <span class="text-base-content/80">Pattern-based detection from commit messages</span>
+          </li>
+          <li class="flex items-start gap-3">
+            <svg class="w-5 h-5 text-success mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+            <span class="text-base-content/80">Tool identification: Copilot, Cursor, Claude</span>
+          </li>
+          <li class="flex items-start gap-3">
+            <svg class="w-5 h-5 text-success mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+            <span class="text-base-content/80">Confidence scores for transparency</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- User Notes Section -->
+<section class="py-16 bg-base-100">
+  <div class="max-w-6xl mx-auto px-4">
+    <div class="grid md:grid-cols-2 gap-12 items-center">
+      <div>
+        <h2 class="text-2xl md:text-3xl font-bold text-base-content mb-4">
+          Context your team will actually read
+        </h2>
+        <p class="text-base-content/70 text-lg mb-6">
+          Add private notes to any PR. Document decisions, flag concerns.
+        </p>
+        <ul class="space-y-3">
+          <li class="flex items-start gap-3">
+            <svg class="w-5 h-5 text-success mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+            <span class="text-base-content/80">Private notes visible only to your team</span>
+          </li>
+          <li class="flex items-start gap-3">
+            <svg class="w-5 h-5 text-success mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+            <span class="text-base-content/80">Flag PRs for follow-up or review</span>
+          </li>
+          <li class="flex items-start gap-3">
+            <svg class="w-5 h-5 text-success mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+            <span class="text-base-content/80">Search notes across all PRs</span>
+          </li>
+        </ul>
+      </div>
+      <div>
+        {% include "web/components/feature_screenshot.html" with image_url="/static/images/features/pr-explorer/notes.webp" alt="User notes on PR" title="pr-explorer/notes" %}
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CSV Export Section -->
+<section class="py-16 bg-base-200">
+  <div class="max-w-6xl mx-auto px-4">
+    <div class="grid md:grid-cols-2 gap-12 items-center">
+      <div class="order-2 md:order-1">
+        {% include "web/components/feature_screenshot.html" with image_url="/static/images/features/pr-explorer/export.webp" alt="CSV export dialog" title="pr-explorer/export" %}
+      </div>
+      <div class="order-1 md:order-2">
+        <h2 class="text-2xl md:text-3xl font-bold text-base-content mb-4">
+          Take your data anywhere
+        </h2>
+        <p class="text-base-content/70 text-lg mb-6">
+          Export filtered results for reports, analysis, or stakeholder presentations.
+        </p>
+        <ul class="space-y-3">
+          <li class="flex items-start gap-3">
+            <svg class="w-5 h-5 text-success mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+            <span class="text-base-content/80">Export current filter results to CSV</span>
+          </li>
+          <li class="flex items-start gap-3">
+            <svg class="w-5 h-5 text-success mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+            <span class="text-base-content/80">All metrics included in export</span>
+          </li>
+          <li class="flex items-start gap-3">
+            <svg class="w-5 h-5 text-success mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+            <span class="text-base-content/80">Perfect for board reports and deep analysis</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Cross-linking Section -->
+<section class="py-16 bg-base-100">
+  <div class="max-w-6xl mx-auto px-4 text-center">
+    <h2 class="text-2xl md:text-3xl font-bold text-base-content mb-4">
+      Click any PR for full context
+    </h2>
+    <p class="text-base-content/70 text-lg mb-8 max-w-2xl mx-auto">
+      Every PR links to detailed metrics. See the story behind the numbers.
+    </p>
+    <div class="flex flex-wrap justify-center gap-4">
+      <a href="{% url 'web:features_dashboard' %}" class="btn btn-outline">
+        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"/>
+        </svg>
+        Dashboard
+      </a>
+      <a href="{% url 'web:features_analytics' %}" class="btn btn-outline">
+        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+        </svg>
+        Analytics
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+{% include "web/components/cta_terminal.html" %}
+
+{% endblock %}
