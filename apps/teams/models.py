@@ -108,6 +108,20 @@ class Team(SubscriptionModelBase, BaseModel):
         help_text="Count of consecutive sync failures (reset on success)",
     )
 
+    # Copilot pricing tier
+    COPILOT_PRICE_TIER_CHOICES = [
+        ("individual", "Individual ($10/seat)"),
+        ("business", "Business ($19/seat)"),
+        ("enterprise", "Enterprise ($39/seat)"),
+    ]
+
+    copilot_price_tier = models.CharField(
+        max_length=20,
+        choices=COPILOT_PRICE_TIER_CHOICES,
+        default="business",
+        help_text="Copilot subscription tier for cost calculations",
+    )
+
     # your team customizations go here.
 
     def __init__(self, *args, **kwargs):

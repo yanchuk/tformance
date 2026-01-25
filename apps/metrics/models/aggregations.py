@@ -309,6 +309,24 @@ class ReviewerCorrelation(BaseTeamModel):
 COPILOT_SEAT_PRICE = Decimal("19.00")  # Monthly cost per seat in USD
 
 
+def get_copilot_seat_price(team) -> Decimal:
+    """Get Copilot seat price based on team's tier setting.
+
+    Args:
+        team: Team instance with copilot_price_tier field
+
+    Returns:
+        Decimal: Price per seat ($10, $19, or $39)
+    """
+    tier_prices = {
+        "individual": Decimal("10.00"),
+        "business": Decimal("19.00"),
+        "enterprise": Decimal("39.00"),
+    }
+    tier = getattr(team, "copilot_price_tier", "business") or "business"
+    return tier_prices.get(tier, Decimal("19.00"))
+
+
 class CopilotSeatSnapshot(BaseTeamModel):
     """Daily snapshot of Copilot seat utilization for a team.
 
@@ -379,7 +397,8 @@ class CopilotSeatSnapshot(BaseTeamModel):
         Returns:
             Decimal: Total monthly cost in USD.
         """
-        return (Decimal(self.total_seats) * COPILOT_SEAT_PRICE).quantize(Decimal("0.01"))
+        seat_price = get_copilot_seat_price(self.team)
+        return (Decimal(self.total_seats) * seat_price).quantize(Decimal("0.01"))
 
     @property
     def wasted_spend(self) -> Decimal:
@@ -388,7 +407,8 @@ class CopilotSeatSnapshot(BaseTeamModel):
         Returns:
             Decimal: Monthly cost of inactive seats in USD.
         """
-        return (Decimal(self.inactive_this_cycle) * COPILOT_SEAT_PRICE).quantize(Decimal("0.01"))
+        seat_price = get_copilot_seat_price(self.team)
+        return (Decimal(self.inactive_this_cycle) * seat_price).quantize(Decimal("0.01"))
 
     @property
     def cost_per_active_user(self) -> Decimal | None:
