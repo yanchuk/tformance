@@ -145,7 +145,7 @@ test.describe('Dashboard Tests @dashboard', () => {
 
   // NOTE: CTO Dashboard tests removed - the /app/metrics/dashboard/cto/ URL is obsolete.
   // CTO dashboard functionality is now covered by analytics.spec.ts which tests:
-  // - /app/metrics/overview/ (Analytics Overview - replaces CTO Dashboard)
+  // - /app/metrics/analytics/ (Analytics Overview - replaces CTO Dashboard)
   // - /app/metrics/analytics/* (new tabbed analytics pages)
   // See analytics.spec.ts for comprehensive coverage of analytics features.
 

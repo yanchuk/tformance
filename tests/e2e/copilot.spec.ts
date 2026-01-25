@@ -23,14 +23,14 @@ test.describe('Copilot Metrics @copilot', () => {
     await loginAs(page);
   });
 
-  test.describe('CTO Dashboard Copilot Section', () => {
+  test.describe('Analytics Dashboard Copilot Section', () => {
     test.beforeEach(async ({ page }) => {
-      await page.goto('/app/metrics/overview/');
+      await page.goto('/app/metrics/analytics/');
       await page.waitForLoadState('domcontentloaded');
       await waitForHtmxComplete(page);
     });
 
-    test('Copilot section exists on CTO dashboard', async ({ page }) => {
+    test('Copilot section exists on Analytics dashboard', async ({ page }) => {
       // Look for Copilot section heading or divider
       const copilotSection = page.getByText(/copilot/i).or(
         page.locator('[data-section="copilot"]')
@@ -138,7 +138,7 @@ test.describe('Copilot Metrics @copilot', () => {
 
   test.describe('Copilot Data Display', () => {
     test('Copilot metrics show numeric values', async ({ page }) => {
-      await page.goto('/app/metrics/overview/');
+      await page.goto('/app/metrics/analytics/');
       await page.waitForLoadState('domcontentloaded');
       await waitForHtmxComplete(page);
 
@@ -158,7 +158,7 @@ test.describe('Copilot Metrics @copilot', () => {
     });
 
     test('acceptance rate shows percentage format', async ({ page }) => {
-      await page.goto('/app/metrics/overview/');
+      await page.goto('/app/metrics/analytics/');
       await page.waitForLoadState('domcontentloaded');
       await waitForHtmxComplete(page);
 
@@ -178,7 +178,7 @@ test.describe('Copilot Metrics @copilot', () => {
 
   test.describe('Copilot Empty States', () => {
     test('shows appropriate message when no Copilot data', async ({ page }) => {
-      await page.goto('/app/metrics/overview/');
+      await page.goto('/app/metrics/analytics/');
       await page.waitForLoadState('domcontentloaded');
 
       // If no Copilot data, should show helpful message
@@ -188,7 +188,7 @@ test.describe('Copilot Metrics @copilot', () => {
     });
 
     test('Copilot section gracefully handles missing data', async ({ page }) => {
-      await page.goto('/app/metrics/overview/');
+      await page.goto('/app/metrics/analytics/');
       await page.waitForLoadState('domcontentloaded');
       await waitForHtmxComplete(page);
 
@@ -203,7 +203,7 @@ test.describe('Copilot Metrics @copilot', () => {
 
   test.describe('Copilot Chart Interactions', () => {
     test('Copilot trend chart responds to date filters', async ({ page }) => {
-      await page.goto('/app/metrics/overview/');
+      await page.goto('/app/metrics/analytics/');
       await page.waitForLoadState('domcontentloaded');
       await waitForHtmxComplete(page);
 
@@ -220,7 +220,7 @@ test.describe('Copilot Metrics @copilot', () => {
     });
 
     test('Copilot chart canvas exists when section visible', async ({ page }) => {
-      await page.goto('/app/metrics/overview/');
+      await page.goto('/app/metrics/analytics/');
       await page.waitForLoadState('domcontentloaded');
       await waitForHtmxComplete(page);
 
@@ -247,7 +247,7 @@ test.describe('Copilot Access Control @copilot', () => {
   test('Copilot section only visible to admins/CTOs', async ({ page }) => {
     // Login as admin
     await loginAs(page);
-    await page.goto('/app/metrics/overview/');
+    await page.goto('/app/metrics/analytics/');
 
     // CTO dashboard should be accessible to admin
     await expect(page).toHaveURL(/\/metrics\/overview/);

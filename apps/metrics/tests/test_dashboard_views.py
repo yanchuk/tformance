@@ -1,16 +1,13 @@
 """Tests for dashboard page views.
 
 This test module covers:
-- dashboard_redirect: Routes admins to CTO overview, members to team dashboard
-- cto_overview: Admin-only dashboard with team-wide metrics
+- dashboard_redirect: Routes admins to analytics overview, members to team dashboard
+- cto_overview: Legacy URL that redirects to analytics_overview (deprecated)
 - team_dashboard: Member-accessible individual dashboard
 """
 
-from datetime import timedelta
-
 from django.test import Client, TestCase
 from django.urls import reverse
-from django.utils import timezone
 
 from apps.integrations.factories import UserFactory
 from apps.metrics.factories import TeamFactory
@@ -64,12 +61,15 @@ class TestDashboardRedirect(TestCase):
         self.assertEqual(response.url, reverse("metrics:team_dashboard"))
 
 
-class TestCTOOverview(TestCase):
-    """Tests for cto_overview view (admin-only team-wide dashboard)."""
+class TestCTOOverviewRedirect(TestCase):
+    """Tests for cto_overview view (DEPRECATED - now redirects to analytics_overview).
+
+    The legacy CTO overview URL (/app/metrics/overview/) now redirects to
+    analytics_overview for backwards compatibility with bookmarks.
+    """
 
     def setUp(self):
         """Set up test fixtures using factories."""
-        # Use status="complete" to ensure dashboard is accessible
         self.team = TeamFactory(onboarding_pipeline_status="complete")
         self.admin_user = UserFactory()
         self.member_user = UserFactory()
@@ -101,112 +101,14 @@ class TestCTOOverview(TestCase):
 
         self.assertEqual(response.status_code, 404)
 
-    def test_cto_overview_returns_200_for_admin(self):
-        """Test that cto_overview returns 200 for admin users."""
+    def test_cto_overview_redirects_to_analytics_overview(self):
+        """Test that cto_overview redirects to analytics_overview for admin users."""
         self.client.force_login(self.admin_user)
 
         response = self.client.get(reverse("metrics:cto_overview"))
 
-        self.assertEqual(response.status_code, 200)
-
-    def test_cto_overview_renders_correct_template(self):
-        """Test that cto_overview renders cto_overview.html template."""
-        self.client.force_login(self.admin_user)
-
-        response = self.client.get(reverse("metrics:cto_overview"))
-
-        self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, "metrics/cto_overview.html")
-
-    def test_cto_overview_context_has_required_keys(self):
-        """Test that cto_overview context contains required keys."""
-        self.client.force_login(self.admin_user)
-
-        response = self.client.get(reverse("metrics:cto_overview"))
-
-        self.assertEqual(response.status_code, 200)
-        self.assertIn("days", response.context)
-        self.assertIn("start_date", response.context)
-        self.assertIn("end_date", response.context)
-        self.assertIn("active_tab", response.context)
-
-    def test_cto_overview_active_tab_is_metrics(self):
-        """Test that cto_overview sets active_tab to 'metrics'."""
-        self.client.force_login(self.admin_user)
-
-        response = self.client.get(reverse("metrics:cto_overview"))
-
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.context["active_tab"], "metrics")
-
-    def test_cto_overview_default_days_is_30(self):
-        """Test that cto_overview defaults to 30 days if no query param provided."""
-        self.client.force_login(self.admin_user)
-
-        response = self.client.get(reverse("metrics:cto_overview"))
-
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.context["days"], 30)
-
-    def test_cto_overview_accepts_days_query_param_7(self):
-        """Test that cto_overview accepts days=7 query parameter."""
-        self.client.force_login(self.admin_user)
-
-        response = self.client.get(reverse("metrics:cto_overview"), {"days": "7"})
-
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.context["days"], 7)
-
-    def test_cto_overview_accepts_days_query_param_30(self):
-        """Test that cto_overview accepts days=30 query parameter."""
-        self.client.force_login(self.admin_user)
-
-        response = self.client.get(reverse("metrics:cto_overview"), {"days": "30"})
-
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.context["days"], 30)
-
-    def test_cto_overview_accepts_days_query_param_90(self):
-        """Test that cto_overview accepts days=90 query parameter."""
-        self.client.force_login(self.admin_user)
-
-        response = self.client.get(reverse("metrics:cto_overview"), {"days": "90"})
-
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.context["days"], 90)
-
-    def test_cto_overview_date_range_calculation(self):
-        """Test that cto_overview correctly calculates date range based on days parameter."""
-        self.client.force_login(self.admin_user)
-
-        response = self.client.get(reverse("metrics:cto_overview"), {"days": "7"})
-
-        self.assertEqual(response.status_code, 200)
-
-        # Get dates from context
-        start_date = response.context["start_date"]
-        end_date = response.context["end_date"]
-
-        # end_date should be today
-        self.assertEqual(end_date, timezone.now().date())
-
-        # start_date should be 7 days ago
-        expected_start = timezone.now().date() - timedelta(days=7)
-        self.assertEqual(start_date, expected_start)
-
-    def test_cto_overview_htmx_request_returns_partial_template(self):
-        """Test that cto_overview returns partial template for HTMX requests."""
-        self.client.force_login(self.admin_user)
-
-        # Make HTMX request (indicated by HX-Request header)
-        response = self.client.get(reverse("metrics:cto_overview"), HTTP_HX_REQUEST="true")
-
-        self.assertEqual(response.status_code, 200)
-        # For HTMX, should use partial template (with #page-content or similar)
-        # The exact template depends on implementation, but it should be different from full template
-        # We can check that it's still a valid response with the same context
-        self.assertIn("days", response.context)
-        self.assertIn("active_tab", response.context)
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse("metrics:analytics_overview"))
 
 
 class TestTeamDashboard(TestCase):
@@ -377,6 +279,9 @@ class TestDashboardAccessControl(TestCase):
     Dashboard should only be accessible after Phase 1 completes.
     During Phase 1 (syncing, llm_processing, etc.), users should see
     the onboarding/progress page instead.
+
+    Note: cto_overview now redirects to analytics_overview, so access control
+    tests use analytics_overview directly.
     """
 
     def setUp(self):
@@ -394,11 +299,11 @@ class TestDashboardAccessControl(TestCase):
         self.team.save()
 
         self.client.force_login(self.admin_user)
-        response = self.client.get(reverse("metrics:cto_overview"))
+        response = self.client.get(reverse("metrics:analytics_overview"))
 
         # Should return 200, not redirect to onboarding
         self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, "metrics/cto_overview.html")
+        self.assertTemplateUsed(response, "metrics/analytics/overview.html")
 
     def test_dashboard_accessible_during_background_syncing(self):
         """Dashboard should be accessible during Phase 2 background sync."""
@@ -406,7 +311,7 @@ class TestDashboardAccessControl(TestCase):
         self.team.save()
 
         self.client.force_login(self.admin_user)
-        response = self.client.get(reverse("metrics:cto_overview"))
+        response = self.client.get(reverse("metrics:analytics_overview"))
 
         self.assertEqual(response.status_code, 200)
 
@@ -416,7 +321,7 @@ class TestDashboardAccessControl(TestCase):
         self.team.save()
 
         self.client.force_login(self.admin_user)
-        response = self.client.get(reverse("metrics:cto_overview"))
+        response = self.client.get(reverse("metrics:analytics_overview"))
 
         self.assertEqual(response.status_code, 200)
 
@@ -426,7 +331,7 @@ class TestDashboardAccessControl(TestCase):
         self.team.save()
 
         self.client.force_login(self.admin_user)
-        response = self.client.get(reverse("metrics:cto_overview"))
+        response = self.client.get(reverse("metrics:analytics_overview"))
 
         self.assertEqual(response.status_code, 200)
 
@@ -436,7 +341,7 @@ class TestDashboardAccessControl(TestCase):
         self.team.save()
 
         self.client.force_login(self.admin_user)
-        response = self.client.get(reverse("metrics:cto_overview"))
+        response = self.client.get(reverse("metrics:analytics_overview"))
 
         # Should redirect to onboarding status page
         self.assertEqual(response.status_code, 302)
@@ -448,7 +353,7 @@ class TestDashboardAccessControl(TestCase):
         self.team.save()
 
         self.client.force_login(self.admin_user)
-        response = self.client.get(reverse("metrics:cto_overview"))
+        response = self.client.get(reverse("metrics:analytics_overview"))
 
         self.assertEqual(response.status_code, 302)
         self.assertIn("onboarding", response.url.lower())
@@ -459,7 +364,7 @@ class TestDashboardAccessControl(TestCase):
         self.team.save()
 
         self.client.force_login(self.admin_user)
-        response = self.client.get(reverse("metrics:cto_overview"))
+        response = self.client.get(reverse("metrics:analytics_overview"))
 
         self.assertEqual(response.status_code, 302)
 
@@ -469,24 +374,6 @@ class TestDashboardAccessControl(TestCase):
         self.team.save()
 
         self.client.force_login(self.admin_user)
-        response = self.client.get(reverse("metrics:cto_overview"))
-
-        self.assertEqual(response.status_code, 302)
-
-    def test_analytics_overview_uses_same_access_control(self):
-        """Analytics overview should follow same access rules as CTO overview."""
-        # Should be blocked during Phase 1
-        self.team.onboarding_pipeline_status = "syncing"
-        self.team.save()
-
-        self.client.force_login(self.admin_user)
         response = self.client.get(reverse("metrics:analytics_overview"))
 
         self.assertEqual(response.status_code, 302)
-
-        # Should be accessible after Phase 1
-        self.team.onboarding_pipeline_status = "phase1_complete"
-        self.team.save()
-
-        response = self.client.get(reverse("metrics:analytics_overview"))
-        self.assertEqual(response.status_code, 200)

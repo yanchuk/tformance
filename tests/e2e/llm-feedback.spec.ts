@@ -98,7 +98,7 @@ test.describe('LLM Feedback System @llm-feedback', () => {
 
   test.describe('Baseline: Q&A Response', () => {
     test('Q&A form is accessible on analytics overview', async ({ page }) => {
-      await page.goto('/app/metrics/overview/');
+      await page.goto('/app/metrics/analytics/');
       await page.waitForLoadState('domcontentloaded');
       await waitForHtmxComplete(page, 10000);
 
@@ -120,7 +120,7 @@ test.describe('LLM Feedback System @llm-feedback', () => {
     });
 
     test('submitting Q&A question shows response', async ({ page }) => {
-      await page.goto('/app/metrics/overview/');
+      await page.goto('/app/metrics/analytics/');
       await page.waitForLoadState('domcontentloaded');
       await waitForHtmxComplete(page, 10000);
 
@@ -314,7 +314,7 @@ test.describe('LLM Feedback System @llm-feedback', () => {
 
   test.describe('Feature: Thumbs Rating on Q&A Answer', () => {
     test('thumbs buttons appear after Q&A response', async ({ page }) => {
-      await page.goto('/app/metrics/overview/');
+      await page.goto('/app/metrics/analytics/');
       await page.waitForLoadState('domcontentloaded');
       await waitForHtmxComplete(page, 10000);
 

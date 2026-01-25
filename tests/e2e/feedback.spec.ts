@@ -168,7 +168,7 @@ test.describe('AI Feedback Tests @feedback', () => {
 
   test.describe('CTO Dashboard Integration', () => {
     test('AI Feedback card appears on CTO dashboard', async ({ page }) => {
-      await page.goto('/app/metrics/overview/');
+      await page.goto('/app/metrics/analytics/');
       await page.waitForLoadState('domcontentloaded');
       await waitForHtmxComplete(page);
 
@@ -177,7 +177,7 @@ test.describe('AI Feedback Tests @feedback', () => {
     });
 
     test('feedback summary loads via HTMX', async ({ page }) => {
-      await page.goto('/app/metrics/overview/');
+      await page.goto('/app/metrics/analytics/');
       await page.waitForLoadState('domcontentloaded');
       await waitForHtmxComplete(page);
 
@@ -191,7 +191,7 @@ test.describe('AI Feedback Tests @feedback', () => {
     });
 
     test('View All Feedback link works', async ({ page }) => {
-      await page.goto('/app/metrics/overview/');
+      await page.goto('/app/metrics/analytics/');
       await page.waitForLoadState('domcontentloaded');
       await waitForHtmxComplete(page);
 

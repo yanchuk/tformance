@@ -5,7 +5,7 @@ import { test, expect, Page } from '@playwright/test';
  * Run with: npx playwright test insights.spec.ts
  * Tag: @insights
  *
- * Tests for the LLM-powered insights feature on the CTO dashboard.
+ * Tests for the LLM-powered insights feature on the Analytics dashboard.
  * These tests verify the UI integration works correctly.
  */
 
@@ -30,8 +30,8 @@ test.describe('AI Insights Tests @insights', () => {
   });
 
   test.describe('AI Summary Card', () => {
-    test('AI Insights card displays on CTO dashboard', async ({ page }) => {
-      await page.goto('/app/metrics/overview/');
+    test('AI Insights card displays on Analytics dashboard', async ({ page }) => {
+      await page.goto('/app/metrics/analytics/');
       await page.waitForLoadState('domcontentloaded');
 
       // Should have AI Insights heading
@@ -39,7 +39,7 @@ test.describe('AI Insights Tests @insights', () => {
     });
 
     test('AI Summary loads via HTMX', async ({ page }) => {
-      await page.goto('/app/metrics/overview/');
+      await page.goto('/app/metrics/analytics/');
       await page.waitForLoadState('domcontentloaded');
       await waitForHtmxComplete(page);
 
@@ -53,7 +53,7 @@ test.describe('AI Insights Tests @insights', () => {
     });
 
     test('refresh button is present', async ({ page }) => {
-      await page.goto('/app/metrics/overview/');
+      await page.goto('/app/metrics/analytics/');
       await page.waitForLoadState('domcontentloaded');
 
       // Should have refresh button
@@ -61,7 +61,7 @@ test.describe('AI Insights Tests @insights', () => {
     });
 
     test('refresh button triggers HTMX request', async ({ page }) => {
-      await page.goto('/app/metrics/overview/');
+      await page.goto('/app/metrics/analytics/');
       await page.waitForLoadState('domcontentloaded');
       await waitForHtmxComplete(page);
 
@@ -80,7 +80,7 @@ test.describe('AI Insights Tests @insights', () => {
 
   test.describe('Q&A Form', () => {
     test('Ask About Your Metrics form displays', async ({ page }) => {
-      await page.goto('/app/metrics/overview/');
+      await page.goto('/app/metrics/analytics/');
       await page.waitForLoadState('domcontentloaded');
 
       // Should have the Q&A heading
@@ -88,7 +88,7 @@ test.describe('AI Insights Tests @insights', () => {
     });
 
     test('question input field is present', async ({ page }) => {
-      await page.goto('/app/metrics/overview/');
+      await page.goto('/app/metrics/analytics/');
       await page.waitForLoadState('domcontentloaded');
 
       // Should have question input
@@ -97,7 +97,7 @@ test.describe('AI Insights Tests @insights', () => {
     });
 
     test('Ask button is present', async ({ page }) => {
-      await page.goto('/app/metrics/overview/');
+      await page.goto('/app/metrics/analytics/');
       await page.waitForLoadState('domcontentloaded');
 
       // Should have Ask button
@@ -105,7 +105,7 @@ test.describe('AI Insights Tests @insights', () => {
     });
 
     test('suggested questions load via HTMX', async ({ page }) => {
-      await page.goto('/app/metrics/overview/');
+      await page.goto('/app/metrics/analytics/');
       await page.waitForLoadState('domcontentloaded');
       await waitForHtmxComplete(page);
 
@@ -117,7 +117,7 @@ test.describe('AI Insights Tests @insights', () => {
     });
 
     test('clicking suggested question fills input and submits', async ({ page }) => {
-      await page.goto('/app/metrics/overview/');
+      await page.goto('/app/metrics/analytics/');
       await page.waitForLoadState('domcontentloaded');
       await waitForHtmxComplete(page);
 
@@ -142,7 +142,7 @@ test.describe('AI Insights Tests @insights', () => {
     });
 
     test('typing and submitting question works', async ({ page }) => {
-      await page.goto('/app/metrics/overview/');
+      await page.goto('/app/metrics/analytics/');
       await page.waitForLoadState('domcontentloaded');
       await waitForHtmxComplete(page);
 
@@ -162,7 +162,7 @@ test.describe('AI Insights Tests @insights', () => {
     });
 
     test('empty question shows validation (HTML5 required)', async ({ page }) => {
-      await page.goto('/app/metrics/overview/');
+      await page.goto('/app/metrics/analytics/');
       await page.waitForLoadState('domcontentloaded');
       await waitForHtmxComplete(page);
 
@@ -180,7 +180,7 @@ test.describe('AI Insights Tests @insights', () => {
 
   test.describe('Recent Insights', () => {
     test('Recent Insights section displays', async ({ page }) => {
-      await page.goto('/app/metrics/overview/');
+      await page.goto('/app/metrics/analytics/');
       await page.waitForLoadState('domcontentloaded');
 
       // Should have Recent Insights heading
@@ -188,7 +188,7 @@ test.describe('AI Insights Tests @insights', () => {
     });
 
     test('insight cards display with priority badges', async ({ page }) => {
-      await page.goto('/app/metrics/overview/');
+      await page.goto('/app/metrics/analytics/');
       await page.waitForLoadState('domcontentloaded');
 
       // Should have at least one insight card (from sample data)
@@ -198,7 +198,7 @@ test.describe('AI Insights Tests @insights', () => {
     });
 
     test('insight cards have dismiss buttons', async ({ page }) => {
-      await page.goto('/app/metrics/overview/');
+      await page.goto('/app/metrics/analytics/');
       await page.waitForLoadState('domcontentloaded');
 
       // Should have dismiss buttons on insight cards
@@ -210,7 +210,7 @@ test.describe('AI Insights Tests @insights', () => {
 
   test.describe('Integration with Dashboard', () => {
     test('insights appear before metrics cards', async ({ page }) => {
-      await page.goto('/app/metrics/overview/');
+      await page.goto('/app/metrics/analytics/');
       await page.waitForLoadState('domcontentloaded');
 
       // Get positions of AI Insights and PRs Merged
@@ -225,7 +225,7 @@ test.describe('AI Insights Tests @insights', () => {
     });
 
     test('Q&A form appears after AI Summary', async ({ page }) => {
-      await page.goto('/app/metrics/overview/');
+      await page.goto('/app/metrics/analytics/');
       await page.waitForLoadState('domcontentloaded');
 
       // Get positions
@@ -240,7 +240,7 @@ test.describe('AI Insights Tests @insights', () => {
     });
 
     test('date range filter does not break insights section', async ({ page }) => {
-      await page.goto('/app/metrics/overview/');
+      await page.goto('/app/metrics/analytics/');
       await page.waitForLoadState('domcontentloaded');
 
       // Click 30d filter

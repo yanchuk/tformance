@@ -220,7 +220,7 @@ test.describe('Permission Denied Scenarios @errors', () => {
       await loginAs(page);
 
       // Analytics overview should be accessible to admin
-      await page.goto('/app/metrics/overview/');
+      await page.goto('/app/metrics/analytics/');
 
       // Admin user should have access - heading is "Analytics Overview"
       await expect(page.getByRole('heading', { name: 'Analytics Overview' })).toBeVisible();

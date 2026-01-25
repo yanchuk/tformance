@@ -31,8 +31,8 @@ type TestFixtures = {
   authenticatedPage: Page;
   /** Page navigated to team dashboard, authenticated as admin */
   dashboardPage: Page;
-  /** Page navigated to CTO dashboard, authenticated as admin */
-  ctoDashboardPage: Page;
+  /** Page navigated to Analytics dashboard, authenticated as admin */
+  analyticsDashboardPage: Page;
   /** Page navigated to integrations hub, authenticated as admin */
   integrationsPage: Page;
   /** Page navigated to app home, authenticated as admin */
@@ -65,12 +65,12 @@ export const test = base.extend<TestFixtures>({
   },
 
   /**
-   * CTO dashboard page fixture.
-   * Logs in and navigates to CTO overview dashboard.
+   * Analytics dashboard page fixture.
+   * Logs in and navigates to analytics overview dashboard.
    */
-  ctoDashboardPage: async ({ page }, use) => {
+  analyticsDashboardPage: async ({ page }, use) => {
     await loginAs(page, 'admin');
-    await page.goto('/app/metrics/overview/');
+    await page.goto('/app/metrics/analytics/');
     // Wait for HTMX content to load
     await page.waitForSelector('.stat', { timeout: 10000 });
     await use(page);

@@ -1,9 +1,11 @@
-"""Tests for displaying insights on the CTO dashboard.
+"""Tests for displaying insights on the Analytics dashboard.
 
 This test module covers:
 - get_recent_insights service function
-- cto_overview view including insights
+- analytics_overview view including insights
 - dismiss_insight view for dismissing insights via HTMX
+
+Note: The legacy cto_overview URL now redirects to analytics_overview.
 """
 
 from datetime import timedelta
@@ -120,8 +122,13 @@ class TestGetRecentInsightsService(TestCase):
         self.assertEqual(insights_list[2], old_insight)
 
 
-class TestCTOOverviewWithInsights(TestCase):
-    """Tests for cto_overview view including insights in context."""
+class TestAnalyticsOverviewAccess(TestCase):
+    """Tests for analytics_overview view access and rendering.
+
+    Note: The legacy cto_overview URL now redirects to analytics_overview.
+    Engineering insights are displayed on the main dashboard (/app/), not
+    on the analytics overview page.
+    """
 
     def setUp(self):
         """Set up test fixtures using factories."""
@@ -133,39 +140,32 @@ class TestCTOOverviewWithInsights(TestCase):
         self.team.members.add(self.member_user, through_defaults={"role": ROLE_MEMBER})
         self.client = Client()
 
-    def test_dashboard_includes_insights_in_context(self):
-        """Test that cto_overview includes insights in context."""
+    def test_analytics_overview_renders_for_admin(self):
+        """Test that analytics_overview renders successfully for admin users."""
         # Arrange
-        DailyInsightFactory(team=self.team, date=timezone.now().date())
         self.client.force_login(self.admin_user)
 
         # Act
-        response = self.client.get(reverse("metrics:cto_overview"))
+        response = self.client.get(reverse("metrics:analytics_overview"))
 
         # Assert
         self.assertEqual(response.status_code, 200)
-        self.assertIn("insights", response.context)
+        self.assertTemplateUsed(response, "metrics/analytics/overview.html")
 
-    def test_dashboard_shows_insights_panel(self):
-        """Test that cto_overview renders insights in the template."""
+    def test_analytics_overview_returns_404_for_non_admin(self):
+        """Test that analytics_overview is admin-only (member gets 404).
+
+        The team_admin_required decorator returns 404 for non-admin users
+        to avoid leaking information about page existence.
+        """
         # Arrange
-        DailyInsightFactory(
-            team=self.team,
-            date=timezone.now().date(),
-            title="Test Insight Title",
-            description="Test insight description",
-            category="trend",
-            priority="high",
-        )
-        self.client.force_login(self.admin_user)
+        self.client.force_login(self.member_user)
 
         # Act
-        response = self.client.get(reverse("metrics:cto_overview"))
+        response = self.client.get(reverse("metrics:analytics_overview"))
 
-        # Assert
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Test Insight Title")
-        self.assertContains(response, "Test insight description")
+        # Assert - should return 404 for non-admin (by design, to avoid info leakage)
+        self.assertEqual(response.status_code, 404)
 
 
 class TestDismissInsightView(TestCase):

@@ -732,7 +732,7 @@ test.describe('Analytics Pages Tests @analytics', () => {
   test.describe('Cross-Page Navigation', () => {
     test('can navigate from old dashboard to new analytics', async ({ page }) => {
       // Go to old CTO overview
-      await page.goto('/app/metrics/overview/');
+      await page.goto('/app/metrics/analytics/');
       await page.waitForLoadState('domcontentloaded');
 
       // Should have quick nav buttons to new pages
@@ -769,7 +769,7 @@ test.describe('Analytics Pages Tests @analytics', () => {
 
     test('full navigation flow: Dashboard -> Analytics -> PR List -> Back', async ({ page }) => {
       // Start at CTO overview (direct navigation to avoid sidebar ambiguity)
-      await page.goto('/app/metrics/overview/');
+      await page.goto('/app/metrics/analytics/');
       await page.waitForLoadState('domcontentloaded');
 
       // Navigate to new analytics via button

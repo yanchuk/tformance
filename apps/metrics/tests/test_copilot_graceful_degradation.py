@@ -6,8 +6,11 @@ This module tests that:
 2. Empty states are shown when Copilot is connected but no data exists
 3. Partial data scenarios are handled gracefully
 
-These tests ensure the CTO Overview dashboard handles Copilot features
+These tests ensure the Analytics dashboard handles Copilot features
 gracefully based on feature flags and data availability.
+
+Note: Tests use analytics_ai_adoption page where Copilot features are displayed.
+The legacy cto_overview URL now redirects to analytics_overview.
 """
 
 from django.test import Client, TestCase, override_settings
@@ -28,7 +31,7 @@ _DUMMY_CACHE_SETTINGS = {"default": {"BACKEND": "django.core.cache.backends.dumm
 class TestCopilotGracefulDegradationFlagGating(TestCase):
     """Tests for Copilot UI visibility based on feature flags.
 
-    Task 6.1: Verify that CTO Overview properly hides/shows Copilot
+    Task 6.1: Verify that Analytics AI Adoption page properly hides/shows Copilot
     sections based on the copilot_enabled and copilot_seat_utilization flags.
     """
 
@@ -44,8 +47,8 @@ class TestCopilotGracefulDegradationFlagGating(TestCase):
         Flag.objects.get_or_create(name="copilot_enabled", defaults={"everyone": False})
         Flag.objects.get_or_create(name="copilot_seat_utilization", defaults={"everyone": False})
 
-    def test_cto_overview_hides_copilot_seat_section_when_flag_disabled(self):
-        """Test that CTO Overview hides Copilot seat utilization when flag is disabled.
+    def test_ai_adoption_hides_copilot_seat_section_when_flag_disabled(self):
+        """Test that AI Adoption page hides Copilot seat utilization when flag is disabled.
 
         When copilot_seat_utilization flag is not enabled for the team,
         the Seat Utilization & ROI section should not appear in the template.
@@ -54,7 +57,7 @@ class TestCopilotGracefulDegradationFlagGating(TestCase):
         self.client.force_login(self.admin_user)
 
         # Act
-        response = self.client.get(reverse("metrics:cto_overview"))
+        response = self.client.get(reverse("metrics:analytics_ai_adoption"))
 
         # Assert
         self.assertEqual(response.status_code, 200)
@@ -64,8 +67,8 @@ class TestCopilotGracefulDegradationFlagGating(TestCase):
         self.assertNotContains(response, "Seat Utilization")
         self.assertNotContains(response, "copilot-seats-container")
 
-    def test_cto_overview_shows_copilot_seat_section_when_flag_enabled(self):
-        """Test that CTO Overview shows Copilot seat utilization when flag is enabled.
+    def test_ai_adoption_shows_copilot_seat_section_when_flag_enabled(self):
+        """Test that AI Adoption page shows Copilot seat utilization when flag is enabled.
 
         When both copilot_enabled and copilot_seat_utilization flags are enabled,
         the Seat Utilization & ROI section should appear in the template.
@@ -82,7 +85,7 @@ class TestCopilotGracefulDegradationFlagGating(TestCase):
         self.client.force_login(self.admin_user)
 
         # Act
-        response = self.client.get(reverse("metrics:cto_overview"))
+        response = self.client.get(reverse("metrics:analytics_ai_adoption"))
 
         # Assert
         self.assertEqual(response.status_code, 200)
@@ -92,47 +95,48 @@ class TestCopilotGracefulDegradationFlagGating(TestCase):
         self.assertContains(response, "Seat Utilization")
         self.assertContains(response, "copilot-seats-container")
 
-    def test_cto_overview_context_includes_copilot_flag_status(self):
-        """Test that CTO Overview includes copilot_seat_utilization_enabled in context."""
+    def test_ai_adoption_context_includes_copilot_flag_status(self):
+        """Test that AI Adoption page includes copilot_seat_utilization_enabled in context."""
         self.client.force_login(self.admin_user)
 
-        response = self.client.get(reverse("metrics:cto_overview"))
+        response = self.client.get(reverse("metrics:analytics_ai_adoption"))
 
         self.assertEqual(response.status_code, 200)
         # Context should include the flag status key
         self.assertIn("copilot_seat_utilization_enabled", response.context)
 
-    def test_existing_ai_detection_section_renders_without_copilot_flags(self):
-        """Test that AI Detection section (pattern-based) still renders when Copilot flags are off.
+    def test_existing_ai_adoption_section_renders_without_copilot_flags(self):
+        """Test that AI Adoption sections (pattern-based) still render when Copilot flags are off.
 
         Task 6.1: Existing AI detection still works (pattern-based) even when
-        Copilot features are disabled.
+        Copilot features are disabled. The ai_adoption page shows AI Adoption Trend
+        and AI Tools Breakdown charts which use PR-based AI detection.
         """
-        # Arrange - Copilot flags are disabled, but AI detection should work
+        # Arrange - Copilot flags are disabled, but AI adoption sections should work
         self.client.force_login(self.admin_user)
 
         # Act
-        response = self.client.get(reverse("metrics:cto_overview"))
+        response = self.client.get(reverse("metrics:analytics_ai_adoption"))
 
         # Assert
         self.assertEqual(response.status_code, 200)
-        # AI Detection section should always be present (from PR content analysis)
-        self.assertContains(response, "AI Detection")
-        self.assertContains(response, "ai-detected-container")
+        # AI Adoption sections should always be present (from PR content analysis)
+        self.assertContains(response, "AI Adoption Trend")
+        self.assertContains(response, "ai-adoption-container")
 
-    def test_cto_overview_no_errors_when_all_copilot_flags_disabled(self):
-        """Test that CTO Overview renders without errors when all Copilot flags are off.
+    def test_ai_adoption_no_errors_when_all_copilot_flags_disabled(self):
+        """Test that AI Adoption page renders without errors when all Copilot flags are off.
 
         This ensures no broken UI or errors when Copilot features are disabled.
         """
         self.client.force_login(self.admin_user)
 
         # Act
-        response = self.client.get(reverse("metrics:cto_overview"))
+        response = self.client.get(reverse("metrics:analytics_ai_adoption"))
 
         # Assert - page renders successfully
         self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, "metrics/cto_overview.html")
+        self.assertTemplateUsed(response, "metrics/analytics/ai_adoption.html")
 
 
 @override_settings(CACHES=_DUMMY_CACHE_SETTINGS)
@@ -271,7 +275,7 @@ class TestCopilotPartialData(TestCase):
         self.assertEqual(response.status_code, 200)
 
     def test_dashboard_renders_with_partial_copilot_data(self):
-        """Test that CTO Overview renders successfully with partial Copilot data.
+        """Test that AI Adoption page renders successfully with partial Copilot data.
 
         When only some Copilot data exists, the dashboard should still render
         without errors, showing available data.
@@ -287,11 +291,11 @@ class TestCopilotPartialData(TestCase):
         self.client.force_login(self.admin_user)
 
         # Act
-        response = self.client.get(reverse("metrics:cto_overview"))
+        response = self.client.get(reverse("metrics:analytics_ai_adoption"))
 
         # Assert
         self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, "metrics/cto_overview.html")
+        self.assertTemplateUsed(response, "metrics/analytics/ai_adoption.html")
 
     def test_delivery_section_renders_when_no_prs_exist(self):
         """Test that delivery section handles no PR data gracefully.
@@ -303,7 +307,7 @@ class TestCopilotPartialData(TestCase):
         self.client.force_login(self.admin_user)
 
         # Act
-        response = self.client.get(reverse("metrics:cto_overview"))
+        response = self.client.get(reverse("metrics:analytics_ai_adoption"))
 
         # Assert - should render without errors
         self.assertEqual(response.status_code, 200)
@@ -319,12 +323,12 @@ class TestCopilotPartialData(TestCase):
         self.client.force_login(self.admin_user)
 
         # Act
-        response = self.client.get(reverse("metrics:cto_overview"))
+        response = self.client.get(reverse("metrics:analytics_ai_adoption"))
 
         # Assert
         self.assertEqual(response.status_code, 200)
-        # AI Detection section should still show (uses PR data)
-        self.assertContains(response, "AI Detection")
+        # AI Adoption sections should still show (uses PR data for pattern-based detection)
+        self.assertContains(response, "AI Adoption Trend")
 
 
 @override_settings(CACHES=_DUMMY_CACHE_SETTINGS)
@@ -361,7 +365,7 @@ class TestCopilotFlagHierarchy(TestCase):
         self.client.force_login(self.admin_user)
 
         # Act
-        response = self.client.get(reverse("metrics:cto_overview"))
+        response = self.client.get(reverse("metrics:analytics_ai_adoption"))
 
         # Assert
         self.assertEqual(response.status_code, 200)
@@ -384,7 +388,7 @@ class TestCopilotFlagHierarchy(TestCase):
         self.client.force_login(self.admin_user)
 
         # Act
-        response = self.client.get(reverse("metrics:cto_overview"))
+        response = self.client.get(reverse("metrics:analytics_ai_adoption"))
 
         # Assert
         self.assertEqual(response.status_code, 200)

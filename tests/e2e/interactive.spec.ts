@@ -539,7 +539,7 @@ test.describe('Interactive Elements @interactive', () => {
       await page.getByRole('button', { name: 'Light' }).click();
 
       // Navigate to CTO dashboard
-      await page.goto('/app/metrics/overview/');
+      await page.goto('/app/metrics/analytics/');
       await page.waitForLoadState('domcontentloaded');
 
       // Theme should still be light
