@@ -197,6 +197,103 @@
                     "build_.*_prompt"
                 ]
             }
+        },
+        "writing-well": {
+            "type": "domain",
+            "enforcement": "suggest",
+            "priority": "high",
+            "description": "Clear writing principles from 'On Writing Well' by William Zinsser",
+            "promptTriggers": {
+                "keywords": [
+                    "writing",
+                    "copy",
+                    "copywriting",
+                    "landing page",
+                    "marketing",
+                    "content",
+                    "headline",
+                    "tagline",
+                    "CTA",
+                    "call to action",
+                    "button text",
+                    "error message",
+                    "about page",
+                    "blog post",
+                    "email copy",
+                    "microcopy",
+                    "product description",
+                    "notification text",
+                    "empty state",
+                    "onboarding copy"
+                ],
+                "intentPatterns": [
+                    "(write|create|improve|edit|draft|craft).*?(copy|content|text|headline|tagline|message)",
+                    "(how to|best practice).*?(write|copy|content)",
+                    "(improve|fix|rewrite).*?(copy|content|text|wording)",
+                    "(landing page|marketing|email).*?(copy|content|text)"
+                ]
+            },
+            "fileTriggers": {
+                "pathPatterns": [
+                    "templates/web/**/*.html",
+                    "templates/emails/**/*.html",
+                    "templates/emails/**/*.txt",
+                    "static/**/*.md",
+                    "content/**/*"
+                ],
+                "contentPatterns": [
+                    "hero.?section",
+                    "cta",
+                    "tagline",
+                    "headline"
+                ]
+            }
+        },
+        "cto-marketing-copy": {
+            "type": "domain",
+            "enforcement": "suggest",
+            "priority": "high",
+            "description": "CTO and developer-focused marketing copy patterns for Tformance",
+            "promptTriggers": {
+                "keywords": [
+                    "CTO copy",
+                    "developer marketing",
+                    "positioning",
+                    "differentiation",
+                    "comparison page",
+                    "landing page copy",
+                    "value proposition",
+                    "ICP messaging",
+                    "competitor",
+                    "vs LinearB",
+                    "vs Jellyfish",
+                    "vs DX",
+                    "vs Swarmia",
+                    "pricing copy",
+                    "CTO messaging",
+                    "engineering leader"
+                ],
+                "intentPatterns": [
+                    "(write|create|draft).*?(copy|messaging|headline).*?(CTO|engineering|developer)",
+                    "(CTO|engineering leader|VP eng).*?(copy|messaging|content)",
+                    "(comparison|versus|vs).*?(competitor|LinearB|Jellyfish|DX|Swarmia)",
+                    "(differentiate|position|compare).*?(competitor|tool|platform)"
+                ]
+            },
+            "fileTriggers": {
+                "pathPatterns": [
+                    "templates/web/compare/**",
+                    "templates/web/pricing.html",
+                    "apps/web/compare_data.py"
+                ],
+                "contentPatterns": [
+                    "competitor",
+                    "comparison",
+                    "vs_",
+                    "differentiator",
+                    "value.?prop"
+                ]
+            }
         }
     },
     "notes": {
