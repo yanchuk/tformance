@@ -33,6 +33,8 @@ team_urlpatterns = (
         path("cards/copilot-languages/", views.copilot_language_chart, name="cards_copilot_languages"),
         path("cards/copilot-editors/", views.copilot_editor_chart, name="cards_copilot_editors"),
         path("cards/copilot-delivery/", views.copilot_delivery_impact_card, name="cards_copilot_delivery"),
+        path("cards/copilot-engagement/", views.copilot_engagement_card, name="cards_copilot_engagement"),
+        path("cards/team-health/", views.team_health_indicators_card, name="cards_team_health"),
         path("cards/iteration-metrics/", views.iteration_metrics_card, name="cards_iteration_metrics"),
         # Table partials
         path("tables/breakdown/", views.team_breakdown_table, name="table_breakdown"),

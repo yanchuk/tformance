@@ -186,6 +186,29 @@
   </div>
   {% endif %}
 
+  <!-- Copilot Engagement Summary -->
+  <div class="card bg-base-100 shadow-md mb-6">
+    <div class="card-body">
+      <h2 class="card-title text-base">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+        {% trans "Copilot Engagement" %}
+      </h2>
+      <p class="text-sm text-base-content/80 mb-4">{% trans "Team adoption and usage patterns" %}</p>
+      <div id="copilot-engagement-container"
+           hx-get="{% url 'metrics:cards_copilot_engagement' %}?days={{ days }}{% if selected_repo %}&repo={{ selected_repo }}{% endif %}"
+           hx-trigger="load"
+           hx-swap="innerHTML">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {% for i in "1234" %}
+          <div class="skeleton h-20 w-full rounded-lg"></div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Copilot Trend + Language Breakdown Grid -->
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
     <!-- Copilot Acceptance Rate Trend -->

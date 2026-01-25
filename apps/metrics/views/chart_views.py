@@ -1026,3 +1026,56 @@ def copilot_editor_chart(request: HttpRequest) -> HttpResponse:
         "metrics/partials/copilot_editor_chart.html",
         {"editors": editors},
     )
+
+
+# =============================================================================
+# DX-Inspired Features (Copilot Engagement & Team Health)
+# =============================================================================
+
+
+@team_admin_required
+def copilot_engagement_card(request: HttpRequest) -> HttpResponse:
+    """Copilot engagement summary card (admin only).
+
+    Shows factual engagement metrics: suggestions accepted, lines of code,
+    acceptance rate, active users, and cycle time comparison with confidence
+    indicator.
+    """
+    from apps.integrations.services.integration_flags import is_copilot_feature_active
+    from apps.metrics.services.dashboard.copilot_metrics import get_copilot_engagement_summary
+
+    # Check feature flag
+    if not is_copilot_feature_active(request, "copilot_delivery_impact"):
+        return TemplateResponse(
+            request,
+            "metrics/partials/copilot_engagement_card.html",
+            {"engagement": None},
+        )
+
+    start_date, end_date = get_date_range_from_request(request)
+    engagement = get_copilot_engagement_summary(request.team, start_date, end_date)
+
+    return TemplateResponse(
+        request,
+        "metrics/partials/copilot_engagement_card.html",
+        {"engagement": engagement},
+    )
+
+
+@team_admin_required
+def team_health_indicators_card(request: HttpRequest) -> HttpResponse:
+    """Team health indicators card (admin only).
+
+    Shows traffic light indicators for throughput, cycle time, quality,
+    review bottleneck, and AI adoption.
+    """
+    from apps.metrics.services.dashboard.velocity_metrics import get_team_health_indicators
+
+    start_date, end_date = get_date_range_from_request(request)
+    indicators = get_team_health_indicators(request.team, start_date, end_date)
+
+    return TemplateResponse(
+        request,
+        "metrics/partials/team_health_indicators_card.html",
+        {"indicators": indicators},
+    )

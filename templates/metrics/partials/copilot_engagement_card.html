@@ -1,0 +1,96 @@
+{% load i18n number_filters %}
+{% if engagement %}
+<div class="space-y-4">
+  <!-- Primary Metrics Row -->
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <!-- Suggestions Accepted -->
+    <div class="stat bg-base-200 rounded-lg p-4 overflow-hidden">
+      <div class="stat-title text-xs">Suggestions Accepted</div>
+      <div class="stat-value text-2xl tabular-nums text-primary">{{ engagement.suggestions_accepted|format_compact }}</div>
+    </div>
+
+    <!-- Lines of Code -->
+    <div class="stat bg-base-200 rounded-lg p-4 overflow-hidden">
+      <div class="stat-title text-xs">Lines Accepted</div>
+      <div class="stat-value text-2xl tabular-nums">{{ engagement.lines_of_code_accepted|format_compact }}</div>
+    </div>
+
+    <!-- Acceptance Rate -->
+    <div class="stat bg-base-200 rounded-lg p-4 overflow-hidden">
+      <div class="stat-title text-xs">Acceptance Rate</div>
+      <div class="stat-value text-2xl tabular-nums">
+        {% if engagement.acceptance_rate %}{{ engagement.acceptance_rate|floatformat:0 }}%{% else %}&ndash;{% endif %}
+      </div>
+      {% if engagement.acceptance_rate_trend %}
+      <div class="stat-desc text-xs">
+        {% if engagement.acceptance_rate_trend == "up" %}
+        <span class="text-success">&#9650; Improving</span>
+        {% elif engagement.acceptance_rate_trend == "down" %}
+        <span class="text-error">&#9660; Declining</span>
+        {% else %}
+        <span class="text-base-content/60">&#8212; Stable</span>
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Active Copilot Users -->
+    <div class="stat bg-base-200 rounded-lg p-4 overflow-hidden">
+      <div class="stat-title text-xs">Active Copilot Users</div>
+      <div class="stat-value text-2xl tabular-nums">{{ engagement.active_copilot_users }}</div>
+    </div>
+  </div>
+
+  <!-- Delivery Comparison Section -->
+  {% if engagement.cycle_time_with_copilot is not None or engagement.cycle_time_without_copilot is not None %}
+  <div class="divider text-xs text-base-content/50 my-2">Delivery Comparison</div>
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <!-- Cycle Time (Copilot) -->
+    <div class="stat bg-base-200 rounded-lg p-4 overflow-hidden">
+      <div class="stat-title text-xs">Cycle Time (Copilot)</div>
+      <div class="stat-value text-xl tabular-nums text-success">
+        {% if engagement.cycle_time_with_copilot is not None %}{{ engagement.cycle_time_with_copilot|floatformat:1 }}h{% else %}&ndash;{% endif %}
+      </div>
+    </div>
+
+    <!-- Cycle Time (Non-Copilot) -->
+    <div class="stat bg-base-200 rounded-lg p-4 overflow-hidden">
+      <div class="stat-title text-xs">Cycle Time (No Copilot)</div>
+      <div class="stat-value text-xl tabular-nums">
+        {% if engagement.cycle_time_without_copilot is not None %}{{ engagement.cycle_time_without_copilot|floatformat:1 }}h{% else %}&ndash;{% endif %}
+      </div>
+    </div>
+
+    <!-- Review Time (Copilot) -->
+    <div class="stat bg-base-200 rounded-lg p-4 overflow-hidden">
+      <div class="stat-title text-xs">Review Time (Copilot)</div>
+      <div class="stat-value text-xl tabular-nums text-success">
+        {% if engagement.review_time_with_copilot is not None %}{{ engagement.review_time_with_copilot|floatformat:1 }}h{% else %}&ndash;{% endif %}
+      </div>
+    </div>
+
+    <!-- Review Time (Non-Copilot) -->
+    <div class="stat bg-base-200 rounded-lg p-4 overflow-hidden">
+      <div class="stat-title text-xs">Review Time (No Copilot)</div>
+      <div class="stat-value text-xl tabular-nums">
+        {% if engagement.review_time_without_copilot is not None %}{{ engagement.review_time_without_copilot|floatformat:1 }}h{% else %}&ndash;{% endif %}
+      </div>
+    </div>
+  </div>
+
+  {% if not engagement.sample_sufficient %}
+  <div class="alert alert-info mt-2">
+    <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-5 w-5" fill="none" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+    <span class="text-sm">Sample size is small. Collect more PRs for reliable comparison.</span>
+  </div>
+  {% endif %}
+  {% endif %}
+</div>
+{% else %}
+<div class="text-center py-8 text-base-content/60">
+  <p class="text-sm">No Copilot engagement data available</p>
+  <p class="text-xs mt-1">Enable Copilot feature flags to see engagement metrics</p>
+</div>
+{% endif %}
