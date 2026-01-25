@@ -7,9 +7,7 @@ from django.template.response import TemplateResponse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from apps.integrations.services.integration_flags import is_cicd_enabled, is_copilot_feature_active
 from apps.metrics.models import DailyInsight
-from apps.metrics.services import insight_service
 from apps.metrics.services.insight_llm import resolve_action_url
 from apps.metrics.view_utils import get_date_range_from_request
 from apps.teams.decorators import login_and_team_required, team_admin_required
@@ -53,23 +51,14 @@ def dashboard_redirect(request: HttpRequest) -> HttpResponse:
 
 @team_admin_required
 def cto_overview(request: HttpRequest) -> HttpResponse:
-    """CTO Overview Dashboard - Admin only.
+    """Legacy CTO Overview URL - Redirects to analytics_overview.
 
-    Access is blocked during Phase 1 of onboarding (syncing, llm_processing,
-    computing_metrics, computing_insights, failed). Dashboard becomes accessible
-    once Phase 1 completes (phase1_complete, background_*, complete).
+    This URL (/app/metrics/overview/) is deprecated. All functionality has been
+    consolidated into the Analytics Dashboard at /app/metrics/analytics/.
+
+    The redirect preserves backwards compatibility for bookmarks and external links.
     """
-    # Block dashboard during Phase 1 of onboarding
-    if not request.team.dashboard_accessible:
-        return redirect("onboarding:sync_progress")
-
-    context = _get_date_range_context(request)
-    context["insights"] = insight_service.get_recent_insights(request.team)
-    context["cicd_enabled"] = is_cicd_enabled(request)
-    context["copilot_seat_utilization_enabled"] = is_copilot_feature_active(request, "copilot_seat_utilization")
-    # Return partial for HTMX requests (e.g., days filter changes)
-    template = "metrics/cto_overview.html#page-content" if request.htmx else "metrics/cto_overview.html"
-    return TemplateResponse(request, template, context)
+    return redirect("metrics:analytics_overview")
 
 
 @login_and_team_required
