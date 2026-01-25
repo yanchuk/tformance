@@ -222,7 +222,7 @@
   <h2 class="text-2xl font-bold text-base-content mb-6 text-center">Where They're Ahead (For Now)</h2>
 
   <div class="bg-warning/10 border border-warning/30 rounded-xl p-6">
-    <p class="text-base-content/80 mb-4">We believe in honesty. Here's where {{ competitor.name }} beats us today:</p>
+    <p class="text-base-content/80 mb-4">Where {{ competitor.name }} beats us today:</p>
     <ul class="space-y-2">
       {% for gap in competitor.honest_gaps %}
       <li class="flex items-start gap-2 text-base-content/80">
@@ -262,7 +262,7 @@
   <div class="max-w-2xl mx-auto px-4 text-center">
     <h2 class="text-2xl font-bold text-base-content mb-4">See the difference yourself</h2>
     <p class="text-base-content/80 mb-8">
-      30-day free trial. No credit card. No sales calls.
+      30 days free. No card. No calls.
     </p>
     <div class="flex flex-col sm:flex-row gap-4 justify-center">
       <a href="{% url 'account_signup' %}" class="btn btn-primary">Start Free Trial</a>
