@@ -77,13 +77,217 @@
       </div>
 
       <!-- Footer reassurance -->
-      <div class="mt-8 pt-6 border-t border-base-300 text-center">
+      <div class="mt-8 pt-6 border-t border-base-300 text-center space-y-3">
         <p class="text-base-content/80">
           <svg class="w-4 h-4 inline-block mr-1 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
           </svg>
           Your code stays in GitHub. We only see metadata.
         </p>
+        <button x-data @click="$dispatch('open-pr-data-modal')"
+                class="text-primary hover:text-primary/80 underline underline-offset-4 font-medium text-sm transition-colors cursor-pointer">
+          See exact data we receive →
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PR Data Example Modal -->
+  <div x-data="{ open: false, activeTab: 'query' }"
+       @open-pr-data-modal.window="open = true"
+       @keydown.escape.window="open = false">
+
+    <!-- Modal Backdrop -->
+    <div x-show="open"
+         x-cloak
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-150"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         class="fixed inset-0 bg-black/50 z-40"
+         @click="open = false">
+    </div>
+
+    <!-- Modal Content -->
+    <div x-show="open"
+         x-cloak
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0 scale-95"
+         x-transition:enter-end="opacity-100 scale-100"
+         x-transition:leave="transition ease-in duration-150"
+         x-transition:leave-start="opacity-100 scale-100"
+         x-transition:leave-end="opacity-0 scale-95"
+         class="fixed inset-0 z-50 flex items-center justify-center p-4"
+         @click.self="open = false">
+      <div class="bg-base-100 rounded-xl shadow-2xl max-w-4xl w-full max-h-[85vh] flex flex-col">
+        <!-- Modal Header -->
+        <div class="flex items-center justify-between p-5 border-b border-base-300">
+          <div>
+            <h3 class="text-lg font-semibold text-base-content">What We Actually Request</h3>
+            <p class="text-sm text-base-content/60 mt-1">Our GitHub GraphQL query and a real response</p>
+          </div>
+          <button @click="open = false"
+                  class="btn btn-ghost btn-sm btn-circle">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Tab Navigation -->
+        <div class="flex border-b border-base-300 px-5">
+          <button @click="activeTab = 'query'"
+                  :class="activeTab === 'query' ? 'border-primary text-primary' : 'border-transparent text-base-content/60 hover:text-base-content'"
+                  class="px-4 py-3 text-sm font-medium border-b-2 -mb-px transition-colors">
+            GraphQL Query
+          </button>
+          <button @click="activeTab = 'response'"
+                  :class="activeTab === 'response' ? 'border-primary text-primary' : 'border-transparent text-base-content/60 hover:text-base-content'"
+                  class="px-4 py-3 text-sm font-medium border-b-2 -mb-px transition-colors">
+            Example Response
+          </button>
+        </div>
+
+        <!-- Tab Content -->
+        <div class="flex-1 overflow-auto p-5">
+          <!-- GraphQL Query Tab -->
+          <div x-show="activeTab === 'query'" x-cloak>
+            <!-- Terminal-style code block -->
+            <div class="bg-base-300 rounded-lg overflow-hidden">
+              <!-- Terminal header -->
+              <div class="flex items-center gap-2 px-4 py-2 bg-base-300 border-b border-base-content/10">
+                <div class="flex gap-1.5">
+                  <div class="w-3 h-3 rounded-full bg-red-500/80"></div>
+                  <div class="w-3 h-3 rounded-full bg-yellow-500/80"></div>
+                  <div class="w-3 h-3 rounded-full bg-green-500/80"></div>
+                </div>
+                <span class="text-xs text-base-content/50 ml-2 font-mono">github-api.graphql</span>
+              </div>
+              <!-- Code content -->
+              <pre class="p-4 overflow-x-auto text-sm font-mono text-base-content/90 leading-relaxed"><code>pullRequests(first: 100, states: [MERGED, OPEN, CLOSED]) {
+  nodes {
+    number
+    title
+    body
+    state
+    createdAt
+    mergedAt
+    additions
+    deletions
+    isDraft
+
+    author { login }
+    labels { nodes { name, color } }
+    milestone { title, number, dueOn }
+    assignees { nodes { login } }
+    closingIssuesReferences { nodes { number, title } }
+
+    reviews {
+      nodes {
+        state        <span class="text-base-content/50"># APPROVED, CHANGES_REQUESTED, COMMENTED</span>
+        body
+        submittedAt
+        author { login }
+      }
+    }
+
+    commits {
+      nodes {
+        commit {
+          oid          <span class="text-base-content/50"># Git SHA</span>
+          message
+          additions
+          deletions
+          author { date, user { login } }
+        }
+      }
+    }
+
+    files {
+      nodes {
+        path           <span class="text-base-content/50"># File path only</span>
+        additions
+        deletions
+        changeType     <span class="text-base-content/50"># ADDED, MODIFIED, DELETED</span>
+      }
+    }
+  }
+}</code></pre>
+            </div>
+          </div>
+
+          <!-- Example Response Tab -->
+          <div x-show="activeTab === 'response'" x-cloak>
+            <!-- Terminal-style code block -->
+            <div class="bg-base-300 rounded-lg overflow-hidden">
+              <!-- Terminal header -->
+              <div class="flex items-center gap-2 px-4 py-2 bg-base-300 border-b border-base-content/10">
+                <div class="flex gap-1.5">
+                  <div class="w-3 h-3 rounded-full bg-red-500/80"></div>
+                  <div class="w-3 h-3 rounded-full bg-yellow-500/80"></div>
+                  <div class="w-3 h-3 rounded-full bg-green-500/80"></div>
+                </div>
+                <span class="text-xs text-base-content/50 ml-2 font-mono">response.json</span>
+              </div>
+              <!-- Code content -->
+              <pre class="p-4 overflow-x-auto text-sm font-mono text-base-content/90 leading-relaxed"><code>{
+  <span class="text-teal-400">"number"</span>: 2420,
+  <span class="text-teal-400">"title"</span>: "Inertia migration: Settings",
+  <span class="text-teal-400">"state"</span>: "MERGED",
+  <span class="text-teal-400">"createdAt"</span>: "2025-11-13T16:00:00Z",
+  <span class="text-teal-400">"mergedAt"</span>: "2025-12-24T15:12:10Z",
+  <span class="text-teal-400">"additions"</span>: 1700,
+  <span class="text-teal-400">"deletions"</span>: 1611,
+  <span class="text-teal-400">"isDraft"</span>: false,
+  <span class="text-teal-400">"author"</span>: { "login": "pradumnkumar" },
+  <span class="text-teal-400">"labels"</span>: { "nodes": [] },
+  <span class="text-teal-400">"reviews"</span>: {
+    "nodes": [
+      {
+        "state": "APPROVED",
+        "submittedAt": "2025-12-24T15:09:44Z",
+        "author": { "login": "cousinemmanuel" }
+      }
+    ]
+  },
+  <span class="text-teal-400">"commits"</span>: {
+    "nodes": [
+      {
+        "commit": {
+          "oid": "b6cc8f045814...",
+          "message": "fix: linter issues",
+          "additions": 1,
+          "deletions": 2
+        }
+      }
+    ]
+  },
+  <span class="text-teal-400">"files"</span>: {
+    "nodes": [
+      {
+        "path": "app/controllers/settings/base_controller.rb",
+        "additions": 16,
+        "deletions": 0,
+        "changeType": "ADDED"
+      }
+    ]
+  }
+}</code></pre>
+            </div>
+          </div>
+        </div>
+
+        <!-- Modal Footer -->
+        <div class="p-5 border-t border-base-300 bg-base-200/50">
+          <p class="text-sm text-base-content/70 text-center">
+            <svg class="w-4 h-4 inline-block mr-1 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+            Notice: No source code content, no diffs, no secrets. Just metadata about your PRs.
+          </p>
+        </div>
       </div>
     </div>
   </div>
