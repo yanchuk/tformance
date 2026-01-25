@@ -2,121 +2,53 @@
 
 > Engineering analytics platform that measures AI coding tool impact on team performance.
 
-## What is Tformance?
-
 Tformance is a SaaS platform for CTOs and engineering leaders to understand if AI coding tools (like GitHub Copilot) are actually improving their team's performance. We connect to GitHub and provide dashboards comparing AI-assisted work vs traditional development.
 
-## Key Features
+Free during Alpha. Target audience: CTOs and VP Engineering at companies with 10-50 developers evaluating GitHub Copilot ROI.
 
-- **AI Impact Analytics**: Compare AI-assisted PRs vs traditional PRs on cycle time, review rounds, and velocity
-- **Team Adoption Tracking**: See who's using AI tools effectively and who needs support
-- **GitHub Integration**: OAuth connection, no code changes required
-- **Privacy-First**: We never see your source code - only PR metadata (titles, timestamps, file paths)
-- **Engineering Metrics**: PR metrics, cycle time, review load, DORA-aligned measurements
+Privacy-first: We never access source code - only PR metadata (titles, timestamps, file paths).
 
-## Target Audience
+## Docs
 
-- CTOs and VP Engineering at companies with 10-50 developers
-- Engineering leaders evaluating GitHub Copilot ROI
-- Teams wanting data-driven insights on AI tool adoption
+- [Homepage](https://tformance.com/): Main landing page with product overview
+- [Pricing](https://tformance.com/pricing/): Flat-rate pricing tiers by team size
+- [AI Impact Report](https://tformance.com/report/): 167K PRs analyzed - public research on AI coding impact
+- [Privacy Policy](https://tformance.com/privacy/): Data handling and security practices
+- [Terms of Service](https://tformance.com/terms/): Legal terms
 
-## Current Status
+## Features
 
-Free during Alpha. Core features live:
-- GitHub integration
-- PR metrics and cycle time analysis
-- AI detection (automatic pattern matching + LLM analysis)
-- Team dashboards
+- [Features Overview](https://tformance.com/features/): All platform capabilities
+- [Dashboard & Insights](https://tformance.com/features/dashboard/): Weekly reports, AI-powered insights, health indicators
+- [Analytics Deep Dive](https://tformance.com/features/analytics/): Overview, AI Adoption, Delivery, Quality, Team, Trends views
+- [PR Explorer](https://tformance.com/features/pr-explorer/): Filter, annotate, and export PR data
 
-Coming soon: Copilot metrics API, Jira integration, Slack surveys.
+## Comparisons
 
-## Key Pages
+- [Compare All Tools](https://tformance.com/compare/): Overview of engineering analytics market
+- [vs LinearB](https://tformance.com/compare/linearb/): Workflow automation + DORA metrics ($35-46/seat/mo)
+- [vs Jellyfish](https://tformance.com/compare/jellyfish/): Enterprise engineering intelligence (~$50/seat/mo)
+- [vs Swarmia](https://tformance.com/compare/swarmia/): DevEx surveys + productivity
+- [vs Span](https://tformance.com/compare/span/): AI code detection specialist
+- [vs Workweave](https://tformance.com/compare/workweave/): AI-focused PR analytics
+- [vs Mesmer](https://tformance.com/compare/mesmer/): Engineering visibility automation
+- [vs Nivara](https://tformance.com/compare/nivara/): AI engineering manager (YC F25)
 
-- Homepage: https://tformance.com/
-- Pricing: https://tformance.com/pricing/
-- AI Impact Report (167K PRs analyzed): https://tformance.com/report/
-- Privacy Policy: https://tformance.com/privacy/
-- Terms of Service: https://tformance.com/terms/
+## Optional
 
-## Feature Pages
+- [Team](https://tformance.com/team/): About the team
+- [LLMs Full Context](https://tformance.com/report/llms.md): Extended data for AI Impact Report
 
-Detailed pages explaining each product capability:
+### Technical Details
 
-- Features Overview: https://tformance.com/features/
-- Dashboard & Insights: https://tformance.com/features/dashboard/
-- Analytics Deep Dive: https://tformance.com/features/analytics/
-- PR Explorer: https://tformance.com/features/pr-explorer/
+Built with Django, PostgreSQL, Celery, Redis. Frontend uses HTMX, Alpine.js, Tailwind CSS, DaisyUI. Hosted on Heroku (Docker). AI detection via LLM analysis through Groq.
 
-### Dashboard & Insights
-Weekly reports delivered to your inbox. AI-powered insights that explain patterns in your data. Health indicators (red/yellow/green) flag what needs attention.
+### Data Collection
 
-### Analytics Deep Dive
-Six analytics views for comprehensive team analysis:
-- Overview: Team health metrics at a glance
-- AI Adoption: Compare AI-assisted vs traditional PRs
-- Delivery: Cycle time trends and bottleneck detection
-- Quality: Revert rate, review rounds, CI pass rate
-- Team: Reviewer workload distribution
-- Trends: 12-month rolling patterns
+From GitHub: PR metadata (titles, sizes, timestamps), review counts and cycle times, file paths and change counts, author and reviewer information.
 
-### PR Explorer
-Filter PRs by repository, author, AI status, date range. Export to CSV. Add private team notes. Every PR links to detailed metrics.
+Never accessed: Source code content, file diffs or patches, commit message bodies, private messages.
 
-## Comparison Pages
+### Contact
 
-We provide honest comparisons to help you choose the right engineering analytics tool:
-
-- Compare All Tools: https://tformance.com/compare/
-- Tformance vs LinearB: https://tformance.com/compare/linearb/
-- Tformance vs Jellyfish: https://tformance.com/compare/jellyfish/
-- Tformance vs Swarmia: https://tformance.com/compare/swarmia/
-- Tformance vs Span: https://tformance.com/compare/span/
-- Tformance vs Workweave: https://tformance.com/compare/workweave/
-- Tformance vs Mesmer: https://tformance.com/compare/mesmer/
-- Tformance vs Nivara: https://tformance.com/compare/nivara/
-
-### How We Compare
-
-Our comparison pages include:
-- Honest feature-by-feature comparison (we show where competitors are ahead)
-- Pricing comparison with annual cost calculator
-- "When to choose them" and "When to choose us" guidance
-- We're transparent about features that are "coming soon" vs "live now"
-
-### Competitors We Compare Against
-
-- LinearB: Workflow automation + DORA metrics ($35-46/seat/mo)
-- Jellyfish: Enterprise engineering intelligence (~$50/seat/mo)
-- Swarmia: DevEx surveys + productivity (€22-42/dev/mo)
-- Span: AI code detection specialist (enterprise pricing)
-- Workweave: AI-focused PR analytics ($50/seat/mo)
-- Mesmer: Engineering visibility/status automation (custom pricing)
-- Nivara: AI engineering manager (YC F25, early stage)
-
-Our positioning: AI impact focus at 70% less cost than enterprise alternatives.
-
-## Contact
-
-- Email: hello@tformance.com
-- Founder: Oleksii Ianchuk (Technical Product Lead)
-
-## Technical Stack
-
-- Backend: Django, PostgreSQL, Celery, Redis
-- Frontend: HTMX, Alpine.js, Tailwind CSS, DaisyUI
-- Hosting: Heroku (Docker)
-- AI Detection: LLM-based analysis via Groq
-
-## Data We Collect (from GitHub)
-
-- PR metadata: titles, sizes, timestamps
-- Review counts and cycle times
-- File paths and change counts
-- Author and reviewer information
-
-## Data We Never Access
-
-- Source code content
-- File diffs or patches
-- Commit message bodies
-- Private messages
+Email: hello@tformance.com | Founder: Oleksii Ianchuk (Technical Product Lead)
