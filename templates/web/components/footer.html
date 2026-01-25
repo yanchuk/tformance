@@ -1,21 +1,29 @@
 <footer class="mt-10 mb-4">
-  <div class="text-center text-base-content/70 space-y-2">
-    {# Compare section - top 3 competitors by search volume #}
-    <p class="text-sm">
-      <span class="text-base-content/50">Compare:</span>
-      <a href="{% url 'web:compare_competitor' competitor='linearb' %}" class="hover:text-primary transition-colors ml-1">vs LinearB</a>
-      <span class="mx-1">&middot;</span>
-      <a href="{% url 'web:compare_competitor' competitor='jellyfish' %}" class="hover:text-primary transition-colors">vs Jellyfish</a>
-      <span class="mx-1">&middot;</span>
-      <a href="{% url 'web:compare_competitor' competitor='swarmia' %}" class="hover:text-primary transition-colors">vs Swarmia</a>
-      <span class="mx-1">&middot;</span>
-      <a href="{% url 'web:compare' %}" class="hover:text-primary transition-colors">All Comparisons</a>
-    </p>
+  <div class="text-center text-base-content/70 space-y-4">
+    {# Competitor comparisons in columns #}
+    <div class="flex justify-center">
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-1 text-sm">
+        <a href="{% url 'web:compare_competitor' competitor='linearb' %}" class="hover:text-primary transition-colors">vs LinearB</a>
+        <a href="{% url 'web:compare_competitor' competitor='jellyfish' %}" class="hover:text-primary transition-colors">vs Jellyfish</a>
+        <a href="{% url 'web:compare_competitor' competitor='swarmia' %}" class="hover:text-primary transition-colors">vs Swarmia</a>
+        <a href="{% url 'web:compare_competitor' competitor='span' %}" class="hover:text-primary transition-colors">vs Span</a>
+        <a href="{% url 'web:compare_competitor' competitor='workweave' %}" class="hover:text-primary transition-colors">vs Workweave</a>
+        <a href="{% url 'web:compare_competitor' competitor='mesmer' %}" class="hover:text-primary transition-colors">vs Mesmer</a>
+        <a href="{% url 'web:compare_competitor' competitor='nivara' %}" class="hover:text-primary transition-colors">vs Nivara</a>
+        <a href="{% url 'web:compare' %}" class="hover:text-primary transition-colors font-medium">All Comparisons &rarr;</a>
+      </div>
+    </div>
+
+    {# Dark mode toggle #}
+    <div class="flex justify-center">
+      {% include "web/components/dark_mode_selector.html" with light_theme="tformance-light" dark_theme="tformance" %}
+    </div>
+
     {# Legal links #}
     <p class="text-sm">
-      <a href="{% url 'web:terms' %}" class="hover:text-primary transition-colors">Terms of Service</a>
+      <a href="{% url 'web:terms' %}" class="hover:text-primary transition-colors">Terms</a>
       <span class="mx-2">&middot;</span>
-      <a href="{% url 'web:privacy' %}" class="hover:text-primary transition-colors">Privacy Policy</a>
+      <a href="{% url 'web:privacy' %}" class="hover:text-primary transition-colors">Privacy</a>
       <span class="mx-2">&middot;</span>
       <a href="mailto:hello@tformance.com" class="hover:text-primary transition-colors">Contact</a>
     </p>
