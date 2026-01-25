@@ -15,6 +15,7 @@ urlpatterns = [
     path("report/llms.md", views.report_llms_data, name="report_llms_data"),
     path("report/data/<str:filename>", views.report_data_file, name="report_data_file"),
     path("report/<str:filename>", views.report_static_file, name="report_static_file"),
+    path("team/", TemplateView.as_view(template_name="web/team.html"), name="team"),
     path("terms/", TemplateView.as_view(template_name="web/terms.html"), name="terms"),
     path("privacy/", TemplateView.as_view(template_name="web/privacy.html"), name="privacy"),
     path("robots.txt", TemplateView.as_view(template_name="robots.txt", content_type="text/plain"), name="robots.txt"),
