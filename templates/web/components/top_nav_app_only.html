@@ -1,0 +1,28 @@
+{# App-specific header - no marketing links #}
+<div class="navbar shadow-md px-4 lg:px-6">
+  <div class="navbar-start">
+    {# Mobile menu toggle - shows sidebar on mobile #}
+    <div class="lg:hidden">
+      <label tabindex="0" class="btn btn-ghost" @click="sidebarOpen = !sidebarOpen">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="24" height="24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h8m-8 6h16" /></svg>
+      </label>
+    </div>
+
+    {# Logo - links to dashboard, not home #}
+    <a href="{% url 'metrics:dashboard_redirect' %}" class="flex items-center gap-2 ml-2 lg:ml-0">
+      <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-accent-primary to-pink-500
+                  flex items-center justify-center shadow-lg shadow-accent-primary/20">
+        <span class="font-bold text-white text-sm">T</span>
+      </div>
+      <span class="font-bold text-xl lg:text-2xl tracking-tight font-sans">{{project_meta.NAME|title}}</span>
+    </a>
+  </div>
+
+  {# Empty center - no marketing nav links #}
+  <div class="navbar-center hidden lg:flex">
+  </div>
+
+  {# Empty end - no sign up/sign in (user is authenticated) #}
+  <div class="navbar-end gap-2">
+  </div>
+</div>
