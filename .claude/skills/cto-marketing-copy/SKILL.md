@@ -39,8 +39,8 @@ Automatically activates when:
 | Attribute | Value |
 |-----------|-------|
 | Title | CTO, VP Engineering, Engineering Director |
-| Company size | 10-150 engineers (sweet spot: 20-80) |
-| Stage | Seed to Series B startups, growth-stage companies |
+| Company size | 15-75 developers (sweet spot: 25-50) |
+| Stage | Series A-D funded tech companies |
 | Pain | "I need real metrics, not story points" + "Board asks about AI ROI" |
 | Urgency | Need visibility into team performance and AI adoption |
 | Budget holder | Yes |
@@ -53,9 +53,9 @@ Automatically activates when:
 
 ### Our Differentiators
 
-1. **Built for smaller teams** - Not a watered-down enterprise tool; built ground-up for 10-150 engineer teams
+1. **Built for smaller teams** - Not a watered-down enterprise tool; built ground-up for 15-75 developer teams
 2. **Team performance + AI impact** - Both sides of the story, not just one
-3. **Flat-rate pricing** - $499/mo unlimited seats (vs $15-50/seat that punishes growth)
+3. **Tiered flat pricing** - $99/$299/$699 by team size, not per-seat (70-80% cheaper than competitors)
 4. **Self-serve** - No demo calls, no sales process, start in 5 minutes
 5. **Honest comparison** - Acknowledge where competitors are ahead
 
@@ -213,7 +213,7 @@ Position us against alternatives to sharpen differentiation.
 "Real metrics, not vanity dashboards"
 
 # Competitor contrast
-"$499/mo flat rate. Not $30/seat/month."
+"$99-699/mo tiered. Not $30/seat/month."
 
 # Behavior contrast
 "See actual AI usage, not self-reported surveys"
@@ -252,15 +252,16 @@ Use these vetted phrases for consistency:
 - "Compare All Tools" (comparison pages)
 
 ### Pricing Phrases
-- "$499/mo flat rate. Unlimited seats."
-- "No per-seat pricing games"
-- "Same price whether you have 20 or 200 engineers"
+- "$99 / $299 / $699 tiered by team size. All features included."
+- "No per-seat pricing — one price per tier"
+- "70-80% cheaper than LinearB, Swarmia, Jellyfish"
+- "30-day trial, full features, no card required"
 
 ### "Built for Smaller Teams" Phrases
-- "Built for teams of 10-150. Not enterprise bloatware."
+- "Built for teams of 15-75. Not enterprise bloatware."
 - "Enterprise tools are overkill. We're right-sized for growing teams."
 - "No 6-month implementation. No dedicated CSM required."
-- "The analytics tool for startups and growth-stage companies."
+- "The analytics tool for Series A-D tech companies."
 - "You don't need Jellyfish. You need answers."
 
 ---

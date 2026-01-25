@@ -110,7 +110,7 @@ COMPETITORS = {
             "They support GitLab and Bitbucket",
         ],
         "best_for_them": "Teams prioritizing workflow automation and community",
-        "best_for_us": "Budget-conscious teams focused on AI impact measurement",
+        "best_for_us": "Teams of 15-75 devs focused on AI impact at 70% less cost",
         "features": {
             "ai_code_detection": "partial",
             "ai_usage_correlation": True,
@@ -187,7 +187,7 @@ COMPETITORS = {
         "annual_cost_100_devs": 60000,
         "free_tier": None,
         "priority": "high",
-        "our_angle": "Enterprise insights at startup prices",
+        "our_angle": "Same insights, 86% lower cost, no sales call",
         "one_liner": "Enterprise engineering intelligence. ~$50/seat.",
         "their_strengths": [
             "Enterprise-grade platform for 200+ dev teams",
@@ -210,7 +210,7 @@ COMPETITORS = {
             "They have developer surveys built-in",
         ],
         "best_for_them": "Enterprise orgs (200+ devs) needing DevFinOps",
-        "best_for_us": "Growing teams (10-150) wanting AI insights fast",
+        "best_for_us": "Growing teams (15-75 devs) wanting AI insights fast, no enterprise sales",
         "features": {
             "ai_code_detection": False,
             "dora_metrics": True,
@@ -280,7 +280,7 @@ COMPETITORS = {
         "annual_cost_100_devs": 50400,
         "free_tier": None,
         "priority": "high",
-        "our_angle": "AI impact + simpler pricing",
+        "our_angle": "AI detection built-in. $99-699 flat, not module math",
         "one_liner": "DevEx surveys + productivity. €22-42/dev.",
         "their_strengths": [
             "Built-in developer experience surveys",
@@ -302,7 +302,7 @@ COMPETITORS = {
             "They have Slack integration",
         ],
         "best_for_them": "Teams prioritizing developer experience surveys",
-        "best_for_us": "Teams wanting AI impact + simple pricing",
+        "best_for_us": "Teams of 15-75 devs wanting AI impact + flat pricing",
         "features": {
             "ai_code_detection": False,
             "dora_metrics": True,

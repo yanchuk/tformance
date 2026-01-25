@@ -27,10 +27,10 @@ We cover both: **team performance metrics** (cycle time, throughput, bottlenecks
 
 ### Built for Smaller Teams (Not Enterprise)
 This is a feature, not a limitation:
-- **10-150 engineers** is our sweet spot (20-80 ideal)
+- **15-75 developers** is our sweet spot (25-50 ideal)
 - No enterprise bloat, no 6-month implementations
 - Self-serve: sign up and see data in 5 minutes
-- Flat-rate pricing that doesn't punish headcount growth
+- Tiered flat pricing that doesn't punish headcount growth
 
 **What we DON'T have (and that's okay):**
 - SOC 2 Type II (yet)
@@ -71,7 +71,7 @@ If you need clear metrics on team velocity and AI effectiveness, that's us.
 "We show team performance and AI impact clearly—the two things your board asks about."
 
 # Pricing angle
-"LinearB is powerful. It's also $30+/seat. We're $499/month, unlimited."
+"LinearB is powerful. It's also $30+/seat. We're $99-699/month tiered, all features included."
 ```
 
 ---
@@ -90,7 +90,7 @@ If you need clear metrics on team velocity and AI effectiveness, that's us.
 ### Our Differentiation
 ```
 Jellyfish is built for enterprises with 500+ engineers.
-We're built for startups and growth-stage teams of 10-150.
+We're built for Series A-D teams of 15-75 developers.
 
 They're comprehensive. We're right-sized.
 They need implementation. We need 5 minutes.
@@ -203,11 +203,11 @@ They're a platform. We're a focused tool.
 
 When you don't know the specific competitor, use these patterns.
 
-### Per-Seat vs Flat-Rate
+### Per-Seat vs Tiered Flat Pricing
 ```
-"$15-50 per seat adds up fast. We're $499/month, period."
-"With 100 engineers, per-seat pricing costs $1,500-5,000/month. We're $499."
-"Your headcount shouldn't determine your bill."
+"$15-50 per seat adds up fast. We're $99-699/month tiered."
+"10 devs: $99/mo vs $400+. 50 devs: $299/mo vs $2,000+. 100 devs: $699/mo vs $4,000+."
+"70-80% cheaper than per-seat competitors."
 ```
 
 ### Enterprise vs Self-Serve
@@ -219,10 +219,10 @@ When you don't know the specific competitor, use these patterns.
 
 ### Right-Sized (Not Enterprise Bloatware)
 ```
-"Built for teams of 10-150. Not a watered-down enterprise tool."
+"Built for teams of 15-75. Not a watered-down enterprise tool."
 "Enterprise tools are overkill. We're right-sized for growing teams."
 "You don't need SOC 2 Type II, on-prem, and custom SLAs. You need answers."
-"The analytics tool for startups, not Fortune 500."
+"The analytics tool for Series A-D companies, not Fortune 500."
 "Jellyfish is for 1000+ engineer orgs. We're for you."
 ```
 
