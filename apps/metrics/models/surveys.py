@@ -25,6 +25,39 @@ MODIFICATION_EFFORT_CHOICES = [
     ("na", "Didn't use AI for code gen"),
 ]
 
+# Review Experience fields - shown to ~25% of reviewers (extended survey)
+# Feedback clarity: How clear/actionable was the review feedback?
+FEEDBACK_CLARITY_CHOICES = [
+    (1, "Unclear"),
+    (2, "OK"),
+    (3, "Clear"),
+    (4, "Very clear"),
+    (5, "Excellent"),
+]
+
+# Review burden: How taxing was the review process?
+REVIEW_BURDEN_CHOICES = [
+    (1, "Very taxing"),
+    (2, "Taxing"),
+    (3, "Moderate"),
+    (4, "Light"),
+    (5, "Very light"),
+]
+
+
+def should_show_extended_survey() -> bool:
+    """Determine if extended survey questions should be shown.
+
+    Returns True approximately 25% of the time to sample reviewer experience
+    without survey fatigue.
+
+    Returns:
+        bool: True if extended questions should be shown
+    """
+    import random
+
+    return random.random() < 0.25
+
 
 class PRSurvey(BaseTeamModel):
     """Survey for a Pull Request - tracks author's AI disclosure."""
@@ -186,6 +219,22 @@ class PRSurveyReview(BaseTeamModel):
         blank=True,
         verbose_name="Response Source",
         help_text="Channel through which the reviewer responded (github, slack, web)",
+    )
+
+    # Extended survey fields (shown to ~25% of reviewers)
+    feedback_clarity = models.IntegerField(
+        choices=FEEDBACK_CLARITY_CHOICES,
+        null=True,
+        blank=True,
+        verbose_name="Feedback Clarity",
+        help_text="How clear/actionable was the review feedback (1=Unclear, 5=Excellent)",
+    )
+    review_burden = models.IntegerField(
+        choices=REVIEW_BURDEN_CHOICES,
+        null=True,
+        blank=True,
+        verbose_name="Review Burden",
+        help_text="How taxing was the review process (1=Very taxing, 5=Very light)",
     )
 
     class Meta:

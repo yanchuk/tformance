@@ -440,6 +440,9 @@ class PRSurveyReviewFactory(DjangoModelFactory):
     )
     responded_at = factory.LazyFunction(lambda: timezone.now() - timedelta(hours=random.randint(1, 72)))
     response_source = factory.LazyFunction(lambda: random.choice(["github", "slack", "web"]))
+    # Extended survey fields - None by default (only shown to ~25% of reviewers)
+    feedback_clarity = None
+    review_burden = None
 
 
 class WeeklyMetricsFactory(DjangoModelFactory):
