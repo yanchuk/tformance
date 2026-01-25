@@ -54,8 +54,8 @@ Model.objects.get(id=id)  # noqa: TEAM001 - ID from Celery task queue
 ## Django URLs, Views and Teams
 
 - Apps have `urlpatterns` (outside Team context) and `team_urlpatterns` (within Team)
-- `team_urlpatterns` URLs: `/a/<team_slug>/<app_path>/<pattern>/`
-- Team-based views must have `team_slug` as first argument
+- `team_urlpatterns` URLs: `/app/<app_path>/<pattern>/`
+- Team context is set via middleware (no `team_slug` in URL)
 - Use `@login_and_team_required` and `@team_admin_required` decorators
 - Assume views belong within team context unless specified otherwise
 

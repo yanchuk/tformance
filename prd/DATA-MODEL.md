@@ -313,7 +313,7 @@ else:
 ```
 
 ### Implementation Notes
-- Team context set via URL (`/a/<team_slug>/...`)
+- Team context set via middleware (`/app/...` URLs)
 - `request.team` available after `@login_and_team_required` decorator
 - A user can be in multiple teams with different roles
 - A TeamMember may not have a corresponding User (no login needed)

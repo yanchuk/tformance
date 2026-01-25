@@ -110,7 +110,7 @@ app_name = "myapp"
 urlpatterns = []
 
 # Team-scoped URLs (common)
-# These become: /a/<team_slug>/myapp/...
+# These become: /app/myapp/...
 team_urlpatterns = [
     path("", views.dashboard, name="dashboard"),
     path("settings/", views.settings, name="settings"),
@@ -193,7 +193,7 @@ from rest_framework.permissions import IsAuthenticated
 ```
 
 ### URL Pattern Format
-- Team URLs: `/a/<team_slug>/<app>/<path>/`
+- Team URLs: `/app/<app>/<path>/`
 - API URLs: `/api/<version>/<resource>/`
 
 ### Test Commands

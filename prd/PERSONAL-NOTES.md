@@ -437,10 +437,10 @@ Badge uses flag color if flagged.
 ## Appendix B: URL Structure
 
 ```
-/a/<team_slug>/notes/                        → My Notes list
-/a/<team_slug>/notes/pr/<pr_id>/             → Note form modal (GET/POST)
-/a/<team_slug>/notes/pr/<pr_id>/delete/      → Delete note (POST)
-/a/<team_slug>/notes/pr/<pr_id>/resolve/     → Toggle resolve status (POST)
+/app/notes/                        → My Notes list
+/app/notes/pr/<pr_id>/             → Note form modal (GET/POST)
+/app/notes/pr/<pr_id>/delete/      → Delete note (POST)
+/app/notes/pr/<pr_id>/resolve/     → Toggle resolve status (POST)
 ```
 
 **Query Parameters (My Notes list):**

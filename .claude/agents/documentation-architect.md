@@ -94,8 +94,8 @@ This feature is team-scoped. All data is isolated per team.
 ## URL Patterns
 
 ### Team-Scoped URLs (team_urlpatterns)
-- `GET /a/<team_slug>/feature/` - List view
-- `POST /a/<team_slug>/feature/` - Create
+- `GET /app/feature/` - List view
+- `POST /app/feature/` - Create
 
 ### Global URLs (urlpatterns)
 - `GET /api/v1/feature/` - API endpoint

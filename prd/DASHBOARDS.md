@@ -28,16 +28,20 @@ Dashboards are built natively using Django views, Chart.js for visualizations, a
 
 | Dashboard | Audience | Access |
 |-----------|----------|--------|
-| CTO Overview | CTO/Admin | Full org data |
+| Analytics Overview | CTO/Admin | Full org data |
 | Team Dashboard | Team Lead | Their team only |
 | Individual Dashboard | Developer | Their own data only |
-| AI Correlation Deep Dive | CTO/Admin | Full org data |
+| AI Adoption (Analytics Tab) | CTO/Admin | Full org data |
 
 ---
 
-## 1. CTO Overview Dashboard
+## 1. Analytics Overview Dashboard
 
 **Purpose:** High-level health check and AI impact
+
+> **Note:** The legacy `/app/metrics/overview/` (CTO Overview) URL now redirects
+> to `/app/metrics/analytics/` (Analytics Overview). All functionality has been
+> consolidated into the tabbed Analytics Dashboard.
 
 ### Widgets
 
@@ -345,7 +349,7 @@ apps/metrics/
 templates/metrics/            # 59 template files
 ├── analytics/
 │   ├── base_analytics.html   # Tab navigation, date filters
-│   ├── overview.html         # CTO Overview (insights, key metrics)
+│   ├── overview.html         # Analytics Overview (key metrics, team health)
 │   ├── ai_adoption.html      # AI metrics deep dive
 │   ├── delivery.html         # Cycle time, PR size
 │   ├── quality.html          # Review time, CI/CD
@@ -378,7 +382,7 @@ templates/metrics/            # 59 template files
 │       ├── table.html        # HTMX table partial
 │       └── expanded_row.html # PR detail expansion
 ├── metrics_home.html         # Entry point
-├── cto_overview.html         # Legacy (redirects to analytics)
+│   # Note: cto_overview.html has been deleted - legacy URL redirects to analytics
 └── team_dashboard.html       # Team lead view
 
 assets/javascript/dashboard/  # 5 JavaScript modules
@@ -413,7 +417,7 @@ chartManager.register('cycle-time', (canvas, data) => {
 ### Analytics Views (analytics_views.py)
 | Function | URL Pattern | Purpose |
 |----------|-------------|---------|
-| `analytics_overview` | `/analytics/` | Main CTO overview tab |
+| `analytics_overview` | `/analytics/` | Main analytics overview tab |
 | `analytics_ai_adoption` | `/analytics/ai/` | AI adoption metrics |
 | `analytics_delivery` | `/analytics/delivery/` | Delivery performance |
 | `analytics_quality` | `/analytics/quality/` | Quality metrics |
@@ -460,7 +464,7 @@ chartManager.register('cycle-time', (canvas, data) => {
 | Function | Purpose |
 |----------|---------|
 | `home` | Metrics home page |
-| `cto_overview` | CTO dashboard |
+| `cto_overview` | Legacy redirect to analytics_overview |
 | `team_dashboard` | Team lead view |
 | `engineering_insights` | AI-powered insights |
 | `refresh_insight` | Regenerate insight |

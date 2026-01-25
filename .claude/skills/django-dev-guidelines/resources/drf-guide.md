@@ -214,7 +214,7 @@ team_urlpatterns = [
     path("", include(router.urls)),
 ]
 
-# Results in: /a/<team_slug>/api/v1/projects/
+# Results in: /app/api/v1/projects/
 ```
 
 ## Error Handling
