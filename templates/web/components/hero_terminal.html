@@ -62,7 +62,8 @@
 
     <!-- Video Embed with Custom Play Button -->
     <div class="video-container max-w-4xl mx-auto mt-10"
-         x-data="{ playing: false }">
+         x-data="{ playing: false }"
+         x-init="$el.querySelector('lite-youtube')?.addEventListener('lyt-activated', () => playing = true)">
 
       <!-- Custom Play Button Overlay (pointer-events: none so clicks pass through to lite-youtube) -->
       <div x-show="!playing"
@@ -86,8 +87,7 @@
         videoid="5QDD87MC4xY"
         playlabel="Watch how Tformance works"
         params="rel=0&modestbranding=1&cc_load_policy=1"
-        style="background-image: url('{% static 'images/features/analytics/overview.webp' %}');"
-        @click="playing = true">
+        style="background-image: url('{% static 'images/features/analytics/overview.webp' %}');">
       </lite-youtube>
 
       {# Mobile hint - double-tap is intentional YouTube behavior on mobile to respect data costs #}

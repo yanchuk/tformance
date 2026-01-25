@@ -32,6 +32,14 @@
   width: 100% !important;
   height: 100% !important;
   border: 0 !important;
+  /* z-index above overlay to fix Safari visibility issue */
+  z-index: 20 !important;
+}
+
+/* When lite-youtube activates, hide the overlay via CSS (Safari-safe, no JS needed) */
+.video-container:has(lite-youtube.lyt-activated) .video-overlay {
+  opacity: 0 !important;
+  pointer-events: none !important;
 }
 
 /* Hide default lite-youtube play button when using custom overlay */
