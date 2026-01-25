@@ -179,22 +179,6 @@
           {% endif %}
           {% endfor %}
         </tr>
-        {# SOC 2 #}
-        <tr>
-          <td class="font-medium">SOC 2</td>
-          <td class="text-center"><span class="text-info text-xs">Planned</span></td>
-          {% for slug, comp in competitors.items %}
-          {% if comp.priority == 'high' %}
-          <td class="text-center">
-            {% if comp.features.soc2 %}
-            <span class="text-success">&#10003;</span>
-            {% else %}
-            <span class="text-base-content/40">&#10005;</span>
-            {% endif %}
-          </td>
-          {% endif %}
-          {% endfor %}
-        </tr>
       </tbody>
     </table>
   </div>
@@ -274,7 +258,6 @@
       <ul class="text-base-content/70 space-y-2 text-sm">
         <li>&#x2022; Full DORA suite (we have cycle time, more coming)</li>
         <li>&#x2022; Jira deep integration (shipping soon)</li>
-        <li>&#x2022; SOC 2 certified (in process)</li>
         <li>&#x2022; Slack surveys (on the roadmap)</li>
       </ul>
       <p class="text-sm text-base-content/60 mt-3">We ship weekly. Things change fast.</p>
