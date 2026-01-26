@@ -56,7 +56,8 @@ class SecurityHeadersMiddleware:
             f"script-src 'self' 'unsafe-inline' 'unsafe-eval' "
             f"https://cdn.jsdelivr.net https://unpkg.com https://cdn.tailwindcss.com "
             f"https://*.posthog.com https://*.i.posthog.com "
-            f"https://www.googletagmanager.com https://www.google-analytics.com {vite_src}"
+            f"https://www.googletagmanager.com https://www.google-analytics.com "
+            f"https://www.youtube.com {vite_src}"
         )
         style_src = (
             f"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com "
