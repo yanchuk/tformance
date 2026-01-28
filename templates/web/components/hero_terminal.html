@@ -60,7 +60,8 @@
       </div>
     </div>
 
-    <!-- Video Embed with Custom Play Button -->
+    {% comment %}
+    <!-- Video temporarily hidden - will be replaced with new screencast -->
     <div class="video-container max-w-4xl mx-auto mt-10"
          x-data="{ playing: false }"
          x-init="$el.querySelector('lite-youtube')?.addEventListener('lyt-activated', () => playing = true)">
@@ -95,5 +96,6 @@
         Tap to play
       </p>
     </div>
+    {% endcomment %}
   </div>
 </section>
