@@ -3,6 +3,12 @@ name: tdd-integration
 description: Enforce Test-Driven Development with strict Red-Green-Refactor cycle for Django. Auto-triggers when implementing new features or functionality. Trigger phrases include "implement", "add feature", "build", "create functionality", or any request to add new behavior. Does NOT trigger for bug fixes, documentation, or configuration changes.
 ---
 
+> **For automated execution** (e.g., with `superpowers:executing-plans`), use:
+> ```
+> Task(subagent_type="tdd-orchestrator", prompt="...", description="TDD: ...")
+> ```
+> The orchestrator ensures complete RED→GREEN→REFACTOR cycle with all gates.
+
 # TDD Integration Testing (Django)
 
 Enforce strict Test-Driven Development using the Red-Green-Refactor cycle with dedicated subagents.
