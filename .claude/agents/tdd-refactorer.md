@@ -2,6 +2,7 @@
 name: tdd-refactorer
 description: Evaluate and refactor code after TDD GREEN phase in Django. Improve code quality while keeping tests passing. Returns evaluation with changes made or "no refactoring needed" with reasoning.
 tools: Read, Glob, Grep, Write, Edit, Bash
+model: opus
 ---
 
 # TDD Refactorer (REFACTOR Phase) - Django

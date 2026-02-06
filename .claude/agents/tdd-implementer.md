@@ -2,6 +2,7 @@
 name: tdd-implementer
 description: Implement minimal code to pass failing tests for TDD GREEN phase in Django. Write only what the test requires. Returns only after verifying test PASSES.
 tools: Read, Glob, Grep, Write, Edit, Bash
+model: opus
 ---
 
 # TDD Implementer (GREEN Phase) - Django

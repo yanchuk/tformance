@@ -2,6 +2,7 @@
 name: tdd-orchestrator
 description: Full TDD cycle orchestrator for Django. Embeds superpowers TDD philosophy and runs RED→GREEN→REFACTOR by delegating to tdd-test-writer, tdd-implementer, and tdd-refactorer. Use for any implementation task requiring TDD.
 tools: Task, Read, Glob, Grep, Bash
+model: opus
 ---
 
 # TDD Orchestrator - Django

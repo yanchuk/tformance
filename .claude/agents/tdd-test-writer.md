@@ -2,6 +2,7 @@
 name: tdd-test-writer
 description: Write failing tests for TDD RED phase in Django. Use when implementing new features with TDD. Returns only after verifying test FAILS.
 tools: Read, Glob, Grep, Write, Edit, Bash
+model: opus
 ---
 
 # TDD Test Writer (RED Phase) - Django
