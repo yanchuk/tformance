@@ -49,3 +49,9 @@ seeding*.log
 dev/active/model-comparison/
 real-prs-feedback.json
 results/
+
+# Groq batch processing outputs
+.groq_batches/
+
+# Database/data backups
+backups/
