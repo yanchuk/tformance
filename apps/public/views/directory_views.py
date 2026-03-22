@@ -25,6 +25,7 @@ def directory(request) -> HttpResponse:
         orgs = [org for org in orgs if org["industry"] == industry_filter]
 
     sort_by = request.GET.get("sort", "total_prs")
+    order = request.GET.get("order", "")
     sort_options = {
         "total_prs": lambda org: org["total_prs"],
         "ai_adoption": lambda org: org["ai_assisted_pct"],
@@ -32,7 +33,10 @@ def directory(request) -> HttpResponse:
         "name": lambda org: org["display_name"].lower(),
     }
     sort_fn = sort_options.get(sort_by, sort_options["total_prs"])
-    reverse_sort = sort_by != "name"
+    # Default order: desc for numeric, asc for name
+    if not order:
+        order = "asc" if sort_by == "name" else "desc"
+    reverse_sort = order == "desc"
     orgs = sorted(orgs, key=sort_fn, reverse=reverse_sort)
 
     current_year = timezone.now().year
@@ -42,6 +46,7 @@ def directory(request) -> HttpResponse:
         "industries": INDUSTRY_CHOICES,
         "current_industry": industry_filter,
         "current_sort": sort_by,
+        "current_order": order,
         "current_year": year_param,
         "year_options": [
             ("", "All Years"),
