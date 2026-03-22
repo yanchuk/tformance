@@ -39,9 +39,14 @@ def repo_detail(request: HttpRequest, slug: str, repo_slug: str) -> HttpResponse
         "public_slug": slug,
         "repo_slug": repo_slug,
         "is_repo_page": True,
-        "page_title": f"{repo_profile.display_name} Engineering Metrics — Tformance",
+        "page_title": f"{repo_profile.display_name} Engineering Metrics",
         "page_description": _build_meta_description(repo_profile, stats),
         "page_canonical_url": canonical_url,
+        "page_image": absolute_url(f"/og/open-source/{slug}/{repo_slug}.png"),
+        "combined_trend_data": stats.combined_trend_data if stats else {},
+        "correlation_data": stats.correlation_data if stats else {},
+        "ai_impact_data": stats.ai_impact_data if stats else {},
+        "comparison_data": stats.comparison_data if stats else {},
     }
     return TemplateResponse(request, "public/repo_detail.html", context)
 

@@ -5,7 +5,7 @@
 {
   "@context": "https://schema.org",
   "@type": "DataCatalog",
-  "name": "Open Source Engineering Analytics",
+  "name": "Open Source Engineering Benchmarks",
   "description": "Engineering metrics from {{ global_stats.org_count }} open source projects. Compare AI adoption, cycle time, and team velocity across industries.",
   "url": "https://tformance.com/open-source/",
   "provider": {
@@ -25,6 +25,20 @@
 {% endblock %}
 
 {% block public_content %}
+{# Hero section with CTA #}
+<div class="mb-8">
+  <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-4">
+    <div>
+      <h1 class="text-3xl font-bold mb-2">Open Source Engineering Benchmarks</h1>
+      <p class="text-base-content/70 max-w-2xl">
+        Public GitHub data shows where AI adoption is rising, where cycle time improves,
+        and where review burden is growing.
+      </p>
+    </div>
+    <a href="{% url 'account_signup' %}" class="btn btn-primary whitespace-nowrap">{{ primary_cta_text }}</a>
+  </div>
+</div>
+
 {# Global stats banner #}
 {% if global_stats.org_count > 0 %}
 <div class="bg-base-200 rounded-box p-6 mb-8">
@@ -49,14 +63,41 @@
 </div>
 {% endif %}
 
-{# Page heading #}
-<div class="mb-6">
-  <h1 class="text-3xl font-bold mb-2">Open Source Engineering Metrics</h1>
-  <p class="text-base-content/70 max-w-2xl">
-    Real engineering metrics from top open source projects.
-    See how AI adoption, delivery speed, and team velocity compare across industries.
-  </p>
+{# Benchmark charts — above the table #}
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+  {# Aggregate trend chart #}
+  {% if aggregate_trend.labels %}
+  <div class="card bg-base-100 border border-base-300">
+    <div class="card-body p-4">
+      <h3 class="card-title text-sm font-medium">12-Week AI Adoption & Cycle Time</h3>
+      {{ aggregate_trend|json_script:"aggregate-trend-data" }}
+      <canvas id="aggregate-trend-chart" class="w-full" style="min-height: 260px"></canvas>
+    </div>
+  </div>
+  {% endif %}
+
+  {# Org benchmark scatter #}
+  {% if scatter_data %}
+  <div class="card bg-base-100 border border-base-300">
+    <div class="card-body p-4">
+      <h3 class="card-title text-sm font-medium">Organization Benchmarks</h3>
+      {{ scatter_data|json_script:"scatter-chart-data" }}
+      <canvas id="scatter-chart" class="w-full" style="min-height: 260px"></canvas>
+    </div>
+  </div>
+  {% endif %}
 </div>
+
+{# Industry benchmarks #}
+{% if industry_benchmarks %}
+<div class="card bg-base-100 border border-base-300 mb-8">
+  <div class="card-body p-4">
+    <h3 class="card-title text-sm font-medium">Industry Benchmarks</h3>
+    {{ industry_benchmarks|json_script:"industry-benchmark-data" }}
+    <canvas id="industry-benchmark-chart" class="w-full" style="min-height: 220px"></canvas>
+  </div>
+</div>
+{% endif %}
 
 {# Filters and sorting #}
 <div class="flex flex-col sm:flex-row gap-3 mb-6">
@@ -85,9 +126,9 @@
     {% endfor %}
   </select>
 
-  {# Sort selector #}
+  {# Sort selector (mobile fallback) #}
   <select name="sort"
-          class="select select-bordered select-sm w-full sm:w-auto"
+          class="select select-bordered select-sm w-full sm:w-auto sm:hidden"
           hx-get="{% url 'public:directory' %}"
           hx-target="#directory-list"
           hx-include="[name='year'],[name='industry']"
@@ -105,5 +146,16 @@
 {# Directory list (HTMX target) #}
 <div id="directory-list">
   {% include "public/_directory_list.html" %}
+</div>
+
+{# Methodology / freshness / CTA #}
+<div class="border-t border-base-300 pt-6 mt-8">
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <p class="text-sm text-base-content/60">
+      {{ freshness_copy }}
+      Source: Tformance Open Source Analytics.
+    </p>
+    <a href="{% url 'account_signup' %}" class="btn btn-primary btn-sm">{{ primary_cta_text }}</a>
+  </div>
 </div>
 {% endblock %}

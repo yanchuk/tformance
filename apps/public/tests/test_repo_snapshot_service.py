@@ -120,6 +120,34 @@ class RepoSnapshotServiceTests(TestCase):
         snapshot2 = build_repo_snapshot(self.repo_profile)
         assert snapshot1.pk == snapshot2.pk
 
+    def test_snapshot_stores_combined_trend_data(self):
+        snapshot = build_repo_snapshot(self.repo_profile)
+        assert isinstance(snapshot.combined_trend_data, dict)
+        # Should have labels and datasets keys when data exists
+        if snapshot.combined_trend_data:
+            assert "labels" in snapshot.combined_trend_data
+            assert "datasets" in snapshot.combined_trend_data
+
+    def test_snapshot_stores_correlation_data(self):
+        snapshot = build_repo_snapshot(self.repo_profile)
+        assert isinstance(snapshot.correlation_data, dict)
+
+    def test_snapshot_stores_ai_impact_data(self):
+        snapshot = build_repo_snapshot(self.repo_profile)
+        assert isinstance(snapshot.ai_impact_data, dict)
+
+    def test_snapshot_stores_comparison_data(self):
+        """Review 4A: Pre-computed repo vs org delta."""
+        snapshot = build_repo_snapshot(self.repo_profile)
+        assert isinstance(snapshot.comparison_data, dict)
+
+    def test_snapshot_handles_missing_org_stats_gracefully(self):
+        """Review 8A: If org stats don't exist, comparison_data defaults to {}."""
+        # Delete org stats to simulate missing case
+        PublicOrgStats.objects.filter(org_profile=self.org_profile).delete()
+        snapshot = build_repo_snapshot(self.repo_profile)
+        assert snapshot.comparison_data == {}
+
 
 class BaseQuerysetRepoFilterTests(TestCase):
     """Test that _base_pr_queryset respects github_repo filter."""

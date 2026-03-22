@@ -2,6 +2,7 @@ from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
 from django.test import TestCase
+from django.utils import timezone
 
 from apps.metrics.factories import TeamFactory
 from apps.metrics.models import Commit, PRFile, PRReview
@@ -249,3 +250,93 @@ class PersistPRDetailTests(TestCase):
         assert PRReview.objects.filter(pull_request=pr).count() == 0
         assert Commit.objects.filter(pull_request=pr).count() == 0
         assert PRFile.objects.filter(pull_request=pr).count() == 0
+
+
+class UpsertExistingPRTests(TestCase):
+    """P1 Fix: sync_public_repo() must update stale existing PRs, not skip them."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.team = TeamFactory()
+        cls.org_profile = PublicOrgProfile.objects.create(
+            team=cls.team,
+            public_slug="upsert-org",
+            industry="analytics",
+            display_name="Upsert Org",
+            is_public=True,
+        )
+        cls.repo_profile = PublicRepoProfile.objects.create(
+            org_profile=cls.org_profile,
+            team=cls.team,
+            github_repo="upsert-org/repo",
+            repo_slug="repo",
+            display_name="Repo",
+            is_flagship=True,
+            is_public=True,
+        )
+
+    @patch("apps.public.public_sync.GitHubGraphQLFetcher")
+    @patch("apps.public.public_sync.GitHubTokenPool")
+    def test_incremental_sync_updates_stale_existing_prs(self, mock_pool_cls, mock_fetcher_cls):
+        """Existing PR with stale title should be updated, not skipped."""
+        from apps.metrics.factories import TeamMemberFactory
+        from apps.metrics.models import PullRequest
+
+        member = TeamMemberFactory(team=self.team)
+        # Create an existing PR with old title
+        existing_pr = PullRequest.objects.create(
+            team=self.team,
+            github_pr_id=42,
+            github_repo="upsert-org/repo",
+            title="Old Title",
+            state="merged",
+            author=member,
+            additions=10,
+            deletions=5,
+        )
+
+        # Mock token pool
+        mock_pool = MagicMock()
+        mock_client = MagicMock()
+        mock_client._Github__requester._Requester__authorizationHeader = "token abc123"
+        mock_pool.get_best_client.return_value = mock_client
+
+        # Mock fetcher to return the same PR with updated title
+        now = timezone.now()
+        pr_data = MagicMock()
+        pr_data.number = 42
+        pr_data.is_merged = True
+        pr_data.title = "New Updated Title"
+        pr_data.body = "updated body"
+        pr_data.state = "merged"
+        pr_data.additions = 50
+        pr_data.deletions = 10
+        pr_data.is_draft = False
+        pr_data.labels = []
+        pr_data.milestone_title = ""
+        pr_data.assignees = []
+        pr_data.linked_issues = []
+        pr_data.merged_at = now
+        pr_data.first_review_at = now
+        pr_data.cycle_time_hours = 6.0
+        pr_data.review_time_hours = 2.0
+        pr_data.author_login = member.github_username
+        pr_data.author_id = 12345
+        pr_data.reviews = []
+        pr_data.commits = []
+        pr_data.files = []
+        pr_data.check_runs = []
+
+        mock_fetcher = MagicMock()
+        mock_fetcher.fetch_prs_with_details.return_value = [pr_data]
+        mock_fetcher_cls.return_value = mock_fetcher
+
+        from apps.public.public_sync import sync_public_repo
+
+        result = sync_public_repo(self.repo_profile, mock_pool)
+
+        # PR should have been updated, not skipped
+        existing_pr.refresh_from_db()
+        assert existing_pr.title == "New Updated Title"
+        assert result["updated"] == 1
+        assert result["skipped"] == 0

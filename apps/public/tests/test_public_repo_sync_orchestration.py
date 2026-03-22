@@ -162,7 +162,7 @@ class SyncOrchestratorBackfillTests(TestCase):
         repo.sync_state.refresh_from_db()
         assert repo.sync_state.status == "pending_backfill"
         assert repo.sync_state.checkpoint_payload != {}
-        assert "resume_from_date" in repo.sync_state.checkpoint_payload
+        assert "prs_fetched_so_far" in repo.sync_state.checkpoint_payload
 
     @patch("apps.public.public_sync.sync_public_repo")
     def test_backfill_resumes_from_checkpoint_on_next_run(self, mock_sync):
@@ -170,7 +170,6 @@ class SyncOrchestratorBackfillTests(TestCase):
         repo = self._make_repo("backfill-resume")
         # Pre-populate checkpoint
         repo.sync_state.checkpoint_payload = {
-            "resume_from_date": "2025-10-01T00:00:00+00:00",
             "prs_fetched_so_far": 2000,
         }
         repo.sync_state.save()
@@ -180,10 +179,45 @@ class SyncOrchestratorBackfillTests(TestCase):
         orch = SyncOrchestrator(token_pool=MagicMock())
         orch.sync_repo(repo)
 
-        # Should use checkpoint date, not initial_backfill_days
         call_kwargs = mock_sync.call_args[1]
-        # The since date should be around Oct 1, not computed from initial_backfill_days
-        assert call_kwargs["days"] < 180  # shorter than full backfill
+        # Days should use full initial_backfill_days (not a checkpoint date)
+        assert call_kwargs["days"] == 180
+        # max_prs should be increased to skip past already-persisted PRs
+        assert call_kwargs["max_prs"] == 2000 + 2000  # already_fetched + BACKFILL_PR_CAP
+
+    @patch("apps.public.public_sync.sync_public_repo")
+    def test_backfill_increases_max_prs_on_resume(self, mock_sync):
+        """P1 Fix: resumed backfill must increase max_prs to make forward progress."""
+        mock_sync.return_value = {"fetched": 4000, "created": 2000, "skipped": 0, "errors": 0}
+        repo = self._make_repo("backfill-progress")
+        repo.sync_state.checkpoint_payload = {"prs_fetched_so_far": 2000}
+        repo.sync_state.save()
+
+        from apps.public.services.sync_orchestrator import BACKFILL_PR_CAP, SyncOrchestrator
+
+        orch = SyncOrchestrator(token_pool=MagicMock())
+        orch.sync_repo(repo)
+
+        call_kwargs = mock_sync.call_args[1]
+        assert call_kwargs["max_prs"] == 2000 + BACKFILL_PR_CAP
+
+    @patch("apps.public.public_sync.sync_public_repo")
+    def test_backfill_completes_after_resume_when_under_cap(self, mock_sync):
+        """P1 Fix: when resumed backfill fetches fewer than extended cap, backfill completes."""
+        # First run capped at 2000. Second run: max_prs=4000, but only 3500 exist.
+        mock_sync.return_value = {"fetched": 3500, "created": 1500, "skipped": 0, "errors": 0}
+        repo = self._make_repo("backfill-complete")
+        repo.sync_state.checkpoint_payload = {"prs_fetched_so_far": 2000}
+        repo.sync_state.save()
+
+        from apps.public.services.sync_orchestrator import SyncOrchestrator
+
+        orch = SyncOrchestrator(token_pool=MagicMock())
+        orch.sync_repo(repo)
+
+        repo.sync_state.refresh_from_db()
+        assert repo.sync_state.status == "ready"
+        assert repo.sync_state.checkpoint_payload == {}
 
     @patch("apps.public.public_sync.sync_public_repo")
     def test_backfill_clears_checkpoint_on_completion(self, mock_sync):
@@ -244,9 +278,25 @@ class SyncOrchestratorIncrementalTests(TestCase):
         orch.sync_repo(repo)
 
         call_kwargs = mock_sync.call_args[1]
-        # 3 days ago + 7 day overlap = ~10 days
-        assert 9 <= call_kwargs["days"] <= 11
+        # 3 days ago + 14 day overlap = ~17 days
+        assert 16 <= call_kwargs["days"] <= 18
         assert call_kwargs["max_prs"] == 500
+
+    @patch("apps.public.public_sync.sync_public_repo")
+    def test_incremental_overlap_is_14_days(self, mock_sync):
+        """P1 Fix: overlap window must be 14 days to catch long-lived PRs."""
+        mock_sync.return_value = {"fetched": 10, "created": 5, "skipped": 5, "errors": 0}
+        repo = self._make_ready_repo("overlap-14d", last_synced_days_ago=1)
+
+        from apps.public.services.sync_orchestrator import OVERLAP_DAYS, SyncOrchestrator
+
+        orch = SyncOrchestrator(token_pool=MagicMock())
+        orch.sync_repo(repo)
+
+        call_kwargs = mock_sync.call_args[1]
+        # 1 day gap + 14 day overlap = 15 days
+        assert OVERLAP_DAYS == 14
+        assert 14 <= call_kwargs["days"] <= 16
 
     @patch("apps.public.public_sync.sync_public_repo")
     def test_missed_window_triggers_recovery_backfill(self, mock_sync):

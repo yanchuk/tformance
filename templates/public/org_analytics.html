@@ -6,7 +6,7 @@
 {
   "@context": "https://schema.org",
   "@type": "Dataset",
-  "name": "{{ org_profile.display_name }} Analytics Dashboard",
+  "name": "{{ org_profile.display_name }} Delivery & AI Trends",
   "description": "Detailed {{ org_profile.display_name }} delivery and AI adoption trends across {{ public_stats.total_prs }} merged pull requests.",
   "url": "https://tformance.com/open-source/{{ public_slug }}/analytics/",
   "creator": {
@@ -29,15 +29,15 @@
   "mainEntity": [
     {
       "@type": "Question",
-      "name": "What does the analytics dashboard show for {{ org_profile.display_name }}?",
+      "name": "What do the trends show for {{ org_profile.display_name }}?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "This dashboard shows AI adoption, cycle time, review distribution, and team health signals based on {{ public_stats.total_prs }} merged pull requests."
+        "text": "This page shows AI adoption, cycle time, review distribution, and team health signals based on {{ public_stats.total_prs }} merged pull requests."
       }
     },
     {
       "@type": "Question",
-      "name": "How recent is this analytics data?",
+      "name": "How recent is this data?",
       "acceptedAnswer": {
         "@type": "Answer",
         "text": "Data is refreshed regularly; latest public computation for {{ org_profile.display_name }} was {{ public_stats.last_computed_at|date:'F j, Y' }}."
@@ -51,14 +51,14 @@
 {% block public_breadcrumb_items %}
 <li><a href="{% url 'public:industry' industry=org_profile.industry %}" class="link link-hover">{{ org_profile.get_industry_display }}</a></li>
 <li><a href="{% url 'public:org_detail' slug=public_slug %}" class="link link-hover">{{ org_profile.display_name }}</a></li>
-<li>Analytics</li>
+<li>Trends</li>
 {% endblock public_breadcrumb_items %}
 
 {% block public_main_content %}
 <div class="mb-6">
-  <h1 class="text-3xl font-bold mb-3">{{ org_profile.display_name }} Analytics</h1>
+  <h1 class="text-3xl font-bold mb-3">{{ org_profile.display_name }} Delivery & AI Trends</h1>
   <p class="text-base-content/80 max-w-4xl leading-relaxed mb-4">
-    This analytics view summarizes {{ org_profile.display_name }} engineering performance across
+    Detailed delivery and AI adoption trends for {{ org_profile.display_name }} across
     {{ public_stats.total_prs|intcomma }} merged pull requests. AI-assisted pull requests currently account for
     {{ public_stats.ai_assisted_pct|floatformat:1 }}%, with a median cycle time of
     {{ public_stats.median_cycle_time_hours|floatformat:1 }} hours and median review time of
@@ -111,20 +111,21 @@
   </div>
 </div>
 
+{# Combined trend charts FIRST (step 6.2) #}
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-  <div class="card bg-base-100 border border-base-300">
+  <div class="card bg-base-100 border border-base-300 min-h-[320px]">
     <div class="card-body">
-      <h2 class="card-title text-base">AI Adoption Trend</h2>
-      <div hx-get="{% url 'public:chart_ai_adoption' slug=public_slug %}?days=30" hx-trigger="load" hx-swap="innerHTML">
+      <h2 class="card-title text-base">AI Adoption & Cycle Time</h2>
+      <div hx-get="{% url 'public:chart_combined_trend' slug=public_slug %}?days=90" hx-trigger="load" hx-swap="innerHTML">
         <div class="skeleton h-56 w-full rounded-lg"></div>
       </div>
     </div>
   </div>
 
-  <div class="card bg-base-100 border border-base-300">
+  <div class="card bg-base-100 border border-base-300 min-h-[320px]">
     <div class="card-body">
-      <h2 class="card-title text-base">Cycle Time Trend</h2>
-      <div hx-get="{% url 'public:chart_cycle_time' slug=public_slug %}?days=30" hx-trigger="load" hx-swap="innerHTML">
+      <h2 class="card-title text-base">AI Adoption & Review Time</h2>
+      <div hx-get="{% url 'public:chart_combined_trend' slug=public_slug %}?days=90&secondary=review_time" hx-trigger="load" hx-swap="innerHTML">
         <div class="skeleton h-56 w-full rounded-lg"></div>
       </div>
     </div>
@@ -132,16 +133,16 @@
 </div>
 
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-  <div class="card bg-base-100 border border-base-300">
+  <div class="card bg-base-100 border border-base-300 min-h-[320px]">
     <div class="card-body">
-      <h2 class="card-title text-base">Quality: AI vs Non-AI</h2>
+      <h2 class="card-title text-base">AI vs Non-AI Impact</h2>
       <div hx-get="{% url 'public:chart_ai_quality' slug=public_slug %}?days=30" hx-trigger="load" hx-swap="innerHTML">
         <div class="skeleton h-40 w-full rounded-lg"></div>
       </div>
     </div>
   </div>
 
-  <div class="card bg-base-100 border border-base-300">
+  <div class="card bg-base-100 border border-base-300 min-h-[320px]">
     <div class="card-body">
       <h2 class="card-title text-base">Top AI Tools Detected</h2>
       <div hx-get="{% url 'public:chart_ai_tools' slug=public_slug %}?days=30" hx-trigger="load" hx-swap="innerHTML">
@@ -151,7 +152,7 @@
   </div>
 </div>
 
-<div class="card bg-base-100 border border-base-300">
+<div class="card bg-base-100 border border-base-300 min-h-[320px]">
   <div class="card-body">
     <h2 class="card-title text-base">Team Health Indicators</h2>
     <div hx-get="{% url 'public:cards_team_health' slug=public_slug %}?days=30" hx-trigger="load" hx-swap="innerHTML">

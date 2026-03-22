@@ -79,7 +79,7 @@ class RepoDetailViewTests(TestCase):
     def test_repo_detail_renders_primary_cta(self):
         response = self.client.get(self._url())
         content = response.content.decode()
-        assert "Start Free Trial" in content or "Connect Repos" in content
+        assert "See Your Team" in content
 
     def test_repo_detail_renders_insight(self):
         response = self.client.get(self._url())
@@ -127,3 +127,50 @@ class RepoDetailViewTests(TestCase):
         response = self.client.get(self._url())
         content = response.content.decode()
         assert 'role="tablist"' not in content
+
+    def test_repo_detail_hero_leads_with_cycle_time(self):
+        """Step 5.1: Outcome-first hero — cycle time before AI adoption."""
+        response = self.client.get(self._url())
+        content = response.content.decode()
+        cycle_pos = content.find("Median Cycle Time")
+        ai_pos = content.find("AI Adoption")
+        assert cycle_pos < ai_pos, "Cycle time must appear before AI adoption in hero"
+
+    def test_repo_detail_has_review_time_hero(self):
+        response = self.client.get(self._url())
+        content = response.content.decode()
+        assert "Median Review Time" in content
+
+    def test_repo_detail_has_repo_vs_org_callout(self):
+        """Step 5.2: comparison_data should be in context."""
+        response = self.client.get(self._url())
+        assert "comparison_data" in response.context
+
+    def test_repo_detail_renders_combined_trend_chart(self):
+        response = self.client.get(self._url())
+        assert "combined_trend_data" in response.context
+
+    def test_repo_detail_renders_correlation_when_sufficient(self):
+        response = self.client.get(self._url())
+        assert "correlation_data" in response.context
+
+    def test_repo_detail_has_ai_impact_block(self):
+        response = self.client.get(self._url())
+        assert "ai_impact_data" in response.context
+
+    def test_repo_page_renders_with_empty_trend_data(self):
+        """Review 10A: Page must not crash with empty snapshot data."""
+        self.repo_stats.combined_trend_data = {}
+        self.repo_stats.correlation_data = {}
+        self.repo_stats.ai_impact_data = {}
+        self.repo_stats.comparison_data = {}
+        self.repo_stats.save()
+        response = self.client.get(self._url())
+        assert response.status_code == 200
+
+    def test_repo_detail_has_no_ci_cd_content(self):
+        """Review 11A: No CI/CD content on canonical page."""
+        response = self.client.get(self._url())
+        content = response.content.decode().lower()
+        for term in ["ci/cd", "check-run", "deployment frequency"]:
+            assert term not in content

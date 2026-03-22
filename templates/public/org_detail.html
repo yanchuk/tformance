@@ -63,23 +63,28 @@
 {% endblock public_breadcrumb_items %}
 
 {% block public_main_content %}
+{# 1. Org identity + CTA #}
 <div class="mb-8">
-  <div class="flex flex-col sm:flex-row sm:items-center gap-4 mb-3">
-    <img src="{% if org_profile.logo_url %}{{ org_profile.logo_url }}{% else %}https://github.com/{{ org_profile.public_slug }}.png?size=160{% endif %}"
-         alt="{{ org_profile.display_name }} logo"
-         class="w-14 h-14 rounded-lg object-cover"
-         loading="lazy">
-    <div>
-      <h1 class="text-3xl font-bold">{{ org_profile.display_name }} Engineering Metrics</h1>
-      <div class="flex flex-wrap items-center gap-2 mt-1">
-        <span class="badge badge-primary badge-outline">{{ org_profile.get_industry_display }}</span>
-        {% if org_profile.github_org_url %}
-        <a href="{{ org_profile.github_org_url }}" target="_blank" rel="noopener" class="btn btn-ghost btn-xs">GitHub</a>
-        {% endif %}
+  <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-4">
+    <div class="flex flex-col sm:flex-row sm:items-center gap-4">
+      <img src="{{ org_profile.avatar_url }}"
+           alt="{{ org_profile.display_name }} logo"
+           class="w-14 h-14 rounded-lg object-cover"
+           loading="lazy">
+      <div>
+        <h1 class="text-3xl font-bold">{{ org_profile.display_name }} Engineering Metrics</h1>
+        <div class="flex flex-wrap items-center gap-2 mt-1">
+          <span class="badge badge-primary badge-outline">{{ org_profile.get_industry_display }}</span>
+          {% if org_profile.github_org_url %}
+          <a href="{{ org_profile.github_org_url }}" target="_blank" rel="noopener" class="btn btn-ghost btn-xs">GitHub</a>
+          {% endif %}
+        </div>
       </div>
     </div>
+    <a href="{% url 'account_signup' %}" class="btn btn-primary whitespace-nowrap">{{ primary_cta_text }}</a>
   </div>
 
+  {# 2. Citable summary #}
   <p class="text-base-content/80 max-w-4xl leading-relaxed mb-4">
     As of {{ public_stats.last_computed_at|date:"F j, Y" }}, {{ public_stats.ai_assisted_pct|floatformat:1 }}% of
     {{ org_profile.display_name }} pull requests are AI-assisted, based on analysis of
@@ -89,6 +94,95 @@
   </p>
 </div>
 
+{# 2b. Industry benchmark callout #}
+{% if cycle_time_benchmark.benchmark or ai_adoption_benchmark.benchmark %}
+<div class="bg-base-200 rounded-box p-4 mb-8">
+  <h3 class="text-sm font-semibold mb-3">Industry Benchmark Comparison</h3>
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    {% if cycle_time_benchmark.team_value is not None %}
+    <div class="flex items-center gap-3">
+      <div class="text-2xl font-bold">P{{ cycle_time_benchmark.percentile }}</div>
+      <div>
+        <div class="text-sm font-medium">Cycle Time</div>
+        <div class="text-xs text-base-content/60">{{ cycle_time_benchmark.interpretation }}</div>
+      </div>
+    </div>
+    {% endif %}
+    {% if ai_adoption_benchmark.team_value is not None %}
+    <div class="flex items-center gap-3">
+      <div class="text-2xl font-bold">P{{ ai_adoption_benchmark.percentile }}</div>
+      <div>
+        <div class="text-sm font-medium">AI Adoption</div>
+        <div class="text-xs text-base-content/60">{{ ai_adoption_benchmark.interpretation }}</div>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+{# 2c. Recent-change narrative #}
+{% if recent_narrative %}
+<div class="border-l-4 border-primary pl-4 mb-8">
+  <p class="text-base-content/70 text-sm">{{ recent_narrative }}</p>
+</div>
+{% endif %}
+
+{# 3. Combined trend chart #}
+{% if combined_trend_data.labels %}
+<div class="card bg-base-100 border border-base-300 mb-8">
+  <div class="card-body p-4">
+    <h2 class="card-title text-base">AI Adoption & Delivery Trend</h2>
+    {{ combined_trend_data|json_script:"org-combined-trend-data" }}
+    <canvas id="org-combined-trend-chart" class="w-full" style="min-height: 280px"
+            data-chart-type="combined-trend" data-chart-data-id="org-combined-trend-data"></canvas>
+  </div>
+</div>
+{% endif %}
+
+{# 4. AI Impact block #}
+{% if ai_impact_data.total_prs %}
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+  <div class="card bg-base-100 border border-base-300">
+    <div class="card-body py-4">
+      <h3 class="text-sm font-medium text-base-content/60">AI vs Non-AI Cycle Time</h3>
+      <div class="flex items-end gap-4 mt-2">
+        {% if ai_impact_data.avg_cycle_with_ai %}
+        <div>
+          <div class="text-2xl font-bold">{{ ai_impact_data.avg_cycle_with_ai|floatformat:1 }}h</div>
+          <div class="text-xs text-base-content/50">with AI</div>
+        </div>
+        {% endif %}
+        {% if ai_impact_data.avg_cycle_without_ai %}
+        <div>
+          <div class="text-2xl font-bold text-base-content/60">{{ ai_impact_data.avg_cycle_without_ai|floatformat:1 }}h</div>
+          <div class="text-xs text-base-content/50">without AI</div>
+        </div>
+        {% endif %}
+        {% if ai_impact_data.cycle_time_difference_pct %}
+        <div>
+          <div class="text-lg font-semibold {% if ai_impact_data.cycle_time_difference_pct < 0 %}text-success{% else %}text-warning{% endif %}">
+            {{ ai_impact_data.cycle_time_difference_pct|floatformat:1 }}%
+          </div>
+          <div class="text-xs text-base-content/50">difference</div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  <div class="card bg-base-100 border border-base-300">
+    <div class="card-body py-4">
+      <h3 class="text-sm font-medium text-base-content/60">AI Adoption</h3>
+      <div class="text-3xl font-bold mt-2">{{ ai_impact_data.ai_adoption_pct|floatformat:1 }}%</div>
+      <div class="text-sm text-base-content/50 mt-1">
+        {{ ai_impact_data.ai_prs }} of {{ ai_impact_data.total_prs }} PRs are AI-assisted
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{# 5. Flagship repo cards #}
 {% if repos %}
 <div class="mb-8">
   <h2 class="text-xl font-semibold mb-4">Flagship Repositories</h2>
@@ -98,16 +192,58 @@
     {% endfor %}
   </div>
 </div>
-{% else %}
+{% endif %}
+
+{# 6. Repo comparison mini-table #}
+{% if all_public_repos %}
 <div class="mb-8">
-  <p class="text-base-content/60">No flagship repositories yet.</p>
+  <h2 class="text-xl font-semibold mb-4">Repository Comparison</h2>
+  <div class="overflow-x-auto">
+    <table class="table table-sm">
+      <thead>
+        <tr>
+          <th>Repository</th>
+          <th class="text-right">PRs</th>
+          <th class="text-right">AI Adoption</th>
+          <th class="text-right">Cycle Time</th>
+          <th class="text-right">Review Time</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for repo in all_public_repos %}
+        <tr class="hover:bg-base-200/50 cursor-pointer"
+            onclick="window.location='{% url 'public:repo_detail' slug=public_slug repo_slug=repo.repo_slug %}'">
+          <td>
+            <a href="{% url 'public:repo_detail' slug=public_slug repo_slug=repo.repo_slug %}" class="link link-hover font-medium">
+              {{ repo.display_name }}
+            </a>
+            {% if repo.is_flagship %}<span class="badge badge-primary badge-xs ml-1">flagship</span>{% endif %}
+          </td>
+          <td class="text-right tabular-nums">{{ repo.stats.total_prs|default:"-" }}</td>
+          <td class="text-right tabular-nums">{{ repo.stats.ai_assisted_pct|floatformat:1|default:"-" }}%</td>
+          <td class="text-right tabular-nums">{{ repo.stats.median_cycle_time_hours|floatformat:1|default:"-" }}h</td>
+          <td class="text-right tabular-nums">{{ repo.stats.median_review_time_hours|floatformat:1|default:"-" }}h</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 </div>
 {% endif %}
 
+{# 7. Support links + methodology + CTA #}
 <div class="mb-6">
   <a href="{% url 'public:org_analytics' slug=public_slug %}" class="btn btn-outline btn-sm mr-2">View Analytics</a>
   <a href="{% url 'public:org_pr_list' slug=public_slug %}" class="btn btn-outline btn-sm">Browse Pull Requests</a>
 </div>
 
-<p class="text-xs text-base-content/50">Source: Tformance Open Source Analytics{% if public_stats.last_computed_at %}, updated {{ public_stats.last_computed_at|timesince }} ago{% endif %}.</p>
+<div class="border-t border-base-300 pt-6 mt-8">
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <p class="text-sm text-base-content/60">
+      {{ freshness_copy }}
+      Source: Tformance Open Source Analytics{% if public_stats.last_computed_at %}, updated {{ public_stats.last_computed_at|timesince }} ago{% endif %}.
+    </p>
+    <a href="{% url 'account_signup' %}" class="btn btn-primary btn-sm">{{ primary_cta_text }}</a>
+  </div>
+</div>
 {% endblock public_main_content %}

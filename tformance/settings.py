@@ -750,6 +750,11 @@ WAGTAILADMIN_BASE_URL = "http://localhost:8000"
 
 WAFFLE_FLAG_MODEL = "teams.Flag"
 
+# Public OSS analytics
+# Minimum merged PRs for a repo to appear on public pages.
+# Lower in dev (seeded repos have ~100-500 PRs); production keeps 500.
+PUBLIC_MIN_PRS_THRESHOLD = env.int("PUBLIC_MIN_PRS_THRESHOLD", default=500)
+
 # Pegasus config
 
 # replace any values below with specifics for your project

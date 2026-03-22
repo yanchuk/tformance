@@ -570,16 +570,67 @@ Every competitor has pivoted to or launched AI measurement features in 2024-2025
 
 ---
 
+### Missing Competitors (Added 2026-03-22)
+
+> These competitors were identified during strategy realignment but have NOT been deeply researched yet.
+> Full profiles should be created after customer conversations reveal which competitive positioning matters.
+
+#### 8. UseGitAI (usegitai.com)
+
+**Positioning:** Git-level AI code measurement
+
+**Why This Matters:**
+- Founder's own company (100 engineers) adopted usegitai.com for AI code measurement
+- Uses **git-level tracking** vs. Tformance's PR-level detection approach
+- This is the strongest demand signal in the entire project — the founder's own team chose this over building internally
+
+**Detection Approach:** Direct IDE/git-level tracking rather than PR analysis
+
+**Open Question:** Should usegitai.com be an integration partner rather than a competitor? If their detection layer is more credible, Tformance could consume their signal rather than compete on detection.
+
+**Threat Level:** High — represents the approach the founder's own company chose
+
+**Research Needed:**
+- [ ] Pricing model
+- [ ] Detection accuracy claims
+- [ ] Target customer size
+- [ ] Integration capabilities
+- [ ] Funding / team size
+
+---
+
+#### 9. Milestone (mstone.ai)
+
+**Positioning:** "Engineering analytics built for the AI-coding era"
+
+**Why This Matters:**
+- Self-positions very similarly to Tformance's DNA codex positioning
+- Appeared in mstone.ai's own platform ranking blog (not independently validated)
+- If their positioning is credible, they compete directly for the same narrative
+
+**Research Needed:**
+- [ ] Independent validation of product claims
+- [ ] Actual product capabilities vs. marketing
+- [ ] Pricing model
+- [ ] Customer base and traction
+- [ ] How they differ from Span/Workweave/Swarmia
+
+**Threat Level:** Unknown — needs independent research
+
+---
+
 ## Watch List & Monitoring
 
 ### High Priority (Check Monthly)
 - **Swarmia** - Most direct competitor, similar SMB focus
 - **Span** - Best AI detection, may move downmarket
 - **LinearB** - Strong community, aggressive marketing
+- **UseGitAI** - Founder's own company chose this for AI measurement (needs full research)
 
 ### Medium Priority (Check Quarterly)
 - **Workweave** - Growing fast, AI-focused
 - **Mesmer** - Different angle but same buyers
+- **Milestone (mstone.ai)** - Similar positioning, needs independent validation
 
 ### Low Priority (Check Semi-Annually)
 - **Nivara** - Too early, different vision
@@ -609,5 +660,5 @@ Every competitor has pivoted to or launched AI measurement features in 2024-2025
 
 ---
 
-*Last Updated: December 2025*
-*Next Review: January 2025*
+*Last Updated: March 2026 (added UseGitAI, Milestone — pending full research)*
+*Next Review: After outreach sprint (April 2026)*

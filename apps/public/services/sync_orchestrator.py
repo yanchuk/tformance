@@ -6,7 +6,6 @@ and sync state transitions. The Celery task becomes a thin loop.
 
 import logging
 import traceback
-from datetime import timedelta
 from typing import TypedDict
 
 from django.utils import timezone
@@ -17,7 +16,6 @@ logger = logging.getLogger(__name__)
 class CheckpointPayload(TypedDict, total=False):
     """Schema for checkpoint_payload JSON field."""
 
-    resume_from_date: str  # ISO8601
     prs_fetched_so_far: int
     pages_completed: int
 
@@ -29,7 +27,7 @@ INCREMENTAL_PR_CAP = 500
 # Gap threshold for missed window recovery
 MISSED_WINDOW_DAYS = 30
 # Overlap days for incremental sync
-OVERLAP_DAYS = 7
+OVERLAP_DAYS = 14
 
 
 class SyncOrchestrator:
@@ -78,15 +76,11 @@ class SyncOrchestrator:
         now = timezone.now()
 
         if sync_state.status == "pending_backfill":
-            # Check for checkpoint resume
             checkpoint = sync_state.checkpoint_payload or {}
-            if "resume_from_date" in checkpoint:
-                from datetime import datetime
-
-                resume_date = datetime.fromisoformat(checkpoint["resume_from_date"])
-                days_since_resume = (now - resume_date).days
-                return days_since_resume, BACKFILL_PR_CAP
-            return repo_profile.initial_backfill_days, BACKFILL_PR_CAP
+            already_fetched = checkpoint.get("prs_fetched_so_far", 0)
+            # On resume, increase max_prs to skip past already-persisted PRs
+            max_prs = already_fetched + BACKFILL_PR_CAP
+            return repo_profile.initial_backfill_days, max_prs
 
         # status == "ready" or "failed" (retry as incremental)
         if sync_state.last_synced_updated_at:
@@ -104,13 +98,12 @@ class SyncOrchestrator:
         fetched = result.get("fetched", 0)
 
         if sync_state.status == "pending_backfill":
-            if fetched >= BACKFILL_PR_CAP:
-                # Cap hit — store checkpoint for resume
-                since = now - timedelta(days=repo_profile.initial_backfill_days)
-                checkpoint = sync_state.checkpoint_payload or {}
-                prs_so_far = checkpoint.get("prs_fetched_so_far", 0) + fetched
+            checkpoint = sync_state.checkpoint_payload or {}
+            already_fetched = checkpoint.get("prs_fetched_so_far", 0)
+            if fetched >= already_fetched + BACKFILL_PR_CAP:
+                # Cap hit — store checkpoint for resume with cumulative count
+                prs_so_far = already_fetched + result.get("created", 0) + result.get("updated", 0)
                 sync_state.checkpoint_payload = CheckpointPayload(
-                    resume_from_date=since.isoformat(),
                     prs_fetched_so_far=prs_so_far,
                 )
                 sync_state.last_attempted_sync_at = now

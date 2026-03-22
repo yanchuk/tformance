@@ -30,6 +30,8 @@ def directory(request) -> HttpResponse:
         "total_prs": lambda org: org["total_prs"],
         "ai_adoption": lambda org: org["ai_assisted_pct"],
         "cycle_time": lambda org: org["median_cycle_time_hours"],
+        "review_time": lambda org: org["median_review_time_hours"],
+        "contributors": lambda org: org["active_contributors_90d"],
         "name": lambda org: org["display_name"].lower(),
     }
     sort_fn = sort_options.get(sort_by, sort_options["total_prs"])
@@ -38,6 +40,18 @@ def directory(request) -> HttpResponse:
         order = "asc" if sort_by == "name" else "desc"
     reverse_sort = order == "desc"
     orgs = sorted(orgs, key=sort_fn, reverse=reverse_sort)
+
+    # Build scatter chart data (review 16A -- inline, no separate method)
+    scatter_data = [
+        {
+            "x": float(org["ai_assisted_pct"]),
+            "y": float(org["median_cycle_time_hours"]),
+            "label": org["display_name"],
+            "prs": org["total_prs"],
+            "industry": org["industry"],
+        }
+        for org in orgs
+    ]
 
     current_year = timezone.now().year
     context = {
@@ -57,9 +71,14 @@ def directory(request) -> HttpResponse:
             ("total_prs", "Most PRs"),
             ("ai_adoption", "AI Adoption"),
             ("cycle_time", "Cycle Time"),
+            ("review_time", "Review Time"),
+            ("contributors", "Contributors"),
             ("name", "Name"),
         ],
-        "page_title": "Open Source Engineering Analytics",
+        "scatter_data": scatter_data,
+        "industry_benchmarks": PublicAnalyticsService.get_industry_benchmarks(),
+        "aggregate_trend": PublicAnalyticsService.get_directory_aggregate_trend(),
+        "page_title": "Open Source Engineering Benchmarks",
         "page_description": (
             f"Engineering metrics from {global_stats['org_count']} open source projects. "
             "Compare AI adoption, cycle time, and team velocity across industries."

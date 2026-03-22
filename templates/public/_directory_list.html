@@ -5,13 +5,61 @@
     <thead>
       <tr class="text-xs uppercase text-base-content/50">
         <th class="pl-4">#</th>
-        <th>Organization</th>
+        <th>
+          <a href="{% url 'public:directory' %}?sort=name&order={% if current_sort == 'name' and current_order == 'asc' %}desc{% else %}asc{% endif %}{% if current_industry %}&industry={{ current_industry }}{% endif %}{% if current_year %}&year={{ current_year }}{% endif %}"
+             hx-get="{% url 'public:directory' %}?sort=name&order={% if current_sort == 'name' and current_order == 'asc' %}desc{% else %}asc{% endif %}{% if current_industry %}&industry={{ current_industry }}{% endif %}{% if current_year %}&year={{ current_year }}{% endif %}"
+             hx-target="#directory-list"
+             hx-push-url="true"
+             class="link link-hover inline-flex items-center gap-1">
+            Organization{% if current_sort == 'name' %}<span>{% if current_order == 'asc' %}&#9650;{% else %}&#9660;{% endif %}</span>{% endif %}
+          </a>
+        </th>
         <th>Industry</th>
-        <th class="text-right">PRs</th>
-        <th class="text-right">AI Adoption</th>
-        <th class="text-right">Cycle Time</th>
-        <th class="text-right">Review Time</th>
-        <th class="text-right">Contributors</th>
+        <th class="text-right">
+          <a href="{% url 'public:directory' %}?sort=total_prs&order={% if current_sort == 'total_prs' and current_order == 'desc' %}asc{% else %}desc{% endif %}{% if current_industry %}&industry={{ current_industry }}{% endif %}{% if current_year %}&year={{ current_year }}{% endif %}"
+             hx-get="{% url 'public:directory' %}?sort=total_prs&order={% if current_sort == 'total_prs' and current_order == 'desc' %}asc{% else %}desc{% endif %}{% if current_industry %}&industry={{ current_industry }}{% endif %}{% if current_year %}&year={{ current_year }}{% endif %}"
+             hx-target="#directory-list"
+             hx-push-url="true"
+             class="link link-hover inline-flex items-center gap-1">
+            PRs{% if current_sort == 'total_prs' %}<span>{% if current_order == 'asc' %}&#9650;{% else %}&#9660;{% endif %}</span>{% endif %}
+          </a>
+        </th>
+        <th class="text-right">
+          <a href="{% url 'public:directory' %}?sort=ai_adoption&order={% if current_sort == 'ai_adoption' and current_order == 'desc' %}asc{% else %}desc{% endif %}{% if current_industry %}&industry={{ current_industry }}{% endif %}{% if current_year %}&year={{ current_year }}{% endif %}"
+             hx-get="{% url 'public:directory' %}?sort=ai_adoption&order={% if current_sort == 'ai_adoption' and current_order == 'desc' %}asc{% else %}desc{% endif %}{% if current_industry %}&industry={{ current_industry }}{% endif %}{% if current_year %}&year={{ current_year }}{% endif %}"
+             hx-target="#directory-list"
+             hx-push-url="true"
+             class="link link-hover inline-flex items-center gap-1">
+            AI Adoption{% if current_sort == 'ai_adoption' %}<span>{% if current_order == 'asc' %}&#9650;{% else %}&#9660;{% endif %}</span>{% endif %}
+          </a>
+        </th>
+        <th class="text-right">
+          <a href="{% url 'public:directory' %}?sort=cycle_time&order={% if current_sort == 'cycle_time' and current_order == 'desc' %}asc{% else %}desc{% endif %}{% if current_industry %}&industry={{ current_industry }}{% endif %}{% if current_year %}&year={{ current_year }}{% endif %}"
+             hx-get="{% url 'public:directory' %}?sort=cycle_time&order={% if current_sort == 'cycle_time' and current_order == 'desc' %}asc{% else %}desc{% endif %}{% if current_industry %}&industry={{ current_industry }}{% endif %}{% if current_year %}&year={{ current_year }}{% endif %}"
+             hx-target="#directory-list"
+             hx-push-url="true"
+             class="link link-hover inline-flex items-center gap-1">
+            Cycle Time{% if current_sort == 'cycle_time' %}<span>{% if current_order == 'asc' %}&#9650;{% else %}&#9660;{% endif %}</span>{% endif %}
+          </a>
+        </th>
+        <th class="text-right">
+          <a href="{% url 'public:directory' %}?sort=review_time&order={% if current_sort == 'review_time' and current_order == 'desc' %}asc{% else %}desc{% endif %}{% if current_industry %}&industry={{ current_industry }}{% endif %}{% if current_year %}&year={{ current_year }}{% endif %}"
+             hx-get="{% url 'public:directory' %}?sort=review_time&order={% if current_sort == 'review_time' and current_order == 'desc' %}asc{% else %}desc{% endif %}{% if current_industry %}&industry={{ current_industry }}{% endif %}{% if current_year %}&year={{ current_year }}{% endif %}"
+             hx-target="#directory-list"
+             hx-push-url="true"
+             class="link link-hover inline-flex items-center gap-1">
+            Review Time{% if current_sort == 'review_time' %}<span>{% if current_order == 'asc' %}&#9650;{% else %}&#9660;{% endif %}</span>{% endif %}
+          </a>
+        </th>
+        <th class="text-right">
+          <a href="{% url 'public:directory' %}?sort=contributors&order={% if current_sort == 'contributors' and current_order == 'desc' %}asc{% else %}desc{% endif %}{% if current_industry %}&industry={{ current_industry }}{% endif %}{% if current_year %}&year={{ current_year }}{% endif %}"
+             hx-get="{% url 'public:directory' %}?sort=contributors&order={% if current_sort == 'contributors' and current_order == 'desc' %}asc{% else %}desc{% endif %}{% if current_industry %}&industry={{ current_industry }}{% endif %}{% if current_year %}&year={{ current_year }}{% endif %}"
+             hx-target="#directory-list"
+             hx-push-url="true"
+             class="link link-hover inline-flex items-center gap-1">
+            Contributors{% if current_sort == 'contributors' %}<span>{% if current_order == 'asc' %}&#9650;{% else %}&#9660;{% endif %}</span>{% endif %}
+          </a>
+        </th>
       </tr>
     </thead>
     <tbody>

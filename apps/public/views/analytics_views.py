@@ -19,7 +19,7 @@ def org_analytics(request, slug) -> HttpResponse:
     profile = context["org_profile"]
     context.update(
         {
-            "page_title": f"{profile.display_name} Analytics Dashboard",
+            "page_title": f"{profile.display_name} Delivery & AI Trends",
             "page_description": (
                 f"Detailed {profile.display_name} delivery and AI adoption trends across public GitHub pull requests."
             ),

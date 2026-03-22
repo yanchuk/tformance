@@ -13,6 +13,7 @@ from django.db.models import Q
 from django.utils import timezone
 
 from apps.metrics.models import PullRequest
+from apps.metrics.services.dashboard.ai_metrics import get_ai_impact_stats
 from apps.public.aggregations import (
     BOT_USERNAMES,
     _base_pr_queryset,
@@ -20,10 +21,12 @@ from apps.public.aggregations import (
     compute_monthly_cycle_time,
     compute_monthly_trends,
     compute_pr_size_distribution,
+    compute_pr_type_trends,
     compute_recent_prs,
     compute_team_summary,
 )
-from apps.public.models import PublicRepoProfile, PublicRepoStats
+from apps.public.models import PublicOrgStats, PublicRepoProfile, PublicRepoStats
+from apps.public.services.public_trends import build_combined_trend, build_correlation_scatter
 from apps.public.views.helpers import PUBLIC_SUMMARY_WINDOW_DAYS, PUBLIC_TREND_WINDOW_DAYS
 
 logger = logging.getLogger(__name__)
@@ -115,9 +118,22 @@ def build_repo_snapshot(repo_profile: PublicRepoProfile) -> PublicRepoStats:
         end_date=summary_end,
         github_repo=github_repo,
     )
+    pr_types_raw = compute_pr_type_trends(
+        team_id,
+        start_date=summary_start,
+        end_date=summary_end,
+        github_repo=github_repo,
+    )
+    # Flatten monthly type counts into aggregate totals for the summary card
+    pr_type_totals: dict[str, int] = {}
+    for entry in pr_types_raw:
+        for pr_type, count in entry.get("types", {}).items():
+            pr_type_totals[pr_type] = pr_type_totals.get(pr_type, 0) + count
+    pr_types = [{"type": t, "count": c} for t, c in sorted(pr_type_totals.items(), key=lambda x: -x[1])]
     breakdown_data = {
         "ai_tools": ai_tools,
         "pr_sizes": pr_sizes,
+        "pr_types": pr_types,
     }
 
     # Recent PRs (repo-scoped)
@@ -133,6 +149,45 @@ def build_repo_snapshot(repo_profile: PublicRepoProfile) -> PublicRepoStats:
     # Signals
     best_signal = _compute_best_signal(summary, cadence_change)
     watchout_signal = _compute_watchout_signal(summary, cadence_change)
+
+    # Combined trend data (review 6A: isolated try/except)
+    try:
+        combined_trend = build_combined_trend(repo_profile.team, trend_start.date(), trend_end.date(), repo=github_repo)
+    except Exception:
+        logger.warning("Failed to build combined trend for %s", repo_profile.display_name, exc_info=True)
+        combined_trend = {}
+
+    # Correlation scatter (review 6A)
+    try:
+        correlation = build_correlation_scatter(
+            repo_profile.team, trend_start.date(), trend_end.date(), repo=github_repo
+        )
+    except Exception:
+        logger.warning("Failed to build correlation for %s", repo_profile.display_name, exc_info=True)
+        correlation = {}
+
+    # AI impact comparison (review 6A)
+    try:
+        ai_impact = get_ai_impact_stats(repo_profile.team, summary_start.date(), summary_end.date(), repo=github_repo)
+        # Convert Decimal values to float for JSON serialization
+        ai_impact = {k: float(v) if isinstance(v, Decimal) else v for k, v in ai_impact.items()}
+    except Exception:
+        logger.warning("Failed to compute AI impact for %s", repo_profile.display_name, exc_info=True)
+        ai_impact = {}
+
+    # Repo vs org comparison (review 4A, 8A)
+    try:
+        org_stats = PublicOrgStats.objects.get(org_profile=repo_profile.org_profile)
+        comparison = {
+            "ai_adoption_delta": float(summary["ai_pct"]) - float(org_stats.ai_assisted_pct),
+            "cycle_time_delta": float(summary["median_cycle_time_hours"]) - float(org_stats.median_cycle_time_hours),
+            "review_time_delta": float(summary["median_review_time_hours"]) - float(org_stats.median_review_time_hours),
+        }
+    except PublicOrgStats.DoesNotExist:
+        comparison = {}
+    except Exception:
+        logger.warning("Failed to compute comparison for %s", repo_profile.display_name, exc_info=True)
+        comparison = {}
 
     stats, _created = PublicRepoStats.objects.update_or_create(
         repo_profile=repo_profile,
@@ -152,6 +207,10 @@ def build_repo_snapshot(repo_profile: PublicRepoProfile) -> PublicRepoStats:
             "breakdown_data": breakdown_data,
             "recent_prs": recent,
             "benchmark_data": {},
+            "combined_trend_data": combined_trend,
+            "correlation_data": correlation,
+            "ai_impact_data": ai_impact,
+            "comparison_data": comparison,
             "last_computed_at": now,
         },
     )

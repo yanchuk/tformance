@@ -17,7 +17,7 @@
       <title>{% block page_title %}{{ title }}{% endblock %}</title>
       <meta name="description" content="{{ description }}">
       {% if page_robots %}<meta name="robots" content="{{ page_robots }}">{% endif %}
-      {% if not page_robots %}<meta name="keywords" content="{{ project_meta.KEYWORDS }}">{% endif %}
+      {% if page_keywords %}<meta name="keywords" content="{{ page_keywords }}">{% endif %}
       <!-- Twitter Card data -->
       <meta name="twitter:card" content="summary_large_image">
       <meta name="twitter:title" content="{{ title }}">

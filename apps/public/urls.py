@@ -12,6 +12,7 @@ urlpatterns = [
     path("<slug:slug>/analytics/", analytics_views.org_analytics, name="org_analytics"),
     path("<slug:slug>/pull-requests/", org_views.org_pr_list, name="org_pr_list"),
     path("<slug:slug>/pull-requests/table/", org_views.pr_list_table, name="pr_list_table"),
+    path("<slug:slug>/charts/combined-trend/", chart_views.public_combined_trend_chart, name="chart_combined_trend"),
     path("<slug:slug>/charts/ai-adoption/", chart_views.public_ai_adoption_chart, name="chart_ai_adoption"),
     path("<slug:slug>/charts/cycle-time/", chart_views.public_cycle_time_chart, name="chart_cycle_time"),
     path("<slug:slug>/charts/ai-quality/", chart_views.public_ai_quality_chart, name="chart_ai_quality"),

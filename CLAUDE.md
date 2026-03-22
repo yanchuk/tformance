@@ -205,3 +205,34 @@ GitHub/Jira APIs → Backend → PostgreSQL → Dashboard (Chart.js) → User
                                     ↓
                               Slack Bot (surveys)
 ```
+
+## gstack
+
+Use the `/browse` skill from gstack for all web browsing. Never use `mcp__claude-in-chrome__*` tools.
+
+Available skills:
+- `/office-hours` — brainstorm and strategize
+- `/plan-ceo-review` — CEO-level plan review
+- `/plan-eng-review` — engineering plan review
+- `/plan-design-review` — design plan review
+- `/design-consultation` — design system guidance
+- `/review` — code review before merge
+- `/ship` — create PR / deploy
+- `/land-and-deploy` — production deployment
+- `/canary` — canary deployment
+- `/benchmark` — performance benchmarking
+- `/browse` — headless browser (use for all web browsing)
+- `/qa` — QA testing
+- `/qa-only` — QA without code changes
+- `/design-review` — visual design audit
+- `/setup-browser-cookies` — configure browser auth
+- `/setup-deploy` — configure deployment
+- `/retro` — retrospective
+- `/investigate` — debug errors
+- `/document-release` — post-ship docs
+- `/codex` — cross-model code review
+- `/careful` — production safety mode
+- `/freeze` — scope edits to one module
+- `/guard` — maximum safety mode
+- `/unfreeze` — remove edit restrictions
+- `/gstack-upgrade` — upgrade gstack

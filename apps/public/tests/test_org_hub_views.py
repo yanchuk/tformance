@@ -127,11 +127,13 @@ class OrgHubViewTests(TestCase):
         content = response.content.decode()
         assert "Internal Tool" not in content
 
-    def test_org_hub_hides_non_flagship_repos(self):
-        """Repos with is_flagship=False should not appear on the hub page."""
+    def test_org_hub_hides_non_flagship_repos_in_cards(self):
+        """Repos with is_flagship=False should not appear in flagship cards."""
         response = self.client.get(self._url())
         content = response.content.decode()
-        assert "Documentation" not in content
+        # Documentation is non-flagship so shouldn't be in flagship section
+        # but it IS public so it should appear in the all_public_repos mini-table
+        assert "Documentation" not in content.split("Flagship Repositories")[0]
 
     def test_org_hub_shows_org_stats(self):
         """Org-level benchmark sentence with stats should still be present."""
@@ -140,6 +142,138 @@ class OrgHubViewTests(TestCase):
         # Check org-level stats are still rendered
         assert "32.5" in content  # ai_assisted_pct
         assert "18.0" in content  # median_cycle_time_hours
+
+    def test_org_hub_has_all_public_repos_in_context(self):
+        """The mini-table context should include all public repos."""
+        response = self.client.get(self._url())
+        assert "all_public_repos" in response.context
+        slugs = [r.repo_slug for r in response.context["all_public_repos"]]
+        # Should include flagship and non-flagship public repos
+        assert "main-app" in slugs
+        assert "api-server" in slugs
+        assert "docs" in slugs
+        # Should NOT include non-public repos
+        assert "internal" not in slugs
+
+    def test_org_detail_has_primary_cta(self):
+        """CTA text from context processor should appear on page."""
+        response = self.client.get(self._url())
+        content = response.content.decode()
+        assert "See Your Team" in content
+
+
+class OrgHubTrendAndImpactTests(TestCase):
+    """Tests for combined trend data and AI impact sections on org hub."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.team = TeamFactory()
+        cls.profile = PublicOrgProfile.objects.create(
+            team=cls.team,
+            public_slug="hub-org",
+            industry="analytics",
+            display_name="Hub Org",
+            is_public=True,
+            github_org_url="https://github.com/hub-org",
+        )
+        cls.stats = PublicOrgStats.objects.create(
+            org_profile=cls.profile,
+            total_prs=MIN_PRS_THRESHOLD + 100,
+            ai_assisted_pct=Decimal("42.0"),
+            median_cycle_time_hours=Decimal("16.5"),
+            median_review_time_hours=Decimal("4.2"),
+            active_contributors_90d=20,
+            combined_trend_data={
+                "labels": ["2026-01-05", "2026-01-12"],
+                "datasets": {
+                    "ai_adoption": {"values": [40.0, 42.0], "label": "AI Adoption %"},
+                    "cycle_time": {"values": [18.0, 16.5], "label": "Median Cycle Time (h)"},
+                },
+            },
+            ai_impact_data={
+                "ai_adoption_pct": 42.0,
+                "avg_cycle_with_ai": 14.5,
+                "avg_cycle_without_ai": 20.0,
+                "cycle_time_difference_pct": -27.5,
+                "total_prs": 600,
+                "ai_prs": 252,
+            },
+            last_computed_at=timezone.now(),
+        )
+        # Create repos
+        cls.flagship = PublicRepoProfile.objects.create(
+            org_profile=cls.profile,
+            team=cls.team,
+            github_repo="hub-org/main",
+            repo_slug="main",
+            display_name="Main",
+            is_flagship=True,
+            is_public=True,
+        )
+        PublicRepoStats.objects.create(
+            repo_profile=cls.flagship,
+            total_prs=300,
+            ai_assisted_pct=Decimal("45.0"),
+            median_cycle_time_hours=Decimal("12.0"),
+            median_review_time_hours=Decimal("3.5"),
+        )
+        cls.non_flagship = PublicRepoProfile.objects.create(
+            org_profile=cls.profile,
+            team=cls.team,
+            github_repo="hub-org/utils",
+            repo_slug="utils",
+            display_name="Utils",
+            is_flagship=False,
+            is_public=True,
+        )
+        PublicRepoStats.objects.create(
+            repo_profile=cls.non_flagship,
+            total_prs=200,
+            ai_assisted_pct=Decimal("35.0"),
+            median_cycle_time_hours=Decimal("20.0"),
+            median_review_time_hours=Decimal("5.0"),
+        )
+
+    def _url(self):
+        return reverse("public:org_detail", kwargs={"slug": "hub-org"})
+
+    def test_org_hub_has_combined_trend_data(self):
+        response = self.client.get(self._url())
+        assert "combined_trend_data" in response.context
+        assert response.context["combined_trend_data"]["labels"] == ["2026-01-05", "2026-01-12"]
+
+    def test_org_hub_has_ai_impact_data(self):
+        response = self.client.get(self._url())
+        assert "ai_impact_data" in response.context
+        assert response.context["ai_impact_data"]["ai_adoption_pct"] == 42.0
+
+    def test_org_hub_shows_repo_mini_table_with_all_public_repos(self):
+        response = self.client.get(self._url())
+        assert "all_public_repos" in response.context
+        # Should include both flagship and non-flagship
+        slugs = [r.repo_slug for r in response.context["all_public_repos"]]
+        assert "main" in slugs
+        assert "utils" in slugs
+
+    def test_org_page_renders_with_empty_trend_data(self):
+        """Page must not crash with empty trend/impact data."""
+        self.stats.combined_trend_data = {}
+        self.stats.ai_impact_data = {}
+        self.stats.save()
+        response = self.client.get(self._url())
+        assert response.status_code == 200
+        # Restore for other tests
+        self.stats.combined_trend_data = {
+            "labels": ["2026-01-05", "2026-01-12"],
+            "datasets": {},
+        }
+        self.stats.ai_impact_data = {"ai_adoption_pct": 42.0, "total_prs": 600, "ai_prs": 252}
+        self.stats.save()
+
+    def test_org_detail_has_primary_cta(self):
+        response = self.client.get(self._url())
+        content = response.content.decode()
+        assert "See Your Team" in content
 
 
 class OrgHubEmptyReposTests(TestCase):
@@ -165,10 +299,8 @@ class OrgHubEmptyReposTests(TestCase):
             last_computed_at=timezone.now(),
         )
 
-    def test_org_hub_shows_empty_message_when_no_repos(self):
-        """When org has no flagship repos, show an appropriate message."""
+    def test_org_hub_renders_200_with_no_repos(self):
+        """When org has no flagship repos, page should still render."""
         url = reverse("public:org_detail", kwargs={"slug": "emptyorg"})
         response = self.client.get(url)
         assert response.status_code == 200
-        content = response.content.decode()
-        assert "No flagship repositories" in content

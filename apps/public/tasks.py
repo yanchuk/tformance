@@ -9,6 +9,7 @@ The sync task runs before customer sync (4 AM) using separate PAT tokens.
 """
 
 import logging
+from decimal import Decimal
 
 from celery import shared_task
 from django.core.cache import cache
@@ -120,6 +121,38 @@ def compute_public_stats_task():
         except Exception:
             errors += 1
             logger.exception(f"Failed to compute stats for {profile.display_name}")
+
+    # Compute org-level trend and impact data (review 1A)
+    from apps.metrics.services.dashboard.ai_metrics import get_ai_impact_stats
+    from apps.public.services.public_trends import build_combined_trend
+    from apps.public.views.helpers import get_public_trend_date_range
+
+    _days, trend_start, trend_end = get_public_trend_date_range()
+
+    for profile in profiles:
+        try:
+            org_stats = PublicOrgStats.objects.get(org_profile=profile)
+
+            try:
+                combined = build_combined_trend(profile.team, trend_start, trend_end)
+            except Exception:
+                logger.warning("Failed org combined trend for %s", profile.display_name, exc_info=True)
+                combined = {}
+
+            try:
+                impact = get_ai_impact_stats(profile.team, trend_start, trend_end)
+                impact = {k: float(v) if isinstance(v, Decimal) else v for k, v in impact.items()}
+            except Exception:
+                logger.warning("Failed org AI impact for %s", profile.display_name, exc_info=True)
+                impact = {}
+
+            org_stats.combined_trend_data = combined
+            org_stats.ai_impact_data = impact
+            org_stats.save(update_fields=["combined_trend_data", "ai_impact_data", "updated_at"])
+        except PublicOrgStats.DoesNotExist:
+            pass
+        except Exception:
+            logger.exception("Failed to compute org trend/impact for %s", profile.display_name)
 
     # Build repo-level snapshots for ALL public repos (not just flagship)
     from apps.public.repo_snapshot_service import build_repo_snapshot

@@ -70,3 +70,30 @@ class PublicChartViewsTests(TestCase):
     def test_chart_partial_200_valid_slug(self):
         response = self.client.get(reverse("public:chart_cycle_time", kwargs={"slug": "chart-org"}))
         assert response.status_code == 200
+
+
+class PublicCombinedTrendChartTests(TestCase):
+    """Step 2.4: Combined trend chart endpoint."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.team = TeamFactory()
+        cls.org = PublicOrgProfile.objects.create(
+            team=cls.team,
+            public_slug="trend-org",
+            industry="analytics",
+            display_name="Trend Org",
+            is_public=True,
+        )
+        PublicOrgStats.objects.create(
+            org_profile=cls.org,
+            total_prs=MIN_PRS_THRESHOLD + 10,
+        )
+
+    def test_public_combined_trend_chart_returns_200(self):
+        """Review 12A: Assert 200 + canvas + JSON data markers."""
+        url = reverse("public:chart_combined_trend", kwargs={"slug": "trend-org"})
+        response = self.client.get(url)
+        assert response.status_code == 200
+        content = response.content.decode()
+        assert "<canvas" in content

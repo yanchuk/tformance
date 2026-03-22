@@ -1,3 +1,4 @@
+import json
 from datetime import timedelta
 
 from django.http import HttpRequest, HttpResponse
@@ -134,3 +135,26 @@ def public_team_health_cards(request: HttpRequest, slug: str) -> HttpResponse:
     if review_bottleneck.get("detected"):
         review_bottleneck["reviewer"] = ""
     return TemplateResponse(request, "metrics/partials/team_health_indicators_card.html", {"indicators": indicators})
+
+
+@cache_page(3600)
+@require_http_methods(["GET"])
+@public_org_required
+def public_combined_trend_chart(request: HttpRequest, slug: str) -> HttpResponse:
+    """HTMX partial for dual-axis AI adoption + delivery trend chart."""
+    from apps.public.services.public_trends import build_combined_trend
+
+    _days, start_date, end_date = get_public_date_range(request, default_days=90)
+    repo = _get_repo_filter(request)
+    secondary = request.GET.get("secondary", "cycle_time")
+    if secondary not in ("cycle_time", "review_time"):
+        secondary = "cycle_time"
+    chart_data = build_combined_trend(request.team, start_date, end_date, secondary=secondary, repo=repo)
+    return TemplateResponse(
+        request,
+        "public/partials/combined_trend_chart.html",
+        {
+            "chart_data": chart_data,
+            "chart_data_json": json.dumps(chart_data),
+        },
+    )

@@ -10,7 +10,7 @@ from datetime import timedelta
 from decimal import Decimal
 
 from django.core.cache import cache
-from django.db.models import Case, IntegerField, Value, When
+from django.db.models import Avg, Case, Count, IntegerField, Value, When
 from django.utils import timezone
 
 from apps.metrics.models import DailyInsight, PullRequest
@@ -358,5 +358,109 @@ class PublicAnalyticsService:
             "industry_count": len(industries),
         }
 
+        cache.set(cache_key, result, PUBLIC_CACHE_TTL)
+        return result
+
+    @staticmethod
+    def get_industry_benchmarks():
+        """Grouped benchmark bars by industry: AI adoption, cycle time, review time."""
+        cache_key = f"{CACHE_PREFIX}industry_benchmarks"
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return cached
+
+        benchmarks = (
+            PublicOrgStats.objects.filter(
+                org_profile__is_public=True,
+                total_prs__gte=MIN_PRS_THRESHOLD,
+            )
+            .values("org_profile__industry")
+            .annotate(
+                avg_ai=Avg("ai_assisted_pct"),
+                avg_cycle=Avg("median_cycle_time_hours"),
+                avg_review=Avg("median_review_time_hours"),
+                org_count=Count("id"),
+            )
+            .order_by("org_profile__industry")
+        )
+
+        from apps.metrics.seeding.real_projects import INDUSTRIES
+
+        result = []
+        for row in benchmarks:
+            industry_key = row["org_profile__industry"]
+            result.append(
+                {
+                    "industry": industry_key,
+                    "industry_display": INDUSTRIES.get(industry_key, industry_key),
+                    "avg_ai_pct": float(row["avg_ai"]) if row["avg_ai"] else 0,
+                    "avg_cycle_time": float(row["avg_cycle"]) if row["avg_cycle"] else 0,
+                    "avg_review_time": float(row["avg_review"]) if row["avg_review"] else 0,
+                    "org_count": row["org_count"],
+                }
+            )
+
+        cache.set(cache_key, result, PUBLIC_CACHE_TTL)
+        return result
+
+    @staticmethod
+    def get_directory_aggregate_trend():
+        """Cached cross-org aggregate trend (review 3A -- 6h Redis TTL)."""
+        cache_key = f"{CACHE_PREFIX}aggregate_trend"
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return cached
+
+        # Aggregate from all public org stats that have combined_trend_data
+        org_stats = PublicOrgStats.objects.filter(
+            org_profile__is_public=True,
+            total_prs__gte=MIN_PRS_THRESHOLD,
+        )
+
+        # Merge all org trends into a single aggregate
+        all_weeks = {}
+        for stats in org_stats:
+            trend = getattr(stats, "combined_trend_data", None)
+            if not trend or not isinstance(trend, dict) or "labels" not in trend:
+                continue
+            labels = trend["labels"]
+            ai_values = trend.get("datasets", {}).get("ai_adoption", {}).get("values", [])
+            cycle_values = trend.get("datasets", {}).get("cycle_time", {}).get("values", [])
+            for i, label in enumerate(labels):
+                if label not in all_weeks:
+                    all_weeks[label] = {"ai_sum": 0, "ai_count": 0, "cycle_sum": 0, "cycle_count": 0}
+                if i < len(ai_values) and ai_values[i] is not None:
+                    all_weeks[label]["ai_sum"] += ai_values[i]
+                    all_weeks[label]["ai_count"] += 1
+                if i < len(cycle_values) and cycle_values[i] is not None:
+                    all_weeks[label]["cycle_sum"] += cycle_values[i]
+                    all_weeks[label]["cycle_count"] += 1
+
+        sorted_weeks = sorted(all_weeks.keys())
+        result = {
+            "labels": sorted_weeks,
+            "datasets": {
+                "ai_adoption": {
+                    "values": [
+                        round(all_weeks[w]["ai_sum"] / all_weeks[w]["ai_count"], 2)
+                        if all_weeks[w]["ai_count"] > 0
+                        else None
+                        for w in sorted_weeks
+                    ],
+                    "label": "Avg AI Adoption %",
+                    "yAxisID": "y",
+                },
+                "cycle_time": {
+                    "values": [
+                        round(all_weeks[w]["cycle_sum"] / all_weeks[w]["cycle_count"], 2)
+                        if all_weeks[w]["cycle_count"] > 0
+                        else None
+                        for w in sorted_weeks
+                    ],
+                    "label": "Avg Cycle Time (h)",
+                    "yAxisID": "y1",
+                },
+            },
+        }
         cache.set(cache_key, result, PUBLIC_CACHE_TTL)
         return result

@@ -103,6 +103,37 @@ class PublicMetadataDescriptionTests(MetadataTestBase):
         assert "delivery" in desc.lower() or "trends" in desc.lower()
 
 
+class PublicMetadataKeywordTests(MetadataTestBase):
+    """Step 1.1: Canonical pages must not emit keywords meta tag."""
+
+    def test_canonical_org_page_has_no_keywords_tag(self):
+        response = self.client.get("/open-source/meta-org/")
+        content = response.content.decode()
+        assert '<meta name="keywords"' not in content
+
+    def test_canonical_repo_page_has_no_keywords_tag(self):
+        response = self.client.get("/open-source/meta-org/repos/meta-repo/")
+        content = response.content.decode()
+        assert '<meta name="keywords"' not in content
+
+    def test_directory_page_has_no_keywords_tag(self):
+        response = self.client.get("/open-source/")
+        content = response.content.decode()
+        assert '<meta name="keywords"' not in content
+
+
+class PublicMetadataTitleTests(MetadataTestBase):
+    """Step 1.3: Title contains Tformance exactly once."""
+
+    def test_page_title_contains_tformance_exactly_once(self):
+        response = self.client.get("/open-source/meta-org/repos/meta-repo/")
+        content = response.content.decode()
+        title_start = content.find("<title>")
+        title_end = content.find("</title>")
+        title = content[title_start + 7 : title_end].lower()
+        assert title.count("tformance") == 1
+
+
 class PublicMetadataCanonicalTests(MetadataTestBase):
     """Step 6.5: Canonical URLs on support pages."""
 
@@ -111,3 +142,31 @@ class PublicMetadataCanonicalTests(MetadataTestBase):
         canonical = response.context["page_canonical_url"]
         assert "/open-source/meta-org/" in canonical
         assert "/analytics/" not in canonical
+
+    def test_org_pr_list_canonical_points_to_org_detail(self):
+        """Step 1.4: Org PR explorer must canonical to org page, not itself."""
+        response = self.client.get("/open-source/meta-org/pull-requests/")
+        canonical = response.context["page_canonical_url"]
+        assert "/open-source/meta-org/" in canonical
+        assert "/pull-requests/" not in canonical
+
+
+class PublicMetadataCiCdAbsenceTests(MetadataTestBase):
+    """Review 11A: Canonical pages must not contain CI/CD content."""
+
+    CI_CD_TERMS = ["ci/cd", "check-run", "deployment frequency", "check run", "ci_cd"]
+
+    def _assert_no_ci_cd(self, url):
+        response = self.client.get(url)
+        content = response.content.decode().lower()
+        for term in self.CI_CD_TERMS:
+            assert term not in content, f"Found '{term}' on {url}"
+
+    def test_org_page_has_no_ci_cd_content(self):
+        self._assert_no_ci_cd("/open-source/meta-org/")
+
+    def test_repo_page_has_no_ci_cd_content(self):
+        self._assert_no_ci_cd("/open-source/meta-org/repos/meta-repo/")
+
+    def test_directory_has_no_ci_cd_content(self):
+        self._assert_no_ci_cd("/open-source/")

@@ -76,6 +76,7 @@ def sync_public_repo(repo_profile, token_pool: GitHubTokenPool, *, days: int = 9
     persistence.build_member_cache(fetched_prs)
 
     created = 0
+    updated = 0
     skipped = 0
 
     for pr_data in fetched_prs:
@@ -84,7 +85,14 @@ def sync_public_repo(repo_profile, token_pool: GitHubTokenPool, *, days: int = 9
             continue
 
         if pr_data.number in existing_pr_ids:
-            skipped += 1
+            # Update existing PR if stale (instead of skipping)
+            try:
+                existing_pr = PullRequest.objects.get(team=team, github_repo=github_repo, github_pr_id=pr_data.number)
+                persistence.update_stale_pr(existing_pr, pr_data)
+                updated += 1
+            except Exception:
+                logger.warning("Failed to update PR #%s for %s", pr_data.number, github_repo)
+                skipped += 1
             continue
 
         try:
@@ -95,13 +103,14 @@ def sync_public_repo(repo_profile, token_pool: GitHubTokenPool, *, days: int = 9
             skipped += 1
 
     logger.info(
-        "Synced %s: fetched=%d, created=%d, skipped=%d",
+        "Synced %s: fetched=%d, created=%d, updated=%d, skipped=%d",
         github_repo,
         len(fetched_prs),
         created,
+        updated,
         skipped,
     )
-    return {"fetched": len(fetched_prs), "created": created, "skipped": skipped, "errors": 0}
+    return {"fetched": len(fetched_prs), "created": created, "updated": updated, "skipped": skipped, "errors": 0}
 
 
 # Keep _build_member_cache as a module-level function for backward compatibility

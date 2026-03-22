@@ -137,6 +137,16 @@ class PublicOrgStats(BaseModel):
         blank=True,
         help_text="List of {tool, count, pct} dicts",
     )
+    combined_trend_data = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text='Combined AI adoption + delivery trend for org. Shape: {"labels": [...], "datasets": {...}}',
+    )
+    ai_impact_data = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="AI vs non-AI impact comparison for org.",
+    )
     last_computed_at = models.DateTimeField(
         null=True,
         blank=True,
@@ -383,6 +393,26 @@ class PublicRepoStats(BaseModel):
         default=dict,
         blank=True,
         help_text="Industry/peer benchmark context",
+    )
+    combined_trend_data = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Combined AI adoption + delivery trend for dual-axis chart.",
+    )
+    correlation_data = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Correlation scatter: points, r_value, classification.",
+    )
+    ai_impact_data = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="AI vs non-AI impact comparison stats.",
+    )
+    comparison_data = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Repo vs org average deltas for AI, cycle, review.",
     )
     last_computed_at = models.DateTimeField(
         null=True,

@@ -122,6 +122,58 @@ class OGImageViewTests(TestCase):
         assert response.status_code == 404
 
 
+class OGRepoImageEndpointTests(TestCase):
+    """Step 7.1: Repo OG image endpoint exists and returns PNG."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.team = Team.objects.create(name="OGR Team", slug="ogr-team")
+        cls.org = PublicOrgProfile.objects.create(
+            team=cls.team,
+            public_slug="ogr-org",
+            industry="analytics",
+            display_name="OGR Org",
+            is_public=True,
+        )
+        cls.org_stats = PublicOrgStats.objects.create(
+            org_profile=cls.org,
+            total_prs=2000,
+            ai_assisted_pct=40,
+            median_cycle_time_hours=15,
+        )
+        cls.repo = PublicRepoProfile.objects.create(
+            org_profile=cls.org,
+            github_repo="ogr-org/ogr-repo",
+            repo_slug="ogr-repo",
+            display_name="OGR Repo",
+            is_flagship=True,
+            is_public=True,
+        )
+        cls.repo_stats = PublicRepoStats.objects.create(
+            repo_profile=cls.repo,
+            total_prs=800,
+            ai_assisted_pct=42,
+            median_cycle_time_hours=11,
+            median_review_time_hours=3.0,
+        )
+
+    def test_og_repo_image_endpoint_returns_png(self):
+        import os
+
+        with tempfile.TemporaryDirectory() as tmp, override_settings(MEDIA_ROOT=tmp):
+            from apps.public.services.og_image_service import OGImageService
+
+            og_dir = os.path.join(tmp, "public_og")
+            os.makedirs(og_dir, exist_ok=True)
+            data = OGImageService.generate_repo_image(self.repo, self.repo_stats, self.org)
+            with open(os.path.join(og_dir, "ogr-org_ogr-repo.png"), "wb") as f:
+                f.write(data)
+
+            response = self.client.get("/og/open-source/ogr-org/ogr-repo.png")
+            assert response.status_code == 200
+            assert response["Content-Type"] == "image/png"
+
+
 class OGImageMetaIntegrationTests(TestCase):
     """Step 7.4: OG image URLs in meta tags."""
 
@@ -141,8 +193,29 @@ class OGImageMetaIntegrationTests(TestCase):
             ai_assisted_pct=45,
             median_cycle_time_hours=14,
         )
+        cls.repo = PublicRepoProfile.objects.create(
+            org_profile=cls.org,
+            github_repo="ogm-org/ogm-repo",
+            repo_slug="ogm-repo",
+            display_name="OGM Repo",
+            is_flagship=True,
+            is_public=True,
+        )
+        cls.repo_stats = PublicRepoStats.objects.create(
+            repo_profile=cls.repo,
+            total_prs=600,
+            ai_assisted_pct=38,
+            median_cycle_time_hours=13,
+            median_review_time_hours=4.0,
+        )
 
     def test_org_detail_sets_page_image_to_og_url(self):
         response = self.client.get("/open-source/ogm-org/")
         page_image = response.context.get("page_image", "")
         assert "/og/open-source/ogm-org.png" in page_image
+
+    def test_repo_detail_page_image_points_to_og_url(self):
+        """Step 7.2: Repo page meta must reference repo OG image."""
+        response = self.client.get("/open-source/ogm-org/repos/ogm-repo/")
+        page_image = response.context.get("page_image", "")
+        assert "/og/open-source/ogm-org/ogm-repo.png" in page_image
