@@ -1,0 +1,31 @@
+{% comment %}
+Reusable chart card with standardized layout.
+
+Usage:
+  {% include "public/partials/public_chart_card.html" with chart_title="AI Adoption" chart_id="ai-adoption" chart_subtitle="Last 90 days" %}
+
+Variables:
+  chart_title    - Card title text (required)
+  chart_id       - Unique ID for the chart container (required)
+  chart_subtitle - Optional subtitle below title
+  hx_get         - Optional HTMX endpoint to load chart content
+  chart_content  - Optional inline content (if not using hx_get)
+{% endcomment %}
+<div class="card bg-base-100 border border-base-300" data-chart-card id="{{ chart_id }}">
+  <div class="card-body p-4">
+    <h3 class="card-title text-base font-semibold">{{ chart_title }}</h3>
+    {% if chart_subtitle %}
+    <p class="text-sm text-base-content/60 -mt-1">{{ chart_subtitle }}</p>
+    {% endif %}
+    <div class="min-h-[14rem] mt-2"
+         {% if hx_get %}hx-get="{{ hx_get }}" hx-trigger="load" hx-swap="innerHTML"{% endif %}>
+      {% if chart_content %}
+        {{ chart_content }}
+      {% elif not hx_get %}
+        <div class="flex items-center justify-center h-56">
+          <span class="loading loading-spinner loading-md"></span>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>

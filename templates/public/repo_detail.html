@@ -292,6 +292,19 @@
 {% endif %}
 
 {# 8. Methodology / source / freshness #}
+{# Repo-scoped charts via HTMX #}
+{% if stats %}
+<div class="mb-8">
+  <h2 class="text-xl font-semibold mb-4">Trends & Breakdown</h2>
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    {% include "public/partials/public_chart_card.html" with chart_title="AI Adoption Trend" chart_id="repo-ai-adoption" hx_get="/open-source/"|add:public_slug|add:"/charts/ai-adoption/?repo="|add:repo_profile.github_repo %}
+    {% include "public/partials/public_chart_card.html" with chart_title="Cycle Time Trend" chart_id="repo-cycle-time" hx_get="/open-source/"|add:public_slug|add:"/charts/cycle-time/?repo="|add:repo_profile.github_repo %}
+    {% include "public/partials/public_chart_card.html" with chart_title="AI Tools Breakdown" chart_id="repo-ai-tools" hx_get="/open-source/"|add:public_slug|add:"/charts/ai-tools/?repo="|add:repo_profile.github_repo %}
+    {% include "public/partials/public_chart_card.html" with chart_title="PR Size Distribution" chart_id="repo-pr-size" hx_get="/open-source/"|add:public_slug|add:"/charts/pr-size/?repo="|add:repo_profile.github_repo %}
+  </div>
+</div>
+{% endif %}
+
 <div class="border-t border-base-300 pt-6 mt-8">
   <h3 class="text-lg font-semibold mb-2">Methodology</h3>
   <p class="text-sm text-base-content/60 max-w-3xl">
