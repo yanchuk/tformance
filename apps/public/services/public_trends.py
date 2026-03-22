@@ -47,7 +47,7 @@ def build_combined_trend(
             }
         }
     """
-    ai_data = get_ai_adoption_trend(team, start_date, end_date, repo=repo)
+    ai_data = get_ai_adoption_trend(team, start_date, end_date, repo=repo, use_pr_detection=True)
 
     if secondary == "review_time":
         delivery_data = get_review_time_trend(team, start_date, end_date, repo=repo)
@@ -147,7 +147,7 @@ def build_correlation_scatter(
             "classification": str | None,
         }
     """
-    ai_data = get_ai_adoption_trend(team, start_date, end_date, repo=repo)
+    ai_data = get_ai_adoption_trend(team, start_date, end_date, repo=repo, use_pr_detection=True)
     delivery_data = get_cycle_time_trend(team, start_date, end_date, repo=repo)
 
     ai_by_week = {row["week"]: row["value"] for row in ai_data}

@@ -71,7 +71,11 @@
     <div class="card-body p-4">
       <h3 class="card-title text-sm font-medium">12-Week AI Adoption & Cycle Time</h3>
       {{ aggregate_trend|json_script:"aggregate-trend-data" }}
-      <canvas id="aggregate-trend-chart" class="w-full" style="min-height: 260px"></canvas>
+      <div style="position: relative; height: 280px">
+        <canvas id="aggregate-trend-chart"
+                data-chart-type="combined-trend"
+                data-chart-data-id="aggregate-trend-data"></canvas>
+      </div>
     </div>
   </div>
   {% endif %}
@@ -82,7 +86,11 @@
     <div class="card-body p-4">
       <h3 class="card-title text-sm font-medium">Organization Benchmarks</h3>
       {{ scatter_data|json_script:"scatter-chart-data" }}
-      <canvas id="scatter-chart" class="w-full" style="min-height: 260px"></canvas>
+      <div style="position: relative; height: 280px">
+        <canvas id="scatter-chart"
+                data-chart-type="benchmark-scatter"
+                data-chart-data-id="scatter-chart-data"></canvas>
+      </div>
     </div>
   </div>
   {% endif %}
@@ -94,7 +102,11 @@
   <div class="card-body p-4">
     <h3 class="card-title text-sm font-medium">Industry Benchmarks</h3>
     {{ industry_benchmarks|json_script:"industry-benchmark-data" }}
-    <canvas id="industry-benchmark-chart" class="w-full" style="min-height: 220px"></canvas>
+    <div style="position: relative; height: 280px">
+      <canvas id="industry-benchmark-chart"
+              data-chart-type="industry-benchmark"
+              data-chart-data-id="industry-benchmark-data"></canvas>
+    </div>
   </div>
 </div>
 {% endif %}

@@ -1,4 +1,3 @@
-import json
 from datetime import timedelta
 
 from django.http import HttpRequest, HttpResponse
@@ -150,11 +149,15 @@ def public_combined_trend_chart(request: HttpRequest, slug: str) -> HttpResponse
     if secondary not in ("cycle_time", "review_time"):
         secondary = "cycle_time"
     chart_data = build_combined_trend(request.team, start_date, end_date, secondary=secondary, repo=repo)
+    # Unique suffix so two instances on the same page don't collide
+    chart_suffix = secondary.replace("_", "-")
+    chart_id = f"combined-trend-{chart_suffix}"
     return TemplateResponse(
         request,
         "public/partials/combined_trend_chart.html",
         {
             "chart_data": chart_data,
-            "chart_data_json": json.dumps(chart_data),
+            "chart_id": chart_id,
+            "chart_data_id": f"{chart_id}-data",
         },
     )

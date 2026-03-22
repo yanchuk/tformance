@@ -269,6 +269,12 @@ class ChartManager {
       case 'correlation-scatter':
         chart = this.createCorrelationScatterChart(ctx, data, options);
         break;
+      case 'benchmark-scatter':
+        chart = this.createBenchmarkScatterChart(ctx, data, options);
+        break;
+      case 'industry-benchmark':
+        chart = this.createIndustryBenchmarkChart(ctx, data, options);
+        break;
       default:
         console.warn(`ChartManager: Unknown chart type "${chartType}"`);
         return null;
@@ -558,6 +564,128 @@ class ChartManager {
             ticks: { font: { family: "'JetBrains Mono', monospace" } },
             grid: { color: 'rgba(156, 163, 175, 0.1)' },
             beginAtZero: true,
+          },
+        },
+      },
+    });
+  }
+
+  /**
+   * Create a scatter chart for org benchmarks (flat array of {x, y, label} points)
+   * Data format: [{x, y, label, prs, industry}, ...]
+   */
+  createBenchmarkScatterChart(ctx, data, options = {}) {
+    if (!data || !Array.isArray(data) || data.length === 0) return null;
+
+    return new Chart(ctx, {
+      type: 'scatter',
+      data: {
+        datasets: [{
+          label: 'Organizations',
+          data: data,
+          backgroundColor: 'rgba(249, 115, 22, 0.6)',
+          borderColor: 'rgba(249, 115, 22, 1)',
+          borderWidth: 1,
+          pointRadius: 6,
+          pointHoverRadius: 9,
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: (context) => {
+                const pt = context.raw;
+                return [
+                  pt.label || '',
+                  `AI: ${pt.x?.toFixed(1)}%`,
+                  `Cycle Time: ${pt.y?.toFixed(1)}h`,
+                  pt.prs ? `PRs: ${pt.prs}` : '',
+                ].filter(Boolean);
+              },
+            },
+          },
+          datalabels: { display: false },
+        },
+        scales: {
+          x: {
+            title: { display: true, text: 'AI Adoption %', font: { family: "'DM Sans', sans-serif" } },
+            ticks: { font: { family: "'JetBrains Mono', monospace" }, callback: (v) => `${v}%` },
+            grid: { color: 'rgba(156, 163, 175, 0.1)' },
+          },
+          y: {
+            title: { display: true, text: 'Median Cycle Time (h)', font: { family: "'DM Sans', sans-serif" } },
+            ticks: { font: { family: "'JetBrains Mono', monospace" } },
+            grid: { color: 'rgba(156, 163, 175, 0.1)' },
+            beginAtZero: true,
+          },
+        },
+      },
+    });
+  }
+
+  /**
+   * Create a grouped bar chart for industry benchmarks
+   * Data format: [{industry_display, avg_ai_pct, avg_cycle_time, avg_review_time, org_count}, ...]
+   */
+  createIndustryBenchmarkChart(ctx, data, options = {}) {
+    if (!data || !Array.isArray(data) || data.length === 0) return null;
+
+    const labels = data.map(d => d.industry_display || d.industry);
+    return new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [
+          {
+            label: 'AI Adoption %',
+            data: data.map(d => d.avg_ai_pct),
+            backgroundColor: 'rgba(168, 85, 247, 0.7)',
+            borderColor: 'rgba(168, 85, 247, 1)',
+            borderWidth: 1,
+            yAxisID: 'y',
+          },
+          {
+            label: 'Avg Cycle Time (h)',
+            data: data.map(d => d.avg_cycle_time),
+            backgroundColor: 'rgba(249, 115, 22, 0.7)',
+            borderColor: 'rgba(249, 115, 22, 1)',
+            borderWidth: 1,
+            yAxisID: 'y1',
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: true, position: 'top', labels: { boxWidth: 12, font: { family: "'DM Sans', sans-serif", size: 11 } } },
+          tooltip: {
+            callbacks: {
+              afterBody: (context) => {
+                const idx = context[0].dataIndex;
+                const d = data[idx];
+                return d ? `Organizations: ${d.org_count}` : '';
+              },
+            },
+          },
+          datalabels: { display: false },
+        },
+        scales: {
+          x: { ticks: { font: { family: "'DM Sans', sans-serif" } }, grid: { display: false } },
+          y: {
+            type: 'linear', position: 'left', beginAtZero: true,
+            ticks: { font: { family: "'JetBrains Mono', monospace" }, callback: (v) => `${v}%` },
+            title: { display: true, text: 'AI Adoption %', font: { family: "'DM Sans', sans-serif" } },
+          },
+          y1: {
+            type: 'linear', position: 'right', beginAtZero: true,
+            ticks: { font: { family: "'JetBrains Mono', monospace" } },
+            title: { display: true, text: 'Cycle Time (h)', font: { family: "'DM Sans', sans-serif" } },
+            grid: { drawOnChartArea: false },
           },
         },
       },
