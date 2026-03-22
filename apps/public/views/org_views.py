@@ -31,9 +31,9 @@ def org_detail(request, slug) -> HttpResponse:
             "repos": repos,
             "page_title": f"{profile.display_name} Engineering Metrics",
             "page_description": (
-                f"Engineering metrics for {profile.display_name}: "
-                f"{stats.total_prs} PRs analyzed, {stats.ai_assisted_pct}% AI-assisted, "
-                f"{stats.median_cycle_time_hours}h median cycle time."
+                f"See {profile.display_name} engineering benchmarks from "
+                f"{stats.total_prs:,} merged PRs: {stats.ai_assisted_pct}% AI-assisted, "
+                f"{stats.median_cycle_time_hours}h median cycle time, and flagship repo performance."
             ),
             "page_canonical_url": absolute_url(reverse("public:org_detail", kwargs={"slug": slug})),
         }
@@ -53,6 +53,7 @@ def org_pr_list(request, slug) -> HttpResponse:
             "page_title": f"{request.public_profile.display_name} Pull Requests",
             "page_description": f"Public pull request explorer for {request.public_profile.display_name}.",
             "page_canonical_url": absolute_url(reverse("public:org_pr_list", kwargs={"slug": slug})),
+            "page_robots": "noindex,follow",
         }
     )
     return TemplateResponse(request, "public/org_pr_list.html", context)

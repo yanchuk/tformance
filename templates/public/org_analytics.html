@@ -7,7 +7,7 @@
   "@context": "https://schema.org",
   "@type": "Dataset",
   "name": "{{ org_profile.display_name }} Analytics Dashboard",
-  "description": "Read-only analytics for {{ org_profile.display_name }} with {{ public_stats.total_prs }} merged pull requests analyzed.",
+  "description": "Detailed {{ org_profile.display_name }} delivery and AI adoption trends across {{ public_stats.total_prs }} merged pull requests.",
   "url": "https://tformance.com/open-source/{{ public_slug }}/analytics/",
   "creator": {
     "@type": "Organization",
@@ -58,7 +58,7 @@
 <div class="mb-6">
   <h1 class="text-3xl font-bold mb-3">{{ org_profile.display_name }} Analytics</h1>
   <p class="text-base-content/80 max-w-4xl leading-relaxed mb-4">
-    This read-only analytics view summarizes {{ org_profile.display_name }} engineering performance across
+    This analytics view summarizes {{ org_profile.display_name }} engineering performance across
     {{ public_stats.total_prs|intcomma }} merged pull requests. AI-assisted pull requests currently account for
     {{ public_stats.ai_assisted_pct|floatformat:1 }}%, with a median cycle time of
     {{ public_stats.median_cycle_time_hours|floatformat:1 }} hours and median review time of
