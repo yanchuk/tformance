@@ -50,6 +50,7 @@ DJANGO_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
+    "django.contrib.humanize",
     "django.contrib.sessions",
     "django.contrib.sitemaps",
     "django.contrib.messages",
@@ -118,6 +119,7 @@ PROJECT_APPS = [
     "apps.feedback.apps.FeedbackConfig",
     "apps.auth.apps.AuthConfig",
     "apps.notes.apps.NotesConfig",
+    "apps.public.apps.PublicConfig",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + PROJECT_APPS + WAGTAIL_APPS
@@ -201,6 +203,7 @@ TEMPLATES = [
                 "apps.web.context_processors.posthog_config",
                 # Auth mode (github_only vs all)
                 "apps.web.context_processors.auth_mode",
+                "apps.public.context_processors.public_mode",
             ],
             "loaders": _DEFAULT_LOADERS if DEBUG else _CACHED_LOADERS,
             "builtins": [
