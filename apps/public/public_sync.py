@@ -18,12 +18,14 @@ from apps.metrics.seeding.persistence import PRPersistenceService
 logger = logging.getLogger(__name__)
 
 
-def sync_public_repo(repo_profile, token_pool: GitHubTokenPool) -> dict:
+def sync_public_repo(repo_profile, token_pool: GitHubTokenPool, *, days: int = 90, max_prs: int = 500) -> dict:
     """Sync a single public repo using the shared GitHub fetcher.
 
     Args:
         repo_profile: PublicRepoProfile instance.
         token_pool: GitHubTokenPool instance for PAT management.
+        days: How many days of history to fetch.
+        max_prs: Maximum PRs to fetch per sync.
 
     Returns:
         Dict with sync results (fetched, created, skipped).
@@ -48,13 +50,12 @@ def sync_public_repo(repo_profile, token_pool: GitHubTokenPool) -> dict:
         use_cache=False,
     )
 
-    # Fetch PRs from last 90 days (covers both summary and trend windows)
-    since = timezone.now() - timedelta(days=90)
+    since = timezone.now() - timedelta(days=days)
     try:
         fetched_prs = fetcher.fetch_prs_with_details(
             github_repo,
             since=since,
-            max_prs=500,
+            max_prs=max_prs,
         )
     except Exception:
         logger.exception("Failed to fetch PRs for %s", github_repo)

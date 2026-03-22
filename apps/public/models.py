@@ -151,6 +151,24 @@ class PublicOrgStats(BaseModel):
         return f"Stats for {self.org_profile.display_name}"
 
 
+class PublicRepoProfileManager(models.Manager):
+    """Custom manager with DRY queryset filters for common catalog queries."""
+
+    def sync_eligible(self):
+        """Repos eligible for daily sync: public + sync enabled."""
+        return self.filter(
+            is_public=True,
+            sync_enabled=True,
+        ).select_related("team", "org_profile", "sync_state")
+
+    def snapshot_eligible(self):
+        """Repos eligible for snapshot building: public repo + public org."""
+        return self.filter(
+            is_public=True,
+            org_profile__is_public=True,
+        ).select_related("org_profile", "team")
+
+
 class PublicRepoProfile(BaseModel):
     """Profile for a public repository within an organization.
 
@@ -201,6 +219,9 @@ class PublicRepoProfile(BaseModel):
         db_index=True,
         help_text="Whether this repo appears on public pages",
     )
+
+    objects = PublicRepoProfileManager()
+
     sync_enabled = models.BooleanField(
         default=True,
         db_index=True,

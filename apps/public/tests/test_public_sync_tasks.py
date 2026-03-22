@@ -97,18 +97,19 @@ class PublicSyncTaskTests(TestCase):
 
     @patch("apps.public.public_sync.GitHubGraphQLFetcher")
     @patch("apps.public.public_sync.GitHubTokenPool")
-    def test_public_sync_only_syncs_flagship_public_repos(self, mock_pool_cls, mock_fetcher_cls):
+    def test_public_sync_only_syncs_sync_enabled_repos(self, mock_pool_cls, mock_fetcher_cls):
         from apps.public.tasks import sync_public_oss_repositories_task
 
-        # Create a non-flagship repo that should NOT be synced
+        # Create a sync_disabled repo that should NOT be synced
         PublicRepoProfile.objects.create(
             org_profile=self.org_profile,
             team=self.team,
-            github_repo="sync-org/minor-repo",
-            repo_slug="minor-repo",
-            display_name="Minor Repo",
+            github_repo="sync-org/disabled-repo",
+            repo_slug="disabled-repo",
+            display_name="Disabled Repo",
             is_flagship=False,
             is_public=True,
+            sync_enabled=False,
         )
 
         mock_pool = MagicMock()
@@ -124,10 +125,10 @@ class PublicSyncTaskTests(TestCase):
 
         sync_public_oss_repositories_task()
 
-        # Only the flagship repo should be synced
-        assert mock_fetcher.fetch_prs_with_details.call_count == 1
-        call_args = mock_fetcher.fetch_prs_with_details.call_args
-        assert call_args[0][0] == "sync-org/main-repo"
+        # Only sync_enabled repos should be synced (main-repo has sync_enabled=True by default)
+        synced_repos = [call.args[0] for call in mock_fetcher.fetch_prs_with_details.call_args_list]
+        assert "sync-org/main-repo" in synced_repos
+        assert "sync-org/disabled-repo" not in synced_repos
 
 
 class PersistPRDetailTests(TestCase):

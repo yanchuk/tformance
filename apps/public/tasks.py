@@ -22,6 +22,7 @@ from apps.public.aggregations import (
 )
 from apps.public.models import PublicOrgProfile, PublicOrgStats, PublicRepoProfile, PublicRepoStats
 from apps.public.services import CACHE_PREFIX
+from apps.public.services.sync_orchestrator import SyncOrchestrator
 
 logger = logging.getLogger(__name__)
 
@@ -120,19 +121,13 @@ def compute_public_stats_task():
             errors += 1
             logger.exception(f"Failed to compute stats for {profile.display_name}")
 
-    # Build repo-level snapshots for all flagship repos
+    # Build repo-level snapshots for ALL public repos (not just flagship)
     from apps.public.repo_snapshot_service import build_repo_snapshot
 
     repo_snapshots = 0
     repo_errors = 0
 
-    flagship_repos = PublicRepoProfile.objects.filter(
-        is_flagship=True,
-        is_public=True,
-        org_profile__is_public=True,
-    ).select_related("org_profile", "team")
-
-    for repo_profile in flagship_repos:
+    for repo_profile in PublicRepoProfile.objects.snapshot_eligible():
         try:
             build_repo_snapshot(repo_profile)
             repo_snapshots += 1
@@ -197,14 +192,26 @@ def _clear_public_cache():
 
 @shared_task(soft_time_limit=1800, time_limit=1860)
 def sync_public_oss_repositories_task():
-    """Sync PR data for all flagship public repos using PAT-based fetchers.
+    """Sync PR data for all sync-eligible public repos using PAT-based fetchers.
 
     Runs at 3 AM UTC, before customer sync at 4 AM. Uses GITHUB_SEEDING_TOKENS
-    for authentication. After sync, chains compute_public_stats_task.
+    for authentication. Uses Redis lock to prevent concurrent runs.
+    After sync, chains compute_public_stats_task.
     """
-    from apps.metrics.seeding.github_token_pool import AllTokensExhaustedException
-    from apps.public.public_sync import sync_public_repo
+    # Atomic lock via cache.add() to prevent concurrent sync runs (#1)
+    acquired = cache.add("public_sync_lock", "1", timeout=1800)
+    if not acquired:
+        logger.warning("Public sync already running, skipping")
+        return {"synced": 0, "errors": 0, "skipped": "locked"}
 
+    try:
+        return _run_sync()
+    finally:
+        cache.delete("public_sync_lock")
+
+
+def _run_sync():
+    """Inner sync logic, separated for testability."""
     logger.info("Starting public OSS repository sync")
 
     # Initialize token pool (reads GITHUB_SEEDING_TOKENS env var)
@@ -216,32 +223,22 @@ def sync_public_oss_repositories_task():
         logger.error("No GitHub seeding tokens configured, skipping public sync")
         return {"synced": 0, "errors": 1, "reason": "no_tokens"}
 
-    repos = PublicRepoProfile.objects.filter(
-        is_flagship=True,
-        is_public=True,
-    ).select_related("team", "org_profile")
+    orchestrator = SyncOrchestrator(token_pool)
+    repos = PublicRepoProfile.objects.sync_eligible()
 
     synced = 0
     errors = 0
 
     for repo_profile in repos:
-        try:
-            if token_pool.all_exhausted:
-                logger.warning("All tokens exhausted, stopping sync")
-                break
-
-            result = sync_public_repo(repo_profile, token_pool)
-            if result.get("errors", 0) == 0:
-                synced += 1
-            else:
-                errors += 1
-        except AllTokensExhaustedException:
-            logger.warning("All tokens exhausted during sync of %s", repo_profile.github_repo)
-            errors += 1
+        if token_pool.all_exhausted:
+            logger.warning("All tokens exhausted, stopping sync")
             break
-        except Exception:
+
+        result = orchestrator.sync_repo(repo_profile)
+        if result.get("errors", 0) == 0:
+            synced += 1
+        else:
             errors += 1
-            logger.exception("Failed to sync %s", repo_profile.github_repo)
 
     logger.info("Public OSS sync complete. Synced: %d, Errors: %d", synced, errors)
 
@@ -265,7 +262,8 @@ def generate_public_repo_insights_weekly():
     logger.info("Starting weekly public repo insight generation (batch mode)")
 
     repos = PublicRepoProfile.objects.filter(
-        is_flagship=True,
+        insights_enabled=True,
+        sync_enabled=True,
         is_public=True,
     ).select_related("org_profile", "stats")
 
