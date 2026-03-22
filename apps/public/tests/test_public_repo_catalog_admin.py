@@ -11,6 +11,12 @@ from django.test import TestCase
 from apps.public.models import PublicOrgProfile, PublicRepoProfile, PublicRepoSyncState
 from apps.teams.models import Team
 
+# ---------------------------------------------------------------------------
+# Data migration test helpers
+# ---------------------------------------------------------------------------
+MIGRATE_FROM = [("public", "0005_public_repo_sync_state")]
+MIGRATE_TO = [("public", "0006_seed_catalog_state")]
+
 
 class PublicRepoProfileFieldTests(TestCase):
     """Step 1.1: New catalog fields exist with correct defaults."""
@@ -226,3 +232,78 @@ class PublicRepoProfileAdminTests(TestCase):
         readonly = admin_instance.get_readonly_fields(request=None, obj=repo)
         # Without sync state, repo_slug should remain editable (safe default)
         assert "repo_slug" not in readonly
+
+
+class DataMigrationTests(TestCase):
+    """Step 1.5: Data migration seeds insights_enabled and creates sync states."""
+
+    def test_migration_seeds_insights_enabled_from_flagship(self):
+        """is_flagship=True repos should get insights_enabled=True after migration."""
+        from django.core.management import call_command
+        from django.db import connection
+        from django.db.migrations.executor import MigrationExecutor
+
+        executor = MigrationExecutor(connection)
+
+        # Roll back to state before the data migration
+        executor.migrate(MIGRATE_FROM)
+        executor.loader.build_graph()
+
+        # Use historical models (no save() override at this point)
+        old_state = executor.loader.project_state(MIGRATE_FROM)
+        OldTeam = old_state.apps.get_model("teams", "Team")
+        OldOrg = old_state.apps.get_model("public", "PublicOrgProfile")
+        OldRepo = old_state.apps.get_model("public", "PublicRepoProfile")
+
+        team = OldTeam.objects.create(name="Mig Team", slug="mig-team")
+        org = OldOrg.objects.create(
+            team_id=team.pk,
+            public_slug="mig-org",
+            industry="analytics",
+            display_name="Mig Org",
+            is_public=True,
+        )
+        flagship_repo = OldRepo.objects.create(
+            org_profile_id=org.pk,
+            team_id=team.pk,
+            github_repo="mig-org/flagship",
+            repo_slug="flagship",
+            display_name="Flagship",
+            is_flagship=True,
+        )
+        non_flagship_repo = OldRepo.objects.create(
+            org_profile_id=org.pk,
+            team_id=team.pk,
+            github_repo="mig-org/secondary",
+            repo_slug="secondary",
+            display_name="Secondary",
+            is_flagship=False,
+        )
+
+        # Run the data migration
+        executor = MigrationExecutor(connection)
+        executor.migrate(MIGRATE_TO)
+        executor.loader.build_graph()
+
+        new_state = executor.loader.project_state(MIGRATE_TO)
+        NewRepo = new_state.apps.get_model("public", "PublicRepoProfile")
+        NewSyncState = new_state.apps.get_model("public", "PublicRepoSyncState")
+
+        flagship = NewRepo.objects.get(pk=flagship_repo.pk)
+        secondary = NewRepo.objects.get(pk=non_flagship_repo.pk)
+
+        # Flagship should get insights_enabled=True
+        assert flagship.insights_enabled is True
+        # Non-flagship should remain False
+        assert secondary.insights_enabled is False
+
+        # Both should have sync states created (use _id for historical models)
+        assert NewSyncState.objects.filter(repo_profile_id=flagship.pk).exists()
+        assert NewSyncState.objects.filter(repo_profile_id=secondary.pk).exists()
+
+        # Both should be pending_backfill (no PublicRepoStats exist)
+        assert NewSyncState.objects.get(repo_profile_id=flagship.pk).status == "pending_backfill"
+        assert NewSyncState.objects.get(repo_profile_id=secondary.pk).status == "pending_backfill"
+
+        # Cleanup: re-migrate forward to latest for other tests
+        call_command("migrate", verbosity=0)
