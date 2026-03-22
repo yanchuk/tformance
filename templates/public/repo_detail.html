@@ -211,8 +211,10 @@
   <div class="card-body p-4">
     <h2 class="card-title text-base">AI Adoption & Delivery Trend</h2>
     {{ combined_trend_data|json_script:"repo-combined-trend-data" }}
-    <canvas id="repo-combined-trend-chart" class="w-full" style="min-height: 280px"
-            data-chart-type="combined-trend" data-chart-data-id="repo-combined-trend-data"></canvas>
+    <div style="position: relative; height: 320px">
+      <canvas id="repo-combined-trend-chart"
+              data-chart-type="combined-trend" data-chart-data-id="repo-combined-trend-data"></canvas>
+    </div>
   </div>
 </div>
 {% endif %}
@@ -224,8 +226,10 @@
     <div class="card-body p-4">
       <h3 class="card-title text-sm">AI Adoption vs Cycle Time</h3>
       {{ correlation_data|json_script:"repo-correlation-data" }}
-      <canvas id="repo-correlation-chart" class="w-full" style="min-height: 240px"
-              data-chart-type="correlation-scatter" data-chart-data-id="repo-correlation-data"></canvas>
+      <div style="position: relative; height: 260px">
+        <canvas id="repo-correlation-chart"
+                data-chart-type="correlation-scatter" data-chart-data-id="repo-correlation-data"></canvas>
+      </div>
     </div>
   </div>
   <div class="card bg-base-100 border border-base-300">

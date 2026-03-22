@@ -134,8 +134,10 @@
   <div class="card-body p-4">
     <h2 class="card-title text-base">AI Adoption & Delivery Trend</h2>
     {{ combined_trend_data|json_script:"org-combined-trend-data" }}
-    <canvas id="org-combined-trend-chart" class="w-full" style="min-height: 280px"
-            data-chart-type="combined-trend" data-chart-data-id="org-combined-trend-data"></canvas>
+    <div style="position: relative; height: 320px">
+      <canvas id="org-combined-trend-chart"
+              data-chart-type="combined-trend" data-chart-data-id="org-combined-trend-data"></canvas>
+    </div>
   </div>
 </div>
 {% endif %}
