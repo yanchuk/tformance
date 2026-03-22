@@ -80,6 +80,38 @@ When annotating with multiple `Count()` on different reverse relations, always u
 ```
 Without it, Django cross-joins the tables and inflates counts silently.
 
+## Epistemic Hierarchy
+
+### Source Priority (highest to lowest)
+1. **Project files** — `pyproject.toml`, `package.json`, lockfiles, actual code
+2. **External verification** — official docs (via Context7/web search), `pip show`, `npm info`
+3. **Training data** — use ONLY when (1) and (2) are unavailable; always mark as uncertain
+
+### Mandatory Verification Triggers
+Before making claims about any of these, **search or check project files first**:
+- Library versions or release dates
+- API signatures, parameters, or return types
+- Deprecation status of any feature
+- LLM model names, pricing, or capabilities
+- "Best practice" recommendations for fast-moving libraries
+
+### High-Risk Libraries (frequent breaking changes)
+Django, DRF, Celery, HTMX, Alpine.js, Tailwind CSS, DaisyUI,
+Chart.js, Vite, LiteLLM, Groq SDK, Anthropic SDK, Stripe,
+PyGithub, Slack SDK, Sentry SDK, django-allauth, django-vite
+
+### Response Format Markers
+When answering questions about versions, APIs, or current state:
+- `VERIFIED` — confirmed via project files or external docs
+- `FROM TRAINING` — based on training data, may be outdated
+- `UNCERTAIN` — could not verify, treat with caution
+
+### Anti-Hallucination Rules
+- Never "correct" unfamiliar syntax — it may be valid modern syntax post-cutoff
+- Never claim a feature/library "doesn't exist" without searching first
+- If `pyproject.toml` or `package.json` shows a version you don't recognize, trust the file
+- When in doubt, say "I'm not sure — let me check" and verify
+
 ## Key Decisions (Do Not Change Without Discussion)
 
 | Decision | Choice | Why |
