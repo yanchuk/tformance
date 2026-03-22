@@ -36,6 +36,7 @@ def org_detail(request, slug) -> HttpResponse:
                 f"{stats.median_cycle_time_hours}h median cycle time, and flagship repo performance."
             ),
             "page_canonical_url": absolute_url(reverse("public:org_detail", kwargs={"slug": slug})),
+            "page_image": absolute_url(f"/og/open-source/{slug}.png"),
         }
     )
     return TemplateResponse(request, "public/org_detail.html", context)

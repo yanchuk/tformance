@@ -34,6 +34,7 @@ from apps.integrations.urls import team_urlpatterns as integrations_team_urls
 from apps.metrics.urls import team_urlpatterns as metrics_team_urls
 from apps.notes.urls import team_urlpatterns as notes_team_urls
 from apps.public.sitemaps import PublicDirectorySitemap, PublicIndustrySitemap, PublicOrgSitemap, PublicRepoSitemap
+from apps.public.views.og_views import og_org_image, og_repo_image
 from apps.pullrequests.urls import team_urlpatterns as pullrequests_team_urls
 from apps.subscriptions.urls import team_urlpatterns as subscriptions_team_urls
 from apps.teams.urls import team_urlpatterns as single_team_urls
@@ -80,6 +81,8 @@ urlpatterns = [
     path("onboarding/", include("apps.onboarding.urls")),
     path("auth/", include("apps.auth.urls")),
     path("open-source/", include("apps.public.urls")),
+    path("og/open-source/<slug:slug>.png", og_org_image, name="og_org_image"),
+    path("og/open-source/<slug:slug>/<slug:repo_slug>.png", og_repo_image, name="og_repo_image"),
     path("", include("apps.web.urls")),
     path("support/", include("apps.support.urls")),
     path("celery-progress/", include("celery_progress.urls")),
