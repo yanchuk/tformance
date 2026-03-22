@@ -70,6 +70,16 @@ Before modifying `apps/metrics/prompts/templates/*`:
 Always use `effective_*` properties on PullRequest (not raw fields).
 See [AI-DETECTION-TESTING.md](prd/AI-DETECTION-TESTING.md#llm-data-priority-rule).
 
+### Django Multi-Count Annotation
+When annotating with multiple `Count()` on different reverse relations, always use `distinct=True`:
+```python
+.annotate(
+    review_count=Count("reviews", distinct=True),
+    commit_count=Count("commits", distinct=True),
+)
+```
+Without it, Django cross-joins the tables and inflates counts silently.
+
 ## Key Decisions (Do Not Change Without Discussion)
 
 | Decision | Choice | Why |
@@ -104,6 +114,9 @@ See [AI-DETECTION-TESTING.md](prd/AI-DETECTION-TESTING.md#llm-data-priority-rule
 - Inline `<script>` in HTMX partials → use Alpine.js
 - `{% trans "..." %}` in templates → use plain strings (i18n disabled)
 - `gettext_lazy`/`_()` in Python → use plain strings
+- `Count("relation")` without `distinct=True` in multi-relation annotate → inflated counts
+- Mocking external services without verifying method names exist → tests pass, production crashes
+- `isinstance()` guards for MagicMock in production code → fix the test mock instead
 
 ## Documentation
 
