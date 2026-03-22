@@ -1,0 +1,25 @@
+{% extends "public/base.html" %}
+
+{% block breadcrumb_items %}
+<li>Request</li>
+<li>Success</li>
+{% endblock %}
+
+{% block public_content %}
+<div class="max-w-xl mx-auto text-center py-12">
+  <div class="text-5xl mb-4">
+    <i class="fa-solid fa-check-circle text-success"></i>
+  </div>
+  <h1 class="text-3xl font-bold mb-3">Thanks for your request!</h1>
+  <p class="text-base-content/70 mb-6">
+    We'll review your repository and get back to you within 48 hours.
+    If approved, your project's engineering metrics will appear on the public directory.
+  </p>
+  <a href="{% url 'public:directory' %}" class="btn btn-primary">
+    <i class="fa-solid fa-arrow-left mr-1"></i>
+    Back to Directory
+  </a>
+</div>
+{% endblock %}
+
+{% block cta_banner %}{% endblock %}

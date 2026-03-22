@@ -1,0 +1,308 @@
+{% extends "public/app_base.html" %}
+{% load humanize %}
+
+{% block public_json_ld %}
+{% if stats %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Dataset",
+  "name": "{{ repo_profile.display_name }} Engineering Metrics",
+  "description": "{{ page_description }}",
+  "url": "{{ page_canonical_url }}",
+  "creator": {
+    "@type": "Organization",
+    "name": "Tformance",
+    "url": "https://tformance.com"
+  },
+  "variableMeasured": [
+    {"@type": "PropertyValue", "name": "Total PRs", "value": "{{ stats.total_prs }}"},
+    {"@type": "PropertyValue", "name": "AI Adoption Rate", "value": "{{ stats.ai_assisted_pct }}%"},
+    {"@type": "PropertyValue", "name": "Median Cycle Time", "value": "{{ stats.median_cycle_time_hours }}h"},
+    {"@type": "PropertyValue", "name": "Median Review Time", "value": "{{ stats.median_review_time_hours }}h"},
+    {"@type": "PropertyValue", "name": "Active Contributors (30d)", "value": "{{ stats.active_contributors_30d }}"}
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "What percentage of {{ repo_profile.display_name }} pull requests are AI-assisted?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "{{ stats.ai_assisted_pct }}% of {{ repo_profile.display_name }} pull requests are AI-assisted, based on {{ stats.total_prs_in_window }} merged PRs in the last {{ stats.summary_window_days }} days."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What is {{ repo_profile.display_name }} median cycle time?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "{{ repo_profile.display_name }} median cycle time is {{ stats.median_cycle_time_hours }} hours."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How many active contributors does {{ repo_profile.display_name }} have?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "{{ repo_profile.display_name }} has {{ stats.active_contributors_30d }} active contributors in the last 30 days."
+      }
+    }
+  ]
+}
+</script>
+{% endif %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Open Source",
+      "item": "https://tformance.com/open-source/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "{{ org_profile.display_name }}",
+      "item": "https://tformance.com/open-source/{{ public_slug }}/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "{{ repo_profile.display_name }}",
+      "item": "{{ page_canonical_url }}"
+    }
+  ]
+}
+</script>
+{% endblock public_json_ld %}
+
+{% block public_breadcrumb_items %}
+<li><a href="{% url 'public:org_detail' slug=public_slug %}" class="link link-hover">{{ org_profile.display_name }}</a></li>
+<li>{{ repo_profile.display_name }}</li>
+{% endblock public_breadcrumb_items %}
+
+{% block public_main_content %}
+{# 1. Repo identity + updated timestamp + CTAs #}
+<div class="mb-8">
+  <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-4">
+    <div>
+      <h1 class="text-3xl font-bold mb-1">{{ repo_profile.display_name }} Engineering Metrics</h1>
+      <div class="flex flex-wrap items-center gap-2 text-sm text-base-content/60">
+        <span>{{ org_profile.display_name }}</span>
+        <span>&middot;</span>
+        {% if repo_profile.github_url %}
+        <a href="{{ repo_profile.github_url }}" target="_blank" rel="noopener" class="link link-hover">GitHub</a>
+        <span>&middot;</span>
+        {% endif %}
+        {% if stats and stats.last_computed_at %}
+        <span>Updated {{ stats.last_computed_at|date:"F j, Y" }}</span>
+        {% endif %}
+      </div>
+    </div>
+    <div class="flex gap-3">
+      <a href="{% url 'account_signup' %}" class="btn btn-primary">Start Free Trial</a>
+      <a href="{% url 'public:directory' %}" class="btn btn-outline">Explore Directory</a>
+    </div>
+  </div>
+
+  {# 2. Citable paragraph with explicit numbers #}
+  {% if stats %}
+  <p class="text-base-content/80 max-w-4xl leading-relaxed text-lg">
+    {{ stats.ai_assisted_pct|floatformat:1 }}% of {{ repo_profile.display_name }} pull requests are AI-assisted,
+    based on {{ stats.total_prs_in_window }} merged PRs in the last {{ stats.summary_window_days }} days
+    ({{ stats.total_prs|intcomma }} all-time).
+    Median cycle time is {{ stats.median_cycle_time_hours|floatformat:1 }} hours with
+    {{ stats.active_contributors_30d }} active contributors.
+    {% if stats.cadence_change_pct > 0 %}
+    PR volume is up {{ stats.cadence_change_pct|floatformat:0 }}% compared to the prior period.
+    {% elif stats.cadence_change_pct < 0 %}
+    PR volume is down {{ stats.cadence_change_pct|floatformat:0 }}% compared to the prior period.
+    {% endif %}
+  </p>
+  {% endif %}
+
+  {# LLM-generated insight #}
+  {% if insight %}
+  <blockquote class="border-l-4 border-primary pl-4 mt-4 text-base-content/70 italic">
+    {{ insight.content }}
+  </blockquote>
+  {% endif %}
+</div>
+
+{% if stats %}
+{# 3. Hero proof metrics — 3-column card grid #}
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+  <div class="card bg-base-100 border border-base-300">
+    <div class="card-body py-4">
+      <div class="text-sm text-base-content/60">AI Adoption</div>
+      <div class="text-3xl font-bold">{{ stats.ai_assisted_pct|floatformat:1 }}%</div>
+      <div class="text-xs text-base-content/50">of PRs are AI-assisted</div>
+    </div>
+  </div>
+  <div class="card bg-base-100 border border-base-300">
+    <div class="card-body py-4">
+      <div class="text-sm text-base-content/60">Median Cycle Time</div>
+      <div class="text-3xl font-bold">{{ stats.median_cycle_time_hours|floatformat:1 }}h</div>
+      <div class="text-xs text-base-content/50">PR open to merge</div>
+    </div>
+  </div>
+  <div class="card bg-base-100 border border-base-300">
+    <div class="card-body py-4">
+      <div class="text-sm text-base-content/60">Active Contributors</div>
+      <div class="text-3xl font-bold">{{ stats.active_contributors_30d }}</div>
+      <div class="text-xs text-base-content/50">in the last 30 days</div>
+    </div>
+  </div>
+</div>
+
+{# 4. Best signal + Watchout signal — 2-column #}
+{% if stats.best_signal.metric != "none" or stats.watchout_signal.metric != "none" %}
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+  {% if stats.best_signal.metric != "none" %}
+  <div class="card bg-success/10 border border-success/30">
+    <div class="card-body py-4">
+      <div class="flex items-center gap-2 mb-1">
+        <span class="badge badge-success badge-sm">Best Signal</span>
+        <span class="font-semibold">{{ stats.best_signal.label }}</span>
+      </div>
+      <div class="text-2xl font-bold">{{ stats.best_signal.value }}</div>
+      <div class="text-sm text-base-content/60">{{ stats.best_signal.description }}</div>
+    </div>
+  </div>
+  {% endif %}
+  {% if stats.watchout_signal.metric != "none" %}
+  <div class="card bg-warning/10 border border-warning/30">
+    <div class="card-body py-4">
+      <div class="flex items-center gap-2 mb-1">
+        <span class="badge badge-warning badge-sm">Watch Out</span>
+        <span class="font-semibold">{{ stats.watchout_signal.label }}</span>
+      </div>
+      <div class="text-2xl font-bold">{{ stats.watchout_signal.value }}</div>
+      <div class="text-sm text-base-content/60">{{ stats.watchout_signal.description }}</div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
+{# 5. Summary stats table (noscript-friendly data representation) #}
+<div class="mb-8">
+  <h2 class="text-xl font-semibold mb-3">Summary Metrics</h2>
+  <div class="overflow-x-auto">
+    <table class="table table-sm">
+      <thead>
+        <tr>
+          <th>Metric</th>
+          <th>Value</th>
+          <th>Window</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Total PRs (all-time)</td>
+          <td>{{ stats.total_prs|intcomma }}</td>
+          <td>All time</td>
+        </tr>
+        <tr>
+          <td>PRs in Window</td>
+          <td>{{ stats.total_prs_in_window }}</td>
+          <td>Last {{ stats.summary_window_days }} days</td>
+        </tr>
+        <tr>
+          <td>AI Adoption</td>
+          <td>{{ stats.ai_assisted_pct|floatformat:1 }}%</td>
+          <td>Last {{ stats.summary_window_days }} days</td>
+        </tr>
+        <tr>
+          <td>Median Cycle Time</td>
+          <td>{{ stats.median_cycle_time_hours|floatformat:1 }}h</td>
+          <td>Last {{ stats.summary_window_days }} days</td>
+        </tr>
+        <tr>
+          <td>Median Review Time</td>
+          <td>{{ stats.median_review_time_hours|floatformat:1 }}h</td>
+          <td>Last {{ stats.summary_window_days }} days</td>
+        </tr>
+        <tr>
+          <td>Active Contributors</td>
+          <td>{{ stats.active_contributors_30d }}</td>
+          <td>Last 30 days</td>
+        </tr>
+        <tr>
+          <td>Cadence Change</td>
+          <td>{{ stats.cadence_change_pct|floatformat:1 }}%</td>
+          <td>vs prior period</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{# 7. Recent PR proof block #}
+{% if stats.recent_prs %}
+<div class="mb-8">
+  <div class="flex items-center justify-between mb-3">
+    <h2 class="text-xl font-semibold">Recent Pull Requests</h2>
+    <a href="{% url 'public:repo_pr_list' slug=public_slug repo_slug=repo_slug %}"
+       class="btn btn-outline btn-sm">View PR Explorer</a>
+  </div>
+  <div class="overflow-x-auto">
+    <table class="table table-sm">
+      <thead>
+        <tr>
+          <th>Title</th>
+          <th>Author</th>
+          <th>AI</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for pr in stats.recent_prs|slice:":5" %}
+        <tr>
+          <td>
+            {% if pr.github_url %}
+            <a href="{{ pr.github_url }}" target="_blank" rel="noopener" class="link link-hover">{{ pr.title|truncatechars:60 }}</a>
+            {% else %}
+            {{ pr.title|truncatechars:60 }}
+            {% endif %}
+          </td>
+          <td>{{ pr.author_name|default:"-" }}</td>
+          <td>
+            {% if pr.is_ai_assisted %}
+            <span class="badge badge-primary badge-xs">AI</span>
+            {% else %}
+            <span class="text-base-content/40">—</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+{% endif %}
+
+{# 8. Methodology / source / freshness #}
+<div class="border-t border-base-300 pt-6 mt-8">
+  <h3 class="text-lg font-semibold mb-2">Methodology</h3>
+  <p class="text-sm text-base-content/60 max-w-3xl">
+    Metrics are computed from merged pull request data synced daily from GitHub.
+    AI detection uses a combination of PR content analysis and LLM classification.
+    Summary metrics use a {{ stats.summary_window_days|default:"30" }}-day rolling window;
+    trends use a {{ stats.trend_window_days|default:"90" }}-day window.
+    {% if stats and stats.last_computed_at %}
+    Last updated {{ stats.last_computed_at|timesince }} ago.
+    {% endif %}
+    Source: Tformance Open Source Analytics.
+  </p>
+</div>
+{% endblock public_main_content %}

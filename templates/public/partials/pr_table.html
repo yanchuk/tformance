@@ -1,0 +1,90 @@
+{% load pr_list_tags %}
+
+<div class="overflow-x-auto">
+  <table class="table table-zebra table-sm w-full">
+    <thead>
+      <tr>
+        <th>Title</th>
+        <th>Author</th>
+        <th class="text-center cursor-pointer"
+            hx-get="{% url 'public:pr_list_table' slug=public_slug %}{% querystring sort='lines' order='desc' page=1 %}"
+            hx-target="#public-pr-table"
+            hx-swap="innerHTML"
+            hx-include="#public-pr-filters">Size</th>
+        <th class="text-center">AI</th>
+        <th class="text-right cursor-pointer"
+            hx-get="{% url 'public:pr_list_table' slug=public_slug %}{% querystring sort='cycle_time' order='desc' page=1 %}"
+            hx-target="#public-pr-table"
+            hx-swap="innerHTML"
+            hx-include="#public-pr-filters">Cycle Time</th>
+        <th class="text-right cursor-pointer"
+            hx-get="{% url 'public:pr_list_table' slug=public_slug %}{% querystring sort='merged' order='desc' page=1 %}"
+            hx-target="#public-pr-table"
+            hx-swap="innerHTML"
+            hx-include="#public-pr-filters">Merged</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for pr in prs %}
+      <tr>
+        <td class="max-w-xl">
+          <a href="{{ pr.github_url }}" target="_blank" rel="noopener" class="link link-hover">
+            {{ pr.title }}
+          </a>
+        </td>
+        <td>{{ pr.author.display_name|default:"-" }}</td>
+        <td class="text-center">
+          {% with size=pr.additions|pr_size_bucket:pr.deletions %}
+            {% if size %}
+              <span class="badge badge-ghost badge-sm">{{ size }}</span>
+            {% else %}
+              -
+            {% endif %}
+          {% endwith %}
+        </td>
+        <td class="text-center">
+          {% if pr.is_ai_assisted %}
+            <span class="badge badge-primary badge-sm">AI</span>
+          {% else %}
+            <span class="badge badge-ghost badge-sm">No</span>
+          {% endif %}
+        </td>
+        <td class="text-right">
+          {% if pr.cycle_time_hours %}{{ pr.cycle_time_hours|floatformat:1 }}h{% else %}-{% endif %}
+        </td>
+        <td class="text-right">
+          {% if pr.merged_at %}{{ pr.merged_at|date:"M d, Y" }}{% else %}-{% endif %}
+        </td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="6" class="text-center text-base-content/60 py-8">No pull requests found.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% if page_obj.has_other_pages %}
+<div class="join mt-4">
+  {% if page_obj.has_previous %}
+  <a class="join-item btn btn-sm"
+     href="{% querystring page=page_obj.previous_page_number %}"
+     hx-get="{% url 'public:pr_list_table' slug=public_slug %}{% querystring page=page_obj.previous_page_number %}"
+     hx-target="#public-pr-table"
+     hx-swap="innerHTML"
+     hx-include="#public-pr-filters">&laquo;</a>
+  {% endif %}
+
+  <span class="join-item btn btn-sm btn-disabled">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+
+  {% if page_obj.has_next %}
+  <a class="join-item btn btn-sm"
+     href="{% querystring page=page_obj.next_page_number %}"
+     hx-get="{% url 'public:pr_list_table' slug=public_slug %}{% querystring page=page_obj.next_page_number %}"
+     hx-target="#public-pr-table"
+     hx-swap="innerHTML"
+     hx-include="#public-pr-filters">&raquo;</a>
+  {% endif %}
+</div>
+{% endif %}

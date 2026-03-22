@@ -33,6 +33,7 @@ from apps.insights.urls import team_urlpatterns as insights_team_urls
 from apps.integrations.urls import team_urlpatterns as integrations_team_urls
 from apps.metrics.urls import team_urlpatterns as metrics_team_urls
 from apps.notes.urls import team_urlpatterns as notes_team_urls
+from apps.public.sitemaps import PublicDirectorySitemap, PublicIndustrySitemap, PublicOrgSitemap, PublicRepoSitemap
 from apps.pullrequests.urls import team_urlpatterns as pullrequests_team_urls
 from apps.subscriptions.urls import team_urlpatterns as subscriptions_team_urls
 from apps.teams.urls import team_urlpatterns as single_team_urls
@@ -45,6 +46,10 @@ sitemaps = {
     "static": StaticViewSitemap(),
     "features": FeaturesSitemap(),
     "comparison": ComparisonSitemap(),
+    "public_directory": PublicDirectorySitemap(),
+    "public_orgs": PublicOrgSitemap(),
+    "public_repos": PublicRepoSitemap(),
+    "public_industries": PublicIndustrySitemap(),
 }
 
 # urls that are unique to using a team should go here
@@ -74,6 +79,7 @@ urlpatterns = [
     path("integrations/", include("apps.integrations.urls")),  # Non-team integrations URLs (webhooks)
     path("onboarding/", include("apps.onboarding.urls")),
     path("auth/", include("apps.auth.urls")),
+    path("open-source/", include("apps.public.urls")),
     path("", include("apps.web.urls")),
     path("support/", include("apps.support.urls")),
     path("celery-progress/", include("celery_progress.urls")),

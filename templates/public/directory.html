@@ -1,0 +1,109 @@
+{% extends "public/base.html" %}
+
+{% block json_ld %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "DataCatalog",
+  "name": "Open Source Engineering Analytics",
+  "description": "Engineering metrics from {{ global_stats.org_count }} open source projects. Compare AI adoption, cycle time, and team velocity across industries.",
+  "url": "https://tformance.com/open-source/",
+  "provider": {
+    "@type": "Organization",
+    "name": "Tformance",
+    "url": "https://tformance.com"
+  },
+  "dataset": [{% for org in orgs %}
+    {
+      "@type": "Dataset",
+      "name": "{{ org.display_name }} Engineering Metrics",
+      "url": "https://tformance.com/open-source/{{ org.slug }}/"
+    }{% if not forloop.last %},{% endif %}{% endfor %}
+  ]
+}
+</script>
+{% endblock %}
+
+{% block public_content %}
+{# Global stats banner #}
+{% if global_stats.org_count > 0 %}
+<div class="bg-base-200 rounded-box p-6 mb-8">
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+    <div>
+      <div class="text-2xl font-bold text-primary">{{ global_stats.org_count }}</div>
+      <div class="text-sm text-base-content/60">Organizations</div>
+    </div>
+    <div>
+      <div class="text-2xl font-bold text-primary">{{ global_stats.total_prs|floatformat:0 }}</div>
+      <div class="text-sm text-base-content/60">Total PRs Analyzed</div>
+    </div>
+    <div>
+      <div class="text-2xl font-bold text-primary">{{ global_stats.avg_ai_pct|floatformat:1 }}%</div>
+      <div class="text-sm text-base-content/60">Avg AI Adoption</div>
+    </div>
+    <div>
+      <div class="text-2xl font-bold text-primary">{{ global_stats.avg_cycle_time|floatformat:1 }}h</div>
+      <div class="text-sm text-base-content/60">Avg Cycle Time</div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{# Page heading #}
+<div class="mb-6">
+  <h1 class="text-3xl font-bold mb-2">Open Source Engineering Metrics</h1>
+  <p class="text-base-content/70 max-w-2xl">
+    Real engineering metrics from top open source projects.
+    See how AI adoption, delivery speed, and team velocity compare across industries.
+  </p>
+</div>
+
+{# Filters and sorting #}
+<div class="flex flex-col sm:flex-row gap-3 mb-6">
+  {# Year filter #}
+  <select name="year"
+          class="select select-bordered select-sm w-full sm:w-auto"
+          hx-get="{% url 'public:directory' %}"
+          hx-target="#directory-list"
+          hx-include="[name='industry'],[name='sort']"
+          hx-push-url="true">
+    {% for value, label in year_options %}
+    <option value="{{ value }}" {% if value == current_year %}selected{% endif %}>{{ label }}</option>
+    {% endfor %}
+  </select>
+
+  {# Industry filter #}
+  <select name="industry"
+          class="select select-bordered select-sm w-full sm:w-auto"
+          hx-get="{% url 'public:directory' %}"
+          hx-target="#directory-list"
+          hx-include="[name='year'],[name='sort']"
+          hx-push-url="true">
+    <option value="">All Industries</option>
+    {% for key, label in industries %}
+    <option value="{{ key }}" {% if key == current_industry %}selected{% endif %}>{{ label }}</option>
+    {% endfor %}
+  </select>
+
+  {# Sort selector #}
+  <select name="sort"
+          class="select select-bordered select-sm w-full sm:w-auto"
+          hx-get="{% url 'public:directory' %}"
+          hx-target="#directory-list"
+          hx-include="[name='year'],[name='industry']"
+          hx-push-url="true">
+    {% for value, label in sort_options %}
+    <option value="{{ value }}" {% if value == current_sort %}selected{% endif %}>Sort: {{ label }}</option>
+    {% endfor %}
+  </select>
+
+  <div class="text-sm text-base-content/50 self-center ml-auto">
+    {{ orgs|length }} organization{{ orgs|length|pluralize }}
+  </div>
+</div>
+
+{# Directory list (HTMX target) #}
+<div id="directory-list">
+  {% include "public/_directory_list.html" %}
+</div>
+{% endblock %}

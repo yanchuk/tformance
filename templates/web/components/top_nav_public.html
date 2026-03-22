@@ -1,0 +1,16 @@
+<div class="navbar shadow-md px-4 lg:px-6">
+  <div class="navbar-start">
+    <a href="{% url 'web:home' %}" class="flex items-center gap-2">
+      <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-accent-primary to-pink-500 flex items-center justify-center">
+        <span class="font-bold text-white text-sm">T</span>
+      </div>
+      <span class="font-bold text-xl">Tformance</span>
+    </a>
+  </div>
+  <div class="navbar-center hidden md:flex">
+    <a class="btn btn-ghost btn-sm" href="{% url 'public:directory' %}">Open Source</a>
+  </div>
+  <div class="navbar-end">
+    <a href="{% url 'account_signup' %}" class="btn btn-primary btn-sm">Get this for your team</a>
+  </div>
+</div>

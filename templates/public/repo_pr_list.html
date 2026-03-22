@@ -1,0 +1,60 @@
+{% extends "public/app_base.html" %}
+{% load pr_list_tags %}
+
+{% block page_head %}
+  {{ block.super }}
+  <meta name="robots" content="noindex,follow">
+{% endblock page_head %}
+
+{% block public_breadcrumb_items %}
+<li><a href="{% url 'public:org_detail' slug=public_slug %}" class="link link-hover">{{ org_profile.display_name }}</a></li>
+<li><a href="{% url 'public:repo_detail' slug=public_slug repo_slug=repo_slug %}" class="link link-hover">{{ repo_profile.display_name }}</a></li>
+<li>Pull Requests</li>
+{% endblock public_breadcrumb_items %}
+
+{% block public_main_content %}
+<div class="flex items-center justify-between gap-3 mb-6">
+  <h1 class="text-3xl font-bold">Pull Request Explorer</h1>
+  <a href="{% url 'public:repo_detail' slug=public_slug repo_slug=repo_slug %}" class="btn btn-outline btn-sm">
+    Back to Repo
+  </a>
+</div>
+
+<div class="alert alert-info mb-5">
+  <span>Exploring {{ stats.total_count|default:0 }} PRs for {{ repo_profile.display_name }}. Want this for your team? <a class="link font-semibold" href="{% url 'account_signup' %}">Start Free Trial</a></span>
+</div>
+
+<form id="public-pr-filters"
+      class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-5"
+      hx-get="{% url 'public:repo_pr_list_table' slug=public_slug repo_slug=repo_slug %}"
+      hx-target="#public-pr-table"
+      hx-swap="innerHTML">
+  <select name="author" class="select select-bordered select-sm w-full">
+    <option value="">All Authors</option>
+    {% for author in filter_options.authors %}
+    <option value="{{ author.id }}" {% if filters.author == author.id|stringformat:'s' %}selected{% endif %}>{{ author.name }}</option>
+    {% endfor %}
+  </select>
+
+  <select name="ai" class="select select-bordered select-sm w-full">
+    <option value="">All AI States</option>
+    <option value="yes" {% if filters.ai == 'yes' %}selected{% endif %}>AI Assisted</option>
+    <option value="no" {% if filters.ai == 'no' %}selected{% endif %}>Non AI</option>
+  </select>
+
+  <select name="size" class="select select-bordered select-sm w-full">
+    <option value="">All Sizes</option>
+    <option value="XS" {% if filters.size == 'XS' %}selected{% endif %}>XS (0-10)</option>
+    <option value="S" {% if filters.size == 'S' %}selected{% endif %}>S (11-50)</option>
+    <option value="M" {% if filters.size == 'M' %}selected{% endif %}>M (51-200)</option>
+    <option value="L" {% if filters.size == 'L' %}selected{% endif %}>L (201-500)</option>
+    <option value="XL" {% if filters.size == 'XL' %}selected{% endif %}>XL (501+)</option>
+  </select>
+
+  <button type="submit" class="btn btn-primary btn-sm">Apply Filters</button>
+</form>
+
+<div id="public-pr-table">
+  {% include "public/partials/repo_pr_table.html" %}
+</div>
+{% endblock public_main_content %}

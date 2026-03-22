@@ -1,0 +1,52 @@
+{# HTMX partial: sortable org table #}
+{% if orgs %}
+<div class="overflow-x-auto">
+  <table class="table table-sm table-zebra w-full">
+    <thead>
+      <tr class="text-xs uppercase text-base-content/50">
+        <th class="pl-4">#</th>
+        <th>Organization</th>
+        <th>Industry</th>
+        <th class="text-right">PRs</th>
+        <th class="text-right">AI Adoption</th>
+        <th class="text-right">Cycle Time</th>
+        <th class="text-right">Review Time</th>
+        <th class="text-right">Contributors</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for org in orgs %}
+      <tr class="hover:bg-base-200/50 cursor-pointer"
+          onclick="window.location='{% url 'public:org_detail' slug=org.slug %}'">
+        <td class="pl-4 text-base-content/40 tabular-nums">{{ forloop.counter }}</td>
+        <td>
+          <a href="{% url 'public:org_detail' slug=org.slug %}" class="font-medium link link-hover">
+            {{ org.display_name }}
+          </a>
+          {% if org.description %}
+          <div class="text-xs text-base-content/40 line-clamp-1 max-w-xs">{{ org.description }}</div>
+          {% endif %}
+        </td>
+        <td>
+          <span class="badge badge-ghost badge-sm whitespace-nowrap">{{ org.industry_display }}</span>
+        </td>
+        <td class="text-right tabular-nums font-medium">{{ org.total_prs|floatformat:0 }}</td>
+        <td class="text-right tabular-nums">
+          <span class="{% if org.ai_assisted_pct > 50 %}text-success font-semibold{% elif org.ai_assisted_pct > 20 %}text-warning font-medium{% endif %}">
+            {{ org.ai_assisted_pct|floatformat:1 }}%
+          </span>
+        </td>
+        <td class="text-right tabular-nums">{{ org.median_cycle_time_hours|floatformat:1 }}h</td>
+        <td class="text-right tabular-nums">{{ org.median_review_time_hours|floatformat:1 }}h</td>
+        <td class="text-right tabular-nums">{{ org.active_contributors_90d }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="text-center py-12">
+  <i class="fa-solid fa-search text-4xl text-base-content/20 mb-4"></i>
+  <p class="text-base-content/50">No organizations match your filters.</p>
+</div>
+{% endif %}

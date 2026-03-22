@@ -1,0 +1,113 @@
+{% extends "public/app_base.html" %}
+{% load humanize %}
+
+{% block public_json_ld %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Dataset",
+  "name": "{{ org_profile.display_name }} Engineering Metrics",
+  "description": "Engineering metrics for {{ org_profile.display_name }} based on {{ public_stats.total_prs }} merged pull requests.",
+  "url": "https://tformance.com/open-source/{{ public_slug }}/",
+  "creator": {
+    "@type": "Organization",
+    "name": "Tformance",
+    "url": "https://tformance.com"
+  },
+  "variableMeasured": [
+    {"@type": "PropertyValue", "name": "Total PRs", "value": "{{ public_stats.total_prs }}"},
+    {"@type": "PropertyValue", "name": "AI Adoption Rate", "value": "{{ public_stats.ai_assisted_pct }}%"},
+    {"@type": "PropertyValue", "name": "Median Cycle Time", "value": "{{ public_stats.median_cycle_time_hours }}h"},
+    {"@type": "PropertyValue", "name": "Median Review Time", "value": "{{ public_stats.median_review_time_hours }}h"},
+    {"@type": "PropertyValue", "name": "Active Contributors (90d)", "value": "{{ public_stats.active_contributors_90d }}"}
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "What percentage of {{ org_profile.display_name }} pull requests are AI-assisted?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "{{ public_stats.ai_assisted_pct }}% of {{ org_profile.display_name }} pull requests are AI-assisted based on {{ public_stats.total_prs }} merged pull requests."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What is {{ org_profile.display_name }} median cycle time?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "{{ org_profile.display_name }} median cycle time is {{ public_stats.median_cycle_time_hours }} hours."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How many active contributors does {{ org_profile.display_name }} have?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "{{ org_profile.display_name }} has {{ public_stats.active_contributors_90d }} active contributors in the last 90 days."
+      }
+    }
+  ]
+}
+</script>
+{% endblock public_json_ld %}
+
+{% block public_breadcrumb_items %}
+<li><a href="{% url 'public:industry' industry=org_profile.industry %}" class="link link-hover">{{ org_profile.get_industry_display }}</a></li>
+<li>{{ org_profile.display_name }}</li>
+{% endblock public_breadcrumb_items %}
+
+{% block public_main_content %}
+<div class="mb-8">
+  <div class="flex flex-col sm:flex-row sm:items-center gap-4 mb-3">
+    <img src="{% if org_profile.logo_url %}{{ org_profile.logo_url }}{% else %}https://github.com/{{ org_profile.public_slug }}.png?size=160{% endif %}"
+         alt="{{ org_profile.display_name }} logo"
+         class="w-14 h-14 rounded-lg object-cover"
+         loading="lazy">
+    <div>
+      <h1 class="text-3xl font-bold">{{ org_profile.display_name }} Engineering Metrics</h1>
+      <div class="flex flex-wrap items-center gap-2 mt-1">
+        <span class="badge badge-primary badge-outline">{{ org_profile.get_industry_display }}</span>
+        {% if org_profile.github_org_url %}
+        <a href="{{ org_profile.github_org_url }}" target="_blank" rel="noopener" class="btn btn-ghost btn-xs">GitHub</a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <p class="text-base-content/80 max-w-4xl leading-relaxed mb-4">
+    As of {{ public_stats.last_computed_at|date:"F j, Y" }}, {{ public_stats.ai_assisted_pct|floatformat:1 }}% of
+    {{ org_profile.display_name }} pull requests are AI-assisted, based on analysis of
+    {{ public_stats.total_prs|intcomma }} merged pull requests. Median cycle time is
+    {{ public_stats.median_cycle_time_hours|floatformat:1 }} hours with
+    {{ public_stats.active_contributors_90d }} active contributors in the last 90 days.
+  </p>
+</div>
+
+{% if repos %}
+<div class="mb-8">
+  <h2 class="text-xl font-semibold mb-4">Flagship Repositories</h2>
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    {% for repo in repos %}
+      {% include "public/partials/repo_card.html" with repo=repo public_slug=public_slug %}
+    {% endfor %}
+  </div>
+</div>
+{% else %}
+<div class="mb-8">
+  <p class="text-base-content/60">No flagship repositories yet.</p>
+</div>
+{% endif %}
+
+<div class="mb-6">
+  <a href="{% url 'public:org_analytics' slug=public_slug %}" class="btn btn-outline btn-sm mr-2">View Analytics</a>
+  <a href="{% url 'public:org_pr_list' slug=public_slug %}" class="btn btn-outline btn-sm">Browse Pull Requests</a>
+</div>
+
+<p class="text-xs text-base-content/50">Source: Tformance Open Source Analytics{% if public_stats.last_computed_at %}, updated {{ public_stats.last_computed_at|timesince }} ago{% endif %}.</p>
+{% endblock public_main_content %}
