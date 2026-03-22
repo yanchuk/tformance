@@ -350,7 +350,8 @@ class LocalReconciliationService:
     def bootstrap_repo_profiles(self, repos, org_profiles):
         """Ensure PublicRepoProfile rows exist for all fixture repos.
 
-        Uses update_or_create for idempotency.
+        Uses get_or_create to preserve curated fields on existing rows.
+        Only sets defaults for NEW rows — never overwrites existing curated fields.
         """
         from apps.public.models import PublicRepoProfile
 
@@ -358,7 +359,7 @@ class LocalReconciliationService:
             org_slug = repo_info["org_slug"]
             org_profile = org_profiles[org_slug]
 
-            PublicRepoProfile.objects.update_or_create(
+            PublicRepoProfile.objects.get_or_create(
                 org_profile=org_profile,
                 repo_slug=repo_info["repo_slug"],
                 defaults={

@@ -30,10 +30,12 @@ class MigrationCheckTests(TestCase):
 
 
 class ManifestResolutionTests(TestCase):
-    """Test that --org resolves repos from the fixture manifest."""
+    """Test that --org resolves repos from DB (formerly fixture manifest)."""
 
     @classmethod
     def setUpTestData(cls):
+        from apps.public.models import PublicRepoProfile
+
         cls.polar_team = TeamFactory(slug="polar-demo")
         cls.posthog_team = TeamFactory(slug="posthog-demo")
         cls.polar_profile = PublicOrgProfile.objects.create(
@@ -48,6 +50,16 @@ class ManifestResolutionTests(TestCase):
             public_slug="posthog",
             industry="analytics",
             display_name="PostHog",
+            is_public=True,
+        )
+        # Reconciliation now resolves repos from DB — create profiles
+        PublicRepoProfile.objects.create(
+            org_profile=cls.polar_profile,
+            team=cls.polar_team,
+            github_repo="polarsource/polar",
+            repo_slug="polar",
+            display_name="Polar",
+            is_flagship=True,
             is_public=True,
         )
 

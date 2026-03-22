@@ -18,10 +18,6 @@ import logging
 
 from django.core.management.base import BaseCommand
 
-from apps.public.services.local_fixture_manifest import (
-    filter_repos_by_github_repo,
-    get_repos_for_orgs,
-)
 from apps.public.services.local_reconciliation import LocalReconciliationService
 
 logger = logging.getLogger(__name__)
@@ -85,19 +81,39 @@ class Command(BaseCommand):
         # Phase 0: Prerequisites
         service.validate_prerequisites()
 
-        # Phase 1: Resolve repos from manifest
-        repos = get_repos_for_orgs(org_slugs)
-        if repo_filters:
-            repos = filter_repos_by_github_repo(repos, repo_filters)
-            if not repos:
-                raise SystemExit(f"No repos matched filters: {repo_filters}. Check --repo values against manifest.")
-
-        # Phase 2: Validate org profiles and cache files
+        # Phase 1: Validate org profiles
         org_profiles = service.validate_org_profiles(org_slugs)
+
+        # Phase 1b: Resolve repos from DB (not manifest) — repos are now DB-driven
+        from apps.public.models import PublicRepoProfile
+
+        db_repo_profiles = PublicRepoProfile.objects.filter(
+            org_profile__in=org_profiles.values(),
+        ).select_related("org_profile", "team")
+
+        if repo_filters:
+            db_repo_profiles = db_repo_profiles.filter(github_repo__in=repo_filters)
+
+        repos = [
+            {
+                "org_slug": rp.org_profile.public_slug,
+                "github_repo": rp.github_repo,
+                "repo_slug": rp.repo_slug,
+                "is_flagship": rp.is_flagship,
+            }
+            for rp in db_repo_profiles
+        ]
+
+        if not repos:
+            raise SystemExit(
+                f"No repos found in DB for orgs: {org_slugs}. "
+                "Use bootstrap_public_repo_fixtures to create repo profiles first."
+            )
+
+        # Phase 2: Validate cache files
         if not options["allow_backup_fallback"]:
             service.validate_cache_files(repos)
         else:
-            # Warn about missing cache files but don't abort — DB-first mode
             service.warn_missing_cache_files(repos, self.stderr)
 
         mode = "DRY RUN" if dry_run else "APPLY"
@@ -108,11 +124,7 @@ class Command(BaseCommand):
         self.stdout.write(f"  Repos: {len(repos)}")
         self.stdout.write(f"{'=' * 60}\n")
 
-        # Phase 2b: Bootstrap repo profiles (idempotent)
-        if not dry_run:
-            service.bootstrap_repo_profiles(repos, org_profiles)
-
-        # Phase 3: Analyze each repo
+        # Phase 3: Analyze each repo (no bootstrap — that's bootstrap_public_repo_fixtures)
         for repo_info in repos:
             github_repo = repo_info["github_repo"]
             org_slug = repo_info["org_slug"]

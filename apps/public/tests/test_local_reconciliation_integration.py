@@ -101,6 +101,8 @@ class IntegrationDryRunTests(TestCase):
 
     @classmethod
     def setUpTestData(cls):
+        from apps.public.models import PublicRepoProfile
+
         cls.team = TeamFactory(slug="int-demo")
         cls.org_profile = PublicOrgProfile.objects.create(
             team=cls.team,
@@ -112,6 +114,16 @@ class IntegrationDryRunTests(TestCase):
         PublicOrgStats.objects.create(
             org_profile=cls.org_profile,
             total_prs=MIN_PRS_THRESHOLD + 10,
+        )
+        # Reconciliation now resolves repos from DB, not manifest
+        PublicRepoProfile.objects.create(
+            org_profile=cls.org_profile,
+            team=cls.team,
+            github_repo="integration-org/main-repo",
+            repo_slug="main-repo",
+            display_name="Main Repo",
+            is_flagship=True,
+            is_public=True,
         )
 
     @patch("apps.public.services.local_reconciliation.LocalReconciliationService.validate_prerequisites")
@@ -163,6 +175,8 @@ class IntegrationApplyTests(TestCase):
 
     @classmethod
     def setUpTestData(cls):
+        from apps.public.models import PublicRepoProfile
+
         cls.team = TeamFactory(slug="int-apply-demo")
         cls.org_profile = PublicOrgProfile.objects.create(
             team=cls.team,
@@ -174,6 +188,16 @@ class IntegrationApplyTests(TestCase):
         PublicOrgStats.objects.create(
             org_profile=cls.org_profile,
             total_prs=MIN_PRS_THRESHOLD + 10,
+        )
+        # Reconciliation now resolves repos from DB, not manifest
+        PublicRepoProfile.objects.create(
+            org_profile=cls.org_profile,
+            team=cls.team,
+            github_repo="integration-org/main-repo",
+            repo_slug="main-repo",
+            display_name="Main Repo",
+            is_flagship=True,
+            is_public=True,
         )
 
     @patch("apps.public.services.local_reconciliation.LocalReconciliationService.validate_prerequisites")
@@ -226,6 +250,8 @@ class IntegrationIdempotencyTests(TestCase):
 
     @classmethod
     def setUpTestData(cls):
+        from apps.public.models import PublicRepoProfile
+
         cls.team = TeamFactory(slug="int-idem-demo")
         cls.org_profile = PublicOrgProfile.objects.create(
             team=cls.team,
@@ -237,6 +263,16 @@ class IntegrationIdempotencyTests(TestCase):
         PublicOrgStats.objects.create(
             org_profile=cls.org_profile,
             total_prs=MIN_PRS_THRESHOLD + 10,
+        )
+        # Reconciliation now resolves repos from DB, not manifest
+        PublicRepoProfile.objects.create(
+            org_profile=cls.org_profile,
+            team=cls.team,
+            github_repo="integration-org/main-repo",
+            repo_slug="main-repo",
+            display_name="Main Repo",
+            is_flagship=True,
+            is_public=True,
         )
 
     @patch("apps.public.services.local_reconciliation.LocalReconciliationService.validate_prerequisites")
