@@ -7,18 +7,48 @@ Do NOT modify without updating tests and documentation.
 FIXTURE_MANIFEST = {
     "polar": {
         "repos": [
-            {"github_repo": "polarsource/polar", "repo_slug": "polar", "is_flagship": True},
-            {"github_repo": "polarsource/polar-adapters", "repo_slug": "polar-adapters", "is_flagship": False},
-            {"github_repo": "polarsource/polar-js", "repo_slug": "polar-js", "is_flagship": False},
-            {"github_repo": "polarsource/polar-python", "repo_slug": "polar-python", "is_flagship": False},
+            {"github_repo": "polarsource/polar", "repo_slug": "polar", "is_flagship": True, "display_name": "Polar"},
+            {
+                "github_repo": "polarsource/polar-adapters",
+                "repo_slug": "polar-adapters",
+                "is_flagship": False,
+                "display_name": "Polar Adapters",
+            },
+            {
+                "github_repo": "polarsource/polar-js",
+                "repo_slug": "polar-js",
+                "is_flagship": False,
+                "display_name": "Polar JS",
+            },
+            {
+                "github_repo": "polarsource/polar-python",
+                "repo_slug": "polar-python",
+                "is_flagship": False,
+                "display_name": "Polar Python",
+            },
         ],
     },
     "posthog": {
         "repos": [
-            {"github_repo": "PostHog/posthog", "repo_slug": "posthog", "is_flagship": True},
-            {"github_repo": "PostHog/posthog.com", "repo_slug": "posthog-com", "is_flagship": False},
-            {"github_repo": "PostHog/posthog-js", "repo_slug": "posthog-js", "is_flagship": False},
-            {"github_repo": "PostHog/posthog-python", "repo_slug": "posthog-python", "is_flagship": False},
+            {"github_repo": "PostHog/posthog", "repo_slug": "posthog", "is_flagship": True, "display_name": "PostHog"},
+            {
+                "github_repo": "PostHog/posthog.com",
+                "repo_slug": "posthog-com",
+                "is_flagship": False,
+                "display_name": "PostHog.com",
+            },
+            {
+                "github_repo": "PostHog/posthog-js",
+                "repo_slug": "posthog-js",
+                "is_flagship": False,
+                "display_name": "PostHog JS",
+            },
+            {
+                "github_repo": "PostHog/posthog-python",
+                "repo_slug": "posthog-python",
+                "is_flagship": False,
+                "display_name": "PostHog Python",
+            },
         ],
     },
 }

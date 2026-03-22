@@ -62,7 +62,7 @@ class Command(BaseCommand):
             defaults = {
                 "team": org_profile.team,
                 "github_repo": repo_info["github_repo"],
-                "display_name": repo_info["repo_slug"].replace("-", " ").title(),
+                "display_name": repo_info.get("display_name", repo_info["repo_slug"].replace("-", " ").title()),
                 "is_flagship": repo_info["is_flagship"],
                 "is_public": True,
             }
