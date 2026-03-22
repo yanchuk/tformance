@@ -75,6 +75,16 @@ class PublicOrgProfile(BaseModel):
         return self.display_name
 
     @property
+    def avatar_url(self):
+        """Return logo_url if set, else derive from github_org_url."""
+        if self.logo_url:
+            return self.logo_url
+        if self.github_org_url:
+            org_name = self.github_org_url.rstrip("/").split("/")[-1]
+            return f"https://github.com/{org_name}.png?size=160"
+        return f"https://github.com/{self.public_slug}.png?size=160"
+
+    @property
     def has_sufficient_data(self):
         """Return True when org has enough PR data for public pages."""
         try:
@@ -191,6 +201,23 @@ class PublicRepoProfile(BaseModel):
         db_index=True,
         help_text="Whether this repo appears on public pages",
     )
+    sync_enabled = models.BooleanField(
+        default=True,
+        db_index=True,
+        help_text="Whether future syncs run for this repo",
+    )
+    insights_enabled = models.BooleanField(
+        default=False,
+        help_text="Whether weekly LLM insights are generated",
+    )
+    initial_backfill_days = models.PositiveIntegerField(
+        default=180,
+        help_text="Days of history to backfill on first sync",
+    )
+    display_order = models.IntegerField(
+        default=0,
+        help_text="Sort order in listings (lower = first)",
+    )
 
     class Meta:
         verbose_name = "Public Repo Profile"
@@ -199,6 +226,55 @@ class PublicRepoProfile(BaseModel):
 
     def __str__(self):
         return self.display_name
+
+    def save(self, *args, **kwargs):
+        # Team derivation: always sync from org_profile
+        if self.org_profile_id:
+            self.team = self.org_profile.team
+        is_new = self._state.adding
+        super().save(*args, **kwargs)
+        # Auto-create sync state for new profiles
+        if is_new:
+            PublicRepoSyncState.objects.get_or_create(repo_profile=self)
+
+
+SYNC_STATUS_CHOICES = [
+    ("pending_backfill", "Pending Backfill"),
+    ("ready", "Ready"),
+    ("syncing", "Syncing"),
+    ("failed", "Failed"),
+]
+
+
+class PublicRepoSyncState(BaseModel):
+    """Tracks sync lifecycle for a public repository.
+
+    Created automatically when a PublicRepoProfile is saved for the first time.
+    """
+
+    repo_profile = models.OneToOneField(
+        PublicRepoProfile,
+        on_delete=models.CASCADE,
+        related_name="sync_state",
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=SYNC_STATUS_CHOICES,
+        default="pending_backfill",
+    )
+    last_successful_sync_at = models.DateTimeField(null=True, blank=True)
+    last_attempted_sync_at = models.DateTimeField(null=True, blank=True)
+    last_synced_updated_at = models.DateTimeField(null=True, blank=True)
+    checkpoint_payload = models.JSONField(default=dict, blank=True)
+    last_error = models.TextField(blank=True, default="")
+    last_backfill_completed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Public Repo Sync State"
+        verbose_name_plural = "Public Repo Sync States"
+
+    def __str__(self):
+        return f"SyncState for {self.repo_profile.display_name} ({self.status})"
 
 
 class PublicRepoStats(BaseModel):

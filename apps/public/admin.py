@@ -7,6 +7,7 @@ from .models import (
     PublicRepoProfile,
     PublicRepoRequest,
     PublicRepoStats,
+    PublicRepoSyncState,
 )
 
 
@@ -33,10 +34,46 @@ class PublicOrgStatsAdmin(admin.ModelAdmin):
 
 @admin.register(PublicRepoProfile)
 class PublicRepoProfileAdmin(admin.ModelAdmin):
-    list_display = ("display_name", "repo_slug", "org_profile", "is_flagship", "is_public")
-    list_filter = ("is_flagship", "is_public")
+    list_display = (
+        "display_name",
+        "repo_slug",
+        "org_profile",
+        "is_flagship",
+        "is_public",
+        "sync_enabled",
+        "insights_enabled",
+        "display_order",
+    )
+    list_filter = ("is_flagship", "is_public", "sync_enabled", "insights_enabled")
     search_fields = ("display_name", "repo_slug", "github_repo")
-    readonly_fields = ("created_at", "updated_at")
+    readonly_fields = ("created_at", "updated_at", "team")
+
+    def get_readonly_fields(self, request, obj=None):
+        readonly = list(super().get_readonly_fields(request, obj))
+        if obj is not None:
+            try:
+                sync_state = obj.sync_state
+                if sync_state.status != "pending_backfill":
+                    readonly.extend(["repo_slug", "github_repo"])
+            except PublicRepoSyncState.DoesNotExist:
+                pass  # pre-migration data: keep editable
+        return readonly
+
+
+@admin.register(PublicRepoSyncState)
+class PublicRepoSyncStateAdmin(admin.ModelAdmin):
+    list_display = ("repo_profile", "status", "last_successful_sync_at", "last_attempted_sync_at")
+    list_filter = ("status",)
+    readonly_fields = (
+        "created_at",
+        "updated_at",
+        "last_successful_sync_at",
+        "last_attempted_sync_at",
+        "last_synced_updated_at",
+        "last_backfill_completed_at",
+        "checkpoint_payload",
+        "last_error",
+    )
 
 
 @admin.register(PublicRepoStats)
