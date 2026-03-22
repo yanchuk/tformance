@@ -11,9 +11,12 @@ See: https://docs.github.com/en/rest/using-the-rest-api/best-practices-for-using
 """
 
 import json
+import logging
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -137,3 +140,79 @@ class PRCache:
 
         # Return cache_dir / org / f"{name}.json"
         return cache_dir / org / f"{name}.json"
+
+
+def deserialize_cache_prs(data: list[dict]) -> list:
+    """Deserialize cached PR dicts to FetchedPRFull objects.
+
+    Standalone version of GitHubGraphQLFetcher._deserialize_prs, extracted
+    so reconciliation can load cache without instantiating a fetcher.
+
+    Per-PR error isolation: one bad entry doesn't block the rest.
+
+    Returns:
+        Tuple of (list[FetchedPRFull], skipped_count)
+    """
+    from .github_authenticated_fetcher import (
+        FetchedCheckRun,
+        FetchedCommit,
+        FetchedFile,
+        FetchedPRFull,
+        FetchedReview,
+    )
+
+    prs = []
+    skipped = 0
+
+    for pr_dict in data:
+        try:
+            # Work on a copy to avoid mutating the original
+            pr_data = dict(pr_dict)
+
+            # Parse datetime fields
+            for dt_field in ["created_at", "updated_at", "merged_at", "closed_at", "first_review_at"]:
+                if pr_data.get(dt_field):
+                    pr_data[dt_field] = datetime.fromisoformat(pr_data[dt_field])
+
+            # Parse nested reviews
+            reviews = []
+            for review_data in pr_data.get("reviews", []):
+                review_data = dict(review_data)
+                if review_data.get("submitted_at"):
+                    review_data["submitted_at"] = datetime.fromisoformat(review_data["submitted_at"])
+                reviews.append(FetchedReview(**review_data))
+            pr_data["reviews"] = reviews
+
+            # Parse nested commits
+            commits = []
+            for commit_data in pr_data.get("commits", []):
+                commit_data = dict(commit_data)
+                if commit_data.get("committed_at"):
+                    commit_data["committed_at"] = datetime.fromisoformat(commit_data["committed_at"])
+                commits.append(FetchedCommit(**commit_data))
+            pr_data["commits"] = commits
+
+            # Parse nested files (no datetime mutation needed, skip dict copy)
+            files = []
+            for file_data in pr_data.get("files", []):
+                files.append(FetchedFile(**file_data))
+            pr_data["files"] = files
+
+            # Parse nested check_runs
+            check_runs = []
+            for check_run_data in pr_data.get("check_runs", []):
+                check_run_data = dict(check_run_data)
+                if check_run_data.get("started_at"):
+                    check_run_data["started_at"] = datetime.fromisoformat(check_run_data["started_at"])
+                if check_run_data.get("completed_at"):
+                    check_run_data["completed_at"] = datetime.fromisoformat(check_run_data["completed_at"])
+                check_runs.append(FetchedCheckRun(**check_run_data))
+            pr_data["check_runs"] = check_runs
+
+            prs.append(FetchedPRFull(**pr_data))
+        except Exception:
+            skipped += 1
+            pr_id = pr_dict.get("github_pr_id", "unknown")
+            logger.warning(f"Failed to deserialize cache PR {pr_id}", exc_info=True)
+
+    return prs, skipped
