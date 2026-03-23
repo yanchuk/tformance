@@ -4,14 +4,14 @@
 {% block body %}
 
 <!-- Hero Section -->
-{% include "web/components/feature_page_hero.html" with badge="Analytics Deep Dive" headline="See what matters. Ignore what doesn't." subhead="Cycle time, AI adoption, quality, team load. Drill down or zoom out." %}
+{% include "web/components/feature_page_hero.html" with badge="Analytics Deep Dive" headline="Find delivery bottlenecks before they become status updates" subhead="Cycle time, review load, PR flow, and trend changes from GitHub. Use AI-related signals as a secondary lens." %}
 
 <!-- Quick Nav for Analytics Sections -->
 <nav class="sticky top-0 z-40 bg-base-100/95 backdrop-blur border-b border-base-300 py-3 hidden md:block">
   <div class="max-w-6xl mx-auto px-4">
     <ul class="flex items-center gap-6 text-sm overflow-x-auto">
       <li><a href="#overview" class="text-base-content/70 hover:text-primary transition-colors">Overview</a></li>
-      <li><a href="#ai-adoption" class="text-base-content/70 hover:text-primary transition-colors">AI Adoption</a></li>
+      <li><a href="#ai-adoption" class="text-base-content/70 hover:text-primary transition-colors">AI Signals</a></li>
       <li><a href="#delivery" class="text-base-content/70 hover:text-primary transition-colors">Delivery</a></li>
       <li><a href="#quality" class="text-base-content/70 hover:text-primary transition-colors">Quality</a></li>
       <li><a href="#team" class="text-base-content/70 hover:text-primary transition-colors">Team</a></li>
@@ -71,32 +71,32 @@
       </div>
       <div class="order-1 md:order-2">
         <span class="inline-block px-3 py-1 text-xs font-mono text-primary bg-primary/10 rounded-full mb-4">
-          AI Adoption
+          AI Signals
         </span>
         <h2 class="text-2xl md:text-3xl font-bold text-base-content mb-4">
-          Is AI actually helping?
+          Use AI as one lens, not the whole story
         </h2>
         <p class="text-base-content/70 text-lg mb-6">
-          Compare AI vs traditional PRs side-by-side. See adoption % by team member and which tools they use.
+          Compare delivery outcomes for work with and without AI-related signals. See whether review time and flow improve as the signal mix changes.
         </p>
         <ul class="space-y-3 mb-6">
           <li class="flex items-start gap-3">
             <svg class="w-5 h-5 text-success mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
             </svg>
-            <span class="text-base-content/80">AI vs traditional cycle time comparison</span>
+            <span class="text-base-content/80">Cycle time and review-time comparison against the baseline</span>
           </li>
           <li class="flex items-start gap-3">
             <svg class="w-5 h-5 text-success mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
             </svg>
-            <span class="text-base-content/80">Per-developer adoption breakdown</span>
+            <span class="text-base-content/80">Signal share trends by repo and over time</span>
           </li>
           <li class="flex items-start gap-3">
             <svg class="w-5 h-5 text-success mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
             </svg>
-            <span class="text-base-content/80">Tool detection: Copilot, Cursor, Claude</span>
+            <span class="text-base-content/80">AI-related signals used as supporting context, not ground truth</span>
           </li>
         </ul>
       </div>
@@ -158,10 +158,10 @@
           Quality
         </span>
         <h2 class="text-2xl md:text-3xl font-bold text-base-content mb-4">
-          Find problems before users do
+          Catch quality drift before it becomes rework
         </h2>
         <p class="text-base-content/70 text-lg mb-6">
-          Track revert rate, CI pass rate, and review rounds. Spot quality trends before they become incidents.
+          Track review rounds, revert patterns, and large-PR risk. See where quality problems start instead of learning from the incident report.
         </p>
         <ul class="space-y-3 mb-6">
           <li class="flex items-start gap-3">
@@ -180,7 +180,7 @@
             <svg class="w-5 h-5 text-success mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
             </svg>
-            <span class="text-base-content/80">AI vs traditional quality comparison</span>
+            <span class="text-base-content/80">Large PR and rework patterns</span>
           </li>
         </ul>
       </div>
@@ -200,14 +200,14 @@
           Balance the load
         </h2>
         <p class="text-base-content/70 text-lg mb-6">
-          See reviewer workload distribution. Identify who's overloaded before burnout hits.
+          See reviewer workload distribution and contributor flow without turning the dashboard into a leaderboard.
         </p>
         <ul class="space-y-3 mb-6">
           <li class="flex items-start gap-3">
             <svg class="w-5 h-5 text-success mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
             </svg>
-            <span class="text-base-content/80">Per-developer PR throughput</span>
+            <span class="text-base-content/80">Contributor throughput patterns</span>
           </li>
           <li class="flex items-start gap-3">
             <svg class="w-5 h-5 text-success mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -219,7 +219,7 @@
             <svg class="w-5 h-5 text-success mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
             </svg>
-            <span class="text-base-content/80">AI tool adoption by team member</span>
+            <span class="text-base-content/80">Team-level flow trends without surveillance framing</span>
           </li>
         </ul>
       </div>
@@ -245,7 +245,7 @@
           Patterns over months, not days
         </h2>
         <p class="text-base-content/70 text-lg mb-6">
-          12-month rolling view. Compare metrics year-over-year. Spot seasonal patterns.
+          12-month rolling view. Compare delivery metrics year over year and use AI-related signals to test whether outcomes move with adoption.
         </p>
         <ul class="space-y-3 mb-6">
           <li class="flex items-start gap-3">
@@ -258,7 +258,7 @@
             <svg class="w-5 h-5 text-success mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
             </svg>
-            <span class="text-base-content/80">AI adoption growth over time</span>
+            <span class="text-base-content/80">AI-related signal share over time</span>
           </li>
           <li class="flex items-start gap-3">
             <svg class="w-5 h-5 text-success mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">

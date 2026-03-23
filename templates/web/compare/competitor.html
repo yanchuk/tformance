@@ -46,13 +46,9 @@
     <p class="text-lg text-base-content/80 mb-6">
       {{ competitor.our_angle }}
     </p>
-    <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-warning/20 text-warning text-sm mb-8">
-      <span class="font-medium">Alpha</span>
-      <span class="text-warning/80">We're building fast. Some features {{ competitor.name }} has, we're adding.</span>
-    </div>
     <div class="flex flex-col sm:flex-row gap-4 justify-center">
       <a href="{% url 'account_signup' %}" class="btn btn-primary">Start Free Trial</a>
-      <a href="/" class="btn btn-outline">See How It Works</a>
+      <a href="{% url 'public:directory' %}" class="btn btn-outline">Open Source Benchmarks</a>
     </div>
   </div>
 </section>
@@ -88,12 +84,12 @@
         </thead>
         <tbody>
           <tr>
-            <td class="font-medium">AI Code Detection</td>
-            <td class="text-center"><span class="text-success">&#10003; Automatic</span></td>
+            <td class="font-medium">Cycle time and review visibility</td>
+            <td class="text-center"><span class="text-success">&#10003; Direct from PR flow</span></td>
             <td class="text-center">
-              {% if competitor.features.ai_code_detection == True %}
+              {% if competitor.features.dora_metrics == True %}
               <span class="text-success">&#10003;</span>
-              {% elif competitor.features.ai_code_detection == 'partial' %}
+              {% elif competitor.features.dora_metrics == 'partial' %}
               <span class="text-warning">Partial</span>
               {% else %}
               <span class="text-base-content/40">&#10005;</span>
@@ -101,33 +97,33 @@
             </td>
           </tr>
           <tr>
-            <td class="font-medium">GitHub Integration</td>
+            <td class="font-medium">PR flow and bottleneck insight</td>
+            <td class="text-center"><span class="text-success">&#10003;</span></td>
+            <td class="text-center">
+              {% if competitor.features.pr_insights %}<span class="text-success">&#10003;</span>{% else %}<span class="text-base-content/40">&#10005;</span>{% endif %}
+            </td>
+          </tr>
+          <tr>
+            <td class="font-medium">GitHub-first setup</td>
             <td class="text-center"><span class="text-success">&#10003;</span></td>
             <td class="text-center">
               {% if competitor.features.github %}<span class="text-success">&#10003;</span>{% else %}<span class="text-base-content/40">&#10005;</span>{% endif %}
             </td>
           </tr>
           <tr>
-            <td class="font-medium">Jira Integration</td>
-            <td class="text-center"><span class="text-warning">Coming Soon</span></td>
+            <td class="font-medium">Trend and team-level visibility</td>
+            <td class="text-center"><span class="text-success">Focused</span></td>
             <td class="text-center">
-              {% if competitor.features.jira %}<span class="text-success">&#10003;</span>{% else %}<span class="text-base-content/40">&#10005;</span>{% endif %}
-            </td>
-          </tr>
-          <tr>
-            <td class="font-medium">DORA Metrics</td>
-            <td class="text-center"><span class="text-warning">Partial (cycle time)</span></td>
-            <td class="text-center">
-              {% if competitor.features.dora_metrics == True %}<span class="text-success">&#10003; Full</span>
+              {% if competitor.features.pr_insights or competitor.features.developer_surveys %}<span class="text-success">&#10003; Available</span>
               {% elif competitor.features.dora_metrics == 'partial' %}<span class="text-warning">Partial</span>
               {% else %}<span class="text-base-content/40">&#10005;</span>{% endif %}
             </td>
           </tr>
           <tr>
-            <td class="font-medium">Developer Surveys</td>
-            <td class="text-center"><span class="text-warning">Coming Soon</span></td>
+            <td class="font-medium">AI-related correlation</td>
+            <td class="text-center"><span class="text-success">&#10003; Secondary lens</span></td>
             <td class="text-center">
-              {% if competitor.features.developer_surveys %}<span class="text-success">&#10003;</span>{% else %}<span class="text-base-content/40">&#10005;</span>{% endif %}
+              {% if competitor.features.ai_usage_correlation or competitor.features.ai_code_detection %}<span class="text-success">&#10003;</span>{% else %}<span class="text-base-content/40">&#10005;</span>{% endif %}
             </td>
           </tr>
           <tr>
@@ -158,7 +154,7 @@
       </ul>
     </div>
     <div class="bg-primary/10 rounded-xl p-6">
-      <h3 class="font-semibold mb-4 text-primary">Choose Tformance if:</h3>
+      <h3 class="font-semibold mb-4 text-primary">Choose Tformance if you want delivery visibility:</h3>
       <ul class="space-y-2">
         {% for advantage in competitor.our_advantages %}
         <li class="flex items-start gap-2">
@@ -255,7 +251,7 @@
   <div class="max-w-2xl mx-auto px-4 text-center">
     <h2 class="text-2xl font-bold text-base-content mb-4">See the difference yourself</h2>
     <p class="text-base-content/80 mb-8">
-      30 days free. No card. No calls.
+      Compare the tradeoffs, then inspect the public proof surfaces.
     </p>
     <div class="flex flex-col sm:flex-row gap-4 justify-center">
       <a href="{% url 'account_signup' %}" class="btn btn-primary">Start Free Trial</a>

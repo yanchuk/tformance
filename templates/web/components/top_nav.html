@@ -51,7 +51,7 @@
         <li>
           <a @click="open = false" href="{% url 'web:features_analytics' %}#ai-adoption">
             <i class="fa-solid fa-robot fa-fw text-primary"></i>
-            AI Adoption
+            AI Signals
           </a>
         </li>
         <li>
@@ -97,6 +97,12 @@
           <a @click="open = false" href="{% url 'web:compare' %}">
             <i class="fa-solid fa-code-compare fa-fw text-primary"></i>
             Compare Tools
+          </a>
+        </li>
+        <li>
+          <a @click="open = false" href="{% url 'public:directory' %}">
+            <i class="fa-solid fa-chart-column fa-fw text-primary"></i>
+            Open Source Benchmarks
           </a>
         </li>
         <li class="menu-title text-xs pt-2">Resources</li>
@@ -200,9 +206,9 @@
                    class="block py-1.5 hover:bg-base-200 rounded-lg px-2 -mx-2 transition-colors">
                   <span class="flex items-center gap-2 text-sm text-base-content">
                     <i class="fa-solid fa-robot fa-fw text-primary text-sm"></i>
-                    AI Adoption
+                    AI Signals
                   </span>
-                  <span class="text-xs text-base-content/50 ml-6">AI vs traditional</span>
+                  <span class="text-xs text-base-content/50 ml-6">delivery correlation</span>
                 </a>
                 <a href="{% url 'web:features_analytics' %}#delivery" role="menuitem"
                    class="block py-1.5 hover:bg-base-200 rounded-lg px-2 -mx-2 transition-colors">
@@ -274,6 +280,10 @@
 
       <a class="btn btn-ghost btn-sm {% if '/pricing/' in request.path %}font-bold{% endif %}" href="{% url 'web:pricing' %}">
         Pricing
+      </a>
+
+      <a class="btn btn-ghost btn-sm {% if '/open-source/' in request.path %}font-bold{% endif %}" href="{% url 'public:directory' %}">
+        Open Source Benchmarks
       </a>
 
       {% if blog_url %}

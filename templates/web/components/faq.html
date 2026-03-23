@@ -22,7 +22,7 @@
         </button>
         <div x-show="open === 1" x-transition class="px-4 pb-4">
           <p class="text-base-content/90">
-            You shouldn't—yet. That's why it's free. Direct access to me, fast iteration on your feedback, zero corporate overhead. 5 minutes to try, nothing to lose.
+            Verify it quickly. Connect GitHub, inspect the raw pull-request data, and decide whether the trends match what your team already feels. The product should earn trust from the data, not from a pitch.
           </p>
         </div>
       </div>
@@ -31,14 +31,14 @@
       <div class="bg-base-200 rounded-xl border border-base-300 overflow-hidden">
         <button @click="open = open === 2 ? null : 2"
                 class="w-full p-4 text-left flex items-center justify-between hover:bg-base-300/50 transition-colors">
-          <span class="font-semibold text-base-content">Are you actually technical enough to build this?</span>
+          <span class="font-semibold text-base-content">How focused is the product today?</span>
           <svg class="w-5 h-5 text-base-content/80 transition-transform" :class="{ 'rotate-180': open === 2 }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
           </svg>
         </button>
         <div x-show="open === 2" x-transition class="px-4 pb-4">
           <p class="text-base-content/90">
-            I code, but I know others are better at it. With AI I can prototype fast. Security audits when I can afford them. Looking for a co-founder to own the tech side.
+            Very focused. Tformance is built around GitHub-first delivery visibility: cycle time, review load, PR flow, trends, and AI-related signals as a secondary lens. We keep the scope narrow so setup stays fast and the metrics stay legible.
           </p>
         </div>
       </div>
@@ -54,7 +54,7 @@
         </button>
         <div x-show="open === 3" x-transition class="px-4 pb-4">
           <p class="text-base-content/90">
-            Try both. Then tell me what I'm missing or need to add. Vote on features in GitHub Discussions. Your feedback shapes what I build next.
+            If you need heavy workflow automation or enterprise finance reporting, use the tool built for that. If you want delivery visibility for a 15-75 developer team without enterprise sprawl, Tformance is a much faster way to get answers.
           </p>
         </div>
       </div>
@@ -70,7 +70,7 @@
         </button>
         <div x-show="open === 4" x-transition class="px-4 pb-4">
           <p class="text-base-content/90">
-            Honest feedback. Tell me what sucks. Tell your CTO friends if it helps. Zero pressure until you decide it's worth it.
+            Straight feedback on whether the metrics help you act. Which views clarify delivery? Which charts are noise? What should be simpler? That is the feedback that improves the product fastest.
           </p>
         </div>
       </div>
@@ -86,7 +86,7 @@
         </button>
         <div x-show="open === 5" x-transition class="px-4 pb-4">
           <p class="text-base-content/90">
-            We detect AI-assisted PRs through LLM analysis and pattern matching. You see which PRs used AI, cycle time comparisons, and adoption by team member. Coming soon: Copilot metrics and Jira correlation.
+            We treat AI-related metrics as directional signals, not perfect truth. The direct metrics are cycle time, review time, PR flow, and throughput. AI-related signals help you test whether those outcomes improve or worsen as usage changes.
           </p>
         </div>
       </div>
@@ -102,7 +102,7 @@
         </button>
         <div x-show="open === 6" x-transition class="px-4 pb-4">
           <p class="text-base-content/90">
-            Live: GitHub integration, PR metrics, AI detection, team dashboards. Coming soon: Copilot metrics API, Jira integration, Slack surveys. We ship weekly.
+            Live now: GitHub integration, pull-request metrics, cycle time, review load, team-level trends, and public benchmarks. Coming next: Jira context, Slack summaries, and deeper team health signals.
           </p>
         </div>
       </div>

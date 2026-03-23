@@ -66,7 +66,7 @@ class TestFeaturePageContent:
     def test_analytics_page_has_hero_headline(self, client):
         """Analytics page should have the correct hero headline."""
         response = client.get("/features/analytics/")
-        assert b"See what matters. Ignore what doesn" in response.content
+        assert b"Find delivery bottlenecks before they become status updates" in response.content
 
     def test_pr_explorer_page_has_hero_headline(self, client):
         """PR Explorer page should have the correct hero headline."""
@@ -83,6 +83,13 @@ class TestFeaturePageContent:
         assert 'id="quality"' in content
         assert 'id="team"' in content
         assert 'id="trends"' in content
+
+    def test_analytics_page_avoids_surveillance_and_detection_led_copy(self, client):
+        response = client.get("/features/analytics/")
+        content = response.content.decode()
+        assert "Per-developer adoption breakdown" not in content
+        assert "AI tool adoption by team member" not in content
+        assert "Tool detection: Copilot, Cursor, Claude" not in content
 
 
 @pytest.mark.django_db

@@ -10,7 +10,7 @@
   "@context": "https://schema.org",
   "@type": "Product",
   "name": "Tformance",
-  "description": "AI Impact Analytics for Engineering Teams",
+  "description": "Delivery visibility for GitHub-first engineering teams",
   "brand": {
     "@type": "Brand",
     "name": "Tformance"
@@ -31,15 +31,11 @@
 <section class="bg-base-200 py-16 md:py-24">
   <div class="max-w-5xl mx-auto px-4 text-center">
     <h1 class="text-3xl md:text-4xl font-bold text-base-content mb-4">
-      Honest comparisons. We'll tell you when to pick them.
+      Compare engineering analytics tools without the enterprise spin
     </h1>
     <p class="text-lg text-base-content/80 mb-6 max-w-2xl mx-auto">
-      Real pricing. No spin. We acknowledge where competitors are ahead.
+      Real pricing. Clear tradeoffs. See which tool fits a 15-75 developer team that needs delivery visibility, not enterprise sprawl.
     </p>
-    <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-warning/20 text-warning text-sm">
-      <span class="font-medium">Alpha</span>
-      <span class="text-warning/80">Building fast. Some gaps remain.</span>
-    </div>
   </div>
 </section>
 
@@ -50,9 +46,9 @@
     <strong>We're built for teams of 15-75 developers.</strong>
   </p>
   <p class="text-lg text-base-content mt-4">
-    <strong>Understand your team's velocity. See if AI tools help.</strong>
+    <strong>Tformance focuses on delivery visibility first: cycle time, review bottlenecks, PR flow, and trend clarity.</strong>
   </p>
-  <p class="text-base-content/70 mt-4">Here's how we stack up—honestly.</p>
+  <p class="text-base-content/70 mt-4">AI-related signals still matter, but as one analytical lens rather than the whole product category.</p>
 </section>
 
 {# Competitor Grid #}
@@ -95,60 +91,9 @@
         </tr>
       </thead>
       <tbody>
-        {# AI Detection #}
         <tr>
-          <td class="font-medium">AI Code Detection</td>
+          <td class="font-medium">Cycle time and review visibility</td>
           <td class="text-center"><span class="text-success">&#10003;</span></td>
-          {% for slug, comp in competitors.items %}
-          {% if comp.priority == 'high' %}
-          <td class="text-center">
-            {% if comp.features.ai_code_detection == True %}
-            <span class="text-success">&#10003;</span>
-            {% elif comp.features.ai_code_detection == 'partial' %}
-            <span class="text-warning">&#9680;</span>
-            {% else %}
-            <span class="text-base-content/40">&#10005;</span>
-            {% endif %}
-          </td>
-          {% endif %}
-          {% endfor %}
-        </tr>
-        {# GitHub #}
-        <tr>
-          <td class="font-medium">GitHub Integration</td>
-          <td class="text-center"><span class="text-success">&#10003;</span></td>
-          {% for slug, comp in competitors.items %}
-          {% if comp.priority == 'high' %}
-          <td class="text-center">
-            {% if comp.features.github %}
-            <span class="text-success">&#10003;</span>
-            {% else %}
-            <span class="text-base-content/40">&#10005;</span>
-            {% endif %}
-          </td>
-          {% endif %}
-          {% endfor %}
-        </tr>
-        {# Jira #}
-        <tr>
-          <td class="font-medium">Jira Integration</td>
-          <td class="text-center"><span class="text-warning">Soon</span></td>
-          {% for slug, comp in competitors.items %}
-          {% if comp.priority == 'high' %}
-          <td class="text-center">
-            {% if comp.features.jira %}
-            <span class="text-success">&#10003;</span>
-            {% else %}
-            <span class="text-base-content/40">&#10005;</span>
-            {% endif %}
-          </td>
-          {% endif %}
-          {% endfor %}
-        </tr>
-        {# DORA #}
-        <tr>
-          <td class="font-medium">DORA Metrics</td>
-          <td class="text-center"><span class="text-warning">Partial</span></td>
           {% for slug, comp in competitors.items %}
           {% if comp.priority == 'high' %}
           <td class="text-center">
@@ -163,14 +108,60 @@
           {% endif %}
           {% endfor %}
         </tr>
-        {# Surveys #}
         <tr>
-          <td class="font-medium">Developer Surveys</td>
-          <td class="text-center"><span class="text-warning">Soon</span></td>
+          <td class="font-medium">PR flow and bottleneck insight</td>
+          <td class="text-center"><span class="text-success">&#10003;</span></td>
           {% for slug, comp in competitors.items %}
           {% if comp.priority == 'high' %}
           <td class="text-center">
-            {% if comp.features.developer_surveys %}
+            {% if comp.features.pr_insights %}
+            <span class="text-success">&#10003;</span>
+            {% else %}
+            <span class="text-base-content/40">&#10005;</span>
+            {% endif %}
+          </td>
+          {% endif %}
+          {% endfor %}
+        </tr>
+        <tr>
+          <td class="font-medium">GitHub-first setup</td>
+          <td class="text-center"><span class="text-success">&#10003;</span></td>
+          {% for slug, comp in competitors.items %}
+          {% if comp.priority == 'high' %}
+          <td class="text-center">
+            {% if comp.features.github %}
+            <span class="text-success">&#10003;</span>
+            {% else %}
+            <span class="text-base-content/40">&#10005;</span>
+            {% endif %}
+          </td>
+          {% endif %}
+          {% endfor %}
+        </tr>
+        <tr>
+          <td class="font-medium">Trend and team-level visibility</td>
+          <td class="text-center"><span class="text-warning">Partial</span></td>
+          {% for slug, comp in competitors.items %}
+          {% if comp.priority == 'high' %}
+          <td class="text-center">
+            {% if comp.features.pr_insights or comp.features.developer_surveys %}
+            <span class="text-success">&#10003;</span>
+            {% elif comp.features.dora_metrics == 'partial' %}
+            <span class="text-warning">&#9680;</span>
+            {% else %}
+            <span class="text-base-content/40">&#10005;</span>
+            {% endif %}
+          </td>
+          {% endif %}
+          {% endfor %}
+        </tr>
+        <tr>
+          <td class="font-medium">AI-related correlation</td>
+          <td class="text-center"><span class="text-success">&#10003;</span></td>
+          {% for slug, comp in competitors.items %}
+          {% if comp.priority == 'high' %}
+          <td class="text-center">
+            {% if comp.features.ai_usage_correlation or comp.features.ai_code_detection %}
             <span class="text-success">&#10003;</span>
             {% else %}
             <span class="text-base-content/40">&#10005;</span>
@@ -247,10 +238,9 @@
 
   <div class="grid md:grid-cols-2 gap-8">
     <div>
-      <h3 class="text-lg font-semibold mb-3 text-primary">AI Impact Measurement</h3>
+      <h3 class="text-lg font-semibold mb-3 text-primary">Delivery visibility first</h3>
       <p class="text-base-content/80">
-        We track how AI tools affect your delivery. GitHub Copilot, Cursor, Claude&mdash;we detect usage
-        and correlate with metrics.
+        We help smaller engineering teams understand cycle time, review bottlenecks, workload, and trend changes from GitHub. AI-related signals are useful context, not the whole category.
       </p>
     </div>
     <div>
@@ -268,13 +258,13 @@
 {# CTA #}
 <section class="py-16 bg-primary/10">
   <div class="max-w-2xl mx-auto px-4 text-center">
-    <h2 class="text-2xl font-bold text-base-content mb-4">See for yourself</h2>
+    <h2 class="text-2xl font-bold text-base-content mb-4">See the proof before you sign up</h2>
     <p class="text-base-content/80 mb-8">
-      30 days free. 5-minute setup. No calls.
+      Compare the tools, then inspect the public benchmark surfaces.
     </p>
     <div class="flex flex-col sm:flex-row gap-4 justify-center">
       <a href="{% url 'account_signup' %}" class="btn btn-primary">Start Free Trial</a>
-      <a href="/" class="btn btn-outline">Learn More</a>
+      <a href="{% url 'public:directory' %}" class="btn btn-outline">Open Source Benchmarks</a>
     </div>
   </div>
 </section>
