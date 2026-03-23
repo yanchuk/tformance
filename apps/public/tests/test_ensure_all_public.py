@@ -62,3 +62,46 @@ class EnsureAllPublicTests(TestCase):
         assert flexile.is_flagship is False
         helper = repos.get(repo_slug="helper")
         assert helper.is_flagship is False
+
+    def test_sanitizes_dotted_repo_slugs(self):
+        """Repos with dots in their name get slugs with dashes instead."""
+        # calcom has repo "calcom/cal.com" — the slug must be "cal-com" not "cal.com"
+        team = Team.objects.create(name="Cal.com", slug="calcom-demo")
+        org = PublicOrgProfile.objects.create(
+            team=team,
+            public_slug="calcom",
+            display_name="Cal.com",
+            is_public=True,
+        )
+
+        call_command("ensure_all_public", verbosity=0)
+
+        repo = PublicRepoProfile.objects.get(org_profile=org)
+        assert repo.repo_slug == "cal-com", f"Expected 'cal-com', got '{repo.repo_slug}'"
+        assert repo.github_repo == "calcom/cal.com"
+
+    def test_fixes_existing_dotted_slugs(self):
+        """Pre-existing repo profiles with dots in slugs are cleaned up."""
+        team = Team.objects.create(name="Cal.com", slug="calcom-demo")
+        org = PublicOrgProfile.objects.create(
+            team=team,
+            public_slug="calcom",
+            display_name="Cal.com",
+            is_public=True,
+        )
+        # Simulate the old bad slug
+        bad_repo = PublicRepoProfile.objects.create(
+            org_profile=org,
+            team=team,
+            repo_slug="cal.com",
+            github_repo="calcom/cal.com",
+            display_name="Cal.com",
+            github_url="https://github.com/calcom/cal.com",
+            is_public=True,
+            sync_enabled=True,
+        )
+
+        call_command("ensure_all_public", verbosity=0)
+
+        bad_repo.refresh_from_db()
+        assert bad_repo.repo_slug == "cal-com", f"Expected 'cal-com', got '{bad_repo.repo_slug}'"

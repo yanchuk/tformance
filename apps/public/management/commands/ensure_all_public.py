@@ -28,6 +28,15 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         demo_slugs = {config.team_slug for config in REAL_PROJECTS.values()}
 
+        # Phase 0: Fix repo slugs containing dots (breaks URL routing)
+        bad_repos = PublicRepoProfile.objects.filter(repo_slug__contains=".")
+        dot_fixed = bad_repos.count()
+        for repo in bad_repos:
+            repo.repo_slug = repo.repo_slug.replace(".", "-").lower()
+            repo.save(update_fields=["repo_slug", "updated_at"])
+        if dot_fixed:
+            self.stdout.write(f"Repo slugs fixed (dots): {dot_fixed}")
+
         # Phase 1: Create missing PublicRepoProfile records from REAL_PROJECTS
         repos_created = 0
         repos_existed = 0
@@ -41,7 +50,7 @@ class Command(BaseCommand):
                 continue
 
             for i, repo in enumerate(config.repos):
-                repo_slug = repo.split("/")[-1]
+                repo_slug = repo.split("/")[-1].replace(".", "-").lower()
                 _, created = PublicRepoProfile.objects.get_or_create(
                     org_profile=org_profile,
                     repo_slug=repo_slug,
