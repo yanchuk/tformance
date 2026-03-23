@@ -93,8 +93,24 @@ class PublicMetadataDescriptionTests(MetadataTestBase):
         desc = response.context["page_description"]
         assert "Meta Org" in desc
         assert "1,000" in desc or "1000" in desc  # total_prs
-        assert "42.5" in desc  # AI % (may be 42.5 or 42.50)
         assert "18.3" in desc  # cycle time (may be 18.3 or 18.30)
+        assert "4.2" in desc  # review time
+
+    def test_repo_detail_description_leads_with_delivery_metrics(self):
+        response = self.client.get("/open-source/meta-org/repos/meta-repo/")
+        desc = response.context["page_description"]
+        assert desc.startswith("Meta Org/Meta Repo delivery benchmarks from 500 merged pull requests")
+        assert "12.5h median cycle time" in desc
+        assert "3.8h median review time" in desc
+        assert "AI-related signals" in desc
+
+    def test_org_detail_description_leads_with_delivery_metrics(self):
+        response = self.client.get("/open-source/meta-org/")
+        desc = response.context["page_description"]
+        assert desc.startswith("Meta Org engineering benchmarks from 1,000 merged pull requests")
+        assert "18.3h median cycle time" in desc
+        assert "4.2h median review time" in desc
+        assert "25 active contributors" in desc
 
     def test_analytics_support_description(self):
         response = self.client.get("/open-source/meta-org/analytics/")

@@ -7,7 +7,7 @@
   "@context": "https://schema.org",
   "@type": "Dataset",
   "name": "{{ org_profile.display_name }} Delivery & AI Trends",
-  "description": "Detailed {{ org_profile.display_name }} delivery and AI adoption trends across {{ public_stats.total_prs }} merged pull requests.",
+  "description": "Detailed {{ org_profile.display_name }} delivery trends and AI-related signals across {{ public_stats.total_prs }} merged pull requests.",
   "url": "https://tformance.com/open-source/{{ public_slug }}/analytics/",
   "creator": {
     "@type": "Organization",
@@ -16,7 +16,7 @@
   },
   "variableMeasured": [
     {"@type": "PropertyValue", "name": "Total PRs", "value": "{{ public_stats.total_prs }}"},
-    {"@type": "PropertyValue", "name": "AI Adoption", "value": "{{ public_stats.ai_assisted_pct }}%"},
+    {"@type": "PropertyValue", "name": "AI-Related Signals", "value": "{{ public_stats.ai_assisted_pct }}%"},
     {"@type": "PropertyValue", "name": "Median Cycle Time", "value": "{{ public_stats.median_cycle_time_hours }}h"},
     {"@type": "PropertyValue", "name": "Median Review Time", "value": "{{ public_stats.median_review_time_hours }}h"}
   ]
@@ -32,7 +32,7 @@
       "name": "What do the trends show for {{ org_profile.display_name }}?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "This page shows AI adoption, cycle time, review distribution, and team health signals based on {{ public_stats.total_prs }} merged pull requests."
+        "text": "This page shows delivery trends, AI-related signals, review distribution, and team health signals based on {{ public_stats.total_prs }} merged pull requests."
       }
     },
     {
@@ -58,9 +58,9 @@
 <div class="mb-6">
   <h1 class="text-3xl font-bold mb-3">{{ org_profile.display_name }} Delivery & AI Trends</h1>
   <p class="text-base-content/80 max-w-4xl leading-relaxed mb-4">
-    Detailed delivery and AI adoption trends for {{ org_profile.display_name }} across
-    {{ public_stats.total_prs|intcomma }} merged pull requests. AI-assisted pull requests currently account for
-    {{ public_stats.ai_assisted_pct|floatformat:1 }}%, with a median cycle time of
+    Detailed delivery trends for {{ org_profile.display_name }} across
+    {{ public_stats.total_prs|intcomma }} merged pull requests. AI-related signals appear on
+    {{ public_stats.ai_assisted_pct|floatformat:1 }}% of recent work, with a median cycle time of
     {{ public_stats.median_cycle_time_hours|floatformat:1 }} hours and median review time of
     {{ public_stats.median_review_time_hours|floatformat:1 }} hours.
   </p>
@@ -81,7 +81,7 @@
           <td>{{ industry_stats.total_prs|default:"-" }}</td>
         </tr>
         <tr>
-          <td>AI Adoption</td>
+          <td>AI Signals</td>
           <td>{{ public_stats.ai_assisted_pct|floatformat:1 }}%</td>
           <td>{{ industry_stats.avg_ai_pct|floatformat:1|default:"-" }}%</td>
         </tr>
@@ -115,7 +115,7 @@
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
   <div class="card bg-base-100 border border-base-300 min-h-[320px]">
     <div class="card-body">
-      <h2 class="card-title text-base">AI Adoption & Cycle Time</h2>
+      <h2 class="card-title text-base">Delivery Trend and AI Signals</h2>
       <div hx-get="{% url 'public:chart_combined_trend' slug=public_slug %}?days=90" hx-trigger="load" hx-swap="innerHTML">
         <div class="skeleton h-56 w-full rounded-lg"></div>
       </div>
@@ -124,7 +124,7 @@
 
   <div class="card bg-base-100 border border-base-300 min-h-[320px]">
     <div class="card-body">
-      <h2 class="card-title text-base">AI Adoption & Review Time</h2>
+      <h2 class="card-title text-base">AI Signals & Review Time</h2>
       <div hx-get="{% url 'public:chart_combined_trend' slug=public_slug %}?days=90&secondary=review_time" hx-trigger="load" hx-swap="innerHTML">
         <div class="skeleton h-56 w-full rounded-lg"></div>
       </div>
@@ -135,7 +135,7 @@
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
   <div class="card bg-base-100 border border-base-300 min-h-[320px]">
     <div class="card-body">
-      <h2 class="card-title text-base">AI vs Non-AI Impact</h2>
+      <h2 class="card-title text-base">Signal vs Baseline Impact</h2>
       <div hx-get="{% url 'public:chart_ai_quality' slug=public_slug %}?days=30" hx-trigger="load" hx-swap="innerHTML">
         <div class="skeleton h-40 w-full rounded-lg"></div>
       </div>

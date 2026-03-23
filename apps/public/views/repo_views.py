@@ -36,10 +36,11 @@ def repo_detail(request: HttpRequest, slug: str, repo_slug: str) -> HttpResponse
         "org_profile": org_profile,
         "stats": stats,
         "insight": insight,
+        "insight_text": _normalize_public_insight_text(insight.content) if insight else "",
         "public_slug": slug,
         "repo_slug": repo_slug,
         "is_repo_page": True,
-        "page_title": f"{repo_profile.display_name} Engineering Metrics",
+        "page_title": f"{repo_profile.display_name} Engineering Benchmarks",
         "page_description": _build_meta_description(repo_profile, stats),
         "page_canonical_url": canonical_url,
         "page_image": absolute_url(f"/og/open-source/{slug}/{repo_slug}.png"),
@@ -97,8 +98,38 @@ def repo_pr_list_table(request: HttpRequest, slug: str, repo_slug: str) -> HttpR
 def _build_meta_description(repo_profile, stats) -> str:
     if not stats:
         return f"Engineering metrics for {repo_profile.display_name}."
+
+    org_name = repo_profile.org_profile.display_name
+    contributors = getattr(stats, "active_contributors_30d", None)
+    contributors_text = f", {contributors} active contributors" if contributors else ""
+
+    trend_text = ""
+    cadence_change = getattr(stats, "cadence_change_pct", None)
+    if cadence_change is not None and float(cadence_change) >= 10:
+        trend_text = f" PR volume is up {float(cadence_change):.0f}% versus the prior period."
+    elif cadence_change is not None and float(cadence_change) <= -10:
+        trend_text = f" PR volume is down {abs(float(cadence_change)):.0f}% versus the prior period."
+
     return (
-        f"{float(stats.ai_assisted_pct):.0f}% of {repo_profile.display_name} PRs are AI-assisted. "
-        f"Median cycle time: {float(stats.median_cycle_time_hours):.0f}h. "
-        f"Based on {stats.total_prs} merged pull requests."
+        f"{org_name}/{repo_profile.display_name} delivery benchmarks from {stats.total_prs:,} merged pull requests: "
+        f"{_format_hours(stats.median_cycle_time_hours)} median cycle time, "
+        f"{_format_hours(stats.median_review_time_hours)} median review time"
+        f"{contributors_text}. "
+        f"AI-related signals appear on {float(stats.ai_assisted_pct):.1f}% of recent work."
+        f"{trend_text}"
+    )
+
+
+def _format_hours(value) -> str:
+    hours = float(value or 0)
+    if 0 < hours < 1:
+        return "<1h"
+    return f"{hours:.1f}h"
+
+
+def _normalize_public_insight_text(text: str) -> str:
+    return (
+        text.replace("AI-assisted", "showing AI-related signals")
+        .replace("with AI", "with AI-related signals")
+        .replace("without AI", "baseline")
     )

@@ -51,7 +51,7 @@ class PublicOrgViewsTests(TestCase):
     def test_org_detail_200_valid_slug(self):
         response = self.client.get(reverse("public:org_detail", kwargs={"slug": "posthog"}))
         assert response.status_code == 200
-        assert b"PostHog Engineering Metrics" in response.content
+        assert b"PostHog Engineering Benchmarks" in response.content
 
     def test_org_detail_links_to_analytics_and_pr_list(self):
         """Hub page should link to analytics and PR list pages."""

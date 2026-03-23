@@ -52,12 +52,8 @@ def org_detail(request, slug) -> HttpResponse:
             "cycle_time_benchmark": cycle_time_benchmark,
             "ai_adoption_benchmark": ai_adoption_benchmark,
             "recent_narrative": narrative,
-            "page_title": f"{profile.display_name} Engineering Metrics",
-            "page_description": (
-                f"See {profile.display_name} engineering benchmarks from "
-                f"{stats.total_prs:,} merged PRs: {stats.ai_assisted_pct}% AI-assisted, "
-                f"{stats.median_cycle_time_hours}h median cycle time, and flagship repo performance."
-            ),
+            "page_title": f"{profile.display_name} Engineering Benchmarks",
+            "page_description": _build_org_meta_description(profile, stats, narrative),
             "page_canonical_url": absolute_url(reverse("public:org_detail", kwargs={"slug": slug})),
             "page_image": absolute_url(f"/og/open-source/{slug}.png"),
         }
@@ -106,8 +102,24 @@ def _build_recent_change_narrative(stats, ai_impact: dict) -> str:
     # AI impact on cycle time
     diff_pct = ai_impact.get("cycle_time_difference_pct")
     if diff_pct is not None and diff_pct < -10:
-        parts.append(f"AI-assisted PRs ship {abs(diff_pct):.0f}% faster than non-AI PRs")
+        parts.append(f"PRs with AI-related signals ship {abs(diff_pct):.0f}% faster than the baseline")
     elif diff_pct is not None and diff_pct > 10:
-        parts.append(f"AI-assisted PRs take {diff_pct:.0f}% longer than non-AI PRs")
+        parts.append(f"PRs with AI-related signals take {diff_pct:.0f}% longer than the baseline")
 
     return ". ".join(parts) + "." if parts else ""
+
+
+def _build_org_meta_description(profile, stats, narrative: str) -> str:
+    ai_pct = float(getattr(stats, "ai_assisted_pct", 0) or 0)
+    contributors = int(getattr(stats, "active_contributors_90d", 0) or 0)
+
+    description = (
+        f"{profile.display_name} engineering benchmarks from {stats.total_prs:,} merged pull requests: "
+        f"{float(stats.median_cycle_time_hours):.1f}h median cycle time, "
+        f"{float(stats.median_review_time_hours):.1f}h median review time, "
+        f"{contributors} active contributors, and repo-level trend comparisons. "
+        f"AI-related signals appear on {ai_pct:.1f}% of recent work."
+    )
+    if narrative:
+        description = f"{description} {narrative}"
+    return description

@@ -7,7 +7,7 @@
 {
   "@context": "https://schema.org",
   "@type": "Dataset",
-  "name": "{{ repo_profile.display_name }} Engineering Metrics",
+  "name": "{{ repo_profile.display_name }} Engineering Benchmarks",
   "description": "{{ page_description }}",
   "url": "{{ page_canonical_url }}",
   "creator": {
@@ -19,7 +19,7 @@
     {"@type": "PropertyValue", "name": "Total PRs", "value": "{{ stats.total_prs }}"},
     {"@type": "PropertyValue", "name": "Median Cycle Time", "value": "{{ stats.median_cycle_time_hours }}h"},
     {"@type": "PropertyValue", "name": "Median Review Time", "value": "{{ stats.median_review_time_hours }}h"},
-    {"@type": "PropertyValue", "name": "AI Adoption Rate", "value": "{{ stats.ai_assisted_pct }}%"},
+    {"@type": "PropertyValue", "name": "AI-Related Signal Rate", "value": "{{ stats.ai_assisted_pct }}%"},
     {"@type": "PropertyValue", "name": "Active Contributors (30d)", "value": "{{ stats.active_contributors_30d }}"}
   ]
 }
@@ -31,18 +31,18 @@
   "mainEntity": [
     {
       "@type": "Question",
-      "name": "What percentage of {{ repo_profile.display_name }} pull requests are AI-assisted?",
+      "name": "How is {{ repo_profile.display_name }} delivering recently?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "{{ stats.ai_assisted_pct }}% of {{ repo_profile.display_name }} pull requests are AI-assisted, based on {{ stats.total_prs_in_window }} merged PRs in the last {{ stats.summary_window_days }} days."
+        "text": "{{ repo_profile.display_name }} has {{ stats.median_cycle_time_hours }} hours median cycle time, {{ stats.median_review_time_hours }} hours median review time, and {{ stats.total_prs_in_window }} merged pull requests in the last {{ stats.summary_window_days }} days."
       }
     },
     {
       "@type": "Question",
-      "name": "What is {{ repo_profile.display_name }} median cycle time?",
+      "name": "What AI-related signal share does {{ repo_profile.display_name }} show?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "{{ repo_profile.display_name }} median cycle time is {{ stats.median_cycle_time_hours }} hours."
+        "text": "AI-related signals appear on {{ stats.ai_assisted_pct }}% of {{ repo_profile.display_name }} pull requests in the current summary window."
       }
     },
     {
@@ -80,7 +80,7 @@
 <div class="mb-8">
   <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-4">
     <div>
-      <h1 class="text-3xl font-bold mb-1">{{ repo_profile.display_name }} Engineering Metrics</h1>
+      <h1 class="text-3xl font-bold mb-1">{{ repo_profile.display_name }} Engineering Benchmarks</h1>
       <div class="flex flex-wrap items-center gap-2 text-sm text-base-content/60">
         <span>{{ org_profile.display_name }}</span>
         <span>&middot;</span>
@@ -102,11 +102,12 @@
   {# Citable paragraph #}
   {% if stats %}
   <p class="text-base-content/80 max-w-4xl leading-relaxed text-lg">
-    {{ stats.ai_assisted_pct|floatformat:1 }}% of {{ repo_profile.display_name }} pull requests are AI-assisted,
-    based on {{ stats.total_prs_in_window }} merged PRs in the last {{ stats.summary_window_days }} days
-    ({{ stats.total_prs|intcomma }} all-time).
-    Median cycle time is {{ stats.median_cycle_time_hours|floatformat:1 }} hours with
-    {{ stats.active_contributors_30d }} active contributors.
+    {{ repo_profile.display_name }} delivery benchmarks are based on {{ stats.total_prs_in_window }} merged pull requests in the last
+    {{ stats.summary_window_days }} days ({{ stats.total_prs|intcomma }} all-time), with
+    {{ stats.median_cycle_time_hours|floatformat:1 }} hours median cycle time,
+    {{ stats.median_review_time_hours|floatformat:1 }} hours median review time,
+    and {{ stats.active_contributors_30d }} active contributors.
+    AI-related signals appear on {{ stats.ai_assisted_pct|floatformat:1 }}% of recent work.
     {% if stats.cadence_change_pct > 0 %}
     PR volume is up {{ stats.cadence_change_pct|floatformat:0 }}% compared to the prior period.
     {% elif stats.cadence_change_pct < 0 %}
@@ -117,7 +118,7 @@
 
   {% if insight %}
   <blockquote class="border-l-4 border-primary pl-4 mt-4 text-base-content/70 italic">
-    {{ insight.content }}
+    {{ insight_text }}
   </blockquote>
   {% endif %}
 </div>
@@ -141,9 +142,9 @@
   </div>
   <div class="card bg-base-100 border border-base-300">
     <div class="card-body py-4">
-      <div class="text-sm text-base-content/60">AI Adoption</div>
+      <div class="text-sm text-base-content/60">AI-Related Signals</div>
       <div class="text-3xl font-bold">{{ stats.ai_assisted_pct|floatformat:1 }}%</div>
-      <div class="text-xs text-base-content/50">of PRs are AI-assisted</div>
+      <div class="text-xs text-base-content/50">directional signal across recent PRs</div>
     </div>
   </div>
 </div>
@@ -187,7 +188,7 @@
       <div class="text-lg font-bold {% if comparison_data.ai_adoption_delta > 0 %}text-success{% elif comparison_data.ai_adoption_delta < 0 %}text-warning{% endif %}">
         {% if comparison_data.ai_adoption_delta > 0 %}+{% endif %}{{ comparison_data.ai_adoption_delta|floatformat:1 }}pp
       </div>
-      <div class="text-xs text-base-content/50">AI Adoption</div>
+      <div class="text-xs text-base-content/50">AI Signals</div>
     </div>
     <div>
       <div class="text-lg font-bold {% if comparison_data.cycle_time_delta < 0 %}text-success{% elif comparison_data.cycle_time_delta > 0 %}text-warning{% endif %}">
@@ -209,7 +210,7 @@
 {% if combined_trend_data.labels %}
 <div class="card bg-base-100 border border-base-300 mb-8">
   <div class="card-body p-4">
-    <h2 class="card-title text-base">AI Adoption & Delivery Trend</h2>
+    <h2 class="card-title text-base">Delivery Trend and AI Signals</h2>
     {{ combined_trend_data|json_script:"repo-combined-trend-data" }}
     <div style="position: relative; height: 320px">
       <canvas id="repo-combined-trend-chart"
@@ -224,7 +225,7 @@
 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
   <div class="card bg-base-100 border border-base-300">
     <div class="card-body p-4">
-      <h3 class="card-title text-sm">AI Adoption vs Cycle Time</h3>
+      <h3 class="card-title text-sm">AI Signals vs Cycle Time</h3>
       {{ correlation_data|json_script:"repo-correlation-data" }}
       <div style="position: relative; height: 260px">
         <canvas id="repo-correlation-chart"
@@ -244,23 +245,23 @@
 </div>
 {% endif %}
 
-{# 7. AI impact comparison #}
+{# 7. AI-related signal comparison #}
 {% if ai_impact_data.total_prs %}
 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
   <div class="card bg-base-100 border border-base-300">
     <div class="card-body py-4">
-      <h3 class="text-sm font-medium text-base-content/60">AI vs Non-AI Cycle Time</h3>
+      <h3 class="text-sm font-medium text-base-content/60">Cycle Time by AI-Related Signals</h3>
       <div class="flex items-end gap-4 mt-2">
         {% if ai_impact_data.avg_cycle_with_ai %}
         <div>
           <div class="text-2xl font-bold">{{ ai_impact_data.avg_cycle_with_ai|floatformat:1 }}h</div>
-          <div class="text-xs text-base-content/50">with AI</div>
+          <div class="text-xs text-base-content/50">with signals</div>
         </div>
         {% endif %}
         {% if ai_impact_data.avg_cycle_without_ai %}
         <div>
           <div class="text-2xl font-bold text-base-content/60">{{ ai_impact_data.avg_cycle_without_ai|floatformat:1 }}h</div>
-          <div class="text-xs text-base-content/50">without AI</div>
+          <div class="text-xs text-base-content/50">baseline</div>
         </div>
         {% endif %}
         {% if ai_impact_data.cycle_time_difference_pct %}
@@ -278,7 +279,7 @@
     <div class="card-body py-4">
       <h3 class="text-sm font-medium text-base-content/60">PR Breakdown</h3>
       <div class="text-sm mt-2">
-        <span class="font-bold">{{ ai_impact_data.ai_prs }}</span> AI-assisted /
+        <span class="font-bold">{{ ai_impact_data.ai_prs }}</span> with signals /
         <span class="font-bold">{{ ai_impact_data.total_prs }}</span> total PRs
       </div>
     </div>
@@ -383,7 +384,7 @@
   <h3 class="text-lg font-semibold mb-2">Methodology</h3>
   <p class="text-sm text-base-content/60 max-w-3xl mb-4">
     Metrics are computed from merged pull request data synced daily from GitHub.
-    AI detection uses a combination of PR content analysis and LLM classification.
+    AI-related metrics are directional signals inferred from pull request activity patterns and heuristics.
     Summary metrics use a {{ stats.summary_window_days|default:"30" }}-day rolling window;
     trends use a {{ stats.trend_window_days|default:"90" }}-day window.
     {% if stats and stats.last_computed_at %}

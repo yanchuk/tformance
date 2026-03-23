@@ -44,9 +44,9 @@
   </select>
 
   <select name="ai" class="select select-bordered select-sm w-full">
-    <option value="">All AI States</option>
-    <option value="yes" {% if filters.ai == 'yes' %}selected{% endif %}>AI Assisted</option>
-    <option value="no" {% if filters.ai == 'no' %}selected{% endif %}>Non AI</option>
+    <option value="">All signal states</option>
+    <option value="yes" {% if filters.ai == 'yes' %}selected{% endif %}>With AI-related signals</option>
+    <option value="no" {% if filters.ai == 'no' %}selected{% endif %}>Baseline</option>
   </select>
 
   <select name="size" class="select select-bordered select-sm w-full">

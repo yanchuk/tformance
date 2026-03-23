@@ -6,7 +6,7 @@
 {
   "@context": "https://schema.org",
   "@type": "Dataset",
-  "name": "{{ org_profile.display_name }} Engineering Metrics",
+  "name": "{{ org_profile.display_name }} Engineering Benchmarks",
   "description": "Engineering metrics for {{ org_profile.display_name }} based on {{ public_stats.total_prs }} merged pull requests.",
   "url": "https://tformance.com/open-source/{{ public_slug }}/",
   "creator": {
@@ -16,7 +16,7 @@
   },
   "variableMeasured": [
     {"@type": "PropertyValue", "name": "Total PRs", "value": "{{ public_stats.total_prs }}"},
-    {"@type": "PropertyValue", "name": "AI Adoption Rate", "value": "{{ public_stats.ai_assisted_pct }}%"},
+    {"@type": "PropertyValue", "name": "AI-Related Signal Rate", "value": "{{ public_stats.ai_assisted_pct }}%"},
     {"@type": "PropertyValue", "name": "Median Cycle Time", "value": "{{ public_stats.median_cycle_time_hours }}h"},
     {"@type": "PropertyValue", "name": "Median Review Time", "value": "{{ public_stats.median_review_time_hours }}h"},
     {"@type": "PropertyValue", "name": "Active Contributors (90d)", "value": "{{ public_stats.active_contributors_90d }}"}
@@ -30,18 +30,18 @@
   "mainEntity": [
     {
       "@type": "Question",
-      "name": "What percentage of {{ org_profile.display_name }} pull requests are AI-assisted?",
+      "name": "How is {{ org_profile.display_name }} delivering recently?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "{{ public_stats.ai_assisted_pct }}% of {{ org_profile.display_name }} pull requests are AI-assisted based on {{ public_stats.total_prs }} merged pull requests."
+        "text": "{{ org_profile.display_name }} has {{ public_stats.median_cycle_time_hours }} hours median cycle time, {{ public_stats.median_review_time_hours }} hours median review time, and {{ public_stats.active_contributors_90d }} active contributors."
       }
     },
     {
       "@type": "Question",
-      "name": "What is {{ org_profile.display_name }} median cycle time?",
+      "name": "What AI-related signal share does {{ org_profile.display_name }} show?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "{{ org_profile.display_name }} median cycle time is {{ public_stats.median_cycle_time_hours }} hours."
+        "text": "AI-related signals appear on {{ public_stats.ai_assisted_pct }}% of {{ org_profile.display_name }} pull requests."
       }
     },
     {
@@ -72,7 +72,7 @@
            class="w-14 h-14 rounded-lg object-cover"
            loading="lazy">
       <div>
-        <h1 class="text-3xl font-bold">{{ org_profile.display_name }} Engineering Metrics</h1>
+        <h1 class="text-3xl font-bold">{{ org_profile.display_name }} Engineering Benchmarks</h1>
         <div class="flex flex-wrap items-center gap-2 mt-1">
           <span class="badge badge-primary badge-outline">{{ org_profile.get_industry_display }}</span>
           {% if org_profile.github_org_url %}
@@ -86,11 +86,11 @@
 
   {# 2. Citable summary #}
   <p class="text-base-content/80 max-w-4xl leading-relaxed mb-4">
-    As of {{ public_stats.last_computed_at|date:"F j, Y" }}, {{ public_stats.ai_assisted_pct|floatformat:1 }}% of
-    {{ org_profile.display_name }} pull requests are AI-assisted, based on analysis of
-    {{ public_stats.total_prs|intcomma }} merged pull requests. Median cycle time is
-    {{ public_stats.median_cycle_time_hours|floatformat:1 }} hours with
-    {{ public_stats.active_contributors_90d }} active contributors in the last 90 days.
+    As of {{ public_stats.last_computed_at|date:"F j, Y" }}, {{ org_profile.display_name }} has
+    {{ public_stats.total_prs|intcomma }} merged pull requests, {{ public_stats.median_cycle_time_hours|floatformat:1 }} hours
+    median cycle time, {{ public_stats.median_review_time_hours|floatformat:1 }} hours median review time,
+    and {{ public_stats.active_contributors_90d }} active contributors in the last 90 days.
+    AI-related signals appear on {{ public_stats.ai_assisted_pct|floatformat:1 }}% of recent work.
   </p>
 </div>
 
@@ -112,7 +112,7 @@
     <div class="flex items-center gap-3">
       <div class="text-2xl font-bold">P{{ ai_adoption_benchmark.percentile }}</div>
       <div>
-        <div class="text-sm font-medium">AI Adoption</div>
+        <div class="text-sm font-medium">AI Signals</div>
         <div class="text-xs text-base-content/60">{{ ai_adoption_benchmark.interpretation }}</div>
       </div>
     </div>
@@ -132,7 +132,7 @@
 {% if combined_trend_data.labels %}
 <div class="card bg-base-100 border border-base-300 mb-8">
   <div class="card-body p-4">
-    <h2 class="card-title text-base">AI Adoption & Delivery Trend</h2>
+    <h2 class="card-title text-base">Delivery Trend and AI Signals</h2>
     {{ combined_trend_data|json_script:"org-combined-trend-data" }}
     <div style="position: relative; height: 320px">
       <canvas id="org-combined-trend-chart"
@@ -142,23 +142,23 @@
 </div>
 {% endif %}
 
-{# 4. AI Impact block #}
+{# 4. AI-related signal impact block #}
 {% if ai_impact_data.total_prs %}
 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
   <div class="card bg-base-100 border border-base-300">
     <div class="card-body py-4">
-      <h3 class="text-sm font-medium text-base-content/60">AI vs Non-AI Cycle Time</h3>
+      <h3 class="text-sm font-medium text-base-content/60">Cycle Time by AI-Related Signals</h3>
       <div class="flex items-end gap-4 mt-2">
         {% if ai_impact_data.avg_cycle_with_ai %}
         <div>
           <div class="text-2xl font-bold">{{ ai_impact_data.avg_cycle_with_ai|floatformat:1 }}h</div>
-          <div class="text-xs text-base-content/50">with AI</div>
+          <div class="text-xs text-base-content/50">with signals</div>
         </div>
         {% endif %}
         {% if ai_impact_data.avg_cycle_without_ai %}
         <div>
           <div class="text-2xl font-bold text-base-content/60">{{ ai_impact_data.avg_cycle_without_ai|floatformat:1 }}h</div>
-          <div class="text-xs text-base-content/50">without AI</div>
+          <div class="text-xs text-base-content/50">baseline</div>
         </div>
         {% endif %}
         {% if ai_impact_data.cycle_time_difference_pct %}
@@ -174,10 +174,10 @@
   </div>
   <div class="card bg-base-100 border border-base-300">
     <div class="card-body py-4">
-      <h3 class="text-sm font-medium text-base-content/60">AI Adoption</h3>
+      <h3 class="text-sm font-medium text-base-content/60">AI-Related Signals</h3>
       <div class="text-3xl font-bold mt-2">{{ ai_impact_data.ai_adoption_pct|floatformat:1 }}%</div>
       <div class="text-sm text-base-content/50 mt-1">
-        {{ ai_impact_data.ai_prs }} of {{ ai_impact_data.total_prs }} PRs are AI-assisted
+        {{ ai_impact_data.ai_prs }} of {{ ai_impact_data.total_prs }} PRs show AI-related signals
       </div>
     </div>
   </div>
@@ -206,7 +206,7 @@
         <tr>
           <th>Repository</th>
           <th class="text-right">PRs</th>
-          <th class="text-right">AI Adoption</th>
+          <th class="text-right">AI Signals</th>
           <th class="text-right">Cycle Time</th>
           <th class="text-right">Review Time</th>
         </tr>

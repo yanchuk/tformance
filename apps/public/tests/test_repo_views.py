@@ -98,6 +98,12 @@ class RepoDetailViewTests(TestCase):
         content = response.content.decode()
         assert "Methodology" in content or "Source" in content
 
+    def test_repo_detail_methodology_uses_directional_ai_language(self):
+        response = self.client.get(self._url())
+        content = response.content.decode()
+        assert "AI-related metrics are directional signals" in content
+        assert "AI detection uses a combination" not in content
+
     def test_repo_detail_links_to_pr_explorer(self):
         response = self.client.get(self._url())
         content = response.content.decode()
@@ -133,8 +139,8 @@ class RepoDetailViewTests(TestCase):
         response = self.client.get(self._url())
         content = response.content.decode()
         cycle_pos = content.find("Median Cycle Time")
-        ai_pos = content.find("AI Adoption")
-        assert cycle_pos < ai_pos, "Cycle time must appear before AI adoption in hero"
+        ai_pos = content.find("AI-Related Signals")
+        assert cycle_pos < ai_pos, "Cycle time must appear before AI-related signals in hero"
 
     def test_repo_detail_has_review_time_hero(self):
         response = self.client.get(self._url())

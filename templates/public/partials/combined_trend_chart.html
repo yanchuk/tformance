@@ -1,5 +1,5 @@
 {% comment %}
-Combined AI Adoption + Delivery Trend chart partial.
+Combined delivery + AI-signal trend chart partial.
 
 Loaded via HTMX into a chart card container.
 Uses json_script for safe JSON embedding, consumed by Chart.js init code.
@@ -10,7 +10,7 @@ Context:
 {% endcomment %}
 <div class="card bg-base-200 shadow-sm">
   <div class="card-body p-4">
-    <h3 class="card-title text-sm font-medium">AI Adoption & Delivery Trend</h3>
+    <h3 class="card-title text-sm font-medium">Delivery Trend and AI Signals</h3>
     {{ chart_data|json_script:chart_data_id }}
     <div style="position: relative; height: 320px">
       <canvas
