@@ -1,12 +1,12 @@
 # Tformance
 
-> Engineering analytics platform that measures AI coding tool impact on team performance.
+> Engineering analytics platform that shows how your team is actually delivering — and whether AI tools are helping.
 
-Tformance is a SaaS platform for CTOs and engineering leaders to understand if AI coding tools (like GitHub Copilot) are actually improving their team's performance. We connect to GitHub and provide dashboards comparing AI-assisted work vs traditional development.
+Tformance is a SaaS platform for CTOs and engineering leaders who need to understand how their team is actually delivering and whether AI coding tools are improving that delivery or just increasing output and review load. We connect to GitHub and surface delivery metrics, AI usage signals, and bottleneck explanations from PR activity.
 
-Free during Alpha. Target audience: CTOs and VP Engineering at companies with 10-50 developers evaluating GitHub Copilot ROI.
+Free during Alpha. Target audience: CTOs and VP Engineering at companies with 10-50 developers who need credible answers about team delivery and AI tool ROI.
 
-Privacy-first: We never access source code - only PR metadata (titles, timestamps, file paths).
+Privacy-first: We never access source code — only PR metadata (titles, timestamps, file paths). See [Product DNA](https://tformance.com/report/) for our full product philosophy.
 
 ## Docs
 
@@ -34,6 +34,46 @@ Privacy-first: We never access source code - only PR metadata (titles, timestamp
 - [vs Mesmer](https://tformance.com/compare/mesmer/): Engineering visibility automation
 - [vs Nivara](https://tformance.com/compare/nivara/): AI engineering manager (YC F25)
 
+## Open-Source Benchmarks
+
+Live engineering analytics for notable open-source organizations:
+
+- [PostHog](https://tformance.com/open-source/posthog-demo/): Product analytics platform
+- [Vercel](https://tformance.com/open-source/vercel-demo/): Next.js, AI SDK, and Vercel platform
+- [Supabase](https://tformance.com/open-source/supabase-demo/): Open source Firebase alternative
+- [LangChain](https://tformance.com/open-source/langchain-demo/): LLM application framework
+- [Cal.com](https://tformance.com/open-source/calcom-demo/): Open source scheduling
+- [n8n](https://tformance.com/open-source/n8n-demo/): Open source Zapier alternative
+- [Twenty CRM](https://tformance.com/open-source/twenty-demo/): Open source Salesforce alternative
+- [Dify](https://tformance.com/open-source/dify-demo/): Open source LLM app platform
+- [Novu](https://tformance.com/open-source/novu-demo/): Notification infrastructure
+- [Coolify](https://tformance.com/open-source/coolify-demo/): Self-hosted PaaS
+- [Plane](https://tformance.com/open-source/plane-demo/): Open source Jira/Linear alternative
+- [Appsmith](https://tformance.com/open-source/appsmith-demo/): Open source Retool alternative
+
+Industry comparisons across 20 categories:
+
+- [Product Analytics & Observability](https://tformance.com/industry/analytics/)
+- [AI & LLM Tools](https://tformance.com/industry/ai_llm/)
+- [Workflow Automation](https://tformance.com/industry/automation/)
+- [Backend-as-a-Service](https://tformance.com/industry/baas/)
+- [Billing & Payments](https://tformance.com/industry/billing/)
+- [Headless CMS](https://tformance.com/industry/cms/)
+- [Communication & Notifications](https://tformance.com/industry/communication/)
+- [CRM & Sales](https://tformance.com/industry/crm/)
+- [Customer Support](https://tformance.com/industry/customer_support/)
+- [Database Infrastructure](https://tformance.com/industry/database/)
+- [Design & Creative Tools](https://tformance.com/industry/design/)
+- [DevOps & Infrastructure](https://tformance.com/industry/devops/)
+- [E-Commerce](https://tformance.com/industry/ecommerce/)
+- [Feature Flags & Experimentation](https://tformance.com/industry/feature_flags/)
+- [Forms & Surveys](https://tformance.com/industry/forms/)
+- [Identity & Security](https://tformance.com/industry/identity/)
+- [Internal Tools & Low-Code](https://tformance.com/industry/internal_tools/)
+- [Knowledge Management](https://tformance.com/industry/knowledge/)
+- [Project Management](https://tformance.com/industry/project_mgmt/)
+- [Scheduling & Productivity](https://tformance.com/industry/scheduling/)
+
 ## Optional
 
 - [Team](https://tformance.com/team/): About the team
@@ -41,13 +81,17 @@ Privacy-first: We never access source code - only PR metadata (titles, timestamp
 
 ### Technical Details
 
-Built with Django, PostgreSQL, Celery, Redis. Frontend uses HTMX, Alpine.js, Tailwind CSS, DaisyUI. Hosted on Heroku (Docker). AI detection via LLM analysis through Groq.
+Built with Django, PostgreSQL, Celery, Redis. Frontend uses HTMX, Alpine.js, Tailwind CSS, DaisyUI. AI detection via LLM analysis through Groq.
 
 ### Data Collection
 
 From GitHub: PR metadata (titles, sizes, timestamps), review counts and cycle times, file paths and change counts, author and reviewer information.
 
 Never accessed: Source code content, file diffs or patches, commit message bodies, private messages.
+
+### AI Detection Methodology
+
+Tformance detects AI-assisted development through a combination of pattern analysis on PR metadata and LLM-based classification. Source code is never accessed — detection relies on PR titles, descriptions, file paths, and commit patterns. Results are directional signals, not definitive assessments. For details on how your team's data is analyzed, see the [AI Impact Report](https://tformance.com/report/).
 
 ### Contact
 

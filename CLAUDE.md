@@ -1,8 +1,8 @@
-# Tformance - AI Impact Analytics Platform
+# Tformance - Engineering Delivery Analytics
 
 ## Project Overview
 
-Tformance.com is a SaaS platform helping CTOs understand team performance, including AI coding tools impact on it. Connects to GitHub, Jira, and Slack to correlate AI usage with delivery metrics.
+Tformance.com is a SaaS platform helping CTOs see how their team is actually delivering — and whether AI coding tools are improving that delivery. Connects to GitHub, Jira, and Slack to surface delivery metrics, AI usage signals, and bottleneck explanations. See [Product DNA](prd/dna_codex.md) for the full product philosophy.
 
 **Built on [Pegasus SaaS](https://www.saaspegasus.com/)** Django boilerplate.
 

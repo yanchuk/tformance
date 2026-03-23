@@ -1,6 +1,6 @@
 {% load pr_list_tags %}
 
-<div class="overflow-x-auto">
+<div class="overflow-x-auto" x-data="{ expandedPrId: null }">
   <table class="table table-zebra table-sm w-full">
     <thead>
       <tr>
@@ -17,6 +17,7 @@
             hx-target="#public-pr-table"
             hx-swap="innerHTML"
             hx-include="#public-pr-filters">Cycle Time</th>
+        <th class="text-right">Review</th>
         <th class="text-right cursor-pointer"
             hx-get="{% url 'public:repo_pr_list_table' slug=public_slug repo_slug=repo_slug %}?sort=merged&order=desc&page=1"
             hx-target="#public-pr-table"
@@ -26,9 +27,11 @@
     </thead>
     <tbody>
       {% for pr in prs %}
-      <tr>
+      <tr class="cursor-pointer hover"
+          @click="expandedPrId = expandedPrId === {{ pr.id }} ? null : {{ pr.id }}">
         <td class="max-w-xl">
-          <a href="{{ pr.github_url }}" target="_blank" rel="noopener" class="link link-hover">
+          <a href="{{ pr.github_url }}" target="_blank" rel="noopener" class="link link-hover"
+             @click.stop>
             {{ pr.title }}
           </a>
         </td>
@@ -53,12 +56,20 @@
           {% if pr.cycle_time_hours %}{{ pr.cycle_time_hours|floatformat:1 }}h{% else %}-{% endif %}
         </td>
         <td class="text-right">
+          {% if pr.review_time_hours %}{{ pr.review_time_hours|floatformat:1 }}h{% else %}-{% endif %}
+        </td>
+        <td class="text-right">
           {% if pr.merged_at %}{{ pr.merged_at|date:"M d, Y" }}{% else %}-{% endif %}
+        </td>
+      </tr>
+      <tr x-show="expandedPrId === {{ pr.id }}" x-cloak>
+        <td colspan="7" class="p-0">
+          {% include "public/partials/repo_pr_expanded_row.html" with pr=pr %}
         </td>
       </tr>
       {% empty %}
       <tr>
-        <td colspan="6" class="text-center text-base-content/60 py-8">No pull requests found.</td>
+        <td colspan="7" class="text-center text-base-content/60 py-8">No pull requests found.</td>
       </tr>
       {% endfor %}
     </tbody>
