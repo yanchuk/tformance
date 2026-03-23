@@ -288,7 +288,14 @@ class ChartManager {
       // Use nested RAF to ensure layout is fully complete before resize.
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
-          if (chart && typeof chart.resize === 'function') {
+          const liveCanvas = chart?.canvas;
+          if (
+            chart &&
+            typeof chart.resize === 'function' &&
+            liveCanvas &&
+            liveCanvas.isConnected &&
+            liveCanvas.ownerDocument
+          ) {
             chart.resize();
           }
         });
