@@ -17,7 +17,6 @@ from apps.metrics.seeding.real_projects import INDUSTRIES
 from apps.public.models import PublicOrgProfile, PublicRepoProfile
 from apps.teams.models import Team
 
-
 REQUIRED_COLUMNS = {
     "org_public_slug",
     "org_display_name",
@@ -61,11 +60,11 @@ class Command(BaseCommand):
 
         prefix = "Dry run complete" if dry_run else "Import complete"
         self.stdout.write(
-            (
+            
                 f"{prefix}: teams created={summary['teams_created']}, teams updated={summary['teams_updated']}, "
                 f"orgs created={summary['orgs_created']}, orgs updated={summary['orgs_updated']}, "
                 f"repos created={summary['repos_created']}, repos updated={summary['repos_updated']}"
-            )
+            
         )
 
     def _load_rows(self, csv_path: Path):
