@@ -10,6 +10,7 @@ from unittest.mock import patch
 
 from django.contrib.sites.models import Site
 from django.core.management import call_command
+from django.core.management.base import CommandError
 from django.test import TestCase, override_settings
 
 from apps.public.models import (
@@ -135,3 +136,104 @@ class RebuildPublicCatalogSnapshotsTests(TestCase):
 
             assert os.path.exists(os.path.join(tmp, "public_og", "rebuild-org.png"))
             assert os.path.exists(os.path.join(tmp, "public_og", "rebuild-org_rebuild-repo.png"))
+
+
+class ImportPublicCatalogTests(TestCase):
+    """CSV import for DB-driven public catalog."""
+
+    def _write_csv(self, content: str) -> str:
+        tmp = tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False)
+        self.addCleanup(lambda: os.path.exists(tmp.name) and os.unlink(tmp.name))
+        tmp.write(content)
+        tmp.flush()
+        tmp.close()
+        return tmp.name
+
+    def test_dry_run_does_not_create_rows(self):
+        path = self._write_csv(
+            """org_public_slug,org_display_name,org_industry,org_description,org_github_org_url,org_logo_url,team_slug,team_name,org_is_public,repo_github_repo,repo_slug,repo_display_name,repo_description,repo_github_url,is_flagship,repo_is_public,sync_enabled,insights_enabled,initial_backfill_days,display_order
+acme,Acme,analytics,Acme analytics org,https://github.com/acme,,acme-demo,Acme Public,false,acme/core,core,Core Repo,Core repo,https://github.com/acme/core,true,true,true,false,180,0
+"""
+        )
+
+        call_command("import_public_catalog", path, "--dry-run", verbosity=0)
+
+        assert PublicOrgProfile.objects.count() == 0
+        assert PublicRepoProfile.objects.count() == 0
+        assert Team.objects.count() == 0
+
+    def test_import_creates_team_org_repo_and_sync_state(self):
+        path = self._write_csv(
+            """org_public_slug,org_display_name,org_industry,org_description,org_github_org_url,org_logo_url,team_slug,team_name,org_is_public,repo_github_repo,repo_slug,repo_display_name,repo_description,repo_github_url,is_flagship,repo_is_public,sync_enabled,insights_enabled,initial_backfill_days,display_order
+acme,Acme,analytics,Acme analytics org,https://github.com/acme,,acme-demo,Acme Public,false,acme/core,core,Core Repo,Core repo,https://github.com/acme/core,true,true,true,false,180,0
+acme,Acme,analytics,Acme analytics org,https://github.com/acme,,acme-demo,Acme Public,false,acme/sdk,sdk,SDK Repo,SDK repo,https://github.com/acme/sdk,false,true,true,false,180,1
+"""
+        )
+
+        call_command("import_public_catalog", path, verbosity=0)
+
+        team = Team.objects.get(slug="acme-demo")
+        org = PublicOrgProfile.objects.get(public_slug="acme")
+        repo = PublicRepoProfile.objects.get(org_profile=org, repo_slug="core")
+        repo2 = PublicRepoProfile.objects.get(org_profile=org, repo_slug="sdk")
+
+        assert org.team == team
+        assert org.is_public is False
+        assert repo.is_flagship is True
+        assert repo.sync_enabled is True
+        assert repo.insights_enabled is False
+        assert repo.sync_state.status == "pending_backfill"
+        assert repo2.display_order == 1
+
+    def test_import_is_idempotent_and_updates_existing_rows(self):
+        team = Team.objects.create(name="Old Team", slug="acme-demo")
+        org = PublicOrgProfile.objects.create(
+            team=team,
+            public_slug="acme",
+            industry="analytics",
+            display_name="Old Acme",
+            is_public=False,
+        )
+        PublicRepoProfile.objects.create(
+            org_profile=org,
+            github_repo="acme/core",
+            repo_slug="core",
+            display_name="Old Repo",
+            sync_enabled=False,
+            insights_enabled=False,
+            is_public=True,
+        )
+
+        path = self._write_csv(
+            """org_public_slug,org_display_name,org_industry,org_description,org_github_org_url,org_logo_url,team_slug,team_name,org_is_public,repo_github_repo,repo_slug,repo_display_name,repo_description,repo_github_url,is_flagship,repo_is_public,sync_enabled,insights_enabled,initial_backfill_days,display_order
+acme,Acme New,analytics,Acme analytics org,https://github.com/acme,,acme-demo,Acme Public,true,acme/core,core,Core Repo,Core repo,https://github.com/acme/core,true,true,true,true,365,2
+"""
+        )
+
+        call_command("import_public_catalog", path, verbosity=0)
+
+        org.refresh_from_db()
+        repo = PublicRepoProfile.objects.get(org_profile=org, repo_slug="core")
+        team.refresh_from_db()
+
+        assert Team.objects.filter(slug="acme-demo").count() == 1
+        assert PublicOrgProfile.objects.filter(public_slug="acme").count() == 1
+        assert PublicRepoProfile.objects.filter(org_profile=org, repo_slug="core").count() == 1
+        assert team.name == "Acme Public"
+        assert org.display_name == "Acme New"
+        assert org.is_public is True
+        assert repo.display_name == "Core Repo"
+        assert repo.sync_enabled is True
+        assert repo.insights_enabled is True
+        assert repo.initial_backfill_days == 365
+        assert repo.display_order == 2
+
+    def test_import_rejects_unknown_industry(self):
+        path = self._write_csv(
+            """org_public_slug,org_display_name,org_industry,org_description,org_github_org_url,org_logo_url,team_slug,team_name,org_is_public,repo_github_repo,repo_slug,repo_display_name,repo_description,repo_github_url,is_flagship,repo_is_public,sync_enabled,insights_enabled,initial_backfill_days,display_order
+acme,Acme,unknown,Acme analytics org,https://github.com/acme,,acme-demo,Acme Public,false,acme/core,core,Core Repo,Core repo,https://github.com/acme/core,true,true,true,false,180,0
+"""
+        )
+
+        with self.assertRaises(CommandError):
+            call_command("import_public_catalog", path, verbosity=0)
