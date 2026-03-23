@@ -1,0 +1,19 @@
+{% extends "public/app_base.html" %}
+
+{% block public_json_ld %}
+  {% block json_ld %}{% endblock json_ld %}
+{% endblock public_json_ld %}
+
+{% block public_breadcrumb_items %}
+  {% block breadcrumb_items %}{% endblock breadcrumb_items %}
+{% endblock public_breadcrumb_items %}
+
+{% block public_main_content %}
+  {% block public_content %}{% endblock public_content %}
+{% endblock public_main_content %}
+
+{% block public_cta %}
+  {% block cta_banner %}
+    {% include "public/partials/sticky_cta.html" %}
+  {% endblock cta_banner %}
+{% endblock public_cta %}

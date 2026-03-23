@@ -50,6 +50,7 @@ DJANGO_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
+    "django.contrib.humanize",
     "django.contrib.sessions",
     "django.contrib.sitemaps",
     "django.contrib.messages",
@@ -118,6 +119,7 @@ PROJECT_APPS = [
     "apps.feedback.apps.FeedbackConfig",
     "apps.auth.apps.AuthConfig",
     "apps.notes.apps.NotesConfig",
+    "apps.public.apps.PublicConfig",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + PROJECT_APPS + WAGTAIL_APPS
@@ -201,6 +203,7 @@ TEMPLATES = [
                 "apps.web.context_processors.posthog_config",
                 # Auth mode (github_only vs all)
                 "apps.web.context_processors.auth_mode",
+                "apps.public.context_processors.public_mode",
             ],
             "loaders": _DEFAULT_LOADERS if DEBUG else _CACHED_LOADERS,
             "builtins": [
@@ -623,6 +626,9 @@ CELERY_TASK_ROUTES = {
     "apps.metrics.tasks.compute_all_team_insights": {"queue": "compute"},
     "apps.integrations.tasks.aggregate_team_weekly_metrics_task": {"queue": "compute"},
     "apps.integrations.tasks.aggregate_all_teams_weekly_metrics_task": {"queue": "compute"},
+    # Public tasks
+    "apps.public.tasks.sync_public_oss_repositories_task": {"queue": "sync"},
+    "apps.public.tasks.compute_public_stats_task": {"queue": "compute"},
 }
 
 # Add tasks to this dict and run `python manage.py bootstrap_celery_tasks` to create them
@@ -702,6 +708,21 @@ SCHEDULED_TASKS = {
         "schedule": schedules.crontab(minute=45, hour=4),  # 4:45 AM UTC (after GitHub, before LLM)
         "expire_seconds": 60 * 60 * 2,  # 2 hour expiry
     },
+    "sync-public-oss-repos-daily": {
+        "task": "apps.public.tasks.sync_public_oss_repositories_task",
+        "schedule": schedules.crontab(minute=0, hour=3),  # 3 AM UTC (before customer sync at 4 AM)
+        "expire_seconds": 60 * 60 * 2,  # 2 hour expiry
+    },
+    "compute-public-stats-daily": {
+        "task": "apps.public.tasks.compute_public_stats_task",
+        "schedule": schedules.crontab(minute=0, hour=7),  # 7 AM UTC (after LLM at 5AM, insights at 6AM)
+        "expire_seconds": 60 * 60,  # 1 hour expiry
+    },
+    "generate-public-repo-insights-weekly": {
+        "task": "apps.public.tasks.generate_public_repo_insights_weekly",
+        "schedule": schedules.crontab(minute=0, hour=8, day_of_week=1),  # Monday 8 AM UTC
+        "expire_seconds": 60 * 60,  # 1 hour expiry
+    },
 }
 
 # Channels / Daphne setup
@@ -728,6 +749,11 @@ WAGTAILADMIN_BASE_URL = "http://localhost:8000"
 # Waffle config
 
 WAFFLE_FLAG_MODEL = "teams.Flag"
+
+# Public OSS analytics
+# Minimum merged PRs for a repo to appear on public pages.
+# Lower in dev (seeded repos have ~100-500 PRs); production keeps 500.
+PUBLIC_MIN_PRS_THRESHOLD = env.int("PUBLIC_MIN_PRS_THRESHOLD", default=500)
 
 # Pegasus config
 

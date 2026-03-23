@@ -1,0 +1,60 @@
+{% extends "web/base.html" %}
+{% load django_vite %}
+
+{% block top_nav %}
+  {% include "web/components/top_nav_public.html" %}
+{% endblock top_nav %}
+
+{% block page_head %}
+  {{ block.super }}
+  {% block public_json_ld %}{% endblock public_json_ld %}
+{% endblock page_head %}
+
+{% block body %}
+<div class="min-h-screen">
+  <div class="border-b border-base-300 bg-base-200/40">
+    <div class="container mx-auto px-4 py-3">
+      <div class="breadcrumbs text-sm">
+        <ul>
+          <li><a href="{% url 'public:directory' %}" class="link link-hover">Open Source</a></li>
+          {% block public_breadcrumb_items %}{% endblock public_breadcrumb_items %}
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <main class="container mx-auto px-4 py-8">
+    {% if public_slug and not is_repo_page %}
+    <div class="mb-6">
+      <div role="tablist" class="tabs tabs-boxed bg-base-200 w-full overflow-x-auto sm:w-fit">
+        <a role="tab"
+           href="{% url 'public:org_detail' slug=public_slug %}"
+           class="tab {% if active_public_tab == 'overview' %}tab-active{% endif %}">
+          Overview
+        </a>
+        <a role="tab"
+           href="{% url 'public:org_analytics' slug=public_slug %}"
+           class="tab {% if active_public_tab == 'analytics' %}tab-active{% endif %}">
+          Analytics
+        </a>
+        <a role="tab"
+           href="{% url 'public:org_pr_list' slug=public_slug %}"
+           class="tab {% if active_public_tab == 'pull_requests' %}tab-active{% endif %}">
+          Pull Requests
+        </a>
+      </div>
+    </div>
+    {% endif %}
+    {% block public_main_content %}{% endblock public_main_content %}
+  </main>
+
+  {% block public_cta %}
+    {% include "public/partials/sticky_cta.html" %}
+  {% endblock public_cta %}
+</div>
+{% endblock body %}
+
+{% block page_js %}
+  {{ block.super }}
+  {% vite_asset "assets/javascript/app.js" %}
+{% endblock page_js %}

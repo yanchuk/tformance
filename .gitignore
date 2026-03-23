@@ -55,3 +55,9 @@ results/
 
 # Database/data backups
 backups/
+
+# Local artifacts
+.codex/
+output/
+tmp/
+.gstack/

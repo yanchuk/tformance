@@ -1,0 +1,23 @@
+{% comment %}
+Combined delivery + AI-signal trend chart partial.
+
+Loaded via HTMX into a chart card container.
+Uses json_script for safe JSON embedding, consumed by Chart.js init code.
+
+Context:
+  chart_data  — dict with labels + datasets (from build_combined_trend)
+  chart_id    — unique DOM id prefix (e.g. "combined-trend-cycle-time")
+{% endcomment %}
+<div class="card bg-base-200 shadow-sm">
+  <div class="card-body p-4">
+    <h3 class="card-title text-sm font-medium">Delivery Trend and AI Signals</h3>
+    {{ chart_data|json_script:chart_data_id }}
+    <div style="position: relative; height: 320px">
+      <canvas
+        id="{{ chart_id }}-chart"
+        data-chart-type="combined-trend"
+        data-chart-data-id="{{ chart_data_id }}"
+      ></canvas>
+    </div>
+  </div>
+</div>

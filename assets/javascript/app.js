@@ -310,6 +310,12 @@ function initWideTrendChartInternal(canvas) {
 // Register charts on module load
 registerCharts();
 
+// Initialize server-rendered canvases with data attributes on page load
+// (not just HTMX swaps — public pages render charts directly in the template)
+document.addEventListener('DOMContentLoaded', () => {
+  chartManager.initFromDataAttributes();
+});
+
 // Initialize charts after HTMX swaps content
 // Use requestAnimationFrame to ensure DOM is fully settled before initializing charts
 document.addEventListener('htmx:afterSwap', function(event) {

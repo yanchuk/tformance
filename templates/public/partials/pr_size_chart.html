@@ -1,0 +1,28 @@
+{% load i18n %}
+<div>
+  {% if chart_data %}
+  <div class="space-y-3">
+    {% for item in chart_data %}
+    <a href="{% url 'public:org_pr_list' slug=public_slug %}?size={{ item.category }}{% if selected_repo %}&repo={{ selected_repo }}{% endif %}"
+       class="flex items-center gap-3 group cursor-pointer"
+       title="{% blocktrans with size=item.category count=item.count %}View {{ count }} {{ size }} PRs{% endblocktrans %}">
+      <span class="w-8 text-sm font-medium text-base-content/70 group-hover:text-primary transition-colors">{{ item.category }}</span>
+      <div class="flex-1 bg-base-200 rounded-full h-6 overflow-hidden group-hover:ring-2 ring-primary/50 transition-all">
+        {% widthratio item.count max_count 100 as bar_width %}
+        <div class="h-full rounded-full flex items-center justify-end pr-2 transition-all duration-300
+          {% if item.category == 'XS' or item.category == 'S' %}bg-success{% elif item.category == 'M' %}bg-warning{% else %}bg-error{% endif %}"
+          style="width: {% if item.count > 0 %}max({{ bar_width }}%, 24px){% else %}0{% endif %};">
+          {% if item.count > 0 %}
+          <span class="text-xs font-medium text-white">{{ item.count }}</span>
+          {% endif %}
+        </div>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="flex flex-col items-center justify-center h-48">
+    <p class="text-base-content/80 font-medium">{% trans "No PR data for this period" %}</p>
+  </div>
+  {% endif %}
+</div>

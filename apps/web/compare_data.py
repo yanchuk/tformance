@@ -87,7 +87,7 @@ COMPETITORS = {
         "annual_cost_100_devs": 42000,
         "free_tier": "8 contributors",
         "priority": "high",
-        "our_angle": "AI-focused metrics at 70% less cost",
+        "our_angle": "Delivery visibility for GitHub-first teams at flat-rate pricing",
         "one_liner": "Workflow automation + DORA. $35-46/seat.",
         "their_strengths": [
             "Active Dev Interrupted community (30K+ members)",
@@ -99,9 +99,9 @@ COMPETITORS = {
         "our_advantages": [
             "70% cheaper ($299/mo vs $1,750+/mo for 50 devs)",
             "Flat-rate pricing (no per-seat anxiety)",
-            "AI adoption focus (not workflow automation)",
+            "Clearer delivery visibility (not workflow automation)",
             "Faster setup, less complexity",
-            "AI tool detection built-in",
+            "AI-related correlation without a separate module",
         ],
         "honest_gaps": [
             "They have Jira integration (ours coming soon)",
@@ -110,7 +110,10 @@ COMPETITORS = {
             "They support GitLab and Bitbucket",
         ],
         "best_for_them": "Teams prioritizing workflow automation and community",
-        "best_for_us": "Teams of 15-75 devs focused on AI impact at 70% less cost",
+        "best_for_us": (
+            "Teams of 15-75 devs that want cycle time, review bottlenecks, "
+            "and trend visibility without enterprise pricing"
+        ),
         "features": {
             "ai_code_detection": "partial",
             "ai_usage_correlation": True,
@@ -127,10 +130,10 @@ COMPETITORS = {
             "workflow_automation": True,
         },
         "seo": {
-            "title": "Tformance vs LinearB: Pricing, Features & Honest Comparison",
+            "title": "Tformance vs LinearB: Pricing, Delivery Visibility & Honest Comparison",
             "description": (
-                "LinearB alternative: Tformance offers AI metrics at 70% less cost. "
-                "Compare features, pricing & see which fits. No enterprise sales calls."
+                "LinearB alternative for GitHub-first teams that want delivery visibility, trend clarity, "
+                "and flat-rate pricing without enterprise complexity."
             ),
             "keywords": [
                 "linearb alternative",
@@ -143,15 +146,16 @@ COMPETITORS = {
             {
                 "question": "Is Tformance a good LinearB alternative?",
                 "answer": (
-                    "Yes, if AI impact matters more than workflow automation. "
-                    "70% less cost. Focus on how AI tools affect delivery."
+                    "Yes, if delivery visibility matters more than workflow automation. "
+                    "Tformance is a stronger fit for smaller teams that want "
+                    "cycle time, review bottlenecks, and clear pricing."
                 ),
             },
             {
                 "question": "Does Tformance have all LinearB features?",
                 "answer": (
                     "No. LinearB has Jira, workflow automation, full DORA. "
-                    "We focus on AI impact at a fraction of the cost."
+                    "We focus on delivery visibility and GitHub-first setup at a fraction of the cost."
                 ),
             },
             {
@@ -187,7 +191,7 @@ COMPETITORS = {
         "annual_cost_100_devs": 60000,
         "free_tier": None,
         "priority": "high",
-        "our_angle": "Same insights, 86% lower cost, no sales call",
+        "our_angle": "Delivery visibility for growing teams without enterprise overhead",
         "one_liner": "Enterprise engineering intelligence. ~$50/seat.",
         "their_strengths": [
             "Enterprise-grade platform for 200+ dev teams",
@@ -199,7 +203,7 @@ COMPETITORS = {
         "our_advantages": [
             "86% cheaper ($699/mo vs ~$5,000/mo for 100 devs)",
             "No enterprise sales process (start in 5 minutes)",
-            "AI-first design (not retrofitted)",
+            "GitHub-first delivery visibility without enterprise sprawl",
             "Flat-rate pricing scales better",
         ],
         "honest_gaps": [
@@ -210,7 +214,7 @@ COMPETITORS = {
             "They have developer surveys built-in",
         ],
         "best_for_them": "Enterprise orgs (200+ devs) needing DevFinOps",
-        "best_for_us": "Growing teams (15-75 devs) wanting AI insights fast, no enterprise sales",
+        "best_for_us": "Growing teams (15-75 devs) that want delivery visibility fast, no enterprise sales required",
         "features": {
             "ai_code_detection": False,
             "dora_metrics": True,
@@ -226,10 +230,10 @@ COMPETITORS = {
             "devfinops": True,
         },
         "seo": {
-            "title": "Tformance vs Jellyfish: 70% Less Cost, Same AI Insights",
+            "title": "Tformance vs Jellyfish: Delivery Visibility Without Enterprise Pricing",
             "description": (
-                "Looking for a Jellyfish alternative? Tformance: AI insights at startup prices. "
-                "Compare features & save $50K+ annually on 100-dev teams."
+                "Jellyfish alternative for teams that want cycle time, review load, and repo trends "
+                "without enterprise pricing or a long sales cycle."
             ),
             "keywords": [
                 "jellyfish alternative",
@@ -242,7 +246,7 @@ COMPETITORS = {
             {
                 "question": "Is Tformance a good Jellyfish alternative?",
                 "answer": (
-                    "For teams under 150 devs focused on AI impact, yes. "
+                    "For teams under 150 devs focused on delivery visibility, yes. "
                     "For enterprise orgs needing R&D capitalization, Jellyfish is purpose-built."
                 ),
             },
@@ -280,7 +284,7 @@ COMPETITORS = {
         "annual_cost_100_devs": 50400,
         "free_tier": None,
         "priority": "high",
-        "our_angle": "AI detection built-in. $99-699 flat, not module math",
+        "our_angle": "Delivery visibility with flat pricing, not module math",
         "one_liner": "DevEx surveys + productivity. €22-42/dev.",
         "their_strengths": [
             "Built-in developer experience surveys",
@@ -291,7 +295,7 @@ COMPETITORS = {
         ],
         "our_advantages": [
             "Flat-rate pricing (no module math)",
-            "AI tool detection built-in",
+            "AI-related correlation as a secondary lens",
             "Simpler setup, faster time-to-value",
             "Budget-friendly for larger teams",
         ],
@@ -302,7 +306,7 @@ COMPETITORS = {
             "They have Slack integration",
         ],
         "best_for_them": "Teams prioritizing developer experience surveys",
-        "best_for_us": "Teams of 15-75 devs wanting AI impact + flat pricing",
+        "best_for_us": "Teams of 15-75 devs wanting delivery visibility plus flat pricing",
         "features": {
             "ai_code_detection": False,
             "dora_metrics": True,
@@ -316,10 +320,10 @@ COMPETITORS = {
             "working_agreements": True,
         },
         "seo": {
-            "title": "Tformance vs Swarmia: AI Impact Analytics Comparison 2026",
+            "title": "Tformance vs Swarmia: Delivery Visibility Comparison 2026",
             "description": (
-                "Swarmia alternative for AI-focused teams. Tformance: simpler pricing, "
-                "AI detection built-in. Compare features and annual costs."
+                "Swarmia alternative for GitHub-first teams that want simpler pricing, delivery visibility, "
+                "and a faster path to useful metrics."
             ),
             "keywords": [
                 "swarmia alternative",
@@ -332,18 +336,24 @@ COMPETITORS = {
             {
                 "question": "Is Tformance a good Swarmia alternative?",
                 "answer": (
-                    "If AI impact measurement is your priority, yes. "
+                    "If delivery visibility and simpler pricing are your priority, yes. "
                     "If developer experience surveys and team health are primary, "
                     "Swarmia is built for that."
                 ),
             },
             {
                 "question": "Does Swarmia detect AI tool usage?",
-                "answer": "No. Swarmia tracks developer productivity broadly, not AI tool impact.",
+                "answer": (
+                    "Not as a core surface. Swarmia tracks developer productivity broadly, "
+                    "while Tformance uses AI-related signals as supporting context next to delivery metrics."
+                ),
             },
             {
                 "question": "Why doesn't Tformance have surveys yet?",
-                "answer": ("AI impact first. Surveys coming—with a twist (gamified AI Detective)."),
+                "answer": (
+                    "Because we are prioritizing GitHub-first delivery visibility first. "
+                    "Surveys may come later, but they are not the wedge."
+                ),
             },
         ],
     },
@@ -359,7 +369,7 @@ COMPETITORS = {
         "annual_cost_100_devs": 60000,
         "free_tier": None,
         "priority": "medium",
-        "our_angle": "AI detection without enterprise complexity",
+        "our_angle": "Delivery visibility plus AI-related context without enterprise-only rollout",
         "one_liner": "AI code detection specialist. Enterprise pricing.",
         "their_strengths": [
             "Deep code-level AI analysis",
@@ -379,7 +389,7 @@ COMPETITORS = {
             "They have enterprise compliance",
         ],
         "best_for_them": "Enterprise teams needing code-level AI analysis",
-        "best_for_us": "Teams wanting simple AI adoption tracking",
+        "best_for_us": "Teams wanting GitHub-first delivery visibility with directional AI signals",
         "features": {
             "ai_code_detection": True,
             "dora_metrics": "partial",
@@ -388,10 +398,10 @@ COMPETITORS = {
             "soc2": True,
         },
         "seo": {
-            "title": "Tformance vs Span: AI Code Detection Comparison",
+            "title": "Tformance vs Span: Delivery Visibility vs AI Detection",
             "description": (
-                "Span alternative: Tformance offers AI detection without enterprise pricing. "
-                "Compare approaches to measuring AI coding tool impact."
+                "Span alternative for teams that want delivery visibility, review bottleneck insight, "
+                "and directional AI signals without enterprise pricing."
             ),
             "keywords": [
                 "span ai alternative",
@@ -401,10 +411,10 @@ COMPETITORS = {
         },
         "faqs": [
             {
-                "question": "Which has better AI detection, Tformance or Span?",
+                "question": "Which gives smaller teams clearer delivery visibility, Tformance or Span?",
                 "answer": (
-                    "Different approaches. Span: code-level analysis, more granular. "
-                    "Tformance: PR patterns, simpler to deploy."
+                    "Span goes deeper on code-level attribution. Tformance focuses on delivery "
+                    "visibility first and uses AI-related signals as supporting context."
                 ),
             },
             {
@@ -425,7 +435,7 @@ COMPETITORS = {
         "annual_cost_100_devs": 60000,
         "free_tier": None,
         "priority": "medium",
-        "our_angle": "Similar focus, simpler pricing",
+        "our_angle": "Similar GitHub-first surface, clearer pricing, broader delivery story",
         "one_liner": "AI-focused PR analytics. $50/seat.",
         "their_strengths": [
             "Similar AI focus to us",
@@ -450,8 +460,8 @@ COMPETITORS = {
         "seo": {
             "title": "Tformance vs Workweave: Engineering Analytics Compared",
             "description": (
-                "Workweave alternative: Tformance offers similar AI focus with simpler "
-                "flat-rate pricing. Compare features for AI-assisted development tracking."
+                "Workweave alternative: Tformance offers a broader delivery story with simpler "
+                "flat-rate pricing for GitHub-first teams."
             ),
             "keywords": [
                 "workweave alternative",
@@ -462,7 +472,10 @@ COMPETITORS = {
         "faqs": [
             {
                 "question": "Are Tformance and Workweave similar?",
-                "answer": "Yes, both track AI-assisted development. Differences: pricing model and integrations.",
+                "answer": (
+                    "They overlap on GitHub analytics, but Tformance emphasizes delivery "
+                    "visibility first and keeps pricing simpler for smaller teams."
+                ),
             },
             {
                 "question": "Which is better for a 50-dev team?",
@@ -490,7 +503,7 @@ COMPETITORS = {
             "Management visibility features",
         ],
         "our_advantages": [
-            "AI impact focus (not status automation)",
+            "Delivery visibility focus (not status automation)",
             "Published transparent pricing",
             "Delivery metrics, not reports",
         ],
@@ -498,7 +511,7 @@ COMPETITORS = {
             "They automate status updates (we don't)",
         ],
         "best_for_them": "Teams wanting automated status updates",
-        "best_for_us": "Teams measuring AI tool impact",
+        "best_for_us": "Teams that need delivery metrics, not status automation",
         "features": {
             "ai_code_detection": False,
             "github": True,
@@ -509,7 +522,7 @@ COMPETITORS = {
         "seo": {
             "title": "Tformance vs Mesmer: Engineering Visibility Tools Compared",
             "description": (
-                "Mesmer alternative: Tformance focuses on AI impact metrics, not status "
+                "Mesmer alternative: Tformance focuses on delivery metrics, not status "
                 "automation. Compare approaches to engineering visibility."
             ),
             "keywords": [
@@ -520,11 +533,17 @@ COMPETITORS = {
         "faqs": [
             {
                 "question": "Is Tformance a Mesmer alternative?",
-                "answer": "Not really. Mesmer automates status updates. Tformance measures AI impact. Minimal overlap.",
+                "answer": (
+                    "Not directly. Mesmer automates status updates. "
+                    "Tformance focuses on cycle time, review load, and PR flow."
+                ),
             },
             {
                 "question": "Can I use both Tformance and Mesmer?",
-                "answer": "Yes. Different problems. Mesmer: status automation. Tformance: AI metrics.",
+                "answer": (
+                    "Yes. They solve different problems. Mesmer handles status automation; "
+                    "Tformance handles delivery visibility."
+                ),
             },
         ],
     },
@@ -540,7 +559,7 @@ COMPETITORS = {
         "annual_cost_100_devs": None,
         "free_tier": None,
         "priority": "low",
-        "our_angle": "Proven product vs early stage",
+        "our_angle": "Live delivery visibility today, not just an emerging vision",
         "one_liner": "AI engineering manager. YC F25.",
         "their_strengths": [
             "YC backing (F25 batch)",
@@ -564,7 +583,7 @@ COMPETITORS = {
             "title": "Tformance vs Nivara: AI Engineering Analytics Comparison",
             "description": (
                 "Nivara alternative: Compare Tformance vs Nivara (YC F25). "
-                "Both early stage, different approaches to AI engineering analytics."
+                "Both early stage, but with different approaches to engineering delivery visibility."
             ),
             "keywords": [
                 "nivara alternative",
@@ -575,7 +594,10 @@ COMPETITORS = {
         "faqs": [
             {
                 "question": "Is Nivara a Tformance competitor?",
-                "answer": "Yes, both build AI engineering analytics. Limited public info on Nivara—hard to compare.",
+                "answer": (
+                    "Yes, both sit in the engineering visibility space. Limited public info "
+                    "on Nivara makes the comparison directional, not exhaustive."
+                ),
             },
             {
                 "question": "Which is further along?",
@@ -645,10 +667,10 @@ def calculate_savings(team_size: int, competitor_slug: str) -> dict | None:
 FEATURE_MATRIX = {
     "categories": [
         {
-            "name": "AI Tracking",
+            "name": "AI Signals",
             "features": [
-                {"key": "ai_code_detection", "label": "AI Code Detection"},
-                {"key": "ai_usage_correlation", "label": "AI Usage Correlation"},
+                {"key": "ai_code_detection", "label": "AI-related signals"},
+                {"key": "ai_usage_correlation", "label": "AI correlation"},
             ],
         },
         {

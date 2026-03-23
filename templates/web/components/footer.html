@@ -10,7 +10,14 @@
         <a href="{% url 'web:compare_competitor' competitor='workweave' %}" class="hover:text-primary transition-colors">vs Workweave</a>
         <a href="{% url 'web:compare_competitor' competitor='mesmer' %}" class="hover:text-primary transition-colors">vs Mesmer</a>
         <a href="{% url 'web:compare_competitor' competitor='nivara' %}" class="hover:text-primary transition-colors">vs Nivara</a>
-        <a href="{% url 'web:compare' %}" class="hover:text-primary transition-colors font-medium">All Comparisons &rarr;</a>
+      </div>
+    </div>
+
+    {# High-value proof links #}
+    <div class="flex justify-center">
+      <div class="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm font-medium">
+        <a href="{% url 'web:compare' %}" class="hover:text-primary transition-colors">All Comparisons &rarr;</a>
+        <a href="{% url 'public:directory' %}" class="hover:text-primary transition-colors">Open Source Benchmarks</a>
       </div>
     </div>
 

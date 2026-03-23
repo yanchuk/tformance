@@ -1,0 +1,399 @@
+{% extends "public/app_base.html" %}
+{% load humanize %}
+
+{% block public_json_ld %}
+{% if stats %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Dataset",
+  "name": "{{ repo_profile.display_name }} Engineering Benchmarks",
+  "description": "{{ page_description }}",
+  "url": "{{ page_canonical_url }}",
+  "creator": {
+    "@type": "Organization",
+    "name": "Tformance",
+    "url": "https://tformance.com"
+  },
+  "variableMeasured": [
+    {"@type": "PropertyValue", "name": "Total PRs", "value": "{{ stats.total_prs }}"},
+    {"@type": "PropertyValue", "name": "Median Cycle Time", "value": "{{ stats.median_cycle_time_hours }}h"},
+    {"@type": "PropertyValue", "name": "Median Review Time", "value": "{{ stats.median_review_time_hours }}h"},
+    {"@type": "PropertyValue", "name": "AI-Related Signal Rate", "value": "{{ stats.ai_assisted_pct }}%"},
+    {"@type": "PropertyValue", "name": "Active Contributors (30d)", "value": "{{ stats.active_contributors_30d }}"}
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "How is {{ repo_profile.display_name }} delivering recently?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "{{ repo_profile.display_name }} has {{ stats.median_cycle_time_hours }} hours median cycle time, {{ stats.median_review_time_hours }} hours median review time, and {{ stats.total_prs_in_window }} merged pull requests in the last {{ stats.summary_window_days }} days."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What AI-related signal share does {{ repo_profile.display_name }} show?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "AI-related signals appear on {{ stats.ai_assisted_pct }}% of {{ repo_profile.display_name }} pull requests in the current summary window."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How many active contributors does {{ repo_profile.display_name }} have?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "{{ repo_profile.display_name }} has {{ stats.active_contributors_30d }} active contributors in the last 30 days."
+      }
+    }
+  ]
+}
+</script>
+{% endif %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {"@type": "ListItem", "position": 1, "name": "Open Source", "item": "https://tformance.com/open-source/"},
+    {"@type": "ListItem", "position": 2, "name": "{{ org_profile.display_name }}", "item": "https://tformance.com/open-source/{{ public_slug }}/"},
+    {"@type": "ListItem", "position": 3, "name": "{{ repo_profile.display_name }}", "item": "{{ page_canonical_url }}"}
+  ]
+}
+</script>
+{% endblock public_json_ld %}
+
+{% block public_breadcrumb_items %}
+<li><a href="{% url 'public:org_detail' slug=public_slug %}" class="link link-hover">{{ org_profile.display_name }}</a></li>
+<li>{{ repo_profile.display_name }}</li>
+{% endblock public_breadcrumb_items %}
+
+{% block public_main_content %}
+{# 1. Identity + CTA #}
+<div class="mb-8">
+  <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-4">
+    <div>
+      <h1 class="text-3xl font-bold mb-1">{{ repo_profile.display_name }} Engineering Benchmarks</h1>
+      <div class="flex flex-wrap items-center gap-2 text-sm text-base-content/60">
+        <span>{{ org_profile.display_name }}</span>
+        <span>&middot;</span>
+        {% if repo_profile.github_url %}
+        <a href="{{ repo_profile.github_url }}" target="_blank" rel="noopener" class="link link-hover">GitHub</a>
+        <span>&middot;</span>
+        {% endif %}
+        {% if stats and stats.last_computed_at %}
+        <span>Updated {{ stats.last_computed_at|date:"F j, Y" }}</span>
+        {% endif %}
+      </div>
+    </div>
+    <div class="flex gap-3">
+      <a href="{% url 'account_signup' %}" class="btn btn-primary">{{ primary_cta_text }}</a>
+      <a href="{% url 'public:directory' %}" class="btn btn-outline">Explore Directory</a>
+    </div>
+  </div>
+
+  {# Citable paragraph #}
+  {% if stats %}
+  <p class="text-base-content/80 max-w-4xl leading-relaxed text-lg">
+    {{ repo_profile.display_name }} delivery benchmarks are based on {{ stats.total_prs_in_window }} merged pull requests in the last
+    {{ stats.summary_window_days }} days ({{ stats.total_prs|intcomma }} all-time), with
+    {{ stats.median_cycle_time_hours|floatformat:1 }} hours median cycle time,
+    {{ stats.median_review_time_hours|floatformat:1 }} hours median review time,
+    and {{ stats.active_contributors_30d }} active contributors.
+    AI-related signals appear on {{ stats.ai_assisted_pct|floatformat:1 }}% of recent work.
+    {% if stats.cadence_change_pct > 0 %}
+    PR volume is up {{ stats.cadence_change_pct|floatformat:0 }}% compared to the prior period.
+    {% elif stats.cadence_change_pct < 0 %}
+    PR volume is down {{ stats.cadence_change_pct|floatformat:0 }}% compared to the prior period.
+    {% endif %}
+  </p>
+  {% endif %}
+
+  {% if insight %}
+  <blockquote class="border-l-4 border-primary pl-4 mt-4 text-base-content/70 italic">
+    {{ insight_text }}
+  </blockquote>
+  {% endif %}
+</div>
+
+{% if stats %}
+{# 2. Hero proof metrics — OUTCOME-FIRST: cycle time → review time → AI adoption #}
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+  <div class="card bg-base-100 border border-base-300">
+    <div class="card-body py-4">
+      <div class="text-sm text-base-content/60">Median Cycle Time</div>
+      <div class="text-3xl font-bold">{{ stats.median_cycle_time_hours|floatformat:1 }}h</div>
+      <div class="text-xs text-base-content/50">PR open to merge</div>
+    </div>
+  </div>
+  <div class="card bg-base-100 border border-base-300">
+    <div class="card-body py-4">
+      <div class="text-sm text-base-content/60">Median Review Time</div>
+      <div class="text-3xl font-bold">{{ stats.median_review_time_hours|floatformat:1 }}h</div>
+      <div class="text-xs text-base-content/50">first review to approval</div>
+    </div>
+  </div>
+  <div class="card bg-base-100 border border-base-300">
+    <div class="card-body py-4">
+      <div class="text-sm text-base-content/60">AI-Related Signals</div>
+      <div class="text-3xl font-bold">{{ stats.ai_assisted_pct|floatformat:1 }}%</div>
+      <div class="text-xs text-base-content/50">directional signal across recent PRs</div>
+    </div>
+  </div>
+</div>
+
+{# 3. Best signal + Watchout signal #}
+{% if stats.best_signal.metric != "none" or stats.watchout_signal.metric != "none" %}
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+  {% if stats.best_signal.metric != "none" %}
+  <div class="card bg-success/10 border border-success/30">
+    <div class="card-body py-4">
+      <div class="flex items-center gap-2 mb-1">
+        <span class="badge badge-success badge-sm">Best Signal</span>
+        <span class="font-semibold">{{ stats.best_signal.label }}</span>
+      </div>
+      <div class="text-2xl font-bold">{{ stats.best_signal.value }}</div>
+      <div class="text-sm text-base-content/60">{{ stats.best_signal.description }}</div>
+    </div>
+  </div>
+  {% endif %}
+  {% if stats.watchout_signal.metric != "none" %}
+  <div class="card bg-warning/10 border border-warning/30">
+    <div class="card-body py-4">
+      <div class="flex items-center gap-2 mb-1">
+        <span class="badge badge-warning badge-sm">Watch Out</span>
+        <span class="font-semibold">{{ stats.watchout_signal.label }}</span>
+      </div>
+      <div class="text-2xl font-bold">{{ stats.watchout_signal.value }}</div>
+      <div class="text-sm text-base-content/60">{{ stats.watchout_signal.description }}</div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
+{# 4. Repo vs Org comparison callout #}
+{% if comparison_data.ai_adoption_delta is not None %}
+<div class="bg-base-200 rounded-box p-4 mb-8">
+  <h3 class="text-sm font-semibold mb-3">Repo vs {{ org_profile.display_name }} Average</h3>
+  <div class="grid grid-cols-3 gap-4 text-center">
+    <div>
+      <div class="text-lg font-bold {% if comparison_data.ai_adoption_delta > 0 %}text-success{% elif comparison_data.ai_adoption_delta < 0 %}text-warning{% endif %}">
+        {% if comparison_data.ai_adoption_delta > 0 %}+{% endif %}{{ comparison_data.ai_adoption_delta|floatformat:1 }}pp
+      </div>
+      <div class="text-xs text-base-content/50">AI Signals</div>
+    </div>
+    <div>
+      <div class="text-lg font-bold {% if comparison_data.cycle_time_delta < 0 %}text-success{% elif comparison_data.cycle_time_delta > 0 %}text-warning{% endif %}">
+        {% if comparison_data.cycle_time_delta > 0 %}+{% endif %}{{ comparison_data.cycle_time_delta|floatformat:1 }}h
+      </div>
+      <div class="text-xs text-base-content/50">Cycle Time</div>
+    </div>
+    <div>
+      <div class="text-lg font-bold {% if comparison_data.review_time_delta < 0 %}text-success{% elif comparison_data.review_time_delta > 0 %}text-warning{% endif %}">
+        {% if comparison_data.review_time_delta > 0 %}+{% endif %}{{ comparison_data.review_time_delta|floatformat:1 }}h
+      </div>
+      <div class="text-xs text-base-content/50">Review Time</div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{# 5. Combined trend chart #}
+{% if combined_trend_data.labels %}
+<div class="card bg-base-100 border border-base-300 mb-8">
+  <div class="card-body p-4">
+    <h2 class="card-title text-base">Delivery Trend and AI Signals</h2>
+    {{ combined_trend_data|json_script:"repo-combined-trend-data" }}
+    <div style="position: relative; height: 320px">
+      <canvas id="repo-combined-trend-chart"
+              data-chart-type="combined-trend" data-chart-data-id="repo-combined-trend-data"></canvas>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{# 6. Correlation scatter (only when sufficient data) #}
+{% if correlation_data.r_value is not None %}
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+  <div class="card bg-base-100 border border-base-300">
+    <div class="card-body p-4">
+      <h3 class="card-title text-sm">AI Signals vs Cycle Time</h3>
+      {{ correlation_data|json_script:"repo-correlation-data" }}
+      <div style="position: relative; height: 260px">
+        <canvas id="repo-correlation-chart"
+                data-chart-type="correlation-scatter" data-chart-data-id="repo-correlation-data"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="card bg-base-100 border border-base-300">
+    <div class="card-body py-4">
+      <h3 class="text-sm font-medium text-base-content/60">Correlation</h3>
+      <div class="text-2xl font-bold mt-2">{{ correlation_data.classification }}</div>
+      <div class="text-sm text-base-content/50 mt-1">
+        r = {{ correlation_data.r_value|floatformat:2 }} ({{ correlation_data.points|length }} weeks)
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{# 7. AI-related signal comparison #}
+{% if ai_impact_data.total_prs %}
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+  <div class="card bg-base-100 border border-base-300">
+    <div class="card-body py-4">
+      <h3 class="text-sm font-medium text-base-content/60">Cycle Time by AI-Related Signals</h3>
+      <div class="flex items-end gap-4 mt-2">
+        {% if ai_impact_data.avg_cycle_with_ai %}
+        <div>
+          <div class="text-2xl font-bold">{{ ai_impact_data.avg_cycle_with_ai|floatformat:1 }}h</div>
+          <div class="text-xs text-base-content/50">with signals</div>
+        </div>
+        {% endif %}
+        {% if ai_impact_data.avg_cycle_without_ai %}
+        <div>
+          <div class="text-2xl font-bold text-base-content/60">{{ ai_impact_data.avg_cycle_without_ai|floatformat:1 }}h</div>
+          <div class="text-xs text-base-content/50">baseline</div>
+        </div>
+        {% endif %}
+        {% if ai_impact_data.cycle_time_difference_pct %}
+        <div>
+          <div class="text-lg font-semibold {% if ai_impact_data.cycle_time_difference_pct < 0 %}text-success{% else %}text-warning{% endif %}">
+            {{ ai_impact_data.cycle_time_difference_pct|floatformat:1 }}%
+          </div>
+          <div class="text-xs text-base-content/50">difference</div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  <div class="card bg-base-100 border border-base-300">
+    <div class="card-body py-4">
+      <h3 class="text-sm font-medium text-base-content/60">PR Breakdown</h3>
+      <div class="text-sm mt-2">
+        <span class="font-bold">{{ ai_impact_data.ai_prs }}</span> with signals /
+        <span class="font-bold">{{ ai_impact_data.total_prs }}</span> total PRs
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{# 8. AI tools + PR type breakdown #}
+{% if stats.breakdown_data.ai_tools %}
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+  <div class="card bg-base-100 border border-base-300">
+    <div class="card-body py-4">
+      <h3 class="text-sm font-medium text-base-content/60">Top AI Tools</h3>
+      <div class="mt-2 space-y-1">
+        {% for tool in stats.breakdown_data.ai_tools|slice:":5" %}
+        <div class="flex justify-between text-sm">
+          <span>{{ tool.tool }}</span>
+          <span class="tabular-nums">{{ tool.count }}</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  {% if stats.breakdown_data.pr_types %}
+  <div class="card bg-base-100 border border-base-300">
+    <div class="card-body py-4">
+      <h3 class="text-sm font-medium text-base-content/60">PR Type Breakdown</h3>
+      <div class="mt-2 space-y-1">
+        {% for item in stats.breakdown_data.pr_types|slice:":6" %}
+        <div class="flex justify-between text-sm">
+          <span class="capitalize">{{ item.type }}</span>
+          <span class="tabular-nums">{{ item.count }}</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  {% elif stats.breakdown_data.pr_sizes %}
+  <div class="card bg-base-100 border border-base-300">
+    <div class="card-body py-4">
+      <h3 class="text-sm font-medium text-base-content/60">PR Size Distribution</h3>
+      <div class="mt-2 space-y-1">
+        {% for size in stats.breakdown_data.pr_sizes %}
+        <div class="flex justify-between text-sm">
+          <span>{{ size.label }}</span>
+          <span class="tabular-nums">{{ size.count }}</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
+{# 9. Recent PR proof block #}
+{% if stats.recent_prs %}
+<div class="mb-8">
+  <div class="flex items-center justify-between mb-3">
+    <h2 class="text-xl font-semibold">Recent Pull Requests</h2>
+    <a href="{% url 'public:repo_pr_list' slug=public_slug repo_slug=repo_slug %}"
+       class="btn btn-outline btn-sm">View PR Explorer</a>
+  </div>
+  <div class="overflow-x-auto">
+    <table class="table table-sm">
+      <thead>
+        <tr>
+          <th>Title</th>
+          <th>Author</th>
+          <th>AI</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for pr in stats.recent_prs|slice:":5" %}
+        <tr>
+          <td>
+            {% if pr.github_url %}
+            <a href="{{ pr.github_url }}" target="_blank" rel="noopener" class="link link-hover">{{ pr.title|truncatechars:60 }}</a>
+            {% else %}
+            {{ pr.title|truncatechars:60 }}
+            {% endif %}
+          </td>
+          <td>{{ pr.author_name|default:"-" }}</td>
+          <td>
+            {% if pr.is_ai_assisted %}
+            <span class="badge badge-primary badge-xs">AI</span>
+            {% else %}
+            <span class="text-base-content/40">—</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+{% endif %}
+
+{# 10. Methodology / freshness / CTA #}
+<div class="border-t border-base-300 pt-6 mt-8">
+  <h3 class="text-lg font-semibold mb-2">Methodology</h3>
+  <p class="text-sm text-base-content/60 max-w-3xl mb-4">
+    Metrics are computed from merged pull request data synced daily from GitHub.
+    AI-related metrics are directional signals inferred from pull request activity patterns and heuristics.
+    Summary metrics use a {{ stats.summary_window_days|default:"30" }}-day rolling window;
+    trends use a {{ stats.trend_window_days|default:"90" }}-day window.
+    {% if stats and stats.last_computed_at %}
+    Last updated {{ stats.last_computed_at|timesince }} ago.
+    {% endif %}
+  </p>
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <p class="text-sm text-base-content/60">{{ freshness_copy }}</p>
+    <a href="{% url 'account_signup' %}" class="btn btn-primary btn-sm">{{ primary_cta_text }}</a>
+  </div>
+</div>
+{% endblock public_main_content %}

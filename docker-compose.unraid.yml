@@ -127,10 +127,18 @@ services:
 
       # Port for gunicorn
       PORT: "8000"
+      # Public pipeline
+      GITHUB_SEEDING_TOKENS: ${GITHUB_SEEDING_TOKENS:-}
+      SITE_DOMAIN: ${SITE_DOMAIN:-dev2.ianchuk.com}
+      SITE_NAME: ${SITE_NAME:-Tformance}
+    volumes:
+      - tformance-media:/code/media
     command: >
       sh -c "
         echo 'Running database migrations...' &&
         python manage.py migrate --noinput &&
+        echo 'Bootstrapping site domain...' &&
+        python manage.py bootstrap_site_domain --domain $${SITE_DOMAIN} --name '$${SITE_NAME}' &&
         echo 'Bootstrapping Celery scheduled tasks...' &&
         python manage.py bootstrap_celery_tasks --remove-stale &&
         echo 'Starting gunicorn...' &&
@@ -143,11 +151,11 @@ services:
       - tformance-external
 
   # =============================================================================
-  # CELERY WORKER (Background Tasks)
+  # CELERY WORKERS (Split by Queue)
   # =============================================================================
-  worker:
+  worker-sync:
     image: ayanchuk/tformance:${IMAGE_TAG:-latest}
-    container_name: tformance-worker
+    container_name: tformance-worker-sync
     restart: unless-stopped
     depends_on:
       db:
@@ -156,7 +164,7 @@ services:
         condition: service_healthy
       web:
         condition: service_started
-    environment:
+    environment: &worker-env
       DJANGO_SETTINGS_MODULE: tformance.settings_production
       DEBUG: "False"
       SECRET_KEY: ${SECRET_KEY}
@@ -169,13 +177,54 @@ services:
       GITHUB_APP_ENABLED: ${GITHUB_APP_ENABLED:-False}
       GITHUB_APP_ID: ${GITHUB_APP_ID:-}
       GITHUB_APP_PRIVATE_KEY: ${GITHUB_APP_PRIVATE_KEY:-}
+      GITHUB_SEEDING_TOKENS: ${GITHUB_SEEDING_TOKENS:-}
       JIRA_CLIENT_ID: ${JIRA_CLIENT_ID:-}
       JIRA_CLIENT_SECRET: ${JIRA_CLIENT_SECRET:-}
       SLACK_CLIENT_ID: ${SLACK_CLIENT_ID:-}
       SLACK_CLIENT_SECRET: ${SLACK_CLIENT_SECRET:-}
       SLACK_SIGNING_SECRET: ${SLACK_SIGNING_SECRET:-}
       GROQ_API_KEY: ${GROQ_API_KEY:-}
-    command: celery -A tformance worker -l INFO --pool threads --concurrency 10 -Q celery,sync,compute,llm
+    volumes:
+      - tformance-media:/code/media
+    command: celery -A tformance worker -l INFO --pool threads --concurrency 3 -Q sync
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+    networks:
+      - tformance-internal
+
+  worker-compute:
+    image: ayanchuk/tformance:${IMAGE_TAG:-latest}
+    container_name: tformance-worker-compute
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      web:
+        condition: service_started
+    environment: *worker-env
+    volumes:
+      - tformance-media:/code/media
+    command: celery -A tformance worker -l INFO --pool threads --concurrency 4 -Q compute,celery
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+    networks:
+      - tformance-internal
+
+  worker-llm:
+    image: ayanchuk/tformance:${IMAGE_TAG:-latest}
+    container_name: tformance-worker-llm
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      web:
+        condition: service_started
+    environment: *worker-env
+    command: celery -A tformance worker -l INFO --pool threads --concurrency 2 -Q llm
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
     networks:
@@ -209,6 +258,14 @@ services:
       - "com.centurylinklabs.watchtower.enable=true"
     networks:
       - tformance-internal
+
+# =============================================================================
+# VOLUMES
+# =============================================================================
+volumes:
+  tformance-media:
+    name: tformance-media
+    driver: local
 
 # =============================================================================
 # NETWORKS

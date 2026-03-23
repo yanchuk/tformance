@@ -696,43 +696,16 @@ class GitHubGraphQLFetcher:
         return result
 
     def _deserialize_prs(self, data: list[dict]) -> list[FetchedPRFull]:
-        """Deserialize dicts to FetchedPRFull objects from cache."""
-        prs = []
-        for pr_data in data:
-            # Parse datetime fields
-            for dt_field in ["created_at", "updated_at", "merged_at", "closed_at", "first_review_at"]:
-                if pr_data.get(dt_field):
-                    pr_data[dt_field] = datetime.fromisoformat(pr_data[dt_field])
-            # Parse nested datetimes in reviews
-            reviews = []
-            for review_data in pr_data.get("reviews", []):
-                if review_data.get("submitted_at"):
-                    review_data["submitted_at"] = datetime.fromisoformat(review_data["submitted_at"])
-                reviews.append(FetchedReview(**review_data))
-            pr_data["reviews"] = reviews
-            # Parse nested datetimes in commits
-            commits = []
-            for commit_data in pr_data.get("commits", []):
-                if commit_data.get("committed_at"):
-                    commit_data["committed_at"] = datetime.fromisoformat(commit_data["committed_at"])
-                commits.append(FetchedCommit(**commit_data))
-            pr_data["commits"] = commits
-            # Parse nested files
-            files = []
-            for file_data in pr_data.get("files", []):
-                files.append(FetchedFile(**file_data))
-            pr_data["files"] = files
-            # Parse nested check_runs
-            check_runs = []
-            for check_run_data in pr_data.get("check_runs", []):
-                if check_run_data.get("started_at"):
-                    check_run_data["started_at"] = datetime.fromisoformat(check_run_data["started_at"])
-                if check_run_data.get("completed_at"):
-                    check_run_data["completed_at"] = datetime.fromisoformat(check_run_data["completed_at"])
-                check_runs.append(FetchedCheckRun(**check_run_data))
-            pr_data["check_runs"] = check_runs
+        """Deserialize dicts to FetchedPRFull objects from cache.
 
-            prs.append(FetchedPRFull(**pr_data))
+        Delegates to the standalone deserialize_cache_prs() in pr_cache.py
+        to avoid maintaining two copies of the parsing logic.
+        """
+        from .pr_cache import deserialize_cache_prs
+
+        prs, skipped = deserialize_cache_prs(data)
+        if skipped:
+            logger.warning("Skipped %d PR entries during cache deserialization", skipped)
         return prs
 
     async def _fetch_contributors_async(

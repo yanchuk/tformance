@@ -274,6 +274,19 @@ class TestCompareViews(TestCase):
         assert "page_description" in response.context
         assert "2026" in response.context["page_title"]
 
+    def test_compare_hub_uses_delivery_visibility_positioning(self):
+        response = self.client.get(reverse("web:compare"))
+        content = response.content.decode()
+        assert "delivery visibility" in content.lower()
+        assert "AI Impact Analytics for Engineering Teams" not in content
+        assert "See if AI tools help" not in content
+        assert "AI Code Detection" not in content
+
+    def test_compare_hub_links_to_open_source_benchmarks(self):
+        response = self.client.get(reverse("web:compare"))
+        self.assertContains(response, "Open Source Benchmarks")
+        self.assertContains(response, "/open-source/")
+
     # =========================================================================
     # Individual Competitor Pages
     # =========================================================================
@@ -312,6 +325,14 @@ class TestCompareViews(TestCase):
 
         assert "page_title" in response.context
         assert "LinearB" in response.context["page_title"]
+
+    def test_compare_competitor_uses_delivery_first_positioning(self):
+        response = self.client.get(reverse("web:compare_competitor", kwargs={"competitor": "linearb"}))
+        content = response.content.decode()
+        assert "delivery visibility" in content.lower()
+        assert "AI-focused metrics" not in content
+        assert "AI Code Detection" not in content
+        assert "Building fast. Some gaps remain." not in content
 
     def test_compare_competitor_invalid_slug_returns_404(self):
         """Invalid competitor slug returns 404."""

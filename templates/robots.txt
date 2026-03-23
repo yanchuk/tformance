@@ -5,12 +5,42 @@ Disallow: /a/
 Disallow: /survey/
 Disallow: /accounts/
 Disallow: /api/
+Disallow: /app/
 
 # Allow important pages
 Allow: /
+Allow: /open-source/
 Allow: /report/
 Allow: /terms/
 Allow: /privacy/
+
+# AI Search Crawlers
+User-agent: OAI-SearchBot
+Allow: /open-source/
+
+User-agent: ChatGPT-User
+Allow: /open-source/
+
+User-agent: ClaudeBot
+Allow: /open-source/
+
+User-agent: Claude-SearchBot
+Allow: /open-source/
+
+User-agent: PerplexityBot
+Allow: /open-source/
+
+User-agent: Amazonbot
+Allow: /open-source/
+
+User-agent: DuckAssistBot
+Allow: /open-source/
+
+User-agent: GPTBot
+Allow: /open-source/
+
+User-agent: Google-Extended
+Allow: /open-source/
 
 # Sitemap
 Sitemap: https://tformance.com/sitemap.xml

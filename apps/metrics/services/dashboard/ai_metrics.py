@@ -21,7 +21,13 @@ from apps.teams.models import Team
 from apps.utils.date_utils import end_of_day, start_of_day
 
 
-def get_ai_adoption_trend(team: Team, start_date: date, end_date: date, repo: str | None = None) -> list[dict]:
+def get_ai_adoption_trend(
+    team: Team,
+    start_date: date,
+    end_date: date,
+    repo: str | None = None,
+    use_pr_detection: bool = False,
+) -> list[dict]:
     """Get AI adoption trend by week.
 
     Args:
@@ -29,23 +35,28 @@ def get_ai_adoption_trend(team: Team, start_date: date, end_date: date, repo: st
         start_date: Start date (inclusive)
         end_date: End date (inclusive)
         repo: Optional repository to filter by (owner/repo format)
+        use_pr_detection: If True, use PullRequest.is_ai_assisted (GitHub
+            detection) instead of survey responses.  Public pages should
+            set this to True because surveys are not available.
 
     Returns:
         list of dicts with keys:
             - week (str): Week start date in ISO format (YYYY-MM-DD)
             - value (float): AI adoption percentage for that week
     """
-    # Get merged PRs in date range with surveys
-    prs = _get_merged_prs_in_range(team, start_date, end_date).filter(survey__isnull=False)
+    prs = _get_merged_prs_in_range(team, start_date, end_date)
+    if not use_pr_detection:
+        prs = prs.filter(survey__isnull=False)
     prs = _apply_repo_filter(prs, repo)
 
     # Group by week and calculate AI percentage
+    ai_filter = Q(is_ai_assisted=True) if use_pr_detection else Q(survey__author_ai_assisted=True)
     weekly_data = (
         prs.annotate(week=TruncWeek("merged_at"))
         .values("week")
         .annotate(
             total=Count("id"),
-            ai_count=Count("id", filter=Q(survey__author_ai_assisted=True)),
+            ai_count=Count("id", filter=ai_filter),
         )
         .order_by("week")
     )

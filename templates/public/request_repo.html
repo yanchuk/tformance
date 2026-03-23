@@ -1,0 +1,71 @@
+{% extends "public/base.html" %}
+
+{% block breadcrumb_items %}
+<li>Request</li>
+{% endblock %}
+
+{% block public_content %}
+<div class="max-w-xl mx-auto">
+  <h1 class="text-3xl font-bold mb-2">Request Your Repository</h1>
+  <p class="text-base-content/70 mb-6">
+    Want free engineering metrics for your open source project?
+    Submit your GitHub repository and we'll review it within 48 hours.
+  </p>
+
+  <div class="card bg-base-100 border border-base-300">
+    <div class="card-body">
+      <form method="post" action="{% url 'public:request_repo' %}">
+        {% csrf_token %}
+
+        <div class="form-control mb-4">
+          <label class="label" for="id_github_url">
+            <span class="label-text font-medium">GitHub Repository URL</span>
+          </label>
+          {{ form.github_url }}
+          {% if form.github_url.errors %}
+          <label class="label">
+            <span class="label-text-alt text-error">{{ form.github_url.errors.0 }}</span>
+          </label>
+          {% endif %}
+        </div>
+
+        <div class="form-control mb-4">
+          <label class="label" for="id_email">
+            <span class="label-text font-medium">Your Email</span>
+          </label>
+          {{ form.email }}
+          {% if form.email.errors %}
+          <label class="label">
+            <span class="label-text-alt text-error">{{ form.email.errors.0 }}</span>
+          </label>
+          {% endif %}
+        </div>
+
+        <div class="form-control mb-6">
+          <label class="label" for="id_role">
+            <span class="label-text font-medium">Your Relationship to the Project</span>
+          </label>
+          {{ form.role }}
+          {% if form.role.errors %}
+          <label class="label">
+            <span class="label-text-alt text-error">{{ form.role.errors.0 }}</span>
+          </label>
+          {% endif %}
+        </div>
+
+        <button type="submit" class="btn btn-primary w-full">
+          Submit Request
+          <i class="fa-solid fa-paper-plane ml-1"></i>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <div class="mt-6 text-sm text-base-content/50">
+    <p><strong>Requirements:</strong> Public GitHub repositories with 500+ merged PRs qualify for tracking.</p>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block cta_banner %}{% endblock %}

@@ -80,37 +80,63 @@ When annotating with multiple `Count()` on different reverse relations, always u
 ```
 Without it, Django cross-joins the tables and inflates counts silently.
 
-## Epistemic Hierarchy
+## Epistemic Hierarchy (Priority of Truth Sources)
 
-### Source Priority (highest to lowest)
-1. **Project files** — `pyproject.toml`, `package.json`, lockfiles, actual code
-2. **External verification** — official docs (via Context7/web search), `pip show`, `npm info`
-3. **Training data** — use ONLY when (1) and (2) are unavailable; always mark as uncertain
+1. **Project Files & User Context** (HIGHEST): pyproject.toml, package.json, requirements.txt are authoritative. User-provided facts = ground truth. Unknown feature/API = assume NEW, not error.
+2. **External Tools & Documentation**: Web search, fetched docs, MCP responses override training data.
+3. **Your Training Data** (LOWEST): "Legacy Archive" — reliable for syntax/logic, unreliable for versions/APIs/events.
 
-### Mandatory Verification Triggers
-Before making claims about any of these, **search or check project files first**:
-- Library versions or release dates
-- API signatures, parameters, or return types
-- Deprecation status of any feature
-- LLM model names, pricing, or capabilities
-- "Best practice" recommendations for fast-moving libraries
+## Mandatory Verification
 
-### High-Risk Libraries (frequent breaking changes)
-Django, DRF, Celery, HTMX, Alpine.js, Tailwind CSS, DaisyUI,
-Chart.js, Vite, LiteLLM, Groq SDK, Anthropic SDK, Stripe,
-PyGithub, Slack SDK, Sentry SDK, django-allauth, django-vite
+ALWAYS verify before answering about:
+- Library/framework versions or release dates
+- LLM versions, names and parameters
+- API signatures, method parameters, return types
+- Deprecated vs current approaches
+- "Does X exist?" / "Is Y still supported?"
+- Any fact that could have changed since training
 
-### Response Format Markers
-When answering questions about versions, APIs, or current state:
-- `VERIFIED` — confirmed via project files or external docs
-- `FROM TRAINING` — based on training data, may be outdated
-- `UNCERTAIN` — could not verify, treat with caution
+## Response Marking (Epistemic Badges)
 
-### Anti-Hallucination Rules
-- Never "correct" unfamiliar syntax — it may be valid modern syntax post-cutoff
-- Never claim a feature/library "doesn't exist" without searching first
-- If `pyproject.toml` or `package.json` shows a version you don't recognize, trust the file
-- When in doubt, say "I'm not sure — let me check" and verify
+When providing technical information:
+- `✓ VERIFIED (from [source]): [info]` — confirmed via search/docs/project files
+- `⚠ FROM TRAINING (may be outdated): [info]` — unverified
+- `? UNCERTAIN: [info] — recommend verification` — low confidence
+
+When diagnosing errors or unexpected behavior:
+- `✓ VERIFIED: [fact]` — read from code, logs, config, or stated by user
+- `HYPOTHESIS: [assumption]` — inference that needs confirmation, always mark as such
+- Present multiple hypotheses with equal weight when uncertain
+
+## Anti-Hallucination Rules
+
+Do NOT:
+- "Correct" user code to older syntax you're familiar with
+- Claim "this doesn't exist" without verification
+- Silently downgrade modern patterns to legacy equivalents
+- State version numbers from memory as facts
+
+Instead:
+- Unfamiliar code → assume valid modern syntax
+- Uncertain existence → "let me check" or ask user
+- Suggesting alternatives → explain WHY, confirm user's version first
+- Stating versions → mark as "from training, verify current"
+
+## Version Handling
+
+1. Check project files (pyproject.toml, package.json) FIRST
+2. Version specified → use THAT version's API
+3. No version info → ASK user
+4. User states version → trust it, even if unfamiliar
+
+## Permission to Say "I Don't Know"
+
+You are explicitly encouraged to say:
+- "I'm not certain about the current API — let me check"
+- "This might have changed since my training"
+- "I don't recognize this, but assuming it's valid modern syntax"
+
+Admitting uncertainty is BETTER than confident hallucination.
 
 ## Key Decisions (Do Not Change Without Discussion)
 
@@ -179,3 +205,34 @@ GitHub/Jira APIs → Backend → PostgreSQL → Dashboard (Chart.js) → User
                                     ↓
                               Slack Bot (surveys)
 ```
+
+## gstack
+
+Use the `/browse` skill from gstack for all web browsing. Never use `mcp__claude-in-chrome__*` tools.
+
+Available skills:
+- `/office-hours` — brainstorm and strategize
+- `/plan-ceo-review` — CEO-level plan review
+- `/plan-eng-review` — engineering plan review
+- `/plan-design-review` — design plan review
+- `/design-consultation` — design system guidance
+- `/review` — code review before merge
+- `/ship` — create PR / deploy
+- `/land-and-deploy` — production deployment
+- `/canary` — canary deployment
+- `/benchmark` — performance benchmarking
+- `/browse` — headless browser (use for all web browsing)
+- `/qa` — QA testing
+- `/qa-only` — QA without code changes
+- `/design-review` — visual design audit
+- `/setup-browser-cookies` — configure browser auth
+- `/setup-deploy` — configure deployment
+- `/retro` — retrospective
+- `/investigate` — debug errors
+- `/document-release` — post-ship docs
+- `/codex` — cross-model code review
+- `/careful` — production safety mode
+- `/freeze` — scope edits to one module
+- `/guard` — maximum safety mode
+- `/unfreeze` — remove edit restrictions
+- `/gstack-upgrade` — upgrade gstack

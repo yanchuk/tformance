@@ -25,10 +25,19 @@ Product Requirements Documentation for AI Impact Analytics Platform MVP.
 | [JIRA-ENRICHMENT.md](JIRA-ENRICHMENT.md) | Premium Jira data enrichment (draft) |
 
 ### Strategy & Research
+
+> **Note (2026-03-22):** Strategy codex docs have validation status banners. Key premises
+> (AI detection wedge, ICP sizing, public pages as acquisition, pricing model) are
+> unvalidated. Do not rewrite until 15-20 CTO conversations are completed.
+> See `docs/sales/outreach-tracker.md` for sprint progress.
+
 | Document | Description |
 |----------|-------------|
+| [dna_codex.md](dna_codex.md) | Product identity, problem, principles, scope, and roadmap |
+| [icp_target_audience_codex.md](icp_target_audience_codex.md) | First ideal customer profile, pains, motivations, and boundaries |
+| [gtm_go_to_market_codex.md](gtm_go_to_market_codex.md) | Go-to-market stages, channels, handoff model, and monetization |
 | [PRICING-STRATEGY.md](PRICING-STRATEGY.md) | Pricing model analysis and strategy |
-| [COMPETITOR-RESEARCH.md](COMPETITOR-RESEARCH.md) | December 2025 competitive analysis |
+| [COMPETITOR-RESEARCH.md](COMPETITOR-RESEARCH.md) | Competitive analysis (updated March 2026 — added UseGitAI, Milestone) |
 
 ### Reference Documentation
 | Document | Description |

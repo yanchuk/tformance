@@ -1,0 +1,167 @@
+{% extends "public/app_base.html" %}
+{% load humanize %}
+
+{% block public_json_ld %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Dataset",
+  "name": "{{ org_profile.display_name }} Delivery & AI Trends",
+  "description": "Detailed {{ org_profile.display_name }} delivery trends and AI-related signals across {{ public_stats.total_prs }} merged pull requests.",
+  "url": "https://tformance.com/open-source/{{ public_slug }}/analytics/",
+  "creator": {
+    "@type": "Organization",
+    "name": "Tformance",
+    "url": "https://tformance.com"
+  },
+  "variableMeasured": [
+    {"@type": "PropertyValue", "name": "Total PRs", "value": "{{ public_stats.total_prs }}"},
+    {"@type": "PropertyValue", "name": "AI-Related Signals", "value": "{{ public_stats.ai_assisted_pct }}%"},
+    {"@type": "PropertyValue", "name": "Median Cycle Time", "value": "{{ public_stats.median_cycle_time_hours }}h"},
+    {"@type": "PropertyValue", "name": "Median Review Time", "value": "{{ public_stats.median_review_time_hours }}h"}
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "What do the trends show for {{ org_profile.display_name }}?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "This page shows delivery trends, AI-related signals, review distribution, and team health signals based on {{ public_stats.total_prs }} merged pull requests."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How recent is this data?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Data is refreshed regularly; latest public computation for {{ org_profile.display_name }} was {{ public_stats.last_computed_at|date:'F j, Y' }}."
+      }
+    }
+  ]
+}
+</script>
+{% endblock public_json_ld %}
+
+{% block public_breadcrumb_items %}
+<li><a href="{% url 'public:industry' industry=org_profile.industry %}" class="link link-hover">{{ org_profile.get_industry_display }}</a></li>
+<li><a href="{% url 'public:org_detail' slug=public_slug %}" class="link link-hover">{{ org_profile.display_name }}</a></li>
+<li>Trends</li>
+{% endblock public_breadcrumb_items %}
+
+{% block public_main_content %}
+<div class="mb-6">
+  <h1 class="text-3xl font-bold mb-3">{{ org_profile.display_name }} Delivery & AI Trends</h1>
+  <p class="text-base-content/80 max-w-4xl leading-relaxed mb-4">
+    Detailed delivery trends for {{ org_profile.display_name }} across
+    {{ public_stats.total_prs|intcomma }} merged pull requests. AI-related signals appear on
+    {{ public_stats.ai_assisted_pct|floatformat:1 }}% of recent work, with a median cycle time of
+    {{ public_stats.median_cycle_time_hours|floatformat:1 }} hours and median review time of
+    {{ public_stats.median_review_time_hours|floatformat:1 }} hours.
+  </p>
+
+  <div class="overflow-x-auto">
+    <table class="table table-sm">
+      <thead>
+        <tr>
+          <th>Metric</th>
+          <th>{{ org_profile.display_name }}</th>
+          <th>{{ org_profile.get_industry_display }} Average</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Total PRs</td>
+          <td>{{ public_stats.total_prs|intcomma }}</td>
+          <td>{{ industry_stats.total_prs|default:"-" }}</td>
+        </tr>
+        <tr>
+          <td>AI Signals</td>
+          <td>{{ public_stats.ai_assisted_pct|floatformat:1 }}%</td>
+          <td>{{ industry_stats.avg_ai_pct|floatformat:1|default:"-" }}%</td>
+        </tr>
+        <tr>
+          <td>Median Cycle Time</td>
+          <td>{{ public_stats.median_cycle_time_hours|floatformat:1 }}h</td>
+          <td>{{ industry_stats.avg_cycle_time|floatformat:1|default:"-" }}h</td>
+        </tr>
+        <tr>
+          <td>Median Review Time</td>
+          <td>{{ public_stats.median_review_time_hours|floatformat:1 }}h</td>
+          <td>{{ industry_stats.avg_review_time|floatformat:1|default:"-" }}h</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div id="analytics-key-metrics"
+     hx-get="{% url 'public:cards_metrics' slug=public_slug %}?days=30"
+     hx-trigger="load"
+     hx-swap="innerHTML">
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+    {% for _ in "1234" %}
+    <div class="skeleton h-24 w-full rounded-lg"></div>
+    {% endfor %}
+  </div>
+</div>
+
+{# Combined trend charts FIRST (step 6.2) #}
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+  <div class="card bg-base-100 border border-base-300 min-h-[320px]">
+    <div class="card-body">
+      <h2 class="card-title text-base">Delivery Trend and AI Signals</h2>
+      <div hx-get="{% url 'public:chart_combined_trend' slug=public_slug %}?days=90" hx-trigger="load" hx-swap="innerHTML">
+        <div class="skeleton h-56 w-full rounded-lg"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card bg-base-100 border border-base-300 min-h-[320px]">
+    <div class="card-body">
+      <h2 class="card-title text-base">AI Signals & Review Time</h2>
+      <div hx-get="{% url 'public:chart_combined_trend' slug=public_slug %}?days=90&secondary=review_time" hx-trigger="load" hx-swap="innerHTML">
+        <div class="skeleton h-56 w-full rounded-lg"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+  <div class="card bg-base-100 border border-base-300 min-h-[320px]">
+    <div class="card-body">
+      <h2 class="card-title text-base">Signal vs Baseline Impact</h2>
+      <div hx-get="{% url 'public:chart_ai_quality' slug=public_slug %}?days=30" hx-trigger="load" hx-swap="innerHTML">
+        <div class="skeleton h-40 w-full rounded-lg"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card bg-base-100 border border-base-300 min-h-[320px]">
+    <div class="card-body">
+      <h2 class="card-title text-base">Top AI Tools Detected</h2>
+      <div hx-get="{% url 'public:chart_ai_tools' slug=public_slug %}?days=30" hx-trigger="load" hx-swap="innerHTML">
+        <div class="skeleton h-40 w-full rounded-lg"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card bg-base-100 border border-base-300 min-h-[320px]">
+  <div class="card-body">
+    <h2 class="card-title text-base">Team Health Indicators</h2>
+    <div hx-get="{% url 'public:cards_team_health' slug=public_slug %}?days=30" hx-trigger="load" hx-swap="innerHTML">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {% for _ in "12" %}
+        <div class="skeleton h-20 w-full rounded-lg"></div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock public_main_content %}

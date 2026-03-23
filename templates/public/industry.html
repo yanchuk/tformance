@@ -1,0 +1,110 @@
+{% extends "public/base.html" %}
+
+{% block json_ld %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Dataset",
+  "name": "{{ industry_display }} Engineering Benchmarks",
+  "description": "{{ industry_display }} engineering benchmarks: {{ stats.org_count }} projects, {{ stats.avg_ai_pct }}% average AI adoption.",
+  "url": "https://tformance.com/open-source/industry/{{ industry_key }}/",
+  "creator": {
+    "@type": "Organization",
+    "name": "Tformance",
+    "url": "https://tformance.com"
+  },
+  "variableMeasured": [
+    {"@type": "PropertyValue", "name": "Organizations Tracked", "value": "{{ stats.org_count }}"},
+    {"@type": "PropertyValue", "name": "Average AI Adoption", "value": "{{ stats.avg_ai_pct }}%"},
+    {"@type": "PropertyValue", "name": "Average Cycle Time", "value": "{{ stats.avg_cycle_time }}h"},
+    {"@type": "PropertyValue", "name": "Total PRs", "value": "{{ stats.total_prs }}"}
+  ]
+}
+</script>
+{% endblock %}
+
+{% block breadcrumb_items %}
+<li>{{ industry_display }}</li>
+{% endblock %}
+
+{% block public_content %}
+{# Industry header #}
+<div class="mb-6">
+  <h1 class="text-3xl font-bold mb-2">{{ industry_display }}</h1>
+  <p class="text-base-content/70">
+    The {{ industry_display|lower }} industry averages
+    <span class="font-semibold text-primary">{{ stats.avg_ai_pct|floatformat:1 }}%</span> AI adoption
+    across <span class="font-semibold">{{ stats.org_count }}</span> tracked project{{ stats.org_count|pluralize }}.
+  </p>
+</div>
+
+{# Industry summary stats #}
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+  <div class="stat bg-base-200 rounded-box p-4">
+    <div class="stat-title text-xs">Organizations</div>
+    <div class="stat-value text-2xl">{{ stats.org_count }}</div>
+  </div>
+  <div class="stat bg-base-200 rounded-box p-4">
+    <div class="stat-title text-xs">Total PRs</div>
+    <div class="stat-value text-2xl">{{ stats.total_prs|floatformat:0 }}</div>
+  </div>
+  <div class="stat bg-base-200 rounded-box p-4">
+    <div class="stat-title text-xs">Avg AI Adoption</div>
+    <div class="stat-value text-2xl text-primary">{{ stats.avg_ai_pct|floatformat:1 }}%</div>
+  </div>
+  <div class="stat bg-base-200 rounded-box p-4">
+    <div class="stat-title text-xs">Avg Cycle Time</div>
+    <div class="stat-value text-2xl">{{ stats.avg_cycle_time|floatformat:1 }}h</div>
+  </div>
+</div>
+
+{# Comparison table #}
+<div class="card bg-base-100 border border-base-300 mb-8">
+  <div class="card-body p-5">
+    <h2 class="card-title text-sm mb-3">Organization Comparison</h2>
+    <div class="overflow-x-auto">
+      <table class="table table-sm">
+        <thead>
+          <tr>
+            <th>Organization</th>
+            <th class="text-right">Total PRs</th>
+            <th class="text-right">AI Adoption</th>
+            <th class="text-right">Cycle Time</th>
+            <th class="text-right">Contributors</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for org in orgs %}
+          <tr class="hover">
+            <td>
+              <a href="{% url 'public:org_detail' slug=org.slug %}" class="link link-primary font-medium">
+                {{ org.display_name }}
+              </a>
+            </td>
+            <td class="text-right">{{ org.total_prs|floatformat:0 }}</td>
+            <td class="text-right">
+              <span class="{% if org.ai_assisted_pct > 50 %}text-success{% elif org.ai_assisted_pct > 20 %}text-warning{% endif %}">
+                {{ org.ai_assisted_pct|floatformat:1 }}%
+              </span>
+            </td>
+            <td class="text-right">{{ org.median_cycle_time_hours|floatformat:1 }}h</td>
+            <td class="text-right">{{ org.active_contributors_90d }}</td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="5" class="text-center text-base-content/50 py-8">
+              No qualifying organizations in this industry yet.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{# Methodology #}
+<div class="mb-8">
+  {% include "public/_methodology.html" %}
+</div>
+{% endblock %}

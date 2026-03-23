@@ -69,11 +69,10 @@ def home(request):
     else:
         # Landing page with SEO-optimized metadata
         context = {
-            "page_title": _("Engineering Analytics + AI Impact"),
+            "page_title": _("Engineering Delivery Visibility"),
             "page_description": _(
-                "Understand your team's velocity and see if AI tools are actually helping. "
-                "Connect GitHub, get instant dashboards showing PR metrics, cycle time, and review load. "
-                "Free during Alpha."
+                "See how your team is actually delivering. Track cycle time, review load, PR flow, "
+                "and whether AI-related signals correlate with better outcomes. Connect GitHub in minutes."
             ),
         }
         return render(request, "web/landing_page.html", context)
@@ -696,8 +695,8 @@ def features(request):
         {
             "page_title": "Platform Features",
             "page_description": (
-                "AI impact analytics, team performance metrics, and integrations. "
-                "Everything you need to understand how AI tools affect your engineering team."
+                "Delivery visibility, team performance metrics, and GitHub-first integrations. "
+                "Understand cycle time, review load, and trend changes without enterprise bloat."
             ),
         },
     )
@@ -726,8 +725,8 @@ def features_analytics(request):
         {
             "page_title": "Analytics Deep Dive | Tformance",
             "page_description": (
-                "Cycle time, AI adoption, quality, team load. "
-                "Drill down into the metrics that matter or zoom out for the big picture."
+                "Cycle time, review load, PR flow, and trend analysis from GitHub. "
+                "Use AI-related signals as one lens, not the whole story."
             ),
         },
     )
@@ -788,8 +787,8 @@ def compare_hub(request):
         # SEO
         "page_title": "Compare Tformance to Top Engineering Analytics Tools (2026)",
         "page_description": (
-            "Compare Tformance to LinearB, Jellyfish, Swarmia & more. "
-            "Side-by-side features, honest pricing. Save 70%+ on AI engineering analytics."
+            "Compare Tformance to LinearB, Jellyfish, Swarmia, and more. "
+            "See which tool fits GitHub-first teams that want delivery visibility without enterprise complexity."
         ),
     }
     return render(request, "web/compare/hub.html", context)

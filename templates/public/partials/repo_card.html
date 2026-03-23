@@ -1,0 +1,28 @@
+{% load humanize %}
+<a href="{% url 'public:repo_detail' slug=public_slug repo_slug=repo.repo_slug %}"
+   class="card bg-base-100 border border-base-300 hover:border-primary/40 transition-colors">
+  <div class="card-body">
+    <h3 class="card-title text-lg">{{ repo.display_name }}</h3>
+    {% if repo.description %}
+    <p class="text-sm text-base-content/60 line-clamp-2">{{ repo.description }}</p>
+    {% endif %}
+    {% with stats=repo.stats %}
+    {% if stats %}
+    <div class="grid grid-cols-3 gap-2 mt-3">
+      <div>
+        <div class="text-xs text-base-content/50 uppercase">AI Signals</div>
+        <div class="text-lg font-semibold">{{ stats.ai_assisted_pct|floatformat:1 }}%</div>
+      </div>
+      <div>
+        <div class="text-xs text-base-content/50 uppercase">Cycle Time</div>
+        <div class="text-lg font-semibold">{{ stats.median_cycle_time_hours|floatformat:1 }}h</div>
+      </div>
+      <div>
+        <div class="text-xs text-base-content/50 uppercase">Contributors</div>
+        <div class="text-lg font-semibold">{{ stats.active_contributors_30d }}</div>
+      </div>
+    </div>
+    {% endif %}
+    {% endwith %}
+  </div>
+</a>
