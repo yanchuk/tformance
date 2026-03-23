@@ -4,11 +4,13 @@ Covers: bootstrap_site_domain, init_public_repo_sync_state,
 rebuild_public_catalog_snapshots.
 """
 
+import os
+import tempfile
 from unittest.mock import patch
 
 from django.contrib.sites.models import Site
 from django.core.management import call_command
-from django.test import TestCase
+from django.test import TestCase, override_settings
 
 from apps.public.models import (
     PublicOrgProfile,
@@ -117,3 +119,19 @@ class RebuildPublicCatalogSnapshotsTests(TestCase):
 
         # Org stats should exist after rebuild
         assert PublicOrgStats.objects.filter(org_profile=self.org).exists()
+
+    @patch("apps.public.repo_snapshot_service.build_repo_snapshot")
+    def test_command_generates_org_and_repo_og_images(self, mock_snapshot):
+        PublicRepoStats.objects.create(
+            repo_profile=self.repo,
+            total_prs=125,
+            ai_assisted_pct=22.0,
+            median_cycle_time_hours=3.4,
+            median_review_time_hours=1.2,
+        )
+
+        with tempfile.TemporaryDirectory() as tmp, override_settings(MEDIA_ROOT=tmp):
+            call_command("rebuild_public_catalog_snapshots", verbosity=0)
+
+            assert os.path.exists(os.path.join(tmp, "public_og", "rebuild-org.png"))
+            assert os.path.exists(os.path.join(tmp, "public_og", "rebuild-org_rebuild-repo.png"))

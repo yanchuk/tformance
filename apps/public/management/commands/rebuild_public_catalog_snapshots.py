@@ -8,6 +8,7 @@ Usage:
 
 import logging
 
+from django.conf import settings
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
@@ -23,6 +24,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         from apps.public.repo_snapshot_service import build_repo_snapshot
+        from apps.public.services.og_image_service import OGImageService
         from apps.public.tasks import _best_data_year
 
         now = timezone.now()
@@ -35,6 +37,17 @@ class Command(BaseCommand):
         for repo_profile in repos:
             try:
                 build_repo_snapshot(repo_profile)
+                try:
+                    repo_stats = repo_profile.stats
+                except Exception:
+                    repo_stats = None
+                if repo_stats:
+                    OGImageService.generate_and_save_repo(
+                        repo_profile=repo_profile,
+                        repo_stats=repo_stats,
+                        org_profile=repo_profile.org_profile,
+                        media_root=settings.MEDIA_ROOT,
+                    )
                 repo_count += 1
             except Exception:
                 repo_errors += 1
@@ -72,6 +85,16 @@ class Command(BaseCommand):
                         "last_computed_at": now,
                     },
                 )
+                try:
+                    org_stats = profile.stats
+                except Exception:
+                    org_stats = None
+                if org_stats:
+                    OGImageService.generate_and_save_org(
+                        org_profile=profile,
+                        org_stats=org_stats,
+                        media_root=settings.MEDIA_ROOT,
+                    )
                 org_count += 1
             except Exception:
                 logger.exception("Failed to compute org stats for %s", profile.display_name)
