@@ -29,13 +29,22 @@ class Command(BaseCommand):
         demo_slugs = {config.team_slug for config in REAL_PROJECTS.values()}
 
         # Phase 0: Fix repo slugs containing dots (breaks URL routing)
-        bad_repos = PublicRepoProfile.objects.filter(repo_slug__contains=".")
-        dot_fixed = bad_repos.count()
+        bad_repos = list(PublicRepoProfile.objects.filter(repo_slug__contains="."))
+        dot_renamed = 0
+        dot_deleted = 0
         for repo in bad_repos:
-            repo.repo_slug = repo.repo_slug.replace(".", "-").lower()
-            repo.save(update_fields=["repo_slug", "updated_at"])
-        if dot_fixed:
-            self.stdout.write(f"Repo slugs fixed (dots): {dot_fixed}")
+            clean_slug = repo.repo_slug.replace(".", "-").lower()
+            # If a clean version already exists, this dotted one is a duplicate — delete it
+            conflict = PublicRepoProfile.objects.filter(org_profile=repo.org_profile, repo_slug=clean_slug).exists()
+            if conflict:
+                repo.delete()
+                dot_deleted += 1
+            else:
+                repo.repo_slug = clean_slug
+                repo.save(update_fields=["repo_slug", "updated_at"])
+                dot_renamed += 1
+        if dot_renamed or dot_deleted:
+            self.stdout.write(f"Repo slugs fixed (dots): {dot_renamed} renamed, {dot_deleted} duplicates deleted")
 
         # Phase 1: Create missing PublicRepoProfile records from REAL_PROJECTS
         repos_created = 0

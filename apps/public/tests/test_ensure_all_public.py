@@ -105,3 +105,41 @@ class EnsureAllPublicTests(TestCase):
 
         bad_repo.refresh_from_db()
         assert bad_repo.repo_slug == "cal-com", f"Expected 'cal-com', got '{bad_repo.repo_slug}'"
+
+    def test_deletes_dotted_duplicate_when_clean_slug_exists(self):
+        """If both 'posthog.com' and 'posthog-com' exist, the dotted one is deleted."""
+        team = Team.objects.create(name="PostHog", slug="posthog-demo")
+        org = PublicOrgProfile.objects.create(
+            team=team,
+            public_slug="posthog",
+            display_name="PostHog",
+            is_public=True,
+        )
+        # Clean slug already exists
+        clean_repo = PublicRepoProfile.objects.create(
+            org_profile=org,
+            team=team,
+            repo_slug="posthog-com",
+            github_repo="PostHog/posthog.com",
+            display_name="Posthog Com",
+            github_url="https://github.com/PostHog/posthog.com",
+            is_public=True,
+            sync_enabled=True,
+        )
+        # Bad dotted duplicate
+        bad_repo = PublicRepoProfile.objects.create(
+            org_profile=org,
+            team=team,
+            repo_slug="posthog.com",
+            github_repo="PostHog/posthog.com",
+            display_name="Posthog.com",
+            github_url="https://github.com/PostHog/posthog.com",
+            is_public=True,
+            sync_enabled=True,
+        )
+
+        call_command("ensure_all_public", verbosity=0)
+
+        # The clean one survives, the dotted duplicate is gone
+        assert PublicRepoProfile.objects.filter(pk=clean_repo.pk).exists()
+        assert not PublicRepoProfile.objects.filter(pk=bad_repo.pk).exists()
