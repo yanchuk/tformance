@@ -28,13 +28,48 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         demo_slugs = {config.team_slug for config in REAL_PROJECTS.values()}
 
-        # Flip orgs
+        # Phase 1: Create missing PublicRepoProfile records from REAL_PROJECTS
+        repos_created = 0
+        repos_existed = 0
+        orgs_not_found = 0
+
+        for config in REAL_PROJECTS.values():
+            try:
+                org_profile = PublicOrgProfile.objects.get(team__slug=config.team_slug)
+            except PublicOrgProfile.DoesNotExist:
+                orgs_not_found += 1
+                continue
+
+            for i, repo in enumerate(config.repos):
+                repo_slug = repo.split("/")[-1]
+                _, created = PublicRepoProfile.objects.get_or_create(
+                    org_profile=org_profile,
+                    repo_slug=repo_slug,
+                    defaults={
+                        "team": org_profile.team,
+                        "github_repo": repo,
+                        "display_name": repo_slug.replace("-", " ").title(),
+                        "github_url": f"https://github.com/{repo}",
+                        "is_flagship": i == 0,
+                        "is_public": True,
+                        "sync_enabled": True,
+                    },
+                )
+                if created:
+                    repos_created += 1
+                else:
+                    repos_existed += 1
+
+        self.stdout.write(
+            f"Repos created: {repos_created}, already existed: {repos_existed}, orgs not found: {orgs_not_found}"
+        )
+
+        # Phase 2: Flip flags for any that are still False
         orgs_updated = PublicOrgProfile.objects.filter(
             team__slug__in=demo_slugs,
             is_public=False,
         ).update(is_public=True)
 
-        # Flip repos
         repos_updated = PublicRepoProfile.objects.filter(
             org_profile__team__slug__in=demo_slugs,
             is_public=False,
