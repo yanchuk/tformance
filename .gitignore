@@ -60,3 +60,4 @@ backups/
 .codex/
 output/
 tmp/
+.gstack/
