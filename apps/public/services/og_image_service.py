@@ -7,8 +7,9 @@ Images are pre-generated during the stats pipeline and served from MEDIA_ROOT.
 import io
 import logging
 import os
+from urllib.request import urlopen
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageOps
 
 logger = logging.getLogger(__name__)
 
@@ -49,41 +50,58 @@ class OGImageService:
         img = Image.new("RGB", (OG_WIDTH, OG_HEIGHT), BG_COLOR)
         draw = ImageDraw.Draw(img)
 
-        font_large = _get_font(48)
-        font_medium = _get_font(32)
+        font_large = _get_font(50)
+        font_medium = _get_font(30)
         font_small = _get_font(24)
         font_brand = _get_font(20)
+        font_metric = _get_font(42)
 
         # Brand bar at top
         draw.rectangle([(0, 0), (OG_WIDTH, 4)], fill=ACCENT_COLOR)
 
-        # Org name
-        draw.text((60, 60), org_profile.display_name, fill=TEXT_COLOR, font=font_large)
+        title_x = 60
+        if _paste_logo(img, getattr(org_profile, "avatar_url", None), 1030, 56, 110):
+            title_x = 60
 
-        # Subtitle
-        draw.text((60, 130), "Engineering Benchmarks", fill=MUTED_COLOR, font=font_medium)
+        draw.text((title_x, 60), org_profile.display_name, fill=TEXT_COLOR, font=font_large)
+        draw.text((title_x, 120), "Public GitHub delivery benchmarks", fill=MUTED_COLOR, font=font_medium)
+        draw.text(
+            (title_x, 168),
+            "Cycle time, review load, and PR flow from merged pull requests.",
+            fill=MUTED_COLOR,
+            font=font_small,
+        )
 
-        # Metrics row
-        y_metrics = 220
+        y_metrics = 255
         metrics = [
-            (f"{org_stats.ai_assisted_pct:.0f}%", "AI Adoption"),
-            (f"{org_stats.median_cycle_time_hours:.0f}h", "Cycle Time"),
+            (_format_hours(org_stats.median_cycle_time_hours), "Median Cycle Time"),
+            (
+                _format_hours(getattr(org_stats, "median_review_time_hours", 0))
+                if getattr(org_stats, "median_review_time_hours", None) is not None
+                else f"{getattr(org_stats, 'active_contributors_90d', 0)}",
+                "Median Review Time"
+                if getattr(org_stats, "median_review_time_hours", None) is not None
+                else "Active Contributors",
+            ),
             (f"{org_stats.total_prs:,}", "Merged PRs"),
         ]
         x_offset = 60
         for value, label in metrics:
-            draw.text((x_offset, y_metrics), value, fill=ACCENT_COLOR, font=font_large)
-            draw.text((x_offset, y_metrics + 60), label, fill=MUTED_COLOR, font=font_small)
-            x_offset += 350
+            _draw_metric(draw, x_offset, y_metrics, value, label, font_metric, font_small)
+            x_offset += 355
 
-        # Divider
-        draw.line([(60, 400), (OG_WIDTH - 60, 400)], fill=MUTED_COLOR, width=1)
+        draw.rounded_rectangle([(60, 410), (OG_WIDTH - 60, 505)], radius=18, fill=(24, 33, 51))
+        draw.text((90, 438), "AI-related signals", fill=MUTED_COLOR, font=font_small)
+        draw.text(
+            (90, 465),
+            f"{float(getattr(org_stats, 'ai_assisted_pct', 0) or 0):.1f}% of recent work",
+            fill=TEXT_COLOR,
+            font=font_medium,
+        )
 
-        # Brand
-        draw.text((60, 430), "tformance.com", fill=BRAND_COLOR, font=font_brand)
-        draw.text((60, 460), "Open Source Engineering Analytics", fill=MUTED_COLOR, font=font_small)
+        draw.text((60, 548), "tformance.com", fill=BRAND_COLOR, font=font_brand)
+        draw.text((60, 576), "Public GitHub delivery benchmarks", fill=MUTED_COLOR, font=font_small)
 
-        # Bottom accent bar
         draw.rectangle([(0, OG_HEIGHT - 4), (OG_WIDTH, OG_HEIGHT)], fill=ACCENT_COLOR)
 
         buf = io.BytesIO()
@@ -97,38 +115,47 @@ class OGImageService:
         draw = ImageDraw.Draw(img)
 
         font_large = _get_font(48)
-        font_medium = _get_font(32)
+        font_medium = _get_font(30)
         font_small = _get_font(24)
         font_brand = _get_font(20)
+        font_metric = _get_font(40)
 
-        # Brand bar at top
         draw.rectangle([(0, 0), (OG_WIDTH, 4)], fill=ACCENT_COLOR)
 
-        # Org / Repo name
-        draw.text((60, 50), org_profile.display_name, fill=MUTED_COLOR, font=font_medium)
-        draw.text((60, 100), repo_profile.display_name, fill=TEXT_COLOR, font=font_large)
+        _paste_logo(img, getattr(org_profile, "avatar_url", None), 1030, 56, 110)
 
-        # Metrics row
-        y_metrics = 200
+        draw.text((60, 58), org_profile.display_name, fill=MUTED_COLOR, font=font_medium)
+        draw.text((60, 108), repo_profile.display_name, fill=TEXT_COLOR, font=font_large)
+        draw.text((60, 164), "Public GitHub delivery benchmarks", fill=MUTED_COLOR, font=font_small)
+
+        y_metrics = 245
         metrics = [
-            (f"{repo_stats.ai_assisted_pct:.0f}%", "AI Adoption"),
-            (f"{repo_stats.median_cycle_time_hours:.0f}h", "Cycle Time"),
+            (_format_hours(repo_stats.median_cycle_time_hours), "Median Cycle Time"),
+            (
+                _format_hours(getattr(repo_stats, "median_review_time_hours", 0))
+                if getattr(repo_stats, "median_review_time_hours", None) is not None
+                else _format_hours(getattr(repo_stats, "review_time_hours", 0)),
+                "Median Review Time",
+            ),
             (f"{repo_stats.total_prs:,}", "Merged PRs"),
         ]
         x_offset = 60
         for value, label in metrics:
-            draw.text((x_offset, y_metrics), value, fill=ACCENT_COLOR, font=font_large)
-            draw.text((x_offset, y_metrics + 60), label, fill=MUTED_COLOR, font=font_small)
-            x_offset += 350
+            _draw_metric(draw, x_offset, y_metrics, value, label, font_metric, font_small)
+            x_offset += 355
 
-        # Divider
-        draw.line([(60, 380), (OG_WIDTH - 60, 380)], fill=MUTED_COLOR, width=1)
+        draw.rounded_rectangle([(60, 400), (OG_WIDTH - 60, 505)], radius=18, fill=(24, 33, 51))
+        draw.text((90, 428), "AI-related signals", fill=MUTED_COLOR, font=font_small)
+        draw.text(
+            (90, 455),
+            f"{float(getattr(repo_stats, 'ai_assisted_pct', 0) or 0):.1f}% of recent work",
+            fill=TEXT_COLOR,
+            font=font_medium,
+        )
 
-        # Brand
-        draw.text((60, 410), "tformance.com", fill=BRAND_COLOR, font=font_brand)
-        draw.text((60, 440), "Open Source Engineering Analytics", fill=MUTED_COLOR, font=font_small)
+        draw.text((60, 548), "tformance.com", fill=BRAND_COLOR, font=font_brand)
+        draw.text((60, 576), "Public GitHub delivery benchmarks", fill=MUTED_COLOR, font=font_small)
 
-        # Bottom accent bar
         draw.rectangle([(0, OG_HEIGHT - 4), (OG_WIDTH, OG_HEIGHT)], fill=ACCENT_COLOR)
 
         buf = io.BytesIO()
@@ -156,3 +183,38 @@ class OGImageService:
         with open(path, "wb") as f:
             f.write(data)
         return path
+
+
+def _draw_metric(draw, x: int, y: int, value: str, label: str, value_font, label_font) -> None:
+    draw.text((x, y), value, fill=ACCENT_COLOR, font=value_font)
+    draw.text((x, y + 56), label, fill=MUTED_COLOR, font=label_font)
+
+
+def _format_hours(value) -> str:
+    hours = float(value or 0)
+    if 0 < hours < 1:
+        return "<1h"
+    return f"{hours:.1f}h"
+
+
+def _paste_logo(img, avatar_url: str | None, x: int, y: int, size: int) -> bool:
+    if not avatar_url:
+        return False
+
+    try:
+        if avatar_url.startswith(("http://", "https://")):
+            with urlopen(avatar_url, timeout=5) as response:
+                logo = Image.open(io.BytesIO(response.read())).convert("RGBA")
+        elif os.path.exists(avatar_url):
+            logo = Image.open(avatar_url).convert("RGBA")
+        else:
+            return False
+
+        logo = ImageOps.fit(logo, (size, size))
+        mask = Image.new("L", (size, size), 0)
+        ImageDraw.Draw(mask).rounded_rectangle([(0, 0), (size, size)], radius=24, fill=255)
+        img.paste(logo, (x, y), mask)
+        return True
+    except Exception:
+        logger.debug("Unable to load org logo for OG image", exc_info=True)
+        return False
