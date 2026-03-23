@@ -68,9 +68,15 @@ services:
       DJANGO_SETTINGS_MODULE: tformance.settings_production
       DEBUG: "False"
       SECRET_KEY: ${SECRET_KEY:?SECRET_KEY is required}
-      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-dev2.ianchuk.com,localhost}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-tformance.com,localhost}
       # Disable SSL redirect when behind Cloudflare Tunnel (it handles SSL termination)
       SECURE_SSL_REDIRECT: ${SECURE_SSL_REDIRECT:-False}
+      CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-https://tformance.com}
+      USE_HTTPS_IN_ABSOLUTE_URLS: ${USE_HTTPS_IN_ABSOLUTE_URLS:-True}
+
+      # Site identity
+      SITE_DOMAIN: ${SITE_DOMAIN:-tformance.com}
+      SITE_NAME: ${SITE_NAME:-Tformance}
 
       # Database (internal Docker network)
       DATABASE_URL: postgresql://${POSTGRES_USER:-tformance}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-tformance}
@@ -80,6 +86,8 @@ services:
 
       # Security
       INTEGRATION_ENCRYPTION_KEY: ${INTEGRATION_ENCRYPTION_KEY:?INTEGRATION_ENCRYPTION_KEY is required}
+      TURNSTILE_KEY: ${TURNSTILE_KEY:-}
+      TURNSTILE_SECRET: ${TURNSTILE_SECRET:-}
 
       # Authentication
       AUTH_MODE: ${AUTH_MODE:-github}
@@ -88,10 +96,12 @@ services:
       GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
       GITHUB_SECRET_ID: ${GITHUB_SECRET_ID:-}
 
-      # GitHub App (optional - set GITHUB_APP_ENABLED=True to use)
+      # GitHub App
       GITHUB_APP_ENABLED: ${GITHUB_APP_ENABLED:-False}
       GITHUB_APP_ID: ${GITHUB_APP_ID:-}
       GITHUB_APP_PRIVATE_KEY: ${GITHUB_APP_PRIVATE_KEY:-}
+      GITHUB_APP_NAME: ${GITHUB_APP_NAME:-}
+      GITHUB_APP_WEBHOOK_SECRET: ${GITHUB_APP_WEBHOOK_SECRET:-}
 
       # OAuth - Jira
       JIRA_CLIENT_ID: ${JIRA_CLIENT_ID:-}
@@ -109,11 +119,13 @@ services:
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       EMAIL_BACKEND: ${EMAIL_BACKEND:-django.core.mail.backends.console.EmailBackend}
       DEFAULT_FROM_EMAIL: ${DEFAULT_FROM_EMAIL:-tformance <noreply@ianchuk.com>}
+      SERVER_EMAIL: ${SERVER_EMAIL:-noreply@ianchuk.com}
 
       # Analytics
       POSTHOG_API_KEY: ${POSTHOG_API_KEY:-}
       POSTHOG_HOST: ${POSTHOG_HOST:-https://us.i.posthog.com}
       SENTRY_DSN: ${SENTRY_DSN:-}
+      GOOGLE_ANALYTICS_ID: ${GOOGLE_ANALYTICS_ID:-}
 
       # Stripe
       STRIPE_LIVE_PUBLIC_KEY: ${STRIPE_LIVE_PUBLIC_KEY:-}
@@ -127,12 +139,12 @@ services:
 
       # Port for gunicorn
       PORT: "8000"
+
       # Public pipeline
       GITHUB_SEEDING_TOKENS: ${GITHUB_SEEDING_TOKENS:-}
-      SITE_DOMAIN: ${SITE_DOMAIN:-dev2.ianchuk.com}
-      SITE_NAME: ${SITE_NAME:-Tformance}
+      PUBLIC_MIN_PRS_THRESHOLD: ${PUBLIC_MIN_PRS_THRESHOLD:-}
     volumes:
-      - tformance-media:/code/media
+      - /mnt/user/appdata/tformance-media:/code/media
     command: >
       sh -c "
         echo 'Running database migrations...' &&
@@ -144,6 +156,12 @@ services:
         echo 'Starting gunicorn...' &&
         exec gunicorn --bind 0.0.0.0:8000 --workers 2 --threads 4 --timeout 120 tformance.asgi:application -k uvicorn.workers.UvicornWorker
       "
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
     networks:
@@ -151,11 +169,11 @@ services:
       - tformance-external
 
   # =============================================================================
-  # CELERY WORKERS (Split by Queue)
+  # CELERY WORKER (Single worker consuming all queues)
   # =============================================================================
-  worker-sync:
+  worker:
     image: ayanchuk/tformance:${IMAGE_TAG:-latest}
-    container_name: tformance-worker-sync
+    container_name: tformance-worker
     restart: unless-stopped
     depends_on:
       db:
@@ -164,67 +182,56 @@ services:
         condition: service_healthy
       web:
         condition: service_started
-    environment: &worker-env
+    environment:
       DJANGO_SETTINGS_MODULE: tformance.settings_production
       DEBUG: "False"
       SECRET_KEY: ${SECRET_KEY}
-      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-dev2.ianchuk.com,localhost}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-tformance.com,localhost}
       DATABASE_URL: postgresql://${POSTGRES_USER:-tformance}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-tformance}
       REDIS_URL: redis://redis:6379
       INTEGRATION_ENCRYPTION_KEY: ${INTEGRATION_ENCRYPTION_KEY}
+
+      # Site identity
+      SITE_DOMAIN: ${SITE_DOMAIN:-tformance.com}
+      SITE_NAME: ${SITE_NAME:-Tformance}
+
+      # GitHub
       GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
       GITHUB_SECRET_ID: ${GITHUB_SECRET_ID:-}
       GITHUB_APP_ENABLED: ${GITHUB_APP_ENABLED:-False}
       GITHUB_APP_ID: ${GITHUB_APP_ID:-}
       GITHUB_APP_PRIVATE_KEY: ${GITHUB_APP_PRIVATE_KEY:-}
+      GITHUB_APP_NAME: ${GITHUB_APP_NAME:-}
+      GITHUB_APP_WEBHOOK_SECRET: ${GITHUB_APP_WEBHOOK_SECRET:-}
       GITHUB_SEEDING_TOKENS: ${GITHUB_SEEDING_TOKENS:-}
+
+      # Jira
       JIRA_CLIENT_ID: ${JIRA_CLIENT_ID:-}
       JIRA_CLIENT_SECRET: ${JIRA_CLIENT_SECRET:-}
+
+      # Slack
       SLACK_CLIENT_ID: ${SLACK_CLIENT_ID:-}
       SLACK_CLIENT_SECRET: ${SLACK_CLIENT_SECRET:-}
       SLACK_SIGNING_SECRET: ${SLACK_SIGNING_SECRET:-}
+
+      # LLM
       GROQ_API_KEY: ${GROQ_API_KEY:-}
-    volumes:
-      - tformance-media:/code/media
-    command: celery -A tformance worker -l INFO --pool threads --concurrency 3 -Q sync
-    labels:
-      - "com.centurylinklabs.watchtower.enable=true"
-    networks:
-      - tformance-internal
 
-  worker-compute:
-    image: ayanchuk/tformance:${IMAGE_TAG:-latest}
-    container_name: tformance-worker-compute
-    restart: unless-stopped
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      web:
-        condition: service_started
-    environment: *worker-env
-    volumes:
-      - tformance-media:/code/media
-    command: celery -A tformance worker -l INFO --pool threads --concurrency 4 -Q compute,celery
-    labels:
-      - "com.centurylinklabs.watchtower.enable=true"
-    networks:
-      - tformance-internal
+      # Email (Resend)
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      EMAIL_BACKEND: ${EMAIL_BACKEND:-django.core.mail.backends.console.EmailBackend}
+      DEFAULT_FROM_EMAIL: ${DEFAULT_FROM_EMAIL:-tformance <noreply@ianchuk.com>}
+      SERVER_EMAIL: ${SERVER_EMAIL:-noreply@ianchuk.com}
 
-  worker-llm:
-    image: ayanchuk/tformance:${IMAGE_TAG:-latest}
-    container_name: tformance-worker-llm
-    restart: unless-stopped
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      web:
-        condition: service_started
-    environment: *worker-env
-    command: celery -A tformance worker -l INFO --pool threads --concurrency 2 -Q llm
+      # Analytics
+      POSTHOG_API_KEY: ${POSTHOG_API_KEY:-}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+
+      # Public pipeline
+      PUBLIC_MIN_PRS_THRESHOLD: ${PUBLIC_MIN_PRS_THRESHOLD:-}
+    volumes:
+      - /mnt/user/appdata/tformance-media:/code/media
+    command: celery -A tformance worker -l INFO --pool threads --concurrency 4 -Q sync,compute,llm,celery
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
     networks:
@@ -248,24 +255,18 @@ services:
       DJANGO_SETTINGS_MODULE: tformance.settings_production
       DEBUG: "False"
       SECRET_KEY: ${SECRET_KEY}
-      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-dev2.ianchuk.com,localhost}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-tformance.com,localhost}
       DATABASE_URL: postgresql://${POSTGRES_USER:-tformance}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-tformance}
       REDIS_URL: redis://redis:6379
       INTEGRATION_ENCRYPTION_KEY: ${INTEGRATION_ENCRYPTION_KEY}
       GROQ_API_KEY: ${GROQ_API_KEY:-}
+      SITE_DOMAIN: ${SITE_DOMAIN:-tformance.com}
+      SITE_NAME: ${SITE_NAME:-Tformance}
     command: celery -A tformance beat -l INFO
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
     networks:
       - tformance-internal
-
-# =============================================================================
-# VOLUMES
-# =============================================================================
-volumes:
-  tformance-media:
-    name: tformance-media
-    driver: local
 
 # =============================================================================
 # NETWORKS
