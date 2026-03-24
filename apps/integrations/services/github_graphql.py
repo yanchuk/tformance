@@ -38,9 +38,9 @@ def _get_sync_logger():
 # Reduced from 25 to 10 PRs per page to prevent timeouts on heavy repos
 FETCH_PRS_BULK_QUERY = gql(
     """
-    query($owner: String!, $repo: String!, $cursor: String) {
+    query($owner: String!, $repo: String!, $cursor: String, $states: [PullRequestState!]) {
       repository(owner: $owner, name: $repo) {
-        pullRequests(first: 10, after: $cursor, orderBy: {field: CREATED_AT, direction: DESC}) {
+        pullRequests(first: 10, after: $cursor, states: $states, orderBy: {field: CREATED_AT, direction: DESC}) {
           nodes {
             number
             title
@@ -133,9 +133,9 @@ FETCH_PRS_BULK_QUERY = gql(
 # Reduced from 25 to 10 PRs per page to prevent timeouts on heavy repos
 FETCH_PRS_UPDATED_QUERY = gql(
     """
-    query($owner: String!, $repo: String!, $cursor: String) {
+    query($owner: String!, $repo: String!, $cursor: String, $states: [PullRequestState!]) {
       repository(owner: $owner, name: $repo) {
-        pullRequests(first: 10, after: $cursor, orderBy: {field: UPDATED_AT, direction: DESC}) {
+        pullRequests(first: 10, after: $cursor, states: $states, orderBy: {field: UPDATED_AT, direction: DESC}) {
           nodes {
             number
             title
@@ -693,7 +693,12 @@ class GitHubGraphQLClient:
         ) from last_error
 
     async def fetch_prs_bulk(
-        self, owner: str, repo: str, cursor: str | None = None, max_retries: int = DEFAULT_MAX_RETRIES
+        self,
+        owner: str,
+        repo: str,
+        cursor: str | None = None,
+        max_retries: int = DEFAULT_MAX_RETRIES,
+        states: list[str] | None = None,
     ) -> dict:
         """Fetch pull requests in bulk with pagination support and retry logic.
 
@@ -702,6 +707,7 @@ class GitHubGraphQLClient:
             repo: Repository name
             cursor: Pagination cursor for subsequent pages (optional)
             max_retries: Maximum number of retry attempts on timeout (default: 3)
+            states: Filter by PR state (e.g., ["MERGED", "OPEN"]). None returns all states.
 
         Returns:
             dict: GraphQL response containing:
@@ -717,9 +723,13 @@ class GitHubGraphQLClient:
         logger.debug(f"Fetching PRs for {owner}/{repo} (cursor: {cursor})")
 
         start_time = time.time()
+        variables = {"owner": owner, "repo": repo, "cursor": cursor}
+        if states is not None:
+            variables["states"] = states
+
         result = await self._execute_with_retry(
             query=FETCH_PRS_BULK_QUERY,
-            variables={"owner": owner, "repo": repo, "cursor": cursor},
+            variables=variables,
             operation_name=f"fetch_prs_bulk({owner}/{repo})",
             max_retries=max_retries,
         )
@@ -830,6 +840,7 @@ class GitHubGraphQLClient:
         since,  # datetime object
         cursor: str | None = None,
         max_retries: int = DEFAULT_MAX_RETRIES,
+        states: list[str] | None = None,
     ) -> dict:
         """Fetch pull requests updated since a given datetime.
 
@@ -842,6 +853,7 @@ class GitHubGraphQLClient:
             since: Only return PRs updated at or after this datetime
             cursor: Pagination cursor for subsequent pages (optional)
             max_retries: Maximum number of retry attempts on timeout (default: 3)
+            states: Filter by PR state (e.g., ["MERGED", "OPEN"]). None returns all states.
 
         Returns:
             dict: GraphQL response containing:
@@ -856,9 +868,13 @@ class GitHubGraphQLClient:
         """
         logger.debug(f"Fetching PRs updated since {since} for {owner}/{repo} (cursor: {cursor})")
 
+        variables = {"owner": owner, "repo": repo, "cursor": cursor}
+        if states is not None:
+            variables["states"] = states
+
         result = await self._execute_with_retry(
             query=FETCH_PRS_UPDATED_QUERY,
-            variables={"owner": owner, "repo": repo, "cursor": cursor},
+            variables=variables,
             operation_name=f"fetch_prs_updated_since({owner}/{repo})",
             max_retries=max_retries,
         )

@@ -4,8 +4,10 @@ Covers: bootstrap_site_domain, init_public_repo_sync_state,
 rebuild_public_catalog_snapshots.
 """
 
+import logging
 import os
 import tempfile
+from io import StringIO
 from unittest.mock import patch
 
 from django.contrib.sites.models import Site
@@ -21,6 +23,33 @@ from apps.public.models import (
     PublicRepoSyncState,
 )
 from apps.teams.models import Team
+
+# CSV header for import_public_catalog tests (long by nature)
+_CSV_HEADER = (
+    "org_public_slug,org_display_name,org_industry,org_description,"
+    "org_github_org_url,org_logo_url,team_slug,team_name,org_is_public,"
+    "repo_github_repo,repo_slug,repo_display_name,repo_description,"
+    "repo_github_url,is_flagship,repo_is_public,sync_enabled,"
+    "insights_enabled,initial_backfill_days,display_order"
+)
+
+_ACME_CORE_ROW = (
+    "acme,Acme,analytics,Acme analytics org,https://github.com/acme,,"
+    "acme-demo,Acme Public,false,acme/core,core,Core Repo,Core repo,"
+    "https://github.com/acme/core,true,true,true,false,180,0"
+)
+
+_ACME_SDK_ROW = (
+    "acme,Acme,analytics,Acme analytics org,https://github.com/acme,,"
+    "acme-demo,Acme Public,false,acme/sdk,sdk,SDK Repo,SDK repo,"
+    "https://github.com/acme/sdk,false,true,true,false,180,1"
+)
+
+_ACME_CORE_UPDATED_ROW = (
+    "acme,Acme New,analytics,Acme analytics org,https://github.com/acme,,"
+    "acme-demo,Acme Public,true,acme/core,core,Core Repo,Core repo,"
+    "https://github.com/acme/core,true,true,true,true,365,2"
+)
 
 
 class BootstrapSiteDomainTests(TestCase):
@@ -142,19 +171,14 @@ class ImportPublicCatalogTests(TestCase):
     """CSV import for DB-driven public catalog."""
 
     def _write_csv(self, content: str) -> str:
-        tmp = tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False)
-        self.addCleanup(lambda: os.path.exists(tmp.name) and os.unlink(tmp.name))
-        tmp.write(content)
-        tmp.flush()
-        tmp.close()
-        return tmp.name
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as tmp:
+            self.addCleanup(lambda: os.path.exists(tmp.name) and os.unlink(tmp.name))
+            tmp.write(content)
+            tmp.flush()
+            return tmp.name
 
     def test_dry_run_does_not_create_rows(self):
-        path = self._write_csv(
-            """org_public_slug,org_display_name,org_industry,org_description,org_github_org_url,org_logo_url,team_slug,team_name,org_is_public,repo_github_repo,repo_slug,repo_display_name,repo_description,repo_github_url,is_flagship,repo_is_public,sync_enabled,insights_enabled,initial_backfill_days,display_order
-acme,Acme,analytics,Acme analytics org,https://github.com/acme,,acme-demo,Acme Public,false,acme/core,core,Core Repo,Core repo,https://github.com/acme/core,true,true,true,false,180,0
-"""
-        )
+        path = self._write_csv(f"{_CSV_HEADER}\n{_ACME_CORE_ROW}\n")
 
         call_command("import_public_catalog", path, "--dry-run", verbosity=0)
 
@@ -163,12 +187,7 @@ acme,Acme,analytics,Acme analytics org,https://github.com/acme,,acme-demo,Acme P
         assert Team.objects.count() == 0
 
     def test_import_creates_team_org_repo_and_sync_state(self):
-        path = self._write_csv(
-            """org_public_slug,org_display_name,org_industry,org_description,org_github_org_url,org_logo_url,team_slug,team_name,org_is_public,repo_github_repo,repo_slug,repo_display_name,repo_description,repo_github_url,is_flagship,repo_is_public,sync_enabled,insights_enabled,initial_backfill_days,display_order
-acme,Acme,analytics,Acme analytics org,https://github.com/acme,,acme-demo,Acme Public,false,acme/core,core,Core Repo,Core repo,https://github.com/acme/core,true,true,true,false,180,0
-acme,Acme,analytics,Acme analytics org,https://github.com/acme,,acme-demo,Acme Public,false,acme/sdk,sdk,SDK Repo,SDK repo,https://github.com/acme/sdk,false,true,true,false,180,1
-"""
-        )
+        path = self._write_csv(f"{_CSV_HEADER}\n{_ACME_CORE_ROW}\n{_ACME_SDK_ROW}\n")
 
         call_command("import_public_catalog", path, verbosity=0)
 
@@ -204,11 +223,7 @@ acme,Acme,analytics,Acme analytics org,https://github.com/acme,,acme-demo,Acme P
             is_public=True,
         )
 
-        path = self._write_csv(
-            """org_public_slug,org_display_name,org_industry,org_description,org_github_org_url,org_logo_url,team_slug,team_name,org_is_public,repo_github_repo,repo_slug,repo_display_name,repo_description,repo_github_url,is_flagship,repo_is_public,sync_enabled,insights_enabled,initial_backfill_days,display_order
-acme,Acme New,analytics,Acme analytics org,https://github.com/acme,,acme-demo,Acme Public,true,acme/core,core,Core Repo,Core repo,https://github.com/acme/core,true,true,true,true,365,2
-"""
-        )
+        path = self._write_csv(f"{_CSV_HEADER}\n{_ACME_CORE_UPDATED_ROW}\n")
 
         call_command("import_public_catalog", path, verbosity=0)
 
@@ -332,7 +347,7 @@ class RunPublicSyncTests(TestCase):
         ]
 
         # Create a second eligible repo so we have 2 to iterate
-        extra_repo = PublicRepoProfile.objects.create(
+        PublicRepoProfile.objects.create(
             org_profile=self.org,
             github_repo="sync-org/repo-extra",
             repo_slug="repo-extra",
@@ -343,3 +358,29 @@ class RunPublicSyncTests(TestCase):
 
         # Should not raise — continues past the failure
         call_command("run_public_sync", verbosity=0)
+
+    @patch("apps.public.management.commands.run_public_sync.GitHubTokenPool")
+    @patch("apps.public.management.commands.run_public_sync.SyncOrchestrator")
+    def test_errors_visible_in_quiet_mode(self, mock_orch_cls, mock_pool_cls):
+        """FAILED must appear in stderr even without --verbose."""
+        mock_orch = mock_orch_cls.return_value
+        mock_orch.sync_repo.side_effect = Exception("API error")
+
+        stderr = StringIO()
+        call_command("run_public_sync", stderr=stderr, verbosity=0)
+
+        assert "FAILED" in stderr.getvalue()
+
+    @patch("apps.public.management.commands.run_public_sync.GitHubTokenPool")
+    @patch("apps.public.management.commands.run_public_sync.SyncOrchestrator")
+    def test_verbose_flag_does_not_suppress_logging(self, mock_orch_cls, mock_pool_cls):
+        """--verbose should leave the 'apps' logger level unchanged."""
+        mock_orch = mock_orch_cls.return_value
+        mock_orch.sync_repo.return_value = {"fetched": 1, "created": 1, "updated": 0}
+
+        apps_logger = logging.getLogger("apps")
+        level_before = apps_logger.level
+
+        call_command("run_public_sync", "--verbose", verbosity=0)
+
+        assert apps_logger.level == level_before

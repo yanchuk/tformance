@@ -331,6 +331,7 @@ class GitHubGraphQLFetcher:
         repo_full_name: str,
         since: datetime | None = None,
         max_prs: int = 100,
+        states: list[str] | None = None,
     ) -> list[FetchedPRFull]:
         """Fetch PRs using GraphQL (async).
 
@@ -338,6 +339,7 @@ class GitHubGraphQLFetcher:
             repo_full_name: Repository in "owner/repo" format
             since: Only fetch PRs created after this date
             max_prs: Maximum number of PRs to fetch
+            states: Filter by PR state (e.g., ["MERGED"]). None returns all states.
 
         Returns:
             List of FetchedPRFull objects
@@ -354,7 +356,7 @@ class GitHubGraphQLFetcher:
             page += 1
             print(f"     Page {page}: fetching...", end=" ", flush=True)
             try:
-                result = await self._client.fetch_prs_bulk(owner, repo, cursor)
+                result = await self._client.fetch_prs_bulk(owner, repo, cursor, states=states)
                 self.api_calls_made += 1
             except GitHubGraphQLRateLimitError as e:
                 print("⚠️ Rate limit hit")
@@ -460,6 +462,7 @@ class GitHubGraphQLFetcher:
         since: datetime | None = None,
         until: datetime | None = None,
         max_prs: int = 100,
+        states: list[str] | None = None,
     ) -> list[FetchedPRFull]:
         """Fetch PRs using GraphQL (sync wrapper).
 
@@ -471,6 +474,7 @@ class GitHubGraphQLFetcher:
             since: Only fetch PRs created after this date
             until: Only fetch PRs created before this date (for batch imports)
             max_prs: Maximum number of PRs to fetch
+            states: Filter by PR state (e.g., ["MERGED"]). None returns all states.
 
         Returns:
             List of FetchedPRFull objects
@@ -538,7 +542,7 @@ class GitHubGraphQLFetcher:
                 return prs
 
         # No cache - fetch from GitHub
-        prs = asyncio.run(self._fetch_prs_async(repo_full_name, since, max_prs))
+        prs = asyncio.run(self._fetch_prs_async(repo_full_name, since, max_prs, states=states))
 
         # Save to cache (with repo_pushed_at for future validation)
         if self.use_cache and prs:

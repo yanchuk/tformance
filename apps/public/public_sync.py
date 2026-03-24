@@ -56,6 +56,7 @@ def sync_public_repo(repo_profile, token_pool: GitHubTokenPool, *, days: int = 9
             github_repo,
             since=since,
             max_prs=max_prs,
+            states=["MERGED"],
         )
     except Exception:
         logger.exception("Failed to fetch PRs for %s", github_repo)

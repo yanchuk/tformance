@@ -281,6 +281,64 @@ class TestFetchPRsBulk(TestCase):
         with self.assertRaises(GitHubGraphQLError):
             asyncio.run(client.fetch_prs_bulk("owner", "repo"))
 
+    @patch("apps.integrations.services.github_graphql.Client")
+    @patch("apps.integrations.services.github_graphql.AIOHTTPTransport")
+    def test_fetch_prs_bulk_passes_states_filter(self, mock_transport_class, mock_client_class):
+        """Test that fetch_prs_bulk passes states in GraphQL variables when provided."""
+        # Arrange
+        mock_transport_class.return_value = MagicMock()
+        return_value = {
+            "repository": {
+                "pullRequests": {
+                    "nodes": [],
+                    "pageInfo": {"hasNextPage": False, "endCursor": None},
+                }
+            },
+            "rateLimit": {"remaining": 5000},
+        }
+        mock_client, mock_session = create_mock_client_context_manager(return_value)
+        mock_client_class.return_value = mock_client
+        client = GitHubGraphQLClient("test_token")
+
+        # Act
+        import asyncio
+
+        asyncio.run(client.fetch_prs_bulk("owner", "repo", states=["MERGED"]))
+
+        # Assert
+        call_args = mock_session.execute.call_args
+        variables = call_args[1]["variable_values"]
+        self.assertEqual(variables["states"], ["MERGED"])
+
+    @patch("apps.integrations.services.github_graphql.Client")
+    @patch("apps.integrations.services.github_graphql.AIOHTTPTransport")
+    def test_fetch_prs_bulk_omits_states_when_none(self, mock_transport_class, mock_client_class):
+        """Test that fetch_prs_bulk does not include states in variables when None (backward compat)."""
+        # Arrange
+        mock_transport_class.return_value = MagicMock()
+        return_value = {
+            "repository": {
+                "pullRequests": {
+                    "nodes": [],
+                    "pageInfo": {"hasNextPage": False, "endCursor": None},
+                }
+            },
+            "rateLimit": {"remaining": 5000},
+        }
+        mock_client, mock_session = create_mock_client_context_manager(return_value)
+        mock_client_class.return_value = mock_client
+        client = GitHubGraphQLClient("test_token")
+
+        # Act
+        import asyncio
+
+        asyncio.run(client.fetch_prs_bulk("owner", "repo"))
+
+        # Assert - states should NOT be in variables dict
+        call_args = mock_session.execute.call_args
+        variables = call_args[1]["variable_values"]
+        self.assertNotIn("states", variables)
+
 
 class TestFetchSinglePR(TestCase):
     """Tests for GitHubGraphQLClient.fetch_single_pr method."""
