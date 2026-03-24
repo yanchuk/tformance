@@ -122,10 +122,9 @@ def _build_meta_description(repo_profile, stats) -> str:
 
 
 def _format_hours(value) -> str:
-    hours = float(value or 0)
-    if 0 < hours < 1:
-        return "<1h"
-    return f"{hours:.1f}h"
+    from apps.public.formatting import format_duration
+
+    return format_duration(value)
 
 
 def _normalize_public_insight_text(text: str) -> str:

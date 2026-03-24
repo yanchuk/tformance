@@ -115,10 +115,12 @@ def _build_org_meta_description(profile, stats, narrative: str) -> str:
     ai_pct = float(getattr(stats, "ai_assisted_pct", 0) or 0)
     contributors = int(getattr(stats, "active_contributors_90d", 0) or 0)
 
+    from apps.public.formatting import format_duration
+
     description = (
         f"{profile.display_name} engineering benchmarks from {stats.total_prs:,} merged pull requests: "
-        f"{float(stats.median_cycle_time_hours):.1f}h median cycle time, "
-        f"{float(stats.median_review_time_hours):.1f}h median review time, "
+        f"{format_duration(stats.median_cycle_time_hours)} median cycle time, "
+        f"{format_duration(stats.median_review_time_hours)} median review time, "
         f"{contributors} active contributors, and repo-level trend comparisons. "
         f"AI-related signals appear on {ai_pct:.1f}% of recent work."
     )

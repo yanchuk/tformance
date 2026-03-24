@@ -349,10 +349,9 @@ def _draw_metrics_row(
 
 
 def _format_hours(value) -> str:
-    hours = float(value or 0)
-    if 0 < hours < 1:
-        return "<1h"
-    return f"{hours:.1f}h"
+    from apps.public.formatting import format_duration
+
+    return format_duration(value)
 
 
 def _paste_logo(img, avatar_url: str | None, x: int, y: int, size: int) -> bool:

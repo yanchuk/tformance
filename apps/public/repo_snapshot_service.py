@@ -25,6 +25,7 @@ from apps.public.aggregations import (
     compute_recent_prs,
     compute_team_summary,
 )
+from apps.public.formatting import format_duration
 from apps.public.models import PublicOrgStats, PublicRepoProfile, PublicRepoStats
 from apps.public.services.public_trends import build_combined_trend, build_correlation_scatter
 from apps.public.views.helpers import PUBLIC_SUMMARY_WINDOW_DAYS, PUBLIC_TREND_WINDOW_DAYS
@@ -289,8 +290,8 @@ def _compute_best_signal(summary: dict, cadence_change: Decimal) -> dict:
             {
                 "metric": "fast_delivery",
                 "label": "Fast Delivery",
-                "value": f"{cycle_time:.0f}h",
-                "description": f"Median cycle time of {cycle_time:.0f} hours",
+                "value": format_duration(cycle_time),
+                "description": f"Median cycle time of {format_duration(cycle_time)}",
                 "strength": 100 - cycle_time,
             }
         )
@@ -311,8 +312,8 @@ def _compute_watchout_signal(summary: dict, cadence_change: Decimal) -> dict:
             {
                 "metric": "review_pressure",
                 "label": "Review Pressure",
-                "value": f"{review_time:.0f}h",
-                "description": f"Median review time is {review_time:.0f} hours",
+                "value": format_duration(review_time),
+                "description": f"Median review time is {format_duration(review_time)}",
                 "severity": review_time,
             }
         )
@@ -323,8 +324,8 @@ def _compute_watchout_signal(summary: dict, cadence_change: Decimal) -> dict:
             {
                 "metric": "slow_delivery",
                 "label": "Slow Delivery",
-                "value": f"{cycle_time:.0f}h",
-                "description": f"Median cycle time of {cycle_time:.0f} hours",
+                "value": format_duration(cycle_time),
+                "description": f"Median cycle time of {format_duration(cycle_time)}",
                 "severity": cycle_time,
             }
         )
