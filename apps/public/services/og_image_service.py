@@ -264,7 +264,8 @@ def _build_ai_line(stats) -> str:
             tools = breakdown.get("ai_tools", [])
 
     if tools and isinstance(tools, list):
-        tool_names = [t.get("name", t) if isinstance(t, dict) else str(t) for t in tools[:3]]
+        tool_names = [str(t.get("name", "")) if isinstance(t, dict) else str(t) for t in tools[:3]]
+        tool_names = [n for n in tool_names if n]  # filter empty
         if tool_names:
             tools_str = _truncate(", ".join(tool_names), _MAX_AI_TOOLS_CHARS)
             line += f"  \u00b7  {tools_str}"
