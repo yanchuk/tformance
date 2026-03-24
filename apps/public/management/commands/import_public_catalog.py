@@ -60,11 +60,9 @@ class Command(BaseCommand):
 
         prefix = "Dry run complete" if dry_run else "Import complete"
         self.stdout.write(
-            
-                f"{prefix}: teams created={summary['teams_created']}, teams updated={summary['teams_updated']}, "
-                f"orgs created={summary['orgs_created']}, orgs updated={summary['orgs_updated']}, "
-                f"repos created={summary['repos_created']}, repos updated={summary['repos_updated']}"
-            
+            f"{prefix}: teams created={summary['teams_created']}, teams updated={summary['teams_updated']}, "
+            f"orgs created={summary['orgs_created']}, orgs updated={summary['orgs_updated']}, "
+            f"repos created={summary['repos_created']}, repos updated={summary['repos_updated']}"
         )
 
     def _load_rows(self, csv_path: Path):

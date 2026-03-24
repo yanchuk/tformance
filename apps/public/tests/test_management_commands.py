@@ -237,3 +237,109 @@ acme,Acme,unknown,Acme analytics org,https://github.com/acme,,acme-demo,Acme Pub
 
         with self.assertRaises(CommandError):
             call_command("import_public_catalog", path, verbosity=0)
+
+
+class RunPublicSyncTests(TestCase):
+    """Tests for the run_public_sync management command."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.team = Team.objects.create(name="Sync Team", slug="sync-team")
+        cls.org = PublicOrgProfile.objects.create(
+            team=cls.team,
+            public_slug="sync-org",
+            industry="analytics",
+            display_name="Sync Org",
+            is_public=True,
+        )
+        cls.repo = PublicRepoProfile.objects.create(
+            org_profile=cls.org,
+            github_repo="sync-org/repo-a",
+            repo_slug="repo-a",
+            display_name="Repo A",
+            is_public=True,
+            sync_enabled=True,
+        )
+        # Not eligible (sync_enabled=False)
+        cls.disabled_repo = PublicRepoProfile.objects.create(
+            org_profile=cls.org,
+            github_repo="sync-org/repo-b",
+            repo_slug="repo-b",
+            display_name="Repo B",
+            is_public=True,
+            sync_enabled=False,
+        )
+
+    @patch("apps.public.management.commands.run_public_sync.GitHubTokenPool")
+    @patch("apps.public.management.commands.run_public_sync.SyncOrchestrator")
+    def test_syncs_eligible_repos(self, mock_orch_cls, mock_pool_cls):
+        mock_orch = mock_orch_cls.return_value
+        mock_orch.sync_repo.return_value = {"fetched": 10, "created": 5, "updated": 3, "skipped": 2, "errors": 0}
+
+        call_command("run_public_sync", verbosity=0)
+
+        synced_repos = [call.args[0] for call in mock_orch.sync_repo.call_args_list]
+        synced_pks = {r.pk for r in synced_repos}
+        assert self.repo.pk in synced_pks
+        assert self.disabled_repo.pk not in synced_pks
+
+    @patch("apps.public.management.commands.run_public_sync.GitHubTokenPool")
+    @patch("apps.public.management.commands.run_public_sync.SyncOrchestrator")
+    def test_project_filter_limits_repos(self, mock_orch_cls, mock_pool_cls):
+        other_team = Team.objects.create(name="Other", slug="other-team")
+        other_org = PublicOrgProfile.objects.create(
+            team=other_team,
+            public_slug="other-org",
+            industry="analytics",
+            display_name="Other Org",
+            is_public=True,
+        )
+        other_repo = PublicRepoProfile.objects.create(
+            org_profile=other_org,
+            github_repo="other-org/repo-c",
+            repo_slug="repo-c",
+            display_name="Repo C",
+            is_public=True,
+            sync_enabled=True,
+        )
+
+        mock_orch = mock_orch_cls.return_value
+        mock_orch.sync_repo.return_value = {"fetched": 1, "created": 1, "updated": 0, "skipped": 0, "errors": 0}
+
+        call_command("run_public_sync", "--project", "sync-team", verbosity=0)
+
+        synced_pks = {call.args[0].pk for call in mock_orch.sync_repo.call_args_list}
+        assert self.repo.pk in synced_pks
+        assert other_repo.pk not in synced_pks
+
+    @patch("apps.public.management.commands.run_public_sync.GitHubTokenPool")
+    @patch("apps.public.management.commands.run_public_sync.SyncOrchestrator")
+    def test_rebuild_flag_calls_rebuild_command(self, mock_orch_cls, mock_pool_cls):
+        mock_orch = mock_orch_cls.return_value
+        mock_orch.sync_repo.return_value = {"fetched": 0, "created": 0, "updated": 0, "skipped": 0, "errors": 0}
+
+        with patch("apps.public.management.commands.run_public_sync.call_command") as mock_call:
+            call_command("run_public_sync", "--rebuild", verbosity=0)
+            mock_call.assert_called_once_with("rebuild_public_catalog_snapshots", verbosity=0)
+
+    @patch("apps.public.management.commands.run_public_sync.GitHubTokenPool")
+    @patch("apps.public.management.commands.run_public_sync.SyncOrchestrator")
+    def test_continues_on_single_repo_failure(self, mock_orch_cls, mock_pool_cls):
+        mock_orch = mock_orch_cls.return_value
+        mock_orch.sync_repo.side_effect = [
+            Exception("API error"),
+            {"fetched": 5, "created": 3, "updated": 2, "skipped": 0, "errors": 0},
+        ]
+
+        # Create a second eligible repo so we have 2 to iterate
+        extra_repo = PublicRepoProfile.objects.create(
+            org_profile=self.org,
+            github_repo="sync-org/repo-extra",
+            repo_slug="repo-extra",
+            display_name="Repo Extra",
+            is_public=True,
+            sync_enabled=True,
+        )
+
+        # Should not raise — continues past the failure
+        call_command("run_public_sync", verbosity=0)
