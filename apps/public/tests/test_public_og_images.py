@@ -95,10 +95,10 @@ class OGImageViewTests(TestCase):
             median_cycle_time_hours=10,
         )
 
-    def test_og_image_404_when_not_yet_generated(self):
+    def test_og_image_redirects_when_not_yet_generated(self):
         with tempfile.TemporaryDirectory() as tmp, override_settings(MEDIA_ROOT=tmp):
             response = self.client.get("/og/open-source/ogv-org.png")
-            assert response.status_code == 404
+            assert response.status_code == 302
 
     def test_og_org_image_endpoint_returns_png(self):
         import os
@@ -117,9 +117,9 @@ class OGImageViewTests(TestCase):
             assert response.status_code == 200
             assert response["Content-Type"] == "image/png"
 
-    def test_og_image_404_for_nonexistent_org(self):
+    def test_og_image_redirects_for_nonexistent_org(self):
         response = self.client.get("/og/open-source/nonexistent.png")
-        assert response.status_code == 404
+        assert response.status_code == 302
 
 
 class OGRepoImageEndpointTests(TestCase):
@@ -214,8 +214,22 @@ class OGImageMetaIntegrationTests(TestCase):
         page_image = response.context.get("page_image", "")
         assert "/og/open-source/ogm-org.png" in page_image
 
+    def test_org_analytics_sets_page_image_to_og_url(self):
+        response = self.client.get("/open-source/ogm-org/analytics/")
+        page_image = response.context.get("page_image", "")
+        assert "/og/open-source/ogm-org.png" in page_image
+
+    def test_org_pr_list_sets_page_image_to_og_url(self):
+        response = self.client.get("/open-source/ogm-org/pull-requests/")
+        page_image = response.context.get("page_image", "")
+        assert "/og/open-source/ogm-org.png" in page_image
+
     def test_repo_detail_page_image_points_to_og_url(self):
-        """Step 7.2: Repo page meta must reference repo OG image."""
         response = self.client.get("/open-source/ogm-org/repos/ogm-repo/")
+        page_image = response.context.get("page_image", "")
+        assert "/og/open-source/ogm-org/ogm-repo.png" in page_image
+
+    def test_repo_pr_list_sets_page_image_to_og_url(self):
+        response = self.client.get("/open-source/ogm-org/repos/ogm-repo/pull-requests/")
         page_image = response.context.get("page_image", "")
         assert "/og/open-source/ogm-org/ogm-repo.png" in page_image

@@ -12,6 +12,7 @@ from apps.web.meta import absolute_url
 from .helpers import (
     build_org_base_context,
     build_pr_list_context,
+    get_org_og_image_url,
 )
 
 
@@ -55,7 +56,7 @@ def org_detail(request, slug) -> HttpResponse:
             "page_title": f"{profile.display_name} Engineering Benchmarks",
             "page_description": _build_org_meta_description(profile, stats, narrative),
             "page_canonical_url": absolute_url(reverse("public:org_detail", kwargs={"slug": slug})),
-            "page_image": absolute_url(f"/og/open-source/{slug}.png"),
+            "page_image": get_org_og_image_url(slug),
         }
     )
     return TemplateResponse(request, "public/org_detail.html", context)
@@ -74,6 +75,7 @@ def org_pr_list(request, slug) -> HttpResponse:
             "page_description": f"Public pull request explorer for {request.public_profile.display_name}.",
             "page_canonical_url": absolute_url(reverse("public:org_detail", kwargs={"slug": slug})),
             "page_robots": "noindex,follow",
+            "page_image": get_org_og_image_url(slug),
         }
     )
     return TemplateResponse(request, "public/org_pr_list.html", context)

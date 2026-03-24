@@ -7,6 +7,7 @@ from django.utils import timezone
 
 from apps.metrics.models import PullRequest
 from apps.metrics.services.pr_list_service import get_filter_options, get_pr_stats, get_prs_queryset
+from apps.web.meta import absolute_url
 
 PAGE_SIZE = 50
 MIN_PUBLIC_DAYS = 7
@@ -58,6 +59,16 @@ def get_public_trend_date_range() -> tuple[int, date, date]:
     end_date = timezone.now().date()
     start_date = end_date - timedelta(days=PUBLIC_TREND_WINDOW_DAYS)
     return PUBLIC_TREND_WINDOW_DAYS, start_date, end_date
+
+
+def get_org_og_image_url(slug: str) -> str:
+    """Return the OG image URL for an org, used across all org sub-pages."""
+    return absolute_url(f"/og/open-source/{slug}.png")
+
+
+def get_repo_og_image_url(slug: str, repo_slug: str) -> str:
+    """Return the OG image URL for a repo, used across all repo sub-pages."""
+    return absolute_url(f"/og/open-source/{slug}/{repo_slug}.png")
 
 
 def build_org_base_context(request, slug: str, active_public_tab: str) -> dict[str, Any]:

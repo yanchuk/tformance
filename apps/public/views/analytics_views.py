@@ -7,7 +7,7 @@ from django.views.decorators.http import require_http_methods
 from apps.public.decorators import public_org_required
 from apps.web.meta import absolute_url
 
-from .helpers import build_org_base_context
+from .helpers import build_org_base_context, get_org_og_image_url
 
 
 @cache_page(3600)
@@ -25,6 +25,7 @@ def org_analytics(request, slug) -> HttpResponse:
             ),
             "page_canonical_url": absolute_url(reverse("public:org_detail", kwargs={"slug": slug})),
             "page_robots": "noindex,follow",
+            "page_image": get_org_og_image_url(slug),
         }
     )
     return TemplateResponse(request, "public/org_analytics.html", context)

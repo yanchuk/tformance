@@ -7,7 +7,7 @@ from apps.public.decorators import public_repo_required
 from apps.public.models import PublicRepoInsight, PublicRepoStats
 from apps.web.meta import absolute_url
 
-from .helpers import build_pr_list_context
+from .helpers import build_pr_list_context, get_repo_og_image_url
 
 
 @require_http_methods(["GET"])
@@ -43,7 +43,7 @@ def repo_detail(request: HttpRequest, slug: str, repo_slug: str) -> HttpResponse
         "page_title": f"{repo_profile.display_name} Engineering Benchmarks",
         "page_description": _build_meta_description(repo_profile, stats),
         "page_canonical_url": canonical_url,
-        "page_image": absolute_url(f"/og/open-source/{slug}/{repo_slug}.png"),
+        "page_image": get_repo_og_image_url(slug, repo_slug),
         "combined_trend_data": stats.combined_trend_data if stats else {},
         "correlation_data": stats.correlation_data if stats else {},
         "ai_impact_data": stats.ai_impact_data if stats else {},
@@ -73,6 +73,7 @@ def repo_pr_list(request: HttpRequest, slug: str, repo_slug: str) -> HttpRespons
             "page_canonical_url": absolute_url(
                 reverse("public:repo_detail", kwargs={"slug": slug, "repo_slug": repo_slug})
             ),
+            "page_image": get_repo_og_image_url(slug, repo_slug),
         }
     )
     return TemplateResponse(request, "public/repo_pr_list.html", context)

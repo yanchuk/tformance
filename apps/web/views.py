@@ -690,6 +690,7 @@ def pricing(request):
         "page_description": (
             "Predictable flat-rate pricing. No per-seat surprises. $99-699/mo based on team size. Free during Alpha."
         ),
+        "page_image": settings.PROJECT_METADATA["IMAGE"].replace("og-image.png", "og-pricing.png"),
     }
     return render(request, "web/pricing.html", context)
 
@@ -705,6 +706,7 @@ def features(request):
                 "Delivery visibility, team performance metrics, and GitHub-first integrations. "
                 "Understand cycle time, review load, and trend changes without enterprise bloat."
             ),
+            "page_image": settings.PROJECT_METADATA["IMAGE"].replace("og-image.png", "og-features.png"),
         },
     )
 
