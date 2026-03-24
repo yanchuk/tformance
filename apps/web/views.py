@@ -6,6 +6,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.cache import cache
 from django.http import (
     Http404,
+    HttpResponseForbidden,
     HttpResponseNotAllowed,
     HttpResponseRedirect,
     JsonResponse,
@@ -35,6 +36,8 @@ from apps.web.decorators import (
     require_survey_author_access,
     require_survey_reviewer_access,
     require_valid_survey_token,
+    verify_author_access,
+    verify_reviewer_access,
 )
 
 logger = logging.getLogger(__name__)
@@ -505,8 +508,12 @@ def survey_submit(request, token):
 
     # Determine submission type and handle accordingly
     if _is_author_submission(request.POST):
+        if not verify_author_access(request.user, survey):
+            return HttpResponseForbidden("You are not authorized to submit this survey")
         _handle_author_submission(survey, request.POST)
     elif _is_reviewer_submission(request.POST):
+        if not verify_reviewer_access(request.user, survey):
+            return HttpResponseForbidden("You are not authorized to submit this survey")
         is_reviewer = True
         reveal_data = _handle_reviewer_submission(survey, request.POST)
     else:

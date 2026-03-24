@@ -6,6 +6,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from django.test import TestCase
 
 from apps.integrations.services.github_graphql import (
+    FETCH_PRS_BULK_QUERY,
+    FETCH_PRS_UPDATED_QUERY,
+    FETCH_SINGLE_PR_QUERY,
+    SEARCH_PRS_BY_DATE_QUERY,
     GitHubGraphQLClient,
     GitHubGraphQLError,
     GitHubGraphQLPermissionError,
@@ -2029,3 +2033,132 @@ class TestExecuteWithRetry(TestCase):
         # Verify original exception is preserved as cause
         self.assertIsInstance(context.exception.__cause__, ValueError)
         self.assertEqual(str(context.exception.__cause__), "Original error message")
+
+
+class TestDatabaseIdInQueries(TestCase):
+    """Tests that GraphQL queries request databaseId for PR nodes."""
+
+    def _query_to_string(self, query):
+        """Convert a gql() GraphQLRequest to its string representation."""
+        from graphql import print_ast
+
+        return print_ast(query.document)
+
+    def test_fetch_prs_bulk_query_includes_database_id(self):
+        """FETCH_PRS_BULK_QUERY must request databaseId on PR nodes."""
+        query_str = self._query_to_string(FETCH_PRS_BULK_QUERY)
+        self.assertIn("databaseId", query_str)
+
+    def test_fetch_prs_updated_query_includes_database_id(self):
+        """FETCH_PRS_UPDATED_QUERY must request databaseId on PR nodes."""
+        query_str = self._query_to_string(FETCH_PRS_UPDATED_QUERY)
+        self.assertIn("databaseId", query_str)
+
+    def test_fetch_single_pr_query_includes_database_id(self):
+        """FETCH_SINGLE_PR_QUERY must request databaseId on the PR node."""
+        query_str = self._query_to_string(FETCH_SINGLE_PR_QUERY)
+        self.assertIn("databaseId", query_str)
+
+    def test_search_prs_by_date_query_includes_database_id(self):
+        """SEARCH_PRS_BY_DATE_QUERY must request databaseId on PR nodes."""
+        query_str = self._query_to_string(SEARCH_PRS_BY_DATE_QUERY)
+        self.assertIn("databaseId", query_str)
+
+
+class TestFetcherDatabaseIdMapping(TestCase):
+    """Tests that GitHubGraphQLFetcher._map_pr uses databaseId for github_pr_id."""
+
+    def _get_fetcher_instance(self):
+        """Create a fetcher instance with a fake token, bypassing __post_init__."""
+        from apps.metrics.seeding.github_graphql_fetcher import GitHubGraphQLFetcher
+
+        fetcher = GitHubGraphQLFetcher.__new__(GitHubGraphQLFetcher)
+        fetcher.token = "fake-token"
+        fetcher.fetch_check_runs = False
+        fetcher.use_cache = False
+        fetcher.api_calls_made = 0
+        return fetcher
+
+    def test_map_pr_uses_database_id_for_github_pr_id(self):
+        """_map_pr should set github_pr_id from databaseId, not number."""
+        fetcher = self._get_fetcher_instance()
+        node = {
+            "databaseId": 999888777,
+            "number": 42,
+            "title": "Test PR",
+            "body": "body",
+            "state": "MERGED",
+            "createdAt": "2025-01-01T00:00:00Z",
+            "mergedAt": "2025-01-02T00:00:00Z",
+            "additions": 10,
+            "deletions": 5,
+            "isDraft": False,
+            "author": {"login": "testuser"},
+            "labels": {"nodes": []},
+            "milestone": None,
+            "assignees": {"nodes": []},
+            "closingIssuesReferences": {"nodes": []},
+            "reviews": {"nodes": []},
+            "commits": {"nodes": []},
+            "files": {"nodes": []},
+        }
+
+        pr = fetcher._map_pr(node, "owner/repo")
+
+        self.assertEqual(pr.github_pr_id, 999888777)
+        self.assertEqual(pr.number, 42)
+
+    def test_map_pr_falls_back_to_number_when_database_id_missing(self):
+        """_map_pr should fall back to number when databaseId is absent."""
+        fetcher = self._get_fetcher_instance()
+        node = {
+            "number": 42,
+            "title": "Test PR",
+            "body": "body",
+            "state": "OPEN",
+            "createdAt": "2025-01-01T00:00:00Z",
+            "additions": 5,
+            "deletions": 2,
+            "isDraft": False,
+            "author": {"login": "testuser"},
+            "labels": {"nodes": []},
+            "milestone": None,
+            "assignees": {"nodes": []},
+            "closingIssuesReferences": {"nodes": []},
+            "reviews": {"nodes": []},
+            "commits": {"nodes": []},
+            "files": {"nodes": []},
+        }
+
+        pr = fetcher._map_pr(node, "owner/repo")
+
+        self.assertEqual(pr.github_pr_id, 42)
+        self.assertEqual(pr.number, 42)
+
+    def test_map_pr_falls_back_to_number_when_database_id_is_none(self):
+        """_map_pr should fall back to number when databaseId is None."""
+        fetcher = self._get_fetcher_instance()
+        node = {
+            "databaseId": None,
+            "number": 99,
+            "title": "Test PR",
+            "body": None,
+            "state": "CLOSED",
+            "createdAt": "2025-06-01T00:00:00Z",
+            "additions": 0,
+            "deletions": 0,
+            "isDraft": False,
+            "author": {"login": "dev"},
+            "labels": {"nodes": []},
+            "milestone": None,
+            "assignees": {"nodes": []},
+            "closingIssuesReferences": {"nodes": []},
+            "reviews": {"nodes": []},
+            "commits": {"nodes": []},
+            "files": {"nodes": []},
+        }
+
+        pr = fetcher._map_pr(node, "owner/repo")
+
+        self.assertEqual(pr.github_pr_id, 99)
+        self.assertEqual(pr.number, 99)

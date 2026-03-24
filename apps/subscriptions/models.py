@@ -71,7 +71,11 @@ class SubscriptionModelBase(models.Model):
     def get_items_needing_sync(cls):
         return cls.objects.filter(
             Q(last_synced_with_stripe__isnull=True) | Q(last_synced_with_stripe__lt=F("billing_details_last_changed")),
-            subscription__status=SubscriptionStatus.active,
+            subscription__status__in=[
+                SubscriptionStatus.active,
+                SubscriptionStatus.trialing,
+                SubscriptionStatus.past_due,
+            ],
         )
 
     def get_quantity(self) -> int:

@@ -85,6 +85,11 @@ class PublicOrgProfile(BaseModel):
         return f"https://github.com/{self.public_slug}.png?size=160"
 
     @property
+    def public_github_repos(self) -> list[str]:
+        """Return github_repo identifiers for repos marked is_public=True."""
+        return list(self.repos.filter(is_public=True).values_list("github_repo", flat=True))
+
+    @property
     def has_sufficient_data(self):
         """Return True when org has enough PR data for public pages."""
         try:

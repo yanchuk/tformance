@@ -68,7 +68,7 @@ def sync_public_repo(repo_profile, token_pool: GitHubTokenPool, *, days: int = 9
         PullRequest.objects.filter(  # noqa: TEAM001 - cross-team for public analytics
             team=team,
             github_repo=github_repo,
-            github_pr_id__in=[pr.number for pr in merged_prs],
+            github_pr_id__in=[pr.github_pr_id for pr in merged_prs],
         ).values_list("github_pr_id", flat=True)
     )
 
@@ -85,10 +85,12 @@ def sync_public_repo(repo_profile, token_pool: GitHubTokenPool, *, days: int = 9
             skipped += 1
             continue
 
-        if pr_data.number in existing_pr_ids:
+        if pr_data.github_pr_id in existing_pr_ids:
             # Update existing PR if stale (instead of skipping)
             try:
-                existing_pr = PullRequest.objects.get(team=team, github_repo=github_repo, github_pr_id=pr_data.number)
+                existing_pr = PullRequest.objects.get(
+                    team=team, github_repo=github_repo, github_pr_id=pr_data.github_pr_id
+                )
                 persistence.update_stale_pr(existing_pr, pr_data)
                 updated += 1
             except Exception:

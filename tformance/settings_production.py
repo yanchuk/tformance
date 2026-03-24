@@ -4,6 +4,7 @@ from .settings import *  # noqa F401
 # Note: it is recommended to use the "DEBUG" environment variable to override this value in your main settings.py file.
 # A future release may remove it from here.
 DEBUG = False
+assert not DEBUG, "DEBUG must be False in production — check your environment"
 
 # fix ssl mixed content issues
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")

@@ -26,6 +26,7 @@ class InvitationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Invitation
         fields = ("id", "team", "email", "role", "invited_by", "is_accepted")
+        read_only_fields = ("team", "is_accepted")
 
 
 class OpenInvitationSerializer(serializers.Serializer):

@@ -143,7 +143,7 @@ def _process_prs(
 
             # Check rate limit after processing this PR
             rate_limit = github.get_rate_limit()
-            core = rate_limit.core
+            core = rate_limit.rate
             tracked_repo.rate_limit_remaining = core.remaining
             tracked_repo.rate_limit_reset_at = core.reset
             tracked_repo.save()
@@ -202,9 +202,10 @@ def sync_repository_history(
         errors=result["errors"],
     )
 
-    # Update last_sync_at
-    tracked_repo.last_sync_at = timezone.now()
-    tracked_repo.save()
+    # Only update last_sync_at if sync completed fully (not rate limited)
+    if not result.get("rate_limited"):
+        tracked_repo.last_sync_at = timezone.now()
+        tracked_repo.save()
 
     return result
 
@@ -240,8 +241,9 @@ def sync_repository_incremental(tracked_repo: TrackedRepository) -> dict:
         errors=result["errors"],
     )
 
-    # Update last_sync_at
-    tracked_repo.last_sync_at = timezone.now()
-    tracked_repo.save()
+    # Only update last_sync_at if sync completed fully (not rate limited)
+    if not result.get("rate_limited"):
+        tracked_repo.last_sync_at = timezone.now()
+        tracked_repo.save()
 
     return result

@@ -152,6 +152,13 @@ def build_pr_list_context(request, github_repo: str | None = None) -> dict[str, 
         filters["repo"] = github_repo
 
     prs_qs = get_prs_queryset(request.team, filters)
+
+    # Only show PRs from public repos in public views
+    if hasattr(request, "public_profile") and request.public_profile:
+        public_repos = request.public_profile.public_github_repos
+        if public_repos:
+            prs_qs = prs_qs.filter(github_repo__in=public_repos)
+
     prs_qs = apply_sort(prs_qs, sort, order)
 
     stats = get_pr_stats(prs_qs)

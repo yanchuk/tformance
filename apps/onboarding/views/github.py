@@ -118,7 +118,6 @@ def github_app_callback(request):
         setup_action: "install" or "update" (optional)
         state: Signed OAuth state parameter (required)
     """
-    from django.utils.text import slugify
 
     from apps.auth.oauth_state import (
         FLOW_TYPE_GITHUB_APP_INSTALL,
@@ -230,9 +229,10 @@ def github_app_callback(request):
     else:
         # Create new installation
         if not is_team_flow:
-            # Onboarding flow - find or create team from org name
-            team_slug = slugify(account_login)
-            team, created = Team.objects.get_or_create(slug=team_slug, defaults={"name": account_login})
+            # Onboarding flow - always create a new team (never reuse existing)
+            # Using get_next_unique_team_slug to avoid slug collisions safely
+            team_slug = get_next_unique_team_slug(account_login)
+            team = Team.objects.create(name=account_login, slug=team_slug)
 
         # Create GitHubAppInstallation
         GitHubAppInstallation.objects.create(

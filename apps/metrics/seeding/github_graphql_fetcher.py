@@ -292,7 +292,7 @@ class GitHubGraphQLFetcher:
         # on FetchedPRFull, so we don't pass them here
 
         return FetchedPRFull(
-            github_pr_id=node.get("number", 0),
+            github_pr_id=node.get("databaseId") or node.get("number", 0),
             number=node.get("number", 0),
             github_repo=repo_full_name,
             title=node.get("title", ""),

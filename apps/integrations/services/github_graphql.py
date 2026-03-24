@@ -42,6 +42,7 @@ FETCH_PRS_BULK_QUERY = gql(
       repository(owner: $owner, name: $repo) {
         pullRequests(first: 10, after: $cursor, states: $states, orderBy: {field: CREATED_AT, direction: DESC}) {
           nodes {
+            databaseId
             number
             title
             body
@@ -137,6 +138,7 @@ FETCH_PRS_UPDATED_QUERY = gql(
       repository(owner: $owner, name: $repo) {
         pullRequests(first: 10, after: $cursor, states: $states, orderBy: {field: UPDATED_AT, direction: DESC}) {
           nodes {
+            databaseId
             number
             title
             body
@@ -229,6 +231,7 @@ FETCH_SINGLE_PR_QUERY = gql(
     query($owner: String!, $repo: String!, $number: Int!) {
       repository(owner: $owner, name: $repo) {
         pullRequest(number: $number) {
+          databaseId
           number
           title
           body
@@ -380,6 +383,7 @@ SEARCH_PRS_BY_DATE_QUERY = gql(
         }
         nodes {
           ... on PullRequest {
+            databaseId
             number
             title
             body

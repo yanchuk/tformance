@@ -220,8 +220,11 @@ class TestSurveySubmitView(TestCase):
 
     def setUp(self):
         """Set up test fixtures using factories."""
+        from allauth.socialaccount.models import SocialAccount
+
+        self.author = TeamMemberFactory(github_id="50001")
         self.user = CustomUser.objects.create_user(username="testuser", password="testpass123")
-        self.author = TeamMemberFactory()
+        SocialAccount.objects.create(user=self.user, provider="github", uid="50001")
         self.survey = PRSurveyFactory(
             team=self.author.team,
             author=self.author,
@@ -348,8 +351,11 @@ class TestAuthorSurveySubmission(TestCase):
 
     def setUp(self):
         """Set up test fixtures using factories."""
+        from allauth.socialaccount.models import SocialAccount
+
+        self.author = TeamMemberFactory(github_id="50002")
         self.user = CustomUser.objects.create_user(username="testuser", password="testpass123")
-        self.author = TeamMemberFactory()
+        SocialAccount.objects.create(user=self.user, provider="github", uid="50002")
         self.survey = PRSurveyFactory(
             team=self.author.team,
             author=self.author,
@@ -599,15 +605,28 @@ class TestReviewerSurveySubmission(TestCase):
 
     def setUp(self):
         """Set up test fixtures using factories."""
-        self.user = CustomUser.objects.create_user(username="testuser", password="testpass123")
-        self.author = TeamMemberFactory()
-        self.reviewer = TeamMemberFactory(team=self.author.team)
+        from allauth.socialaccount.models import SocialAccount
+
+        from apps.metrics.factories import PRReviewFactory, PullRequestFactory
+
+        self.author = TeamMemberFactory(github_id="50003")
+        self.reviewer = TeamMemberFactory(team=self.author.team, github_id="50004")
+
+        # Create PR with a review linking the reviewer
+        self.pr = PullRequestFactory(team=self.author.team, author=self.author)
+        PRReviewFactory(team=self.author.team, pull_request=self.pr, reviewer=self.reviewer)
+
         self.survey = PRSurveyFactory(
             team=self.author.team,
+            pull_request=self.pr,
             author=self.author,
             token="reviewer-submit-token",
             token_expires_at=timezone.now() + timedelta(days=7),
         )
+
+        # Create user with matching GitHub ID for the reviewer
+        self.user = CustomUser.objects.create_user(username="testuser", password="testpass123")
+        SocialAccount.objects.create(user=self.user, provider="github", uid="50004")
 
     def test_reviewer_submission_creates_survey_review(self):
         """Test that reviewer submission creates a PRSurveyReview record."""

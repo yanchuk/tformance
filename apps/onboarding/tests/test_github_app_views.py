@@ -269,11 +269,15 @@ class GitHubAppCallbackViewTests(TestCase):
         self.assertEqual(installation.team.name, "linked-org")
 
     @patch("apps.integrations.services.github_app.get_installation")
-    def test_github_app_callback_links_to_existing_team(self, mock_get_installation):
-        """Test that callback links to existing team if org matches."""
-        # Create existing team with matching name
+    def test_github_app_callback_creates_new_team_when_slug_exists(self, mock_get_installation):
+        """Test that callback creates a NEW team when slug already exists (Bug 13 fix).
+
+        Previously used get_or_create which would give attackers admin access
+        to an existing team if the slug matched. Now always creates a new team
+        with a unique slug suffix.
+        """
+        # Pre-create team with matching slug (simulates existing team)
         existing_team = TeamFactory(name="existing-org", slug="existing-org")
-        existing_team.members.add(self.user, through_defaults={"role": ROLE_ADMIN})
 
         mock_get_installation.return_value = {
             "id": 55555555,
@@ -299,11 +303,20 @@ class GitHubAppCallbackViewTests(TestCase):
             },
         )
 
-        # Should link to existing team, not create new one
+        # Should create a NEW team with a suffixed slug, not reuse existing
         installation = GitHubAppInstallation.objects.get(installation_id=55555555)
-        self.assertEqual(installation.team.id, existing_team.id)
-        # Verify no duplicate team was created
-        self.assertEqual(Team.objects.filter(name="existing-org").count(), 1)
+        self.assertNotEqual(installation.team.id, existing_team.id)
+        self.assertEqual(installation.team.name, "existing-org")
+        self.assertNotEqual(installation.team.slug, "existing-org")
+        # e.g., "existing-org-2"
+        self.assertTrue(installation.team.slug.startswith("existing-org"))
+
+        # User should NOT be a member of the original team
+        self.assertFalse(existing_team.members.filter(id=self.user.id).exists())
+
+        # User SHOULD be admin of the new team
+        membership = Membership.objects.get(team=installation.team, user=self.user)
+        self.assertEqual(membership.role, ROLE_ADMIN)
 
     @patch("apps.integrations.services.github_app.get_installation")
     def test_github_app_callback_invalid_installation_id(self, mock_get_installation):

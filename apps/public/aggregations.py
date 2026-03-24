@@ -112,7 +112,7 @@ class PercentileCont(Aggregate):
         super().__init__(expression, percentile=percentile, **kwargs)
 
 
-def _base_pr_queryset(team_id, year=None, start_date=None, end_date=None, github_repo=None):
+def _base_pr_queryset(team_id, year=None, start_date=None, end_date=None, github_repo=None, allowed_repos=None):
     """Base queryset for merged PRs with date filtering and bot exclusion.
 
     Args:
@@ -121,6 +121,8 @@ def _base_pr_queryset(team_id, year=None, start_date=None, end_date=None, github
         start_date: Start datetime for rolling window. Takes precedence over year.
         end_date: End datetime for rolling window. Used with start_date.
         github_repo: Optional owner/repo string to filter by specific repository.
+        allowed_repos: Optional list of github_repo strings to restrict results to.
+            Used by public analytics to exclude private repos.
 
     Returns:
         Filtered PullRequest queryset (bots excluded).
@@ -129,6 +131,9 @@ def _base_pr_queryset(team_id, year=None, start_date=None, end_date=None, github
         team_id=team_id,
         state="merged",
     ).exclude(Q(author__github_username__endswith="[bot]") | Q(author__github_username__in=BOT_USERNAMES))
+
+    if allowed_repos is not None:
+        qs = qs.filter(github_repo__in=allowed_repos)
 
     if github_repo:
         qs = qs.filter(github_repo=github_repo)

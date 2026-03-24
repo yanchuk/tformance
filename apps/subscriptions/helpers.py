@@ -41,7 +41,7 @@ def get_subscription_urls(subscription_holder):
     ]
 
     def _construct_url(base):
-        return reverse(f"subscriptions_team:{base}", args=[subscription_holder.slug])
+        return reverse(f"subscriptions_team:{base}")
 
     return {url_base: _construct_url(url_base) for url_base in url_bases}
 
