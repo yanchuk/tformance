@@ -1,7 +1,7 @@
 from django.http import HttpRequest, HttpResponse
 from django.template.response import TemplateResponse
 from django.urls import reverse
-from django.views.decorators.http import require_http_methods
+from django.views.decorators.http import require_GET
 
 from apps.public.decorators import public_repo_required
 from apps.public.models import PublicRepoInsight, PublicRepoStats
@@ -10,7 +10,7 @@ from apps.web.meta import absolute_url
 from .helpers import build_pr_list_context, get_repo_og_image_url
 
 
-@require_http_methods(["GET"])
+@require_GET
 @public_repo_required
 def repo_detail(request: HttpRequest, slug: str, repo_slug: str) -> HttpResponse:
     """Canonical repo landing page — server-rendered from stored snapshots."""
@@ -52,7 +52,7 @@ def repo_detail(request: HttpRequest, slug: str, repo_slug: str) -> HttpResponse
     return TemplateResponse(request, "public/repo_detail.html", context)
 
 
-@require_http_methods(["GET"])
+@require_GET
 @public_repo_required
 def repo_pr_list(request: HttpRequest, slug: str, repo_slug: str) -> HttpResponse:
     """Repo-level PR explorer — scoped to a single repository."""
@@ -79,7 +79,7 @@ def repo_pr_list(request: HttpRequest, slug: str, repo_slug: str) -> HttpRespons
     return TemplateResponse(request, "public/repo_pr_list.html", context)
 
 
-@require_http_methods(["GET"])
+@require_GET
 @public_repo_required
 def repo_pr_list_table(request: HttpRequest, slug: str, repo_slug: str) -> HttpResponse:
     """HTMX partial for repo PR table refresh (filtering/pagination)."""

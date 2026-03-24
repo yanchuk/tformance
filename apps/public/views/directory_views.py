@@ -4,7 +4,7 @@ from django.template.response import TemplateResponse
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.cache import cache_page
-from django.views.decorators.http import require_http_methods
+from django.views.decorators.http import require_GET, require_http_methods
 
 from apps.public.forms import RepoRequestForm
 from apps.public.models import INDUSTRY_CHOICES
@@ -12,7 +12,7 @@ from apps.public.services import PublicAnalyticsService
 from apps.web.meta import absolute_url
 
 
-@require_http_methods(["GET"])
+@require_GET
 def directory(request) -> HttpResponse:
     year_param = request.GET.get("year", "")
     year = int(year_param) if year_param.isdigit() else None
@@ -92,7 +92,7 @@ def directory(request) -> HttpResponse:
 
 
 @cache_page(3600)
-@require_http_methods(["GET"])
+@require_GET
 def industry_comparison(request, industry) -> HttpResponse:
     data = PublicAnalyticsService.get_industry_comparison(industry)
     if data is None:
@@ -137,7 +137,7 @@ def request_repo(request) -> HttpResponse:
 
 
 @cache_page(3600)
-@require_http_methods(["GET"])
+@require_GET
 def request_success(request) -> HttpResponse:
     return TemplateResponse(
         request,

@@ -3,7 +3,7 @@ from datetime import timedelta
 from django.http import HttpRequest, HttpResponse
 from django.template.response import TemplateResponse
 from django.views.decorators.cache import cache_page
-from django.views.decorators.http import require_http_methods
+from django.views.decorators.http import require_GET
 
 from apps.metrics.services import chart_formatters, dashboard_service
 from apps.metrics.services.dashboard.velocity_metrics import get_team_health_indicators
@@ -18,7 +18,7 @@ def _get_repo_filter(request: HttpRequest) -> str | None:
 
 
 @cache_page(3600)
-@require_http_methods(["GET"])
+@require_GET
 @public_org_required
 def public_ai_adoption_chart(request: HttpRequest, slug: str) -> HttpResponse:
     _days, start_date, end_date = get_public_date_range(request)
@@ -29,7 +29,7 @@ def public_ai_adoption_chart(request: HttpRequest, slug: str) -> HttpResponse:
 
 
 @cache_page(3600)
-@require_http_methods(["GET"])
+@require_GET
 @public_org_required
 def public_cycle_time_chart(request: HttpRequest, slug: str) -> HttpResponse:
     _days, start_date, end_date = get_public_date_range(request)
@@ -40,7 +40,7 @@ def public_cycle_time_chart(request: HttpRequest, slug: str) -> HttpResponse:
 
 
 @cache_page(3600)
-@require_http_methods(["GET"])
+@require_GET
 @public_org_required
 def public_ai_quality_chart(request: HttpRequest, slug: str) -> HttpResponse:
     _days, start_date, end_date = get_public_date_range(request)
@@ -51,7 +51,7 @@ def public_ai_quality_chart(request: HttpRequest, slug: str) -> HttpResponse:
 
 
 @cache_page(3600)
-@require_http_methods(["GET"])
+@require_GET
 @public_org_required
 def public_ai_tools_chart(request: HttpRequest, slug: str) -> HttpResponse:
     _days, start_date, end_date = get_public_date_range(request)
@@ -61,7 +61,7 @@ def public_ai_tools_chart(request: HttpRequest, slug: str) -> HttpResponse:
 
 
 @cache_page(3600)
-@require_http_methods(["GET"])
+@require_GET
 @public_org_required
 def public_pr_size_chart(request: HttpRequest, slug: str) -> HttpResponse:
     _days, start_date, end_date = get_public_date_range(request)
@@ -76,7 +76,7 @@ def public_pr_size_chart(request: HttpRequest, slug: str) -> HttpResponse:
 
 
 @cache_page(3600)
-@require_http_methods(["GET"])
+@require_GET
 @public_org_required
 def public_review_distribution_chart(request: HttpRequest, slug: str) -> HttpResponse:
     days, start_date, end_date = get_public_date_range(request)
@@ -99,7 +99,7 @@ def public_review_distribution_chart(request: HttpRequest, slug: str) -> HttpRes
 
 
 @cache_page(3600)
-@require_http_methods(["GET"])
+@require_GET
 @public_org_required
 def public_key_metrics_cards(request: HttpRequest, slug: str) -> HttpResponse:
     _days, start_date, end_date = get_public_date_range(request)
@@ -124,7 +124,7 @@ def public_key_metrics_cards(request: HttpRequest, slug: str) -> HttpResponse:
 
 
 @cache_page(3600)
-@require_http_methods(["GET"])
+@require_GET
 @public_org_required
 def public_team_health_cards(request: HttpRequest, slug: str) -> HttpResponse:
     _days, start_date, end_date = get_public_date_range(request)
@@ -137,7 +137,7 @@ def public_team_health_cards(request: HttpRequest, slug: str) -> HttpResponse:
 
 
 @cache_page(3600)
-@require_http_methods(["GET"])
+@require_GET
 @public_org_required
 def public_combined_trend_chart(request: HttpRequest, slug: str) -> HttpResponse:
     """HTMX partial for dual-axis AI adoption + delivery trend chart."""

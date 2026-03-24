@@ -6,20 +6,28 @@ from . import views
 app_name = "web"
 urlpatterns = [
     path("", views.home, name="home"),
+    # SEO: no-slash aliases prevent 301 redirect from APPEND_SLASH
+    path("pricing", views.pricing),
     path("pricing/", views.pricing, name="pricing"),
+    path("features", views.features),
     path("features/", views.features, name="features"),
     path("features/dashboard/", views.features_dashboard, name="features_dashboard"),
     path("features/analytics/", views.features_analytics, name="features_analytics"),
     path("features/pr-explorer/", views.features_pr_explorer, name="features_pr_explorer"),
     # Comparison pages (public, SEO)
+    path("compare", views.compare_hub),
     path("compare/", views.compare_hub, name="compare"),
     path("compare/<slug:competitor>/", views.compare_competitor, name="compare_competitor"),
+    path("report", views.ai_impact_report),
     path("report/", views.ai_impact_report, name="ai_impact_report"),
     path("report/llms.md", views.report_llms_data, name="report_llms_data"),
     path("report/data/<str:filename>", views.report_data_file, name="report_data_file"),
     path("report/<str:filename>", views.report_static_file, name="report_static_file"),
+    path("team", TemplateView.as_view(template_name="web/team.html")),
     path("team/", TemplateView.as_view(template_name="web/team.html"), name="team"),
+    path("terms", TemplateView.as_view(template_name="web/terms.html")),
     path("terms/", TemplateView.as_view(template_name="web/terms.html"), name="terms"),
+    path("privacy", TemplateView.as_view(template_name="web/privacy.html")),
     path("privacy/", TemplateView.as_view(template_name="web/privacy.html"), name="privacy"),
     path("robots.txt", TemplateView.as_view(template_name="robots.txt", content_type="text/plain"), name="robots.txt"),
     path("llms.txt", TemplateView.as_view(template_name="llms.txt", content_type="text/plain"), name="llms.txt"),

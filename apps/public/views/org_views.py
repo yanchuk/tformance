@@ -2,7 +2,7 @@ from django.http import HttpResponse
 from django.template.response import TemplateResponse
 from django.urls import reverse
 from django.views.decorators.cache import cache_page
-from django.views.decorators.http import require_http_methods
+from django.views.decorators.http import require_GET
 
 from apps.metrics.services.benchmark_service import get_benchmark_for_team
 from apps.public.decorators import public_org_required
@@ -17,7 +17,7 @@ from .helpers import (
 
 
 @cache_page(3600)
-@require_http_methods(["GET"])
+@require_GET
 @public_org_required
 def org_detail(request, slug) -> HttpResponse:
     context = build_org_base_context(request, slug, active_public_tab="overview")
@@ -63,7 +63,7 @@ def org_detail(request, slug) -> HttpResponse:
 
 
 @cache_page(3600)
-@require_http_methods(["GET"])
+@require_GET
 @public_org_required
 def org_pr_list(request, slug) -> HttpResponse:
     context = build_pr_list_context(request)
@@ -82,7 +82,7 @@ def org_pr_list(request, slug) -> HttpResponse:
 
 
 @cache_page(3600)
-@require_http_methods(["GET"])
+@require_GET
 @public_org_required
 def pr_list_table(request, slug) -> HttpResponse:
     context = build_pr_list_context(request)
