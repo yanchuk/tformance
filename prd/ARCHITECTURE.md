@@ -106,6 +106,17 @@ All metric tables have a `team_id` foreign key. The Django application enforces 
 - `for_team` model manager filters by current team context
 - Views use `@login_and_team_required` decorator
 
+### Public → Private Data Bridge
+
+Public benchmark pages (`/open-source/`) bridge into private team-scoped data:
+
+- `PublicOrgProfile.team` FK links each public org to a real `Team` with `PullRequest` records
+- The `@public_org_required` decorator sets `request.team = profile.team`, enabling team-scoped queries
+- Public PR explorer views query the **same `PullRequest` model** that the internal dashboard uses
+- **Security boundary:** Public views additionally filter PRs to `public_profile.public_github_repos` — only repos explicitly marked public are shown. The repo allowlist (not just team isolation) is what prevents private repo data from leaking through public pages.
+
+This means teams backing public profiles (e.g., `posthog-demo`, `polar-demo`) contain real granular PR data that powers both `/open-source/` pages and the internal `/app/` dashboard.
+
 ---
 
 ## Integrations
