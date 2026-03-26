@@ -87,6 +87,8 @@ AI_REVIEWER_BOTS: dict[str, str] = {
     # ----- Inkeep AI (docs/search bot) -----
     "inkeep": "inkeep",
     "inkeep[bot]": "inkeep",
+    # ----- PostHog JS Upgrader (automated dependency bot) -----
+    "posthog-js-upgrader": "posthog_upgrader",
     # ----- Replexica AI (i18n/translation) -----
     "replexica[bot]": "replexica",
     "lingodotdev[bot]": "replexica",  # Replexica rebrand

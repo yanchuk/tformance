@@ -36,6 +36,7 @@ BOT_REVIEWER_PATTERNS = (
     "chatgpt-codex",  # ChatGPT Codex connector
     "copilot-pull-request",  # Copilot PR reviewer
     "inkeep",  # Inkeep AI docs/search bot
+    "posthog-js-upgrader",  # PostHog JS automated upgrader
 )
 
 

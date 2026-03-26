@@ -320,6 +320,12 @@ BOT_USERNAME_PATTERNS = (
     "auto-merge",
     "mergify",
     "coderabbit",  # AI code review bot (coderabbitai)
+    "greptile",  # Greptile AI code review
+    "graphite-app",  # Graphite GitHub App
+    "chatgpt-codex",  # ChatGPT Codex connector
+    "copilot-pull-request",  # Copilot PR reviewer
+    "inkeep",  # Inkeep AI docs/search bot
+    "posthog-js-upgrader",  # PostHog JS automated upgrader
 )
 
 
@@ -688,7 +694,7 @@ def generate_insight(
                     {"role": "user", "content": user_prompt},
                 ],
                 "temperature": 0.2,
-                "max_tokens": 1500,
+                "max_tokens": 2500,
             }
 
             # Use json_schema for models that support it, json_object for others
