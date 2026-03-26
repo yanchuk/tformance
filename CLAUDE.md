@@ -53,6 +53,19 @@ Model.objects.filter(state='merged')  # Missing team!
 ```
 Suppress when intentional: `# noqa: TEAM001 - reason`
 
+### Groq API — Batch Only for Scheduled Tasks
+All scheduled Celery tasks that call Groq MUST use `GroqBatchProcessor` (Batch API).
+Never use `client.chat.completions.create()` in a scheduled task — it's 2x more expensive.
+```python
+# Safe — uses Batch API
+processor = GroqBatchProcessor()
+results, stats = processor.submit_batch_with_fallback(prs)
+
+# Unsafe — on-demand, costs 2x more
+client.chat.completions.create(model="llama-3.3-70b-versatile", ...)
+```
+Guardrail tests in `apps/metrics/tests/test_batch_only_guardrails.py` enforce this.
+
 ### Async Pattern
 Never use `asyncio.run()` in Django - use `async_to_sync()` instead.
 Applies to: Celery tasks, views, signals, middleware.
