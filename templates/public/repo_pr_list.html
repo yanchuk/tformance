@@ -1,11 +1,6 @@
 {% extends "public/app_base.html" %}
 {% load pr_list_tags %}
 
-{% block page_head %}
-  {{ block.super }}
-  <meta name="robots" content="noindex,follow">
-{% endblock page_head %}
-
 {% block public_breadcrumb_items %}
 <li><a href="{% url 'public:org_detail' slug=public_slug %}" class="link link-hover">{{ org_profile.display_name }}</a></li>
 <li><a href="{% url 'public:repo_detail' slug=public_slug repo_slug=repo_slug %}" class="link link-hover">{{ repo_profile.display_name }}</a></li>

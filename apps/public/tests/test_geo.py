@@ -76,8 +76,9 @@ class PublicGeoTests(TestCase):
         assert "/open-source/" in content
         assert "/open-source/geo-org/" in content
 
-    def test_robots_includes_open_source_and_ai_bots(self):
+    def test_robots_includes_open_source(self):
         response = self.client.get(reverse("web:robots.txt"))
         content = response.content.decode()
         assert "Allow: /open-source/" in content
-        assert "User-agent: GPTBot" in content
+        # AI bots inherit from User-Agent: * (no bot-specific sections needed)
+        assert "User-agent: GPTBot" not in content

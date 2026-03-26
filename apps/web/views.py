@@ -39,6 +39,7 @@ from apps.web.decorators import (
     verify_author_access,
     verify_reviewer_access,
 )
+from apps.web.meta import absolute_url
 
 logger = logging.getLogger(__name__)
 
@@ -707,6 +708,7 @@ def features(request):
                 "Understand cycle time, review load, and trend changes without enterprise bloat."
             ),
             "page_image": settings.PROJECT_METADATA["IMAGE"].replace("og-image.png", "og-features.png"),
+            "page_canonical_url": absolute_url(reverse("web:features")),
         },
     )
 
@@ -722,6 +724,7 @@ def features_dashboard(request):
                 "One dashboard for weekly clarity. See what needs attention, "
                 "what's improving, and what to do next. No context-switching."
             ),
+            "page_canonical_url": absolute_url(reverse("web:features_dashboard")),
         },
     )
 
@@ -737,6 +740,7 @@ def features_analytics(request):
                 "Cycle time, review load, PR flow, and trend analysis from GitHub. "
                 "Use AI-related signals as one lens, not the whole story."
             ),
+            "page_canonical_url": absolute_url(reverse("web:features_analytics")),
         },
     )
 
@@ -752,6 +756,7 @@ def features_pr_explorer(request):
                 "Filter PRs by repo, author, AI status, date range. "
                 "Export to CSV. Add your own notes. Your PR data, your way."
             ),
+            "page_canonical_url": absolute_url(reverse("web:features_pr_explorer")),
         },
     )
 
@@ -799,6 +804,7 @@ def compare_hub(request):
             "Compare Tformance to LinearB, Jellyfish, Swarmia, and more. "
             "See which tool fits GitHub-first teams that want delivery visibility without enterprise complexity."
         ),
+        "page_canonical_url": absolute_url(reverse("web:compare")),
     }
     return render(request, "web/compare/hub.html", context)
 
@@ -837,5 +843,6 @@ def compare_competitor(request, competitor: str):
         # SEO from competitor data
         "page_title": comp["seo"]["title"],
         "page_description": comp["seo"]["description"],
+        "page_canonical_url": absolute_url(reverse("web:compare_competitor", kwargs={"competitor": competitor})),
     }
     return render(request, "web/compare/competitor.html", context)
