@@ -10,4 +10,5 @@ Both modules import PROMPT_VERSION from here.
 # v8.1.0: Added @@ mention syntax for reviewers (@@username links to PRs they review vs @username for authors)
 # v8.2.0: Added anti-bias rules for tech detection (do NOT infer from org/repo names, require file evidence)
 # v8.3.0: Added Copilot Champions section to prompts - identifies top performers as potential mentors
-PROMPT_VERSION = "8.3.0"
+# v9.0.0: Reframed AI language per DNA — "detected AI signals" not "AI adoption", correlation not causation
+PROMPT_VERSION = "9.0.0"

@@ -77,24 +77,25 @@
 - No review bottleneck detected
 {% endif %}
 
-## AI Impact
+## AI Signals (Detection-Based Estimates)
+NOTE: AI detection relies on commit patterns, tool signatures, and PR metadata. Actual AI usage may be higher — developers using AI without detectable signals are not counted.
 {% if ai_impact.ai_adoption_pct >= 10 %}
-- AI-assisted PRs: {{ ai_impact.ai_pr_count }} ({{ "%.1f"|format(ai_impact.ai_adoption_pct) }}% adoption)
-- Non-AI PRs: {{ ai_impact.non_ai_pr_count }}
+- PRs with detected AI signals: {{ ai_impact.ai_pr_count }} ({{ "%.1f"|format(ai_impact.ai_adoption_pct) }}% of merged PRs)
+- PRs without detected AI signals: {{ ai_impact.non_ai_pr_count }}
 {% if ai_impact.ai_avg_cycle_time is not none and ai_impact.non_ai_avg_cycle_time is not none %}
-- AI PR avg cycle time: {{ "%.1f"|format(ai_impact.ai_avg_cycle_time) }} hours
-- Non-AI PR avg cycle time: {{ "%.1f"|format(ai_impact.non_ai_avg_cycle_time) }} hours
+- Detected-AI PR avg cycle time: {{ "%.1f"|format(ai_impact.ai_avg_cycle_time) }} hours
+- Other PR avg cycle time: {{ "%.1f"|format(ai_impact.non_ai_avg_cycle_time) }} hours
 {% set diff_pct = ((ai_impact.ai_avg_cycle_time - ai_impact.non_ai_avg_cycle_time) / ai_impact.non_ai_avg_cycle_time * 100)|abs %}
 {% if ai_impact.ai_avg_cycle_time < ai_impact.non_ai_avg_cycle_time %}
-- AI HELPS: AI PRs are {{ "%.1f"|format(diff_pct) }}% FASTER than non-AI PRs
+- CORRELATION: PRs with AI signals are {{ "%.1f"|format(diff_pct) }}% faster (correlation, not necessarily causation)
 {% elif ai_impact.ai_avg_cycle_time > ai_impact.non_ai_avg_cycle_time %}
-- AI HURTS: AI PRs are {{ "%.1f"|format(diff_pct) }}% SLOWER than non-AI PRs
+- CORRELATION: PRs with AI signals are {{ "%.1f"|format(diff_pct) }}% slower (may reflect complexity, not AI quality)
 {% else %}
-- AI PRs have same cycle time as non-AI PRs
+- PRs with and without AI signals have similar cycle times
 {% endif %}
 {% endif %}
 {% else %}
-- AI adoption: {{ "%.1f"|format(ai_impact.ai_adoption_pct) }}% (low - insufficient data for impact analysis)
+- Detected AI signals: {{ "%.1f"|format(ai_impact.ai_adoption_pct) }}% of PRs — too few to analyze impact. Actual AI usage may be significantly higher.
 {% endif %}
 
 ---
