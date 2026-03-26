@@ -27,6 +27,7 @@ from groq import APIConnectionError, APITimeoutError, AuthenticationError, Groq,
 
 from apps.integrations.services.copilot_metrics_prompt import get_copilot_metrics_for_prompt
 from apps.metrics.prompts.schemas import validate_insight_response
+from apps.metrics.services.ai_patterns import BOT_USERNAME_PATTERNS
 from apps.metrics.services.dashboard_service import (
     get_ai_impact_stats,
     get_jira_sprint_metrics,
@@ -303,30 +304,6 @@ def build_metric_cards(data: InsightData) -> list[MetricCard]:
     cards.append({"label": "Quality", "value": quality_value, "trend": quality_trend})
 
     return cards
-
-
-# Known bot username patterns to exclude from contributor insights
-# These create noise in insights as they're automated, not human contributors
-BOT_USERNAME_PATTERNS = (
-    "bot",
-    "dependabot",
-    "renovate",
-    "github-actions",
-    "codecov",
-    "snyk",
-    "greenkeeper",
-    "semantic-release",
-    "release-please",
-    "auto-merge",
-    "mergify",
-    "coderabbit",  # AI code review bot (coderabbitai)
-    "greptile",  # Greptile AI code review
-    "graphite-app",  # Graphite GitHub App
-    "chatgpt-codex",  # ChatGPT Codex connector
-    "copilot-pull-request",  # Copilot PR reviewer
-    "inkeep",  # Inkeep AI docs/search bot
-    "posthog-js-upgrader",  # PostHog JS automated upgrader
-)
 
 
 def _is_bot_username(username: str | None) -> bool:

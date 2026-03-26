@@ -95,6 +95,35 @@ AI_REVIEWER_BOTS: dict[str, str] = {
 }
 
 # =============================================================================
+# Bot Username Patterns (substring matching for filtering)
+# =============================================================================
+# Single source of truth -- add new bot patterns HERE.
+# Used by review_metrics._is_bot_reviewer() and insight_llm._is_bot_username()
+# to filter automated accounts from human contributor analysis.
+# These are substring patterns: a username matches if it contains any pattern.
+BOT_USERNAME_PATTERNS: tuple[str, ...] = (
+    "bot",
+    "dependabot",
+    "renovate",
+    "coderabbit",
+    "github-actions",
+    "codecov",
+    "snyk",
+    "greenkeeper",
+    "semantic-release",
+    "release-please",
+    "auto-merge",
+    "mergify",
+    "greptile",
+    "graphite-app",
+    "chatgpt-codex",
+    "copilot-pull-request",
+    "inkeep",
+    "posthog-js-upgrader",
+)
+
+
+# =============================================================================
 # AI Signature Patterns (regex detection in PR body/title)
 # =============================================================================
 # List of (regex_pattern, ai_tool_type) tuples

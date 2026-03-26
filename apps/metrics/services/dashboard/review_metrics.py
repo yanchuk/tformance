@@ -11,6 +11,7 @@ from decimal import Decimal
 from django.db.models import Count, Q
 
 from apps.metrics.models import PRReview, PRSurvey, PRSurveyReview
+from apps.metrics.services.ai_patterns import BOT_USERNAME_PATTERNS
 from apps.metrics.services.dashboard._helpers import (
     _avatar_url_from_github_id,
     _calculate_average_response_times,
@@ -20,24 +21,6 @@ from apps.metrics.services.dashboard._helpers import (
 )
 from apps.teams.models import Team
 from apps.utils.date_utils import end_of_day, start_of_day
-
-# Known bot username patterns to exclude from review distribution/bottleneck analysis
-# These are automated tools, not human reviewers
-BOT_REVIEWER_PATTERNS = (
-    "bot",
-    "dependabot",
-    "renovate",
-    "coderabbit",  # AI code review bot (coderabbitai)
-    "github-actions",
-    "codecov",
-    "snyk",
-    "greptile",  # Greptile AI code review (greptile-apps)
-    "graphite-app",  # Graphite GitHub App
-    "chatgpt-codex",  # ChatGPT Codex connector
-    "copilot-pull-request",  # Copilot PR reviewer
-    "inkeep",  # Inkeep AI docs/search bot
-    "posthog-js-upgrader",  # PostHog JS automated upgrader
-)
 
 
 def _is_bot_reviewer(username: str | None) -> bool:
@@ -52,7 +35,7 @@ def _is_bot_reviewer(username: str | None) -> bool:
     if not username:
         return False
     username_lower = username.lower()
-    return any(pattern in username_lower for pattern in BOT_REVIEWER_PATTERNS)
+    return any(pattern in username_lower for pattern in BOT_USERNAME_PATTERNS)
 
 
 def get_review_distribution(

@@ -1050,3 +1050,80 @@ class TestMintlifyAuthorPatterns(TestCase):
         result = detect_ai_in_text(text)
         # This is about docs infrastructure, not AI-authored code
         self.assertFalse(result["is_ai_assisted"])
+
+
+class TestSharedBotUsernamePatterns(TestCase):
+    """Tests for the shared BOT_USERNAME_PATTERNS in ai_patterns.py.
+
+    Verifies that the consolidated bot pattern list is used as the single
+    source of truth by both review_metrics and insight_llm modules.
+    """
+
+    def test_all_known_bots_caught_by_shared_patterns(self):
+        """All known bot usernames must be caught by the shared BOT_USERNAME_PATTERNS."""
+        from apps.metrics.services.ai_patterns import BOT_USERNAME_PATTERNS
+
+        known_bots = [
+            "greptile-apps",
+            "copilot-pull-request-reviewer",
+            "graphite-app",
+            "chatgpt-codex-connector",
+            "inkeep",
+            "posthog-js-upgrader",
+            "dependabot[bot]",
+            "renovate[bot]",
+        ]
+        for bot_username in known_bots:
+            bot_lower = bot_username.lower()
+            matched = any(pattern in bot_lower for pattern in BOT_USERNAME_PATTERNS)
+            self.assertTrue(matched, f"{bot_username!r} was NOT caught by BOT_USERNAME_PATTERNS")
+
+    def test_bot_patterns_not_duplicated(self):
+        """review_metrics and insight_llm must NOT have their own local bot pattern lists."""
+        import apps.metrics.services.dashboard.review_metrics as review_mod
+        import apps.metrics.services.insight_llm as insight_mod
+
+        # review_metrics should NOT define its own BOT_REVIEWER_PATTERNS
+        self.assertFalse(
+            hasattr(review_mod, "BOT_REVIEWER_PATTERNS"),
+            "review_metrics still has its own BOT_REVIEWER_PATTERNS — should import from ai_patterns",
+        )
+
+        # insight_llm should NOT define its own BOT_USERNAME_PATTERNS
+        # (it should import from ai_patterns instead)
+        # Check that the module-level attribute comes from ai_patterns, not defined locally
+        import apps.metrics.services.ai_patterns as ai_patterns_mod
+
+        # If insight_llm has BOT_USERNAME_PATTERNS, it must be the same object as ai_patterns
+        if hasattr(insight_mod, "BOT_USERNAME_PATTERNS"):
+            self.assertIs(
+                insight_mod.BOT_USERNAME_PATTERNS,
+                ai_patterns_mod.BOT_USERNAME_PATTERNS,
+                "insight_llm.BOT_USERNAME_PATTERNS is not the same object as ai_patterns.BOT_USERNAME_PATTERNS",
+            )
+
+    def test_review_metrics_uses_shared_patterns(self):
+        """_is_bot_reviewer must catch patterns from insight_llm (now shared).
+
+        'inkeep' was previously only in insight_llm's BOT_USERNAME_PATTERNS.
+        After consolidation, review_metrics._is_bot_reviewer must also catch it.
+        """
+        from apps.metrics.services.dashboard.review_metrics import _is_bot_reviewer
+
+        self.assertTrue(
+            _is_bot_reviewer("inkeep"),
+            "'inkeep' should be caught by _is_bot_reviewer after pattern consolidation",
+        )
+
+    def test_insight_llm_uses_shared_patterns(self):
+        """_is_bot_username must catch patterns from review_metrics (now shared).
+
+        'graphite-app' was previously only in review_metrics's BOT_REVIEWER_PATTERNS.
+        After consolidation, insight_llm._is_bot_username must also catch it.
+        """
+        from apps.metrics.services.insight_llm import _is_bot_username
+
+        self.assertTrue(
+            _is_bot_username("graphite-app"),
+            "'graphite-app' should be caught by _is_bot_username after pattern consolidation",
+        )
