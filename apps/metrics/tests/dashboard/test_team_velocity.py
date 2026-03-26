@@ -280,3 +280,57 @@ class TestGetTeamVelocity(TestCase):
         self.assertEqual(result[0]["display_name"], "Alice Developer")
         self.assertEqual(result[1]["display_name"], "Bob Developer")
         self.assertEqual(result[2]["display_name"], "Zack Developer")
+
+    def test_avatar_fallback_to_username_when_github_id_empty(self):
+        """Test that avatar_url falls back to github_username when github_id is empty."""
+        member_no_id = TeamMemberFactory(
+            team=self.team,
+            display_name="No ID Dev",
+            github_id="",
+            github_username="nodev-username",
+        )
+        PullRequestFactory(
+            team=self.team,
+            author=member_no_id,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 15, 12, 0)),
+        )
+
+        result = dashboard_service.get_team_velocity(self.team, self.start_date, self.end_date)
+
+        entry = next((r for r in result if r["display_name"] == "No ID Dev"), None)
+        self.assertIsNotNone(entry)
+        self.assertIn("nodev-username", entry["avatar_url"])
+
+    def test_filters_non_bot_pattern_bots(self):
+        """Test that bots matching broader patterns (e.g. greptile-apps) are filtered out."""
+        bot_member = TeamMemberFactory(
+            team=self.team,
+            display_name="Greptile Bot",
+            github_username="greptile-apps",
+        )
+        human_member = TeamMemberFactory(
+            team=self.team,
+            display_name="Human Dev",
+            github_username="humandev",
+        )
+
+        # Create PRs for both
+        PullRequestFactory(
+            team=self.team,
+            author=bot_member,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 15, 12, 0)),
+        )
+        PullRequestFactory(
+            team=self.team,
+            author=human_member,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 15, 12, 0)),
+        )
+
+        result = dashboard_service.get_team_velocity(self.team, self.start_date, self.end_date)
+
+        names = [r["display_name"] for r in result]
+        self.assertNotIn("Greptile Bot", names)
+        self.assertIn("Human Dev", names)

@@ -76,6 +76,17 @@ AI_REVIEWER_BOTS: dict[str, str] = {
     # ----- Greptile AI (code review bot) -----
     "greptile[bot]": "greptile",
     "greptileai[bot]": "greptile",
+    "greptile-apps": "greptile",  # Greptile GitHub App (no [bot] suffix)
+    # ----- Graphite (code review/stacking) -----
+    "graphite-app": "graphite",
+    "graphite-app[bot]": "graphite",
+    # ----- Copilot Pull Request Reviewer -----
+    "copilot-pull-request-reviewer": "copilot",
+    # ----- ChatGPT Codex Connector -----
+    "chatgpt-codex-connector": "chatgpt_codex",
+    # ----- Inkeep AI (docs/search bot) -----
+    "inkeep": "inkeep",
+    "inkeep[bot]": "inkeep",
     # ----- Replexica AI (i18n/translation) -----
     "replexica[bot]": "replexica",
     "lingodotdev[bot]": "replexica",  # Replexica rebrand
@@ -303,6 +314,8 @@ AI_TOOL_DISPLAY_NAMES: dict[str, str] = {
     "amazon_q": "Amazon Q",
     "gemini": "Gemini",
     "chatgpt": "ChatGPT",
+    "chatgpt_codex": "ChatGPT Codex",
+    "graphite": "Graphite",
     "warp": "Warp AI",
     "aider": "Aider",
     "ai_generic": "AI",

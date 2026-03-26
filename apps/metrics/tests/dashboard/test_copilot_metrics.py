@@ -406,3 +406,39 @@ class TestCopilotTrendsFunctions(TestCase):
         # Value should be float percentage
         self.assertIsInstance(result[0]["value"], float)
         self.assertAlmostEqual(result[0]["value"], 35.0, places=1)
+
+
+class TestCopilotByMemberAvatarFallback(TestCase):
+    """Tests for avatar fallback in get_copilot_by_member."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.team = TeamFactory()
+        self.start_date = date(2024, 1, 1)
+        self.end_date = date(2024, 1, 31)
+
+    def test_avatar_fallback_to_username_when_github_id_empty(self):
+        """Test that avatar_url falls back to github_username when github_id is empty."""
+        from apps.metrics.factories import AIUsageDailyFactory
+
+        member = TeamMemberFactory(
+            team=self.team,
+            display_name="No ID Copilot User",
+            github_id="",
+            github_username="copilot-user-noid",
+        )
+
+        AIUsageDailyFactory(
+            team=self.team,
+            member=member,
+            date=date(2024, 1, 10),
+            source="copilot",
+            suggestions_shown=100,
+            suggestions_accepted=40,
+            acceptance_rate=Decimal("40.00"),
+        )
+
+        result = dashboard_service.get_copilot_by_member(self.team, self.start_date, self.end_date)
+
+        self.assertEqual(len(result), 1)
+        self.assertIn("copilot-user-noid", result[0]["avatar_url"])

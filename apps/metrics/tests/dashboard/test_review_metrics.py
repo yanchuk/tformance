@@ -783,3 +783,191 @@ class TestGetReviewerWorkload(TestCase):
         self.assertIsNotNone(alice_data)
         # Should only count the 1 GitHub review, not the survey review
         self.assertEqual(alice_data["review_count"], 1)
+
+    def test_reviewer_workload_excludes_bots(self):
+        """Bot reviewers (e.g. greptile-apps) should be excluded from workload results."""
+        bot_reviewer = TeamMemberFactory(
+            team=self.team,
+            display_name="Greptile Bot",
+            github_username="greptile-apps",
+        )
+        human_reviewer = TeamMemberFactory(
+            team=self.team,
+            display_name="haacked",
+            github_username="haacked",
+        )
+
+        # Create reviews for bot
+        for i in range(3):
+            pr = PullRequestFactory(
+                team=self.team,
+                state="merged",
+                merged_at=timezone.make_aware(timezone.datetime(2024, 1, 10 + i, 12, 0)),
+            )
+            PRReviewFactory(
+                team=self.team,
+                pull_request=pr,
+                reviewer=bot_reviewer,
+                submitted_at=timezone.make_aware(timezone.datetime(2024, 1, 10 + i, 14, 0)),
+            )
+
+        # Create reviews for human
+        for i in range(2):
+            pr = PullRequestFactory(
+                team=self.team,
+                state="merged",
+                merged_at=timezone.make_aware(timezone.datetime(2024, 1, 15 + i, 12, 0)),
+            )
+            PRReviewFactory(
+                team=self.team,
+                pull_request=pr,
+                reviewer=human_reviewer,
+                submitted_at=timezone.make_aware(timezone.datetime(2024, 1, 15 + i, 14, 0)),
+            )
+
+        result = dashboard_service.get_reviewer_workload(self.team, self.start_date, self.end_date)
+
+        reviewer_names = [r["reviewer_name"] for r in result]
+        self.assertNotIn("Greptile Bot", reviewer_names)
+        self.assertIn("haacked", reviewer_names)
+
+    def test_reviewer_workload_percentiles_exclude_bots(self):
+        """Percentile calculation must use only human reviewers, not bots.
+
+        A bot with 500 reviews would inflate p75 and make real high-workload
+        humans appear "normal". By excluding bots before percentile calculation,
+        the human with 30 reviews correctly shows as "high".
+
+        Uses 4 human reviewers [5, 10, 20, 30] so statistics.quantiles
+        interpolates p75=27.5, making 30 > 27.5 classify as "high".
+        With bot included [5, 10, 20, 30, 500], p75=265 and 30 < 265 → "normal".
+        """
+        bot_reviewer = TeamMemberFactory(
+            team=self.team,
+            display_name="Greptile Bot",
+            github_username="greptile-apps",
+        )
+        human_reviewers = [
+            TeamMemberFactory(team=self.team, display_name=f"Human{i}", github_username=f"human{i}") for i in range(4)
+        ]
+
+        # Bot with 500 reviews — would skew p75 if included
+        for i in range(500):
+            pr = PullRequestFactory(
+                team=self.team,
+                state="merged",
+                merged_at=timezone.make_aware(timezone.datetime(2024, 1, 1 + (i % 30), 12, 0)),
+            )
+            PRReviewFactory(
+                team=self.team,
+                pull_request=pr,
+                reviewer=bot_reviewer,
+                submitted_at=timezone.make_aware(timezone.datetime(2024, 1, 1 + (i % 30), 14, i % 60)),
+            )
+
+        # Humans with 5, 10, 20, 30 reviews (p75 of these = 27.5)
+        human_review_counts = [5, 10, 20, 30]
+        for reviewer, count in zip(human_reviewers, human_review_counts, strict=False):
+            for i in range(count):
+                pr = PullRequestFactory(
+                    team=self.team,
+                    state="merged",
+                    merged_at=timezone.make_aware(timezone.datetime(2024, 1, 1 + (i % 30), 12, 0)),
+                )
+                PRReviewFactory(
+                    team=self.team,
+                    pull_request=pr,
+                    reviewer=reviewer,
+                    submitted_at=timezone.make_aware(timezone.datetime(2024, 1, 1 + (i % 30), 15, i % 60)),
+                )
+
+        result = dashboard_service.get_reviewer_workload(self.team, self.start_date, self.end_date)
+
+        # Should only have 4 human reviewers (bot excluded)
+        self.assertEqual(len(result), 4)
+
+        # Human3 with 30 reviews should be "high" (p75 of [5, 10, 20, 30] = 27.5)
+        # If bot's 500 were included, p75 of [5, 10, 20, 30, 500] = 265 and 30 < 265 → "normal"
+        human3 = next((r for r in result if r["reviewer_name"] == "Human3"), None)
+        self.assertIsNotNone(human3)
+        self.assertEqual(human3["workload_level"], "high")
+
+
+class TestIsBotReviewer(TestCase):
+    """Tests for _is_bot_reviewer() - filters GitHub App bots from reviewer analysis."""
+
+    def test_greptile_apps_is_bot(self):
+        """greptile-apps GitHub App should be detected as bot reviewer."""
+        from apps.metrics.services.dashboard.review_metrics import _is_bot_reviewer
+
+        self.assertTrue(_is_bot_reviewer("greptile-apps"))
+
+    def test_copilot_pull_request_reviewer_is_bot(self):
+        """copilot-pull-request-reviewer GitHub App should be detected as bot."""
+        from apps.metrics.services.dashboard.review_metrics import _is_bot_reviewer
+
+        self.assertTrue(_is_bot_reviewer("copilot-pull-request-reviewer"))
+
+    def test_graphite_app_is_bot(self):
+        """graphite-app GitHub App should be detected as bot reviewer."""
+        from apps.metrics.services.dashboard.review_metrics import _is_bot_reviewer
+
+        self.assertTrue(_is_bot_reviewer("graphite-app"))
+
+    def test_chatgpt_codex_connector_is_bot(self):
+        """chatgpt-codex-connector GitHub App should be detected as bot."""
+        from apps.metrics.services.dashboard.review_metrics import _is_bot_reviewer
+
+        self.assertTrue(_is_bot_reviewer("chatgpt-codex-connector"))
+
+    def test_human_haacked_is_not_bot(self):
+        """Real human reviewer 'haacked' should not be flagged as bot."""
+        from apps.metrics.services.dashboard.review_metrics import _is_bot_reviewer
+
+        self.assertFalse(_is_bot_reviewer("haacked"))
+
+    def test_human_piccirello_is_not_bot(self):
+        """Real human reviewer 'Piccirello' should not be flagged as bot."""
+        from apps.metrics.services.dashboard.review_metrics import _is_bot_reviewer
+
+        self.assertFalse(_is_bot_reviewer("Piccirello"))
+
+
+class TestAvatarUrlFallbackReviewDistribution(TestCase):
+    """Tests for avatar URL fallback from github_id to github_username in review distribution."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.team = TeamFactory()
+        self.start_date = date(2024, 1, 1)
+        self.end_date = date(2024, 1, 31)
+
+    def test_review_avatar_url_falls_back_to_github_username_when_github_id_empty(self):
+        """When reviewer github_id is empty but github_username exists, avatar URL uses username."""
+        reviewer = TeamMemberFactory(
+            team=self.team,
+            display_name="Reviewer X",
+            github_id="",
+            github_username="reviewerx",
+        )
+        pr = PullRequestFactory(
+            team=self.team,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 10, 12, 0)),
+        )
+        PRReviewFactory(
+            team=self.team,
+            pull_request=pr,
+            reviewer=reviewer,
+            submitted_at=timezone.make_aware(timezone.datetime(2024, 1, 11, 12, 0)),
+        )
+
+        result = dashboard_service.get_review_distribution(self.team, self.start_date, self.end_date)
+
+        reviewer_data = next((r for r in result if r["reviewer_name"] == "Reviewer X"), None)
+        self.assertIsNotNone(reviewer_data)
+        self.assertIn("reviewerx", reviewer_data["avatar_url"])
+        self.assertEqual(
+            reviewer_data["avatar_url"],
+            "https://avatars.githubusercontent.com/reviewerx?s=80",
+        )

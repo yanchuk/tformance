@@ -128,7 +128,7 @@ def get_ai_detective_leaderboard(team: Team, start_date: date, end_date: date, r
     if repo:
         reviews = reviews.filter(survey__pull_request__github_repo=repo)
     reviews = (
-        reviews.values("reviewer__display_name", "reviewer__github_id")
+        reviews.values("reviewer__display_name", "reviewer__github_id", "reviewer__github_username")
         .annotate(
             total=Count("id"),
             correct=Count("id", filter=Q(guess_correct=True)),
@@ -139,7 +139,7 @@ def get_ai_detective_leaderboard(team: Team, start_date: date, end_date: date, r
     return [
         {
             "member_name": r["reviewer__display_name"],
-            "avatar_url": _avatar_url_from_github_id(r["reviewer__github_id"]),
+            "avatar_url": _avatar_url_from_github_id(r["reviewer__github_id"] or r["reviewer__github_username"]),
             "initials": _compute_initials(r["reviewer__display_name"]),
             "correct": r["correct"],
             "total": r["total"],

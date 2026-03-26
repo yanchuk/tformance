@@ -31,6 +31,11 @@ BOT_REVIEWER_PATTERNS = (
     "github-actions",
     "codecov",
     "snyk",
+    "greptile",  # Greptile AI code review (greptile-apps)
+    "graphite-app",  # Graphite GitHub App
+    "chatgpt-codex",  # ChatGPT Codex connector
+    "copilot-pull-request",  # Copilot PR reviewer
+    "inkeep",  # Inkeep AI docs/search bot
 )
 
 
@@ -100,7 +105,7 @@ def get_review_distribution(
         {
             "reviewer_id": r["reviewer__id"],
             "reviewer_name": r["reviewer__display_name"],
-            "avatar_url": _avatar_url_from_github_id(r["reviewer__github_id"]),
+            "avatar_url": _avatar_url_from_github_id(r["reviewer__github_id"] or r["reviewer__github_username"]),
             "initials": _compute_initials(r["reviewer__display_name"]),
             "count": r["count"],
         }
@@ -136,13 +141,20 @@ def get_reviewer_workload(team: Team, start_date: date, end_date: date, repo: st
     # Filter by repository through the pull_request relationship
     if repo:
         reviews = reviews.filter(pull_request__github_repo=repo)
-    reviews = reviews.values("reviewer__display_name").annotate(review_count=Count("id")).order_by("-review_count")
+    reviews = (
+        reviews.values("reviewer__display_name", "reviewer__github_username")
+        .annotate(review_count=Count("id"))
+        .order_by("-review_count")
+    )
 
-    if not reviews:
+    # Filter out bot reviewers BEFORE computing percentiles
+    human_reviews = [r for r in reviews if not _is_bot_reviewer(r["reviewer__github_username"])]
+
+    if not human_reviews:
         return []
 
     # Calculate percentiles for workload classification
-    counts = [r["review_count"] for r in reviews]
+    counts = [r["review_count"] for r in human_reviews]
     p25 = statistics.quantiles(counts, n=4)[0] if len(counts) >= 2 else counts[0]
     p75 = statistics.quantiles(counts, n=4)[2] if len(counts) >= 2 else counts[0]
 
@@ -159,7 +171,7 @@ def get_reviewer_workload(team: Team, start_date: date, end_date: date, repo: st
             "review_count": r["review_count"],
             "workload_level": classify(r["review_count"]),
         }
-        for r in reviews
+        for r in human_reviews
     ]
 
 

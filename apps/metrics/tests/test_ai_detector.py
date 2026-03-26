@@ -169,6 +169,36 @@ class TestDetectAIReviewer(TestCase):
         self.assertFalse(result["is_ai"])
         self.assertEqual(result["ai_type"], "")
 
+    def test_detects_greptile_apps(self):
+        """greptile-apps GitHub App should be detected as AI reviewer."""
+        result = detect_ai_reviewer("greptile-apps")
+        self.assertTrue(result["is_ai"])
+        self.assertEqual(result["ai_type"], "greptile")
+
+    def test_detects_copilot_pull_request_reviewer(self):
+        """copilot-pull-request-reviewer GitHub App should be detected as AI reviewer."""
+        result = detect_ai_reviewer("copilot-pull-request-reviewer")
+        self.assertTrue(result["is_ai"])
+        self.assertEqual(result["ai_type"], "copilot")
+
+    def test_detects_graphite_app(self):
+        """graphite-app GitHub App should be detected as AI reviewer."""
+        result = detect_ai_reviewer("graphite-app")
+        self.assertTrue(result["is_ai"])
+        self.assertEqual(result["ai_type"], "graphite")
+
+    def test_detects_graphite_app_bot(self):
+        """graphite-app[bot] should be detected as AI reviewer."""
+        result = detect_ai_reviewer("graphite-app[bot]")
+        self.assertTrue(result["is_ai"])
+        self.assertEqual(result["ai_type"], "graphite")
+
+    def test_detects_chatgpt_codex_connector(self):
+        """chatgpt-codex-connector GitHub App should be detected as AI reviewer."""
+        result = detect_ai_reviewer("chatgpt-codex-connector")
+        self.assertTrue(result["is_ai"])
+        self.assertEqual(result["ai_type"], "chatgpt_codex")
+
 
 class TestDetectAIInText(TestCase):
     """Tests for detect_ai_in_text() function."""

@@ -16,6 +16,7 @@ from apps.metrics.services.dashboard._helpers import (
     _compute_initials,
     _get_merged_prs_in_range,
 )
+from apps.metrics.services.dashboard.review_metrics import _is_bot_reviewer
 from apps.teams.models import Team
 
 
@@ -81,6 +82,7 @@ def get_team_breakdown(
             "author__id",
             "author__display_name",
             "author__github_id",
+            "author__github_username",
         )
         .annotate(
             prs_merged=Count("id"),
@@ -172,9 +174,10 @@ def get_team_breakdown(
         author_id = row["author__id"]
         display_name = row["author__display_name"]
         github_id = row["author__github_id"]
+        github_username = row["author__github_username"]
 
         # Compute avatar_url and initials from aggregated data
-        avatar_url = _avatar_url_from_github_id(github_id)
+        avatar_url = _avatar_url_from_github_id(github_id or github_username)
         initials = _compute_initials(display_name) if display_name else "??"
 
         # Calculate AI percentage from is_ai_assisted field (not surveys)
@@ -312,7 +315,7 @@ def get_copilot_by_member(
 
     # Group by member and calculate totals
     member_data = (
-        copilot_usage.values("member__display_name", "member__github_id")
+        copilot_usage.values("member__display_name", "member__github_id", "member__github_username")
         .annotate(
             suggestions=Sum("suggestions_shown"),
             accepted=Sum("suggestions_accepted"),
@@ -330,7 +333,9 @@ def get_copilot_by_member(
         result.append(
             {
                 "member_name": entry["member__display_name"],
-                "avatar_url": _avatar_url_from_github_id(entry["member__github_id"]),
+                "avatar_url": _avatar_url_from_github_id(
+                    entry["member__github_id"] or entry["member__github_username"]
+                ),
                 "initials": _compute_initials(entry["member__display_name"]),
                 "suggestions": suggestions,
                 "accepted": accepted,
@@ -369,8 +374,8 @@ def get_team_velocity(team: Team, start_date: date, end_date: date, limit: int =
         if not pr.author:
             continue
 
-        # Skip bot authors (e.g., dependabot, github-bot)
-        if pr.author.github_username and "bot" in pr.author.github_username.lower():
+        # Skip bot authors (e.g., dependabot, greptile-apps, graphite-app)
+        if _is_bot_reviewer(pr.author.github_username):
             continue
 
         author_id = pr.author.id
@@ -379,7 +384,7 @@ def get_team_velocity(team: Team, start_date: date, end_date: date, limit: int =
             author_info[author_id] = {
                 "member_id": pr.author.id,
                 "display_name": pr.author.display_name or "Unknown",
-                "avatar_url": _avatar_url_from_github_id(pr.author.github_id),
+                "avatar_url": _avatar_url_from_github_id(pr.author.github_id or pr.author.github_username),
             }
         author_prs[author_id].append(pr)
 

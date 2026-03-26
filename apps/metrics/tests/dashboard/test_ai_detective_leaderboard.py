@@ -283,3 +283,25 @@ class TestGetAIDetectiveLeaderboard(TestCase):
         self.assertEqual(result[0]["percentage"], 0.0)
         self.assertEqual(result[0]["correct"], 0)
         self.assertEqual(result[0]["total"], 3)
+
+    def test_avatar_fallback_to_username_when_github_id_empty(self):
+        """Test that avatar_url falls back to github_username when github_id is empty."""
+        reviewer_no_id = TeamMemberFactory(
+            team=self.team,
+            display_name="No ID Reviewer",
+            github_id="",
+            github_username="reviewer-noid",
+        )
+
+        self._create_survey_with_review(
+            team=self.team,
+            reviewer=reviewer_no_id,
+            ai_guess=True,
+            guess_correct=True,
+        )
+
+        result = get_ai_detective_leaderboard(self.team, self.start_date, self.end_date)
+
+        entry = next((r for r in result if r["member_name"] == "No ID Reviewer"), None)
+        self.assertIsNotNone(entry)
+        self.assertIn("reviewer-noid", entry["avatar_url"])

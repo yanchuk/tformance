@@ -907,3 +907,63 @@ class TestAvatarUrlFromGithubId(TestCase):
         result = _avatar_url_from_github_id("")
 
         self.assertEqual(result, "")
+
+
+class TestAvatarUrlFallbackTeamBreakdown(TestCase):
+    """Tests for avatar URL fallback from github_id to github_username in team breakdown."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.team = TeamFactory()
+        self.start_date = date(2024, 1, 1)
+        self.end_date = date(2024, 1, 31)
+
+    def test_avatar_url_falls_back_to_github_username_when_github_id_empty(self):
+        """When github_id is empty but github_username exists, avatar URL uses username."""
+        member = TeamMemberFactory(
+            team=self.team,
+            display_name="Demo User",
+            github_id="",
+            github_username="demouser42",
+        )
+        PullRequestFactory(
+            team=self.team,
+            author=member,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 10, 12, 0)),
+        )
+
+        result = dashboard_service.get_team_breakdown(self.team, self.start_date, self.end_date)
+
+        member_data = next((m for m in result if m["member_name"] == "Demo User"), None)
+        self.assertIsNotNone(member_data)
+        self.assertIn("demouser42", member_data["avatar_url"])
+        self.assertEqual(
+            member_data["avatar_url"],
+            "https://avatars.githubusercontent.com/demouser42?s=80",
+        )
+
+    def test_avatar_url_prefers_github_id_over_github_username(self):
+        """When both github_id and github_username exist, github_id takes priority."""
+        member = TeamMemberFactory(
+            team=self.team,
+            display_name="Full User",
+            github_id="123456",
+            github_username="fulluser",
+        )
+        PullRequestFactory(
+            team=self.team,
+            author=member,
+            state="merged",
+            merged_at=timezone.make_aware(timezone.datetime(2024, 1, 10, 12, 0)),
+        )
+
+        result = dashboard_service.get_team_breakdown(self.team, self.start_date, self.end_date)
+
+        member_data = next((m for m in result if m["member_name"] == "Full User"), None)
+        self.assertIsNotNone(member_data)
+        # Should use numeric github_id, not username
+        self.assertEqual(
+            member_data["avatar_url"],
+            "https://avatars.githubusercontent.com/u/123456?s=80",
+        )

@@ -62,18 +62,31 @@ class PRPersistenceService:
         self._member_cache.update(existing)
 
     def _resolve_member(self, login: str | None, github_id: int = 0) -> TeamMember | None:
-        """Find or create TeamMember with in-memory cache."""
+        """Find or create TeamMember with in-memory cache.
+
+        Backfills github_id when a valid one is provided but the existing
+        member record has it empty (e.g., first seen as reviewer without ID,
+        later seen as PR author with ID).
+        """
         if not login:
             return None
 
         if login in self._member_cache:
-            return self._member_cache[login]
+            member = self._member_cache[login]
+            if github_id and not member.github_id:
+                member.github_id = str(github_id)
+                member.save(update_fields=["github_id"])
+            return member
 
-        member, _ = TeamMember.objects.get_or_create(
+        member, created = TeamMember.objects.get_or_create(
             team=self.team,
             github_username=login,
             defaults={"display_name": login, "github_id": github_id},
         )
+        if not created and github_id and not member.github_id:
+            member.github_id = str(github_id)
+            member.save(update_fields=["github_id"])
+
         self._member_cache[login] = member
         return member
 
