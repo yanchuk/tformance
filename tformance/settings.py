@@ -619,8 +619,8 @@ CELERY_TASK_ROUTES = {
     "apps.integrations.tasks.fetch_pr_complete_data_task": {"queue": "sync"},
     "apps.metrics.tasks.send_weekly_insight_emails": {"queue": "sync"},
     # LLM tasks (rate limited) -> 'llm' queue
-    "apps.metrics.tasks.run_llm_analysis_batch": {"queue": "llm"},
-    "apps.metrics.tasks.run_all_teams_llm_analysis": {"queue": "llm"},
+    "apps.metrics.tasks.run_all_teams_llm_batch": {"queue": "llm"},
+    "apps.integrations.tasks.queue_llm_analysis_batch_task": {"queue": "llm"},
     # CPU-bound tasks (aggregation) -> 'compute' queue with prefork pool
     "apps.metrics.tasks.compute_team_insights": {"queue": "compute"},
     "apps.metrics.tasks.compute_all_team_insights": {"queue": "compute"},
@@ -673,8 +673,8 @@ SCHEDULED_TASKS = {
         "schedule": schedules.crontab(minute=0, hour=3, day_of_month=1),  # 1st of month 3 AM UTC
         "expire_seconds": 60 * 60 * 2,  # 2 hour expiry
     },
-    "run-llm-analysis-nightly": {
-        "task": "apps.metrics.tasks.run_all_teams_llm_analysis",
+    "run-llm-batch-nightly": {
+        "task": "apps.metrics.tasks.run_all_teams_llm_batch",
         "schedule": schedules.crontab(minute=0, hour=5),  # 5 AM UTC (after GitHub/Jira syncs)
         "expire_seconds": 60 * 60 * 2,  # 2 hour expiry
     },

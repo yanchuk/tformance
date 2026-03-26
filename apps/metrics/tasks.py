@@ -371,28 +371,31 @@ def run_llm_analysis_batch(self, team_id: int, limit: int | None = 50, rate_limi
 
 
 @shared_task
-def run_all_teams_llm_analysis(limit_per_team: int = 50) -> dict:
-    """Run LLM analysis for all teams by dispatching individual tasks.
+def run_all_teams_llm_batch() -> dict:
+    """Dispatch batch LLM analysis for all teams (Batch API only).
 
-    Args:
-        limit_per_team: Max PRs to process per team (default: 50)
+    Uses queue_llm_analysis_batch_task which processes PRs via Groq Batch API.
+    Only processes PRs where llm_summary IS NULL — never reprocesses.
 
     Returns:
         Dictionary with count of teams dispatched
     """
-    teams = Team.objects.all()
-    teams_dispatched = 0
+    from apps.integrations._task_modules.metrics import queue_llm_analysis_batch_task
+    from apps.integrations.models import GitHubIntegration
 
-    for team in teams:
+    integrations = GitHubIntegration.objects.select_related("team").all()  # noqa: TEAM001 - System job
+    dispatched = 0
+
+    for integration in integrations:
         try:
-            run_llm_analysis_batch.delay(team_id=team.id, limit=limit_per_team)
-            teams_dispatched += 1
+            queue_llm_analysis_batch_task.delay(integration.team.id)
+            dispatched += 1
         except Exception as e:
-            logger.exception(f"Failed to dispatch run_llm_analysis_batch for team {team.id}: {e}")
+            logger.exception(f"Failed to dispatch LLM batch for team {integration.team.id}: {e}")
             continue
 
-    logger.info(f"Dispatched LLM analysis tasks for {teams_dispatched} teams")
-    return {"teams_dispatched": teams_dispatched}
+    logger.info(f"Dispatched batch LLM tasks for {dispatched} teams")
+    return {"teams_dispatched": dispatched}
 
 
 @shared_task
@@ -435,14 +438,19 @@ def cleanup_old_metrics_data(days: int = 365) -> dict:
 
 @shared_task
 def generate_weekly_insights() -> dict:
-    """Generate LLM-powered weekly insights for all teams.
+    """Generate LLM-powered weekly insights for customer teams only.
 
     Uses a 7-day period (last week) and stores insights with 'weekly' cadence.
+    Excludes public-only teams (no GitHubIntegration) to avoid unnecessary
+    on-demand Groq API costs.
 
     Returns:
         Dict with teams_processed count and errors count
     """
-    teams = Team.objects.all()
+    from apps.integrations.models import GitHubIntegration
+
+    team_ids = GitHubIntegration.objects.values_list("team_id", flat=True)  # noqa: TEAM001
+    teams = Team.objects.filter(id__in=team_ids)
     today = date.today()
     end_date = today
     start_date = today - timedelta(days=7)
@@ -484,14 +492,19 @@ def generate_weekly_insights() -> dict:
 
 @shared_task
 def generate_monthly_insights() -> dict:
-    """Generate LLM-powered monthly insights for all teams.
+    """Generate LLM-powered monthly insights for customer teams only.
 
     Uses a 30-day period (last month) and stores insights with 'monthly' cadence.
+    Excludes public-only teams (no GitHubIntegration) to avoid unnecessary
+    on-demand Groq API costs.
 
     Returns:
         Dict with teams_processed count and errors count
     """
-    teams = Team.objects.all()
+    from apps.integrations.models import GitHubIntegration
+
+    team_ids = GitHubIntegration.objects.values_list("team_id", flat=True)  # noqa: TEAM001
+    teams = Team.objects.filter(id__in=team_ids)
     today = date.today()
     end_date = today
     start_date = today - timedelta(days=30)

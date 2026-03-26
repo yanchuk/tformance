@@ -227,7 +227,8 @@ def queue_llm_analysis_batch_task(self, team_id: int, batch_size: int = 50, requ
         try:
             pr = PullRequest.objects.get(id=result.pr_id)  # noqa: TEAM001 - ID from LLM batch result
             pr.llm_summary = result.llm_summary
-            pr.save(update_fields=["llm_summary"])
+            pr.llm_summary_version = result.prompt_version
+            pr.save(update_fields=["llm_summary", "llm_summary_version"])
             prs_updated += 1
         except PullRequest.DoesNotExist:
             logger.warning(f"PR {result.pr_id} not found when updating LLM results")
