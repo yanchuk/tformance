@@ -377,22 +377,38 @@ def run_all_teams_llm_batch() -> dict:
     Uses queue_llm_analysis_batch_task which processes PRs via Groq Batch API.
     Only processes PRs where llm_summary IS NULL — never reprocesses.
 
+    Dispatches both private teams (via GitHubIntegration) and public org teams
+    (via PublicOrgProfile). Public teams use days_back=7 to process only recent
+    PRs and avoid backfilling the entire history.
+
     Returns:
         Dictionary with count of teams dispatched
     """
     from apps.integrations._task_modules.metrics import queue_llm_analysis_batch_task
     from apps.integrations.models import GitHubIntegration
+    from apps.public.models import PublicOrgProfile
 
-    integrations = GitHubIntegration.objects.select_related("team").all()  # noqa: TEAM001 - System job
     dispatched = 0
 
-    for integration in integrations:
+    # Private teams — full backlog processing
+    private_team_ids = set()
+    for integration in GitHubIntegration.objects.select_related("team").all():  # noqa: TEAM001 - System job
+        private_team_ids.add(integration.team_id)
         try:
             queue_llm_analysis_batch_task.delay(integration.team.id)
             dispatched += 1
         except Exception as e:
             logger.exception(f"Failed to dispatch LLM batch for team {integration.team.id}: {e}")
-            continue
+
+    # Public org teams — recent PRs only (avoid 25k+ backlog)
+    for org in PublicOrgProfile.objects.all():  # noqa: TEAM001 - System job
+        if org.team_id in private_team_ids:
+            continue  # Already dispatched above
+        try:
+            queue_llm_analysis_batch_task.delay(org.team_id, days_back=7)
+            dispatched += 1
+        except Exception as e:
+            logger.exception(f"Failed to dispatch LLM batch for public team {org.team_id}: {e}")
 
     logger.info(f"Dispatched batch LLM tasks for {dispatched} teams")
     return {"teams_dispatched": dispatched}

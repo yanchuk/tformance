@@ -34,10 +34,11 @@ class TestBatchOnlyScheduledTasks(TestCase):
             result = run_all_teams_llm_batch()
             assert result["teams_dispatched"] == 0
 
-    def test_nightly_dispatcher_only_processes_teams_with_github(self):
-        """Only teams with GitHubIntegration should get batch processing."""
+    def test_nightly_dispatcher_processes_integration_and_public_teams(self):
+        """Teams with GitHubIntegration AND public org teams should get batch processing."""
         source = inspect.getsource(run_all_teams_llm_batch)
         assert "GitHubIntegration" in source
+        assert "PublicOrgProfile" in source
         assert "Team.objects.all()" not in source
 
 

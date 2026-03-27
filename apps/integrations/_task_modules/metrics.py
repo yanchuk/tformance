@@ -129,7 +129,9 @@ def aggregate_all_teams_weekly_metrics_task():
 
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=60, soft_time_limit=900, time_limit=960)
-def queue_llm_analysis_batch_task(self, team_id: int, batch_size: int = 50, requeue_depth: int = 0) -> dict:
+def queue_llm_analysis_batch_task(
+    self, team_id: int, batch_size: int = 50, requeue_depth: int = 0, days_back: int | None = None
+) -> dict:
     """Process PRs missing LLM analysis in batches.
 
     Time limits increased to 15/16 min to handle batch API polling + retry:
@@ -142,6 +144,7 @@ def queue_llm_analysis_batch_task(self, team_id: int, batch_size: int = 50, requ
         team_id: The team to process PRs for
         batch_size: Number of PRs to process per batch (default 50)
         requeue_depth: Current requeue depth (used to prevent infinite loops)
+        days_back: Only process PRs merged within this many days (None = all)
 
     Returns:
         Dict with prs_processed count or error status
@@ -169,14 +172,17 @@ def queue_llm_analysis_batch_task(self, team_id: int, batch_size: int = 50, requ
         logger.info(f"Marked {no_body_count} PRs without body as skipped for team {team.name}")
 
     # Find PRs with body missing llm_summary for this team
+    qs = PullRequest.objects.filter(team=team, llm_summary__isnull=True).exclude(body="")
+    if days_back:
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        qs = qs.filter(merged_at__gte=timezone.now() - timedelta(days=days_back))
     prs_to_process = list(
-        PullRequest.objects.filter(
-            team=team,
-            llm_summary__isnull=True,
-        )
-        .exclude(body="")  # Only process PRs with body content
-        .select_related("author")
-        .prefetch_related("files", "commits", "reviews__reviewer", "comments__author")[:batch_size]
+        qs.select_related("author").prefetch_related("files", "commits", "reviews__reviewer", "comments__author")[
+            :batch_size
+        ]
     )
 
     if not prs_to_process:
@@ -262,7 +268,7 @@ def queue_llm_analysis_batch_task(self, team_id: int, batch_size: int = 50, requ
         )
         self.apply_async(
             args=[team_id],
-            kwargs={"batch_size": batch_size, "requeue_depth": requeue_depth + 1},
+            kwargs={"batch_size": batch_size, "requeue_depth": requeue_depth + 1, "days_back": days_back},
             countdown=2,
         )
     else:
