@@ -95,7 +95,7 @@ class TestSyncRepositoryHistory(TestCase):
         result = sync_repository_history(self.tracked_repo)
 
         # Verify PR was created
-        pr = PullRequest.objects.get(team=self.team, github_pr_id=123456789)
+        pr = PullRequest.objects.get(team=self.team, github_pr_id=42)
         self.assertEqual(pr.title, "Add feature")
         self.assertEqual(pr.state, "merged")
         self.assertEqual(pr.github_repo, "acme-corp/api-server")
@@ -141,7 +141,7 @@ class TestSyncRepositoryHistory(TestCase):
         # Create existing PR with old data
         existing_pr = PullRequestFactory(
             team=self.team,
-            github_pr_id=123456789,
+            github_pr_id=42,
             github_repo="acme-corp/api-server",
             title="Old Title",
             state="open",
@@ -166,8 +166,8 @@ class TestSyncRepositoryHistory(TestCase):
         result = sync_repository_history(self.tracked_repo)
 
         # Verify PR was updated, not duplicated
-        self.assertEqual(PullRequest.objects.filter(github_pr_id=123456789).count(), 1)
-        pr = PullRequest.objects.get(github_pr_id=123456789)
+        self.assertEqual(PullRequest.objects.filter(github_pr_id=42).count(), 1)
+        pr = PullRequest.objects.get(github_pr_id=42)
         self.assertEqual(pr.title, "Updated Title")
         self.assertEqual(pr.state, "merged")
         self.assertEqual(pr.id, existing_pr.id)  # Same record
@@ -225,7 +225,7 @@ class TestSyncRepositoryHistory(TestCase):
         sync_repository_history(self.tracked_repo)
 
         # Verify author was linked correctly
-        pr = PullRequest.objects.get(team=self.team, github_pr_id=123456789)
+        pr = PullRequest.objects.get(team=self.team, github_pr_id=42)
         self.assertEqual(pr.author, self.member)
         self.assertEqual(pr.author.github_id, "12345")
 
@@ -279,7 +279,7 @@ class TestSyncRepositoryHistory(TestCase):
         sync_repository_history(self.tracked_repo)
 
         # Verify author is None for unknown user
-        pr = PullRequest.objects.get(team=self.team, github_pr_id=123456789)
+        pr = PullRequest.objects.get(team=self.team, github_pr_id=42)
         self.assertIsNone(pr.author)
 
     @patch("apps.integrations.services.github_sync.sync.sync_repository_deployments")
@@ -334,7 +334,7 @@ class TestSyncRepositoryHistory(TestCase):
         sync_repository_history(self.tracked_repo)
 
         # Verify cycle_time_hours was calculated correctly
-        pr = PullRequest.objects.get(team=self.team, github_pr_id=123456789)
+        pr = PullRequest.objects.get(team=self.team, github_pr_id=42)
         self.assertIsNotNone(pr.cycle_time_hours)
         # 29 hours between 2025-01-01T10:00:00Z and 2025-01-02T15:00:00Z
         self.assertEqual(pr.cycle_time_hours, Decimal("29.00"))
@@ -749,7 +749,7 @@ class TestSyncRepositoryHistory(TestCase):
         sync_repository_history(self.tracked_repo)
 
         # Verify first_review_at was set to earliest review time
-        pr = PullRequest.objects.get(team=self.team, github_pr_id=123456789)
+        pr = PullRequest.objects.get(team=self.team, github_pr_id=42)
         self.assertIsNotNone(pr.first_review_at)
         # Should be 2025-01-01T12:00:00Z (the earlier review)
         expected_time = pr.first_review_at.isoformat().replace("+00:00", "Z")
@@ -822,7 +822,7 @@ class TestSyncRepositoryHistory(TestCase):
         sync_repository_history(self.tracked_repo)
 
         # Verify review_time_hours was calculated correctly
-        pr = PullRequest.objects.get(team=self.team, github_pr_id=123456789)
+        pr = PullRequest.objects.get(team=self.team, github_pr_id=42)
         self.assertIsNotNone(pr.review_time_hours)
         # 2 hours between 10:00 and 12:00
         self.assertEqual(pr.review_time_hours, Decimal("2.00"))
@@ -1066,7 +1066,7 @@ class TestSyncRepositoryIncremental(TestCase):
         result = sync_repository_incremental(self.tracked_repo)
 
         # Verify PR was created
-        pr = PullRequest.objects.get(team=self.team, github_pr_id=123456789)
+        pr = PullRequest.objects.get(team=self.team, github_pr_id=42)
         self.assertEqual(pr.title, "New feature")
         self.assertEqual(pr.state, "open")
         self.assertEqual(pr.github_repo, "acme-corp/api-server")
@@ -1111,7 +1111,7 @@ class TestSyncRepositoryIncremental(TestCase):
         # Create existing PR with old data
         existing_pr = PullRequestFactory(
             team=self.team,
-            github_pr_id=123456789,
+            github_pr_id=42,
             github_repo="acme-corp/api-server",
             title="Old Title",
             state="open",
@@ -1142,8 +1142,8 @@ class TestSyncRepositoryIncremental(TestCase):
         result = sync_repository_incremental(self.tracked_repo)
 
         # Verify PR was updated, not duplicated
-        self.assertEqual(PullRequest.objects.filter(github_pr_id=123456789).count(), 1)
-        pr = PullRequest.objects.get(github_pr_id=123456789)
+        self.assertEqual(PullRequest.objects.filter(github_pr_id=42).count(), 1)
+        pr = PullRequest.objects.get(github_pr_id=42)
         self.assertEqual(pr.title, "Updated Title")
         self.assertEqual(pr.state, "merged")
         self.assertEqual(pr.id, existing_pr.id)  # Same record
@@ -1486,7 +1486,7 @@ class TestSyncRepositoryIncremental(TestCase):
         self.assertEqual(prs.count(), 1)
         pr = prs.first()
         self.assertEqual(pr.title, "Valid PR")
-        self.assertEqual(pr.github_pr_id, 123456789)
+        self.assertEqual(pr.github_pr_id, 42)
 
         # Verify error was logged
         self.assertIn("errors", result)

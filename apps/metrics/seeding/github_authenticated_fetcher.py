@@ -702,7 +702,7 @@ class GitHubAuthenticatedFetcher:
         closed_at = pr.closed_at.replace(tzinfo=UTC) if pr.closed_at else None
 
         return FetchedPRFull(
-            github_pr_id=pr.id,
+            github_pr_id=pr.number,
             number=pr.number,
             github_repo=repo_name,
             title=pr.title,

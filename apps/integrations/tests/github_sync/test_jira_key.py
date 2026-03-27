@@ -198,7 +198,7 @@ class TestJiraKeyExtraction(TestCase):
             sync_repository_history(tracked_repo)
 
         # Verify jira_key was saved to PullRequest record
-        pr = PullRequest.objects.get(team=team, github_pr_id=123456789)
+        pr = PullRequest.objects.get(team=team, github_pr_id=42)
         self.assertEqual(pr.jira_key, "PROJ-123")
 
     def test_sync_repository_history_saves_jira_key_from_branch(self):
@@ -257,7 +257,7 @@ class TestJiraKeyExtraction(TestCase):
             sync_repository_history(tracked_repo)
 
         # Verify jira_key was saved to PullRequest record
-        pr = PullRequest.objects.get(team=team, github_pr_id=123456789)
+        pr = PullRequest.objects.get(team=team, github_pr_id=42)
         self.assertEqual(pr.jira_key, "PROJ-456")
 
     def test_sync_repository_incremental_saves_jira_key_from_pr_title(self):
@@ -319,5 +319,5 @@ class TestJiraKeyExtraction(TestCase):
             sync_repository_incremental(tracked_repo)
 
         # Verify jira_key was saved to PullRequest record
-        pr = PullRequest.objects.get(team=team, github_pr_id=987654321)
+        pr = PullRequest.objects.get(team=team, github_pr_id=99)
         self.assertEqual(pr.jira_key, "ABC-999")

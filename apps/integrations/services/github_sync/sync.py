@@ -65,7 +65,7 @@ def _process_prs(
     for pr_data in prs_data:
         try:
             # Extract identifying information
-            github_pr_id = pr_data["id"]
+            github_pr_id = pr_data["number"]
             pr_number = pr_data["number"]
 
             # Map GitHub data to model fields
