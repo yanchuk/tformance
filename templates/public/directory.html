@@ -17,7 +17,14 @@
     {
       "@type": "Dataset",
       "name": "{{ org.display_name }} Engineering Benchmarks",
-      "url": "https://tformance.com/open-source/{{ org.slug }}/"
+      "description": "Engineering benchmarks for {{ org.display_name }}: {{ org.total_prs }} merged PRs, {{ org.ai_assisted_pct }}% AI signals, {{ org.median_cycle_time_hours }}h median cycle time, {{ org.active_contributors_90d }} active contributors.",
+      "url": "https://tformance.com/open-source/{{ org.slug }}/",
+      "license": "https://creativecommons.org/licenses/by/4.0/",
+      "creator": {
+        "@type": "Organization",
+        "name": "Tformance",
+        "url": "https://tformance.com"
+      }
     }{% if not forloop.last %},{% endif %}{% endfor %}
   ]
 }
